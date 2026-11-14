@@ -1,6 +1,6 @@
 package ai.neargo.shop.invbridge;
 
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.product.service.InvManagedService;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;

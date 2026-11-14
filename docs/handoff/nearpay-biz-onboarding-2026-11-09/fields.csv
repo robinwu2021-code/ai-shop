@@ -1,0 +1,50 @@
+field,label,group,secret,writeOwner,wireValue
+LEGAL_FORM,主體類型,平台資料,false,BIZ/OPS,string
+CONTACT_NAME,聯絡人,平台資料,false,BIZ/OPS,string
+CONTACT_PHONE,聯絡電話,平台資料,true,BIZ/OPS,cipherRef
+SETTLE_ACCOUNT_TYPE,結算帳戶類型,平台資料,false,BIZ/OPS,string
+SETTLE_ACCOUNT,結算帳號,平台資料,true,BIZ/OPS,cipherRef
+NWP_MemberUnified,统一编号／个人证件号码,主体,true,BIZ/OPS,cipherRef
+NWP_ManagerID,代表人证件号码,代表人,true,BIZ/OPS,cipherRef
+NWP_ManagerName,代表人中文姓名,代表人,true,BIZ/OPS,cipherRef
+NWP_ManagerNameE,代表人英文姓名,代表人,true,BIZ/OPS,cipherRef
+NWP_MemberPhone,会员联系电话,联系,true,BIZ/OPS,cipherRef
+NWP_ManagerMobile,管理者手机,联系,true,BIZ/OPS,cipherRef
+NWP_ManagerEmail,管理者邮箱,联系,true,BIZ/OPS,cipherRef
+NWP_IDCardDate,证件发证日期,个人证件,true,BIZ/OPS,cipherRef
+NWP_IDCardPlace,证件发证地,个人证件,true,BIZ/OPS,cipherRef
+NWP_IDPic,证件照片标记,个人证件,true,BIZ/OPS,cipherRef
+NWP_IDFrom,初发／补发／换发,个人证件,true,BIZ/OPS,cipherRef
+NWP_BankAccount,结算银行账号,结算,true,BIZ/OPS,cipherRef
+NWP_MemberName,会员登记名称,主体,false,BIZ/OPS,string
+NWP_MerchantName,商店中文名称,商店,false,BIZ/OPS,string
+NWP_MerchantNameE,商店英文名称,商店,false,BIZ/OPS,string
+NWP_MerchantWebURL,商店经营链接,商店,false,BIZ/OPS,string
+NWP_MerchantAddrCity,商店城市,地址,false,BIZ/OPS,string
+NWP_MerchantAddrArea,商店区域,地址,false,BIZ/OPS,string
+NWP_MerchantAddrCode,商店邮编,地址,false,BIZ/OPS,string
+NWP_MerchantAddr,商店详细地址,地址,false,BIZ/OPS,string
+NWP_NationalE,登记国家英文值,地址,false,BIZ/OPS,string
+NWP_CityE,登记城市英文值,地址,false,BIZ/OPS,string
+NWP_MerchantType,商品／服务形态,商店,false,BIZ/OPS,string
+NWP_BusinessType,行业类别,商店,false,BIZ/OPS,string
+NWP_MerchantDesc,经营简介,商店,false,BIZ/OPS,string
+NWP_BankCode,银行代码,结算,false,BIZ/OPS,string
+NWP_SubBankCode,分行代码,结算,false,BIZ/OPS,string
+LICENSE_1,证照1,附件,true,BIZ/OPS,private fileNo
+LICENSE_2,证照2,附件,true,BIZ/OPS,private fileNo
+LICENSE_3,证照3,附件,true,BIZ/OPS,private fileNo
+LICENSE_4,证照4,附件,true,BIZ/OPS,private fileNo
+LICENSE_5,证照5,附件,true,BIZ/OPS,private fileNo
+LICENSE_6,证照6,附件,true,BIZ/OPS,private fileNo
+LICENSE_7,证照7,附件,true,BIZ/OPS,private fileNo
+LICENSE_8,证照8,附件,true,BIZ/OPS,private fileNo
+LICENSE_9,证照9,附件,true,BIZ/OPS,private fileNo
+LICENSE_10,证照10,附件,true,BIZ/OPS,private fileNo
+NWP_MerchantID,MerchantID,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_LoginAccount,LoginAccount,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_PaymentType,PaymentType,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_AgreedFee,AgreedFee,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_AgreedDay,AgreedDay,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_CreditAutoType,CreditAutoType,渠道与商务,false,OPS only,BIZ禁止写入
+NWP_CreditLimit,CreditLimit,渠道与商务,false,OPS only,BIZ禁止写入

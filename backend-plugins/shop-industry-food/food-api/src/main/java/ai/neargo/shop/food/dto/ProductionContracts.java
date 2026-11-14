@@ -1,0 +1,74 @@
+package ai.neargo.shop.food.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Confirmed quantity is inventory issue evidence, never measured physical usage or inferred cost.
+ */
+public final class ProductionContracts {
+    private ProductionContracts() {}
+
+    /**
+     * Dates select business days; to is exclusive. Service validates the bounded query in both
+     * deployments.
+     */
+    public record ListQuery(
+            Integer page,
+            Integer size,
+            LocalDate from,
+            LocalDate to,
+            String skuNo,
+            String itemRef,
+            String status) {}
+
+    public record PendingQuery(
+            @jakarta.validation.constraints.Min(0) long afterId,
+            @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(100) int limit) {}
+
+    /** sourceId is an exclusive cursor; event identity remains the retry key. */
+    public record PendingVO(long sourceId, String sourceEventNo, String taskNo,
+                            String action, String status) {}
+
+    public record AdjustmentReq(Long version, String kind, BigDecimal qty, String reason) {}
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record ReverseReq(Long version, String reason,String disposition,String reasonCode) {
+        public ReverseReq(Long version,String reason){this(version,reason,null,null);}
+    }
+
+    public record LineVO(
+            int lineNo,
+            String componentPath,
+            String itemRef,
+            BigDecimal theoryQty,
+            String unit,
+            String recipeRevisionNo,
+            String inventoryReceiptRef,
+            BigDecimal inventoryIssuedQty,
+            Long costMinor,
+            String currency,
+            String status) {}
+
+    public record ConsumptionVO(
+            String consumptionNo,
+            String sourceEventNo,
+            String purpose,
+            String status,
+            String requestHash,
+            String inventoryOperationRef,
+            LocalDate businessDate,
+            LocalDateTime occurredAt,
+            List<LineVO> lines,
+            String quantityEvidence,
+            boolean consumptionPending,
+            Long totalCostMinor,
+            String costCurrency,
+            long version) {
+        public ConsumptionVO {
+            lines = List.copyOf(lines);
+        }
+    }
+}

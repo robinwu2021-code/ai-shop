@@ -23,6 +23,8 @@ import ai.neargo.shop.trade.service.PricingSeedService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -42,6 +44,18 @@ public class PricingSeedServiceImpl implements PricingSeedService {
     }
 
     @Override
+    public ImportReport importDrafts(Context c, String source, ImportMode mode) {
+        if (c == null || !c.platformOperator()) throw BizException.of(ErrorCode.FORBIDDEN);
+        final String registry;
+        try {
+            registry = validator.registryVersion(source);
+        } catch (IllegalArgumentException error) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return importDrafts(c, source, registry, mode);
+    }
+
+    @Override
     public ImportReport importDrafts(Context c, String source, String registryVersion, ImportMode mode) {
         if (c == null || !c.platformOperator()) throw BizException.of(ErrorCode.FORBIDDEN);
         if (mode == null) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -52,7 +66,18 @@ public class PricingSeedServiceImpl implements PricingSeedService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (mode == ImportMode.DRY_RUN) return report(plan, mode, List.of());
-        return DataScopeContext.executeWithoutScope(() -> importValidated(c, plan));
+        return DataScopeContext.executeWithoutScope(() -> {
+            for (int attempt = 0; ; attempt++) {
+                try {
+                    return importValidated(c, plan);
+                } catch (PessimisticLockingFailureException transientLockFailure) {
+                    // Only a fully rolled-back, standalone attempt can safely start a new transaction.
+                    if (attempt >= 2 || TransactionSynchronizationManager.isActualTransactionActive()) {
+                        throw transientLockFailure;
+                    }
+                }
+            }
+        });
     }
 
     private ImportReport importValidated(Context c, SeedPlan plan) {
@@ -90,7 +115,7 @@ public class PricingSeedServiceImpl implements PricingSeedService {
         row.setName(draft.sourceTemplateNo());
         row.setStatus("ACTIVE");
         row.setDraftContent(draft.definition());
-        row.setDraftSchemaVersion(2);
+        row.setDraftSchemaVersion(draft.schemaVersion());
         row.setDraftVersion(0L);
         row.setSeedVersion(plan.seedVersion());
         row.setSeedHash(plan.seedHash());

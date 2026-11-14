@@ -1,0 +1,25 @@
+{
+  "mode": "BROWSER_CONTRACT_FIXTURE_ONLY",
+  "status": "PASS",
+  "selectedRequest": {
+    "method": "POST",
+    "path": "/biz/print/simulations",
+    "store": "FIXTURE-STORE",
+    "hasIdempotencyKey": true,
+    "source": {
+      "type": "FACT",
+      "no": null,
+      "factRef": {
+        "tenantNo": "FIXTURE-TENANT",
+        "entityNo": "FIXTURE-ENTITY",
+        "storeNo": "FIXTURE-STORE",
+        "sourceType": "REFUND",
+        "factNo": "FIXTURE-REFUND-2",
+        "bizRevision": "2",
+        "scene": "REFUND_RECEIPT",
+        "snapshotHash": "c106adab7cefb69b273c84e188798b4246669dab75675a0214428a2f6571168b"
+      },
+      "expectedRevision": null
+    }
+  }
+}

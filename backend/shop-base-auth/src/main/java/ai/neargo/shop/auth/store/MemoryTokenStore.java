@@ -68,6 +68,22 @@ public class MemoryTokenStore implements TokenStore {
         store.computeIfPresent(token, (k, old) -> new Entry(data, Instant.now().plus(ttl)));
     }
 
+    private Optional<String> tokenByHash(String hash, String principal) {
+        return store.keySet().stream()
+                .filter(t -> ai.neargo.auth.store.TokenHash.of(t).equals(hash))
+                .filter(t -> get(t).filter(d -> principal.equals(d.user().userNo())).isPresent()).findFirst();
+    }
+
+    @Override
+    public Optional<SessionData> getByHash(String hash, String principal) {
+        return tokenByHash(hash, principal).flatMap(this::get);
+    }
+
+    @Override
+    public void revokeByHash(String hash, String principal) {
+        tokenByHash(hash, principal).ifPresent(this::revoke);
+    }
+
     @Override
     public void revoke(String token) {
         store.remove(token);

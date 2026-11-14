@@ -19,31 +19,14 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import ts from "typescript";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["b-app", "c-app"];
 
-/** 词条文件里的全部 key（含嵌套、含值写在下一行的） */
+// @ts-expect-error -- the pure Node locale reader is shared with release guards.
+import { localeEntries } from "../../../scripts/lib/i18n-locale.mjs";
 function keysOf(file: string): Set<string> {
-  // AST 同时识别裸 key、引号 key、同行嵌套对象和含占位符的值。
-  // 旧扫描按字符计算花括号层级，会把字符串内的 {n} 和紧凑对象误认为结构。
-  const ast = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
-  const out = new Set<string>();
-  function walk(node: ts.Expression, prefix = "") {
-    if (ts.isObjectLiteralExpression(node)) {
-      for (const property of node.properties) {
-        if (!ts.isPropertyAssignment(property) || !property.name || ts.isComputedPropertyName(property.name)) continue;
-        const name = property.name.getText(ast).replace(/^["']|["']$/g, "");
-        walk(property.initializer, prefix ? `${prefix}.${name}` : name);
-      }
-    } else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      out.add(prefix);
-    }
-  }
-  const exported = ast.statements.find(ts.isExportAssignment);
-  if (exported) walk(exported.expression);
-  return out;
+  return new Set(localeEntries(file).keys());
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -64,8 +47,7 @@ describe("词条引用", () => {
       for (const dir of ["src/pages", "src/components"]) {
         for (const f of walk(join(ROOT, app, dir))) {
           const src = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-          // 末尾是点的字符串是动态前缀（如 t('status.' + code)），不是完整 key。
-          for (const m of src.matchAll(/\$?t\(\s*["']([a-zA-Z]\w*\.[\w.]*\w)["']/g)) {
+          for (const m of src.matchAll(/\$?t\(\s*["']([a-zA-Z]\w*(?:\.\w+)+)["']\s*[,)]/g)) {
             if (!known.has(m[1]!)) {
               const line = src.slice(0, m.index).split("\n").length;
               bad.push(`${relative(ROOT, f)}:${line}  t("${m[1]}")`);

@@ -1,12 +1,16 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.payclient.OpsPayChannelAppService;
 import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 通道 × 市场关系表（S12 · V295）。
@@ -59,12 +64,19 @@ class PayChannelMarketRelationTest {
                 new UsernamePasswordAuthenticationToken(u, null, List.of()));
     }
 
+    /** 用例前的全部市场行（W2 S8 起 TEST 与三个新渠道也有行，还原要按原样，不是只补 WECHAT / ALIPAY） */
+    private List<Map<String, Object>> before;
+
+    @BeforeEach
+    void snapshot() {
+        before = jdbc.queryForList("SELECT pay_channel, market FROM sys_pay_channel_market ORDER BY pay_channel, market");
+    }
+
     @AfterEach
     void restore() {
         SecurityContextHolder.clearContext();
         jdbc.update("DELETE FROM sys_pay_channel_market");
-        jdbc.update(INSERT, "WECHAT", "CN");
-        jdbc.update(INSERT, "ALIPAY", "CN");
+        before.forEach(r -> jdbc.update(INSERT, r.get("pay_channel"), r.get("market")));
     }
 
     private List<String> marketsOf(String channel) {
@@ -105,6 +117,15 @@ class PayChannelMarketRelationTest {
                         + "所有通道会在所有市场可用，而没有任何东西会报")
                 .contains("INSERT IGNORE INTO sys_pay_channel_market")
                 .contains("FROM sys_pay_channel c");
+
+        /*
+         * W2 S8：V12 把「无行 = 不限市场」翻成「无行 = 不可用」，TEST 的显式行必须是<b>常量种子</b>（INSERT … VALUES）——
+         * 写成 INSERT … SELECT 的话 schema-test 生成器当回填丢掉，测试库里 TEST 一行都没有，30 个走支付链路的场景全红。
+         */
+        String v12 = Files.readString(Path.of("..", "pay", "pay-domain", "src", "main", "resources", "db", "pay",
+                "V12__pay_channel_market_explicit.sql").toRealPath());
+        assertThat(v12).contains("('TEST', 'CN'").contains("('TEST', 'TW'").contains("('TEST', 'AE'")
+                .contains("('NEWEBPAY', 'TW'").contains("('LINEPAY', 'TW'").contains("('PAYBY', 'AE'");
     }
 
     @Test
@@ -127,14 +148,43 @@ class PayChannelMarketRelationTest {
     }
 
     @Test
-    @DisplayName("★★★ 无行按不限市场 —— TEST 通道刻意留空，它要能在任何市场的链路上验证")
-    void noRowsMeansAllMarkets() {
-        assertThat(marketsOf("TEST")).as("种子里 TEST 本来就不该有行").isEmpty();
-        assertThat(masterPort.enabledChannels("TW"))
-                .as("无行被当成「哪个市场都不可用」的话，TEST 会一夜消失，"
-                        + "而 30 个走支付链路的场景测试跟着全红")
-                .contains("TEST");
+    @DisplayName("★★★ W2 S8 无行 = 不可用；TEST 靠显式行在每个市场可用（V12 把它的「不限」搬成了显式行）")
+    void noRowsMeansUnavailableAndTestIsExplicit() {
+        assertThat(marketsOf("TEST")).as("V12 给 TEST 每个市场一行")
+                .containsExactly("AE", "CN", "HK", "SA", "SG", "TW");
+        assertThat(masterPort.enabledChannels("TW")).contains("TEST");
         assertThat(masterPort.enabledChannels("CN")).contains("TEST");
+
+        jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'TEST'");
+        assertThat(masterPort.enabledChannels("CN"))
+                .as("无行还按「不限市场」的话，一个没配市场的新渠道会在大陆出现")
+                .doesNotContain("TEST");
+    }
+
+    @Test
+    @DisplayName("★★★ W2 S8 新渠道行在库里、默认停用、只在自己的市场")
+    void newChannelsSeededDisabled() {
+        var byChannel = opsChannels.channels().stream()
+                .collect(Collectors.toMap(c -> c.payChannel(), c -> c));
+        assertThat(byChannel).containsKeys("NEWEBPAY", "LINEPAY", "PAYBY");
+        assertThat(byChannel.get("NEWEBPAY").enabled()).isFalse();
+        assertThat(byChannel.get("LINEPAY").enabled()).isFalse();
+        assertThat(byChannel.get("PAYBY").enabled()).isFalse();
+        assertThat(marketsOf("NEWEBPAY")).containsExactly("TW");
+        assertThat(marketsOf("LINEPAY")).containsExactly("TW");
+        assertThat(marketsOf("PAYBY")).containsExactly("AE");
+        assertThat(masterPort.enabledChannels("TW")).doesNotContain("NEWEBPAY", "LINEPAY");
+    }
+
+    @Test
+    @DisplayName("★★★ W2 S8 运营把市场清空 = 拒绝（不是「全部市场」）—— 清空后通道在哪儿都不可用，要停用请用开关")
+    void emptyMarketUpdateIsRejected() {
+        asOps();
+        assertThatThrownBy(() -> opsChannels.update("ALIPAY", null, "", null, null))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> opsChannels.update("ALIPAY", null, "[]", null, null))
+                .isInstanceOf(BizException.class);
+        assertThat(marketsOf("ALIPAY")).as("被拒的那次不能把行删了").containsExactly("CN");
     }
 
     @Test
@@ -164,9 +214,13 @@ class PayChannelMarketRelationTest {
 
         var test = opsChannels.channels().stream()
                 .filter(c -> "TEST".equals(c.payChannel())).findFirst().orElseThrow();
-        assertThat(test.markets())
-                .as("无行要派生成 null（= 不限市场），派生成 [] 的话页面会显示「一个市场都不可用」")
-                .isNull();
+        assertThat(test.markets()).as("TEST 的显式行照原样派生").isEqualTo("[\"AE\",\"CN\",\"HK\",\"SA\",\"SG\",\"TW\"]");
+
+        // W2 S8：无行 = 不可用，派生成 [] 而不是 null —— null 在页面上一直显示成「全部市场」，那正是语义翻转后会说反的那句
+        jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'ALIPAY'");
+        var alipay = opsChannels.channels().stream()
+                .filter(c -> "ALIPAY".equals(c.payChannel())).findFirst().orElseThrow();
+        assertThat(alipay.markets()).isEqualTo("[]");
     }
 
     @Test

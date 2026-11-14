@@ -1,0 +1,108 @@
+{
+ "environment": "rehearsal",
+ "dataSource": "本机 MySQL 从 V1 迁移到 V657 的隔离库（非 166 实库副本）；含 OPS_PAY_01..08 实库支付菜单编码；另插入 1 个合成自建角色（entity_no 为 NULL 与非 NULL 各一条授权）走授权并入分支",
+ "sourceVersion": "657",
+ "targetVersion": "658",
+ "mysqlVersion": "9.7.4",
+ "flywayVersion": "11.14.1",
+ "migrationUser": "root（V603 触发器需要；与生产 DDL 迁移由 root 执行一致）",
+ "flyway": {
+  "version": "658",
+  "checksum": -783404707,
+  "success": 1
+ },
+ "checks": {
+  "sys_role": {
+   "rows": 13,
+   "unchanged": true,
+   "sha256": "b3d74b04cf7ecb7fcc116e3a2c6258cc9fc5d9d8e3732bdedf1fe81477ad3862"
+  },
+  "sys_role_member": {
+   "rows": 0,
+   "unchanged": true
+  },
+  "previousFlywayHistoryUnchanged": true,
+  "pointsRemoved": [
+   "OPS_AFTERSALE__TAB_REFUND_BACK"
+  ],
+  "pointsAdded": [],
+  "pointIdentityPermissionsAndGates": {
+   "rows": 250,
+   "unchanged": true
+  },
+  "menuMappings": {
+   "expected": 151,
+   "matched": 151,
+   "allMatched": true,
+   "legacyPaymentAliases": 8
+  },
+  "functionRows": 18,
+  "retiredFunctions": {
+   "OPS_MEMBER": {
+    "enabled": "0",
+    "pointsLeft": 0
+   },
+   "OPS_POINTS": {
+    "enabled": "0",
+    "pointsLeft": 0
+   },
+   "OPS_MESSAGE": {
+    "enabled": "0",
+    "pointsLeft": 0
+   }
+  },
+  "roleVisibleHrefsUnchanged": {
+   "subjects": 13,
+   "unchanged": true
+  },
+  "rolePermCodesUnchanged": {
+   "subjects": 14,
+   "unchanged": true
+  },
+  "grants": {
+   "rowsBefore": 545,
+   "rowsAfter": 543,
+   "removed": [
+    [
+     "FINANCE",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "<NULL>"
+    ],
+    [
+     "SUPER_ADMIN",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "<NULL>"
+    ],
+    [
+     "V658_REHEARSAL",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "<NULL>"
+    ],
+    [
+     "V658_REHEARSAL",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "ENT-REHEARSAL"
+    ]
+   ],
+   "added": [
+    [
+     "V658_REHEARSAL",
+     "OPS_FINANCE__TAB_REFUND_BACK",
+     "<NULL>"
+    ],
+    [
+     "V658_REHEARSAL",
+     "OPS_FINANCE__TAB_REFUND_BACK",
+     "ENT-REHEARSAL"
+    ]
+   ]
+  },
+  "customRoleMergedEntityNos": [
+   "<NULL>",
+   "ENT-REHEARSAL"
+  ],
+  "replayIdempotent": true
+ },
+ "menuSnapshotSha256": "961d80d6535bebf575fa6d4d78cfbd27cabd7b68ed167cf433ce55ebf9fe0478",
+ "problems": []
+}

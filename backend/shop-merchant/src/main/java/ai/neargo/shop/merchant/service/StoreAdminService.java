@@ -1,8 +1,11 @@
 package ai.neargo.shop.merchant.service;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreVO;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 门店管理（M6 多门店的商家侧）。
@@ -29,6 +32,17 @@ public interface StoreAdminService {
      * <b>现在不建 plan 表</b> —— 结构没到位就先把名字占上，只会留下一张空表和一处假逻辑。
      */
     StoreVO create(String merchantNo, String name, String address);
+
+    record CreateCommand(String name, String address, String businessTypeCode, String operationNo,
+                         List<String> categoryNos) {
+        public CreateCommand {
+            if (categoryNos != null && categoryNos.stream().anyMatch(Objects::isNull)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            categoryNos = categoryNos == null ? null : List.copyOf(categoryNos);
+        }
+    }
+    StoreVO create(String merchantNo, CreateCommand command);
 
     /** 改门店名与地址。门面其余部分走 {@link MerchantStoreService}。 */
     StoreVO rename(String merchantNo, String storeNo, String name, String address);

@@ -22,13 +22,22 @@
 import pathlib
 import re
 import sys
+import hashlib
+import json
+from typing import NamedTuple
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MIGRATION_DIR = ROOT / "backend/shop-app/src/main/resources/db/migration"
+# 支付服务 v4 的独立迁移目录（开发计划 P2）。生产上由 PayDataSourceConfig#payFlyway 在平台迁移**之后**执行，
+# 这里也接在平台迁移后面重放：它会 ALTER 平台已有的 stl_* 表，顺序反了就是 ALTER 一张还不存在的表。
+PAY_MIGRATION_DIR = ROOT / "backend/pay/pay-domain/src/main/resources/db/pay"
+# 平台级密钥模块的独立迁移目录（W5，历史表 sec_flyway_history）。sec_* 不碰别人的表，接在 db/pay 后面重放即可
+SECRET_MIGRATION_DIR = ROOT / "backend/secret/secret-store/src/main/resources/db/secret"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 
-HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 {source} 得到。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -55,30 +64,322 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 
 
 
+# Constant-set IN expressions in H2 2.4 retain the first evaluating session as
+# their comparator. A pooled session closing then breaks valid CHECK writes.
+# CASE compares through the current session and keeps SQL's nullable result.
+_H2_LITERAL = r"(?:'(?:''|\\.|[^'\\])*'|[+-]?\d+(?:\.\d+)?)"
+_H2_IN_LIST = re.compile(
+    rf"(?P<column>[A-Za-z_]\w*)\s+(?P<not>NOT\s+)?IN\s*"
+    rf"\(\s*(?P<values>{_H2_LITERAL}(?:\s*,\s*{_H2_LITERAL})*)\s*\)", re.I)
+
+
+def _h2_session_safe_in(expression: str) -> str:
+    """Rewrite full simple-column operands only; preserve quoted and complex SQL."""
+    result = []
+    i = 0
+    previous = None
+    operand_boundaries = {None, '(', 'AND', 'OR', 'NOT', 'WHEN', 'THEN', 'ELSE'}
+    keywords = {'NOT', 'IN', 'NULL', 'TRUE', 'FALSE', 'AND', 'OR', 'WHEN',
+                'THEN', 'ELSE', 'CASE', 'END', 'CHECK', 'AS'}
+    while i < len(expression):
+        char = expression[i]
+        if char in "'\"`":
+            # Consume the entire string/quoted identifier, including MySQL backslash
+            # and doubled-quote escapes. Never inspect quoted bytes as SQL code.
+            end = i + 1
+            while end < len(expression):
+                if expression[end] == "\\" and end + 1 < len(expression):
+                    end += 2
+                    continue
+                if expression[end] == char:
+                    if end + 1 < len(expression) and expression[end + 1] == char:
+                        end += 2
+                        continue
+                    end += 1
+                    break
+                end += 1
+            result.append(expression[i:end])
+            previous = '<quoted>'
+            i = end
+            continue
+        word = re.match(r"[A-Za-z_]\w*", expression[i:])
+        if word:
+            token = word.group()
+            match = _H2_IN_LIST.match(expression, i)
+            if match and previous in operand_boundaries and token.upper() not in keywords:
+                column = match.group('column')
+                values = re.findall(_H2_LITERAL, match.group('values'))
+                cases = ''.join(f" WHEN {value} THEN TRUE" for value in values)
+                converted = (f"(CASE {column}{cases} ELSE CASE WHEN {column} IS NULL "
+                             "THEN NULL ELSE FALSE END END)")
+                result.append("NOT " + converted if match.group('not') else converted)
+                previous = ')'
+                i = match.end()
+            else:
+                result.append(token)
+                previous = token.upper()
+                i += len(token)
+        else:
+            result.append(char)
+            if not char.isspace():
+                previous = char
+            i += 1
+    return ''.join(result)
+
+
 def _h2_generated_column(col: str) -> str:
     # H2 calculates generated columns itself and has no MySQL STORED storage modifier.
     if re.search(r"\bGENERATED\s+ALWAYS\s+AS\b", col, flags=re.I):
-        return re.sub(r"\s+STORED\s*$", "", col, flags=re.I)
+        return _h2_session_safe_in(re.sub(r"\s+STORED\s*$", "", col, flags=re.I))
     return col
 
 
+def _sql_code_mask(sql, quoted=" "):
+    """Mask literal/identifier bytes so type rewrites cannot change user values."""
+    out = list(sql)
+    quote = None
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if quote is not None:
+            out[i] = quoted
+            if char == "\\" and i + 1 < len(sql):
+                out[i + 1] = quoted
+                i += 2
+                continue
+            if char == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    out[i + 1] = quoted
+                    i += 2
+                    continue
+                quote = None
+        elif char in "'\"`":
+            quote = char
+            out[i] = quoted
+        i += 1
+    return "".join(out)
+
+
+
+def _trim_sql_line_ends(sql):
+    # Only code/comment padding may be trimmed; multiline quoted value bytes survive.
+    mask = _sql_code_mask(sql, quoted="\0")
+    parts = []
+    cursor = 0
+    for match in re.finditer(r"[ \t]+(?=\r?$)", mask, re.M):
+        parts.append(sql[cursor:match.start()])
+        cursor = match.end()
+    parts.append(sql[cursor:])
+    return "".join(parts)
+
+
 def _h2_type(col: str) -> str:
-    """列类型的 H2 兼容映射。
+    # JSON is a column type only here; a DEFAULT 'JSON' is not a type token.
+    col = re.sub(
+        r"^(\s*(?!(?:CONSTRAINT|CHECK|PRIMARY|UNIQUE|FOREIGN|KEY|INDEX)\b)\w+\s+)JSON\b",
+        r"\1TEXT", col, flags=re.I)
+    replacements = []
+    mask = _sql_code_mask(col)
+    for match in re.finditer(r"\bCHARACTER\s+SET\s+utf8mb4(?:\s+COLLATE\s+utf8mb4_bin)?\b", mask, re.I):
+        replacements.append((match.start(), match.end(), ""))
+    simple = r"([A-Za-z_]\w*)"
+    for match in re.finditer(r"\bJSON_VALID\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"({match.group(1)} IS JSON)"))
+    for match in re.finditer(r"\bJSON_LENGTH\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"H2_JSON_LENGTH({match.group(1)})"))
+    for match in re.finditer(r"\bMICROSECOND\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"EXTRACT(MICROSECOND FROM {match.group(1)})"))
+    for match in re.finditer(r"\bJSON_TYPE\(\s*" + simple + r"\s*\)", mask, re.I):
+        comparison = re.match(r"\s*=\s*'OBJECT'", col[match.end():], re.I)
+        if comparison is not None:
+            replacements.append((match.start(), match.end() + comparison.end(),
+                                 f"({match.group(1)} IS JSON OBJECT)"))
+    for first, last, replacement in sorted(replacements, reverse=True):
+        col = col[:first] + replacement + col[last:]
+    if re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(col), re.I):
+        raise ValueError("Unsupported JSON function in retained H2 DDL: " + col)
+    return _h2_session_safe_in(_h2_generated_column(col))
 
-    **JSON → TEXT**：H2 的 JSON 列经 MyBatis 映射成 String 时读回来是**空串**，
-    于是「存下去了、字段全没了」，而代码与 SQL 各自看都正常。
-    本库其余 JSON 串（title_i18n / spec_groups / featured / out_of_range）
-    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON ——
-    它让平台规格模板（E27）在测试里从来跑不通。
 
-    **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
-    这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
-    """
-    # H2 has no JSON_VALID function. Preserve checks using its equivalent JSON predicate.
-    if re.match(r"\s*(?:CONSTRAINT\s+\w+\s+)?CHECK\b", col, re.I):
-        col = re.sub(r"\bJSON_VALID\(\s*(`?\w+`?)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
-        return col
-    return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
+class MigrationProjection(NamedTuple):
+    entry: dict
+    descriptor: dict
+
+
+def _policy_require(condition, reason):
+    if not condition:
+        raise ValueError("Invalid H2 fixture projection: " + reason)
+
+
+def _json_unique(pairs):
+    result = {}
+    for key, value in pairs:
+        _policy_require(key not in result, "duplicate JSON key " + key)
+        result[key] = value
+    return result
+
+
+def _read_policy_json(path):
+    return json.loads(path.read_text(), object_pairs_hook=_json_unique)
+
+
+def _source_path(root, value):
+    _policy_require(isinstance(value, str) and value, "relative path required")
+    path = pathlib.PurePosixPath(value)
+    _policy_require(not path.is_absolute() and ".." not in path.parts, "unsafe relative path")
+    resolved = (root / value).resolve()
+    _policy_require(root == resolved or root in resolved.parents, "path leaves source root")
+    _policy_require(resolved.is_file(), "missing artifact " + value)
+    return resolved
+
+
+def load_projection_policy(src_dir, *, root=None, policy_path=None):
+    """Load only the exact producer dataset; temporary snippets gain no exclusions."""
+    root = ROOT.resolve() if root is None else pathlib.Path(root).resolve()
+    src_dir = pathlib.Path(src_dir).resolve()
+    try:
+        relative = src_dir.relative_to(root).as_posix()
+    except ValueError:
+        return {}
+    datasets = {
+        "backend/shop-app/src/main/resources/db/migration": "PRIMARY",
+        "backend/inventory/inventory-domain/src/main/resources/db/inventory": "INVENTORY",
+    }
+    if relative not in datasets:
+        return {}
+    policy_path = root / "backend/scripts/h2-fixture-policy.json" if policy_path is None else pathlib.Path(policy_path)
+    policy = _read_policy_json(policy_path)
+    _policy_require(isinstance(policy, dict) and set(policy) == {"schemaVersion", "purpose", "entries"},
+                    "policy envelope")
+    _policy_require(type(policy["schemaVersion"]) is int and policy["schemaVersion"] == 1
+                    and policy["purpose"] == "H2_TEST_PROJECTION_V1", "policy version/purpose")
+    _policy_require(isinstance(policy["entries"], list), "entries must be a list")
+    required = {"migration", "sourceSha256", "descriptor", "descriptorSha256", "datasource", "mode",
+                "capability", "guardClass", "absentTables", "retainedStatementHashes"}
+    selected = {}
+    for entry in policy["entries"]:
+        _policy_require(isinstance(entry, dict) and set(entry) == required, "entry fields")
+        migration_name = pathlib.PurePosixPath(entry["migration"])
+        if migration_name.parent.as_posix() != relative:
+            continue
+        _policy_require(entry["datasource"] == datasets[relative], "wrong datasource")
+        migration = _source_path(root, entry["migration"])
+        descriptor_path = _source_path(root, entry["descriptor"])
+        _policy_require(migration.parent == src_dir and migration not in selected, "duplicate/mismatched source")
+        for field, path in [("sourceSha256", migration), ("descriptorSha256", descriptor_path)]:
+            _policy_require(isinstance(entry[field], str) and re.fullmatch(r"[a-f0-9]{64}", entry[field]),
+                            "invalid " + field)
+            _policy_require(hashlib.sha256(path.read_bytes()).hexdigest() == entry[field], "changed " + field)
+        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}, "unknown mode")
+        _policy_require(isinstance(entry["capability"], str) and entry["capability"], "missing capability")
+        _policy_require(isinstance(entry["guardClass"], str)
+                        and re.fullmatch(r"(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*", entry["guardClass"]), "guard class")
+        _policy_require(isinstance(entry["absentTables"], list)
+                        and len(set(entry["absentTables"])) == len(entry["absentTables"]), "duplicate table")
+        for name in entry["absentTables"]:
+            _policy_require(isinstance(name, str) and re.fullmatch(r"[a-z_]\w*", name), "table name")
+        _policy_require(isinstance(entry["retainedStatementHashes"], list)
+                        and all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value)
+                                for value in entry["retainedStatementHashes"]), "retained statement hashes")
+        descriptor = _read_policy_json(descriptor_path)
+        _policy_require(descriptor.get("schemaVersion") == 1, "descriptor version")
+        if "migrationSha256" in descriptor:
+            _policy_require(descriptor["migrationSha256"] == entry["sourceSha256"], "descriptor source hash")
+        if "migrationScript" in descriptor:
+            _policy_require(descriptor["migrationScript"] == migration.name, "descriptor source identity")
+        version_field = "platformVersion" if entry["datasource"] == "PRIMARY" else "inventoryVersion"
+        if version_field in descriptor:
+            version = re.fullmatch(r"V(\d+)__.+\.sql", migration.name)
+            _policy_require(version is not None and descriptor[version_field] == int(version.group(1)),
+                            "descriptor migration version")
+        selected[migration] = MigrationProjection(entry, descriptor)
+    return selected
+
+
+def project_migration(path, policies):
+    """Validate every declared omission before returning any projected statements."""
+    path = pathlib.Path(path).resolve()
+    statements = list(sql_statements(path.read_text()))
+    projection = policies.get(path)
+    if projection is None:
+        return statements
+    entry, descriptor = projection
+    tables = descriptor.get("tables", [descriptor.get("table")])
+    _policy_require(isinstance(tables, list) and tables and all(isinstance(table, dict) for table in tables),
+                    "descriptor table set")
+    names = [table.get("name") for table in tables]
+    _policy_require(all(isinstance(name, str) for name in names) and len(set(names)) == len(names),
+                    "descriptor table identities")
+    hybrid = entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"
+    absent = entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}
+    common = descriptor.get("commonTables", [])
+    if hybrid:
+        _policy_require(isinstance(common, list) and {t["name"] for t in common} == {
+            "mch_booking_owner", "mch_resource_command", "mch_resource_bucket", "mch_booking_hold_unit"},
+            "hybrid common target set")
+        _policy_require(descriptor.get("retainedStatementHashes") == entry["retainedStatementHashes"]
+                        and entry["retainedStatementHashes"], "hybrid descriptor retained hashes")
+    expected_alters = []
+    if hybrid:
+        for table in common:
+            name = table["name"]
+            for column in table["addedColumns"]:
+                definition = column["name"] + " " + column["type"].upper()
+                if column["charset"]:
+                    definition += " CHARACTER SET " + column["charset"]
+                if column["collation"] and column["collation"] != "OWNER_TENANT":
+                    definition += " COLLATE " + column["collation"]
+                definition += " NULL" if column["nullable"] else " NOT NULL"
+                if column["default"] is not None:
+                    definition += " DEFAULT " + column["default"]
+                expected_alters.append(f"ALTER TABLE {name} ADD COLUMN {definition}")
+            expected_alters.extend(f"ALTER TABLE {name} DROP CHECK {check}" for check in table["droppedChecks"])
+            expected_alters.extend(f"ALTER TABLE {name} ADD CONSTRAINT {check} CHECK ({expression})"
+                                   for check, expression in table["addedChecks"].items())
+            expected_alters.extend(f"ALTER TABLE {name} ADD UNIQUE KEY {key} ({', '.join(columns)})"
+                                   for key, columns in table["addedUnique"].items())
+    _policy_require(set(entry["absentTables"]) == (set(names) if absent else set()), "table omission set")
+    trigger_specs = descriptor.get("triggers")
+    _policy_require(isinstance(trigger_specs, list) and trigger_specs, "descriptor trigger set")
+    expected = {trigger["name"]: trigger for trigger in trigger_specs}
+    _policy_require(len(expected) == len(trigger_specs), "duplicate descriptor trigger")
+    seen_tables = []
+    seen_triggers = set()
+    kept = []
+    for statement in statements:
+        trigger = re.fullmatch(
+            r"CREATE\s+TRIGGER\s+(\w+)\s+(BEFORE|AFTER)\s+(INSERT|UPDATE|DELETE)\s+ON\s+(\w+)"
+            r"\s+FOR\s+EACH\s+ROW\s+(.*)", statement, re.I | re.S)
+        if trigger is not None:
+            name, timing, event, table, body = trigger.groups()
+            _policy_require(name in expected and name not in seen_triggers, "unlisted/duplicate trigger " + name)
+            spec = expected[name]
+            _policy_require(table == spec["table"] and timing.upper() == spec["timing"]
+                            and event.upper() == spec["event"] and body.strip() == spec["body"].strip(),
+                            "changed trigger definition " + name)
+            seen_triggers.add(name)
+            continue
+        create = re.match(r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(", statement, re.I)
+        if create is not None:
+            _policy_require(create.group(1) in names, "undeclared table")
+            seen_tables.append(create.group(1))
+            if not absent:
+                kept.append(statement)
+            continue
+        if hybrid:
+            _policy_require(len(kept) < len(expected_alters) and statement == expected_alters[len(kept)],
+                            "unknown or changed hybrid common statement")
+            kept.append(statement)
+            continue
+        _policy_require(not absent, "non-CREATE statement in native-owner migration")
+        _policy_require(any(re.match(r"INSERT(?:\s+IGNORE)?\s+INTO\s+" + re.escape(name) + r"\b",
+                                     statement, re.I) for name in names), "unlisted projected statement")
+        kept.append(statement)
+    _policy_require(len(seen_tables) == len(names) and set(seen_tables) == set(names), "incomplete table set")
+    _policy_require(seen_triggers == set(expected), "incomplete trigger set")
+    hashes = [hashlib.sha256(statement.encode()).hexdigest() for statement in kept]
+    _policy_require(hashes == entry["retainedStatementHashes"], "changed retained statements")
+    return kept
 
 
 def main():
@@ -95,13 +396,27 @@ def main():
     altered = set()  # 被 ALTER 加过列的表 —— 只有它们的种子要钉列名
     renames = {}  # 旧表名 -> 新表名（ALTER ... RENAME TO）。种子里的旧名要按它回填
 
+    policies = load_projection_policy(src_dir)
+    consumed = set()
+
     # **按版本号数字排序**，不是字典序。字典序把 V15 排在 V2 前面，
     # 于是 V15 的 ALTER 在建表之前重放 —— alter_table() 里 tables.get() 拿到 None
     # 就直接 return，**不报错、不提示**，产出一份缺列的 schema。
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
     for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        replay(f.read_text(), tables, order, seeds, renames, altered)
+        if f.resolve() in policies:
+            replay_statements(project_migration(f, policies), tables, order, seeds, renames, altered)
+            consumed.add(f.resolve())
+        else:
+            replay(f.read_text(), tables, order, seeds, renames, altered)
+    _policy_require(consumed == set(policies), "unused declared projection")
+    # 只在默认源目录时接上 db/pay 与 db/secret：传了第二个参数（拿别的目录做对照）就只重放那一个目录
+    extras = [d for d in (PAY_MIGRATION_DIR, SECRET_MIGRATION_DIR) if len(sys.argv) <= 2 and d.is_dir()]
+    for extra in extras:
+        for f in sorted(extra.glob("V*.sql"),
+                        key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
+            replay(f.read_text(), tables, order, seeds, renames, altered)
 
     # MySQL scopes index names to a table; H2 scopes named constraints to the schema.
     # Rename only collisions in the generated fixture, preserving production migrations.
@@ -112,14 +427,34 @@ def main():
             if match:
                 key = match.group(1).lower()
                 constraint_names[key] = constraint_names.get(key, 0) + 1
-    out = [HEADER]
+    # 头部说清这份是从哪几个目录重放的：进销存那份只有它自己的 db/inventory，不能写成「再接 db/pay」
+    out = [HEADER.replace("{source}", "db/migration/V*.sql、再接 " + "、".join(
+        d.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql" for d in extras) if extras
+                          else src_dir.as_posix().split("resources/")[-1] + "/V*.sql")]
+    if src_dir == MIGRATION_DIR:
+        out.append('CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";\n\n')
+    if any(re.search(r"\bH2_JSON_LENGTH\s*\(", _sql_code_mask(col), re.I)
+           for cols in tables.values() for col in cols):
+        out.append('CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunctions.length";\n\n')
+    for policy in policies.values():
+        entry = policy.entry
+        if entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS":
+            out.append("-- Native capability unavailable; common contract retained: " + entry["migration"]
+                       + " | source=" + entry["sourceSha256"] + " | descriptor=" + entry["descriptorSha256"]
+                       + " | retained=" + ",".join(entry["retainedStatementHashes"]) + "\n")
+        elif entry["mode"] == "NATIVE_OWNER_ABSENT":
+            out.append("-- Native capability absent: " + entry["migration"] + " | "
+                       + ",".join(entry["absentTables"]) + "\n")
+        else:
+            out.append("-- Native trigger projection: " + entry["migration"] + " | "
+                       + ",".join(trigger["name"] for trigger in policy.descriptor["triggers"]) + "\n")
     for name in order:
         cols = []
         for col in tables[name]:
             match = re.match(r"(\s*CONSTRAINT\s+)(\w+)\b", col, re.I)
             if match and constraint_names[match.group(2).lower()] > 1:
                 col = col[:match.start(2)] + name + "_" + col[match.start(2):]
-            cols.append(_h2_type(col))
+            cols.append(_trim_sql_line_ends(_h2_type(col)))
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
                    + ",\n".join(cols) + "\n);\n")
     if seeds:
@@ -144,7 +479,7 @@ def main():
             # H2 2.4 在 MODE=MySQL 下认这个关键字（实测：重复插入 update count=0，
             # 且**保留原值不覆盖**，所以测试中途改过的数据不会被重放冲掉）。
             stmt = re.sub(r"^INSERT\s+INTO\b", "INSERT IGNORE INTO", stmt, count=1, flags=re.I)
-            fixed.append(stmt)
+            fixed.append(_trim_sql_line_ends(stmt))
         out.append("-- 种子数据\n" + "\n".join(fixed) + "\n")
     out_path.write_text("\n".join(out))
     try:
@@ -156,34 +491,119 @@ def main():
 
 
 def strip_comments(sql):
-    """剥掉 `--` 行注释，**必须在按分号切分之前做**。
+    """Remove SQL comments without altering quoted bytes or joining SQL tokens.
 
-    此前是先切后剥，于是**注释里出现一个分号就会把语句切碎** ——
-    V91 的注释里写了一段含分号的正则，生成器当场报「不认识的语句：\\n]*)」，
-    而那个报错既不指向 V91，也看不出跟注释有关。
-
-    要认引号：种子数据的 remark 里可能出现 `--`（中文破折号 `——` 是另一个码位，
-    不会误伤，但英文场景会）。在字符串字面量内部的 `--` 不是注释。
+    Native executable comments need an explicit dialect policy; treating them as
+    ordinary comments could silently discard schema or seed changes.
     """
     out = []
-    for line in sql.splitlines():
-        in_str = False
-        cut = None
-        i = 0
-        while i < len(line):
-            c = line[i]
-            if c == "'":
-                # SQL 的转义是叠写两个单引号，跳过即可
-                if in_str and i + 1 < len(line) and line[i + 1] == "'":
+    quote = None
+    quote_start = 0
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if quote is not None:
+            out.append(char)
+            if char == "\\" and i + 1 < len(sql):
+                out.append(sql[i + 1])
+                i += 2
+                continue
+            if char == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    out.append(sql[i + 1])
                     i += 2
                     continue
-                in_str = not in_str
-            elif not in_str and c == "-" and i + 1 < len(line) and line[i + 1] == "-":
-                cut = i
-                break
+                quote = None
             i += 1
-        out.append(line[:cut] if cut is not None else line)
-    return "\n".join(out)
+            continue
+        if char in "'\"`":
+            quote = char
+            quote_start = i
+            out.append(char)
+            i += 1
+            continue
+        dash_comment = sql.startswith("--", i) and (
+            i + 2 == len(sql) or sql[i + 2].isspace()
+        )
+        if dash_comment or char == "#":
+            end = sql.find("\n", i)
+            if end < 0:
+                end = len(sql)
+            out.append(" " * (end - i))
+            i = end
+            continue
+        if sql.startswith("/*", i):
+            if sql.startswith("/*!", i):
+                raise ValueError("Executable MySQL comments need an explicit native fixture policy")
+            end = sql.find("*/", i + 2)
+            if end < 0:
+                line = sql.count("\n", 0, i) + 1
+                raise ValueError(f"Unterminated SQL block comment at line {line}")
+            comment = sql[i:end + 2]
+            out.append("".join(char if char in "\r\n" else " " for char in comment))
+            i = end + 2
+            continue
+        out.append(char)
+        i += 1
+    if quote is not None:
+        line = sql.count("\n", 0, quote_start) + 1
+        raise ValueError(f"Unterminated SQL quoted value or identifier at line {line}")
+    return "".join(out)
+
+
+def sql_statements(sql):
+    """Yield complete client-delimited SQL, preserving literal and trigger bodies.
+
+    DELIMITER is a client directive, not a SQL statement. A compound statement
+    reaches replay as one item; unsupported native semantics still fail there.
+    """
+    text = strip_comments(sql)
+    delimiter = ";"
+    quote = None
+    pending = []
+    for line_number, line in enumerate(text.splitlines(keepends=True), 1):
+        if quote is None and re.match(r"(?i:DELIMITER)\b", line.lstrip()):
+            directive = re.fullmatch(r"(?i:DELIMITER)[ \t]+(\S+)", line.strip())
+            if directive is None or "".join(pending).strip():
+                raise ValueError(f"Invalid DELIMITER directive at line {line_number}")
+            candidate = directive.group(1)
+            if len(candidate) > 16 or any(char in "'\"`#\\" for char in candidate):
+                raise ValueError(f"Unsupported DELIMITER token at line {line_number}")
+            delimiter = candidate
+            pending.clear()
+            continue
+        i = 0
+        while i < len(line):
+            char = line[i]
+            if quote is None and line.startswith(delimiter, i):
+                statement = "".join(pending).strip()
+                if statement:
+                    yield statement
+                pending.clear()
+                i += len(delimiter)
+                continue
+            pending.append(char)
+            if quote is not None:
+                if char == "\\" and i + 1 < len(line):
+                    pending.append(line[i + 1])
+                    i += 2
+                    continue
+                if char == quote:
+                    if i + 1 < len(line) and line[i + 1] == quote:
+                        pending.append(line[i + 1])
+                        i += 2
+                        continue
+                    quote = None
+            elif char in "'\"`":
+                quote = char
+            i += 1
+    remaining = "".join(pending).strip()
+    if quote is not None:
+        raise ValueError("Unterminated SQL quoted value or identifier")
+    if remaining:
+        if delimiter != ";":
+            raise ValueError("Unterminated custom-delimited SQL statement")
+        yield remaining
 
 
 def _column_names(cols):
@@ -236,6 +656,88 @@ def _pin_columns(stmt, tables, altered):
     return f"{head} ({', '.join(cols)}) VALUES{rest}"
 
 
+# Known platform migrations replace unnamed checks by looking up generated names.
+# Match their complete five-statement blocks; unknown or modified dynamic SQL still fails.
+_KNOWN_DYNAMIC_CHECKS = [
+    ('SET @sv_offline_constraint', """SET @sv_offline_constraint = (
+    SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc
+    JOIN information_schema.CHECK_CONSTRAINTS cc
+      ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
+    WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='sv_recharge'
+      AND cc.CHECK_CLAUSE LIKE '%collection_method%' LIMIT 1
+);
+SET @sv_offline_drop = IF(@sv_offline_constraint IS NULL,'SELECT 1',
+    CONCAT('ALTER TABLE sv_recharge DROP ',IF(LOCATE('MariaDB',VERSION())>0,'CONSTRAINT','CHECK'),' `',REPLACE(@sv_offline_constraint,'`','``'),'`'));
+PREPARE sv_offline_stmt FROM @sv_offline_drop;
+EXECUTE sv_offline_stmt;
+DEALLOCATE PREPARE sv_offline_stmt;""", 'sv_recharge', ('collection_method',)),
+    ('SET @sv_selection_constraint', """SET @sv_selection_constraint = (
+ SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc
+ JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
+ WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='mbr_identity_ticket'
+ AND cc.CHECK_CLAUSE LIKE '%purpose%' AND cc.CHECK_CLAUSE LIKE '%source_ticket_hash%' LIMIT 1
+);
+SET @sv_selection_drop=IF(@sv_selection_constraint IS NULL,'SELECT 1',CONCAT('ALTER TABLE mbr_identity_ticket DROP ',IF(LOCATE('MariaDB',VERSION())>0,'CONSTRAINT','CHECK'),' `',REPLACE(@sv_selection_constraint,'`','``'),'`'));
+PREPARE sv_selection_stmt FROM @sv_selection_drop;
+EXECUTE sv_selection_stmt;
+DEALLOCATE PREPARE sv_selection_stmt;""", 'mbr_identity_ticket', ('purpose', 'source_ticket_hash')),
+ ]
+
+
+# V550 has no IF-NULL fallback: the metadata lookup must resolve exactly one
+# existing check. Keep its reviewed dynamic SQL and variable cleanup together;
+# other SET/PREPARE statements must still reach the fail-closed replay branch.
+_RELEASE_SOURCE_DROP = """SET @sv_release_check = (SELECT tc.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS tc JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME='sv_release' AND tc.CONSTRAINT_TYPE='CHECK' AND cc.CHECK_CLAUSE LIKE '%source_kind%' LIMIT 1);
+SET @sv_release_sql = CONCAT('ALTER TABLE sv_release DROP CHECK `',REPLACE(@sv_release_check,'`','``'),'`');
+PREPARE sv_release_statement FROM @sv_release_sql;
+EXECUTE sv_release_statement;
+DEALLOCATE PREPARE sv_release_statement;"""
+
+
+def release_source_drop(sql, tables):
+    trigger = 'SET @sv_release_check'
+    offset = sql.find(trigger)
+    if offset < 0:
+        return sql
+    parts = sql[offset:].split(';', 5)
+    cleanup = re.search(
+        r"\s*SET @sv_release_check = NULL;\s*SET @sv_release_sql = NULL;\s*$",
+        parts[5] if len(parts) == 6 else '')
+    if (len(parts) != 6
+            or ' '.join((';'.join(parts[:5]) + ';').split()) != ' '.join(_RELEASE_SOURCE_DROP.split())
+            or cleanup is None):
+        raise SystemExit('Unknown release source constraint migration; refusing to discard SQL')
+    columns = tables.get('sv_release', [])
+    matches = [column for column in columns if (
+        re.search(r"\bCHECK\s*\(", column, re.I)
+        and re.search(r"\bsource_kind\b", column, re.I))]
+    if len(matches) != 1:
+        raise SystemExit('Release source constraint migration requires exactly one sv_release source_kind CHECK')
+    columns.remove(matches[0])
+    # The replacement ALTER and all preceding additive DDL are replayed normally.
+    # Only the validated dynamic block and its two session-variable resets vanish.
+    return sql[:offset] + parts[5][:cleanup.start()]
+
+
+def offline_receipt_drop(sql, tables):
+    clean = strip_comments(sql).strip()
+    for trigger, expected, table, fields in _KNOWN_DYNAMIC_CHECKS:
+        offset = clean.find(trigger)
+        if offset < 0:
+            continue
+        parts = clean[offset:].split(";", 5)
+        if len(parts) != 6 or " ".join((";".join(parts[:5]) + ";").split()) != " ".join(expected.split()):
+            raise SystemExit("Unknown dynamic constraint migration; refusing to discard SQL")
+        columns = tables.get(table)
+        if columns is None:
+            raise SystemExit("Dynamic constraint migration requires " + table)
+        columns[:] = [column for column in columns if not (
+            re.search(r"\bCHECK\s*\(", column, re.I)
+            and all(re.search(rf"\b{field}\b", column, re.I) for field in fields))]
+        clean = clean[:offset] + parts[5]
+    return release_source_drop(clean, tables)
+
+
 def _h2_constant_json_append(stmt: str) -> str:
     """Replay constant permission-array appends using H2 string operations.
 
@@ -252,14 +754,103 @@ def _h2_constant_json_append(stmt: str) -> str:
     return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
 
 
+def split_statements(sql):
+    """Split terminators outside SQL string/identifier literals; never discard unknown SQL."""
+    parts, start, quote, i = [], 0, None, 0
+    while i < len(sql):
+        ch = sql[i]
+        if quote:
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    i += 2
+                    continue
+                quote = None
+        elif ch in ("'", '"', '`'):
+            quote = ch
+        elif ch == ';':
+            if sql[start:i].strip():
+                parts.append(sql[start:i].strip())
+            start = i + 1
+        i += 1
+    if quote:
+        raise SystemExit("Unterminated SQL literal; refusing partial schema replay")
+    if sql[start:].strip():
+        parts.append(sql[start:].strip())
+    return parts
+
+
+# ── 改种子授权的已知语句（按归一化文本的 sha256 精确匹配）──────────────────────
+#
+# V655 把三张经营范围菜单的授权从「旧菜单码」迁到「真实端点读码」：先给持旧码的角色补
+# ACT__SYSTEM_PARAM_READ，再撤掉不持有新读码的角色的菜单授权，最后按新读码补授权。
+# 它读的 sys_role_point / sys_function_point 在 H2 里**就是种子**，跳过它的后果是
+# H2 上技术运维仍持行业菜单、超管缺 ACT__SYSTEM_PARAM_READ —— OpsPermConfigFlowTest 两条红。
+#
+# 两条 INSERT IGNORE … SELECT … JOIN 原样重放（H2 MODE=MySQL 认得）；
+# MySQL 多表 DELETE H2 不认，换成语义相同的单表 DELETE … NOT EXISTS。
+# 原文一改哈希就对不上 → 落回下面的通用分支：多表 DELETE 直接红，不会被悄悄跳过。
+_V655_MENUS = "('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')"
+_KNOWN_GRANT_REWRITES = {
+    "8234041f857112d4a49132bb8ab81f6fa7843ab8c7ed118ff16a042112409cee": None,
+    "6236ba57bd94ce09487e63e2ac96fbb84640e3370ad6554da71eab4883a0188f": f"""DELETE FROM sys_role_point WHERE point_code IN {_V655_MENUS}
+  AND role_code<>'SUPER_ADMIN'
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code
+                  WHERE p.point_code NOT IN {_V655_MENUS}
+                    AND g.role_code=sys_role_point.role_code AND g.end_code=sys_role_point.end_code
+                    AND p.perm_code=CASE WHEN sys_role_point.point_code='OPS_SYSTEM__TAB_AUTHCODE'
+                                         THEN 'product:category:read' ELSE 'system:industry:read' END)""",
+    "a3809a114f6736c13163f91d9a8cfdf84680fe03b3ae11afa7026f5b8458c65c": None,
+}
+
+
+def _known_grant_rewrite(stmt):
+    """None = 不认识；否则返回要作为种子重放的语句（值为 None 表示原样重放）。"""
+    key = hashlib.sha256(re.sub(r"\s+", " ", stmt.strip()).encode()).hexdigest()
+    if key not in _KNOWN_GRANT_REWRITES:
+        return None
+    return _KNOWN_GRANT_REWRITES[key] or stmt
+
+
 def replay(sql, tables, order, seeds, renames, altered):
-    # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
-    for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
+    sql = offline_receipt_drop(sql, tables)
+    replay_statements(sql_statements(sql), tables, order, seeds, renames, altered)
+
+
+def _h2_permission_seed(stmt):
+    """Keep derived permission grants/revocations; both tables are generated seeds.
+
+    Restrict this projection to sys_role_point/sys_function_point joins. Other
+    joined DML may read historical business columns and remains a backfill.
+    """
+    refs = set(re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_]\w*)", _sql_code_mask(stmt), re.I))
+    if not refs or not refs <= {"sys_role_point", "sys_function_point"}:
+        return None
+    delete = re.match(r"DELETE\s+(\w+)\s+FROM\s+sys_role_point\s+(\w+)\s+(?=JOIN\b)", stmt, re.I)
+    if delete and delete.group(1) == delete.group(2):
+        # The primary key selects precisely the original single DELETE target.
+        return ("DELETE FROM sys_role_point WHERE id IN (SELECT " + delete.group(1)
+                + ".id FROM sys_role_point " + delete.group(2) + " " + stmt[delete.end():] + ")")
+    if re.match(r"INSERT\s+IGNORE\s+INTO\s+sys_role_point\s*\([^)]*\)\s*SELECT\s+DISTINCT\b", stmt, re.I | re.S):
+        return re.sub(r"^INSERT\s+IGNORE\s+INTO", "INSERT INTO", stmt, flags=re.I)
+    return None
+
+
+def replay_statements(statements, tables, order, seeds, renames, altered):
+    # Keep already lexed native bodies whole; never re-split projected statements.
+    for stmt in statements:
         if not stmt:
             continue
         stmt = _h2_constant_json_append(stmt)
         low = stmt.lower()
-        if low.startswith("create table"):
+        known = _known_grant_rewrite(stmt)
+        if known is not None:
+            seeds.append((None, [], known))
+        elif re.match(r"delete\s+\w+\s+from\b", low):
+            raise SystemExit("✗ MySQL 多表 DELETE H2 重放不了；改的若是种子，请在 _KNOWN_GRANT_REWRITES 登记等价写法：\n  " + stmt[:200])
+        elif low.startswith("create table"):
             create_table(stmt, tables, order)
         elif low.startswith("alter table"):
             alter_table(stmt, tables, order, renames, altered)
@@ -267,6 +858,8 @@ def replay(sql, tables, order, seeds, renames, altered):
             create_unique_index(stmt, tables)
         elif low.startswith("drop table"):
             drop_table(stmt, tables, order)
+        elif (permission_seed := _h2_permission_seed(stmt)) is not None:
+            seeds.append((None, [], permission_seed))
         elif low.startswith("update ") or low.startswith("delete from"):
             # UPDATE / DELETE 有**两种**，处理方式相反，判据是「有没有 JOIN / SELECT」：
             #
@@ -284,6 +877,14 @@ def replay(sql, tables, order, seeds, renames, altered):
             #    而它要搬的是存量自提点的归属，H2 测试库里一行都没有 —— 搬无可搬。
             if re.search(r"\b(join|select)\b", low):
                 pass
+            elif re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(stmt), re.I):
+                # JSON writes to an empty business owner are historical backfills,
+                # not replayable seeds. Never silently discard a seeded-table write.
+                target = re.match(r"UPDATE\s+(\w+)\b", stmt, re.I)
+                if target and not any(re.match(r"INSERT\s+INTO\s+" + re.escape(target.group(1))
+                                               + r"\b", seed, re.I) for _, _, seed in seeds):
+                    continue
+                raise ValueError("Unsupported JSON mutation of retained H2 seed data: " + stmt)
             else:
                 seeds.append(_snapshot(stmt, tables))
         elif low.startswith("insert ignore into"):
@@ -397,18 +998,9 @@ def create_table(stmt, tables, order):
         return
     name, body = m.group(1), m.group(2)
     cols = []
-    # 先合并续行：列定义可能换行写（如 COMMENT 单独一行），逐行处理会把它当成独立列
-    merged = []
-    for raw in body.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("--"):
-            continue
-        if merged and (line.upper().startswith("COMMENT") or not merged[-1].endswith(",")):
-            merged[-1] = merged[-1].rstrip(",") + " " + line
-        else:
-            merged.append(line)
-
-    for line in merged:
+    # Physical lines are formatting: compact migrations put multiple fields on one
+    # line, and multiline CHECK/COMMENT expressions are still one definition.
+    for line in _split_actions(body):
         line = re.sub(r"\s+COMMENT\s+'[^']*'", "", line.rstrip(",")).strip()
         if not line:
             continue
@@ -473,28 +1065,19 @@ def alter_table(stmt, tables, order, renames, altered):
 def _split_actions(action):
     """按顶层逗号切多动作 ALTER —— 括号内（如 UNIQUE KEY 的列清单）与
     单引号内（COMMENT 文本）的逗号不算分隔符。"""
-    parts, buf, depth, quoted = [], [], 0, False
-    for ch in action:
-        if quoted:
-            buf.append(ch)
-            if ch == "'":
-                quoted = False
-            continue
-        if ch == "'":
-            quoted = True
-        elif ch == "(":
+    parts, start, depth = [], 0, 0
+    for at, ch in enumerate(_sql_code_mask(action)):
+        if ch == "(":
             depth += 1
         elif ch == ")":
             depth -= 1
-        if ch == "," and depth == 0:
-            parts.append("".join(buf).strip())
-            buf = []
-            continue
-        buf.append(ch)
-    tail = "".join(buf).strip().rstrip(";")
+        elif ch == "," and depth == 0:
+            parts.append(action[start:at].strip())
+            start = at + 1
+    tail = action[start:].strip().rstrip(";")
     if tail:
         parts.append(tail)
-    return [p for p in parts if p]
+    return [part for part in parts if part]
 
 
 def _apply_action(table, action, cols):
@@ -523,7 +1106,7 @@ def _apply_action(table, action, cols):
     # V46 把 user_no 从 NOT NULL 改成可空，而测试库仍是 NOT NULL，
     # 于是「员工不必有 C 端账号」这条在真库成立、在测试里插不进去。
     # 两边结构分叉是最难查的一类差异：代码没错，只有测试环境炸。
-    mod = re.match(r"MODIFY COLUMN\s+(\w+)\s+(.+)", action, re.I | re.S)
+    mod = re.match(r"MODIFY\s+(?:COLUMN\s+)?(\w+)\s+(.+)", action, re.I | re.S)
     if mod:
         col, rest = mod.group(1), mod.group(2).strip()
         # 只取类型与 NULL/NOT NULL / DEFAULT，丢掉 COMMENT（H2 不需要）
@@ -555,7 +1138,8 @@ def _apply_action(table, action, cols):
             raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
         return
 
-    add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
+    add = re.match(r"ADD\s+(?:COLUMN\s+)?(?:IF NOT EXISTS\s+)?"
+                   r"(?!(?:CONSTRAINT|UNIQUE|PRIMARY|KEY|INDEX|CHECK|COLUMN)\b)(\w+\s+.*)", action, re.I | re.S)
     if add:
         # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句
         #   （`IF NOT EXISTS archived_at DATETIME ...`），H2 建表即语法错。

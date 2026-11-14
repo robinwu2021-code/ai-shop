@@ -1,0 +1,408 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Preserved live store creation and chain grant hotfix routes",
+    "version": "2026-11-11",
+    "description": "Exact-source live API hotfix behavior retained by this release. Independently delivered Flutter UI already consumes all three routes; this is not a promise of future UI."
+  },
+  "paths": {
+    "/biz/merchant/store-creation-context": {
+      "get": {
+        "operationId": "storeCreationContext",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Merchant-account read without selected-store context. Account-owned choices only; the existing store creation write transaction remains authoritative.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Host envelope; check code=0. Current typed account authorization is mandatory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreCreationAccess"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/spaces/{managementNo}/grant-options": {
+      "get": {
+        "operationId": "managementGrantOptions",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Authenticated management account. Requires management.resource.read, management.grant.manage and brand.read; only presently delegatable resource permissions are returned. Cursor is bound to actor, space and brand.",
+        "parameters": [
+          {
+            "name": "managementNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "brandNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; check code=0. Current typed account authorization is mandatory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GrantOptionPage"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/spaces/{managementNo}/grant-commands/{action}": {
+      "get": {
+        "operationId": "managementGrantCommandResult",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Read the original persisted grant command result. Requires management.enter, management.resource.read, management.grant.manage and current resource delegation authority; missing receipt is not a new command.",
+        "parameters": [
+          {
+            "name": "managementNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GRANT_ISSUE",
+                "GRANT_REVOKE"
+              ]
+            }
+          },
+          {
+            "name": "operationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; check code=0. Current typed account authorization is mandatory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GrantCommandResult"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "StoreCreationSource": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string"
+          },
+          "storeQuota": {
+            "type": "integer"
+          },
+          "storeUsed": {
+            "type": "integer"
+          },
+          "canCreate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entityNo",
+          "name",
+          "storeNo",
+          "market",
+          "storeQuota",
+          "storeUsed",
+          "canCreate"
+        ]
+      },
+      "StoreCreationAccess": {
+        "type": "object",
+        "properties": {
+          "canQuickStart": {
+            "type": "boolean"
+          },
+          "canResumeQuickStart": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCreationSource"
+            }
+          }
+        },
+        "required": [
+          "canQuickStart",
+          "canResumeQuickStart",
+          "sources"
+        ]
+      },
+      "GrantOption": {
+        "type": "object",
+        "properties": {
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "resourceType",
+          "resourceNo",
+          "name",
+          "permissions"
+        ]
+      },
+      "GrantOptionPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GrantOption"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "GrantCommandResult": {
+        "type": "object",
+        "properties": {
+          "grantNo": {
+            "type": "string"
+          },
+          "managementNo": {
+            "type": "string"
+          },
+          "actorNo": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceNo": {
+            "type": "string"
+          },
+          "permissionCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string"
+          },
+          "authoritySourceType": {
+            "type": "string"
+          },
+          "authoritySourceNo": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "createdByLabel": {
+            "type": "string"
+          },
+          "updatedByLabel": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          },
+          "actorLabel": {
+            "type": "string"
+          },
+          "validTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delegatable": {
+            "type": [
+              "integer",
+              "boolean"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "grantNo",
+          "managementNo",
+          "actorNo",
+          "resourceType",
+          "resourceNo",
+          "permissionCode",
+          "status",
+          "validFrom",
+          "authoritySourceType",
+          "authoritySourceNo",
+          "createdAt",
+          "updatedAt",
+          "createdBy",
+          "updatedBy",
+          "createdByLabel",
+          "updatedByLabel",
+          "resourceName",
+          "actorLabel",
+          "validTo",
+          "delegatable",
+          "revision"
+        ],
+        "description": "Persisted grant snapshot projected by ManagementRepository.view; private authority snapshots are omitted. Reading rechecks current grant/resource authority."
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ export type OrderPointsQuoteState = "AVAILABLE" | "UNAVAILABLE";
 export type BuyerPointsAccountStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
 /** BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。 */
-export type BuyerPointsEntryBucket = "AVAILABLE" | "PENDING" | "HELD";
+export type BuyerPointsEntryBucket = "AVAILABLE" | "PENDING" | "HELD" | "REFUND_RESERVED";
 
 export interface PointsOrderState {
   /** 源下单处理阶段 */
@@ -48,6 +48,8 @@ export interface OrderPointsQuote {
 }
 
 export interface BuyerPointsAccount {
+  /** 积分名称 */
+  name: string;
   /** 积分类型唯一编码 */
   typeCode: string;
   /** 市场代码 */
@@ -56,6 +58,8 @@ export interface BuyerPointsAccount {
   currency: string;
   /** 服务端业务状态 */
   status: BuyerPointsAccountStatus;
+  /** 仅暂停新增赠送，不代表禁止已有余额抵扣 */
+  earningPaused?: boolean;
   /** 可用积分余额 */
   balance: number;
   /** 待激活积分余额 */
@@ -77,6 +81,16 @@ export interface BuyerPointsAccount {
 }
 
 export interface BuyerPointsEntry {
+  /** Internal accounting voucher identifier used for authorized ledger references. */
+  voucherNo?: string | null;
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
+  voucherDocumentNo?: string | null;
+  /** Accounting direction of the posted points entry. */
+  direction?: string | null;
+  /** Original business operation reference associated with the posted points entry. */
+  businessRef?: string | null;
+  /** Parent order identifier for the reward inspection. */
+  orderNo?: string | null;
   /** 不可变积分分录编号 */
   entryNo: string;
   /** 积分账本或资金池分桶 */

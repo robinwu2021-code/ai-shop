@@ -1,6 +1,7 @@
 package ai.neargo.shop.message.notify.port;
 
 import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.common.otp.OtpScenes;
 import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.notify.NotifyLogWriter;
@@ -50,19 +51,28 @@ public class NotifyLoggingSmsPort implements SmsPort {
      *                   混在一起的话，看到发送量激增时分不清是有人在刷还是有人在测
      * @param operatorNo 手动触发时是操作人；OTP 这类自动发出的传 null
      */
+    @Override public void requireOtpScene(String scene) { delegate.requireOtpScene(scene); }
+
     @Override
     public SendResult sendOtp(String phone, String code, String bizType, String operatorNo) {
+        return sendOtpForScene(phone, code, OtpScenes.LOGIN, bizType, operatorNo);
+    }
+
+    @Override
+    public SendResult sendOtpForScene(String phone, String code, String scene, String bizType, String operatorNo) {
+        String logicalTemplate = OtpScenes.LOGIN.equals(scene) ? TPL_SMS_OTP : "OTP_" + scene;
         try {
             OutboxLease.check();
-            SendResult r = delegate.sendOtp(phone, code);
+            SendResult r = OtpScenes.LOGIN.equals(scene) ? delegate.sendOtp(phone, code)
+                    : delegate.sendOtpForScene(phone, code, scene, bizType, operatorNo);
             writer.write(SysNotifyLog.SMS, bizType, phone, r.templateCode(),
-                    TPL_SMS_OTP, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
+                    logicalTemplate, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
             return r;
         } catch (OutboxLeaseLostException e) {
             throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, bizType, phone, null,
-                    TPL_SMS_OTP, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+                    logicalTemplate, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
             throw e;
         }
     }

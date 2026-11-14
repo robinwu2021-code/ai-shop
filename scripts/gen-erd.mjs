@@ -15,8 +15,8 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { domainOverview, tableGraph } from "./lib/svg-erd.mjs";
-import { readSchema } from "./lib/ddl.mjs";
-import { KEY_OWNERS, NAME_COLLISIONS as NAME_COLLISIONS_WHY } from "./lib/schema-keys.mjs";
+import { readSchema, AUDIT } from "./lib/ddl.mjs";
+import { NAME_COLLISIONS, relations, columnBadge, describeRelation } from "./lib/schema-lineage.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,16 +58,14 @@ const DOMAINS = [
   ["mbr", "会员"],
   ["pmt", "券与活动"],
   ["sys", "系统"],
+  ["sv", "储值"],
+  ["prn", "统一打印"],
+  ["ent", "支付权益"],
+  ["pay", "支付支持"],
+  ["notify", "通知"],
+  ["lgs", "物流"],
+  ["biz", "共享业务事实"],
 ];
-
-/**
- * 业务键归属：这个 `xxx_no` 是谁的主键。
- *
- * **必须显式登记，不能从表名推断** —— 真实的表名与主键列名经常对不上：
- * `stl_bill` 的主键叫 `settle_no`、`pts_user_ledger` 的叫 `ledger_no`。
- * 与 schema-lineage 守卫直接共享 scripts/lib/schema-keys.mjs。
- */
-export { KEY_OWNERS };
 
 /**
  * 专题图：一个业务域**横跨多个表名前缀**时，按前缀分的图看不全它。
@@ -182,36 +180,6 @@ const TOPICS = [
   },
 ];
 
-/**
- * 同名不同义：**不可按名字连线**，连了就是错的。
- *
- * 键是列名，值是理由 —— 文档里那张表由它渲染，不再手写一份。
- * 手写的那份在 `pts_merchant_ledger` 被删（V34）之后还挂着 `ledger_no` 一行，
- * 而守卫只查集合不查文档，漏了两天没人发现。
- */
-
-const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
-
-/** 每张表都有，画进图里只会挤满屏幕 */
-const AUDIT = new Set([
-  "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
-]);
-
-// ---------------------------------------------------------------- 关系
-/** 表 A 的某列是表 B 的主键 → A 引用 B */
-function relations(tables) {
-  const out = [];
-  for (const [table, def] of tables) {
-    for (const c of def.cols) {
-      if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
-      const owner = KEY_OWNERS[c.name];
-      if (!owner || owner === table || !tables.has(owner)) continue;
-      out.push({ from: table, to: owner, col: c.name });
-    }
-  }
-  return out;
-}
-
 const domainOf = (t) => t.split("_")[0];
 
 // ---------------------------------------------------------------- 渲染
@@ -304,7 +272,7 @@ for (const d of domainList) {
     ...new Set(
       rels
         .filter((r) => own.includes(r.from) && !own.includes(r.to))
-        .map((r) => `\`${r.from}.${r.col}\` → \`${r.to}\``),
+        .map((r) => `\`${describeRelation(r)}\``),
     ),
   ];
   md.push(
@@ -323,19 +291,24 @@ for (const d of domainList) {
 md.push(
   "## 三、逐表详情",
   "",
-  "见网页版 [数据库-ER图.html](./数据库-ER图.html) —— 54 张表的字段、类型、索引、关联。",
+  "见网页版 [数据库-ER图.html](./数据库-ER图.html) —— 查看各表的字段、类型、索引、关联。",
   "Markdown 里铺开会有近两千行，那不是给人读的。",
   "",
   "## 四、不可按名字连线的列",
   "",
-  "以下列名出现在多张表里但**语义不同**，图中刻意不连：",
+  "以下列名不能按全局同名编号直接关联；已证明的限定引用列在下一节，其余不画无条件边：",
   "",
   "| 列 | 为什么 |",
   "|---|---|",
-  ...Object.entries(NAME_COLLISIONS_WHY).map(([k, why]) => `| \`${k}\` | ${why} |`),
+  ...Object.entries(NAME_COLLISIONS).map(([k, why]) => `| \`${k}\` | ${why.replace(/\r?\n/g, "<br>").replace(/\|/g, "\\|")} |`),
   "",
 );
 
+md.push(
+  "## 五、带作用域的限定引用", "",
+  "以下逻辑引用必须同时匹配列出的作用域，不能只按编号 join。条件型路径见上一节。现有域图未覆盖 sv/ent/pay 等前缀，本列表保留其限定语义。", "",
+  ...rels.filter(r => r.scope.length).map(r => `- \`${describeRelation(r)}\``), "",
+);
 writeFileSync(OUT, md.join("\n"));
 
 // ---------------------------------------------------------------- HTML
@@ -380,11 +353,7 @@ for (const [prefix, label] of DOMAINS) {
       const rows = def.cols
         .filter((c) => !AUDIT.has(c.name))
         .map((c) => {
-          const badge = def.uniques.has(c.name)
-            ? '<i class="k uk">UK</i>'
-            : KEY_OWNERS[c.name] && KEY_OWNERS[c.name] !== t
-              ? '<i class="k fk">FK</i>'
-              : "";
+          const badge = columnBadge(tables, t, c.name);
           return `<tr><td class="cn"><code>${c.name}</code>${badge}</td>` +
             `<td class="ct">${c.type}</td>` +
             `<td class="cnl">${c.nullable ? "可空" : "必填"}</td>` +
@@ -392,8 +361,8 @@ for (const [prefix, label] of DOMAINS) {
         })
         .join("");
       const relLines = [
-        ...refsOut.map((r) => `<code>${r.col}</code> → <code>${r.to}</code>`),
-        ...refsIn.map((r) => `<code>${r.from}</code> 经 <code>${r.col}</code> 指向本表`),
+        ...refsOut.map((r) => `<code>${esc(describeRelation(r))}</code>`),
+        ...refsIn.map((r) => `<code>${esc(describeRelation(r))}</code>`),
       ];
       return `<article class="card" id="t-${t}">
 <h3><code>${t}</code><span class="tdesc">${escMd(def.comment || "")}</span></h3>
@@ -410,8 +379,8 @@ ${def.indexes.length ? `<p class="rel"><span class="rl">索引</span>${def.index
 <div class="canvas">${svg}</div>
 ${inward.length || outward.length ? `<p class="xref"><span class="xlabel">跨域</span>${[
     ...new Set([
-      ...outward.map((r) => `${r.from}.${r.col} → ${r.to}`),
-      ...inward.map((r) => `${r.from}.${r.col} → ${r.to}`),
+      ...outward.map((r) => describeRelation(r)),
+      ...inward.map((r) => describeRelation(r)),
     ]),
   ].map((x) => `<code>${esc(x)}</code>`).join("")}</p>` : ""}
 ${cards}
@@ -526,13 +495,17 @@ ${navItems
 ${sections.join("\n")}
 <section id="caveat"><div class="caveat">
 <h2>不可按名字连线的列</h2>
-<p>以下列名出现在多张表里但语义不同，图中刻意不给它们画关系。按名字连就是错的。</p>
+<p>以下列名不能按全局同名编号直接关联。已证明的限定引用列在后面；其余不画无条件边。</p>
 <table><tbody>
-${Object.entries(NAME_COLLISIONS_WHY)
+${Object.entries(NAME_COLLISIONS)
   .map(([k, why]) => `<tr><td><code>${k}</code></td><td>${escMd(why.replace(/`([^`]+)`/g, "<code>$1</code>"))}</td></tr>`)
   .join("\n")}
 </tbody></table>
 </div></section>
+<section id="scoped-references"><h2>带作用域的限定引用</h2>
+<p>必须同时匹配所列作用域，不能只按编号 join。条件型路径见上节；现有域图未覆盖 sv/ent/pay 等前缀。</p>
+<ul>${rels.filter(r => r.scope.length).map(r => `<li><code>${esc(describeRelation(r))}</code></li>`).join("\n")}</ul>
+</section>
 </main>
 </div>
 <script>

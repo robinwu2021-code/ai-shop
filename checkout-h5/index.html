@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <!-- 令牌在 URL 里：不经 Referer 外泄（安全规范 §2.5）；nginx 另发同名响应头与 CSP -->
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex" />
+    <title>付款</title>
+  </head>
+  <body>
+    <main id="app" aria-live="polite"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

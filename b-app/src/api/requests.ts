@@ -1,3 +1,4 @@
+import type {CurrencyCode} from "@shared/types";
 // B 端请求类型（wire contract）—— **入参的唯一真源**。
 //
 // 为什么需要这一层（与 C 端 `api/requests.ts` 同一个理由）：
@@ -29,6 +30,7 @@ import type {
   RefundMode,
 } from "@shared/types";
 import type { GoodsDraft, GoodsEntrySource } from "./contract";
+import type { OfflineRecordMethod, OfflineRecordStatus } from "./pay";
 import type { ZipPick } from "@shared/ports/zip-media";
 
 // ---------------------------------------------------------------- 预约排期
@@ -101,6 +103,41 @@ export interface MerchantLoginReqBody {
 /** 入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名 */
 export type MerchantApplyReqBody = MerchantApplyReq;
 
+// ---------------------------------------------------------------- 问题回报与版本（TDD-商户App问题回报与版本）
+
+import type { FeedbackCategory, FeedbackDiagnostic } from "@shared/types";
+
+/**
+ * 提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400；
+ * 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+ */
+export interface SubmitFeedbackReq {
+  /** 分类：BUG / PAYMENT / IDEA / OTHER */
+  category: FeedbackCategory;
+  /** 描述，去首尾空白后 1–1000 字 */
+  description: string;
+  /** 从哪个错误进来（≤64，超长截断） */
+  errorCode?: string;
+  /** 从哪一页进来（≤128，超长截断） */
+  page?: string;
+  /** 当前门店号；不属于本账号会被丢弃（照常落库） */
+  storeNo?: string;
+  /** App 版本（必填，≤32） */
+  appVersion: string;
+  /** android / ios；其它值归 OTHER */
+  platform?: string;
+  /** 诊断，最多留最后 300 条 */
+  diagnostics?: FeedbackDiagnostic[];
+}
+
+/** 版本检查的查询参数 */
+export interface AppVersionQuery {
+  /** android / ios，不分大小写 */
+  platform: string;
+  /** 当前版本号；带了才回 upgradeRequired */
+  build?: string;
+}
+
 // ---------------------------------------------------------------- 店铺
 
 export type SaveStoreReqBody = StoreProfile;
@@ -108,6 +145,16 @@ export type SaveStoreReqBody = StoreProfile;
 export interface ShareKitQuery {
   /** 不传即整店分享素材；传了就是单品的 */
   goodsNo?: string;
+}
+
+// ---------------------------------------------------------------- 会员凭证
+
+/** 仅提交扫描凭证与选定门店；租户、主体及操作人身份由后端会话确定。 */
+export interface ResolveMemberCodeReq {
+  /** 扫描获得的统一会员码凭证。 */
+  memberCode: string;
+  /** 当前选定的门店编号。 */
+  storeNo: string;
 }
 
 // ---------------------------------------------------------------- 商品
@@ -709,8 +756,12 @@ export interface AddStaffReq {
 export interface GrantStoreReq {
   /** 授权到哪家店。只能是本主体的门店 */
   storeNo: string;
-  /** 要授予/撤销的那一个角色 */
-  role: StaffRole;
+  /**
+   * 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS）
+   * **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。
+   * 不能是 `OWNER`（老板不在门店角色表里）。
+   */
+  role: StaffRole | (string & {});
   /** true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 */
   granted?: boolean;
 }
@@ -807,3 +858,399 @@ export interface StorePointStatementLinesQuery extends StorePointStatementQuery 
   /** 本页条数上限 */
   limit?: number;
 }
+
+// P1 organization request bodies and query strings; authenticated identity is never a wire field.
+export type {GrantCommand as ManagementGrantReq,BrandDraft as ManagementBrandCreateReq,BrandEdit as ManagementBrandEditReq,BrandChangeSubmit as ManagementBrandChangeSubmitReq} from './management-types';
+export interface ManagementSpaceCreateReq {
+  /** Human-readable name displayed for this business resource. */
+  name:string;
+  /** Authority-source account used to bootstrap the management space. */
+  sourceAccountNo:string}
+export interface ManagementResourcesQuery {
+  /** Business resource category used to resolve resourceNo and enforce authorization. */
+  resourceType?:string;
+  /** Whether to query effective resources or explicit capability grants. */
+  view?:'EFFECTIVE'|'GRANTS';
+  /** Identity receiving the resource grant. */
+  actorNo?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+export interface ManagementRevokeQuery {
+  /** Previously observed resource revision; stale writes are rejected. */
+  expectedRevision:number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason:string}
+export interface ManagementPageQuery {
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+export interface ManagementStoresQuery extends ManagementPageQuery {
+  /** Brand identifier; null when the scope has no brand binding. */
+  brandNo?:string}
+export interface ManagementMerchantsQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string;
+  /** Payment channel used by this payment-merchant capability. */
+  payChannel?:string;
+  /** Payment scene used to select a compatible payment merchant. */
+  payScene?:string;
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo?:string}
+export interface ManagementBrandsQuery extends ManagementPageQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string;
+  /** Current server-owned lifecycle state of this resource. */
+  status?:string;
+  /** Search text used to match resource names. */
+  keyword?:string}
+export interface ManagementBrandStatusReq {
+  /** Requested lifecycle state; server checks permitted transitions. */
+  targetStatus:'ACTIVE'|'INACTIVE';
+  /** Previously observed resource revision; stale writes are rejected. */
+  expectedRevision:number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason:string}
+export interface ManagementStoreContextQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string}
+export interface ManagementBrandCheckReq {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string;
+  /** Destination brand identifier; null removes the store's brand binding. */
+  toBrandNo:string|null}
+export interface ManagementBrandDecisionReq {
+  /** Approval or return decision submitted for the current revision. */
+  decision:'APPROVE'|'REJECT';
+  /** Previously observed resource revision; stale writes are rejected. */
+  expectedRevision:number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason:string}
+
+export type {SvPlanCreate,SvRechargeCreate,SvReceipt,SvReceive,SvRecordsQuery} from './stored-value-types';
+import type {SvSelectionSource} from './stored-value-types';
+export interface SvCandidatesQuery {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string;
+  /** Customer phone number submitted for server-authorized member lookup. */
+  phone?:string;
+  /** Search text used to match resource names. */
+  keyword?:string}
+export interface SvSelectCustomerReq {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string;
+  /** Member or existing-account selection source to resolve into a temporary customer reference. */
+  source:SvSelectionSource}
+export interface SvStoreQuery {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string}
+export interface SvPlansQuery {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string;
+  /** Current server-owned lifecycle state of this resource. */
+  status?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+export interface SvAccountsQuery {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string;
+  /** Search text used to match resource names. */
+  keyword?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+export interface SvPlanStatusReq {
+  /** Store identifier scoping the requested operation or returned business record. */
+  storeNo:string;
+  /** Current server-owned lifecycle state of this resource. */
+  status:string;
+  /** Previously observed resource revision; stale writes are rejected. */
+  expectedRevision:number}
+export interface SvCancelReq {
+  /** Previously observed resource revision; stale writes are rejected. */
+  expectedRevision:number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason:string}
+
+export interface ScopeCandidateQuery {
+  /** Search text used to match resource names. */
+  keyword?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+import type {ScopeSelectionSource} from './stored-value-types';
+export interface ScopeSelectCustomerReq {
+  /** Member or existing-account selection source to resolve into a temporary customer reference. */
+  source:ScopeSelectionSource}
+export interface ScopeMemberCreateReq {
+  /** Customer phone number submitted for server-authorized member lookup. */
+  phone:string;
+  /** Operator-supplied audit note explaining the submitted operation. */
+  remark?:string;
+  /** Member tag identifiers applied when recording the selected customer. */
+  tagNos?:string[]}
+
+// P3 issuer configuration and store-scoped recharge contracts.
+export type {IssuerConfigureRequest} from './stored-value-issuers';
+export interface SvIssuerManagementQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string}
+export interface SvIssuerEntitiesQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string;
+  /** Whether the issuer scope is a store or a brand. */
+  scopeType:'STORE'|'BRAND';
+  /** Brand or store identifier selected by scopeType. */
+  scopeNo:string}
+export interface SvIssuerRouteQuery {
+  /** Management-space identifier under which the operation is authorized. */
+  managementNo:string;
+  /** Payment channel used by this payment-merchant capability. */
+  payChannel?:string;
+  /** Payment scene used to select a compatible payment merchant. */
+  payScene?:string}
+export interface SvIssuerRechargeOptionsQuery {
+  /** Server-issued selected-customer reference; expires and must be reselected when stale. */
+  customerRef:string;
+  /** Whether the issuer scope is a store or a brand. */
+  scopeType?:'STORE';
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records per page requested or returned by the server. */
+  size?:number}
+
+import type {SvPolicyRules,SvPolicyTarget,SvActivityDefinition} from './stored-value-governance';
+export interface SvGovernanceManagement {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string}
+export interface SvGovernancePolicyQuery {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode;
+/** Whether the governance policy applies to a space, brand stores or a single store. */
+targetType?:SvPolicyTarget;
+/** Business identifier selected by the policy's targetType. */
+targetNo?:string}
+export interface SvGovernancePolicyCreate {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Whether the governance policy applies to a space, brand stores or a single store. */
+targetType:SvPolicyTarget;
+/** Business identifier selected by the policy's targetType. */
+targetNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode;
+/** Effective stored-value issuance limits and approval requirements. */
+rules:SvPolicyRules}
+export interface SvGovernancePolicyEdit {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Proposed policy revision and its optimistic concurrency check. */
+edit:{
+/** Effective stored-value issuance limits and approval requirements. */
+rules:SvPolicyRules;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}}
+export interface SvGovernanceStoreQuery {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** ISO currency code determining the interpretation of monetary amounts. */
+currency:CurrencyCode}
+export interface SvGovernanceContextQuery extends SvGovernanceStoreQuery {
+/** Requested governance capability: read-only inspection or management. */
+intent:'READ'|'MANAGE'}
+export interface SvGovernanceScheduleQuery extends SvGovernanceStoreQuery {
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate:string;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate:string}
+export interface SvGovernancePresetQuery extends SvGovernanceStoreQuery {
+/** One-based page index for the returned or requested result. */
+page?:number;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
+export interface SvGovernanceActivityQuery extends SvGovernanceStoreQuery {
+/** Current server-owned lifecycle state of this resource. */
+status?:string;
+/** One-based page index for the returned or requested result. */
+page?:number;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
+export interface SvGovernanceDraft {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Versioned activity definition, including schedule, scope and recharge tiers. */
+definition:SvActivityDefinition;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision?:number}
+export interface SvGovernanceCommand extends SvGovernanceStoreQuery {
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}
+export interface SvGovernanceApprovalQuery {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Current server-owned lifecycle state of this resource. */
+status?:string;
+/** Opaque continuation cursor from the preceding page; omit for the first page. */
+cursor?:string;
+/** Maximum records per page requested or returned by the server. */
+size?:number}
+export interface SvGovernanceDecision {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Approval or return decision submitted for the current revision. */
+decision:{
+/** Approval or return decision submitted for the current revision. */
+decision:'APPROVE'|'RETURN';
+/** Machine-readable eligibility or rejection reason for the quote. */
+reason:string;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}}
+
+export type {SvConsumptionCreate} from './stored-value-types';
+export interface SvConsumptionStoreQuery {storeNo:string}
+export interface SvConsumptionSubmit {orderNo:string;orderRevision:number;customerRef:string;authorizationRef:null}
+export interface SvWalletRecordsQuery {issuerRef:string;accountRef:string;type:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;cursor?:string;size?:number}
+export interface SvBrandActivationRequest {managementNo:string;expectedRevision:number}
+
+// P6 finance wire bodies; the API adapter consumes these exact types.
+export type {SvReportQuery,SvFinanceQuery,SvGenerationRequest,SvDecisionRequest,SvResolutionRequest,SvAdjustmentRequest,SvPaymentRequest,SvReceiptRequest,SvVoidRequest} from "./stored-value-finance";
+import type {SvReportQuery} from "./stored-value-finance";
+export interface SvFinanceManagementQuery {
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string}
+export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {
+  /** Whether the stored-value issuer belongs to a store or a brand. */
+  scopeType?:"STORE"|"BRAND"}
+export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records requested per page; the financial reporting API accepts 1–100. */
+  size?:number}
+export interface SvFinanceActivityQuery extends SvReportQuery {
+  /** Stored-value issuer identifier whose activity attribution is queried. */
+  issuerNo:string}
+export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {
+  /** Original command’s idempotency key used to recover an uncertain result without repeating the operation. */
+  commandKey:string}
+
+export type {SvFinancialBrandRequest} from "./stored-value-finance";
+
+export interface SvFinancialOriginalQuery {
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Original command’s idempotency key used to recover an uncertain result without repeating the operation. */
+  commandKey:string}
+export interface SvConsumptionStoreQuery {
+/** Store identifier for the service or ledger record; null when no single store applies. */
+storeNo:string}
+export interface SvConsumptionSubmit {
+/** Original service order identifier; retries keep this same order. */
+orderNo:string;
+/** Previously confirmed service order revision; stale submissions are rejected. */
+orderRevision:number;
+/** Server-issued selected-customer reference authorizing this operation. */
+customerRef:string;
+/** Reserved customer authorization reference; merchant submission currently requires null. */
+authorizationRef:null}
+export interface SvWalletRecordsQuery {
+/** Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. */
+issuerRef:string;
+/** Opaque account selection reference bound to the selected customer and issuer. */
+accountRef:string;
+/** Requested stored-value record classification; ALL disables the classification filter. */
+type:'ALL'|'RECHARGE'|'REDEMPTION';
+/** Inclusive first business date in YYYY-MM-DD format. */
+startDate?:string;
+/** Inclusive final business date in YYYY-MM-DD format. */
+endDate?:string;
+/** Opaque continuation cursor; omit for the first page. */
+cursor?:string;
+/** Maximum number of records requested in this page. */
+size?:number}
+export interface SvBrandActivationRequest {
+/** Management-space identifier under which this action is authorized. */
+managementNo:string;
+/** Previously observed resource revision; stale writes are rejected. */
+expectedRevision:number}
+
+// ---------------------------------------------------------------- App 外收款记录（TDD-商户App外部记账）
+// 门店、主体、记账人一律由服务端取；请求体里多一个字段（含旧字段 requestId、storeNo）就是 10400。
+
+/** 记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里 */
+export interface OfflineRecordCreateReq {
+  /** 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） */
+  amountMinor: number;
+  /** 必须等于门店市场币种（台湾 TWD） */
+  currency: CurrencyCode;
+  /** 现金 / 银行转账 / 外部刷卡机 / 其他 */
+  method: OfflineRecordMethod;
+  /** 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 */
+  orderNo?: string;
+  /** ≤ 100 字 */
+  note?: string;
+  /** 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 */
+  receivedAt?: string;
+}
+
+/** 列表查询 */
+export interface OfflineRecordListQuery {
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93 */
+  from?: string;
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天 */
+  to?: string;
+  /** 收款方式筛选；不传 = 全部方式 */
+  method?: OfflineRecordMethod[];
+  /** 记录状态筛选；不传 = 全部状态 */
+  status?: OfflineRecordStatus[];
+  /** 1–32 字，命中订单号或备注 */
+  q?: string;
+  /** 精确匹配订单号：订单详情据此判断「已有外部記錄」 */
+  orderNo?: string;
+  /** 上一页返回的游标；不传 = 第一页 */
+  cursor?: string;
+  /** 1–50，默认 20 */
+  size?: number;
+}
+
+/** 汇总查询；区间规则同列表 */
+export interface OfflineRecordSummaryQuery {
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天，区间不超过 93 天 */
+  from?: string;
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天 */
+  to?: string;
+}
+
+/** 更正：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordCorrectReq {
+  /** 更正后的金额（最小单位，> 0）；TWD 必须是 100 的倍数 */
+  amountMinor: number;
+  /** 必须等于原记录币种 */
+  currency: CurrencyCode;
+  /** 更正后的收款方式 */
+  method: OfflineRecordMethod;
+  /** 新的实收时刻；不传 = 不改 */
+  receivedAt?: string;
+  /** 1–100 字 */
+  reason: string;
+  /** 列表里拿到的 version；不符 → 10409 */
+  expectedVersion: number;
+}
+
+/** 作废：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordVoidReq {
+  /** 1–100 字 */
+  reason: string;
+  /** 列表里拿到的 version；不符 → 10409 */
+  expectedVersion: number;
+}
+
+// 平台商城的请求体住在 ./mall.ts（与 commerce-mall-openapi.json 逐字一致）；转出给 OpenAPI 生成器
+export type { MallQuoteRequest, MallPlaceRequest, MallOfflineClaimRequest } from "./mall";

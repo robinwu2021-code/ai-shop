@@ -2,6 +2,7 @@ package ai.neargo.shop.common;
 
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +36,16 @@ public final class OpenHours {
                 || Integer.parseInt(matcher.group(2)) > 59 || Integer.parseInt(matcher.group(3)) > 23
                 || Integer.parseInt(matcher.group(4)) > 59) return null;
         return openAtLegacy(hours, time);
+    }
+
+    /** Calendar compilers reuse the original accepted syntax rather than inventing another hours parser. */
+    public static List<LocalTime> boundaryTimes(String hours) {
+        if (openAt(hours, LocalTime.MIDNIGHT) == null)
+            throw new IllegalArgumentException("Unknown original opening hours");
+        var matcher = HOURS.matcher(hours);
+        if (!matcher.matches()) throw new IllegalArgumentException("Unknown original opening hours");
+        return List.of(LocalTime.of(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))),
+                LocalTime.of(Integer.parseInt(matcher.group(3)), Integer.parseInt(matcher.group(4))));
     }
 
     private static Boolean openAtLegacy(String hours, LocalTime t) {

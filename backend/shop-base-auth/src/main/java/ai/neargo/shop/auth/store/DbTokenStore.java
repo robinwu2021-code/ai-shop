@@ -175,7 +175,10 @@ public class DbTokenStore implements TokenStore {
      */
     private Optional<LoginUser> identityOf(String userNo, String subjectKind) {
         LoginUser cachedUser = identityCache.get(userNo);
-        if (cachedUser != null) {
+        // MERCHANT has two subject namespaces but invalidation is keyed by bare principal.
+        // A same-number identity from the other namespace is a miss for this session.
+        if (cachedUser != null && (realm != Realm.MERCHANT
+                || cachedUser.subjectKind().name().equals(subjectKind))) {
             return Optional.of(cachedUser);
         }
         /*
@@ -252,6 +255,25 @@ public class DbTokenStore implements TokenStore {
             return;
         }
         identityCache.evict(data.user().userNo());
+    }
+
+    @Override
+    public Optional<SessionData> getByHash(String hash, String principal) {
+        return sessions.findByHashForUpdate(hash)
+                .filter(row -> row.isLive(LocalDateTime.now(clock)) && principal.equals(row.userNo()))
+                .flatMap(row -> {
+                    identityCache.evict(row.userNo());
+                    return identityOf(row.userNo(), row.subjectKind()).map(SessionData::of);
+                });
+    }
+
+    @Override
+    public void revokeByHash(String hash, String principal) {
+        sessions.findByHash(hash).filter(row -> principal.equals(row.userNo())).ifPresent(row -> {
+            sessions.revoke(hash, RevokeReason.LOGOUT, LocalDateTime.now(clock));
+            sessionCache.evict(hash);
+            audit(LoginEvent.LOGOUT, row.userNo(), null, true);
+        });
     }
 
     @Override

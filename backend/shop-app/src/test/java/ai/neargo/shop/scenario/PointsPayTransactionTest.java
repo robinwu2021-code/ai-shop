@@ -1,6 +1,9 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.Bucket;
@@ -22,6 +25,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 
@@ -34,11 +38,12 @@ class PointsPayTransactionTest {
     @Autowired private ApplicationContext context;
     @Autowired private PointsPostingService posting;
     @Autowired private BillMapper bills;
+    @Autowired @Qualifier("payDocumentNumberCoordinator") private DocumentNumberCoordinator numbers;
 
     @Test
     void settlement_and_points_roll_back_together() {
         String type = fundedUser();
-        tx("payTxManager").executeWithoutResult(status -> {
+        withReservedHold(() -> tx("payTxManager").executeWithoutResult(status -> {
             StlBill bill = new StlBill();
             bill.setSettleNo("PTX-" + type);
             bill.setSubOrderNo("S-" + type);
@@ -51,7 +56,7 @@ class PointsPayTransactionTest {
             posting.post(hold(type));
             assertThat(balance(type, "held_points")).isEqualTo(100L);
             status.setRollbackOnly();
-        });
+        }));
         assertThat(balance(type, "available_points")).isEqualTo(100L);
         assertThat(balance(type, "held_points")).isZero();
         assertThat(pay().queryForObject("SELECT COUNT(*) FROM stl_bill WHERE settle_no=?", Long.class, "PTX-" + type))
@@ -64,22 +69,29 @@ class PointsPayTransactionTest {
     void platform_rollback_does_not_rollback_pay_hold() {
         String type = fundedUser();
         JdbcTemplate platform = new JdbcTemplate(context.getBean("dataSource", DataSource.class));
-        tx("transactionManager").executeWithoutResult(status -> {
+        withReservedHold(() -> tx("transactionManager").executeWithoutResult(status -> {
             platform.update("INSERT INTO ord_order(order_no,user_no,status,pay_amount,created_at,updated_at)"
                     + " VALUES(?,?,'PAID',100,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", "O-" + type, "U");
             posting.post(hold(type));
             status.setRollbackOnly();
-        });
+        }));
         assertThat(platform.queryForObject("SELECT COUNT(*) FROM ord_order WHERE order_no=?", Long.class, "O-" + type))
                 .isZero();
         assertThat(balance(type, "held_points")).isEqualTo(100L);
         assertThat(balance(type, "available_points")).isZero();
     }
 
+    private void withReservedHold(Runnable action) {
+        numbers.withReservation(Map.of(DocumentType.POINTS_VOUCHER, 1), () -> {
+            action.run();
+            return null;
+        });
+    }
+
     private String fundedUser() {
         String type = "TX" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
-        pay().update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
-                + " VALUES(?,'CN','CNY',1,1,'ACTIVE')", type);
+        pay().update("INSERT INTO pts_point_type(type_code,name,market,currency,rate_points,rate_minor,status)"
+                + " VALUES(?,?,'CN','CNY',1,1,'ACTIVE')", type, type);
         pay().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
         pay().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
                 + " VALUES(?,'CNY',100,1)", "E:" + type);

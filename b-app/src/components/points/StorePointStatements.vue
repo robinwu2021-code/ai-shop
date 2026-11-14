@@ -6,7 +6,7 @@ import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { api } from "@/api";
 import type { StorePointStatement, StorePointStatementChange, StorePointStatementLinePage } from "@shared/types";
-const props = defineProps<{ typeCode: string; storeNo: string; targetStatement?: string }>();
+const props = defineProps<{ typeCode: string; typeName?: string; storeNo: string; targetStatement?: string }>();
 const merchant = useMerchantStore();
 const { t } = useI18n();
 const rows = ref<StorePointStatement[]>([]);
@@ -104,12 +104,13 @@ function date(at: number) { return new Date(at).toLocaleDateString(); }
 </script>
 <template>
   <view class="sh-card sh-mt-sm sh-stack">
-    <text class="txt-title">{{ t("points.statements") }}</text>
+    <view class="txt-title">{{ t("points.statements") }}</view>
+    <view v-if="typeName" class="sh-muted">{{ typeName }}</view>
     <view v-if="failed" class="sh-muted sh-stack">
       <text>{{ t("points.statementFailed") }}</text>
       <view class="sh-btn sh-btn--muted" @click="load()">{{ t("points.statementRefresh") }}</view>
     </view>
-    <text v-if="!loading && !failed && !rows.length" class="sh-muted">{{ t("points.noStatements") }}</text>
+    <view v-if="!loading && !failed && !rows.length" class="sh-muted">{{ t("points.noStatements") }}</view>
     <view v-for="row in rows" :key="row.statementNo" class="sh-stack">
       <text>{{ row.statementNo }} · {{ date(row.fromMillis) }} — {{ date(row.toMillis) }}</text>
       <view>{{ t("points.statementRevision") }} {{ row.revision }} · {{ row.points }} {{ t("points.pointsUnit") }} · {{ stateLabel(row.state) }}</view>

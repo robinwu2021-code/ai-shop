@@ -91,12 +91,20 @@ class StoreFulfillmentFlowTest {
     }
 
     @Test
-    @DisplayName("get：没配过也返回固定四行，全部关着 —— 端上不用自己补缺")
+    @DisplayName("get：没配过也返回固定四行；只有买家侧兜底的那一路开着并标 inherited —— 端上不用自己补缺，也不会显示一家「谁也看不到」的店")
     void getReturnsFourRows() {
         String m = merchant("文三路 1 号");
         var vo = fulfillmentService.get(m, null);
         assertThat(vo.channels()).hasSize(4);
-        assertThat(vo.channels()).allMatch(c -> !c.enabled());
+        /*
+         * 2026-11-08 起（TDD-商户App接口字段对齐「已拍板 2」）：没配过门店级配置时，买家侧按主体
+         * fulfillment_reach 兜底（StoreRoutes），读接口如实把兜底那一路标成开着 + inherited。
+         * 此前这里断言「全部关着」—— 那是端上看到的，不是买家看到的。
+         */
+        assertThat(vo.channels()).filteredOn(c -> c.enabled())
+                .singleElement()
+                .satisfies(c -> assertThat(c.inherited()).isTrue());
+        assertThat(vo.channels()).filteredOn(c -> !c.enabled()).allMatch(c -> !c.inherited());
         assertThat(vo.channels()).extracting("channel").containsExactly(
                 Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP,
                 Fulfillments.MERCHANT_DELIVERY, Fulfillments.EXPRESS);

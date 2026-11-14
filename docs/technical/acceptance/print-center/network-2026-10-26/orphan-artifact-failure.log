@@ -1,0 +1,13 @@
+[ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.273 s <<< FAILURE! -- in 孤儿模块
+[ERROR] ai.neargo.shop.arch.OrphanModuleTest.noJavaOutsideTheMavenBuild -- Time elapsed: 0.269 s <<< FAILURE!
+java.lang.AssertionError: 
+[这些 Java 文件在 backend/ 之外，且没有实际 Maven module 登记：[docs/technical/acceptance/print-center/network-2026-10-26/BaselineProbe.java]
+
+  不参与构建的代码**不会编译失败、不会有测试变红**，
+  于是它会静静地跟真身分叉 —— 而搜索会命中它、读的人会把它当成现状。
+
+  要么把它挪进 backend/ 的某个模块（并登记进父 pom 的 <modules>），
+  要么删掉。**删之前先与真身逐个比对**：
+  上一个孤儿副本里有两行真身已经丢掉的注释。] 
+Expecting empty but was: ["docs/technical/acceptance/print-center/network-2026-10-26/BaselineProbe.java"]
+	at ai.neargo.shop.arch.OrphanModuleTest.noJavaOutsideTheMavenBuild(OrphanModuleTest.java:86)

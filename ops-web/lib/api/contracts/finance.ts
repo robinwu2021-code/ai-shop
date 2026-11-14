@@ -1,25 +1,21 @@
+import type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection } from "@/lib/points-earning";
 import type { PointsAdjustmentSubmission, PointsAdjustmentReview, PointsAdjustmentPage } from "../points-adjustment-types";
-import type { PointsAccountQ, PointsAccountView, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon } from "@/lib/types";
+import type { PointsAccountQ, PointsAccountView, PointsAccountsQ, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon, PointsTransactionsQ, PointsTransactionView, PointsTransactionDirection } from "@/lib/types";
 import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
 import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
-import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
+import type { PointsTypeRename, PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
   PointsOverview, PointsReceivablePage, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
-  BankFlowImportResult,
+  BankFlowImportResult, PointsStatsPeriod,
 } from "@/lib/types";
 import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 
 import type { OrderPointsStoreObligations, OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
 
-import type { PointsAccountsQ, PointsAccounts, PointsTransactionsQ, PointsTransactions, PointsTransactionDetail, PointsPeriodQ, PointsPeriodStats } from "../inspection-types";
 export interface FinanceApi {
-  pointsAccounts(q: PointsAccountsQ): Promise<PointsAccounts>;
-  pointsTransactions(q: PointsTransactionsQ): Promise<PointsTransactions>;
-  pointsTransaction(typeCode: string, voucherNo: string): Promise<PointsTransactionDetail>;
-  pointsPeriodStats(q: PointsPeriodQ): Promise<PointsPeriodStats>;
   pointsAdjustments(q: { typeCode: string; after?: number; limit?: number }): Promise<PointsAdjustmentPage>;
   submitPointsAdjustment(value: PointsAdjustmentSubmission): Promise<import("@/lib/types").PointsOperation>;
   reviewPointsAdjustment(value: PointsAdjustmentReview): Promise<import("@/lib/types").PointsOperation>;
@@ -43,9 +39,16 @@ export interface FinanceApi {
    */
   pointsReceivables(q: PointsReceivableQ): Promise<PointsReceivablePage>;
 
+  pointsOrderEarning(subOrderNo: string): Promise<OrderEarningInspection>;
+  pointsEarningContext(): Promise<EarningContext>;
+  pointsEarningRules(q: {page: number; size: number; typeCode?: string; all?: boolean}): Promise<EarningRulePage>;
+  pointsEarningHistory(scope: string, typeCode?: string): Promise<EarningRule[]>;
+  changePointsEarningRule(v: EarningChange): Promise<EarningRule>;
+  previewPointsEarning(v: {categoryNo: string | null; cashMinor: number; typeCode?: string; currency?: string}): Promise<EarningCalculation>;
   pointsTypes(): Promise<PointsTypeConfig[]>;
   createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
   transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;
+  renamePointsType(v: PointsTypeRename): Promise<PointsChangeResult>;
   pointsFallback(typeCode: string): Promise<PointsFallback>;
   savePointsFallback(v: PointsFallbackChange): Promise<PointsChangeResult>;
   pointsSwitches(q: PointsCursor): Promise<PointsSwitchPage>;
@@ -76,6 +79,10 @@ export interface FinanceApi {
   retryPointsEvent(v: PointsEventRetry): Promise<PointsOperation>;
 
   pointsAccount(q: PointsAccountQ): Promise<PointsAccountView>;
+  pointsAccounts(q: PointsAccountsQ): Promise<PointsCursorPage<PointsAccountView>>;
+  pointsTransactions(q: PointsTransactionsQ): Promise<PointsCursorPage<PointsTransactionView>>;
+  pointsTransaction(typeCode: string, voucherNo: string): Promise<{ direction: PointsTransactionDirection; voucher: PointsVoucherView; entries: PointsCursorPage<PointsEntryView> }>;
+  pointsPeriodStats(q: { typeCode: string; from: string; to: string }): Promise<PointsStatsPeriod>;
   freezePointsAccount(v: PointsFreeze): Promise<PointsOperation>;
   pointsVouchers(q: PointsCursor): Promise<PointsCursorPage<PointsVoucherView>>;
   pointsEntries(q: PointsEntriesQ): Promise<PointsCursorPage<PointsEntryView>>;

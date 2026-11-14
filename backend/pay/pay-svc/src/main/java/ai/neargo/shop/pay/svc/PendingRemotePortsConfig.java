@@ -50,6 +50,15 @@ public class PendingRemotePortsConfig {
         ai.neargo.shop.spi.trade.RefundSplitBackPort.class,     // 1
         ai.neargo.shop.spi.user.PickupQueryPort.class,          // 1
         /*
+         * 2026-10-28 补（pay-guard 开发计划 M7.1）：渠道回调 controller 随回调守卫进了 pay-portal、pay-svc 装上回调入口后，
+         * 它的 OrderRepairPort#markPaid（回调后投影订单）在这个进程里没有实现。M7.3 改成支付事件驱动（Outbox →
+         * shop-app /internal/shop/v1/pay-events）后这一行删掉；在那之前独立形态的回调会在投影这一步抛（入账已先完成）。
+         */
+        ai.neargo.shop.spi.trade.OrderRepairPort.class,         // 1（回调投影）
+        // 同上：回调入账走 SettlePort#settlePayment，而它的实现是 shop-app 的 paybridge 适配器（要编排交易与商户快照）。
+        // M7.2 / M7.3 后由支付侧直接入账 + 事件投影，这一行随之删掉
+        ai.neargo.shop.spi.settle.SettlePort.class,             // 1（回调入账）
+        /*
          * 2026-10-09 补：放款批 2（52e5ad56f）给 PayoutServiceImpl 加了这个构造参数，
          * 而它的唯一实现在 shop-merchant —— 这个进程不引业务模块，于是**整个 pay-svc 起不来**
          * （UnsatisfiedDependencyException: payoutServiceImpl 构造参数 3），

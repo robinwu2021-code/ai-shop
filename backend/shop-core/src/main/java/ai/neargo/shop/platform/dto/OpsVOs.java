@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform.dto;
 
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+
 import java.util.List;
 
 /** 平台端对外结构。 */
@@ -18,14 +20,27 @@ public final class OpsVOs {
      * @param mustChangePassword 首登必须改密。**要透给前端** ——
      *     不透的话新员工拿一次性密码登进来就能一直用，
      *     而那个密码经过了建号人的屏幕与剪贴板。
+     * @param secondFactorExempt 免二次验证白名单：第二因子开着时这个账号只凭密码登录
      */
     public record StaffVO(String staffNo, String username, String realName,
                           List<String> roles, List<String> perms, String status,
                           String merchantNo, String communityNo, String pickupNo,
-                          Long lastLoginAt, boolean mustChangePassword) {
+                          Long lastLoginAt, boolean mustChangePassword, boolean secondFactorExempt) {
     }
 
-    public record LoginResultVO(String token, StaffVO staff) {
+    /**
+     * 登录结果。开着第二因子时，密码那一步只回 {@code challenge}（挑战号）与 {@code challengeTo}（码发到哪个邮箱，已掩码），
+     * {@code token} / {@code staff} 为空；第二步 {@code /ops/auth/login/verify} 才回会话。
+     */
+    public record LoginResultVO(String token, StaffVO staff, String challenge, String challengeTo) {
+
+        public LoginResultVO(String token, StaffVO staff) {
+            this(token, staff, null, null);
+        }
+
+        public static LoginResultVO challenge(String challenge, String challengeTo) {
+            return new LoginResultVO(null, null, challenge, challengeTo);
+        }
     }
 
     /**
@@ -93,7 +108,13 @@ public final class OpsVOs {
                                    * <p>C 端拿到它但<b>不渲染</b>：端内出现任何与推荐/奖励相关的展示，
                                    * 都会把「拉人头 + 奖励」这件事搬回小程序里，而那正是要避开的。
                                    */
-                                  String referrerPhone) {
+                                  String referrerPhone,
+                                  String ownerUserNo, String marketCode,
+                                  MerchantAdminPort.InitialStore storeProfile,
+                                  String storeNo) {
+        public MerchantApplyVO(String applyNo, String merchantNo, String name, String subject, String contactName, String contactPhone, String category, String desc, String serviceScope, List<String> communityNos, List<String> licenses, boolean asPickupPoint, String industry, String industryNote, String status, String rejectReason, long createdAt, long auditedAt, List<QualificationItemVO> qualificationItems, boolean onBehalf, long agreedAt, String referrerPhone) {
+            this(applyNo, merchantNo, name, subject, contactName, contactPhone, category, desc, serviceScope, communityNos, licenses, asPickupPoint, industry, industryNote, status, rejectReason, createdAt, auditedAt, qualificationItems, onBehalf, agreedAt, referrerPhone, null, null, null, null);
+        }
     }
 
     /** @param expireAt 有效期截止（毫秒）；<b>null = 长期有效</b> */

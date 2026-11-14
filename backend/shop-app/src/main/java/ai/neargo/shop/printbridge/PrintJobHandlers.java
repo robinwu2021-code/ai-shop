@@ -2,8 +2,8 @@ package ai.neargo.shop.printbridge;
 
 import ai.neargo.job.api.*;
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.dispatch.*;
-import ai.neargo.shop.print.monitor.PrintMaintenanceService;
+import ai.neargo.shop.printing.center.dispatch.*;
+import ai.neargo.shop.printing.center.monitor.PrintMaintenanceService;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>cloud.tianai.captcha</groupId>
+    <artifactId>tianai-captcha-parent</artifactId>
+    <version>1.5.6</version>
+  </parent>
+  <groupId>cloud.tianai.captcha</groupId>
+  <artifactId>tianai-captcha</artifactId>
+  <version>1.5.6</version>
+  <name>tianai-captcha</name>
+  <description>行为验证码</description>
+  <url>https://gitee.com/tianai/tianai-captcha</url>
+  <licenses>
+    <license>
+      <name>The MulanPSL2 License, Version 2.0</name>
+      <url>http://license.coscl.org.cn/MulanPSL2</url>
+    </license>
+  </licenses>
+  <properties>
+    <skipTests>true</skipTests>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <java.version>1.8</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.42</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.30</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>8</source>
+          <target>8</target>
+          <compilerArgument>-parameters</compilerArgument>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -9,6 +9,8 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.ratelimit.RateLimiter;
+import ai.neargo.shop.common.ratelimit.RateRule;
 import ai.neargo.shop.fulfillment.dto.PickingRowVO;
 import ai.neargo.shop.fulfillment.dto.PickupOrderVO;
 import ai.neargo.shop.fulfillment.dto.PickupOverviewVO;
@@ -20,6 +22,7 @@ import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.VerifyLogMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,13 +38,40 @@ public class PickupServiceImpl implements PickupService {
     private final PickupQueryPort pickupPort;
     private final VerifyLogMapper logMapper;
     private final ShortageReportMapper shortageMapper;
+    private final RateLimiter limiter;
+
+    /**
+     * 一次批量核销最多几个码。
+     *
+     * <p>批量是给「一个人拿着几张单来取」或「店员把今天攒下的几单一起点掉」用的，
+     * 现实里一屏勾选也就十几单；50 留足了余量。不设上限的话，一个请求就能把
+     * 一段 6 位码空间整段扫过去 —— 下面那道失败闸也只能事后才拦。
+     */
+    static final int MAX_BATCH = 50;
+
+    /**
+     * 同一个店员<b>连续</b>核销失败多少次后锁定一段时间。
+     *
+     * <p>按「连续」不按「累计」：成功一次就清零，正常店员一天扫几百单、偶尔扫错几次永远碰不到；
+     * 而逐个试码的人几乎全是失败，20 次之后就被挡住。按人（userNo）计而不是按点计 ——
+     * 按点计的话一个人试码会把同店的同事一起锁掉。
+     *
+     * <p>⚠️ 闸是进程内的（{@link ai.neargo.shop.common.ratelimit.InMemoryRateLimiter}），
+     * 多实例下实际阈值是「每实例 N 次」，评估时按最坏情况乘实例数。
+     */
+    static final int MAX_CONSECUTIVE_FAILURES = 20;
+
+    private static final RateRule VERIFY_FAIL_RULE =
+            RateRule.of("pickup.verify.fail", Duration.ofMinutes(15), MAX_CONSECUTIVE_FAILURES);
 
     public PickupServiceImpl(FulfillmentQueryPort orderPort, PickupQueryPort pickupPort,
-                             VerifyLogMapper logMapper, ShortageReportMapper shortageMapper) {
+                             VerifyLogMapper logMapper, ShortageReportMapper shortageMapper,
+                             RateLimiter limiter) {
         this.orderPort = orderPort;
         this.pickupPort = pickupPort;
         this.logMapper = logMapper;
         this.shortageMapper = shortageMapper;
+        this.limiter = limiter;
     }
 
     @Override
@@ -64,7 +94,7 @@ public class PickupServiceImpl implements PickupService {
     @Transactional
     public VerifyResultVO verify(String verifyCode, boolean onBehalf) {
         String operator = SecurityUtils.currentUserNo();
-        VerifyResultVO result = doVerify(verifyCode);
+        VerifyResultVO result = guardedVerify(verifyCode, operator);
         // **失败也记日志**：「顾客说扫不了」这类纠纷，能查的只有失败记录，只记成功等于没记
         log(verifyCode, result, operator,
                 onBehalf ? FulVerifyLog.TYPE_ON_BEHALF : FulVerifyLog.TYPE_SCAN);
@@ -74,11 +104,17 @@ public class PickupServiceImpl implements PickupService {
     @Override
     @Transactional
     public BatchResult verifyBatch(List<String> verifyCodes) {
+        if (verifyCodes != null && verifyCodes.size() > MAX_BATCH) {
+            // 整批拒绝而不是截断：截断会让店员以为后面那些也核销了
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String operator = SecurityUtils.currentUserNo();
         int success = 0;
         List<VerifyResultVO> failed = new ArrayList<>();
         for (String code : verifyCodes == null ? List.<String>of() : verifyCodes) {
-            VerifyResultVO r = doVerify(code);
-            log(code, r, SecurityUtils.currentUserNo(), FulVerifyLog.TYPE_BATCH);
+            // 与单个核销走同一道失败闸 —— 批量入口不能成为绕开它的那条路
+            VerifyResultVO r = guardedVerify(code, operator);
+            log(code, r, operator, FulVerifyLog.TYPE_BATCH);
             if (r.success()) {
                 success++;
             } else {
@@ -89,18 +125,40 @@ public class PickupServiceImpl implements PickupService {
         return new BatchResult(success, failed);
     }
 
+    /**
+     * 先占一次尝试配额再查码；成功清零。
+     *
+     * <p><b>每次尝试都计数、成功才清零</b>，等价于「连续失败 N 次锁定」，而且锁在<b>查之前</b>：
+     * 只在失败后才计数的话，锁定后那一次查询照样发生，猜中了照样核销成功 —— 锁的只是回包。
+     */
+    private VerifyResultVO guardedVerify(String verifyCode, String operator) {
+        String key = "pickup:verify:fail:" + operator;
+        if (!limiter.tryAcquire(key, VERIFY_FAIL_RULE).allowed()) {
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
+        VerifyResultVO r = doVerify(verifyCode);
+        if (r.success()) {
+            limiter.reset(key);
+        }
+        return r;
+    }
+
     private VerifyResultVO doVerify(String verifyCode) {
         var found = orderPort.findByVerifyCode(verifyCode);
-        if (found.isEmpty()) {
+        BizContext ctx = BizContext.current();
+        if (found.isEmpty() || !ctx.pickupNos().contains(found.get().pickupNo())) {
+            /*
+             * **别的点的码与不存在的码，回包一模一样**（同一个原因、不带子单号）。
+             *
+             * 此前非本点回 NOT_THIS_PICKUP 并带回子单号，本意是让店员把顾客支去对的点；
+             * 代价是核销台成了探测器：一个店员账号逐个试 6 位码，就能知道哪些码是活的、
+             * 对应哪张子单。顾客走错点这件事，顾客自己的订单页上写着自提点，
+             * 不需要由核销台替他说出来。与 {@code reportShortage} 里「不在本点就 404」同一个取舍。
+             */
             return VerifyResultVO.fail(VerifyResultVO.NOT_FOUND);
         }
         PickupOrder order = found.get();
 
-        BizContext ctx = BizContext.current();
-        if (!ctx.pickupNos().contains(order.pickupNo())) {
-            // 非本点：明确告诉店主「这单不在你这儿」，他才能让顾客去对的点
-            return VerifyResultVO.fail(VerifyResultVO.NOT_THIS_PICKUP, order.subOrderNo());
-        }
         switch (order.status()) {
             case "COMPLETED" -> {
                 return VerifyResultVO.fail(VerifyResultVO.ALREADY_VERIFIED, order.subOrderNo());

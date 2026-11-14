@@ -92,7 +92,7 @@ public class TestPayGateway implements PayGateway {
     public PrepayResult prepay(PrepayCommand cmd) {
         if (cmd.amountMinor() <= 0) {
             // 真通道一定会拒 0 元单，这里也拒 —— 恒成功的桩会让这种错在联调里永不暴露
-            return PrepayResult.fail("金额必须大于 0");
+            return PrepayResult.notSent("金额必须大于 0");
         }
         String tradeNo = placeOrder(cmd.outTradeNo(), cmd.amountMinor());
         return PrepayResult.ok(Map.of(
@@ -166,7 +166,11 @@ public class TestPayGateway implements PayGateway {
 
     @Override
     public Result subsidyReturn(TxContext ctx, long amountMinor, String requestNo, String description) {
-        log.info("[test-channel] 补差回退 tx={} amount={} req={}", ctx.tradeNo(), amountMinor, requestNo);
+        log.info(
+                "[test-channel] 补差回退 tx={} amount={} req={}",
+                ctx.tradeNo(),
+                amountMinor,
+                requestNo);
         return Result.ok("TEST-SUBSIDY-RET-" + requestNo);
     }
 
@@ -178,7 +182,11 @@ public class TestPayGateway implements PayGateway {
 
     @Override
     public Result splitReverse(TxContext ctx, long amountMinor, String requestNo) {
-        log.info("[test-channel] 分账回退 tx={} amount={} req={}", ctx.tradeNo(), amountMinor, requestNo);
+        log.info(
+                "[test-channel] 分账回退 tx={} amount={} req={}",
+                ctx.tradeNo(),
+                amountMinor,
+                requestNo);
         return Result.ok("TEST-SPLIT-REV-" + requestNo);
     }
 

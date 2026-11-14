@@ -2,9 +2,12 @@ package ai.neargo.shop.trade.order.service.create;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
-import java.util.List;
+
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /** Only a known, fully rolled-back shortage permits dropping gifts and retrying paid quantities. */
 @Component
@@ -34,6 +37,14 @@ public class OrderStockAllocator {
         }
         lock(payNo, paidOnly);
         return false;
+    }
+
+    /** The concrete selected adapter is the reservation authority, not a desired property value. */
+    public String selectedAuthority() {
+        if (!(stock instanceof ReservationOwner owner)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        return owner.stockAuthority();
     }
 
     private void lock(String no, List<StockPort.SkuQty> needs) {

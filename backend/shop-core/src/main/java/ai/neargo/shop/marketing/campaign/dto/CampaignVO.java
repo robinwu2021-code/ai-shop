@@ -31,5 +31,25 @@ public record CampaignVO(String campaignNo,
                           * 只对这家门店生效；<b>空 = 全主体</b>。
                           * 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。
                           */
-                         String storeNo) {
+                         String storeNo, String documentNo) {
+        public CampaignVO(String campaignNo,
+                         String merchantNo,
+                         String type,
+                         String name,
+                         String status,
+                         long startAt,
+                         long endAt,
+                         Long thresholdMinor,
+                         Long discountMinor,
+                         Long flashPriceMinor,
+                         Integer buyN,
+                         Integer giftM,
+                         List<String> goodsNos,
+                         Integer totalCount,
+                         Integer takenCount,
+                         int usedCount,
+
+                         String storeNo) { this(campaignNo, merchantNo, type, name, status, startAt, endAt, thresholdMinor, discountMinor, flashPriceMinor, buyN, giftM, goodsNos, totalCount, takenCount, usedCount, storeNo, null); }
+        public CampaignVO withDocumentNo(String number) { return new CampaignVO(campaignNo, merchantNo, type, name, status, startAt, endAt, thresholdMinor, discountMinor, flashPriceMinor, buyN, giftM, goodsNos, totalCount, takenCount, usedCount, storeNo, number); }
+
 }

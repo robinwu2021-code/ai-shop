@@ -1,3 +1,4 @@
+import ts from "typescript";
 // 共享组件库的边界。
 //
 // 这些断言守的是**抽取之后最容易悄悄退回去的几件事**：
@@ -245,7 +246,7 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     // ⚠️ **改名要同时改这里。** 2026-09-08 把 c 端的 `biz-region-picker` 改成
     //    `biz-address-region` 之后这条闸门当场变红 —— 而它报的是「这个件不在
     //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
-    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
+    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker",
     // 切店幕布：position fixed 整屏盖住，与 sh-dialog 同一层
     "biz-switch-curtain",
@@ -257,7 +258,11 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     "biz-category-sheet",
     // 分享海报：根是 sh-sheet。它的 <canvas> 是离屏画布，不能 v-if ——
     // createCanvasContext 要求节点真在文档里 —— 所以宿主节点一直在，更不能给它外边距
-    "biz-poster"]);
+    "biz-poster",
+    // Stored-value recharge is rooted in sh-sheet; its host must not receive flow spacing.
+    "stored-value-recharge-sheet",
+    // Consumer confirmation is also rooted in sh-sheet, outside document flow.
+    "stored-value-service-sheet"]);
 
   /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
    *  2026-09-06 在块间缝那段之前又插了一段（button::after 重置），
@@ -311,7 +316,10 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
 
   it("页面顶层的在流组件，都在小程序那份名单里", () => {
     const offenders = tops
-      .filter(({ tag }) => !BUILTIN.has(tag) && !OVERLAY.has(tag) && !listed.has(tag))
+      .filter(({ tag }) => {
+        const name = tag.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+        return !BUILTIN.has(name) && !OVERLAY.has(name) && !listed.has(name);
+      })
       .map(({ app, file, tag }) => `${app}/${file}  <${tag}>`);
     expect(
       [...new Set(offenders)],
@@ -1769,7 +1777,7 @@ describe("拉数据的页面要区分出错与空", () => {
          *     而那正是这一页真正的处理。
          * 现在只认两样：声明了一个 `*[Ff]ailed` 的 ref，或者把 `:failed` 绑给了某个件。
          */
-        if (/\bconst\s+\w*(?:failed|Failed|errMsg|ErrMsg)\s*=\s*ref\(/.test(src)) continue;
+        if (declaresFailureRef(src)) continue;
         if (/:failed=/.test(src)) continue;
         bad.push(`${app}/${rel.split("/")[0]}`);
       }
@@ -1804,4 +1812,28 @@ describe("拉数据的页面要区分出错与空", () => {
     const stale = [...baseline].filter((p) => !live.has(p));
     expect(stale, `这些页面已经有出错态了，名单该删：\n${stale.join("\n")}`).toEqual([]);
   });
+});
+
+
+/** Variable declarations may share a const statement; indentation is not a contract. */
+function declaresFailureRef(source: string): boolean {
+  const script = source.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? source;
+  const file = ts.createSourceFile("page.ts", script, ts.ScriptTarget.Latest, true);
+  let found = false;
+  function visit(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)
+        && /(?:failed|Failed|errMsg|ErrMsg)$/.test(node.name.text) && node.initializer
+        && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)
+        && node.initializer.expression.text === "ref") found = true;
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  return found;
+}
+
+it("failure-ref scan handles comma declarations and rejects labels or unrelated properties", () => {
+  expect(declaresFailureRef('const busy=ref(false),failed=ref(false);')).toBe(true);
+  expect(declaresFailureRef('const draftFailed=ref(false);')).toBe(true);
+  expect(declaresFailureRef('const failedText=ref("retry");')).toBe(false);
+  expect(declaresFailureRef('const labels={failed:ref("retry")};')).toBe(false);
 });

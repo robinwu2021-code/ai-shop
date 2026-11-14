@@ -16,7 +16,7 @@ public final class CouponQuotePolicy {
     public List<CouponAllocation> calculate(String instanceNo, EntitlementDefinition rule, UseSourceFact source) {
         if (!"ORDER_COUPON".equals(rule.kind())) throw BizException.of(ErrorCode.CONFLICT);
         var eligible = source.items().stream().filter(i -> switch (rule.redemptionScope().mode()) {
-            case "ALL" -> true;
+            case "ALL", "BRAND_STORES" -> true;
             case "STORES" -> rule.redemptionScope().refs().contains(source.storeNo());
             case "GOODS" -> rule.redemptionScope().refs().contains(i.itemNo());
             case "CATEGORIES" -> source.categoryRefsByLine().getOrDefault(i.orderLineNo(), List.of()).stream()

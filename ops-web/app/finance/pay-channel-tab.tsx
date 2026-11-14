@@ -31,25 +31,29 @@ const pct = (bp: number) => `${(bp / 100).toFixed(2)}%`;
 /** `*` 是存储值，不该直接显示给人看。 */
 const anyLabel = (v: string) => (v === "*" ? "—" : v);
 
+/** 把库里的市场值拆成码。JSON 串（`["CN"]`）优先；不是 JSON 就按逗号分隔兜一手 —— 运营在 prompt 里填的也是这种。 */
+function parseMarkets(raw: string | null | undefined): string[] {
+  if (!raw || !raw.trim()) return [];
+  try {
+    const v = JSON.parse(raw);
+    return (Array.isArray(v) ? v : [v]).map(String).map((x) => x.trim()).filter(Boolean);
+  } catch {
+    return raw.split(",").map((x) => x.trim()).filter(Boolean);
+  }
+}
+
 /**
  * 可用市场：库里存的是 JSON 串（`["CN"]`），**不能原样端上来**。
  *
  * 两件事都要说对：
- *   · 空 / null = **全部市场**，不是「没有市场」—— 后端 `marketAllowed` 就是这么判的。
- *     显示成「—」会让运营以为这个通道谁都用不了，而它其实是全开的。
+ *   · 空 / null / `[]` = **哪个市场都不可用**。W2 起 `sys_pay_channel_market` 是显式表，
+ *     「无行 = 不可用」（db/pay V12），后端对无行渠道回 `"[]"`。
+ *     以前这里显示「全部市场」—— 那是旧语义，现在会让运营以为一条没开通的通道是全开的。
  *   · 有值时按市场名显示，`CN` 这种码只有做过这块的人认得。
  */
-function marketsLabel(raw: string | null | undefined, names: Map<string, string>, all: string): string {
-  if (!raw || !raw.trim()) return all;
-  let codes: string[];
-  try {
-    const v = JSON.parse(raw);
-    codes = Array.isArray(v) ? v.map(String) : [String(v)];
-  } catch {
-    // 不是 JSON 就按逗号分隔兜一手：解析失败时显示原串也好过显示「全部」
-    codes = raw.split(",").map((x) => x.trim()).filter(Boolean);
-  }
-  if (!codes.length) return all;
+function marketsLabel(raw: string | null | undefined, names: Map<string, string>, none: string): string {
+  const codes = parseMarkets(raw);
+  if (!codes.length) return none;
   return codes.map((code) => names.get(code) ?? code).join("、");
 }
 
@@ -110,8 +114,8 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
    * 先用一个能看到当前值、能直接改的输入框把链路打通，
    * 等市场变成主数据表（见 TDD-支付域-数据库设计（目标态））再换成多选。
    *
-   * 空字符串 = **所有市场可用**，与后端 marketAllowed 的语义一致；
-   * 提示语里写明这一点，否则运营会以为清空等于「谁都不能用」。
+   * <b>不许清空</b>：W2 起「无市场行 = 哪儿都不可用」，后端收到空列表直接回 BAD_REQUEST。
+   * 前端先拦下来并说清楚 —— 想让通道谁都用不了，该用的是启停开关，不是清空市场。
    */
   const editMarkets = useMutation({
     mutationFn: ({ row, markets }: { row: PayChannelSetting; markets: string }) =>
@@ -126,6 +130,10 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
     const current = row.markets ?? "";
     const next = window.prompt(c.pcMarketsPrompt, current);
     if (next === null || next === current) return;
+    if (!parseMarkets(next).length) {
+      notify.error(c.pcMarketsEmpty);
+      return;
+    }
     editMarkets.mutate({ row, markets: next });
   }
 
@@ -161,9 +169,9 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
           onClick={() => promptMarkets(r)}
           title={c.pcMarketsEditHint}
         >
-          {marketsLabel(r.markets, marketNames, c.pcAllMarkets)}
+          {marketsLabel(r.markets, marketNames, c.pcNoMarkets)}
         </button>
-      ) : marketsLabel(r.markets, marketNames, c.pcAllMarkets)),
+      ) : marketsLabel(r.markets, marketNames, c.pcNoMarkets)),
     },
     { header: c.pcColCurrency, cell: (r) => r.currency ?? "—" },
     { header: c.pcColSettleCycle, cell: (r) => r.settleCycle ?? "—" },

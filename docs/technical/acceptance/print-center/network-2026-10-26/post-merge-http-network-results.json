@@ -1,0 +1,61 @@
+{
+  "mode": "REAL_ISOLATED_H2_HTTP",
+  "client": "NODE_HTTP_POST_MERGE",
+  "status": "PASS",
+  "checks": [
+    {
+      "path": "/biz/print/simulations",
+      "mode": "DROP_REQUEST",
+      "status": "PASS",
+      "operationNo": "PO792e46d3e2bc44fea9669445af34",
+      "targetNo": "SM31e7327175ca4740a064124ea427",
+      "keyHash": "c5c829ebd82438d402c92ac778a390da9befcb6f39671d6b1a44954371726278",
+      "bodyHash": "ac4f05a5ba3013e2fa73211f2100d161b924dd23aca13f7b0c3ee235152fa0b2"
+    },
+    {
+      "path": "/biz/print/simulations",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "PO9af19496d5394d6bae66264c9ed4",
+      "targetNo": "SM9f0091e1b7ab401f803093ea8c60",
+      "keyHash": "af4ee4d96f802ea5c493a0cb27d978c5708d5a4f278a6c93d812e2213659322b",
+      "bodyHash": "ac4f05a5ba3013e2fa73211f2100d161b924dd23aca13f7b0c3ee235152fa0b2"
+    },
+    {
+      "path": "/ops/print/reconciliations",
+      "mode": "DROP_REQUEST",
+      "status": "PASS",
+      "operationNo": "PO7813bcd836b14f84b1f15cf95403",
+      "targetNo": "ST-M0001",
+      "keyHash": "546e448b520ab3d1896aa19636141c830dab75b434306735298cd4fbf02e2560",
+      "bodyHash": "18ada7bc4199fb5e24459ff340986886e3ec8ac33e8c451db76ab5a6697a7479"
+    },
+    {
+      "path": "/ops/print/reconciliations",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "PO7210bc8ec29040c8a92f878c9906",
+      "targetNo": "ST-M0001",
+      "keyHash": "fd18adffa41fa1cf373ef7470173bd81a1feab2a566babe828939ef908b0f3bf",
+      "bodyHash": "18ada7bc4199fb5e24459ff340986886e3ec8ac33e8c451db76ab5a6697a7479"
+    },
+    {
+      "path": "/biz/print/exports",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "POaa31535634e54530a0aec0a7f33b",
+      "targetNo": "EXd4120d7be69549209f7385156fa8",
+      "keyHash": "c1fe77bd84cbd2324a42418693b4f264e02ba9a4c8f5a6ebad5c5628fcbb8c7f",
+      "bodyHash": "8c0c7bf751f57ac09a2a83ccabef17543ab1df0d45c608668c9bf3cc0b66ad1c"
+    }
+  ],
+  "simulationStatuses": [
+    "PASSED",
+    "PASSED"
+  ],
+  "exportStatus": "READY",
+  "limitations": [
+    "Scripted HTTP only; native Chrome recovery evidence was collected earlier and is labeled separately.",
+    "No physical printer, vendor or production database."
+  ]
+}

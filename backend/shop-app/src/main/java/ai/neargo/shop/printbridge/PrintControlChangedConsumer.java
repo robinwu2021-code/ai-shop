@@ -1,5 +1,7 @@
 package ai.neargo.shop.printbridge;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 import ai.neargo.shop.event.*;
 import ai.neargo.shop.print.api.*;
 
@@ -7,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+@ConditionalOnProperty(
         name = "shop.print.enabled",
         havingValue = "true")
 @Component

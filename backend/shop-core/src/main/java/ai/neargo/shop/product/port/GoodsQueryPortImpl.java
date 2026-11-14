@@ -1,21 +1,24 @@
 package ai.neargo.shop.product.port;
 
-import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
-
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.spi.marketing.CampaignPort;
-import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
+import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -53,6 +56,17 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         this.goodsMapper = goodsMapper;
         this.json = json;
         this.campaignPort = campaignPort;
+    }
+
+    /**
+     * 商品草稿：只给待审看板用 —— 在售商品提交的草稿待审时 live 行保持 APPROVED，
+     * 积压只能从草稿表数出来。setter 注入：构造函数被切片测试直接 new，缺了就只数商品行。
+     */
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDraftMapper(ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper) {
+        this.draftMapper = draftMapper;
     }
 
     @Override
@@ -221,6 +235,37 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     @Override
     public Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity) {
+        return snapshots(null, skuNos, storeByEntity);
+    }
+
+    @Override
+    public Map<String, SkuSnapshot> snapshotFor(
+            String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        if (buyerNo == null || buyerNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return snapshots(buyerNo, skuNos, storeByEntity);
+    }
+
+    @Override
+    public Map<String, SkuSnapshot> snapshotForCounter(
+            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+        if (party == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return snapshots(party.userNo(), skuNos, storeByEntity, party);
+    }
+
+    private Map<String, SkuSnapshot> snapshots(
+            String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        return snapshots(buyerNo, skuNos, storeByEntity, null);
+    }
+
+    private Map<String, SkuSnapshot> snapshots(
+            String buyerNo,
+            List<String> skuNos,
+            Map<String, String> storeByEntity,
+            CustomerParty party) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();
         }
@@ -260,7 +305,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 宁可「特价不生效」也不能「按错的价卖」：前者商家会来问，后者没人会发现。
          */
         Map<String, Integer> counts = skuCounts(goodsNos);
-        Map<String, Long> flash = new HashMap<>(campaignPort.flashPrices(goodsNos));
+        Map<String, CampaignPort.PriceOffer> flash =
+                new HashMap<>(
+                        party != null
+                                ? Map.<String, CampaignPort.PriceOffer>of()
+                                : buyerNo == null
+                                        ? campaignPort.flashOffers(goodsNos)
+                                        : campaignPort.flashOffersFor(buyerNo, goodsNos));
         flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
         /*
@@ -299,18 +350,22 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 continue;
             }
             int available = nz(sku.getStock()) - nz(sku.getLockedStock());
+            long basePrice = storePrice.getOrDefault(sku.getSkuNo(), sku.getPrice() == null ? 0L : sku.getPrice());
+            CampaignPort.PriceOffer offer = flash.get(sku.getGoodsNo());
+            boolean discounted = offer != null && offer.priceMinor() < basePrice;
+            long price = discounted ? offer.priceMinor() : basePrice;
             result.put(sku.getSkuNo(), new SkuSnapshot(
                     sku.getSkuNo(), sku.getGoodsNo(), sku.getEntityNo(),
                     g.getTitle(), g.getCover(), sku.getSpec(), g.getType(), g.getCategoryNo(),
-                    flash.getOrDefault(sku.getGoodsNo(),
-                            storePrice.getOrDefault(sku.getSkuNo(),
-                                    sku.getPrice() == null ? 0L : sku.getPrice())),
+                    price,
                     Math.max(available, 0),
                     Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus())
                             && !offHere.contains(sku.getGoodsNo()),
                     readList(g.getFulfillments()),
                     g.getGroupPriceMinor(), g.getGroupMinCount(),
-                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram(), g.getStoreNo()));
+                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram(), g.getStoreNo(),
+                    discounted ? offer.activityNo() : null,
+                    discounted && offer.activityNo() != null ? basePrice - price : 0));
         }
         return result;
     }
@@ -395,6 +450,18 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 .stream().findFirst().orElse(Map.of());
 
         long cnt = row.get("cnt") instanceof Number n ? n.longValue() : 0L;
+        /*
+         * 在售商品提交的草稿：待审记在草稿行上（SUBMITTED），live 行保持 APPROVED 照卖旧版。
+         * 与待审队列同一个口径（MerchantGoodsServiceImpl#auditQueue），同样不绕数据域
+         * （prd_goods_draft 也按 MERCHANT 登记了）—— 卡片与队列对任何人都得是同一个数。
+         */
+        Map<String, Object> drafts = draftMapper == null ? Map.of()
+                : draftMapper.selectMaps(Wrappers.<ai.neargo.shop.product.entity.PrdGoodsDraft>query()
+                                .select("COUNT(*) AS cnt", "MIN(updated_at) AS oldest")
+                                .eq("status", ai.neargo.shop.product.entity.PrdGoodsDraft.SUBMITTED)
+                                .eq("deleted", 0))
+                        .stream().findFirst().orElse(Map.of());
+        cnt += drafts.get("cnt") instanceof Number n ? n.longValue() : 0L;
         if (cnt == 0L) {
             return new AuditBacklog(0L, 0L);
         }
@@ -403,12 +470,19 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 等待是从**这一次提交**开始算的。用创建时间会把「刚改完又交上来」
          * 的那件也算成等了两周，而催的人会去催一件其实刚到的单子。
          */
-        Object oldest = row.get("oldest");
-        LocalDateTime at = oldest instanceof LocalDateTime t ? t
-                : oldest instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+        LocalDateTime at = earlier(toTime(row.get("oldest")), toTime(drafts.get("oldest")));
         long days = at == null ? 0L
                 : Math.max(0L, java.time.Duration.between(at, LocalDateTime.now()).toDays());
         return new AuditBacklog(cnt, days);
+    }
+
+    private static LocalDateTime toTime(Object v) {
+        return v instanceof LocalDateTime t ? t
+                : v instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+    }
+
+    private static LocalDateTime earlier(LocalDateTime a, LocalDateTime b) {
+        return a == null ? b : b == null ? a : a.isBefore(b) ? a : b;
     }
 
     @Override

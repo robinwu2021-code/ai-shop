@@ -20,7 +20,13 @@ public final class OpsPromotionVOs {
     public record OpsCouponVO(String couponNo, String entityNo, String entityName, String title,
                               String benefitMode, long benefitValue, Long benefitCapMinor,
                               Integer totalCount, int receivedCount, Long budgetMinor,
-                              Long maxExposureMinor, String status, List<String> flags) {
+                              Long maxExposureMinor, String status, List<String> flags, String documentNo) {
+        public OpsCouponVO(String couponNo, String entityNo, String entityName, String title,
+                              String benefitMode, long benefitValue, Long benefitCapMinor,
+                              Integer totalCount, int receivedCount, Long budgetMinor,
+                              Long maxExposureMinor, String status, List<String> flags) { this(couponNo, entityNo, entityName, title, benefitMode, benefitValue, benefitCapMinor, totalCount, receivedCount, budgetMinor, maxExposureMinor, status, flags, null); }
+        public OpsCouponVO withDocumentNo(String number) { return new OpsCouponVO(couponNo, entityNo, entityName, title, benefitMode, benefitValue, benefitCapMinor, totalCount, receivedCount, budgetMinor, maxExposureMinor, status, flags, number); }
+
     }
 
     /**
@@ -39,6 +45,14 @@ public final class OpsPromotionVOs {
                                 String scheduleType, Integer quota, int quotaUsed,
                                 Long budgetMinor, long budgetUsedMinor, int audienceCount,
                                 String status, String endedReason, List<String> flags,
-                                int quotaReleased) {
+                                int quotaReleased, String documentNo) {
+        public OpsActivityVO(String activityNo, String entityNo, String entityName,
+                                String name, String triggerType, String benefitType,
+                                String scheduleType, Integer quota, int quotaUsed,
+                                Long budgetMinor, long budgetUsedMinor, int audienceCount,
+                                String status, String endedReason, List<String> flags,
+                                int quotaReleased) { this(activityNo, entityNo, entityName, name, triggerType, benefitType, scheduleType, quota, quotaUsed, budgetMinor, budgetUsedMinor, audienceCount, status, endedReason, flags, quotaReleased, null); }
+        public OpsActivityVO withDocumentNo(String number) { return new OpsActivityVO(activityNo, entityNo, entityName, name, triggerType, benefitType, scheduleType, quota, quotaUsed, budgetMinor, budgetUsedMinor, audienceCount, status, endedReason, flags, quotaReleased, number); }
+
     }
 }

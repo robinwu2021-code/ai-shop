@@ -1,0 +1,6 @@
+# Explicit evidence-only publication contract. Does not switch the host PLATFORM source or delivery consumers.
+# Only the two immutable beauty version events may be archived, and declared consumers/routes reject this mode.
+shop:
+  beauty:
+    publication:
+      archive-only: true

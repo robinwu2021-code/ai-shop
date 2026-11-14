@@ -37,6 +37,11 @@ class PointsOrderClosureFlowTest {
     @Autowired OrderPointsClosureFlowService flow;
     @Autowired OrderPointsFactService facts;
     @Autowired JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void owners() {
+        StoreOwnerFixture.store(jdbc, "M", "ST");
+    }
     @Autowired PlatformTransactionManager tx;
     @Autowired TradeStatusWriter statusWriter;
     @Autowired StoreOrderMapper subs;

@@ -31,7 +31,10 @@ class MenuChannelBindingServiceTest extends FoodWriteGuardFixture {
     record State(Fixture fixture,MenuChannelBindingServiceImpl service,
             AtomicBoolean authorized,AtomicBoolean fail,AtomicBoolean outage) { }
     private void run(Consumer<State> test) {
-        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
+        runner()
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
+                .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f=prepare(c); StorePolicyPublicationTest.createPolicyTables(f);
             String common="id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                     +"entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"

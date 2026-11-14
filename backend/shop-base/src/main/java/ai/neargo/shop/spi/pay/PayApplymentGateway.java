@@ -49,11 +49,15 @@ public interface PayApplymentGateway {
      * @param settleAccountType  结算账户形态 PERSONAL_BANK_CARD / MERCHANT_ID
      * @param settleAccount      结算账号**明文**。<b>只在本次调用中存在</b> ——
      *                           不落库、不进日志，库里只留 {@code settle_account_masked}
+     * @param storeNo            为哪家门店进件；空串 = 主体级
+     * @param requestNo          发给通道的外部单号（微信 {@code out_request_no} / 支付宝 {@code out_biz_no}），
+     *                           <b>每张进件单、每次提交唯一</b>。此前直接用主体编号，同一主体的主体级与门店级进件在通道侧撞单（F04 · Review R04）
      */
     record SubmitCommand(String entityNo, String entityName, String legalForm,
                          String contactName, String contactPhone,
                          java.util.List<String> licenses,
-                         String settleAccountType, String settleAccount) {
+                         String settleAccountType, String settleAccount,
+                         String storeNo, String requestNo) {
     }
 
     /**

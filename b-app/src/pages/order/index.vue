@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import ShPointsEarning from "@ai-shop/ui/components/sh-points-earning.vue";
+import type { OrderPointsEarning } from "@shared/types";
 // 订单详情 + 履约动作（B-11.4.2/4.3/4.7）。
 //
 // 一个页面只给一个主动作：快递单给「填运单号发货」，自送单给「已送达」，
 // 自提单什么都不给 —— 自提的动作在履约台（核销），不在这里。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad, onShow, onPullDownRefresh } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -25,6 +27,23 @@ const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+const earningRows = ref<OrderPointsEarning[]>([]);
+const earningFailed = ref(false);
+let earningEpoch = 0;
+async function loadEarning() {
+  const no = order.value?.orderNo;
+  const store = merchant.storeNo;
+  const token = ++earningEpoch;
+  earningRows.value = []; earningFailed.value = false;
+  if (!no) return;
+  try {
+    const rows = await api.mOrderPointsEarning(no);
+    if (token === earningEpoch && store === merchant.storeNo && order.value?.orderNo === no) earningRows.value = rows;
+  } catch { if (token === earningEpoch && store === merchant.storeNo && order.value?.orderNo === no) earningFailed.value = true; }
+}
+
+watch(() => merchant.storeNo, () => { ++earningEpoch; earningRows.value = []; earningFailed.value = false; });
+
 const inventoryTrace = ref<MerchantInventoryTrace | null>(null);
 const activeAfterSale = ref<AfterSale | null>(null);
 type FulfillmentOptions = Awaited<ReturnType<typeof api.mFulfillmentOptions>>;
@@ -220,6 +239,7 @@ async function load(orderNo: string) {
   try {
     await merchant.ensureScope();
     order.value = await api.mOrderDetail(orderNo);
+    void loadEarning();
     inventoryTrace.value = await api.mOrderInventoryTrace(orderNo).catch(() => null);
     activeAfterSale.value = merchant.can("biz:aftersale")
       ? await api.mActiveAfterSaleForOrder(orderNo).catch(() => null) : null;
@@ -502,6 +522,7 @@ function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter
     @retry="() => load(currentNo)"
   >
     <template v-if="order">
+      <ShPointsEarning :rows="earningRows" :failed="earningFailed" @retry="loadEarning" />
       <view v-if="merchant.can('biz:print:read')" class="sh-card sh-cell"
         @tap="openPrintCenter">
         <text>{{ $t('printCenter.orderEntry') }}</text><sh-go :text="String($t('printCenter.viewTasks'))" />
@@ -561,9 +582,9 @@ function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter
 
       <view class="sh-card">
         <view class="line sh-row sh-row--between">
-          <text class="sh-muted">{{ $t("order.no") }}</text>
+          <text v-if="order.documentNo" class="sh-muted">{{ $t("order.no") }}</text>
           <view class="sh-row no-row__v">
-            <text class="sh-num">{{ order.payOrderNo || order.orderNo }}</text>
+            <text v-if="order.documentNo" class="sh-num">{{ order.documentNo }}</text>
             <!-- 复制订单信息发给供应商（§5）。**不占一整行**：它是顺手动作，
                  而整宽按钮会把它读成这一页的主动作，挤掉真正的主动作（发货）。
                  贴在订单号右边：复制的正是这张卡上的东西 -->

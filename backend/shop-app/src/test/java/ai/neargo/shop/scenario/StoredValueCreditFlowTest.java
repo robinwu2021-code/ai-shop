@@ -66,8 +66,22 @@ class StoredValueCreditFlowTest {
                 .allSatisfy(row -> assertThat(((Number) row.get("net")).longValue()).isZero());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_user_store_index WHERE user_no=? AND has_recharge=1",
                 Integer.class, user)).isOne();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox WHERE aggregate_no=?", Integer.class,
-                c.rechargeNo())).isOne();
+        // The original credit contract and the independent print receipt each occur exactly once.
+        assertThat(jdbc.queryForList("SELECT event_type FROM pay_ent_outbox WHERE aggregate_no=? ORDER BY event_type",
+                String.class, c.rechargeNo())).containsExactly("STORED_VALUE_CREDITED", "STORED_VALUE_RECEIPT_CONFIRMED");
+        String creditedNo = jdbc.queryForObject("SELECT event_no FROM pay_ent_outbox WHERE aggregate_no=?"
+                + " AND event_type='STORED_VALUE_CREDITED'", String.class, c.rechargeNo());
+        String receiptNo = jdbc.queryForObject("SELECT event_no FROM pay_ent_outbox WHERE aggregate_no=?"
+                + " AND event_type='STORED_VALUE_RECEIPT_CONFIRMED'", String.class, c.rechargeNo());
+        assertThat(creditedNo).isEqualTo(ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.no("SC",
+                java.util.List.of("MAIN", c.rechargeNo()), json));
+        assertThat(receiptNo).isEqualTo(ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.no("SP",
+                java.util.List.of("STORED_VALUE_RECEIPT_CONFIRMED", "MAIN", c.rechargeNo()), json)).isNotEqualTo(creditedNo);
+        var receipt = json.readTree(jdbc.queryForObject("SELECT payload FROM pay_ent_outbox WHERE aggregate_no=?"
+                + " AND event_type='STORED_VALUE_RECEIPT_CONFIRMED'", String.class, c.rechargeNo()));
+        assertThat(receipt.path("principalAmountMinor").asLong()).isEqualTo(10000);
+        assertThat(receipt.path("giftAmountMinor").asLong()).isEqualTo(2000);
+        assertThat(receipt.path("balanceAfterMinor").asLong()).isEqualTo(12000);
         assertThat(json.writeValueAsString(first)).doesNotContain("principal", "bonus", "receiptRef", "receiptDigest");
     }
     @Test void failedCreditOutboxRollsBackAllPostingAndKeepsReceivedPromiseForRetry() {

@@ -7,6 +7,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -55,6 +56,23 @@ public class ChannelMessageRecorder {
     }
 
     /**
+     * 停写开关（TDD-支付服务-I2渠道统一封装 S8）：{@code both}（默认）= 照写；{@code new} = 只写四向记录
+     * （{@code pay_channel_call_log} / {@code pay_callback_log}），这张表停写、留着读与按保留期清理。
+     * 四向记录在生产上跑稳一个对账周期后再切 —— 切了之后这里查不到新报文是预期，不是故障。
+     */
+    private volatile boolean writing = true;
+
+    @Autowired
+    void setRecording(@Value("${shop.pay.log.recording:both}") String recording) {
+        this.writing = !"new".equalsIgnoreCase(recording.trim());
+    }
+
+    /** 是否仍在写这张表 */
+    public boolean writing() {
+        return writing;
+    }
+
+    /**
      * 删掉超过保留期的报文。<b>不走 MyBatis-Plus 的逻辑删除</b>：
      * 逻辑删除只是把 {@code deleted} 置 1，表还是那么大 ——
      * 而这个任务存在的全部理由就是让表别一直长。
@@ -82,6 +100,9 @@ public class ChannelMessageRecorder {
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public String received(String payChannel, String api,
                            Map<String, String> headers, String rawBody) {
+        if (!writing) {
+            return null;
+        }
         try {
             StlChannelMessage m = new StlChannelMessage();
             m.setMessageNo(BizKey.next(BizKey.CHANNEL_MESSAGE));
@@ -109,7 +130,7 @@ public class ChannelMessageRecorder {
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public void settle(String messageNo, String outcome, String reason,
                        String bizNo, String paymentNo, Map<String, ?> payload) {
-        if (messageNo == null) {
+        if (messageNo == null || !writing) {
             return;
         }
         try {
@@ -137,6 +158,9 @@ public class ChannelMessageRecorder {
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public void sent(String payChannel, String api, String bizNo,
                      boolean ok, String reason, Map<String, ?> body) {
+        if (!writing) {
+            return;
+        }
         try {
             StlChannelMessage m = new StlChannelMessage();
             m.setMessageNo(BizKey.next(BizKey.CHANNEL_MESSAGE));

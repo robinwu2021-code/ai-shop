@@ -1,0 +1,18 @@
+{
+  "marker": "OPS-FLOW-20261111",
+  "system": {
+    "parentCreatedFromRealOpsUi": true,
+    "parentDisabled": true,
+    "childCreatedAndUpdated": true,
+    "staleVersionRejected": true,
+    "invalidRateRejectedWithoutChangingTW": true,
+    "unauthenticatedRejected": true,
+    "testRowsDisabled": true
+  },
+  "profileRead": {
+    "profileNo": "UME-TW-BANK",
+    "profileVersion": 2,
+    "enabled": true,
+    "currency": "TWD"
+  }
+}

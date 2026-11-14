@@ -31,12 +31,17 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.mapper.ReservationTableMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.TableAreaChanged;
 import ai.neargo.shop.spi.food.TableChanged;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -63,11 +68,20 @@ public class TableServiceImpl implements TableService {
     private final TransactionTemplate transaction;
     private final TransactionTemplate tableTransaction;
     private final TableMapper tables;
+    private final ReservationTableMapper reservationTables;
 
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
             IdempotencyService idempotency,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this(areas, tables, actions, idempotency, publisher, manager, null);
+    }
+    @Autowired
+    public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
+            IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ReservationTableMapper reservationTables) {
+        this.reservationTables = reservationTables;
         this.areas = areas;
         this.tables = tables;
         this.actions = actions;
@@ -247,6 +261,12 @@ public class TableServiceImpl implements TableService {
         if (value == null || value < 0) throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
+    private void noReservation(String entity, String store, String table) {
+        if (reservationTables != null && reservationTables.pending(entity, store, table,
+                LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)) > 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
     private static boolean validStatus(String status) { return "ACTIVE".equals(status) || "DISABLED".equals(status); }
     @Override
     @Transactional(transactionManager="transactionManager", readOnly=true)
@@ -331,6 +351,9 @@ public class TableServiceImpl implements TableService {
         return tableWrite("SAVE_TABLE", entityNo, currentStoreNo, actorNo, key, hash, TableResultVO.class,
                 () -> {
             var row = lockedTable(entityNo, currentStoreNo, tableNo, req.areaNo(), false, req.version());
+            if (!row.getAreaNo().equals(req.areaNo()) || req.capacity() < row.getCapacity()) {
+                noReservation(entityNo, currentStoreNo, tableNo);
+            }
             if ((!row.getAreaNo().equals(req.areaNo()) || req.capacity() < row.getCapacity())
                     && tables.liveOccupancies(entityNo, tableNo) > 0) throw BizException.of(ErrorCode.CONFLICT);
             var before = tableView(row);
@@ -357,6 +380,7 @@ public class TableServiceImpl implements TableService {
                 () -> {
             var row = lockedTable(entityNo, currentStoreNo, tableNo, null, "ACTIVE".equals(req.status()), req.version());
             if (row.getStatus().equals(req.status())) return new TableResultVO(tableView(row));
+            if ("DISABLED".equals(req.status())) noReservation(entityNo, currentStoreNo, tableNo);
             if ("DISABLED".equals(req.status()) && tables.liveOccupancies(entityNo, tableNo) > 0) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
@@ -379,6 +403,7 @@ public class TableServiceImpl implements TableService {
         return tableWrite("ARCHIVE_TABLE", entityNo, currentStoreNo, actorNo, key, hash,
                 OperationResultVO.class, () -> {
                     var row = lockedTable(entityNo, currentStoreNo, tableNo, null, false, req.version());
+                    noReservation(entityNo, currentStoreNo, tableNo);
                     if (!"DISABLED".equals(row.getStatus()) || tables.liveOccupancies(entityNo, tableNo) > 0
                             || row.getVersion() == Long.MAX_VALUE) throw BizException.of(ErrorCode.CONFLICT);
                     var before = tableView(row);

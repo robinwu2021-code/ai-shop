@@ -128,8 +128,11 @@ class RegionFlowTest {
         JsonNode streets = data(mvc().perform(get("/ops/regions").param("parent", "330106")
                         .header("Authorization", "Bearer " + ops))
                 .andReturn().getResponse().getContentAsString());
-        assertThat(codes(streets)).containsExactly("330106001");
-        assertThat(streets.get(0).get("hasChild").asBoolean())
+        // 不用 containsExactly：全量里别的用例会往同一个区下补街道/聚落码，本条只认自己种的那条
+        assertThat(codes(streets)).contains("330106001");
+        JsonNode street = null;
+        for (JsonNode s : streets) if ("330106001".equals(s.get("regionCode").asString())) street = s;
+        assertThat(street.get("hasChild").asBoolean())
                 .as("街道是叶子，不该让人再点进去").isFalse();
     }
 

@@ -17,7 +17,7 @@
 // ② **用量一律用后端给的数**（`storeUsed` / `staffUsed`）。
 //    自己拿门店列表 `.length` 数会把停用的店算进去，而建店那道闸只数营业中的 ——
 //    表现是「页面说 3/3 满了，实际还能建一家」，两边都觉得自己没错。
-import { computed, ref } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -31,6 +31,22 @@ const merchant = useMerchantStore();
 const plan = ref<MerchantPlan | null>(null);
 const failed = ref(false);
 const trialing = ref(false);
+const scopeKey = computed(() => JSON.stringify([merchant.storeNo, merchant.profile?.merchantNo ?? ""]));
+let generation = 0;
+let shown = false;
+
+function current(request: number, scope: string) {
+  return shown && request === generation && scope === scopeKey.value;
+}
+
+watch(scopeKey, () => {
+  ++generation;
+  plan.value = null;
+  failed.value = false;
+  trialing.value = false;
+  if (shown) void load();
+}, { flush: "sync" });
+onUnmounted(() => { shown = false; ++generation; });
 
 /** 剩余天数。向上取整 —— 还剩 3 小时要显示「1 天」而不是「0 天」 */
 const daysLeft = computed(() => {
@@ -52,11 +68,18 @@ const statusTone = computed(() => {
 });
 
 async function load() {
+  const request = ++generation, scope = scopeKey.value;
+  plan.value = null;
   failed.value = false;
+  trialing.value = false;
+  // 切店先更新响应式门店号，再写 HTTP 使用的 storage；等同一轮更新完成再请求。
+  await nextTick();
+  if (!current(request, scope)) return;
   try {
-    plan.value = await api.mMyPlan();
+    const result = await api.mMyPlan();
+    if (current(request, scope)) plan.value = result;
   } catch {
-    failed.value = true;
+    if (current(request, scope)) failed.value = true;
   }
 }
 
@@ -69,18 +92,21 @@ async function load() {
 async function startTrial() {
   const p = plan.value;
   if (!p?.trialTier || trialing.value) return;
-  const tier = p.tiers.find((x) => x.planCode === p.trialTier);
-  const ok = await confirm({ title: String(String(t("plan.trialConfirmTitle", { n: p.trialDays ?? 0 }))), hint: String(String(t("plan.trialConfirmBody", { name: tier?.name ?? p.trialTier }))), confirmText: String(String(t("plan.trialConfirmOk"))) });
-  if (!ok) return;
+  const request = ++generation, scope = scopeKey.value;
   trialing.value = true;
+  const tier = p.tiers.find((x) => x.planCode === p.trialTier);
   try {
+    const ok = await confirm({ title: String(String(t("plan.trialConfirmTitle", { n: p.trialDays ?? 0 }))), hint: String(String(t("plan.trialConfirmBody", { name: tier?.name ?? p.trialTier }))), confirmText: String(String(t("plan.trialConfirmOk"))) });
+    if (!ok || !current(request, scope)) return;
     // 后端直接回新视图，不必再拉一次 —— 少一次请求，也少一次「点完了没反应」的空窗
-    plan.value = await api.mStartTrial();
+    const result = await api.mStartTrial();
+    if (!current(request, scope)) return;
+    plan.value = result;
     uni.showToast({ title: String(t("plan.trialStarted")), icon: "none" });
   } catch {
-    uni.showToast({ title: String(t("plan.trialFailed")), icon: "none" });
+    if (current(request, scope)) uni.showToast({ title: String(t("plan.trialFailed")), icon: "none" });
   } finally {
-    trialing.value = false;
+    if (current(request, scope)) trialing.value = false;
   }
 }
 
@@ -98,7 +124,7 @@ function contact() {
   });
 }
 
-onShow(load);
+onShow(() => { shown = true; void load(); });
 </script>
 
 <template>

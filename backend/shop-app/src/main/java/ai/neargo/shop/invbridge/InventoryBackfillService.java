@@ -56,6 +56,7 @@ public interface InventoryBackfillService {
      * 找得到它。用别的键的话，这批预留会一直挂到过期回收 ——
      * 货占着、单已经成了，而两边都没人知道。
      *
+     * @param limit 每页读多少行（翻到底，不是总量上限）
      * @return 搬了几笔
      */
     int migrateHeldLocks(int limit);

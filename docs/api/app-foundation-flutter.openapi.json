@@ -1,0 +1,1268 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Foundation interfaces consumed by the separate Flutter App",
+    "version": "2026-11-10",
+    "description": "Actual deployed handler subset for external ai-shop-bapp integration; not new historical Vue UI debt. Includes prior deployed review read routes with an existing external Flutter consumer."
+  },
+  "paths": {
+    "/biz/app/legal-subjects": {
+      "get": {
+        "operationId": "get__biz_app_legal_subjects_b0c523",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LegalSubject"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/app/operating-entities": {
+      "get": {
+        "operationId": "get__biz_app_operating_entities_cac41f",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OperatingEntity"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post__biz_app_operating_entities_5fb14f",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOperatingEntity"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/biz/app/operating-entities/{id}": {
+      "get": {
+        "operationId": "get__biz_app_operating_entities__id__65de65",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/app/operating-entities/context": {
+      "get": {
+        "operationId": "get__biz_app_operating_entities_context_d61f80",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "market": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canCreate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "market",
+                        "canCreate"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/app/operating-entities/create-results/{key}": {
+      "get": {
+        "operationId": "get__biz_app_operating_entities_create_results__key__5eda62",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "key",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/auth/identities/mine": {
+      "get": {
+        "operationId": "get__biz_auth_identities_mine_8ce561",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+      }
+    },
+    "/biz/auth/session": {
+      "get": {
+        "operationId": "get__biz_auth_session_961637",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPaySessionController.java"
+      }
+    },
+    "/biz/merchant/store-claims/{claimNo}": {
+      "get": {
+        "operationId": "get__biz_merchant_store_claims__claimNo__1994a2",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+      },
+      "parameters": [
+        {
+          "name": "claimNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/merchant/store-claims/by-request/{requestNo}": {
+      "get": {
+        "operationId": "get__biz_merchant_store_claims_by_request__requestNo__96d9eb",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+      },
+      "parameters": [
+        {
+          "name": "requestNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/capability-progress": {
+      "get": {
+        "operationId": "get__biz_pay_v2_capability_progress_c8ed77",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      }
+    },
+    "/biz/pay/v2/memberships": {
+      "get": {
+        "operationId": "get__biz_pay_v2_memberships_4f8a86",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      }
+    },
+    "/biz/pay/v2/onboardings": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings_0a12eb",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "post": {
+        "operationId": "post__biz_pay_v2_onboardings_e856ca",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      }
+    },
+    "/biz/pay/v2/onboardings/{no}": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__211141",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/draft": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__draft_144f08",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "put": {
+        "operationId": "put__biz_pay_v2_onboardings__no__draft_299290",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/draft/commands/{requestNo}": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__draft_commands__requestNo__dcad1c",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "requestNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/files": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__files_9705af",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "post": {
+        "operationId": "post__biz_pay_v2_onboardings__no__files_0cd163",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/files/{fileNo}": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__files__fileNo__724e72",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fileNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/readiness": {
+      "get": {
+        "operationId": "get__biz_pay_v2_onboardings__no__readiness_7a8999",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/review/{reviewNo}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Existing review read contract; merchant context and biz:review are enforced by the deployed controller."
+          }
+        },
+        "x-source-file": "backend/shop-core/src/main/java/ai/neargo/shop/product/api/biz/BizReviewController.java",
+        "x-source-commit": "a01b155fc",
+        "operationId": "get__biz_review__reviewNo__686f0d"
+      },
+      "parameters": [
+        {
+          "name": "reviewNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/review/appeals": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Existing review read contract; merchant context and biz:review are enforced by the deployed controller."
+          }
+        },
+        "x-source-file": "backend/shop-core/src/main/java/ai/neargo/shop/product/api/biz/BizReviewController.java",
+        "x-source-commit": "a01b155fc",
+        "operationId": "get__biz_review_appeals_0dc432"
+      }
+    },
+    "/biz/store/{storeNo}/entity/relink-check": {
+      "get": {
+        "operationId": "get__biz_store__storeNo__entity_relink_check_55c455",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java"
+      },
+      "parameters": [
+        {
+          "name": "storeNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/auth/identities": {
+      "post": {
+        "operationId": "post__biz_auth_identities_399a5b",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+      }
+    },
+    "/biz/auth/identities/enter": {
+      "post": {
+        "operationId": "post__biz_auth_identities_enter_ec1ae2",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+      }
+    },
+    "/biz/merchant/onboarding": {
+      "post": {
+        "operationId": "post__biz_merchant_onboarding_01d26f",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java"
+      }
+    },
+    "/biz/merchant/store-claims/{claimNo}/resume": {
+      "post": {
+        "operationId": "post__biz_merchant_store_claims__claimNo__resume_6fdd6e",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+      },
+      "parameters": [
+        {
+          "name": "claimNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/merchant-creations": {
+      "post": {
+        "operationId": "post__biz_pay_v2_merchant_creations_58a32d",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PaymentMerchantCreation"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentMerchant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/merchant-profile-revisions": {
+      "post": {
+        "operationId": "post__biz_pay_v2_merchant_profile_revisions_e7f0ff",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Merchant-No",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Current Guard-verified membership owns this scope; body cannot override it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read envelope code; only code=0 is success. Validation/permission/not-found/conflict errors follow the existing PortalResponse contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MerchantProfileRevision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MerchantProfileSubmission"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/onboardings/{no}/cancel": {
+      "post": {
+        "operationId": "post__biz_pay_v2_onboardings__no__cancel_da07c8",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/draft/confirm": {
+      "post": {
+        "operationId": "post__biz_pay_v2_onboardings__no__draft_confirm_899839",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/pay/v2/onboardings/{no}/newebpay-materials": {
+      "post": {
+        "operationId": "post__biz_pay_v2_onboardings__no__newebpay_materials_407b70",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+      },
+      "parameters": [
+        {
+          "name": "no",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/biz/store/{storeNo}/entity": {
+      "post": {
+        "operationId": "post__biz_store__storeNo__entity_76adf8",
+        "responses": {
+          "200": {
+            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+          }
+        },
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java"
+      },
+      "parameters": [
+        {
+          "name": "storeNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CreateOperatingEntity": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "legalSubjectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "name",
+          "market"
+        ]
+      },
+      "OperatingEntity": {
+        "type": "object",
+        "properties": {
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ENABLED",
+              "DISABLED"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "legalSubjectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "operatingEntity.read"
+              ]
+            }
+          }
+        },
+        "required": [
+          "operatingEntityId",
+          "name",
+          "market",
+          "status",
+          "version",
+          "legalSubjectId",
+          "allowedActions"
+        ]
+      },
+      "LegalSubject": {
+        "type": "object",
+        "properties": {
+          "legalSubjectId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE"
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "legalSubjectId",
+          "name",
+          "market",
+          "version",
+          "status",
+          "verified"
+        ]
+      },
+      "CreatePaymentMerchant": {
+        "type": "object",
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "requestNo",
+          "operatingEntityId",
+          "name"
+        ]
+      },
+      "PaymentMerchantCreation": {
+        "type": "object",
+        "properties": {
+          "merchantNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "membershipNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "role": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "merchantNo",
+          "operatingEntityId",
+          "name",
+          "market",
+          "status",
+          "membershipNo",
+          "role",
+          "actions"
+        ]
+      },
+      "MerchantProfileSubmission": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "expectedRevision",
+          "legalName"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "legalName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "registrationNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "registeredAddress": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "representativeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "description": "Independent PM only. Server fixes purpose=FIAT. No material references, actor, tenant or merchant in the body. Optional sensitive values are masked before persistence."
+      },
+      "MerchantProfileRevision": {
+        "type": "object",
+        "required": [
+          "revisionNo",
+          "revision",
+          "purpose",
+          "reviewStatus",
+          "profile",
+          "version"
+        ],
+        "properties": {
+          "revisionNo": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "APPROVED",
+              "REJECTED",
+              "NEED_MORE",
+              "SUPERSEDED"
+            ]
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "legalName": {
+                "type": "string"
+              },
+              "registrationNoMasked": {
+                "type": "string"
+              },
+              "registeredAddress": {
+                "type": "string"
+              },
+              "representativeMasked": {
+                "type": "string"
+              },
+              "contactMasked": {
+                "type": "string"
+              },
+              "industry": {
+                "type": "string"
+              }
+            }
+          },
+          "reviewReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "MerchantProfileOverview": {
+        "type": "object",
+        "required": [
+          "revision",
+          "canSubmit",
+          "approvedRevisionNo",
+          "items"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer"
+          },
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "approvedRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MerchantProfileRevision"
+            }
+          }
+        }
+      }
+    }
+  }
+}

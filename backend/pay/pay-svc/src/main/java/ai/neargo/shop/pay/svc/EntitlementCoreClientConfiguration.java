@@ -1,6 +1,8 @@
 package ai.neargo.shop.pay.svc;
 
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementUseSourcePortImpl;
+import ai.neargo.shop.pay.svc.client.port.CoreBrandCouponSourcePortImpl;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
 import ai.neargo.shop.pay.svc.client.port.CoreSourceDecisionPortImpl;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementIssueAudiencePortImpl;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementGrantSourcePortImpl;
@@ -31,6 +33,10 @@ public class EntitlementCoreClientConfiguration {
     @Bean @Lazy
     CoreEntitlementInternalApi coreEntitlementInternalApi(InternalHttp http) {
         return http.client(ServiceName.PLATFORM, CoreEntitlementInternalApi.class, Duration.ofSeconds(5));
+    }
+    @Bean
+    BrandCouponSourcePort coreBrandCouponSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new CoreBrandCouponSourcePortImpl(api);
     }
     @Bean
     EntitlementUseSourcePort coreEntitlementUseSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {

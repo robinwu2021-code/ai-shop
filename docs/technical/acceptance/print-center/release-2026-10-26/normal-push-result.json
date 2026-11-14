@@ -1,0 +1,45 @@
+{
+  "status": "NORMAL_PUSH_SUCCEEDED",
+  "branch": "codex/ai-shop-codex",
+  "verifiedCodeCommit": "d23c79f0efc376736b903256ea0cdb0bf1c08131",
+  "remoteVerifiedCommit": "d23c79f0efc376736b903256ea0cdb0bf1c08131",
+  "previousRemoteCommit": "3d4f48b6b1bc5c2a8afdf550fcf4c293a8efae39",
+  "gatesBypassed": false,
+  "backend": {
+    "cleanTestCompile": "PASS",
+    "reportedTests": 6253,
+    "reportedFailures": 0,
+    "knownFailureBaseline": 0,
+    "elapsedSeconds": 1472,
+    "allEightApplicationBatchesCompleted": true
+  },
+  "frontend": {
+    "opsTests": 876,
+    "cAppTests": 635,
+    "bAppTests": 358,
+    "failures": 0,
+    "sharedAssertions": 596,
+    "sharedKnownFailures": 4,
+    "sharedFailureBaseline": 4,
+    "generatedOutputsCurrent": 25
+  },
+  "optionalCommerce": {
+    "classes": 5,
+    "tests": 43,
+    "failures": 0
+  },
+  "browserAndRealHttp": "PASS_SEE_REAL_HTTP_RESULTS",
+  "fullApplicationDatabase": {
+    "fresh": "FAILED_V1_UNSUPPORTED_UCA1400_COLLATION",
+    "upgrade": "BLOCKED_BEFORE_FULL_587_BASELINE",
+    "historicalMigrationsChanged": false
+  },
+  "notAccepted": [
+    "Physical printer output",
+    "Real Feie account and device delivery",
+    "Windows real machine acceptance",
+    "COS production storage",
+    "Full MySQL application installation/upgrade"
+  ],
+  "deferredMinor": "HTTP negative acceptance assertions should require precise HTTP/business denial and conflict codes."
+}

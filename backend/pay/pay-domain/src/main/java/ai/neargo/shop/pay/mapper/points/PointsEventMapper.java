@@ -35,6 +35,9 @@ public interface PointsEventMapper {
             @Param("next") long next,
             @Param("body") String body);
 
+    @Select("SELECT * FROM pts_outbox WHERE event_no=#{event} AND deleted=0")
+    Map<String, Object> findEvent(String event);
+
     @Select("SELECT * FROM pts_outbox WHERE event_no=#{event} AND deleted=0 FOR UPDATE")
     Map<String, Object> event(String event);
 

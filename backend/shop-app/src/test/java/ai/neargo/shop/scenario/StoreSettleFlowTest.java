@@ -75,8 +75,8 @@ class StoreSettleFlowTest {
         String pm = activatePayment(biz, null);
 
         // 不传门店、传默认门店，解析结果必须一样 —— 单店时两个维度恒等
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), null)).contains(pm);
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), defaultStoreNo(biz))).contains(pm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), null, "WECHAT")).contains(pm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), defaultStoreNo(biz), "WECHAT")).contains(pm);
     }
 
     @Test
@@ -89,8 +89,8 @@ class StoreSettleFlowTest {
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "合并结算·分店");
 
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeA)).contains(pm);
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB)).contains(pm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeA, "WECHAT")).contains(pm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB, "WECHAT")).contains(pm);
     }
 
     @Test
@@ -109,8 +109,8 @@ class StoreSettleFlowTest {
 
         setStorePayment(biz, storeB, storePm);
 
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeA)).contains(entityPm);
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB)).contains(storePm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeA, "WECHAT")).contains(entityPm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB, "WECHAT")).contains(storePm);
     }
 
     @Test
@@ -141,8 +141,148 @@ class StoreSettleFlowTest {
                 .as("已生成的流水是快照，不随配置变 —— 钱已经进了旧账户")
                 .isEqualTo(snapshot);
         // 而对**新的**订单，解析已经是新号了
-        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB)).contains(storePm);
+        assertThat(merchantQueryPort.payMerchantNoOf(merchantNo(biz), storeB, "WECHAT")).contains(storePm);
         assertThat(storeA).isNotEqualTo(storeB);
+    }
+
+    // ---------------------------------------------------------------- F01 · 按渠道解析收款号（Review R01）
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper paymentMapper;
+
+    /** 直插一行 ACTIVE 收款号：渠道与门店维度由测试点名，不走进件接口 */
+    private String activeAccount(String merchantNo, String storeNo, String channel, String payMerchantNo) {
+        var pm = new ai.neargo.shop.merchant.entity.MchPaymentMerchant();
+        pm.setEntityNo(merchantNo);
+        pm.setStoreNo(storeNo == null ? ai.neargo.shop.merchant.entity.MchPaymentMerchant.ENTITY_LEVEL : storeNo);
+        pm.setPayChannel(channel);
+        pm.setApplyStatus(ai.neargo.shop.merchant.entity.MchPaymentMerchant.ACTIVE);
+        pm.setPayMerchantNo(payMerchantNo);
+        pm.setSubMchid("SUB-" + payMerchantNo);
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(pm));
+        return payMerchantNo;
+    }
+
+    @Test
+    @DisplayName("★★★ F01 支付宝的单只取支付宝号 —— 不按渠道过滤时会取到先建的微信号，打款打错账户")
+    void resolvesByChannel() throws Exception {
+        String biz = merchant("12600210080", "双渠道店");
+        String m = merchantNo(biz);
+        String store = defaultStoreNo(biz);
+        String wechat = activatePayment(biz, null);
+        String alipay = activeAccount(m, null, "ALIPAY", "PM-F01-ALI-" + m);
+
+        assertThat(merchantQueryPort.payMerchantNoOf(m, store, "ALIPAY")).contains(alipay);
+        assertThat(merchantQueryPort.payMerchantNoOf(m, store, "WECHAT")).contains(wechat);
+        assertThat(merchantQueryPort.payMerchantNoOf(m, store, "UNIONPAY"))
+                .as("这个渠道一个号都没有 —— 宁可空着（账单照出、打不出去），也不能借别的渠道的号")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ F01 兜底不取别家门店的专属号 —— A 店没配号时，B 店单独进件的号不是 A 的")
+    void fallbackNeverBorrowsAnotherStoresAccount() throws Exception {
+        String biz = merchant("12600210081", "专属号店");
+        String m = merchantNo(biz);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "专属号·分店");
+        activeAccount(m, storeB, "ALIPAY", "PM-F01-B-" + m);
+
+        assertThat(merchantQueryPort.payMerchantNoOf(m, storeA, "ALIPAY"))
+                .as("支付宝没有主体级号，只有 B 店的专属号 —— A 店的钱不能打进 B 店的账户")
+                .isEmpty();
+        assertThat(merchantQueryPort.payMerchantNoOf(m, storeB, "ALIPAY"))
+                .as("对照：B 店自己的单当然取它").contains("PM-F01-B-" + m);
+    }
+
+    @Test
+    @DisplayName("★★ F01 线下 / 免单不经通道：不按渠道过滤，但取号顺序确定（最早建的），且同样不借别店专属号")
+    void offlineKeepsEntityDefaultDeterministically() throws Exception {
+        String biz = merchant("12600210082", "线下店");
+        String m = merchantNo(biz);
+        String store = defaultStoreNo(biz);
+        String wechat = activatePayment(biz, null);
+        activeAccount(m, null, "ALIPAY", "PM-F01-ALI2-" + m);
+
+        for (String channel : new String[] {"OFFLINE", "FREE", null}) {
+            assertThat(merchantQueryPort.payMerchantNoOf(m, store, channel)).as(String.valueOf(channel)).contains(wechat);
+        }
+    }
+
+    // ---------------------------------------------------------------- F02 · 一处解析（Review R02 / R26）
+
+    @Autowired
+    private ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort;
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    @DisplayName("★★★ F02 能力 / 额度与结算解析到同一个收款号 —— 门店绑了微信号，能力却从支付宝那行读，支付方式与额度就判错")
+    void capabilityFollowsTheSameAccountAsSettlement() throws Exception {
+        String biz = merchant("12600210084", "一处解析店");
+        String m = merchantNo(biz);
+        String store = defaultStoreNo(biz);
+        String wechat = activatePayment(biz, null);
+        String alipay = activeAccount(m, null, "ALIPAY", "PM-F02-ALI-" + m);
+        jdbc.update("UPDATE mch_payment_merchant SET pay_methods='[\"APP\"]' WHERE pay_merchant_no=?", alipay);
+        jdbc.update("UPDATE mch_payment_merchant SET pay_methods='[\"JSAPI\"]' WHERE pay_merchant_no=?", wechat);
+        // 门店显式绑微信号。旧的能力解析不看门店绑定，主体级 LIMIT 1 在 H2 上按唯一索引取到 ALIPAY
+        setStorePayment(biz, store, wechat);
+
+        assertThat(merchantQueryPort.payMerchantNoOf(m, store, "OFFLINE")).contains(wechat);
+        assertThat(merchantQueryPort.payCapabilityOf(m, store).payMethods())
+                .as("门店绑的是微信号，能力就该读微信那一行")
+                .containsExactly("JSAPI");
+
+        merchantAdminPort.accruePayQuota(m, store, "ALIPAY", 1_234L);
+        assertThat(jdbc.queryForObject("SELECT quota_used_minor FROM mch_payment_merchant WHERE pay_merchant_no=?",
+                Long.class, alipay)).as("支付宝的单记到支付宝号上，不记到门店绑的微信号").isEqualTo(1_234L);
+        merchantAdminPort.accruePayQuota(m, store, "WECHAT", 100L);
+        assertThat(jdbc.queryForObject("SELECT quota_used_minor FROM mch_payment_merchant WHERE pay_merchant_no=?",
+                Long.class, wechat)).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("★★★ F02 · R26 门店换了主体，不再认旧主体为它进件的号 —— 只按 store_no 查会把新主体的钱打进旧主体")
+    void storeMovedToAnotherEntityDropsOldEntitysAccount() throws Exception {
+        String oldBiz = merchant("12600210085", "旧主体");
+        TestPlan.grantPro(mvc(), json, planMapper, oldBiz);
+        String movingStore = createStore(oldBiz, "要搬走的店");
+        activatePayment(oldBiz, movingStore);
+        String newBiz = merchant("12600210086", "新主体");
+        String newM = merchantNo(newBiz);
+        jdbc.update("UPDATE mch_store SET entity_no=? WHERE store_no=?", newM, movingStore);
+
+        var mode = governService.storeModes(newM).stream()
+                .filter(v -> movingStore.equals(v.storeNo())).findFirst().orElseThrow();
+        assertThat(mode.payMerchantNo())
+                .as("新主体一个收款号都没有 —— 读到的号是旧主体为这家店开的，钱会进旧主体的账户")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("★★★ F03 B 店专属号不能绑给 A 店 —— 绑上之后 A 店的钱进了 B 店的结算账户")
+    void cannotBindAnotherStoresAccount() throws Exception {
+        String biz = merchant("12600210083", "绑号校验店");
+        String storeA = defaultStoreNo(biz);
+        String entityPm = activatePayment(biz, null);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "绑号校验·分店");
+        String storeBPm = activatePayment(biz, storeB);
+
+        mvc().perform(post("/biz/store/" + storeA + "/payment")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"payMerchantNo\":\"" + storeBPm + "\"}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+        // 对照：主体级号给哪家店都行，B 店的号绑回 B 店也行
+        setStorePayment(biz, storeA, entityPm);
+        setStorePayment(biz, storeB, storeBPm);
     }
 
     @Test

@@ -117,7 +117,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 签收满 7 天自动确认收货 —— 比「发货满 15 天」先到，按先到的算")
     void signedLongAgoIsAutoConfirmed() throws Exception {
-        Ctx c = prepare("12600181007", "签收确认测试店", "12600181008", "EXPRESS");
+        Ctx c = prepare("18600181007", "签收确认测试店", "18600181008", "EXPRESS");
         ship(c, "SF-SIGNED-1");
         // 发货 12 天（按发货判据未到期），且在发货后签收 10 天
         backdateShipped(c.subOrderNo, 12);
@@ -134,7 +134,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 签收没满 7 天、发货也没满 15 天：两条都不到期，不许动")
     void neitherDeadlineReachedIsNotTouched() throws Exception {
-        Ctx c = prepare("12600181009", "两条都没到店", "12600181010", "EXPRESS");
+        Ctx c = prepare("18600181009", "两条都没到店", "18600181010", "EXPRESS");
         ship(c, "SF-SIGNED-2");
         backdateShipped(c.subOrderNo, 3);
         backdateSigned(c.subOrderNo, "SF-SIGNED-2", 2);
@@ -149,7 +149,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 没有签收回传的单仍按发货判据 —— 接签收不能让这类单变得永不到期")
     void withoutSignedStillFallsBackToShipped() throws Exception {
-        Ctx c = prepare("12600181011", "无签收回传店", "12600181012", "EXPRESS");
+        Ctx c = prepare("18600181011", "无签收回传店", "18600181012", "EXPRESS");
         ship(c, "SF-NOSIGN-1");
         backdateShipped(c.subOrderNo, 20);
         // 故意不写 ful_shipment：承运商没回传签收（圆通缺凭据、或快递100 查不到）
@@ -164,7 +164,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 发货满 15 天自动确认收货 —— 不做这一步货款永远结算不出来")
     void shippedLongAgoIsAutoConfirmed() throws Exception {
-        Ctx c = prepare("12600181001", "超时确认测试店", "12600181002", "EXPRESS");
+        Ctx c = prepare("18600181001", "超时确认测试店", "18600181002", "EXPRESS");
         ship(c, "SF-AUTO-1");
         assertThat(statusOf(c.subOrderNo)).as("前置：发完货应当是履约中").isEqualTo("FULFILLING");
 
@@ -179,7 +179,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 没到期的不许动 —— 这条红了就是在替买家提前签收")
     void recentlyShippedIsNotTouched() throws Exception {
-        Ctx c = prepare("12600181003", "未到期测试店", "12600181004", "EXPRESS");
+        Ctx c = prepare("18600181003", "未到期测试店", "18600181004", "EXPRESS");
         ship(c, "SF-AUTO-2");
         backdateShipped(c.subOrderNo, 3);
 
@@ -193,7 +193,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 自提单不许自动确认 —— 超时没来取要的是退款，不是替他签收")
     void pickupOrderIsNotAutoConfirmed() throws Exception {
-        Ctx c = prepare("12600181005", "自提超时测试店", "12600181006", "STORE_PICKUP");
+        Ctx c = prepare("18600181005", "自提超时测试店", "18600181006", "STORE_PICKUP");
         // 自提单走核销，这里直接把状态推到 FULFILLING（到点待取）并拨老
         jdbc.update("update ord_sub_order set status = 'FULFILLING' where sub_order_no = ?", c.subOrderNo);
         jdbc.update("insert into ord_status_log (sub_order_no, status, label, operator_type, at,"
@@ -212,7 +212,7 @@ class OrderAutoReceiptFlowTest {
     @Test
     @DisplayName("★★★ 售后未闭环的不许动 —— 争议中自动确认等于替一方把钱定下来")
     void orderWithOpenAfterSaleIsNotTouched() throws Exception {
-        Ctx c = prepare("12600181007", "售后中测试店", "12600181008", "EXPRESS");
+        Ctx c = prepare("18600181007", "售后中测试店", "18600181008", "EXPRESS");
         ship(c, "SF-AUTO-3");
         backdateShipped(c.subOrderNo, 30);
         // 列名照 schema：金额列是 refund_minor（不是 amount_minor），entity_no 非空

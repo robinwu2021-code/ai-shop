@@ -11,48 +11,52 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
 import org.springframework.test.context.MergedContextConfiguration;
 
-/** Bind in-memory databases to a cached context's lifetime, including its eviction. */
+/** A pooled in-memory database belongs to one cached context, including after cache eviction. */
 public final class IsolatedH2ContextCustomizerFactory implements ContextCustomizerFactory {
+    private static final List<String> URL_PROPERTIES = List.of(
+            "spring.datasource.url", "shop.inventory.datasource.url", "shop.job.datasource.url");
+
     @Override
-    public ContextCustomizer createContextCustomizer(Class<?> testClass,
-            List<ContextConfigurationAttributes> attributes) {
-        // A stable customizer identity preserves Spring's existing context sharing/cache keys.
-        return Isolation.INSTANCE;
+    public ContextCustomizer createContextCustomizer(
+            Class<?> testClass, List<ContextConfigurationAttributes> configAttributes) {
+        return new IsolationCustomizer();
     }
 
-    enum Isolation implements ContextCustomizer {
-        INSTANCE;
+    static String isolateUrl(String url, String namespace) {
+        String prefix = "jdbc:h2:mem:";
+        if (url == null || !url.startsWith(prefix)) return url;
+        int end = url.indexOf(';', prefix.length());
+        if (end < 0) end = url.length();
+        if (end == prefix.length()) return url; // Preserve anonymous H2 semantics.
+        String options = url.substring(end).replaceAll("(?i);DB_CLOSE_DELAY=[^;]*", "");
+        return url.substring(0, end) + "_ctx_" + namespace + options + ";DB_CLOSE_DELAY=0";
+    }
 
+    private static final class IsolationCustomizer implements ContextCustomizer {
         @Override
-        public void customizeContext(ConfigurableApplicationContext context, MergedContextConfiguration config) {
-            // DynamicPropertySource and other customizers may run after this one. Rewrite only
-            // after all of them finish, before datasource properties bind or pools are created.
-            context.addBeanFactoryPostProcessor(beanFactory -> isolate(context));
-        }
-
-        private static void isolate(ConfigurableApplicationContext context) {
-            String identity = UUID.randomUUID().toString().replace("-", "");
-            Map<String, Object> urls = new LinkedHashMap<>();
-            for (String property : List.of("spring.datasource.url", "shop.inventory.datasource.url",
-                    "shop.report.datasource.url")) {
-                String original = context.getEnvironment().getProperty(property);
-                if (original != null && original.startsWith("jdbc:h2:mem:")) {
-                    urls.put(property, isolatedUrl(original, identity));
+        public void customizeContext(
+                ConfigurableApplicationContext context, MergedContextConfiguration configuration) {
+            // Run after profile/dynamic test properties are installed and before any datasource
+            // properties or pools are instantiated. Raw unpooled JDBC fixtures are not rewritten.
+            context.addBeanFactoryPostProcessor(beanFactory -> {
+                String namespace = UUID.randomUUID().toString().replace("-", "");
+                Map<String, Object> overrides = new LinkedHashMap<>();
+                Map<String, String> urls = new LinkedHashMap<>();
+                for (String property : URL_PROPERTIES) {
+                    String original = context.getEnvironment().getProperty(property);
+                    if (original == null) continue;
+                    String isolated = urls.computeIfAbsent(original, url -> isolateUrl(url, namespace));
+                    if (!original.equals(isolated)) overrides.put(property, isolated);
                 }
-            }
-            if (!urls.isEmpty()) {
-                context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("contextH2Databases", urls));
-            }
+                if (!overrides.isEmpty()) {
+                    context.getEnvironment().getPropertySources().addFirst(
+                            new MapPropertySource("context-owned-h2-databases", overrides));
+                }
+            });
         }
-    }
 
-    static String isolatedUrl(String original, String identity) {
-        if (!original.startsWith("jdbc:h2:mem:")) return original;
-        int settings = original.indexOf(';');
-        String database = settings < 0 ? original : original.substring(0, settings);
-        String options = settings < 0 ? "" : original.substring(settings);
-        // -1 retains both database heap and CHECK expressions bound to a closed H2 SessionLocal.
-        options = options.replaceAll("(?i);DB_CLOSE_DELAY=[^;]*", "");
-        return database + "_" + identity + options + ";DB_CLOSE_DELAY=0";
+        // UUIDs are allocated only when loading a context, never in its cache key.
+        @Override public boolean equals(Object other) { return other instanceof IsolationCustomizer; }
+        @Override public int hashCode() { return IsolationCustomizer.class.hashCode(); }
     }
 }

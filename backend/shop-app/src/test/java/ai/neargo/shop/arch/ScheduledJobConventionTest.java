@@ -2,6 +2,9 @@ package ai.neargo.shop.arch;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -185,16 +188,26 @@ class ScheduledJobConventionTest {
     }
 
     @Test
-    @DisplayName("★★★ 必须加 @SchedulerLock —— worker 扩到两个实例时，每一轮都会被跑两遍")
-    void everyJobIsLocked() throws IOException {
-        List<String> unlocked = new ArrayList<>();
-        jobSources().forEach((name, text) -> {
-            if (!text.contains("@SchedulerLock")) {
-                unlocked.add(name);
-            }
-        });
+    @DisplayName("★★★ 必须使用真实 ShedLock —— worker 扩到两个实例时，每一轮都会被跑两遍")
+    void everyJobIsLocked() throws Exception {
+        var owners = new ArrayList<Class<?>>();
+        var packageName = Pattern.compile("(?m)^package\\s+([\\w.]+)\\s*;");
+        for (var job : jobSources().entrySet()) {
+            var declaration = packageName.matcher(job.getValue());
+            assertThat(declaration.find()).as("Scheduled owner package: %s", job.getKey()).isTrue();
+            owners.add(Class.forName(declaration.group(1) + "."
+                    + job.getKey().replaceFirst("\\.java$", ""), false, getClass().getClassLoader()));
+        }
+        var methods = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importClasses(owners.toArray(Class<?>[]::new)).stream()
+                .flatMap(owner -> owner.getMethods().stream())
+                .filter(method -> method.isAnnotatedWith(Scheduled.class)).toList();
+        assertThat(methods).as("Actual scheduled methods from production source owners").isNotEmpty();
+        var unlocked = methods.stream().filter(method -> !ArchitectureTest.hasDistributedSchedulerLock(method))
+                .map(method -> method.getOwner().getSimpleName() + "#" + method.getName()).sorted().toList();
         assertThat(unlocked)
-                .as("这些定时任务没加 @SchedulerLock：%s\n"
+                .as("这些定时任务没有声明式或同 owner 调用路径内的真实 ShedLock：%s\n"
                         + "  扩容是运维在容量吃紧时做的动作，不会回来问代码准备好没有 ——\n"
                         + "  锁要在第一个实例上线时就在，而不是等扩容前补。", unlocked)
                 .isEmpty();

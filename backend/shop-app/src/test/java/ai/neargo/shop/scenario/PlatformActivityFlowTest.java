@@ -157,7 +157,7 @@ class PlatformActivityFlowTest {
     @DisplayName("★★ 商家端走真 HTTP：看得到已发布的平台活动；拿别家的货报名当不存在（404）")
     void merchantHttp() throws Exception {
         PlatformActivityVO a = publish(10000, 100_000L);
-        String outsider = onboardedMerchant("126" + String.format("%08d", ++seq));
+        String outsider = onboardedMerchant("196" + String.format("%08d", ++seq));
 
         String list = mvc().perform(get("/biz/platform-activity").param("tab", "ENROLLABLE")
                         .header("Authorization", "Bearer " + outsider))

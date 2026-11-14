@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
@@ -15,6 +16,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 /**
  * 每人限购（待办设计 P1）。
@@ -41,12 +43,14 @@ public class PurchaseLimitGuard {
     private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final PlatformSwitchPort switchPort;
+    private final UserQueryPort userPort;
 
     public PurchaseLimitGuard(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                              PlatformSwitchPort switchPort) {
+                              PlatformSwitchPort switchPort, UserQueryPort userPort) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.switchPort = switchPort;
+        this.userPort = userPort;
     }
 
     public boolean enforced() {
@@ -60,6 +64,11 @@ public class PurchaseLimitGuard {
      * 而 0 行恰好是「不拦」—— 闸门在最该生效的那条路上悄悄失效。
      */
     public Map<String, Integer> boughtQty(String userNo, Collection<String> goodsNos) {
+        return boughtQty(userNo, goodsNos, false);
+    }
+
+    /** @param currentRead 用锁定读（FOR UPDATE）读最新已提交的行，而不是本事务的快照（见 {@link #requireForCreate}） */
+    private Map<String, Integer> boughtQty(String userNo, Collection<String> goodsNos, boolean currentRead) {
         Map<String, Integer> out = new HashMap<>();
         if (userNo == null || goodsNos == null || goodsNos.isEmpty()) {
             return out;
@@ -68,7 +77,8 @@ public class PurchaseLimitGuard {
                         Wrappers.<OrdSubOrder>lambdaQuery()
                                 .select(OrdSubOrder::getSubOrderNo)
                                 .eq(OrdSubOrder::getUserNo, userNo)
-                                .notIn(OrdSubOrder::getStatus, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)))
+                                .notIn(OrdSubOrder::getStatus, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)
+                                .last(currentRead, "FOR UPDATE")))
                 .stream().map(OrdSubOrder::getSubOrderNo).toList();
         if (subNos.isEmpty()) {
             return out;
@@ -76,7 +86,8 @@ public class PurchaseLimitGuard {
         List<OrdItem> rows = DataScopeContext.executeWithoutScope(() -> itemMapper.selectList(
                 Wrappers.<OrdItem>lambdaQuery()
                         .in(OrdItem::getSubOrderNo, subNos)
-                        .in(OrdItem::getGoodsNo, goodsNos)));
+                        .in(OrdItem::getGoodsNo, goodsNos)
+                        .last(currentRead, "FOR UPDATE")));
         for (OrdItem r : rows) {
             if (Boolean.TRUE.equals(r.getIsGift()) || r.getQty() == null) {
                 continue;
@@ -92,11 +103,60 @@ public class PurchaseLimitGuard {
      * @param wanted 商品号 → 这一次的件数
      * @param limits 商品号 → 每人限购（只放设了限购的）
      */
+    /** Exact physical-quantity variant includes old integral rows without truncating measured history. */
+    public void requireMeasured(String userNo, Map<String, BigDecimal> wanted, Map<String, Integer> limits) {
+        if (limits.isEmpty() || !enforced()) return;
+        var subNos = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery().select(OrdSubOrder::getSubOrderNo)
+                        .eq(OrdSubOrder::getUserNo, userNo)
+                        .notIn(OrdSubOrder::getStatus, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED)))
+                .stream().map(OrdSubOrder::getSubOrderNo).toList();
+        var bought = new HashMap<String, BigDecimal>();
+        if (!subNos.isEmpty()) {
+            var rows = DataScopeContext.executeWithoutScope(() -> itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                    .in(OrdItem::getSubOrderNo, subNos).in(OrdItem::getGoodsNo, limits.keySet())));
+            for (var row : rows) if (!Boolean.TRUE.equals(row.getIsGift())) {
+                var quantity = row.getSaleQuantity() != null ? row.getSaleQuantity()
+                        : row.getQty() == null ? BigDecimal.ZERO : BigDecimal.valueOf(row.getQty());
+                bought.merge(row.getGoodsNo(), quantity, BigDecimal::add);
+            }
+        }
+        for (var limit : limits.entrySet()) {
+            var remaining = BigDecimal.valueOf(limit.getValue()).subtract(bought.getOrDefault(limit.getKey(), BigDecimal.ZERO));
+            if (wanted.getOrDefault(limit.getKey(), BigDecimal.ZERO).compareTo(remaining) > 0) {
+                throw BizException.of(ErrorCode.PURCHASE_LIMIT_EXCEEDED, remaining.max(BigDecimal.ZERO));
+            }
+        }
+    }
     public void require(String userNo, Map<String, Integer> wanted, Map<String, Integer> limits) {
+        check(userNo, wanted, limits, false);
+    }
+
+    /**
+     * 下单用的那一版：<b>必须在建单事务里调</b>，同一个买家的几张单在这里排队。
+     *
+     * <p>{@link #require} 是先读已买量、再放行 —— 两张单并发时各读到「已买 0」，限购 5 件能成交 10 件。
+     * 这里先锁买家的账户行（{@link UserQueryPort#lockBuyer}），后到的那张等前一张提交了再读。
+     * <b>只排同一个人</b>，不锁商品：别人买同一件货不受影响。
+     *
+     * <p>已买量用<b>锁定读</b>：MySQL / MariaDB 默认可重复读，本事务在锁到账户行之前早已读过别的表，
+     * 快照定格在那一刻 —— 普通 SELECT 读不到前一张刚提交的单，排了队也白排。
+     * H2 是读已提交，不加也能过测试；这一句是给生产的。
+     *
+     * <p>购物车（加购 / 改数量）仍用 {@link #require}：它只是提前提示，最后一道在这里。
+     */
+    public void requireForCreate(String userNo, Map<String, Integer> wanted, Map<String, Integer> limits) {
+        check(userNo, wanted, limits, true);
+    }
+
+    private void check(String userNo, Map<String, Integer> wanted, Map<String, Integer> limits, boolean serialized) {
         if (limits.isEmpty() || !enforced()) {
             return;
         }
-        Map<String, Integer> bought = boughtQty(userNo, limits.keySet());
+        if (serialized) {
+            userPort.lockBuyer(userNo);
+        }
+        Map<String, Integer> bought = boughtQty(userNo, limits.keySet(), serialized);
         for (var e : limits.entrySet()) {
             int want = wanted.getOrDefault(e.getKey(), 0);
             int had = bought.getOrDefault(e.getKey(), 0);

@@ -4,10 +4,10 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
-import ai.neargo.shop.inventory.entity.InvOutbox;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.InventoryEventSink;
+import ai.neargo.inventory.domain.entity.InvOutbox;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboxMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryEventSink;
 import ai.neargo.shop.invbridge.InventoryWritebackService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockSyncLog;
@@ -31,6 +31,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.time.Duration;
+import java.time.ZoneId;
+import ai.neargo.shop.event.outbox.runtime.OutboxRunner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +53,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>每个用例一家新店（单店主体，商城库存是主体级那一档）。
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:stock-writeback;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+        "shop.inventory.datasource.url=jdbc:h2:mem:stock-writeback-inventory;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
+})
 @ActiveProfiles("test")
 class StockSyncWritebackTest {
 
@@ -78,9 +84,13 @@ class StockSyncWritebackTest {
     @Autowired
     private StockSyncService stockSync;
     @Autowired
+    private OutboxRunner unifiedRunner;
+    @Autowired
     private StockSyncLogMapper syncLog;
     @Autowired
     private InventoryWritebackService writeback;
+    @Autowired
+    private ai.neargo.shop.invbridge.OfflineSaleService offlineSales;
 
     @Test
     @DisplayName("★★★ 进货过账 → 线上可卖自动等于可用（全部可售）")
@@ -280,6 +290,51 @@ class StockSyncWritebackTest {
     }
 
     @Test
+    @DisplayName("★★★ 并发撤销同一笔线下卖出：只加回一次")
+    void concurrentRevokeReturnsGoodsOnce() throws Exception {
+        /*
+         * 店员连点两下「撤销」（或两台收银机各点一下）。此前是「先查有没有退回单、再开一张」，
+         * 中间没有锁、外层还挂在平台的事务管理器上（进销存的写各自提交）：
+         * 两个请求都查到「还没撤过」，各开一张退回单 —— 3 件卖出被加回 6 件，凭空多出一批货。
+         */
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        String docNo = ok(post("/biz/store/" + s.storeNo + "/offline-sale")
+                .content("{\"lines\":[{\"skuNo\":\"" + s.skuNo + "\",\"qty\":3}]}"), s.token)
+                .get("docNo").asString();
+        pump();
+
+        int threads = 6;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        AtomicInteger succeeded = new AtomicInteger();
+        List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                try {
+                    offlineSales.revoke(s.entityNo, s.storeNo, docNo, "店员");
+                    succeeded.incrementAndGet();
+                } catch (ai.neargo.shop.common.BizException expected) {
+                    // 后到的那些被拒：已经撤过了
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (var f : futures) {
+            f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+        pump();
+
+        assertThat(succeeded.get()).as("只能有一次撤销成功").isEqualTo(1);
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand())
+                .as("10 − 3 + 3；并发撤两次就成了 13").isEqualTo(10);
+    }
+
+    @Test
     @DisplayName("★★ 期初对齐「以商城为准」：实存调成商城的数")
     void alignToMallAdjustsOnHand() throws Exception {
         Shop s = shop();
@@ -305,6 +360,9 @@ class StockSyncWritebackTest {
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
         String batchNo = preview.get("batchNo").asString();
+        String documentNo=preview.get("documentNo").asString();
+        assertThat(ai.neargo.shop.numbering.DocumentNumberFormatter.isValid(
+            ai.neargo.shop.numbering.DocumentType.INVENTORY_ALIGNMENT,documentNo)).isTrue();
         String version = preview.get("snapshotVersion").asString();
         assertThat(preview.get("rows").get(0).get("beforeQty").asInt()).isZero();
         assertThat(preview.get("rows").get(0).get("afterQty").asInt()).isEqualTo(8);
@@ -316,6 +374,8 @@ class StockSyncWritebackTest {
                 .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\"" + version + "\"}"), s.token);
         assertThat(confirmed.get("status").asString()).isEqualTo("COMPLETED");
         assertThat(repeated.get("status").asString()).isEqualTo("COMPLETED");
+        assertThat(confirmed.get("documentNo").asString()).isEqualTo(documentNo);
+        assertThat(repeated.get("documentNo").asString()).isEqualTo(documentNo);
         assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isEqualTo(8);
         assertThat(ok(get(path), s.token).get("batchNo").asString()).isEqualTo(batchNo);
 
@@ -476,19 +536,22 @@ class StockSyncWritebackTest {
     }
 
     /** 推两段 outbox 到清空：inv_outbox → sink（与 InvOutboxDispatchJob 同一动作），再平台 outbox → 消费者 */
-    private void pump() {
+    private void pump() throws InterruptedException {
         for (int round = 0; round < 10; round++) {
             List<InvOutbox> pending = invOutbox.selectList(Wrappers.<InvOutbox>lambdaQuery()
                     .eq(InvOutbox::getStatus, "PENDING").orderByAsc(InvOutbox::getId));
             for (InvOutbox e : pending) {
                 boolean ok = sinks.stream().allMatch(k -> k.deliver(e.getEventNo(), e.getOwnerId(),
-                        e.getEventType(), e.getPayload()));
+                        e.getEventType(), e.getPayload(), e.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()));
                 if (ok) {
                     e.setStatus("SENT");
                     invOutbox.updateById(e);
                 }
             }
             int sent = dispatcher.dispatchPending();
+            unifiedRunner.recoverDue();
+            assertThat(unifiedRunner.awaitIdle(Duration.ofSeconds(5)))
+                    .as("Canonical outbox handlers must finish before observing writeback").isTrue();
             if (pending.isEmpty() && sent == 0) {
                 return;
             }

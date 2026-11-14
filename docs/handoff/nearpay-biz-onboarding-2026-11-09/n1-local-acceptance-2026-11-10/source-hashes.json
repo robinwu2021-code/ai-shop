@@ -1,0 +1,10 @@
+{
+  "/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/StoreEntityClaimServiceImpl.java": "3025ba9ee0c9722685a1c8cbf2a831cb4d6273daf659c6221deb3d15fe70392b",
+  "/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/StoreRelinkLocalPolicy.java": "cedaf4fc688ae6c82b86623ae1b4aeade99a96c9666238e11f96d590fcea0d5b",
+  "/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/resources/db/migration/V647__store_entity_claim.sql": "362c59d4987bdb19aa0a9009a87d9ac83880226edfb55f5d9a2c55e134ee7cd4",
+  "/Users/robin/work/ai/ai-shop-codex/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/StoreOwnershipWritePortImpl.java": "90bf8bfc83f9142ec2dfd48a262cd9a2e8ef7b41f791874c77dabe38cdd0f912",
+  "/Users/robin/work/ai/near-pay/backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/source/SourceControlStore.java": "1faaebc6e0c8820f57a47d6be86d2ebb696dea57875157c389522f37d2100912",
+  "/Users/robin/work/ai/near-pay/backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/source/StoreClaimService.java": "890695fb82c214ff4f78c36731abf8ca13b37f086b1285b7264688470e7d354c",
+  "/Users/robin/work/ai/near-pay/backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/source/StoreClaimHistory.java": "944f2d19930cd8dd6aa7920e66cbef6d466d452316a07e422c804db003a0eb13",
+  "/Users/robin/work/ai/near-pay/backend/pay/pay-domain/src/main/resources/db/pay/V77__pay_source_store_claim.sql": "a5a52d61106ab74cf9f1ab6f757ca8b6128e32b970686f77f073e93cdfee4700"
+}

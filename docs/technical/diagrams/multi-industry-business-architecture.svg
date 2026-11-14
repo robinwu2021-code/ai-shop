@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1120" viewBox="0 0 1240 1120" role="img" aria-labelledby="title desc">
+  <title id="title">以零售基础数据与核心能力为中心的多行业架构</title>
+  <desc id="desc">先整理共用能力，再以零售划定基础主数据M、标准商业核心K、平台支撑S、可选共用扩展E、行业I。普通零售直接使用M和K，餐饮美业组合E并依赖M和K，S横向提供运行保障；共用能力不全部纳入必选核心。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8" fill="none" stroke="#567088" stroke-width="1.5"/></marker>
+    <style>text{font-family:system-ui,-apple-system,sans-serif;fill:#18324a}.head{font-size:21px;font-weight:700}.body{font-size:17px}.note{font-size:15px;fill:#536b80}.box{stroke:#c8d5df;stroke-width:1.5;fill:#fff}.line{fill:none;stroke:#567088;stroke-width:2;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1240" height="1120" fill="#f5f8fb"/>
+  <text x="40" y="45" font-size="28" font-weight="750">以零售为核心的多行业统一架构</text>
+  <text x="40" y="78" class="note">推导顺序：共用能力整理 → 零售基础数据与核心能力边界 → 完整架构 · 2026-10-20 草稿</text>
+  <rect x="40" y="103" width="1160" height="70" rx="12" class="box"/>
+  <text x="63" y="132" class="head">业务终端与受控接入</text>
+  <text x="63" y="158" class="body">顾客 / 商家 App · Web · POS / 服务员 · 技师 · KDS / 平台 / 设备与外部渠道</text>
+  <path d="M620 173 V194" class="line"/>
+  <rect x="40" y="205" width="360" height="120" rx="12" fill="#edf5ff" stroke="#a9bfdc"/>
+  <rect x="440" y="205" width="360" height="120" rx="12" fill="#fff4e8" stroke="#dac0a0"/>
+  <rect x="840" y="205" width="360" height="120" rx="12" fill="#f1edfa" stroke="#c4b4db"/>
+  <text x="62" y="239" class="head">I 零售经营流程</text>
+  <text x="62" y="270" class="body">选购 / 备货 / 拣配 / 交接</text>
+  <text x="62" y="302" class="note">保留完整现有零售能力与默认行为</text>
+  <text x="462" y="239" class="head">I 餐饮行业应用</text>
+  <text x="462" y="270" class="body">菜品附属 / 台账 / 点餐 / 厨房上菜</text>
+  <text x="462" y="302" class="note">不另建商品、订单、员工或资金账</text>
+  <text x="862" y="239" class="head">I 美业行业应用</text>
+  <text x="862" y="270" class="body">预约单 / 服务工单 / 客史 / 提成</text>
+  <text x="862" y="302" class="note">不另建商品、会员或资产账户</text>
+  <path d="M220 325 V501" class="line"/>
+  <text x="60" y="380" class="note">普通零售可直接使用M/K</text>
+  <text x="60" y="408" class="note">按需选择E，不要求全套配置</text>
+  <rect x="440" y="360" width="760" height="110" rx="12" fill="#f1f5ea" stroke="#b6c79e"/>
+  <text x="463" y="393" class="head">E 可选共用扩展 · 按经营模式组合</text>
+  <text x="463" y="424" class="body">目录日历 / 技能排班 / 资源预约 / 作业协作 / 营销资产</text>
+  <text x="463" y="452" class="body">供应物料 / 复杂收银 / 打印设备 / 经营分析</text>
+  <path d="M620 325 V348" class="line"/>
+  <path d="M1020 325 V348" class="line"/>
+  <path d="M220 440 H429" class="line" stroke-dasharray="5 4"/>
+  <path d="M820 470 V501" class="line"/>
+  <rect x="40" y="515" width="1160" height="330" rx="14" fill="#e9f4ef" stroke="#90baaa" stroke-width="2"/>
+  <text x="63" y="549" class="head">零售核心边界 · 全行业共同依赖 · 经正式合同与应用桥接访问</text>
+  <rect x="63" y="574" width="1114" height="105" rx="10" class="box"/>
+  <text x="84" y="606" class="head">M 基础主数据</text>
+  <text x="84" y="638" class="body">主体资质 / 门店 / 账号与任职 / 顾客会员关系 / 商品 SKU / 门店上架价格与销售配置 / 公共字典</text>
+  <text x="84" y="663" class="note">复用现有所有者和业务号；当前配置与历史成交快照分开，不复制行业主数据</text>
+  <rect x="63" y="700" width="1114" height="120" rx="10" class="box"/>
+  <text x="84" y="733" class="head">K 标准商业核心</text>
+  <text x="84" y="764" class="body">可售报价 → 成交来源 → 销售库存承诺 → 收付款结果 → 交付完成 → 售后逆向 → 结算对账</text>
+  <text x="84" y="795" class="note">由现有 Core / Merchant / Pay / Inventory 等权威协作；业务边界不等于一个模块或一张表</text>
+  <rect x="40" y="877" width="1160" height="155" rx="12" fill="#e9eff5" stroke="#afc0ce"/>
+  <text x="63" y="912" class="head">S 平台支撑 · 横向服务M、K、E、I</text>
+  <text x="63" y="947" class="body">认证授权与作用域 / 通知媒体 / 可靠事件 / 幂等版本 / 调度租约 / 关键业务审计</text>
+  <text x="63" y="980" class="body">访问与慢日志 / 指标追踪 / 监控告警与值班 / 异常恢复 / 配置发布 / 备份归档</text>
+  <text x="63" y="1010" class="note">不维护第二份应收、资金、库存或行业状态；经营扩展关闭不切断历史交易恢复</text>
+  <text x="40" y="1072" class="note">核心不读行业私有表；行业可组合共用扩展。共用 ≠ 必选核心；源码模块位置 ≠ 业务归属；能力开通 ≠ 实例验收。</text>
+  <text x="40" y="1098" class="note">正式交易前校验已启用的强约束，可靠事件反馈已发生事实。日志、出票、签到与业务交付结果分别表达。</text>
+</svg>

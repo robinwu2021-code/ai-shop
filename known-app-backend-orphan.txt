@@ -45,7 +45,19 @@
 #     付款才算成员），新版 c-app 不再调它；后端只剩一件事 —— 回 40033「请升级」。
 #     **留着是给线上旧版小程序的**：新版还没过审上架，旧版点「参团」要看到升级提示，
 #     删了就变成 404。新版小程序全量之后删掉后端这个端点与本行
-#     （连带 MpEndpointAuthTest 名单、gen-openapi.py、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
+#     （连带 MpEndpointAuthTest 名单、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
+#
+# 2026-10-28 加 10 条，**有意保留、有删除时点**（支付接入守卫 M5a.5）：
+#   · /biz/pay/**  商家端支付改走业务服务 /biz/payment/**，新版 b-app 不再调旧路径；
+#     **留着是给线上旧版小程序的**（与上面拼团同一个理由）。开发计划 M5a.6 过渡一个版本后
+#     删 pay-portal api.biz.* 与这 10 行。
+#
+# 2026-11-05 加 8 条，**出口在 Flutter 商户端，不在本扫描面内**（TDD-B端收款订单与商城接口对齐 P1、ADR-051）：
+#   · /biz/payment/orders**  「收款」Tab 的列表、汇总、查找、详情、查单；/biz/payment/collect-status 开通状态；/biz/order/*/full 零售订单完整详情；
+#   · /biz/auth/email-otp/send  邮箱验证码登录。
+#   · /biz/payment/links**  门店收银台的链接记录、再次分享、作废（TDD-门店收银台与付款链接，同日再加 3 条）。
+#   使用方是 ai-shop-bapp-mall 的 apps/merchant_app（Flutter），本脚本只扫 uni-app 的 b-app。
+#   扫描面覆盖 merchant_app 之后连同本段一起删。
 b-app GET /biz/inventory/export
 b-app GET /biz/settle/bills/*
 b-app POST /biz/geo/geocode
@@ -73,3 +85,75 @@ c-app POST /mp/ticket
 c-app POST /mp/user/token/refresh
 b-app GET /biz/store/*/stock-reconcile/*
 b-app POST /biz/store/*/stock-reconcile
+b-app DELETE /biz/pay/app-grant/*
+b-app GET /biz/pay/app-grant
+b-app GET /biz/pay/qr-code
+b-app GET /biz/pay/refund
+b-app GET /biz/pay/statement
+b-app POST /biz/pay/app-grant
+b-app POST /biz/pay/collection
+b-app POST /biz/pay/qr-code
+b-app POST /biz/pay/refund
+b-app PUT /biz/pay/qr-code/*/disabled
+b-app GET /biz/payment/orders
+b-app GET /biz/payment/orders/*
+b-app GET /biz/payment/orders/lookup
+b-app GET /biz/payment/orders/summary
+b-app POST /biz/payment/orders/*/query
+b-app POST /biz/auth/email-otp/send
+b-app GET /biz/payment/collect-status
+b-app GET /biz/order/*/full
+b-app GET /biz/payment/links
+b-app POST /biz/payment/links/*/reissue
+b-app POST /biz/payment/links/*/void
+
+# 2026-11-06 登记 35 条（推 codex/ai-shop-codex 时发现；此前两次推送用了 --no-verify，所以没被拦）。
+# 全部来自 10-21～10-29 的美业 / 餐饮 / 服务结账后端（1679a32b0 人员、6d675af2f 排班、6d5f83fa5 服务目录、
+# dbb635a7c 服务结账、741b38178 线下收据、c4b8eb364 柜台报价、fb8fc86d5 手工接单、59614f10d / b91bcc006 餐饮库存与渠道策略）。
+# 后端做好了、uni-app b-app / c-app 还没接；Flutter 商户端与这些行业页面另行排期。不是本次（商城、收款、付款链接）的改动。
+b-app GET /biz/checkout/*/offline-receipts/*
+b-app GET /biz/inventory/food-stock-projections
+b-app GET /biz/inventory/food-stock-projections/*
+b-app GET /biz/personnel
+b-app GET /biz/resources
+b-app GET /biz/schedules
+b-app GET /biz/service-orders/*/manual-admission
+b-app GET /biz/service-orders/*/manual-source
+b-app GET /biz/service-orders/counter-quotes/*
+b-app GET /biz/store-sales-catalog
+b-app GET /biz/stores/*/channel-order-policies
+b-app GET /biz/stores/*/channel-order-policies/*
+b-app GET /biz/stores/*/receivables/*
+b-app POST /biz/checkout/*/offline-receipts
+b-app POST /biz/checkout/*/offline-receipts/lookup
+b-app POST /biz/personnel
+b-app POST /biz/personnel/*/account-links
+b-app POST /biz/personnel/*/assignments
+b-app POST /biz/personnel/*/status-changes
+b-app POST /biz/resources
+b-app POST /biz/schedule-rules
+b-app POST /biz/service-orders/*/manual-receipts
+b-app POST /biz/service-orders/counter-quotes
+b-app POST /biz/service-orders/counter-quotes/*/acceptances
+b-app POST /biz/service-orders/counter-quotes/*/orders
+b-app POST /biz/service-orders/manual-quotes
+b-app POST /biz/store-sales-catalog/versions
+b-app POST /biz/stores/*/channel-after-sale-decisions
+b-app POST /biz/stores/*/channel-after-sale-decisions/release-unissued
+b-app POST /biz/stores/*/channel-order-policies/*
+b-app POST /biz/stores/*/channel-order-policies/*/enabled
+c-app GET /mp/checkout/*
+c-app GET /mp/checkout/*/payments/*
+c-app POST /mp/checkout/*/confirmations
+c-app POST /mp/checkout/*/orders
+c-app POST /mp/checkout/*/payments
+c-app POST /mp/checkout/*/payments/lookup
+
+# 2026-11-06 商家在 App 申请支付服务（TDD-运营端申请支付服务 §7）：入口做在 Flutter 商户端（ai-shop-bapp），uni-app b-app 不接。
+b-app POST /biz/merchant/pay-service/apply
+
+# 2026-11-08 App 外收款记录的更正、作废（TDD-商户App外部记账）：出口在 Flutter 商户端（ai-shop-bapp），uni-app b-app 不接。
+# 记一笔、列表、汇总已登记在 b-app/src/api/endpoints.ts；这两条是「复数资源 + id」，登进去会撞 /biz 单数约定
+# （known-plural-paths 两份基线），而路径是 App 已定的契约，不为凑约定改名。扫描面覆盖 merchant_app 之后连同本段一起删。
+b-app POST /biz/payment/offline-records/*/correct
+b-app POST /biz/payment/offline-records/*/void

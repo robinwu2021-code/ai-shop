@@ -58,7 +58,7 @@ class MerchantPlanQuotaFlowTest {
     @Test
     @DisplayName("★ FREE 是 3 家：第 4 家被拒，且报错要带够数让他知道下一步做什么")
     void freeMerchantIsCappedAtThreeStores() throws Exception {
-        String biz = merchant("12600900001", "额度·免费店");
+        String biz = merchant("18600900001", "额度·免费店");
 
         // 入驻通过会自动建一家默认店（ensureDefaultStore），所以这里已经用掉 1/3
         assertThat(storeCount(biz)).isEqualTo(1);
@@ -83,7 +83,7 @@ class MerchantPlanQuotaFlowTest {
     @Test
     @DisplayName("★ 额度跟着订阅走：把这家商家改成 PRO，第二、三家店就能开了")
     void quotaFollowsSubscription() throws Exception {
-        String biz = merchant("12600900010", "额度·成长店");
+        String biz = merchant("18600900010", "额度·成长店");
         String merchantNo = merchantNoOf(biz);
 
         /*
@@ -105,7 +105,7 @@ class MerchantPlanQuotaFlowTest {
     @Test
     @DisplayName("★ 只数 ACTIVE：停用一家之后能再开一家（默认店停不掉，所以单店商家不受影响）")
     void quotaCountsOnlyActiveStores() throws Exception {
-        String biz = merchant("12600900020", "额度·停用再开");
+        String biz = merchant("18600900020", "额度·停用再开");
         String merchantNo = merchantNoOf(biz);
         // 额度取 3 只为把闸门顶出来，与 PRO 的真实额度（10）无关
         TestPlan.grantQuota(planMapper, merchantNo, 3);
@@ -127,7 +127,7 @@ class MerchantPlanQuotaFlowTest {
     @Test
     @DisplayName("★ 并发建店不越额 —— 两个请求同时进来，只能成一个")
     void concurrentCreateDoesNotExceedQuota() throws Exception {
-        String biz = merchant("12600900030", "额度·并发");
+        String biz = merchant("18600900030", "额度·并发");
         String merchantNo = merchantNoOf(biz);
         // 额度取 3 只为把「只剩一个名额」这个局面造出来，与 PRO 的真实额度（10）无关
         TestPlan.grantQuota(planMapper, merchantNo, 3);
@@ -166,7 +166,7 @@ class MerchantPlanQuotaFlowTest {
     @Test
     @DisplayName("订阅行不存在时走配置兜底 —— 不是 NPE，也不是「一家都不能开」")
     void missingPlanRowFallsBackToConfig() throws Exception {
-        String biz = merchant("12600900040", "额度·无订阅行");
+        String biz = merchant("18600900040", "额度·无订阅行");
         String merchantNo = merchantNoOf(biz);
 
         // 删掉订阅行，模拟「V150 的回填漏了这个主体」

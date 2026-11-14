@@ -18,4 +18,10 @@
         <module>food-channel</module>
         <module>food-server</module>
     </modules>
+    <profiles>
+        <profile>
+            <id>food-commerce-embedded</id>
+            <modules><module>food-commerce</module></modules>
+        </profile>
+    </profiles>
 </project>

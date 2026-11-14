@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 
 import ai.neargo.shop.spi.points.*;
 import ai.neargo.shop.trade.order.points.OrderPointsBindingService;
+import ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.EarningSnapshot;
+import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.trade.order.points.OrderPointsBindingService.*;
 import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService;
 import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService.*;
@@ -46,7 +48,7 @@ class PointsOrderBindingTest {
                         10,
                         2,
                         1,
-                        "RULE_V1",
+                        new ObjectMapper().writeValueAsString(new EarningSnapshot(2, 1, List.of())),
                         "AGREEMENT_V1",
                         route,
                         List.of(new PointsRedeemPort.Item("ITEM", 100)));

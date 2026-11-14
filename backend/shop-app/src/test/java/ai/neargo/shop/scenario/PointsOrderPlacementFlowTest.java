@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.*;
@@ -43,11 +44,15 @@ class PointsOrderPlacementFlowTest {
 
     @BeforeAll
     void schema() {
+        var jdbc = new JdbcTemplate(data);
+        jdbc.execute("DROP TABLE IF EXISTS ord_points_earn_rule_revision");
+        jdbc.execute("DROP TABLE IF EXISTS ord_points_earn_rule");
         new ResourceDatabasePopulator(
                         new ClassPathResource("db/migration/V452__order_points_integration.sql"),
                         new ClassPathResource("db/migration/V453__order_points_binding.sql"),
                         new ClassPathResource("db/migration/V454__order_points_source_facts.sql"),
-                        new ClassPathResource("db/migration/V455__order_points_placement.sql"))
+                        new ClassPathResource("db/migration/V455__order_points_placement.sql"),
+                        new ClassPathResource("db/migration/V540__online_points_earning_rules.sql"))
                 .execute(data);
     }
 
@@ -272,6 +277,70 @@ class PointsOrderPlacementFlowTest {
         verify(redeem, times(1)).hold(any());
     }
 
+    @Test
+    void categoryAndRuleAreResolvedByServerAndFrozenWithRevision() {
+        var d=draft();var original=d.candidates().getFirst();
+        var supplied=new PointsEarnPort.EarnLine("ITEM","G","FORGED_CATEGORY",1,100,0,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,999));
+        var candidate=new Candidate(original.target(),original.policyVersion(),original.earning(),original.redemption(),List.of(supplied));
+        var changed=new Draft(d.orderNo(),d.userNo(),d.market(),d.currency(),d.scene(),d.client(),d.wantPoints(),d.basePayMinor(),d.requestHash(),List.of(candidate),d.allSubOrderNos(),d.paymentStores());
+        stage(changed);var result=placement.resume(changed.orderNo());
+        var snapshot=new tools.jackson.databind.ObjectMapper().readValue(result.resolved().admissions().getFirst().snapshot().ruleSnapshot(),EarningSnapshot.class);
+        assertThat(snapshot.lines().getFirst().categoryNo()).isEqualTo("C");
+        assertThat(snapshot.lines().getFirst().rule().value()).isZero();
+        assertThat(snapshot.ruleTraces().getFirst().matchedScope()).isEqualTo("DEFAULT");
+        assertThat(snapshot.schemaVersion()).isEqualTo(2);
+    }
+
+    @Test
+    void unifiedRatioSnapshotFreezesOperationAndPublishedRuleBeforeLaterChanges() {
+        var target=org.springframework.test.util.AopTestUtils.<PointsOrderPlacementCoordinatorImpl>getUltimateTargetObject(placement);
+        var rules=mock(PointsEarningRulePort.class);
+        var factory=new org.springframework.beans.factory.support.StaticListableBeanFactory();factory.addBean("rules",rules);
+        target.configureUnifiedEarning(factory.getBeanProvider(PointsEarningRulePort.class),true);
+        try {
+            String type="NEW"+UUID.randomUUID().toString().substring(0,8);
+            when(terms.resolve(anyString(),anyString(),anyString(),anyString(),anyString(),anyString())).thenReturn(Optional.of(
+                new PointsOrderTermsPort.Terms(type,"CNY",2,1,true,false,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO,0),1,"null")));
+            when(rules.calculate(any())).thenAnswer(call -> {
+                PointsEarningRulePort.Query query=call.getArgument(0);
+                return new PointsEarningRulePort.Calculation(new PointsEarningRulePort.Type(type,"Reward","CN","CNY",2,2,1),query.categoryNo(),query.cashMinor(),"C",9,500,10);
+            });
+            var d=draft();
+            var earningOnly=new Draft(d.orderNo(),d.userNo(),d.market(),d.currency(),d.scene(),d.client(),0,d.basePayMinor(),d.requestHash(),d.candidates(),d.allSubOrderNos(),d.paymentStores());
+            stage(earningOnly);var resolved=placement.resume(d.orderNo());
+            var snapshot=new tools.jackson.databind.ObjectMapper().readValue(resolved.resolved().admissions().getFirst().snapshot().ruleSnapshot(),EarningSnapshot.class);
+            assertThat(snapshot.schemaVersion()).isEqualTo(3);assertThat(snapshot.operationNo()).isEqualTo("ORDER_EARN_V3");
+            assertThat(snapshot.lines().getFirst().rule().value()).isEqualTo(500);
+            assertThat(snapshot.ruleTraces().getFirst().revision()).isEqualTo(9);
+            reset(rules);
+            assertThat(placement.resume(d.orderNo()).resolved()).isEqualTo(resolved.resolved());
+            verifyNoInteractions(rules);
+        } finally { target.configureUnifiedEarning(factory.getBeanProvider(PointsEarningRulePort.class),false); }
+    }
+
+    @Test
+    void mixedRedemptionUsesUnifiedRouteAndPreservesCashBaseline() {
+        var target=org.springframework.test.util.AopTestUtils.<PointsOrderPlacementCoordinatorImpl>getUltimateTargetObject(placement);
+        var shared=mock(PointsEarningRulePort.class);var unified=mock(PointsOperationsPort.class);var factory=new org.springframework.beans.factory.support.StaticListableBeanFactory();factory.addBean("rules",shared);factory.addBean("ops",unified);
+        target.setUnifiedOperations(factory.getBeanProvider(PointsOperationsPort.class));
+        when(unified.quote(anyString(),anyString(),any())).thenAnswer(c -> redeem.quote(c.getArgument(2)));
+        when(unified.hold(any(),any())).thenAnswer(c -> held(c.getArgument(1)));
+        target.configureUnifiedEarning(factory.getBeanProvider(PointsEarningRulePort.class),true);
+        try {
+            String type="MIX"+UUID.randomUUID().toString().substring(0,8);
+            when(terms.resolve(anyString(),anyString(),anyString(),anyString(),anyString(),anyString())).thenReturn(Optional.of(
+                new PointsOrderTermsPort.Terms(type,"CNY",2,1,true,true,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO,0),1,"null")));
+            doAnswer(call->{var q=call.<PointsRedeemPort.RedeemQuery>getArgument(0);var t=q.targets().getFirst();return new PointsRedeemPort.RedeemQuote(type,2,1,20,10,null,List.of(new PointsRedeemPort.Share(t.subOrderNo(),t.merchantNo(),t.storeNo(),20,10)));}).when(redeem).quote(any());
+            when(shared.calculate(any())).thenAnswer(c -> {PointsEarningRulePort.Query q=c.getArgument(0);return new PointsEarningRulePort.Calculation(new PointsEarningRulePort.Type(type,"Reward","CN","CNY",2,2,1),q.categoryNo(),q.cashMinor(),"DEFAULT",1,1000,18);});
+            var d=draft();stage(d);var resolved=placement.resume(d.orderNo());
+            var snapshot=new tools.jackson.databind.ObjectMapper().readValue(resolved.resolved().admissions().getFirst().snapshot().ruleSnapshot(),EarningSnapshot.class);
+            assertThat(snapshot.schemaVersion()).isEqualTo(3);assertThat(snapshot.operationNo()).isEqualTo("ORDER_EARN_V3");
+            assertThat(resolved.resolved().operationNo()).isEqualTo("ORDER_REDEEM_V3");
+            assertThat(snapshot.lines().getFirst().goodsCashMinor()).isEqualTo(90);
+            verify(unified).hold(any(),any());verify(shared).calculate(any());
+        } finally {target.configureUnifiedEarning(factory.getBeanProvider(PointsEarningRulePort.class),false);}
+    }
+
     static class Sources implements SourceOrders {
         final Map<String, SourceOrder> roots = new ConcurrentHashMap<>();
         final AtomicBoolean failNext = new AtomicBoolean();
@@ -298,8 +367,16 @@ class PointsOrderPlacementFlowTest {
     }
 
     @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
-    @Import({PointsOrderSourceOutboxTest.Config.class, PointsOrderPlacementCoordinatorImpl.class})
+    @Import({PointsOrderSourceOutboxTest.Config.class, PointsOrderPlacementCoordinatorImpl.class, ai.neargo.shop.trade.order.points.earning.PointsEarningRules.class})
     static class Config {
+        @Bean
+        ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog() {
+            return new ai.neargo.shop.spi.product.PointsEarningCatalogPort() {
+                public java.util.List<Category> categories() { return java.util.List.of(new Category("C",null,"测试","测试")); }
+                public String goodsCategory(String goods) { return "C"; }
+                public java.util.List<String> ancestry(String category) { return java.util.List.of("C"); }
+            };
+        }
         @Bean
         Sources orders() {
             return new Sources();

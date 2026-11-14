@@ -32,10 +32,27 @@ public final class PricingSeedValidator {
         }
     }
 
+    /** Selects a fixed code-owned registry; the request cannot name or load an evaluator. */
+    public String registryVersion(String source) {
+        try {
+            return PricingRuleCatalog.registryVersion(schemaVersion(PricingJson.parse(source)));
+        } catch (JacksonException malformed) {
+            throw new IllegalArgumentException("Invalid bounded seed JSON", malformed);
+        }
+    }
+
+    private static int schemaVersion(JsonNode seed) {
+        long schema = integer(seed, "schemaVersion");
+        require(schema == 2 || schema == 3);
+        return (int) schema;
+    }
+
     private SeedPlan validateTree(JsonNode seed, String registryVersion) {
-        PricingJson.fields(seed, ROOT, ROOT);
-        require("PRICING_RULE_SPEC_V4".equals(registryVersion));
-        require(integer(seed, "schemaVersion") == 2);
+        int schema = schemaVersion(seed);
+        var fields = new HashSet<>(ROOT);
+        if (schema == 3) fields.add("platformTaxDefaultExample");
+        PricingJson.fields(seed, fields, fields);
+        require(PricingRuleCatalog.registryVersion(schema).equals(registryVersion));
         require(text(seed, "engineSpecVersion").equals(registryVersion));
         require(text(seed, "status").equals("DESIGN_EXAMPLE_NOT_EXECUTABLE_MIGRATION"));
         LocalDate.parse(text(seed, "date"));
@@ -49,9 +66,11 @@ public final class PricingSeedValidator {
         require(text(policy, "defaultMode").equals("DRY_RUN"));
         require(text(policy, "onSameVersionDifferentHash").equals("REJECT"));
         for (String key : List.of("createsAssetBalances", "autoPublish", "autoUpgradeStores")) bool(policy, key, false);
-        for (String key : List.of("examplesNeverImportedAsRealStores", "requireSupportedEvaluatorRegistry",
-                "requireValidatedLegalTaxProfiles")) bool(policy, key, true);
-        PricingRuleCatalog.validateJson(seed.path("systemRules").toString());
+        for (String key : List.of("examplesNeverImportedAsRealStores", "requireSupportedEvaluatorRegistry")) {
+            bool(policy, key, true);
+        }
+        bool(policy, "requireValidatedLegalTaxProfiles", schema == 2);
+        PricingRuleCatalog.validateJson(seed.path("systemRules").toString(), schema);
         var rows = seed.path("industryTemplates");
         require(rows.isArray() && rows.size() == 3);
         var seen = new HashSet<String>();
@@ -68,17 +87,33 @@ public final class PricingSeedValidator {
             // This is a syntax ceiling only, never a provider capability grant or publication context.
             var result = new PricingConfigCompiler().compile(row.path("definition").toString(), "{}",
                     SystemConstraints.standard(), new PricingCapabilities(8, 4, true, true, true));
-            require(result.valid());
-            templates.add(new TemplateDraft(alias, industry, result.config().canonicalJson()));
+            require(result.valid() && result.config().definition().schemaVersion() == schema);
+            templates.add(new TemplateDraft(alias, industry, result.config().canonicalJson(), schema));
         }
-        validateTaxes(seed.path("regionalTaxProfiles"), seed.path("sourceReferences"));
+        int taxDraftCount;
+        if (schema == 2) {
+            validateTaxes(seed.path("regionalTaxProfiles"), seed.path("sourceReferences"));
+            taxDraftCount = 2;
+        } else {
+            require(seed.path("regionalTaxProfiles").isArray() && seed.path("regionalTaxProfiles").isEmpty());
+            var defaults = seed.path("platformTaxDefaultExample");
+            var keys = Set.of("rateBp", "priceTaxMode");
+            PricingJson.fields(defaults, keys, keys);
+            long rate = integer(defaults, "rateBp");
+            require(rate >= 0 && rate <= 10000);
+            PriceTaxMode.valueOf(text(defaults, "priceTaxMode"));
+            require(seed.path("sourceReferences").isObject());
+            seed.path("sourceReferences").properties().forEach(entry -> require(entry.getValue().isString()));
+            taxDraftCount = 0;
+        }
         require(seed.path("storeDraftExamples").isArray());
         require(seed.path("ownerCapabilityFixtureExamples").isArray());
         require(seed.path("calculationVectors").isArray());
         var provenance = PricingJson.JSON.createObjectNode();
         for (String name : List.of("schemaVersion", "seedVersion", "engineSpecVersion", "systemRules",
                 "regionalTaxProfiles", "sourceReferences")) provenance.set(name, seed.get(name));
-        return new SeedPlan(version, PricingJson.hash(PricingJson.canonical(seed)), 20, templates, 2,
+        if (schema == 3) provenance.set("platformTaxDefaultExample", seed.get("platformTaxDefaultExample"));
+        return new SeedPlan(version, PricingJson.hash(PricingJson.canonical(seed)), 20, templates, taxDraftCount,
                 PricingJson.canonical(provenance));
     }
 
@@ -151,7 +186,7 @@ public final class PricingSeedValidator {
         if (!condition) throw new IllegalArgumentException("Unsupported or unsafe draft seed");
     }
 
-    public record TemplateDraft(String sourceTemplateNo, String industryCode, String definition) { }
+    public record TemplateDraft(String sourceTemplateNo, String industryCode, String definition, int schemaVersion) { }
     public record SeedPlan(String seedVersion, String seedHash, int ruleCount, List<TemplateDraft> templates,
             int taxDraftCount, String provenanceSnapshot) {
         public SeedPlan { templates = List.copyOf(templates); }

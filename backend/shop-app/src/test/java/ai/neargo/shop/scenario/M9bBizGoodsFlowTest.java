@@ -76,7 +76,7 @@ class M9bBizGoodsFlowTest {
          * 有人把默认值改回 true 的话，症状不是报错而是**商家突然全线上不了架** ——
          * 而那时没人会想到是一行配置。CategoryTreeFlowTest 测的是相反那一半（开着时拦得对）。
          */
-        String token = merchant("12600199001", "闸门关着·菜摊");
+        String token = merchant("18600199001", "闸门关着·菜摊");
         // CAT110 蔬菜挂着 FRESH_VEG 门槛，而这家新店一个授权码都没有
         String body0 = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +124,7 @@ class M9bBizGoodsFlowTest {
          * <p>线上实测：394 个 SKU 里带 option_value_nos 的是 0 个。
          * 这条测试就是拿来钉住那个 0 不再回来的。
          */
-        String token = merchant("12600199077", "手打规格·杂货铺");
+        String token = merchant("18600199077", "手打规格·杂货铺");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"手打规格测试\","
@@ -172,7 +172,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 草稿不进运营的待审队列 —— 队列里混着半成品，运营分不出哪些真要审")
     void draftStaysOutOfTheQueue() throws Exception {
-        String token = merchant("12600127020", "草稿队列测试店");
+        String token = merchant("18600127020", "草稿队列测试店");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(goodsBody(null, "只写了一半的货", 800, 5)))
@@ -192,7 +192,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 改截单不触发重审 —— 走 save 的话改一次截单等于停一天生意")
     void changingCutoffKeepsTheListingLive() throws Exception {
-        String token = merchant("12600127021", "截单测试·菜摊");
+        String token = merchant("18600127021", "截单测试·菜摊");
         // CAT110 蔬菜要 FRESH_VEG，先把码授了，否则卡在上架准入而不是本条要测的东西
         String merchantNo = merchantNoOf(token);
         mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -247,7 +247,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 新建落草稿、显式提交才进队列 —— 保存即提审会让队列里全是半成品")
     void newGoodsStartsAsDraft() throws Exception {
-        String token = merchant("12600127001", "商品测试店A");
+        String token = merchant("18600127001", "商品测试店A");
 
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -283,7 +283,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 改动后回到待审核 —— 否则「改成别的东西再卖」能绕开审核")
     void editSendsBackToAudit() throws Exception {
-        String token = merchant("12600127002", "商品测试店B");
+        String token = merchant("18600127002", "商品测试店B");
         String goodsNo = createAndApprove(token, "白菜");
 
         // 过审后确认能上架
@@ -330,7 +330,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 保存不带 images 不清空轮播图；显式传空数组才清空")
     void omittedImagesAreKept() throws Exception {
-        String token = merchant("12600127013", "轮播图测试店");
+        String token = merchant("18600127013", "轮播图测试店");
 
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -377,7 +377,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 品类由类目派生 —— 请求里塞一个矛盾的 type 也没用")
     void categoryDrivesType() throws Exception {
-        String token = merchant("12600127014", "派生品类测试店");
+        String token = merchant("18600127014", "派生品类测试店");
 
         // CAT110 蔬菜 = FRESH；请求里故意写 NORMAL
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
@@ -463,7 +463,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 不存在的市场码（CNY 是货币不是市场）要被拒，不能悄悄多出一行 SKU")
     void unknownMarketCodeIsRejected() throws Exception {
-        String token = merchant("12600127016", "市场码校验店");
+        String token = merchant("18600127016", "市场码校验店");
 
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -500,7 +500,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 多市场定价：只改标题不该删掉其余市场的价，且详情要发回整张表")
     void otherMarketsSurviveAnEdit() throws Exception {
-        String token = merchant("12600127015", "多市场定价店");
+        String token = merchant("18600127015", "多市场定价店");
 
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -553,7 +553,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 引用标准品：类目与 optionCode 以标准品为准，改不掉")
     void stdConvergesCategoryAndCodes() throws Exception {
-        String token = merchant("12600127016", "标准品测试店");
+        String token = merchant("18600127016", "标准品测试店");
 
         // STD1001 本地菠菜：类目 CAT110（蔬菜 / FRESH —— V168 降二级后从叶菜上移），
         // 规格 code = W500G/W1JIN/W2JIN
@@ -594,7 +594,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 标准品搜索：按别名也搜得到；搜不到不是错误")
     void stdSearchMatchesAlias() throws Exception {
-        String token = merchant("12600127017", "标准品搜索店");
+        String token = merchant("18600127017", "标准品搜索店");
 
         // 「洋芋」只出现在 keywords 里，标题是「土豆」—— 对不上的结果不是报错，
         // 是商家以为标准库里没有，然后自建一个，跨店可比在这一次就丢了
@@ -613,7 +613,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 补货不触发重审 —— 每天都在做的事不该每次都重新过审")
     void restockKeepsApproval() throws Exception {
-        String token = merchant("12600127003", "商品测试店C");
+        String token = merchant("18600127003", "商品测试店C");
         String goodsNo = createAndApprove(token, "土鸡蛋");
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                 .header("Authorization", "Bearer " + token)
@@ -637,8 +637,8 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 碰不到别家的商品，且按 404 而不是 403（403 等于确认这个编号存在）")
     void cannotTouchOthersGoods() throws Exception {
-        String a = merchant("12600127004", "商品测试店D");
-        String b = merchant("12600127005", "商品测试店E");
+        String a = merchant("18600127004", "商品测试店D");
+        String b = merchant("18600127005", "商品测试店E");
         String goodsNo = createAndApprove(a, "A 家的商品");
 
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + b))
@@ -668,11 +668,11 @@ class M9bBizGoodsFlowTest {
          * 有 GOODS 权限，**这一步在漏改那一版是 403**。挑一个不需要作用域的端点
          * 就会变成一条恒绿的闸 —— 恒绿的闸和没有闸是一回事。
          */
-        String bizToken = merchant("12600127099", "换端测试店");
+        String bizToken = merchant("18600127099", "换端测试店");
         createGoods(bizToken, "换端测试商品");
 
         // 同一条链，换成 C 端令牌：连认证都不该过 —— 是 401，不是「权限不够」的 403
-        String consumerToken = login("12600133900");
+        String consumerToken = login("18600133900");
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + consumerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(goodsBody(null, "越权商品", 1000, 10)))
@@ -682,7 +682,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("列表按状态筛选，且默认包含下架与审核中（看不到就不知道要改什么）")
     void listIncludesNonSellable() throws Exception {
-        String token = merchant("12600127006", "商品测试店F");
+        String token = merchant("18600127006", "商品测试店F");
         createGoods(token, "只录不上架");
 
         mvc().perform(get("/biz/goods").header("Authorization", "Bearer " + token))
@@ -718,8 +718,8 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("规格模板：存成自己的，别家看不到")
     void specTemplateIsPrivate() throws Exception {
-        String a = merchant("12600127007", "商品测试店G");
-        String b = merchant("12600127008", "商品测试店H");
+        String a = merchant("18600127007", "商品测试店G");
+        String b = merchant("18600127008", "商品测试店H");
 
         mvc().perform(post("/biz/spec-templates").header("Authorization", "Bearer " + a)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -737,7 +737,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("拍照识别一期恒返回「没认出来」—— 前端据此降级为手填，而不是预填一个瞎猜")
     void recognizeDegradesHonestly() throws Exception {
-        String token = merchant("12600127009", "商品测试店I");
+        String token = merchant("18600127009", "商品测试店I");
         mvc().perform(post("/biz/goods/recognize").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"imageUrl\":\"https://cdn/x.jpg\"}"))
@@ -759,7 +759,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 上架后 C 端真的搜得到；下架后立刻搜不到")
     void onSaleGoodsIsVisibleToBuyers() throws Exception {
-        String token = merchant("12600127010", "商品可见性店");
+        String token = merchant("18600127010", "商品可见性店");
         String goodsNo = createAndApprove(token, "会飞的扫帚");
 
         // 上架前：不该出现在买家的社区列表里
@@ -820,7 +820,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 下单双写门店：merchant_no 是结算键，store_no 是履约键")
     void orderCarriesStoreNo() throws Exception {
-        String token = merchant("12600127011", "双写测试店");
+        String token = merchant("18600127011", "双写测试店");
         String goodsNo = createAndApprove(token, "双写测试商品");
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                 .header("Authorization", "Bearer " + token)
@@ -838,7 +838,7 @@ class M9bBizGoodsFlowTest {
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true));
         assertThat(store).as("入驻通过必须建出默认门店").isNotNull();
 
-        String buyer = login("12600127012");
+        String buyer = login("18600127012");
         String orderNo = placeOrder(buyer, goodsNo);
 
         var sub = subOrderMapper.selectOne(
@@ -854,12 +854,12 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 订单按当前门店隔离 —— 建了三家店，单不能混在一起")
     void ordersAreScopedToCurrentStore() throws Exception {
-        String token = merchant("12600127021", "多店订单测试");
+        String token = merchant("18600127021", "多店订单测试");
         String goodsNo = createAndApprove(token, "多店测试商品");
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
-        placeOrder(login("12600127022"), goodsNo);
+        placeOrder(login("18600127022"), goodsNo);
 
         // 默认店（下单落的就是它）
         String defaultStore = json.readTree(mvc().perform(get("/biz/context")
@@ -901,12 +901,12 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★ 「全部门店」对店员 = 他被授权的那几家，不是主体全部")
     void allStoresIsScopedToGrantedStoresForStaff() throws Exception {
-        String token = merchant("12600127031", "全部门店语义测试");
+        String token = merchant("18600127031", "全部门店语义测试");
         String goodsNo = createAndApprove(token, "语义测试商品");
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
-        placeOrder(login("12600127032"), goodsNo);
+        placeOrder(login("18600127032"), goodsNo);
 
         // 开一家分店，把店员只授权到分店（多门店是 PRO 才有的能力）
         TestPlan.grantPro(mvc(), json, planMapper, token);
@@ -916,7 +916,7 @@ class M9bBizGoodsFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("storeNo").asString();
-        String staffPhone = "12600127033";
+        String staffPhone = "18600127033";
         String accountNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -953,8 +953,8 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("越权门店号不认 —— 回落默认店，不能查出别家的单")
     void foreignStoreHeaderIsIgnored() throws Exception {
-        String token = merchant("12600127023", "越权测试店A");
-        String other = merchant("12600127024", "越权测试店B");
+        String token = merchant("18600127023", "越权测试店A");
+        String other = merchant("18600127024", "越权测试店B");
         String otherStore = json.readTree(mvc().perform(get("/biz/context")
                         .header("Authorization", "Bearer " + other))
                 .andReturn().getResponse().getContentAsString())
@@ -1144,7 +1144,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 成本价与详情图往返 —— 有列没有写入路径，等于这两个字段不存在")
     void costPriceAndDetailImagesRoundTrip() throws Exception {
-        String token = merchant("12600127040", "成本价测试店");
+        String token = merchant("18600127040", "成本价测试店");
         String body = "{\"categoryNo\":\"CAT210\",\"title\":\"带成本的货\",\"subtitle\":\"测试\","
                 + "\"cover\":\"🥫\",\"images\":[],\"detailImages\":[\"/img/d1.jpg\",\"/img/d2.jpg\"],"
                 + "\"specGroups\":[],"
@@ -1192,7 +1192,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★★ SKU 数量上限 —— 接口层不拦的话，512 行规格能直接灌进商品详情")
     void tooManySkusAreRejected() throws Exception {
-        String token = merchant("12600127041", "规格上限测试店");
+        String token = merchant("18600127041", "规格上限测试店");
         StringBuilder skus = new StringBuilder();
         for (int i = 0; i < 120; i++) {
             if (i > 0) skus.append(",");
@@ -1255,7 +1255,7 @@ class M9bBizGoodsFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
 
-        String biz = merchant("12600199201", "烘焙测试店");
+        String biz = merchant("18600199201", "烘焙测试店");
         String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"烘焙测试品\","
@@ -1323,7 +1323,7 @@ class M9bBizGoodsFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
 
-        String biz = merchant("12600199202", "停用烘焙店");
+        String biz = merchant("18600199202", "停用烘焙店");
         String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"停用烘焙品\","
@@ -1366,7 +1366,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String biz = merchant("12600199203", "免审测试店");
+            String biz = merchant("18600199203", "免审测试店");
             String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"categoryNo\":\"CAT120\",\"title\":\"免审测试品\","
@@ -1415,7 +1415,7 @@ class M9bBizGoodsFlowTest {
     @DisplayName("★★★ 免审发布后回执 hasDraft=false —— 端上靠它选文案，说反了就是「已生效」被说成「等审核」")
     void auditOffPublishReportsNoPendingDraft() throws Exception {
         String ops = opsLogin("admin", "admin123");
-        String biz = merchant("12600199209", "免审回执店");
+        String biz = merchant("18600199209", "免审回执店");
         // 先在审核开着时把商品做成「在售 + 有草稿」—— 这正是商家点发布时的处境
         String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1464,7 +1464,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★★ 双版本：编辑在售商品只落草稿，线上照卖旧版")
     void savingOnSaleGoodsKeepsItSelling() throws Exception {
-        String biz = merchant("12600199204", "双版本测试店");
+        String biz = merchant("18600199204", "双版本测试店");
         String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT120\",\"title\":\"旧标题\","
@@ -1539,7 +1539,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String goodsNo = onSaleGoodsWithDraft("12600199205", "换版测试店");
+            String goodsNo = onSaleGoodsWithDraft("18600199205", "换版测试店");
             mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
                             .header("Authorization", "Bearer " + lastBiz))
                     .andExpect(jsonPath("$.code").value(0))
@@ -1569,7 +1569,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★★ 双版本：草稿基版过期 → 发布被拒，不静默覆盖")
     void publishStaleDraftRejected() throws Exception {
-        String goodsNo = onSaleGoodsWithDraft("12600199206", "冲突测试店");
+        String goodsNo = onSaleGoodsWithDraft("18600199206", "冲突测试店");
         // 中途运营强改了线上（强制下架会动 prd_goods 行 → updated_at 变）
         mvc().perform(post("/ops/goods/" + goodsNo + "/force-off")
                         .header("Authorization", "Bearer " + opsLogin())
@@ -1584,7 +1584,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★★ 双版本：审核开着，提交后线上继续卖旧版；过审换版")
     void publishWithAuditKeepsOldVersionSelling() throws Exception {
-        String goodsNo = onSaleGoodsWithDraft("12600199207", "审核换版店");
+        String goodsNo = onSaleGoodsWithDraft("18600199207", "审核换版店");
         // 提交发布（默认审核开）——线上不动、继续卖旧版
         mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
                         .header("Authorization", "Bearer " + lastBiz))
@@ -1625,7 +1625,7 @@ class M9bBizGoodsFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
 
-        String biz = merchant("12600199208", "预览测试店");
+        String biz = merchant("18600199208", "预览测试店");
         String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT120\",\"title\":\"预览旧标题\","
@@ -1679,7 +1679,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String goodsNo = onSaleGoodsWithDraft("12600199209", "标识测试店");
+            String goodsNo = onSaleGoodsWithDraft("18600199209", "标识测试店");
             mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + lastBiz))
                     .andExpect(jsonPath("$.data.hasDraft").value(true));
             mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
@@ -1704,7 +1704,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String goodsNo = onSaleGoodsWithDraft("12600199210", "草稿回读店");
+            String goodsNo = onSaleGoodsWithDraft("18600199210", "草稿回读店");
             /*
              * 回读的是**提交体镜像**（SaveCommand），不是烘焙后的 VO ——
              * 编辑页拿它直接回填表单：字段名与 /biz/goods/save 的请求体逐一对应。
@@ -1739,7 +1739,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String goodsNo = onSaleGoodsWithDraft("12600199211", "冲突出路店");
+            String goodsNo = onSaleGoodsWithDraft("18600199211", "冲突出路店");
             /*
              * 商家自己下架再上架 —— version 是 @Version 乐观锁，**每次 UPDATE 都增**。
              * 生鲜每天改截单同理。没有确认出路的话，这一步就把草稿永久锁死了。
@@ -1787,7 +1787,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★ 放弃草稿：线上不动、标识消失、幂等")
     void discardDraftDropsChanges() throws Exception {
-        String goodsNo = onSaleGoodsWithDraft("12600199212", "放弃草稿店");
+        String goodsNo = onSaleGoodsWithDraft("18600199212", "放弃草稿店");
         mvc().perform(post("/biz/goods/" + goodsNo + "/draft/discard")
                         .header("Authorization", "Bearer " + lastBiz))
                 .andExpect(jsonPath("$.code").value(0))
@@ -1813,7 +1813,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"enabled\":false,\"rolloutPercent\":0}"))
                 .andExpect(jsonPath("$.code").value(0));
         try {
-            String goodsNo = onSaleGoodsWithDraft("12600199213", "处置保全店");
+            String goodsNo = onSaleGoodsWithDraft("18600199213", "处置保全店");
             // 运营强制下架（REJECTED + 下架 + version 增）—— 草稿随之 stale
             mvc().perform(post("/ops/goods/" + goodsNo + "/force-off")
                             .header("Authorization", "Bearer " + ops)
@@ -1849,7 +1849,7 @@ class M9bBizGoodsFlowTest {
     @DisplayName("★★★ 审核员不再盲批：draft-preview 给出待生效的字段级差异；无草稿回 null")
     void opsSeesDraftDiffBeforeApproving() throws Exception {
         // 审核开着（默认态）：提交发布 = 草稿 SUBMITTED、线上照卖旧版
-        String goodsNo = onSaleGoodsWithDraft("12600199214", "盲批终结店");
+        String goodsNo = onSaleGoodsWithDraft("18600199214", "盲批终结店");
         mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
                         .header("Authorization", "Bearer " + lastBiz))
                 .andExpect(jsonPath("$.code").value(0));
@@ -1864,7 +1864,7 @@ class M9bBizGoodsFlowTest {
         assertThat(body).contains("旧标题").contains("新标题");
 
         // 老链路（新建提审，无草稿）：null 是常态 —— 审核员审的是内容本身
-        String biz2 = merchant("12600199215", "老链路对照店");
+        String biz2 = merchant("18600199215", "老链路对照店");
         String g2 = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + biz2)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1898,7 +1898,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("★★★ 建品再也不往 prd_goods 的两列拼团配置上写 —— 留着就是一份没人读却像在生效的配置")
     void savingGoodsNoLongerWritesGroupColumns() throws Exception {
-        String token = merchant("12600299010", "停写验证·果蔬");
+        String token = merchant("18600299010", "停写验证·果蔬");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"停写验证梨\",\"subtitle\":\"x\","
@@ -1970,7 +1970,7 @@ class M9bBizGoodsFlowTest {
          * SaveCommand 的位次错一个,都不报错,只是历史里那一列恒为 MANUAL。
          * 服务层单测看不见它们(那边是直接传 entrySource 进去的)。
          */
-        String token = merchant("12600199088", "录入方式·果铺");
+        String token = merchant("18600199088", "录入方式·果铺");
         String body = mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1992,7 +1992,7 @@ class M9bBizGoodsFlowTest {
     @Test
     @DisplayName("不传 entrySource 落 MANUAL —— 不带它的老调用方不该写进一个 null")
     void entrySourceDefaultsToManual() throws Exception {
-        String token = merchant("12600199089", "默认录入·果铺");
+        String token = merchant("18600199089", "默认录入·果铺");
         String body = mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

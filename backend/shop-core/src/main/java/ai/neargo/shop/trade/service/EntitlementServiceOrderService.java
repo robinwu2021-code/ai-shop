@@ -20,6 +20,7 @@ public interface EntitlementServiceOrderService {
     ServiceOrderSnapshot create(EntitlementContext context, String entityNo, ServiceOrderCreate command, String key);
     ServiceOrderSnapshot createMonetary(EntitlementContext context, String entityNo, ServiceOrderCreate command,
                                         String key);
+    ServiceOrderSnapshot createMonetarySelected(EntitlementContext context,String entityNo,ServiceOrderCreate command,String key,String walletFingerprint);
     ServiceOrderSnapshot bindMoneyPreview(EntitlementContext context, String entityNo, String storeNo, String no,
                                           Quote quote);
     ServiceOrderSnapshot createIdentified(EntitlementContext context, String entityNo,

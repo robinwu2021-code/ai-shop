@@ -1,0 +1,266 @@
+package ai.neargo.inventory.domain.support;
+
+/**
+ * 本域的取值域。**字符串常量而不是 Java 枚举**，与仓库里 {@code OrdAfterSale.REFUNDED}
+ * 这类写法一致：库里存的就是这些串，中间再隔一层枚举，反序列化失败时报的是
+ * 「没有这个枚举常量」，而真正的问题是**库里出现了没人认识的值**。
+ */
+public final class InvEnums {
+
+    private InvEnums() {
+    }
+
+    /** 库位类型。门店、仓、在途、虚拟（报废区/样品/借出）都是库位。 */
+    /** 一本账的写入方（{@code inv_owner.write_authority}）。商城切流期间逐个业主翻转（AC-19、AC-27）。 */
+    public static final class WriteAuthority {
+        /** ai-shop 进程内嵌直写（过渡期） */
+        public static final String EMBEDDED = "EMBEDDED";
+        /** 独立服务进程写 */
+        public static final String SVC = "SVC";
+        /** 翻转中（对账期间）：两边都拒写（AC-27） */
+        public static final String FLIPPING = "FLIPPING";
+
+        /** 配置值只认两种写入方；别的值按内嵌处理（拼进 SQL 前先收口成常量） */
+        public static String normalize(String mode) {
+            return SVC.equals(mode) ? SVC : EMBEDDED;
+        }
+
+        private WriteAuthority() {
+        }
+    }
+
+    /**
+     * 账本的宿主组织类型（{@code inv_owner.external_type}）。服务<b>不解释</b>它，开放集合由宿主取值；
+     * 这里只有两个存量缺省：商城内嵌按经营主体开账（{@code ENTITY}），其他系统是平台运营方一本账（{@code PLATFORM}）。
+     */
+    public static final class OwnerType {
+        public static final String ENTITY = "ENTITY";
+        public static final String PLATFORM = "PLATFORM";
+
+        /** 开账本没给类型时：与 V26 存量回填同一条规则 */
+        public static String defaultFor(String systemCode) {
+            return "SHOP".equals(systemCode) ? ENTITY : PLATFORM;
+        }
+
+        private OwnerType() {
+        }
+    }
+
+    public static final class LocationKind {
+        public static final String STORE = "STORE";
+        public static final String WAREHOUSE = "WAREHOUSE";
+        /** 调拨途中的货停在这里 —— **有它，Σ on_hand 才任意时刻守恒**。 */
+        public static final String TRANSIT = "TRANSIT";
+        public static final String VIRTUAL = "VIRTUAL";
+
+        private LocationKind() {
+        }
+    }
+
+    /** 单据方向。流水只认这两个，业务语义在单据的 sourceType / purpose 上。 */
+    public static final class DocKind {
+        public static final String IN = "IN";
+        public static final String OUT = "OUT";
+
+        private DocKind() {
+        }
+    }
+
+    /** 单据状态。**只有 POSTED 改余额**，前面加多少中间态都不影响这一条。 */
+    public static final class DocStatus {
+        public static final String DRAFT = "DRAFT";
+        /**
+         * 盘点单专有的「正在盘」。**盘点没有 DRAFT** —— 开单那一刻就把账面数锁住了，
+         * 它从一开始就不是草稿。
+         *
+         * <p>此前这个值以字面量散在三处（开单、首页查开着的那张、本次新增的那道闸），
+         * 写错一个字母的症状是「首页永远说没有开着的单」，而三处都不报错。
+         */
+        public static final String COUNTING = "COUNTING";
+        public static final String POSTED = "POSTED";
+        public static final String VOIDED = "VOIDED";
+
+        private DocStatus() {
+        }
+    }
+
+    /** 入库来源。 */
+    public static final class InboundSource {
+        public static final String PURCHASE = "PURCHASE";
+        /** 退货入库。**只有退货类售后才开**，仅退款不开。 */
+        public static final String RETURN = "RETURN";
+        public static final String TRANSFER_IN = "TRANSFER_IN";
+        public static final String COUNT_GAIN = "COUNT_GAIN";
+        public static final String INIT = "INIT";
+        /** 线下卖出的撤销：把柜台卖错的那几件加回来，指回原出库单号 */
+        public static final String OFFLINE_RETURN = "OFFLINE_RETURN";
+        public static final String OTHER = "OTHER";
+
+        private InboundSource() {
+        }
+    }
+
+    /** 出库去向。 */
+    public static final class OutboundPurpose {
+        /** 销售出库。**只能由预留 commit 产生**，不接受手工创建。 */
+        public static final String SALE = "SALE";
+        public static final String TRANSFER_OUT = "TRANSFER_OUT";
+        public static final String SCRAP = "SCRAP";
+        public static final String COUNT_LOSS = "COUNT_LOSS";
+        public static final String INTERNAL = "INTERNAL";
+        /**
+         * 柜台卖出。<b>与 {@code SALE} 分开</b>：线上销售挂订单号、可点进订单、进销售额，
+         * 线下只有件数 —— 混在一个码里，销售报表就永远说不清那几件到底卖了多少钱。
+         */
+        public static final String OFFLINE_SALE = "OFFLINE_SALE";
+        /**
+         * 退回供应商。<b>去向指向 {@code inv_supplier}</b> —— 供应商建了档，退货才有对象可指，
+         * 而「这个月退给老周多少货」是应付账款对账的一半。
+         */
+        public static final String RETURN_SUPPLIER = "RETURN_SUPPLIER";
+        public static final String OTHER = "OTHER";
+
+        private OutboundPurpose() {
+        }
+    }
+
+    /**
+     * 出库去向的对象类型。<b>空表示没有去向</b> —— 报损就是没有去向的那一种，
+     * 不要为它造一个 {@code NONE}：那会让「没去向」与「去向是无」变成两个值。
+     */
+    public static final class TargetType {
+        public static final String SUPPLIER = "SUPPLIER";
+        public static final String STORE = "STORE";
+
+        private TargetType() {
+        }
+    }
+
+    /** 差异原因。**枚举不是自由文本** —— 自由文本汇总不出「这个月报损了多少」。 */
+    public static final class Reason {
+        public static final String CHECK = "CHECK";
+        public static final String BROKEN = "BROKEN";
+        public static final String EXPIRED = "EXPIRED";
+        public static final String GIFT = "GIFT";
+        public static final String OTHER = "OTHER";
+
+        private Reason() {
+        }
+    }
+
+    /** 预留状态。 */
+    public static final class ReservationStatus {
+        public static final String HELD = "HELD";
+        /** Accepted credit order; no payment has been acknowledged. */
+        public static final String ACCEPTED_UNPAID = "ACCEPTED_UNPAID";
+        public static final String PARTIAL_UNPAID = "PARTIAL_UNPAID";
+        public static final String ISSUED_UNPAID = "ISSUED_UNPAID";
+        /** Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff. */
+        public static final String ALLOCATED = "ALLOCATED";
+        // Reservation status is VARCHAR(16) in the deployed schema.
+        public static final String PARTIALLY_COMMITTED = "PARTIAL_COMMIT";
+        public static final String COMMITTED = "COMMITTED";
+        public static final String RELEASED = "RELEASED";
+        public static final String EXPIRED = "EXPIRED";
+
+        private ReservationStatus() {
+        }
+    }
+
+    /** 调拨状态。 */
+    public static final class TransferStatus {
+        public static final String DRAFT = "DRAFT";
+        public static final String SHIPPED = "SHIPPED";
+        public static final String RECEIVED = "RECEIVED";
+        public static final String VOIDED = "VOIDED";
+
+        private TransferStatus() {
+        }
+    }
+
+    /** 主数据状态。软删一律走它 —— 全库没有 deleted 列。 */
+    public static final class MasterStatus {
+        public static final String ACTIVE = "ACTIVE";
+        public static final String ARCHIVED = "ARCHIVED";
+        public static final String DISABLED = "DISABLED";
+
+        private MasterStatus() {
+        }
+    }
+
+    /** 物料跟踪方式（TDD §2.6）。BATCH 保留不实现（批次效期单独立项）。 */
+    public static final class TrackingMode {
+        public static final String QUANTITY = "QUANTITY";
+        public static final String SERIAL = "SERIAL";
+
+        private TrackingMode() {
+        }
+    }
+
+    /** 入库放行策略（TDD §2.8）：库存只校验凭证在不在、不判断质检内容。 */
+    public static final class GatePolicy {
+        public static final String NONE = "NONE";
+        public static final String REF_REQUIRED = "REF_REQUIRED";
+
+        private GatePolicy() {
+        }
+    }
+
+    /** 冻结原因（TDD §2.7）。可并存、按原因单独解除。 */
+    public static final class HoldReason {
+        public static final String COUNT = "COUNT";
+        public static final String RETURN_PENDING = "RETURN_PENDING";
+        public static final String MANUAL = "MANUAL";
+
+        private HoldReason() {
+        }
+    }
+
+    public static final class HoldStatus {
+        public static final String ACTIVE = "ACTIVE";
+        public static final String RELEASED = "RELEASED";
+
+        private HoldStatus() {
+        }
+    }
+
+    /** 物料主数据来源。**两种交付形态的唯一分叉点**。 */
+    public static final class DataSource {
+        public static final String OWN = "OWN";
+        public static final String SYNCED = "SYNCED";
+
+        private DataSource() {
+        }
+    }
+
+    /** 外部引用的来源系统。 */
+    public static final class RefSystem {
+        public static final String AISHOP = "AISHOP";
+        public static final String ERP = "ERP";
+        public static final String BARCODE = "BARCODE";
+        public static final String POS = "POS";
+
+        private RefSystem() {
+        }
+    }
+
+    /** 成本口径。**不做移动加权** —— 漏录一次之后所有历史毛利全错且不报警。 */
+    public static final class CostMethod {
+        public static final String LATEST = "LATEST";
+        public static final String MANUAL = "MANUAL";
+
+        private CostMethod() {
+        }
+    }
+
+    /** 领域事件。 */
+    public static final class EventType {
+        public static final String DOCUMENT_POSTED = "DocumentPosted";
+        public static final String BALANCE_CHANGED = "StockBalanceChanged";
+        public static final String RESERVATION_EXPIRED = "ReservationExpired";
+        public static final String LOW_STOCK = "LowStockDetected";
+
+        private EventType() {
+        }
+    }
+}

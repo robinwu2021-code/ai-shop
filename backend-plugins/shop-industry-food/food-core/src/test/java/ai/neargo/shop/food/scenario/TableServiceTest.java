@@ -244,13 +244,15 @@ class TableServiceTest extends FoodWriteGuardFixture {
             }
         });
     }
-    @Test void missingSourceRollsBack() {
+    @Test void missingSourceStillCreatesAreaWithoutAnOutboxEvent() {
+        // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
+        // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Areas.class)
                 .withPropertyValues("test.policy.source=false").run(c -> {
                     var f = fixture(c);
-                    assertThatThrownBy(() -> create(c.getBean(TableService.class), "A1"))
-                            .isInstanceOf(IllegalStateException.class);
-                    empty(f);
+                    create(c.getBean(TableService.class), "A1");
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_area", Integer.class)).isOne();
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
                 });
     }
     @Test void rollbackAfterEventFlush() {

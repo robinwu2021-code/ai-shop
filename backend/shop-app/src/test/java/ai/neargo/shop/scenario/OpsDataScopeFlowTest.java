@@ -65,7 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OpsDataScopeFlowTest {
 
     /** 城西片区的买家（C0001 / M0001 的货）。号段与其他场景测试错开，避免发码限流互撞 */
-    private static final String BUYER_WEST = "12600812001";
+    private static final String BUYER_WEST = "18600812001";
     /** 城东片区的买家（C0002 / M0002 的货） */
     private static final String BUYER_EAST = "13000813001";
 
@@ -479,6 +479,21 @@ class OpsDataScopeFlowTest {
         return json.readTree(body).get("data").get("records").size();
     }
 
+    /*
+     * 本类种的是「常驻、无门槛、立减 100」的 RUNNING 活动，挂在种子商家 M0001/M0002 上。
+     * 不撤的话，按字母序排在后面的类在这两家下的每一单都凭空少 100（PointsDeductFlowTest 就是这么红的）。
+     */
+    private final java.util.List<String> seededActivities = new java.util.ArrayList<>();
+
+    @org.junit.jupiter.api.AfterEach
+    void withdrawSeededActivities() {
+        for (String no : seededActivities) {
+            activityMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, no));
+        }
+        seededActivities.clear();
+    }
+
     private void seedActivity(String entityNo, String name) {
         PmtActivity a = new PmtActivity();
         a.setActivityNo("ACT-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
@@ -490,6 +505,7 @@ class OpsDataScopeFlowTest {
         a.setScheduleType("ALWAYS_ON");
         a.setStatus(PmtActivity.RUNNING);
         activityMapper.insert(a);
+        seededActivities.add(a.getActivityNo());
     }
 
     private int activityCount(String token, String entityNo) throws Exception {

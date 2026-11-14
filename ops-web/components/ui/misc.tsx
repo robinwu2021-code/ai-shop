@@ -200,7 +200,7 @@ function PageJump({ page, pages, onPage }: { page: number; pages: number; onPage
 }
 
 export function Pagination({
-  page, size, total, onPage, onSize,
+  page, size, total, onPage, onSize, sizes = PAGE_SIZES,
 }: {
   page: number;
   size: number;
@@ -211,6 +211,8 @@ export function Pagination({
    * 对账、导出前核数这类场景要一屏看完，翻 5 页去数 100 条是纯粹的浪费。
    */
   onSize?: (n: number) => void;
+  /** 可选的每页条数；受端点上限约束时由调用页指定。 */
+  sizes?: readonly number[];
 }) {
   const { t } = useI18n();
   const pages = Math.max(1, Math.ceil(total / size));
@@ -225,7 +227,7 @@ export function Pagination({
             value={size}
             onChange={(e) => onSize(Number(e.target.value))}
           >
-            {PAGE_SIZES.map((n) => (
+            {sizes.map((n) => (
               <option key={n} value={n}>{t("common.perPage", { n })}</option>
             ))}
           </select>

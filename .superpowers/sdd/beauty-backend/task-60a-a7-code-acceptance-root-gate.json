@@ -1,0 +1,63 @@
+{
+  "xml": {
+    "native-three.xml": {
+      "counts": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "sha256": "a4c2a4535510669d6ba0d65c659440de87dbbd4941e1b39b095a3d9990c7e755"
+    },
+    "guard-ablation-red.xml": {
+      "counts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "sha256": "258ac934d9e07b41628117ba7dc828364907c4fa2aa737b7d35a9897be92bcdf"
+    },
+    "guard-restored-green.xml": {
+      "counts": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "sha256": "e0d71b55af2aa09159eb0c3d876e05c8dfc9d9da6b093f034e3d8ee936e34f99"
+    }
+  },
+  "base": "3062d1b48d79d60e21c53113118aa6970c228a59",
+  "manifestSHA": "8f358f36bd4132bcab903103b33ee7d092f0833643b5c6a1d9ede71be9b9a7ff",
+  "reportSHA": "aa19115416aa473b4baa321470c020a432657e4b65e35e0571516ec348e64a2e",
+  "reviewPackage": "/tmp/task60a-a7-review-package-8ab6dd46-462c-403b-83e9-fb42465e765e.diff",
+  "reviewPackageSHA": "65baf9782052fbda8d94d9d81775870c2ba6f3f87d61585ae11793c0a75b41c4",
+  "products": [
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/BeautyClaimedGuestResourceIT.java",
+      "sha256": "78d3580766c5fbc9312431f769140ab4f9531eb85b16bdd6188bc9cca7b826f4",
+      "bytes": 43691,
+      "mtimeNs": 1792909832012319000
+    },
+    {
+      "path": "scripts/verify-checkout-payment.mjs",
+      "sha256": "8740b40ed548a17dd8533e1b84c690c961f1fa67870f8fbd21124fae58f131ab",
+      "bytes": 32077,
+      "mtimeNs": 1792827622393948395
+    },
+    {
+      "path": "scripts/tests/checkout-payment-runner.test.mjs",
+      "sha256": "f5988b7b5a8a241c5f0f75120e0486b5f71634177535c219b7ffc83ce9598ffa",
+      "bytes": 37752,
+      "mtimeNs": 1792827622394471520
+    }
+  ],
+  "retailCompile": true,
+  "node20pass": true,
+  "cleanupVerified": true,
+  "productCommit": "7203aa3924f1527c3d2f74aa4c9a374cdf5ac4fa",
+  "reviewSHA256": "25a000d695b90a28b9df0d3b45d6af482596f2edd7c4c36ff29b144ed6877e4c",
+  "specVerdict": "PASS",
+  "qualityVerdict": "PASS"
+}

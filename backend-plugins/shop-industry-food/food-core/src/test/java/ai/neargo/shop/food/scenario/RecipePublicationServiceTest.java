@@ -112,8 +112,6 @@ class RecipePublicationServiceTest {
                             c.getBean(RecipeAdjustmentMapper.class), c.getBean(OptionGroupItemMapper.class),
                             c.getBean(OptionGroupMapper.class), template.getMapper(DishOptionGroupMapper.class),
                             enabled::get, c.getBean(ObjectMapper.class)), materials);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of(
-                    "PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
             var drafts = c.getBean(RecipeService.class);
             String number = drafts.createRecipe("E", "A", "actor", RecipeServiceTest.create("TEA", "DEFAULT"),
                     "create").recipe().recipeNo();

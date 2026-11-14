@@ -4,10 +4,10 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.inventory.dto.InventoryVOs;
-import ai.neargo.shop.inventory.entity.InvLocation;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
+import ai.neargo.inventory.domain.dto.InventoryVOs;
+import ai.neargo.inventory.domain.entity.InvLocation;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.LocationService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 库位与仓（s09）。
@@ -33,20 +35,26 @@ public class BizLocationController {
     private final LocationService locations;
     private final InventoryAclService acl;
 
-    public BizLocationController(LocationService locations, InventoryAclService acl) {
+    /** 切流（M8）：已翻到库存服务的商家，转给服务的 /console，返回结构相同 */
+    private final InventoryConsoleRoute route;
+
+    public BizLocationController(LocationService locations, InventoryAclService acl, InventoryConsoleRoute route) {
         this.locations = locations;
         this.acl = acl;
+        this.route = route;
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/locations")
     public List<InvLocation> list() {
+        if (route.remote()) return route.via(c -> c.get("/locations", params(), new tools.jackson.core.type.TypeReference<List<InvLocation>>() { }));
         return locations.list(owner());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/inventory/locations")
     public InventoryVOs.DocNoVO createWarehouse(@RequestBody WarehouseReq req) {
+        if (route.remote()) return route.via(c -> c.post("/locations", req, InventoryVOs.DocNoVO.class));
         return new InventoryVOs.DocNoVO(
                 locations.createWarehouse(owner(), req.name(), SecurityUtils.currentUserNo()));
     }
@@ -55,6 +63,7 @@ public class BizLocationController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PutMapping("/biz/inventory/locations/{id}/source")
     public void setSource(@PathVariable String id, @RequestBody SourceReq req) {
+        if (route.remote()) { route.run(c -> c.put("/locations/" + id + "/source", req)); return; }
         locations.setSource(owner(), id, req.sourceLocationId(), SecurityUtils.currentUserNo());
     }
 

@@ -1,0 +1,62 @@
+{
+  "environment": "UME166",
+  "database": "ai_shop_ume",
+  "batch": "UME_SEED_20261113",
+  "date": "2026-11-13",
+  "status": "COMMITTED",
+  "sourceAccountTable": "stg_ume_first_batch_store_accounts_20261113",
+  "sourceStoreAndPrimaryEmailTable": "stg_ume_active_stores_20261113",
+  "counts": {
+    "users": 741,
+    "emailIdentities": 741,
+    "passwordIdentities": 741,
+    "entities": 741,
+    "ownerMemberships": 741,
+    "stores": 815,
+    "subaccounts": 0,
+    "phoneIdentities": 0,
+    "paymentLinks": 0
+  },
+  "entityStatus": "PENDING_LICENSE",
+  "market": "TW",
+  "storeCommerceModel": "LEGACY",
+  "passwordHash": "project PasswordHasher bcrypt cost 10; independent salts",
+  "passwordPlaintextCommitted": false,
+  "sourceModified": false,
+  "schemaModified": false,
+  "dryRun": "all postconditions passed; ROLLBACK; batch row counts returned to zero",
+  "replayInsertedRows": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "loginVerification": {
+    "samples": [
+      {
+        "entityNo": "MUME88600248120002935",
+        "passwordLogin": true,
+        "stores": 1,
+        "exactStoreScope": true,
+        "foreignEntityDenied": true,
+        "foreignStoreHeaderFallsBackToOwnStore": true
+      },
+      {
+        "entityNo": "MUME88600453990001754",
+        "passwordLogin": true,
+        "stores": 38,
+        "exactStoreScope": true,
+        "foreignEntityDenied": true,
+        "foreignStoreHeaderFallsBackToOwnStore": true
+      }
+    ],
+    "sessionsLoggedOut": true,
+    "password": "configured-as-requested",
+    "phoneVerificationPerformed": false
+  },
+  "applySqlSha256": "52a16a3545a2725dd661e69de1730ee0ca8bc97c27099d9b8b5a9bed544d0498",
+  "privateServerArchive": "/data0/app/ai-shop/seeds/ume-primary-20261113",
+  "privateLocalMap": "/tmp/ume-seed-users-20261113/store-login-map.csv"
+}

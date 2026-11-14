@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "按用户要求优先完整交付Java后端；B/C/运营新页面另阶段接入，不伪造已上线入口。",
+  "reason": "按用户要求优先完整交付Java后端；B/C/运营新页面另阶段接入，不伪造已上线入口。 既有P6后端兼容发布的汇总与清分接口按《任务表-品牌与门店双线储值-P6执行》登记，P6-07页面仍待开发，不表示完整资金阶段已开放。",
   "plan": "docs/technical/任务表-活动权益-前端接入.md",
   "entries": [
     {
@@ -97,16 +97,6 @@
     {
       "app": "b-app",
       "method": "POST",
-      "path": "/biz/stored-value/consumptions"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
-      "path": "/biz/stored-value/consumptions/preview"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
       "path": "/biz/stored-value/recharges"
     },
     {
@@ -147,16 +137,6 @@
     {
       "app": "c-app",
       "method": "GET",
-      "path": "/mp/entitlement-service-orders"
-    },
-    {
-      "app": "c-app",
-      "method": "GET",
-      "path": "/mp/entitlement-service-orders/*"
-    },
-    {
-      "app": "c-app",
-      "method": "GET",
       "path": "/mp/entitlement-usage"
     },
     {
@@ -191,11 +171,6 @@
     },
     {
       "app": "c-app",
-      "method": "GET",
-      "path": "/mp/stored-value/stores"
-    },
-    {
-      "app": "c-app",
       "method": "POST",
       "path": "/mp/entitlement-claims"
     },
@@ -215,9 +190,49 @@
       "path": "/mp/entitlements/*/redeem-codes"
     },
     {
-      "app": "c-app",
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/issuers/*"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/records"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stored-value/records/*"
+    },
+    {
+      "app": "b-app",
       "method": "POST",
-      "path": "/mp/orders/*/entitlement-authorizations"
+      "path": "/biz/management/stored-value/migration-manifests"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/migration-manifests/*/map"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/migration-manifests/*/pause"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/cancel-create"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/confirm-offline"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stored-value/plan-recharges/resolve"
     }
   ]
 }

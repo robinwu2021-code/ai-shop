@@ -129,7 +129,7 @@ public interface PointsWorkbenchService {
             String state,
             long attempt,
             long nextAttempt,
-            long version) {}
+            long version, String subOrderNo, String reason) {}
 
     record EventPage(List<EventView> rows, long next, boolean hasMore) {
         public EventPage {

@@ -39,6 +39,29 @@
 export const UNIMPLEMENTED = Symbol("backend-unimplemented");
 
 export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
+  /*
+   * 套餐商城（commerce，Task 5）。**恒等映射**，后端码由可移植 starter 现判
+   * （`context.operator("commerce:…")`），种子在 V556/V558 的 sys_function_point，
+   * 不在 Perms.java —— perm-map.test.ts 因此也读这两份迁移。
+   * 编辑与发布分两个码；线下核款的审核 / 核款 / 作废 / 出款 / 凭证各一个码。
+   */
+  "commerce:catalog:read": "commerce:catalog:read",
+  "commerce:catalog:edit": "commerce:catalog:edit",
+  "commerce:catalog:publish": "commerce:catalog:publish",
+  "commerce:mall:order:read": "commerce:mall:order:read",
+  "commerce:mall:shipment:write": "commerce:mall:shipment:write",
+  "commerce:refund:review": "commerce:refund:review",
+  "commerce:subscription:read": "commerce:subscription:read",
+  "commerce:subscription:grant": "commerce:subscription:grant",
+  "commerce:subscription:revoke": "commerce:subscription:revoke",
+  "commerce:mall:assisted:purchase": "commerce:mall:assisted:purchase",
+  "commerce:mall:offline:evidence": "commerce:mall:offline:evidence",
+  "commerce:mall:offline:review": "commerce:mall:offline:review",
+  "commerce:mall:offline:confirm": "commerce:mall:offline:confirm",
+  "commerce:mall:offline:void": "commerce:mall:offline:void",
+  "commerce:mall:offline:refund:confirm": "commerce:mall:offline:refund:confirm",
+  "commerce:collection:profile:read": "commerce:collection:profile:read",
+  "commerce:collection:profile:write": "commerce:collection:profile:write",
   "ops:print:read": "ops:print:read",
   "ops:print:resolve": "ops:print:resolve",
   "merchant:apply:audit": "merchant:apply:audit",
@@ -46,6 +69,9 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 主动触达商家（M2）。**必须登记** —— 后端有码而这里没有的话 can() 一律判无权限，
   // 表现是按钮在谁的界面上都不出现，且不报错（这个坑本文件里已经踩过两次）
   "merchant:merchant:nudge": "merchant:merchant:nudge",
+  "merchant:store:nearpay-sync": "merchant:store:nearpay-sync",
+  // 为主体申请支付服务（near-pay 平台商户）。只给超管。不登记的话 can() 一律判无权限，按钮谁也看不到
+  "merchant:merchant:pay-apply": "merchant:merchant:pay-apply",
   // 手动补投影（M2）。**只给超管**：它往进销存库里写 INIT 单据。
   // 不登记的话 can() 一律判无权限，那个按钮在谁的界面上都不出现，且不报错
   "inventory:projection:repair": "inventory:projection:repair",
@@ -95,6 +121,19 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 与发票核验按钮**对谁都不显示**（含财务角色本人），且没有任何报错 ——
   // 就是这张表注释里说的「按钮神秘消失」。两个码在 Perms.java 里一直都有。
   "finance:payout:execute": "finance:payout:execute",
+  // 支付运营端（S9）：UI 码与后端码同名
+  "pay:order:view": "pay:order:view",
+  "pay:order:manage": "pay:order:manage",
+  "pay:refund:view": "pay:refund:view",
+  "pay:refund:review": "pay:refund:review",
+  "pay:log:view": "pay:log:view",
+  "pay:notify:resend": "pay:notify:resend",
+  "pay:qr:manage": "pay:qr:manage",
+  "pay:app:manage": "pay:app:manage",
+  "pay:app-credential:revoke": "pay:app-credential:revoke",
+  "sec:key:view": "sec:key:view",
+  "sec:key:write": "sec:key:write",
+  "sec:key:enable": "sec:key:enable",
   "finance:invoice:verify": "finance:invoice:verify",
   "risk:blacklist:update": "risk:blacklist:update",
   "risk:rule:update": "risk:rule:update",
@@ -114,6 +153,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "store:qrcode:export": "store:page:audit",
   "system:theme:update": "system:theme:update",
   "system:param:read": "system:param:read",
+  "system:industry:read": "system:industry:read",
+  "system:industry:update": "system:industry:update",
   // env:switch 映到它（见下），而映射目标自己也要登记 —— 守卫会检查这一点
   "system:param:update": "system:param:update",
   /*
@@ -132,6 +173,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 界面上就是看不到，且不报错（这仓库在 MERCHANT_APPLY_ONBEHALF 上栽过一次）。
   "system:testphone:read": "system:testphone:read",
   "system:testphone:update": "system:testphone:update",
+  // App 版本策略的写码（TDD-商户App问题回报与版本 P5）：一个角色都不配，超管通配
+  "system:app-version:update": "system:app-version:update",
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",
   // 定时任务：看与管两个码。读的人多得多 —— 一个任务出事时，
@@ -198,6 +241,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "finance:recon:resolve": "finance:recon:resolve",
   "finance:settle:read": "finance:settle:read",
   "iam:staff:read": "iam:staff:read",
+  // 员工写（启停 / 角色 / 数据域 / 免二次验证白名单）。后端这几条都判 iam:staff:update
+  "iam:staff:update": "iam:staff:update",
   "content:material:read": "content:material:read",
   "fulfillment:logistics:read": "fulfillment:logistics:read",
   "fulfillment:logistics:replay": "fulfillment:logistics:replay",

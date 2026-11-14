@@ -10,13 +10,26 @@ import lombok.Setter;
 @Setter
 @TableName("sv_recharge")
 public class SvRecharge extends BaseEntity {
+    private String issuerNo;
+    private String issuerVersionNo;
+    private String releaseNo;
+    private String tierNo;
+    private String collectionEntityNo;
+    private String settlementEntityNo;
+    private String quotaReservationNo;
+
     private String rechargeNo;
     private String requestId;
     private String payloadHash;
+    private String sourceKind;
+    private String planNo;
+    private String planVersionNo;
     private String reservationNo;
     private String activityNo;
     private String activityVersionNo;
     private String userNo;
+    private String customerNo;
+    public String customerIdentity(){return customerNo==null?userNo:customerNo;}
     private String entityNo;
     private String storeNo;
     private String storeName;

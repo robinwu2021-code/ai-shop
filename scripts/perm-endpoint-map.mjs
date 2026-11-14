@@ -23,18 +23,72 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
-  ["GET", /^\/ops\/pay\/entitlement-dead-letters$/, "ops:pay:ent:read"],
-  ["GET", /^\/ops\/pay\/entitlement-exceptions(?:\/\{exceptionNo\}(?:\/actions)?)?$/, "ops:pay:ent:read"],
-  ["GET", /^\/ops\/pay\/entitlement-reconciliations(?:\/\{reconNo\}(?:\/differences)?)?$/, "ops:pay:ent:read"],
-  ["GET", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/lifecycle$/, "ops:pay:ent:read"],
-  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/(retry-event|retry-grant)$/, "ops:pay:ent:recover"],
-  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/query-source$/, "ops:pay:ent:verify"],
-  ["POST", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:verify"],
-  ["POST", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/freeze$/, "ops:pay:ent:freeze"],
-  ["GET", /^\/ops\/points\/(accounts|stats-period|transactions)$/, "finance:settle:read"],
-  ["GET", /^\/ops\/points\/transactions\/\{voucherNo\}$/, "finance:settle:read"],
-  ["GET", /^\/ops\/print\/(health|incidents|operations\/\{operationNo\})$/, "ops:print:read"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:offline:confirm"],
+  // 主体购买沿用真实Controller权限；复合授权仍由运行时同时校验，表册不改变授权。
+  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
+  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assistance-context$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assisted$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
+  ["PUT", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/offers$/, "system:param:update"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/cash-refunds(?:\/\{refundNo\}\/(?:payout|recover))?$/, "commerce:mall:offline:refund:confirm", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/confirm$/, "commerce:mall:offline:confirm", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/decline$/, "commerce:mall:offline:review", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/cancel$/, "commerce:mall:offline:void", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/(?:recover|evidence(?:\/content)?)$/, "merchant:merchant:ban", "同时要求核款/作废/退款三者之一；恢复原动作及私有证据，不是独立资金授权"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(?:actions\/\{actionNo\}|cash-receipts|cash-refunds)$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/recover$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/cash-refunds(?:\/\{refundNo\}\/(?:payout|recover))?$/, "commerce:mall:offline:refund:confirm"],
+  ["POST", /^\/ops\/order-payment-resolutions\/\{payNo\}\/\{paymentNo\}\/refund$/, "pay:order:manage"],
+  // 套餐商城（可移植 commerce starter）。码就是控制器 context.operator(...) 里写的那个，
+  // 已是细码，由 V625/V627 播种、只授给 SUPER_ADMIN；改这里须与控制器同改。
+  // 商城分类（控制器 context.operator 里的码）
+  ["GET", /^\/ops\/biz-mall\/categories$/, "commerce:catalog:read"],
+  ["*", /^\/ops\/biz-mall\/categories(\/\{categoryCode\})?$/, "commerce:catalog:edit"],
+  ["GET", /^\/ops\/(business-types|business-ends(\/deployment-options)?|industry-plans|biz-mall\/(catalog|products|sku-versions\/\{versionNo\}))$/, "commerce:catalog:read"],
+  ["*", /^\/ops\/(business-types(\/\{typeCode\})?|business-ends|industry-plans\/\{planNo\}\/versions|biz-mall\/products(\/\{productNo\}(\/skus)?)?)$/, "commerce:catalog:edit"],
+  ["POST", /^\/ops\/(business-types\/\{typeCode\}\/plan-publications|biz-mall\/sku-versions\/\{versionNo\}\/publish|industry-plans\/\{planNo\}\/off-sale|biz-mall\/skus\/\{skuNo\}\/off-sale)$/, "commerce:catalog:publish"],
+  ["GET", /^\/ops\/biz-mall\/orders(\/\{orderNo\})?$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/orders\/\{orderNo\}\/shipments$/, "commerce:mall:shipment:write"],
+  ["POST", /^\/ops\/biz-mall\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/(review-quotes|approve|reject)$/, "commerce:refund:review"],
+  ["GET", /^\/ops\/stores\/\{storeNo\}\/subscription$/, "commerce:subscription:read"],
+  ["POST", /^\/ops\/stores\/\{storeNo\}\/subscription\/grants$/, "commerce:subscription:grant"],
+  ["POST", /^\/ops\/stores\/\{storeNo\}\/subscription\/sources\/\{sourceNo\}\/revoke$/, "commerce:subscription:revoke"],
+  ["*", /^\/ops\/biz-mall\/offline\/profile$/, "commerce:collection:profile:read", "GET 读、PUT 写（commerce:collection:profile:write）"],
+  ["GET", /^\/ops\/biz-mall\/offline\/claims$/, "commerce:mall:offline:review"],
+  ["POST", /^\/ops\/biz-mall\/offline\/(quotes|orders|orders\/\{orderNo\}\/instructions)$/, "commerce:mall:assisted:purchase"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(instructions|claims)$/, "commerce:mall:order:read"],
+  ["*", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/evidence(\/content|\/url)?$/, "commerce:mall:offline:evidence"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/claims\/\{claimNo\}\/decline$/, "commerce:mall:offline:review"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/confirmations$/, "commerce:mall:offline:confirm"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/voids$/, "commerce:mall:offline:void"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/payouts$/, "commerce:mall:offline:refund:confirm"],
+  // Exact original commerce OPS grants; merchant operating policy remains outside OPS authority.
+  ["GET", /^\/ops\/x\/commerce\/support\/health$/, "system:commerce:read"],
+  ["GET", /^\/ops\/x\/commerce\/support\/operations\/[^/]+$/, "system:commerce:read"],
+  ["PUT", /^\/ops\/x\/commerce\/product-profiles\/[^/]+$/, "system:commerce:update"],
+  ["GET", /^\/ops\/print\/(?:health|incidents|operations\/[^/]+)$/, "ops:print:read"],
   ["POST", /^\/ops\/print\/reconciliations$/, "ops:print:resolve"],
+  ["GET", /^\/ops\/pay\/entitlement-(?:dead-letters|exceptions(?:\/[^/]+(?:\/actions)?)?|reconciliations(?:\/[^/]+(?:\/differences)?)?)$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlements\/[^/]+\/lifecycle$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlements\/[^/]+\/freeze$/, "ops:pay:ent:freeze"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/[^/]+\/(?:retry-event|retry-grant)$/, "ops:pay:ent:recover"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/[^/]+\/query-source$/, "ops:pay:ent:verify"],
+  ["POST", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:verify"],
+  ["GET", /^\/ops\/points\/(?:earning-context|earning-rules|earning-rule-history|order-earning)$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/earning-preview$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/(?:earning-rules|type-name)$/, "finance:settle:execute"],
+
+  ["GET", /^\/ops\/pricing-tax-settings$/, "pricing:tax:read"],
+  ["PUT", /^\/ops\/pricing-tax-settings$/, "pricing:tax:update"],
+  ["GET", /^\/ops\/pricing-templates\/[^/]+\/(?:draft|revisions\/[^/]+)$/, "pricing:template:read"],
+  ["POST", /^\/ops\/pricing-templates\/[^/]+\/preview$/, "pricing:template:read"],
+  ["POST", /^\/ops\/pricing-templates\/[^/]+\/publish$/, "pricing:template:publish"],
+  ["PUT", /^\/ops\/pricing-templates\/[^/]+\/draft$/, "pricing:template:update"],
+  ["POST", /^\/ops\/pricing-templates(?:\/seed-import)?$/, "pricing:template:update"],
+  ["GET", /^\/ops\/points\/accounts$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/stats-period$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions\/\{voucherNo\}$/, "finance:settle:read"],
   ["GET", /^\/ops\/points\/adjustments$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/adjustments$/, "finance:settle:execute"],
   ["POST", /^\/ops\/points\/adjustment-review$/, "finance:payout:execute"],
@@ -45,9 +99,13 @@ export const RULES = [
   ["POST", /^\/ops\/inventory\/policy$/, "system:param:update"],
   ["POST", /^\/ops\/inventory\/repair-projection$/, "inventory:projection:repair"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/nudge$/, "merchant:merchant:nudge"],
+  // 为主体申请支付服务（TDD-运营端申请支付服务，V633）
+  ["POST", /^\/ops\/merchant\/\{entityNo\}\/pay-service\/apply$/, "merchant:merchant:pay-apply"],
+  ["GET", /^\/ops\/merchant\/\{entityNo\}\/pay-service$/, "merchant:merchant:pay-apply"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/stock-doubt$/, "inventory:stock:read"],
   ["GET", /^\/ops\/merchant\/chain$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/points\/account$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/accounts$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/account-freeze$/, "finance:settle:execute"],
   ["GET", /^\/ops\/points\/agreements$/, "finance:settle:read"],
   ["GET", /^\/ops\/points\/entries$/, "finance:settle:read"],
@@ -84,10 +142,13 @@ export const RULES = [
   ["POST", /^\/ops\/points\/statement-draft$/, "finance:settle:execute"],
   ["GET", /^\/ops\/points\/statements$/, "finance:settle:read"],
   ["GET", /^\/ops\/points\/stats$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/stats-period$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/stats-rebuild$/, "finance:settle:execute"],
   ["GET", /^\/ops\/points\/switches$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/switches$/, "finance:settle:execute"],
   ["GET", /^\/ops\/points\/terms$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions\/\{voucherNo\}$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/terms$/, "finance:settle:execute"],
   ["POST", /^\/ops\/points\/type-state$/, "finance:settle:execute"],
   ["GET", /^\/ops\/points\/types$/, "finance:settle:read"],
@@ -142,6 +203,7 @@ export const RULES = [
   // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
   // 复用 merchant:admission:*，不新增权限码
   ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],
+  ["GET", /^\/ops\/payment-onboardings$/, "merchant:admission:read"],
   ["POST", /^\/ops\/onboarding\/refresh$/, "merchant:admission:update"],
   // 店铺码印刷量登记：发码的与审店招的是同一拨 BD
   ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/print$/, "store:page:audit"],
@@ -225,6 +287,8 @@ export const RULES = [
   // 档案与经营数据挂商家治理的只读码：门店维度的端点按「这件事属于哪条业务线」归码，
   // 不按 URL 前缀归码（business-mode 挂 merchant:mode:* 是同一个道理）。
   // store:page:audit 不能借 —— 那是店招审核动作的钥匙，塞进只读档案等于「能查店 = 能审店」。
+  // 全量同步门店到 near-pay（Perms.MERCHANT_STORE_NEARPAY_SYNC）
+  ["POST", /^\/ops\/stores\/nearpay-sync$/, "merchant:store:nearpay-sync"],
   // 必须排在 /ops/stores/audits 与 business-mode 之后：规则第一条命中生效
   ["GET", /^\/ops\/stores(\/|$)/, "merchant:merchant:read"],
 
@@ -322,9 +386,9 @@ export const RULES = [
   ["GET", /^\/ops\/dashboard\//, "dashboard:overview:read"],
 
   // ── 履约调度与物流（P-5.1 / P-5.2，V130–V135）───────────────────────────
-  // 批次推进与「看批次」共用 batch:read，是全表第二处不拆读写的地方 ——
-  // 理由写在 Perms.FULFILLMENT_BATCH_READ 上：ops-web 的发车按钮就是用它门控的，
-  // 后端另判一个写码等于造一个「看得见、点下去 403」的按钮
+  // 批次推进（发车/到货/签收）是写动作，判 rule:update；此前与「看批次」共用 batch:read，
+  // 等于能看就能签收。ops-web 的发车按钮同步改判 rule:update（见 Perms.FULFILLMENT_BATCH_READ）
+  ["POST", /^\/ops\/fulfillment\/batches\/[^/]+\/status$/, "fulfillment:rule:update"],
   ["*", /^\/ops\/fulfillment\/batches/, "fulfillment:batch:read"],
   ["GET", /^\/ops\/fulfillment\/sorting/, "fulfillment:batch:read"],
   ["GET", /^\/ops\/fulfillment\/redeem/, "fulfillment:redeem:read"],
@@ -432,6 +496,22 @@ export const RULES = [
   // 支付对账差异（并发会话 2026-08-12 新增）。**这条是守卫抓出来的** ——
   // 它们刚落进 settle:manage，矩阵当场报 FINANCE「多出来 4 条」。
   // 处理差异会改账，与只读覆盖率分开
+  // 支付运营（开发计划 M5a.2：原 /pay-ops/v1 迁到业务服务）。码一开始就是细的，登记表照抄注解
+  ["GET", /^\/ops\/payments\/(orders|exceptions)(\/[^/]+)?$/, "pay:order:view"],
+  ["POST", /^\/ops\/payments\/exceptions\/[^/]+\/(refund|ignore)$/, "pay:order:manage"],
+  ["GET", /^\/ops\/payments\/refunds$/, "pay:refund:view"],
+  ["POST", /^\/ops\/payments\/refunds\/[^/]+\/review$/, "pay:refund:review"],
+  ["GET", /^\/ops\/payments\/notifies$/, "pay:log:view"],
+  ["POST", /^\/ops\/payments\/notifies\/[^/]+\/resend$/, "pay:notify:resend"],
+  ["PUT", /^\/ops\/payments\/qr-codes\/[^/]+\/disabled$/, "pay:qr:manage"],
+  // M5b：接入与密钥。看接入方 / 授权 / 密钥指纹一档，吊销单列；平台密钥看 / 吊销 / 启用三档
+  ["GET", /^\/ops\/payments\/qr-codes$/, "pay:qr:manage"],
+  ["GET", /^\/ops\/payments\/apps(\/[^/]+\/(grants|credentials))?$/, "pay:app:manage"],
+  ["POST", /^\/ops\/payments\/apps\/[^/]+\/credentials\/[^/]+\/[^/]+\/revoke$/, "pay:app-credential:revoke"],
+  ["GET", /^\/ops\/payments\/request-logs(\/[^/]+)?$/, "pay:log:view"],
+  ["GET", /^\/ops\/payments\/platform-keys(\/[^/]+\/versions)?$/, "sec:key:view"],
+  ["POST", /^\/ops\/payments\/platform-keys\/[^/]+\/versions\/[^/]+\/enable$/, "sec:key:enable"],
+  ["POST", /^\/ops\/payments\/platform-keys\/[^/]+\/versions\/[^/]+\/revoke$/, "sec:key:write"],
   ["GET", /^\/ops\/payments\/recon/, "finance:recon:read"],
   ["*", /^\/ops\/payments\/recon/, "finance:recon:resolve"],
   ["GET", /^\/ops\/settle\/fee-rules/, "finance:rate:read"],
@@ -529,6 +609,12 @@ export const RULES = [
   ["*", /^\/ops\/staffs/, "iam:staff:update"],
   ["GET", /^\/ops\/audit-log/, "iam:audit:read"],
 
+  // 与 Controller 现有权限一致；电话策略读取另允许代申请，运行时复合授权保持不变。
+  ["GET", /^\/ops\/market-phone-policies$/, "system:param:read"],
+  ["POST", /^\/ops\/market-phone-policies\/\{market\}$/, "system:param:update"],
+  ["GET", /^\/ops\/store-industries$/, "commerce:catalog:read"],
+  ["POST", /^\/ops\/store-industries$/, "commerce:catalog:edit"],
+
   // ── 平台配置与主数据 ───────────────────────────────────────────────────
   ["GET", /^\/ops\/(industries|service-scopes)/, "system:industry:read"],
   ["*", /^\/ops\/(industries|service-scopes)/, "system:industry:update",
@@ -556,8 +642,14 @@ export const RULES = [
   // 别处「读码比写码宽」是因为看配置无害；这一页不是那个形状：
   // 它把固定验证码明文列出来，能看这一页就等于知道那几个号的登录码。
   // 用 param:read 的话，持有它的 TECH_OPS 立刻就拿到了那几把钥匙。
-  ["GET", /^\/ops\/test-phones/, "system:testphone:read"],
-  ["*", /^\/ops\/test-phones/, "system:testphone:update"],
+  // 测试身份白名单（TDD-测试身份白名单登录）与测试号同页、同码
+  ["GET", /^\/ops\/(test-phones|test-identities)/, "system:testphone:read"],
+  ["*", /^\/ops\/(test-phones|test-identities)/, "system:testphone:update"],
+
+  // ── App 版本策略（TDD-商户App问题回报与版本 V6）──
+  // 看用 param:read；改用单独的 app-version:update —— 抬高最低支持版让全部旧包停写，不随 param:update 发给技术运维
+  ["GET", /^\/ops\/app-versions$/, "system:param:read"],
+  ["PUT", /^\/ops\/app-versions\//, "system:app-version:update"],
 
   // ── 会员与人档（P-13）──────────────────────────────────────────────────
   ["GET", /^\/ops\/members/, "member:member:read"],

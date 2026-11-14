@@ -1,0 +1,25 @@
+{
+  "releaseId": "market-storage-20261113",
+  "shopCommit": "58cea19257e5fc61c72ba34ab80ac4db06c1b94f",
+  "payCommit": "8cc36e88fe7ef30e8aeda08e462bc910ff094a14",
+  "previousShopSha256": "589bb379e995f3b99ab01f1c33fce28d1ce86a69fb068b968d0429354ce3216e",
+  "previousPaySha256": "94183b69dd65e7e3b83708fe8b72c3c3b26993909add5d6a9caec7644d8c1a62",
+  "shopSha256": "60a3a0d00a13377d776c6fa83606ffee2afab5c9c9b3b25feafc9ed7c4b655c3",
+  "paySha256": "50bdaf0e734eb405478330d841e31eace74f9bd90540a116fa9f831549387716",
+  "excludedLocalMigrations": [],
+  "shopRuntimeCodeCommit": "b93117e805a44350c352bcb394ac3178c4598ec9",
+  "preservedDeployedOnboardingCommit": "80705a0780284bdd8eaddb6e76d5440768585d19",
+  "fullGateBaseCommit": "181fdbecc6238f8a810de1294b7e47ae58d037cf",
+  "fullGateResult": {
+    "backendTests": 7572,
+    "knownFailures": 2,
+    "newFailures": 0,
+    "foodTests": 1264,
+    "foodFailures": 0,
+    "beautyNoNewFailures": true
+  },
+  "incrementalMergedChecksLog": "/tmp/ai-shop-config-merged-incremental.log",
+  "incrementalMergedTestCount": 69,
+  "migrationNote": "V96 is already deployed by tw-pos-runtime release; preserve all 93 current payment migration resources, apply none.",
+  "payMergedTestCount": 57
+}

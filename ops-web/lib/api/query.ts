@@ -179,7 +179,7 @@ export type RiskQ = PageQ & { type?: string; status?: string };
 export type BlacklistQ = PageQ & { subjectType?: string; activeOnly?: string };
 
 /** 客服工单：状态 + 处理人（P-14.2.1）。 */
-export type TicketQ = PageQ & { status?: string; assignee?: string };
+export type TicketQ = PageQ & { status?: string; assignee?: string; source?: string };
 
 /** 素材：类型 + 可见范围 + 上架状态（P-15.1）。 */
 export type MaterialQ = PageQ & { kind?: string; scope?: string; published?: string };

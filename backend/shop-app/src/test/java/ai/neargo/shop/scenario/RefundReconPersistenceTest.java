@@ -19,7 +19,9 @@ import java.util.regex.Pattern;
 
 @SpringJUnitConfig(RefundReconPersistenceTest.Config.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestPropertySource(properties={"spring.datasource.url=jdbc:h2:mem:refund-recon-followup;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "spring.datasource.username=sa", "spring.datasource.password=", "spring.datasource.driver-class-name=org.h2.Driver"})
+@TestPropertySource(properties={
+        // 只手工建了几张表：支付 v4 迁移（db/pay）要 ALTER 平台表，与 h2db profile 一样不在这里跑
+        "shop.pay.flyway.enabled=false","spring.datasource.url=jdbc:h2:mem:refund-recon-followup;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "spring.datasource.username=sa", "spring.datasource.password=", "spring.datasource.driver-class-name=org.h2.Driver"})
 class RefundReconPersistenceTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired RefundPaymentStore refunds;
@@ -65,7 +67,7 @@ class RefundReconPersistenceTest {
         jdbc.update("update stl_recon_diff set status='RESOLVED' where payment_no=?",payment);
         jdbc.update("update stl_payment set status='FAILED',refund_query_state='LATE_SUCCESS' where payment_no=?",payment);
         recon.checkStalePayments(System.currentTimeMillis());
-        assertThat(jdbc.queryForObject("select count(*) from stl_recon_diff where payment_no=? and status='PENDING' and resolution like '%LATE_SUCCESS%'",Integer.class,payment)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from stl_recon_diff where payment_no=? and status='PENDING' and note like '%LATE_SUCCESS%'",Integer.class,payment)).isEqualTo(1);
     }
     @Configuration @org.springframework.transaction.annotation.EnableTransactionManagement(proxyTargetClass=true)
     @Import({RefundCapacityDatabaseTest.Config.class,ReconServiceImpl.class})

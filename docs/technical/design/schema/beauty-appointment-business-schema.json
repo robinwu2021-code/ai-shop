@@ -1,0 +1,362 @@
+{
+  "status": "BM03_APPOINTMENT_BUSINESS",
+  "common_fields": [
+    [
+      "id",
+      "bigint",
+      "物理自增主键，不对外"
+    ],
+    [
+      "tenant_no",
+      "varchar(32)",
+      "沿当前租户上下文；不另启租户体系"
+    ],
+    [
+      "entity_no",
+      "varchar(32)",
+      "商家主体范围；不等于租户"
+    ],
+    [
+      "created_at",
+      "datetime(3)",
+      "创建时刻"
+    ],
+    [
+      "created_by",
+      "varchar(64)",
+      "实际操作者业务引用"
+    ],
+    [
+      "updated_at",
+      "datetime(3)",
+      "更新时间"
+    ],
+    [
+      "updated_by",
+      "varchar(64)",
+      "更新操作者"
+    ],
+    [
+      "version",
+      "bigint",
+      "乐观锁"
+    ],
+    [
+      "deleted",
+      "int",
+      "沿BaseEntity；事实表禁止删除或软删覆盖"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "bty_appointment_preparation",
+      "fields": [
+        {
+          "name": "preview_no",
+          "type": "varchar(32)",
+          "description": "preview_no",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "description": "store_no",
+          "nullable": false
+        },
+        {
+          "name": "actor_no",
+          "type": "varchar(64)",
+          "description": "actor_no",
+          "nullable": false
+        },
+        {
+          "name": "actor_realm",
+          "type": "varchar(32)",
+          "description": "actor_realm",
+          "nullable": false
+        },
+        {
+          "name": "actor_kind",
+          "type": "varchar(32)",
+          "description": "actor_kind",
+          "nullable": false
+        },
+        {
+          "name": "customer_ref",
+          "type": "varchar(64)",
+          "description": "customer_ref",
+          "nullable": true
+        },
+        {
+          "name": "guest_ref",
+          "type": "varchar(64)",
+          "description": "guest_ref",
+          "nullable": true
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "description": "appointment_no",
+          "nullable": true
+        },
+        {
+          "name": "expected_revision",
+          "type": "bigint",
+          "description": "expected_revision",
+          "nullable": false
+        },
+        {
+          "name": "policy_version_no",
+          "type": "varchar(32)",
+          "description": "policy_version_no",
+          "nullable": false
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "description": "start_at",
+          "nullable": false
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "description": "end_at",
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "varchar(64)",
+          "description": "timezone",
+          "nullable": false
+        },
+        {
+          "name": "frozen_plan",
+          "type": "longtext",
+          "description": "frozen_plan",
+          "nullable": false
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "description": "plan_hash",
+          "nullable": false
+        },
+        {
+          "name": "snapshot",
+          "type": "longtext",
+          "description": "snapshot",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime(3)",
+          "description": "expires_at",
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "preview_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0"
+      ]
+    },
+    {
+      "name": "bty_appointment_operation",
+      "fields": [
+        {
+          "name": "operation_no",
+          "type": "varchar(32)",
+          "description": "operation_no",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "description": "store_no",
+          "nullable": false
+        },
+        {
+          "name": "actor_no",
+          "type": "varchar(64)",
+          "description": "actor_no",
+          "nullable": false
+        },
+        {
+          "name": "actor_realm",
+          "type": "varchar(32)",
+          "description": "actor_realm",
+          "nullable": false
+        },
+        {
+          "name": "actor_kind",
+          "type": "varchar(32)",
+          "description": "actor_kind",
+          "nullable": false
+        },
+        {
+          "name": "key_hash",
+          "type": "char(64)",
+          "description": "key_hash",
+          "nullable": false
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "description": "request_hash",
+          "nullable": false
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "description": "appointment_no",
+          "nullable": false
+        },
+        {
+          "name": "preview_no",
+          "type": "varchar(32)",
+          "description": "preview_no",
+          "nullable": false
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "description": "action",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "varchar(32)",
+          "description": "state",
+          "nullable": false
+        },
+        {
+          "name": "accept_payload",
+          "type": "longtext",
+          "description": "accept_payload",
+          "nullable": false
+        },
+        {
+          "name": "receipt",
+          "type": "longtext",
+          "description": "receipt",
+          "nullable": true
+        },
+        {
+          "name": "result",
+          "type": "longtext",
+          "description": "result",
+          "nullable": true
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "description": "next_retry_at",
+          "nullable": false
+        },
+        {
+          "name": "lease_until",
+          "type": "datetime(3)",
+          "description": "lease_until",
+          "nullable": true
+        }
+      ],
+      "unique": [
+        [
+          "operation_no"
+        ],
+        [
+          "store_no",
+          "actor_realm",
+          "actor_kind",
+          "actor_no",
+          "key_hash"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0"
+      ]
+    },
+    {
+      "name": "bty_appointment_arrangement",
+      "fields": [
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "description": "appointment_no",
+          "nullable": false
+        },
+        {
+          "name": "arrangement_revision",
+          "type": "bigint",
+          "description": "arrangement_revision",
+          "nullable": false
+        },
+        {
+          "name": "preview_no",
+          "type": "varchar(32)",
+          "description": "preview_no",
+          "nullable": false
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "description": "hold_no",
+          "nullable": false
+        },
+        {
+          "name": "snapshot",
+          "type": "longtext",
+          "description": "snapshot",
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "appointment_no",
+          "arrangement_revision"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0"
+      ]
+    },
+    {
+      "name": "bty_appointment_current",
+      "fields": [
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "description": "appointment_no",
+          "nullable": false
+        },
+        {
+          "name": "arrangement_revision",
+          "type": "bigint",
+          "description": "arrangement_revision",
+          "nullable": false
+        },
+        {
+          "name": "operation_no",
+          "type": "varchar(32)",
+          "description": "operation_no",
+          "nullable": true
+        }
+      ],
+      "unique": [
+        [
+          "appointment_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0"
+      ]
+    }
+  ]
+}

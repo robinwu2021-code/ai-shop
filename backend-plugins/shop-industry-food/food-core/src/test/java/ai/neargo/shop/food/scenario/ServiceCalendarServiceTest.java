@@ -106,14 +106,16 @@ class ServiceCalendarServiceTest extends FoodWriteGuardFixture {
             emptyWrites(f);
         });
     }
-    @Test void missingOutboxSourceRollsBackCalendarWrites() {
+    @Test void missingOutboxSourceStillSavesCalendarWithoutAnOutboxEvent() {
+        // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
+        // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class)
                 .withPropertyValues("test.policy.source=false").run(context -> {
                     var f = fixture(context);
-                    assertThatThrownBy(() -> context.getBean(StoreOperationService.class)
-                            .saveCalendar("E","A",DAY,"actor",open(0,"22:00-02:00"),"one"))
-                            .isInstanceOf(IllegalStateException.class);
-                    emptyWrites(f);
+                    assertThat(context.getBean(StoreOperationService.class)
+                            .saveCalendar("E","A",DAY,"actor",open(0,"22:00-02:00"),"one")).isNotNull();
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_service_calendar", Integer.class)).isOne();
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
                 });
     }
     @Test

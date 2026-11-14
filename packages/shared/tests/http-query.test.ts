@@ -55,4 +55,10 @@ describe("请求参数序列化", () => {
     await request("POST", "/mp/x", ["a", "b"] as unknown as object);
     expect(sent[0].data).toEqual(["a", "b"]);
   });
+  it("forwards a PUT idempotency key to the transport", async () => {
+    const { http } = await import("@shared/net/http-client");
+    await http.put("/biz/stored-value/plans/P1/status", { status: "INACTIVE" }, { "Idempotency-Key": "K1" });
+    expect((sent[0].header as Record<string, string>)["Idempotency-Key"]).toBe("K1");
+  });
+
 });

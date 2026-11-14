@@ -1,8 +1,10 @@
 package ai.neargo.shop.marketing.campaign.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
+import ai.neargo.shop.spi.product.ProductScopeFactsPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -19,13 +21,29 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
 @Service
 public class CampaignServiceImpl implements CampaignService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
+    /**
+     * 参与商品归属校验（见 {@link #assertGoodsOwned}）。setter 注入：直接 new 本类的切片测试里没有它时不校验，
+     * 运行时它恒在（{@code ProductScopeFactsPortImpl} 是 shop-core 的组件）。
+     */
+    private ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
 
     private static final String DRAFT = "DRAFT";
     private static final String RUNNING = "RUNNING";
@@ -59,15 +77,18 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignVO> list(String merchantNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                        campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                        documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_CAMPAIGN", campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                                 .eq(MktCampaign::getEntityNo, merchantNo)
-                                .orderByDesc(MktCampaign::getId)))
+                                .orderByDesc(MktCampaign::getId)), MktCampaign::getCampaignNo, MktCampaign::setDocumentNo))
                 .stream().map(this::toVO).toList();
     }
 
     @Override
-    @Transactional
     public CampaignVO save(String merchantNo, SaveCommand cmd) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1, DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> saveNumbered(merchantNo, cmd));
+    }
+
+    private CampaignVO saveNumbered(String merchantNo, SaveCommand cmd) {
         if (cmd.name() == null || cmd.name().isBlank() || !TYPES.contains(cmd.type())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -106,6 +127,7 @@ public class CampaignServiceImpl implements CampaignService {
             }
         }
 
+        assertGoodsOwned(c.getTenantNo(), merchantNo, cmd.goodsNos());
         c.setName(cmd.name().trim());
         c.setStartAt(cmd.startAt());
         c.setEndAt(cmd.endAt());
@@ -121,7 +143,7 @@ public class CampaignServiceImpl implements CampaignService {
 
         DataScopeContext.executeWithoutScope(() -> {
             if (isNew) {
-                campaignMapper.insert(c);
+                documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_CAMPAIGN", c, c.getCampaignNo(), campaignMapper::insert, MktCampaign::setDocumentNo);
             } else {
                 campaignMapper.updateById(c);
             }
@@ -148,6 +170,30 @@ public class CampaignServiceImpl implements CampaignService {
         if (!MktCampaign.FULL_CUT.equals(cmd.type())) {
             throw BizException.of(ErrorCode.CAMPAIGN_STORE_UNSUPPORTED);
         }
+    }
+
+    /**
+     * 参与商品必须是**这家商家自己的货**。
+     *
+     * <p>此前 goodsNos 照单全收：A 店建一个 ¥0.01 的限时特价、把 B 店的货号填进去，
+     * 算价按货号反查活动、不看活动是谁建的 —— B 的货在全平台按 A 定的价卖，B 毫不知情。
+     * 与统一模型同一个判据（{@code ProductScopeFactsPort.goodsOwned}，ActivityVersionServiceImpl 的权益商品校验），
+     * 不是本店的货一律当不存在（NOT_FOUND）：区分「不存在」与「不是你的」就是一个货号归属探测器。
+     */
+    private void assertGoodsOwned(String tenantNo, String merchantNo, List<String> goodsNos) {
+        if (productFacts == null || goodsNos == null || goodsNos.isEmpty()) {
+            return;
+        }
+        Set<String> nos = new LinkedHashSet<>();
+        goodsNos.stream().filter(no -> no != null && !no.isBlank()).forEach(nos::add);
+        if (!nos.isEmpty() && !productFacts.goodsOwned(tenantOf(tenantNo), merchantNo, nos)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    /** 一期只有 MAIN 租户（BaseEntity 的约定）；新建的行还没落库，租户列为空 */
+    private static String tenantOf(String tenantNo) {
+        return tenantNo == null || tenantNo.isBlank() ? "MAIN" : tenantNo;
     }
 
     /**
@@ -201,8 +247,8 @@ public class CampaignServiceImpl implements CampaignService {
         }
         String couponNo = COUPON_PREFIX + c.getCampaignNo();
         DataScopeContext.executeWithoutScope(() -> {
-            MktCoupon exist = couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                    .eq(MktCoupon::getCouponNo, couponNo));
+            MktCoupon exist = documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                    .eq(MktCoupon::getCouponNo, couponNo)), MktCoupon::getCouponNo, MktCoupon::setDocumentNo);
             if (exist != null) sourceFence.requireWritable(exist.getTenantNo(), SourceSystem.MKT_LEGACY,
                     exist.getCouponNo(), false);
             MktCoupon coupon = exist == null ? new MktCoupon() : exist;
@@ -229,7 +275,7 @@ public class CampaignServiceImpl implements CampaignService {
              */
             coupon.setStatus(MktCampaign.RUNNING.equals(c.getStatus()) ? "ACTIVE" : "PAUSED");
             if (exist == null) {
-                couponMapper.insert(coupon);
+                documentNumbers.bind(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", coupon, coupon.getCouponNo(), couponMapper::insert, MktCoupon::setDocumentNo);
             } else {
                 couponMapper.updateById(coupon);
             }
@@ -238,8 +284,11 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
-    @Transactional
     public CampaignVO toggle(String merchantNo, String campaignNo, boolean running) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1, DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> toggleNumbered(merchantNo, campaignNo, running));
+    }
+
+    private CampaignVO toggleNumbered(String merchantNo, String campaignNo, boolean running) {
         MktCampaign c = mine(merchantNo, campaignNo);
         /*
          * 只允许 RUNNING ↔ PAUSED，外加 DRAFT → RUNNING（第一次开跑）。
@@ -257,8 +306,8 @@ public class CampaignServiceImpl implements CampaignService {
 
     private MktCampaign mine(String merchantNo, String campaignNo) {
         MktCampaign c = DataScopeContext.executeWithoutScope(() ->
-                campaignMapper.selectOne(Wrappers.<MktCampaign>lambdaQuery()
-                        .eq(MktCampaign::getCampaignNo, campaignNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_CAMPAIGN", campaignMapper.selectOne(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(MktCampaign::getCampaignNo, campaignNo).last("limit 1")), MktCampaign::getCampaignNo, MktCampaign::setDocumentNo));
         // 不区分「不存在」与「不是你的」：区分了就是一个活动归属探测器
         if (c == null || !merchantNo.equals(c.getEntityNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -273,7 +322,7 @@ public class CampaignServiceImpl implements CampaignService {
                 c.getBuyN(), c.getGiftM(), readList(c.getGoodsNos()),
                 c.getTotalCount(), c.getTakenCount(),
                 c.getUsedCount() == null ? 0 : c.getUsedCount(),
-                c.getStoreNo());
+                c.getStoreNo()).withDocumentNo(c.getDocumentNo());
     }
 
     /**
@@ -297,11 +346,11 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignVO> opsCampaigns(String status, boolean showArchived) {
         // 不绕过：运营端的全量活动队列，理由同 CouponServiceImpl#opsCoupons
-        return campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+        return documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_CAMPAIGN", campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCampaign::getStatus, status)
                         // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
                         .isNull(!showArchived, MktCampaign::getArchivedAt)
-                        .orderByDesc(MktCampaign::getId)).stream()
+                        .orderByDesc(MktCampaign::getId)), MktCampaign::getCampaignNo, MktCampaign::setDocumentNo).stream()
                 .map(this::toVO).toList();
     }
 
@@ -312,8 +361,8 @@ public class CampaignServiceImpl implements CampaignService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MktCampaign c = DataScopeContext.executeWithoutScope(() ->
-                campaignMapper.selectOne(Wrappers.<MktCampaign>lambdaQuery()
-                        .eq(MktCampaign::getCampaignNo, campaignNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_CAMPAIGN", campaignMapper.selectOne(Wrappers.<MktCampaign>lambdaQuery()
+                        .eq(MktCampaign::getCampaignNo, campaignNo).last("limit 1")), MktCampaign::getCampaignNo, MktCampaign::setDocumentNo));
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

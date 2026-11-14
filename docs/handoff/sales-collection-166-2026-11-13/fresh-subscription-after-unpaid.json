@@ -1,0 +1,36 @@
+{
+  "store": {
+    "tenantNo": "MAIN",
+    "storeNo": "ST261113Y693VWBMKT"
+  },
+  "entitlementVersion": 1,
+  "sources": [
+    {
+      "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+      "entitlementCode": null,
+      "planVersionNo": "0093f8eaf6ec432c93e0938f1db90ea0",
+      "originNo": "ST261113Y693VWBMKT",
+      "durationMillis": 0,
+      "consumedMillis": 0,
+      "valuationBasis": {
+        "currency": "TWD",
+        "minor": "0"
+      },
+      "permanent": true,
+      "lifecycle": "NORMAL",
+      "revokedDurationMillis": 0
+    }
+  ],
+  "segments": [
+    {
+      "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+      "entitlementCode": "END_BIZ_APP",
+      "startsAt": "2026-11-13T13:04:59.618Z",
+      "endsAt": null
+    }
+  ],
+  "businessTypeCode": "RETAIL",
+  "currency": "TWD",
+  "currentPlanVersionNo": "0093f8eaf6ec432c93e0938f1db90ea0",
+  "serverNow": 1794575155993
+}

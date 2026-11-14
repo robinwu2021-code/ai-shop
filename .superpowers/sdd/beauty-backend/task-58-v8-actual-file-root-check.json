@@ -1,0 +1,12 @@
+{
+  "status": "ACTUAL_FILE_PINNED_BEFORE_FIRST_EXECUTION",
+  "checked_at": "2026-10-23T20:11:33.275722+00:00",
+  "implementation_base": "8cc2482adaa8e3f3df469307e92e78fadd5b58b3",
+  "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V8__beauty_source_observation.sql",
+  "bytes": 4582,
+  "sha256": "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343",
+  "literal_equal": true,
+  "generator_check": "PASS",
+  "old_migrations_unchanged": true,
+  "scope": "Only isolated Task58 MySQL 9.7.2 local tests; no shared or remote deployment"
+}

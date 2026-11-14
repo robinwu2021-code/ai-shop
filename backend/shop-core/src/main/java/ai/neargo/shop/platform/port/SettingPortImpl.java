@@ -3,6 +3,7 @@ package ai.neargo.shop.platform.port;
 import ai.neargo.shop.platform.SettingService;
 import ai.neargo.shop.spi.platform.SettingPort;
 import org.springframework.stereotype.Component;
+import java.util.Optional;
 
 /**
  * {@link SettingPort} 的实现：转调本域的 {@link SettingService}。
@@ -28,5 +29,15 @@ public class SettingPortImpl implements SettingPort {
     @Override
     public void put(String key, String json, String operatorNo) {
         settingService.put(key, json, operatorNo);
+    }
+
+    @Override
+    public Optional<VersionedValue> getVersioned(String key) {
+        return settingService.getVersioned(key);
+    }
+
+    @Override
+    public VersionedValue compareAndSet(String key, VersionedValue expected, String json, String operatorNo) {
+        return settingService.compareAndSet(key, expected, json, operatorNo);
     }
 }

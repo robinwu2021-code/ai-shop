@@ -21,6 +21,9 @@ import lombok.Setter;
 @Setter
 @TableName("ord_invoice_request")
 public class OrdInvoiceRequest extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     public static final String REQUESTED = "REQUESTED";
     public static final String ISSUED = "ISSUED";

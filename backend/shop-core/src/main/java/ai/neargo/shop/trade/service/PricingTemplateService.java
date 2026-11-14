@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service;
 
+import java.util.function.Supplier;
+
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.DraftSaveReq;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.DraftVO;
@@ -15,5 +17,7 @@ public interface PricingTemplateService {
     DraftVO saveDraft(Context context, String no, DraftSaveReq req, String key);
     PreviewVO preview(Context context, String no, long version, String rollbackFrom);
     RevisionVO publish(Context context, String no, PublishReq req, String key);
+    /** Resolve fresh evidence only after checking an existing receipt for this trusted identity. */
+    RevisionVO publish(Context identity, String no, PublishReq req, String key, Supplier<Context> evidence);
     RevisionVO getRevision(Context context, String no, String revisionNo);
 }

@@ -1,0 +1,746 @@
+{
+  "algorithm": "SHA256",
+  "indexExcludesItself": true,
+  "artifacts": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ablation.log",
+      "bytes": 80734,
+      "sha256": "1eab410816b5ed474928c1ec6a262d236282ecb3fd9469c8802c9deb84c8f2cc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46946,
+      "sha256": "9f2b14dd7339aef33c9c7f6ea9482141f50bd9c7403c46a1c066c520a460dd8a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 39502,
+      "sha256": "dfacbb808a2e2e9e8e99e6aff1f26316b45ca17ba0e339b1fff9cb32c30d129a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 63882,
+      "sha256": "46d8a6c8705deb22a8058cc9aacff604b70e99adf89f7ff0f398c6994c4d9409"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 48430,
+      "sha256": "d75426d9d759c40d577c1a25664ecd063a8fbeea760d4f7d780829e70c5802db"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22692,
+      "sha256": "f9ceff4825343c94df6e506f88fbe83544a92bb870966cdfe49790e29945b7dd"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/before-ablation-provenance.json",
+      "bytes": 26902,
+      "sha256": "603c3622e0ec0e87d54328cbe878cdd608680076217970554b06c7a32f4e1ff4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/cleanup.json",
+      "bytes": 214,
+      "sha256": "753a5ee2e70f0d1e9aefb228c19d31dea9fb590607a0f8771ac47b5c46848bf9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/commands.json",
+      "bytes": 1125,
+      "sha256": "4215ff864a9c65ea9e30c619c59028498d71e63c04a216865ae0fbdea1c94064"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/finally-restored-compile.log",
+      "bytes": 41331,
+      "sha256": "99fd0a77da8e0f9d6a047754676bc6c136eb9a2a6790a28f265c76aec9142044"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/finally-restored-provenance.json",
+      "bytes": 26902,
+      "sha256": "603c3622e0ec0e87d54328cbe878cdd608680076217970554b06c7a32f4e1ff4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/mapper-ablated.sha256",
+      "bytes": 64,
+      "sha256": "703bbfb92254211ba8d406d419c1b9ae492ab8d5bc6ec40b09dc275030df3eae"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/mapper-before.sha256",
+      "bytes": 64,
+      "sha256": "2eb097ee361947d80a062c5f5d6e7027d2ab59392162b6a7293aadcc00f45ae1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/mapper-phase.java",
+      "bytes": 61837,
+      "sha256": "8fc3a842ae4e4bf1d92652540333149e500df6cee764d98f706c7be7a4f3296c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/mapper-restored.sha256",
+      "bytes": 64,
+      "sha256": "2eb097ee361947d80a062c5f5d6e7027d2ab59392162b6a7293aadcc00f45ae1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/phase-provenance.json",
+      "bytes": 26902,
+      "sha256": "57fde793f46601e5eaffc9d73775099bc91573bbf2cec5cbcb7faf8d82d5dcd6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/resource.json",
+      "bytes": 236,
+      "sha256": "79d959469fbd25fa3f66e8419bcfc52225bdc5a30e23b6963694dcc570617600"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398/summary.json",
+      "bytes": 3532,
+      "sha256": "d7818df1a452e06cc05918b448e02e4783d2a73a018578ab8d7fd7ff7798ffca"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ablation.log",
+      "bytes": 65872,
+      "sha256": "c6f02c5524552fd17ed2c327bc413aeeb2fbd2843728188106d4f0601b42ab89"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46945,
+      "sha256": "cd8c96fe3291adc6b8beb0722d8cabca9f8a179dd69d28dff412ccabf2d5f585"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 39502,
+      "sha256": "09ea495be61b83e76637c63bb72aeb97f1e74c41a66d4123c48f2903c8eeaf9e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 63880,
+      "sha256": "34bc5a9eeef26704528cbbf4f7c2fb106fa71b36d8dd1d66a1b57bd1de18dffb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 48429,
+      "sha256": "ca4d663a94c0bce4a75658ac9bb87cfae915f303f6457c2b029cb56e7e31f5cb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22692,
+      "sha256": "b258a81e46fbe45bef0ac5a087653a318d305bba77d6f1e4772c1a5107f2e83c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/cleanup.json",
+      "bytes": 214,
+      "sha256": "5971c7fb72f5b9de78466a01336308b16b9af8c49d375a09a4a05e0fcb22af01"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/commands.json",
+      "bytes": 1125,
+      "sha256": "31ad55f107781dcc53083152a399ab2f168913f8c0e4715a8a288ba81a047450"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/finally-restored-compile.log",
+      "bytes": 41331,
+      "sha256": "940f7c8e90fea2ad1d058237b4510b053986eeab9e8ccf771ec65029c315aa86"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/late-restored-capture/MerchantMappers.java",
+      "bytes": 62119,
+      "sha256": "b894b6f0c849f03be1d88d474ddcc4d438d70b76ef0e49d15e4282c6335394e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/late-restored-capture/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 5197,
+      "sha256": "4e0ab3454e8ed9194ca2fc874e782728a2517033278d1340aa557305df485c8b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/late-restored-capture/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 4059,
+      "sha256": "92735f2abae0e3a6e7a8cf9ac320ef2adc0ec732787c477b7860f1d5e27184f7"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/late-restored-capture/source-class-inventory.json",
+      "bytes": 36710,
+      "sha256": "90135dba5c95a6894e30fb996e4cd81ecd10f45e73ddb30b18fdca62630b28ca"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/mapper-ablated.sha256",
+      "bytes": 64,
+      "sha256": "4c399c4829e12e6af72d11a6f6f2f2c8d215ad2db20028b800dd656d22aa4a0c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/mapper-before.sha256",
+      "bytes": 64,
+      "sha256": "39371ac73eb2aba2216a5c90ad7261906041578c35bef4c477fc822745e3d51b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/mapper-restored.sha256",
+      "bytes": 64,
+      "sha256": "39371ac73eb2aba2216a5c90ad7261906041578c35bef4c477fc822745e3d51b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/resource.json",
+      "bytes": 236,
+      "sha256": "3ea89adb98fd2118e6b4bc3b82aa64d46b1c0a87c9bed3833444cbaa14c1c81b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/ablation-94f4de6f-ad32-419f-998a-d6afab8e5477/summary.json",
+      "bytes": 3532,
+      "sha256": "1fc4a01f1bf83b6fd7ff7fcf53d465edbb39b0c80681a51e48cdb037c6bbe1ef"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/baseline-source-hashes.json",
+      "bytes": 608,
+      "sha256": "5d8c726908c402806d2aa96bee604d00cdf293e3107da5910c796886c2df9625"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/enum-green.xml",
+      "bytes": 22289,
+      "sha256": "fa859b87061b3f28145b6ef4f8b457cfbcfca8f4c43efdbe615b164aeeb99080"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/enum-red.log",
+      "bytes": 11442,
+      "sha256": "2811288d0e98cd66d093ab4ef8dec58e044936bb1381789b5ef60f94e0034c59"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-audit-helper.py",
+      "bytes": 3939,
+      "sha256": "2a3b771776096db5ff59c0d0c6b8b298c23089f228182a843d497c2eedd850ec"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-audit.json",
+      "bytes": 2709,
+      "sha256": "37d03b611cefb2f1fd16c06175c5ddef293f461433cb824df75aa0ab25d8bdac"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-classpath-provenance.json",
+      "bytes": 97621,
+      "sha256": "0c2d8ee8e0de9d1bac45666a7c5d24a8e4fe5e72aa4ca2d7efc73793c048a8cb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-formatted-compile.log",
+      "bytes": 60712,
+      "sha256": "0b8236c592c1084f3215daa137e648d4a60d9eb6d9a798e80103dd3d86e8fd32"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-source-class/MerchantMappers.java",
+      "bytes": 62179,
+      "sha256": "b19db20464b6017f378b4f9b33b54dce43cd7cfb9257da01391e6c06cef22c83"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-source-class/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 6200,
+      "sha256": "94f6abaf9861c7247eaae0422eccad95ad9208fa77d5dcc702c3aeea2cd8aed8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-source-class/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 4706,
+      "sha256": "8e2824efd48e1600fde6945c2b827d71fc2878d746a3cdc33d6cde4f3a9a2ccf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-source-class/source-class-inventory.json",
+      "bytes": 36711,
+      "sha256": "541ca04cdc6dcdb51236bbefb5ae09158916837c6cfaec26e810dcac031f93ef"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-test-methods.json",
+      "bytes": 4289,
+      "sha256": "920ae0b81b71116909224343bd51b127428fa072ecd660f54163bd1c253ab47d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/final-tested-bytes-still-current.json",
+      "bytes": 145,
+      "sha256": "a352b69313d9fc545259bf777e891637e559b55ff05a1b4bc7b35f289c0d9055"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-aggregate-pom.xml",
+      "bytes": 519,
+      "sha256": "582183ee2ad330daaf3abd81f12b0151eda2d7f4ab32c3389aaad753d1121311"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-compile-cleanup.json",
+      "bytes": 114,
+      "sha256": "0c845ec9b001238c035f33afdefe43c820d1c8b125c81ff0cabc8e9feb74c7e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-compile-command.json",
+      "bytes": 637,
+      "sha256": "cf087f76f2e54463c19b13681a0457ab3fb24d294dac61d41ab6c98a7f634efb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-compile-helper.py",
+      "bytes": 2356,
+      "sha256": "fd9d1b850ff10dd4d3bf7395ad7c63852552ce7fd3274fa69570a090748afc69"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-current-reactor-compile.log",
+      "bytes": 47711,
+      "sha256": "132003026853a462797a29d77af579bfc3e747ac42fbf06ac24afb4d8f2cfb0c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/food-source-provenance.json",
+      "bytes": 100806,
+      "sha256": "cce74901efef4167a5276b3a0360aeeb52e6b998b658f44386744a76404305df"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/format-commands.json",
+      "bytes": 5049,
+      "sha256": "8840963e9e378a9857030561c9da114d6e038d3a427c20b27c0ff25055460c81"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/gate-v2-compile.log",
+      "bytes": 39815,
+      "sha256": "263c22e28ce2e586f6bc07b2cfb31499baa791b65a7883aaf888f56f53401fca"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/generated-permissions.log",
+      "bytes": 530,
+      "sha256": "cbd04a23267828da71e4056ef80de04f07f47cae4aa9260fe6f20187533ea817"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/MerchantMappers.java",
+      "bytes": 62119,
+      "sha256": "b894b6f0c849f03be1d88d474ddcc4d438d70b76ef0e49d15e4282c6335394e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 5197,
+      "sha256": "4e0ab3454e8ed9194ca2fc874e782728a2517033278d1340aa557305df485c8b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 4059,
+      "sha256": "92735f2abae0e3a6e7a8cf9ac320ef2adc0ec732787c477b7860f1d5e27184f7"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46944,
+      "sha256": "f9a12a7fce2a5d2206431222c30e8c2f38fe4f8b89b0fe3041f7fa8762fbb0ea"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 37816,
+      "sha256": "5beebfb0dd6b8bfbd17c2aceb0e57df728e5ff2b15cdccc075937ffdc16298bf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 57589,
+      "sha256": "5daad9b94fad2778e3ddae62aa0cd829167e9dbe1227581e6661656fb70661e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 47611,
+      "sha256": "e9ec354b7e86a5f4b02751f2fc65fb6e6abb79a00cc249f2dfcfbde527a21b74"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22693,
+      "sha256": "58fd00c1f5cf63be38e57d6823fdb8fb2d7097644fda4c09e380ac6820110678"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/cleanup.json",
+      "bytes": 214,
+      "sha256": "232238e76cac274fa695ae4fd3689ccc86d25889bce57182a891b1d4f1cb80b3"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/commands.json",
+      "bytes": 784,
+      "sha256": "23d385457a8a9728abf5c562e3cdb518dcf4d1f931d8751e7d16fc81dcd66533"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/green.log",
+      "bytes": 56299,
+      "sha256": "64d6b81a00286d31a3411b4b3add5a1386f5b327c3a800ab95b8bf3f0d27f159"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/resource.json",
+      "bytes": 236,
+      "sha256": "a3bffbe564892d2437abd00e7a94f69df872872366c092d25262e5f9f75faecc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/source-class-inventory.json",
+      "bytes": 36322,
+      "sha256": "e9b3cfe63e9a8e8afb6f47325d46774e012d5545d5a69befe9b25cd5bf0fefaf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-35be1c64-fffc-45ea-b75d-eb85248cdc23/summary.json",
+      "bytes": 3529,
+      "sha256": "85cd58f097114db8b61d8ab266c7d66754c0ed5726ec837c7d8723189013f8a4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46946,
+      "sha256": "a64997ecbe539cf697adb87e5f9052d253c9af56f1629b3feb8c5b3d33f41af6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 39501,
+      "sha256": "1e32b565aaa935045d7a88ce0277d57bff6127c5b28582322f96b37611f5bd77"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 58438,
+      "sha256": "996c4e44f3caf8d826173fb528573fa3df1983d4e3108bcc8e87bff4d67a2a17"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 48430,
+      "sha256": "61defa9722770c8764554c84e80182d5123df72085e27d3854e0280acb6f8595"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22691,
+      "sha256": "095ed800b57e727579ca99b8700321b5da3d3ff3e19554bedb86cd62abd9435c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/cleanup.json",
+      "bytes": 214,
+      "sha256": "8042f47bb9247caee87aaef69dd8bf2378c68d52cedb35425d030c29f16768c2"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/commands.json",
+      "bytes": 784,
+      "sha256": "3e18c1b3bfd7fe554bfff4b847e10e6454dd9029fee18d644aca4351c89e01b4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/green.log",
+      "bytes": 57612,
+      "sha256": "957c33d26f531f865964774b1cb56c7f544959ce04137d12825b45f6d40f684f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/mapper-phase.java",
+      "bytes": 62179,
+      "sha256": "b19db20464b6017f378b4f9b33b54dce43cd7cfb9257da01391e6c06cef22c83"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/phase-provenance.json",
+      "bytes": 26902,
+      "sha256": "ce06a63436a4c2d53ef230f02b5937adab4bf6fd312df6ee7b3b3f9e72a80ab4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/resource.json",
+      "bytes": 236,
+      "sha256": "d4867dd6211b21fff0d94e502291cb5dfbdc1f32b8843374576aac74fab731b5"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/green-6be8d5a5-6f11-4ee4-af00-95a63598ce62/summary.json",
+      "bytes": 3529,
+      "sha256": "e1ff7e5030d715668e2d997393fc18c035b8314f108a7e09fb0061349a35491f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/initial-native-gate-v2.json",
+      "bytes": 3409,
+      "sha256": "052f643d4e2c31f20c3e115164f8e5a9d009751fb7967dbaeb17db76b72831e0"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/initial-native-gate.json",
+      "bytes": 3408,
+      "sha256": "10d9b9d2744da3d759af2d42e7b130b6e60e312d7dcafd06dadefb809c1a2e83"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/labels-final-green.log",
+      "bytes": 256,
+      "sha256": "6d843644781b667fb0f0858b0d7379ac6f02d4ec20a9b159b163d37e5b21da81"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/labels-green.log",
+      "bytes": 256,
+      "sha256": "13347ba94e78a7c43b1f57c639fac0cf5c427f9d34a17e3f459336edf64b11ad"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/owned-files.json",
+      "bytes": 6036,
+      "sha256": "3430db3216181278c6dd98061f4128cd5e256b694544216db6370035b1e45112"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/preflight-cleanup.json",
+      "bytes": 79,
+      "sha256": "b92a5795e006369a984febd59904b73ec92d8ac51cd2f42e411ef0f8fc85c2f1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/preflight.log",
+      "bytes": 62923,
+      "sha256": "134ea0ed00f3503ea27ed9255b50bb3165d19d43341337cd4b82f0a0619dbc22"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46945,
+      "sha256": "20f23a072be7a756e5e570a0471110ced1aec47a5faf89115754cdba02f1abf9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 39503,
+      "sha256": "784c129c7883ae4922c815bff554bc13ee7c96a907a249fc2bbfeccb64e2eac2"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 60532,
+      "sha256": "0f1276ee5a05975ae92b3b7334bbfe8f94b53fbbf9f70589c5dd5c45bb15f826"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 48430,
+      "sha256": "11a2102cbf80c5c7be1d70aa89bca10af6dc462178830a34bde039c9ed76014f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22693,
+      "sha256": "3b28f83fffea2c13594e1457864c34d552c14d22193eaa59662a30e80f1ac9e3"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/cleanup.json",
+      "bytes": 214,
+      "sha256": "852b76ce7fbd40a4e7db68adaed14c6fb8b918d8889e7480cf00b0a1f215e3cc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/commands.json",
+      "bytes": 784,
+      "sha256": "6b5512a9c419a14769909fe0be69df7bbbec73fc992617a509a90c4682a00a48"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/mapper-phase.java",
+      "bytes": 61881,
+      "sha256": "9bd26a2139368056cc0ef2f960dfec66ca643b8b5b985b6a5325fffc03dd48d6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/phase-provenance.json",
+      "bytes": 26902,
+      "sha256": "04e45e9b8c69b8f54912730bd392e53f6f01aef98c812886e0d91514da35645e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/red.log",
+      "bytes": 58120,
+      "sha256": "675072cf7930b7d8ecf1fea7a1480fb71e9e88aed4f7493ff7e3bd494f793ea8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/resource.json",
+      "bytes": 236,
+      "sha256": "145dcb10d72526a736443045b12a3ae00eaf4e5a0b3f818048885387cc7d7193"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-08d71328-4c85-4807-98ba-df1fbd01e79f/summary.json",
+      "bytes": 3527,
+      "sha256": "bb1da8835c54a4ada89bae9ad8a14e205d94cb9ac6bf81c36ff1a209a7e2587a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/MerchantMappers.java",
+      "bytes": 62119,
+      "sha256": "b894b6f0c849f03be1d88d474ddcc4d438d70b76ef0e49d15e4282c6335394e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 1200,
+      "sha256": "cace255b28922f4e88133d9cd359c83dc776b943b7b02872145f2bc0e71e2d9a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 696,
+      "sha256": "1999884b28addc89bbbd72e0948a3423d0472f8227986c4b8e01bd0530d21d52"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46945,
+      "sha256": "caea1dbc750304048b18bb3768b360a9af1b9d83b4ac38722d47600cc959b8a2"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 41191,
+      "sha256": "1f5c2d74c05e357bb2800494eda02f9a75e857976373b03c15a575f4a726cc8d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 75174,
+      "sha256": "c0db68eecdb07e4681a2c63b3d8aba3ef2b1e060fff8d123325b29af7a6c6116"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 47608,
+      "sha256": "adf24c61b95b77e3564e2dcdfb1ae99e3121a2237c1f2c2b8609497033f37e95"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22692,
+      "sha256": "797ce1add3e2cb7db2f172442e528a8410ef07b4a202e077ff60bcc4e09f0bc1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/cleanup.json",
+      "bytes": 214,
+      "sha256": "5d4e65de3e398893866ca0f119c9adb3dc7804ff0485f23f0736de7cbdfdae5e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/commands.json",
+      "bytes": 784,
+      "sha256": "85b87db61d21dd8848eef51970bbc6ae0539f9602f4677c4c1a7d8ed3cff147e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/red.log",
+      "bytes": 75567,
+      "sha256": "f42047366ab171f34605f1c5c59488c9eb880a5b7a96204ccda06341f117e7ef"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/resource.json",
+      "bytes": 236,
+      "sha256": "2aa916da47300a603b508a2d9bb8697d415b7d7534d20c668efae6c0e83e9f0e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/source-class-inventory.json",
+      "bytes": 35850,
+      "sha256": "b9e64cbdb6e541670549978ecc9753fbece88e74bab8927846fb29cd21719ea8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/red-cafe2e1b-0915-4181-b616-92d304a17f9f/summary.json",
+      "bytes": 3527,
+      "sha256": "4e0340a5e473369ff3f438a60ea47c60295f0280a41e4f233a32327e0f3493f6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/aggregate-pom.xml",
+      "bytes": 453,
+      "sha256": "696e75f19e2f8e449ae97dbf3e80cf8d9ff9ac4eebb5c0f832da947a3e45f363"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/ai.neargo.shop.arch.BizRoleSeedTest.xml",
+      "bytes": 46946,
+      "sha256": "31f2accb1e57bea7a5b942c070c3b09da2e6b64cd66b42cc4a8995e0195d721d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest.xml",
+      "bytes": 39503,
+      "sha256": "90c8f487422fe3a66fcab059d69bf441139a4e7fadb162cdc87b3c599dcee97f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/ai.neargo.shop.scenario.PersonnelOperatorFactsIT.xml",
+      "bytes": 57591,
+      "sha256": "5c3f6ebb2e5bb82263b9cec1400d76bd501a935f4a77bf91b60509b5f09598b1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/ai.neargo.shop.scenario.PersonnelOperatorProtocolTest.xml",
+      "bytes": 48428,
+      "sha256": "a6347717619500dd4fd8a759599eda95aa3720d430ff2613caaa49ffb392caaf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/ai.neargo.shop.svc.BoundInternalProtocolTest.xml",
+      "bytes": 22691,
+      "sha256": "b66f516fba62fd5666066f8a4a5049b57f307dc4e58a909866c1c84ff2b48f59"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/cleanup.json",
+      "bytes": 214,
+      "sha256": "4fb5f1abcf8d78df755e01c09e6933a7c612041d313ae1ac17d1df62693b2957"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/commands.json",
+      "bytes": 784,
+      "sha256": "102268d5b85d11489c4e00daf4cc45823779fa5dd5ae4f19d006b6d720d1ae0f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/frozen-migrations.json",
+      "bytes": 321,
+      "sha256": "ecb93f5915d08ab07961bfe7a11a07068223cfd6b33ab8ac1801724a9114282e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/mapper-phase.java",
+      "bytes": 61881,
+      "sha256": "9bd26a2139368056cc0ef2f960dfec66ca643b8b5b985b6a5325fffc03dd48d6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/phase-provenance.json",
+      "bytes": 26902,
+      "sha256": "603c3622e0ec0e87d54328cbe878cdd608680076217970554b06c7a32f4e1ff4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/resource.json",
+      "bytes": 236,
+      "sha256": "a6da84560543c6079e340b3f7c6f252e606f9b3bd0f44a4efce1be9e70165452"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/restored.log",
+      "bytes": 52689,
+      "sha256": "c402b2fad5c40dade7eb05e9e8c5bf2e822364ad0b9f7208706732ae95c906a4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/restored-e89c2635-fef4-43cd-9bfd-a31c4069e487/summary.json",
+      "bytes": 3532,
+      "sha256": "39169d3b77a651313785c9826518601ab74e015a6df2a19f2a9ed4c0423d581e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/runner-final-green.log",
+      "bytes": 567,
+      "sha256": "63f9b13579c188eccf9f641018c97f114e9739149a239311c0bc8617985c869b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/runner-green.log",
+      "bytes": 562,
+      "sha256": "c52455fee76d2570d88eed3a9df72b6bcec092cc46ee8b2afccb258d0208f13a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/source-inventory-helper.py",
+      "bytes": 1845,
+      "sha256": "3c54850f9145a1ec96918cbc808873ac0c43758065e719c2ca160b9580edd545"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-evidence/warning-ledger.json",
+      "bytes": 58105,
+      "sha256": "9745b177971b5e2fbee2a742d2adacdaf7a0d2a2474a2cf350d069f894656e07"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-62-report.md",
+      "bytes": 15165,
+      "sha256": "80e3484e82dfd9deecb883c9fb94ab7ac0b86972c501828a34463b308e630f24"
+    }
+  ]
+}

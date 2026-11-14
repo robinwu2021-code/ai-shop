@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 
 import java.util.List;
@@ -10,7 +11,20 @@ public interface AfterSaleService {
 
     List<String> reasons();
 
+    /** Exact saved original return reconciliation; never repeats funds and never marks an accepted mirror complete. */
+    StockPort.RestoreResult reconcileReturnedStock(String afterSaleNo);
+
     AfterSaleVO apply(String subOrderNo, ApplyCommand cmd);
+
+    /** Internal source-owned adapter seam; preserves the original buyer predicate and policy. */
+    AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd);
+
+    record SourceRequest(String sourceSystem, String requestKey, String requestHash) { }
+    AfterSaleVO applyForBuyer(String subOrderNo, String buyerNo, ApplyCommand cmd, SourceRequest source);
+
+    AfterSaleVO detailForBuyer(String afterSaleNo, String buyerNo);
+
+    AfterSaleVO cancelForBuyer(String afterSaleNo, String buyerNo);
 
     List<AfterSaleVO> myList();
 
@@ -53,7 +67,22 @@ public interface AfterSaleService {
 
     AfterSaleVO escalate(String afterSaleNo, String appeal);
 
-    List<AfterSaleVO> merchantList(String merchantNo, String status);
+    /** 主体下全部门店（含没有门店号的历史单）。B 端入口按人裁剪时用三参版本 */
+    default List<AfterSaleVO> merchantList(String merchantNo, String status) {
+        return merchantList(merchantNo, status, null);
+    }
+
+    /**
+     * @param storeNos 只列这些门店子单上的售后；{@code null} = 不按门店过滤（属主看全部，
+     *                 见 {@code BizContext#allowedStoresOrAll}）。空集合 = 一条都不给
+     */
+    List<AfterSaleVO> merchantList(String merchantNo, String status, java.util.Set<String> storeNos);
+
+    /**
+     * 这张售后单挂在哪家店（子单的 store_no）—— 给门店级判权用：按售后单号操作的端点路径里没有门店号。
+     * 不是本主体的单一律 NOT_FOUND；历史子单没有门店号时返回 {@code null}。
+     */
+    String merchantStoreOf(String merchantNo, String afterSaleNo);
 
     /** Merchant-scoped, server-paged action list; storeNo is the currently authorized store. */
     ai.neargo.shop.common.PageData<AfterSaleVO> merchantPage(String merchantNo, String storeNo,

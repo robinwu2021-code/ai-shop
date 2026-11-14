@@ -1,10 +1,12 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import org.springframework.test.util.ReflectionTestUtils;
 import ai.neargo.shop.promotion.config.PromotionFeatureProperties;
 import ai.neargo.shop.promotion.dto.*;
 import ai.neargo.shop.promotion.dto.UnifiedActivityViews.*;
@@ -30,6 +32,7 @@ class ActivityVersionManagementTest {
     private final ActivityMapper heads = mock(ActivityMapper.class);
     private final PmtPresetTemplateMapper presets = mock(PmtPresetTemplateMapper.class);
     private final ActivityCommandDeduplicator commands = mock(ActivityCommandDeduplicator.class);
+    private final BrandActivityOwnershipService brandOwners = mock(BrandActivityOwnershipService.class);
     private final ActivityActor actor = new ActivityActor("MAIN", "M1", "U1", null);
 
     @SuppressWarnings("unchecked") private ActivityVersionServiceImpl service() {
@@ -41,12 +44,21 @@ class ActivityVersionManagementTest {
         when(commands.execute(any(), anyString(), anyString(), any(), anyString(), any(), any()))
                 .thenAnswer(call -> ((Supplier<?>) call.getArgument(6)).get());
         when(heads.insert(any(PmtActivity.class))).thenReturn(1);
-        return new ActivityVersionServiceImpl(heads, mock(UnifiedActivityManagementMapper.class),
+        var service = new ActivityVersionServiceImpl(heads, mock(UnifiedActivityManagementMapper.class),
                 mock(PmtActivityVersionMapper.class), mock(PmtActivityBudgetMapper.class),
                 mock(PmtActivityScopeMapper.class), mock(PmtRechargeTierMapper.class), presets, commands,
                 new ActivityRuleValidator(), mock(EntitlementScopeValidationService.class), catalog,
                 mock(ProductScopeFactsPort.class), mock(MemberQueryPort.class), new PromotionFeatureGate(props),
                 evidence, new ObjectMapper());
+        var coordinator = mock(ai.neargo.shop.numbering.store.DocumentNumberCoordinator.class);
+        when(coordinator.transaction(anyMap(), any())).thenAnswer(call -> ((Supplier<?>) call.getArgument(1)).get());
+        when(coordinator.findAll(any(), anyCollection())).thenReturn(Map.of());
+        when(coordinator.bind(any(), any())).thenReturn("PT20300101000001");
+        service.setDocumentNumbers(new CoreMarketingDocumentNumbers(coordinator));
+        ObjectProvider<BrandActivityOwnershipService> owners = mock(ObjectProvider.class);
+        when(owners.getIfAvailable()).thenReturn(brandOwners);
+        ReflectionTestUtils.setField(service, "brandOwners", owners);
+        return service;
     }
     private UnifiedActivityDefinition definition(String name, String scene) {
         return new UnifiedActivityDefinition(name, scene, "AP001", 0, new RedemptionScope("ALL", List.of()),
@@ -61,6 +73,30 @@ class ActivityVersionManagementTest {
         row.setName("预置优惠"); row.setDraftSchema("{\"scene\":\"ORDER\",\"effect\":\"" + effect + "\"}");
         when(presets.catalog("MAIN", "ACTIVITY")).thenReturn(List.of(row));
     }
+    @Test void scopedDraftAllowsOnlyTheConfiguredMerchantStoreAndLeavesPublicationClosed() {
+        var props = new PromotionFeatureProperties();
+        var gate = new PromotionFeatureGate(props);
+        var original = definition("TW draft", "ORDER");
+        var draft = new UnifiedActivityDefinition(original.name(), original.scene(), "AP023", 1,
+                new RedemptionScope("STORES", List.of("S1")), null, original.schedule(), original.rule(),
+                original.quotaLimit(), original.budgetLimitMinor(), original.perUserLimit(), "TWD");
+
+        assertThrows(BizException.class, () -> gate.requireDraft(actor, draft));
+
+        props.getDraftScope().setTenantNo("MAIN");
+        props.getDraftScope().setEntityNo("M1");
+        props.getDraftScope().setStoreNo("S1");
+        props.getDraftScope().setTemplateCode("AP023");
+        props.getDraftScope().setCurrency("TWD");
+        assertDoesNotThrow(() -> gate.requireDraft(actor, draft));
+        assertThrows(BizException.class, () -> gate.requireDraft(new ActivityActor("MAIN", "M2", "U2", null), draft));
+        assertThrows(BizException.class, () -> gate.requireDraft(
+                new ActivityActor("MAIN", "M1", "U1", null, "MGS1", "BR1"), draft));
+        props.getDraftScope().setStoreNo("S2");
+        assertThrows(BizException.class, () -> gate.requireDraft(actor, draft));
+        assertThrows(BizException.class, gate::requireActivity);
+    }
+
     @Test void instantiateUsesPresetMetadataWithoutInventingCommercialValues() {
         var service = service(); preset("CUT");
         var saved = service.saveDraft(actor, new SaveDraft(null, null, definition(null, null)), "KEY1");
@@ -77,8 +113,49 @@ class ActivityVersionManagementTest {
         var service = service();
         var original = new ActivityView("ACT1", 0, "DRAFT", null, definition("原始活动", "ORDER"));
         when(commands.replay(any(), anyString(), anyString(), any(), any())).thenReturn(Optional.of(original));
+        var changed = definition("后来编辑的活动", "ORDER");
+        var expired = new UnifiedActivityDefinition(changed.name(), changed.scene(), changed.templateCode(),
+                changed.templateVersion(), changed.storeParticipationScope(), changed.audienceRef(),
+                new UnifiedActivityDefinition.Schedule("ONE_OFF", Instant.parse("2000-01-01T00:00:00Z"),
+                        Instant.parse("2000-02-01T00:00:00Z"), "Asia/Shanghai", List.of(), null, null),
+                changed.rule(), changed.quotaLimit(), changed.budgetLimitMinor(), changed.perUserLimit(), changed.currency());
+        when(heads.selectOne(any())).thenReturn(persistedActivity("MERCHANT", expired));
         assertSame(original, service.saveDraft(actor, new SaveDraft(null, null, definition(null, null)), "KEY1"));
-        verifyNoInteractions(presets, heads);
+        verifyNoInteractions(presets, brandOwners);
+        verify(heads).selectOne(any());
+        verifyNoMoreInteractions(heads);
+    }
+    @Test void committedReplyStillRequiresTheActivityToExist() {
+        var service = service();
+        var original = new ActivityView("ACT1", 0, "DRAFT", null, definition("原始活动", "ORDER"));
+        when(commands.replay(any(), anyString(), anyString(), any(), any())).thenReturn(Optional.of(original));
+        var failure = assertThrows(BizException.class,
+                () -> service.saveDraft(actor, new SaveDraft(null, null, definition(null, null)), "KEY1"));
+        assertEquals(ErrorCode.NOT_FOUND, failure.errorCode());
+        verifyNoInteractions(presets);
+        verify(commands, never()).execute(any(), anyString(), anyString(), any(), anyString(), any(), any());
+    }
+    @Test void merchantCannotReplayAReplyWhoseCurrentActivityIsBrandOwned() {
+        var service = service();
+        var original = new ActivityView("ACT1", 0, "DRAFT", null, definition("原始活动", "ORDER"));
+        when(commands.replay(any(), anyString(), anyString(), any(), any())).thenReturn(Optional.of(original));
+        var row = persistedActivity("BRAND", original.definition());
+        when(heads.selectOne(any())).thenReturn(row);
+        // The actor has no matching management/brand relationship; the source owner denies visibility.
+        when(brandOwners.visible(actor, row)).thenReturn(false);
+        var failure = assertThrows(BizException.class,
+                () -> service.saveDraft(actor, new SaveDraft(null, null, definition(null, null)), "KEY1"));
+        assertEquals(ErrorCode.NOT_FOUND, failure.errorCode());
+        verify(brandOwners).visible(actor, row);
+        verifyNoInteractions(presets);
+        verify(commands, never()).execute(any(), anyString(), anyString(), any(), anyString(), any(), any());
+    }
+    private PmtActivity persistedActivity(String owner, UnifiedActivityDefinition definition) {
+        var row = new PmtActivity();
+        row.setTenantNo(actor.tenantNo()); row.setEntityNo(actor.entityNo()); row.setActivityNo("ACT1");
+        row.setOwner(owner); row.setStatus("DRAFT"); row.setVersion(7L);
+        row.setDraftSnapshot(new ObjectMapper().writeValueAsString(definition));
+        return row;
     }
     @Test void storeRestrictedActorCannotCreateAllStoreActivity() {
         var service = service(); preset("CUT");

@@ -53,6 +53,21 @@ public class MemberServiceImpl implements MemberService {
     private final MemberSourceMapper sourceMapper;
     private final SettingMapper settingMapper;
     private final PersonPort personPort;
+    private ai.neargo.shop.member.service.MemberScopeService scopeMembers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setScopeMembers(ai.neargo.shop.member.service.MemberScopeService members){this.scopeMembers=members;}
+    private void syncScope(MbrMember m,String store,String actor,String privateRemark){
+        if(scopeMembers==null||store==null||store.isBlank())return;
+        // Old inserts rely on the database tenant default; use the persisted row, never guess a tenant.
+        if(m.getTenantNo()==null){var persisted=memberMapper.selectById(m.getId());if(persisted==null||persisted.getTenantNo()==null)throw BizException.of(ErrorCode.CONFLICT);m.setTenantNo(persisted.getTenantNo());}
+        // Missing historical store/identity must be handled before joining a write transaction;
+        // catching a failed inner TransactionTemplate would leave the legacy transaction rollback-only.
+        try{scopeMembers.scope(m.getTenantNo(),m.getEntityNo(),store);scopeMembers.identity(m.getTenantNo(),m.getPersonNo());}
+        catch(BizException e){if(e.errorCode()==ErrorCode.NOT_FOUND){log.debug("[member-scope] legacy membership retained without unverified scope mapping");return;}throw e;}
+        var scoped=scopeMembers.enroll(m.getTenantNo(),m.getEntityNo(),store,m.getPersonNo(),actor==null?"SYSTEM":actor,privateRemark);
+        scopeMembers.linkLegacy(m.getTenantNo(),m.getMemberNo(),scoped.scopeMemberNo(),store,actor==null?"SYSTEM":actor);
+    }
+
     /** 详情页要显示他身上的标签。同域直接依赖，不必绕 Port */
     private final ai.neargo.shop.member.service.MemberTagService tagService;
 
@@ -166,6 +181,7 @@ public class MemberServiceImpl implements MemberService {
         memberMapper.updateById(m);
 
         applyStore(m, storeNo, amountMinor, paidAt, fresh);
+        syncScope(m,storeNo,"SYSTEM",null);
         if (byScan) {
             /*
              * 扫码那一下单独记一行，且它才是 isFirst。
@@ -194,11 +210,13 @@ public class MemberServiceImpl implements MemberService {
         }
         Optional<MbrMember> exist = find(entityNo, personNo);
         if (exist.isPresent()) {
+            syncScope(exist.get(),storeNo,"SYSTEM",null);
             return exist.get();     // 重复点「加入」是常态，不该报错
         }
         long now = System.currentTimeMillis();
         MbrMember m = create(entityNo, personNo, MbrMember.SOURCE_SEARCH, storeNo, now);
         recordSource(m, MbrMember.SOURCE_SEARCH, storeNo, true, now, null, null, null, null, null);
+        syncScope(m,storeNo,"SYSTEM",null);
         return m;
     }
 
@@ -233,6 +251,7 @@ public class MemberServiceImpl implements MemberService {
         if (tagNos != null && !tagNos.isEmpty()) {
             tagService.tag(entityNo, List.of(m.getMemberNo()), tagNos, List.of(), operatorNo);
         }
+        syncScope(m,storeNo,operatorNo,remark);
         return m;
     }
 
@@ -256,6 +275,7 @@ public class MemberServiceImpl implements MemberService {
             m.setClaimedAt(now);
             memberMapper.updateById(m);
         }
+        if(scopeMembers!=null)leads.stream().map(MbrMember::getTenantNo).filter(java.util.Objects::nonNull).distinct().forEach(tenant->scopeMembers.claim(tenant,personNo));
         if (!leads.isEmpty()) {
             log.info("[member] 人档 {} 绑定账号，{} 条线索会员转正", personNo, leads.size());
         }
@@ -289,6 +309,23 @@ public class MemberServiceImpl implements MemberService {
     }
 
     // ---------------------------------------------------------------- 读
+
+    @Override
+    public List<MemberService.Suggestion> suggest(String entityNo,String keyword){
+        boolean phone=keyword.matches("[0-9]+");
+        var result=new java.util.ArrayList<MemberService.Suggestion>();Long after=null;
+        do{
+            var q=Wrappers.<MbrMember>lambdaQuery().eq(MbrMember::getEntityNo,entityNo)
+                    .gt(after!=null,MbrMember::getId,after).like(!phone,MbrMember::getRemark,keyword)
+                    .orderByAsc(MbrMember::getId).last("LIMIT 200");
+            var batch=memberMapper.selectList(q);if(batch.isEmpty())break;
+            var people=personPort.matchPhones(batch.stream().map(MbrMember::getPersonNo).distinct().toList(),phone?keyword:null)
+                    .stream().collect(java.util.stream.Collectors.toMap(PersonPort.PersonView::personNo,p->p));
+            for(var m:batch){var p=people.get(m.getPersonNo());if(p!=null){result.add(new MemberService.Suggestion(m.getMemberNo(),m.getRemark(),m.getStatus(),p));if(result.size()==20)return result;}}
+            after=batch.getLast().getId();if(batch.size()<200)break;
+        }while(true);
+        return result;
+    }
 
     @Override
     public PageData<MemberVO> list(String entityNo, MemberQuery q) {
@@ -426,6 +463,9 @@ public class MemberServiceImpl implements MemberService {
      * 「南门店的沉睡老客」问的是他在南门店的往来，不是他在整个主体的往来。
      */
     private LambdaQueryWrapper<MbrMember> baseQuery(String entityNo, MemberQuery q) {
+        boolean storeScoped = q.storeNo() != null && !q.storeNo().isBlank();
+        Long idleBefore = q.idleDays() == null ? null : System.currentTimeMillis()
+                - java.util.concurrent.TimeUnit.DAYS.toMillis(q.idleDays());
         LambdaQueryWrapper<MbrMember> w = Wrappers.<MbrMember>lambdaQuery()
                 .eq(MbrMember::getEntityNo, entityNo)
                 .eq(q.status() != null, MbrMember::getStatus, q.status())
@@ -433,6 +473,7 @@ public class MemberServiceImpl implements MemberService {
                 .eq(q.level() != null && (q.storeNo() == null || q.storeNo().isBlank()),
                         MbrMember::getLevel, q.level())
                 .eq(q.source() != null, MbrMember::getSource, q.source())
+                .le(idleBefore != null && !storeScoped, MbrMember::getLastOrderAt, idleBefore)
                 .le(q.lastOrderBefore() != null, MbrMember::getLastOrderAt, q.lastOrderBefore())
                 .ge(q.lastOrderAfter() != null, MbrMember::getLastOrderAt, q.lastOrderAfter())
                 .ge(q.spentMin() != null, MbrMember::getTotalSpentMinor, q.spentMin())
@@ -491,6 +532,7 @@ public class MemberServiceImpl implements MemberService {
                     .eq(MbrMemberStore::getEntityNo, entityNo)
                     .eq(MbrMemberStore::getStoreNo, q.storeNo())
                     .eq(q.level() != null, MbrMemberStore::getLevel, q.level())
+                    .le(idleBefore != null, MbrMemberStore::getLastOrderAt, idleBefore)
                     .le(q.lastOrderBefore() != null, MbrMemberStore::getLastOrderAt, q.lastOrderBefore())
                     .ge(q.lastOrderAfter() != null, MbrMemberStore::getLastOrderAt, q.lastOrderAfter()));
             List<String> nos = storeRows.stream().map(MbrMemberStore::getMemberNo).toList();

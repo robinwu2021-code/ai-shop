@@ -1,0 +1,68 @@
+✖ published catalog tables and command storage remain visible in generated ER documentation (684.872084ms)
+✔ current delivery has distinct evidence without promoting historical route acceptance (1.683333ms)
+✔ delivery metadata rejects missing evidence or accidental full acceptance (0.322625ms)
+✔ generated original books lead with current release evidence and label historical boundaries (22.328208ms)
+✔ committed domain OpenAPI references resolve to actual local definitions (26.139292ms)
+✖ generated headers discover current source migrations separately from recorded production baseline (24.309625ms)
+file:///private/tmp/ai-shop-print-compact-integration/scripts/tests/management-guard-refs.test.mjs:8
+import {pageRefs,unreachable} from '../check-app-orphan.mjs';
+        ^^^^^^^^
+SyntaxError: The requested module '../check-app-orphan.mjs' does not provide an export named 'pageRefs'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:326:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:429:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:642:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v26.0.0
+✖ scripts/tests/management-guard-refs.test.mjs (668.392666ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 4
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 879.289917
+
+✖ failing tests:
+
+test at scripts/tests/entitlement-diagrams.test.mjs:7:1
+✖ published catalog tables and command storage remain visible in generated ER documentation (684.872084ms)
+  AssertionError [ERR_ASSERTION]: ent_template disappeared from domain diagrams
+      at TestContext.<anonymous> (file:///private/tmp/ai-shop-print-compact-integration/scripts/tests/entitlement-diagrams.test.mjs:11:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/food-delivery-status.test.mjs:44:1
+✖ generated headers discover current source migrations separately from recorded production baseline (24.309625ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(doc.includes(`源码迁移目标 FOOD V25 / CORE V${core} / INVENTORY V${inventory}`))
+  
+      at TestContext.<anonymous> (file:///private/tmp/ai-shop-print-compact-integration/scripts/tests/food-delivery-status.test.mjs:49:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/management-guard-refs.test.mjs:1:1
+✖ scripts/tests/management-guard-refs.test.mjs (668.392666ms)
+  'test failed'

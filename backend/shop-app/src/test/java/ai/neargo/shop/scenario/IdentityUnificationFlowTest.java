@@ -81,7 +81,7 @@ class IdentityUnificationFlowTest {
     void bindPhoneAddsSecondCredentialToSamePerson() throws Exception {
         String token = loginWechat("wx-openid-idt-002");
         String userNo = profileUserNo(token);
-        bindPhone(token, "13800138002").andExpect(status().isOk());
+        bindPhone(token, "13809138002").andExpect(status().isOk());
 
         List<UsrIdentity> rows = identityMapper.selectList(Wrappers.<UsrIdentity>lambdaQuery()
                 .eq(UsrIdentity::getUserNo, userNo));
@@ -93,7 +93,7 @@ class IdentityUnificationFlowTest {
     @Test
     @DisplayName("**核心**：微信进来的人绑了手机号后，改用手机号登录仍是同一个 userNo")
     void sameUserAcrossEntryPoints() throws Exception {
-        String phone = "13800138003";
+        String phone = "13809138003";
         String wechatToken = loginWechat("wx-openid-idt-003");
         String userNo = profileUserNo(wechatToken);
         bindPhone(wechatToken, phone).andExpect(status().isOk());
@@ -109,7 +109,7 @@ class IdentityUnificationFlowTest {
     @Test
     @DisplayName("手机号已属于他人时拒绝绑定（业务码 10409），不自动合并")
     void conflictingPhoneIsRejected() throws Exception {
-        String phone = "13800138004";
+        String phone = "13809138004";
         loginByPhone(phone);                       // 甲：手机号注册
 
         String otherToken = loginWechat("wx-openid-idt-004");   // 乙：微信注册，想绑同一个号

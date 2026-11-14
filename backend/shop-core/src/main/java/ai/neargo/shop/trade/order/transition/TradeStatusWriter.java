@@ -55,11 +55,13 @@ public class TradeStatusWriter {
     public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
     private final StateTransitionGate gate;
     private final StatusCasMapper casMapper;
+    private final OrderStatusLogMapper channelLogs;
     private PaymentMapper orderMapper;
     private OrderPointsClosureFlowService pointsClosure;
 
     public TradeStatusWriter(StatusCasMapper casMapper, OrderStatusLogMapper logMapper) {
         this.casMapper = casMapper;
+        this.channelLogs = logMapper;
         this.gate = new StateTransitionGate(new MybatisStatusStore(casMapper), new StatusLogStore(logMapper),
                 SignalPublisher.NONE);
     }
@@ -87,6 +89,16 @@ public class TradeStatusWriter {
         if (event == OrderEvent.PREPARE) {
             return prepareOrder(sub, actor, operatorNo, reason, ctx);
         }
+        if (event == OrderEvent.VERIFIED || event == OrderEvent.DELIVERED_BY_MERCHANT) {
+            /*
+             * 收口边的「有没有进行中售后」由写入口自己查，不信调用方传进来的上下文。
+             *
+             * 状态机上的 NO_OPEN_AFTER_SALE 守卫读的是 ctx —— 而核销的调用点（自提核销、团长核销、
+             * 行业核销）传的一律是 authorizedOnly()，openAfterSale 恒为 false。只在机器上加守卫、
+             * 不在这里补事实，守卫就永远不会触发。只补不清：调用方已经判出「有售后」的照样算。
+             */
+            ctx = ctx.withOpenAfterSale(ctx.openAfterSale() || hasOpenAfterSale(sub.getSubOrderNo()));
+        }
         Fired<OrderStatus, OrderEvent> f = gate.apply(OrderMachine.MACHINE, OrderStatus.class,
                 new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(), event, actor,
                         operatorNo, reason, ctx));
@@ -110,6 +122,49 @@ public class TradeStatusWriter {
             }
         }
         return f;
+    }
+
+    /** Original channel fulfillment uses a proof-gated CAS and the same order state machine. */
+    public Fired<OrderStatus, OrderEvent> channelFulfillment(
+            OrdSubOrder sub, String fulfillmentNo, String kind, String actorNo, String reason,
+            boolean buyerConfirm) {
+        if (!"CHANNEL".equals(sub.getAdmissionKind()) || fulfillmentNo == null || fulfillmentNo.isBlank()
+                || !List.of("DELIVERY_HANDOVER", "PICKUP", "DINE_IN").contains(kind))
+            throw BizException.of(ErrorCode.CONFLICT);
+        boolean delivery = "DELIVERY_HANDOVER".equals(kind);
+        long completionTime = System.currentTimeMillis();
+        var channelStore = new StatusStore() {
+            @Override public String load(Aggregate aggregate, String no) {
+                if (aggregate != Aggregate.ORDER || !sub.getSubOrderNo().equals(no))
+                    throw BizException.of(ErrorCode.CONFLICT);
+                return DataScopeContext.executeWithoutScope(() -> casMapper.orderStatus(no));
+            }
+            @Override public boolean cas(Aggregate aggregate, String no, String from, String to) {
+                boolean valid = delivery ? "WAIT_FULFILL".equals(from) && "FULFILLING".equals(to)
+                        : List.of("WAIT_FULFILL", "FULFILLING").contains(from)
+                          && List.of("FULFILLING", "COMPLETED").contains(to);
+                if (aggregate != Aggregate.ORDER || !sub.getSubOrderNo().equals(no) || !valid) return false;
+                return DataScopeContext.executeWithoutScope(() -> casMapper.casChannelFulfillment(
+                        no, fulfillmentNo, kind, from, to, java.time.LocalDateTime.now(), completionTime)) == 1;
+            }
+        };
+        var guardedGate = new StateTransitionGate(channelStore, new StatusLogStore(channelLogs), SignalPublisher.NONE);
+        var ctx = OrderContext.authorizedOnly().withRequireBuyerConfirm(buyerConfirm)
+                .withOpenAfterSale(hasOpenAfterSale(sub.getSubOrderNo()));
+        var result = guardedGate.apply(OrderMachine.MACHINE, OrderStatus.class,
+                new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(),
+                        delivery ? OrderEvent.SHIP_BY_MERCHANT : OrderEvent.VERIFIED,
+                        Actor.MERCHANT, actorNo, reason, ctx));
+        sync(sub, result.changed());
+        sub.setStatus(result.to().name());
+        if (result.changed() && result.to() == OrderStatus.COMPLETED) sub.setCompletedAt(completionTime);
+        return result;
+    }
+
+    /** 售后占位或存量未收口售后行，任一即算「有进行中售后」（与发货侧 {@code MybatisShipmentReadStore} 同口径）。 */
+    private boolean hasOpenAfterSale(String subOrderNo) {
+        return DataScopeContext.executeWithoutScope(() -> casMapper.openAfterSaleNo(subOrderNo) != null
+                || casMapper.countOpenAfterSales(subOrderNo) > 0);
     }
 
     /** 调用方持事务；当前读与条件写先完成，门只为实际首次备货记一次流水。 */

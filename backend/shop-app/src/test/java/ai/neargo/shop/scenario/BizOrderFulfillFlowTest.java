@@ -49,7 +49,7 @@ class BizOrderFulfillFlowTest {
 
     @Test
     void fulfillmentChangeGuardsFeeVersionAfterSaleBookingAndShipping() throws Exception {
-        Ctx c = prepare("12600129931", "配送切换测试店", "12600129932");
+        Ctx c = prepare("18600129931", "配送切换测试店", "18600129932");
         var facts = jdbc.queryForMap("select store_no,entity_no,freight_amount from ord_sub_order where sub_order_no=?",
                 c.subOrderNo);
         String store = (String) facts.get("store_no");
@@ -146,7 +146,7 @@ class BizOrderFulfillFlowTest {
     @Test
     @DisplayName("★ 发货：带快递单号推进到履约中，并留痕")
     void shipMovesToFulfilling() throws Exception {
-        Ctx c = prepare("12600129001", "发货测试店", "12600129002");
+        Ctx c = prepare("18600129001", "发货测试店", "18600129002");
 
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + c.merchantToken)
@@ -172,7 +172,7 @@ class BizOrderFulfillFlowTest {
     @Test
     @DisplayName("★ 不带快递单号不许发货 —— 没有单号的「已发货」对买家没用")
     void shipRequiresExpressNo() throws Exception {
-        Ctx c = prepare("12600129003", "空单号测试店", "12600129004");
+        Ctx c = prepare("18600129003", "空单号测试店", "18600129004");
 
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + c.merchantToken)
@@ -184,7 +184,7 @@ class BizOrderFulfillFlowTest {
     @Test
     @DisplayName("★ 同单号重复发货是空操作；换单号 = 改单号，允许但要留痕")
     void reshipSemantics() throws Exception {
-        Ctx c = prepare("12600129005", "重复发货店", "12600129006");
+        Ctx c = prepare("18600129005", "重复发货店", "18600129006");
 
         ship(c, "SF999001").andExpect(jsonPath("$.code").value(0));
         // 重复点击是常态（网络慢时人会连点两下），不该报错
@@ -207,7 +207,7 @@ class BizOrderFulfillFlowTest {
     @DisplayName("★★★ 快递单：商家看到收件人**完整手机号**（要填运单、快递员要联系，2026-10-04 放开）")
     void expressShowsFullReceiverPhone() throws Exception {
         // prepare() 建的就是 EXPRESS 单，收件人电话 13600180013（见 placeExpressOrder）
-        Ctx c = prepare("12600129007", "快递全号店", "12600129008");
+        Ctx c = prepare("18600129007", "快递全号店", "18600129008");
 
         String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
@@ -231,7 +231,7 @@ class BizOrderFulfillFlowTest {
     @Test
     @DisplayName("★ 标记送达：履约中 → 已完成")
     void deliveredCompletesOrder() throws Exception {
-        Ctx c = prepare("12600129007", "送达测试店", "12600129008");
+        Ctx c = prepare("18600129007", "送达测试店", "18600129008");
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                 .header("Authorization", "Bearer " + c.merchantToken)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"expressNo\":\"SF888\",\"expressCompany\":\"SF\"}"));
@@ -244,8 +244,8 @@ class BizOrderFulfillFlowTest {
     @Test
     @DisplayName("★ 查别家的单返回「不存在」而不是「无权限」—— 后者是个订单探测器")
     void foreignOrderIsNotFound() throws Exception {
-        Ctx mine = prepare("12600129009", "本店", "12600129010");
-        Ctx other = prepare("12600129011", "别家店", "12600129012");
+        Ctx mine = prepare("18600129009", "本店", "18600129010");
+        Ctx other = prepare("18600129011", "别家店", "18600129012");
 
         /*
          * 返回 403 等于确认「这个单号是真的」，而单号可枚举 ——

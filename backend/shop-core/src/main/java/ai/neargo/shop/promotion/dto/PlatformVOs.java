@@ -59,7 +59,14 @@ public final class PlatformVOs {
                                      long perOrderPlatformMinor, long perOrderMerchantMinor,
                                      EnrollRule enrollRule, String status,
                                      int submitted, int approved, int rejected,
-                                     EnrollmentVO mine) {
+                                     EnrollmentVO mine, String documentNo) {
+    public PlatformActivityVO(String activityNo, String name, String triggerType, Long triggerAmountMinor, Integer triggerQty, String benefitType, Long benefitAmountMinor, Long startAt, Long endAt, Long enrollDeadline, int platformShareBp, Long budgetMinor, long reservedMinor, long perOrderPlatformMinor, long perOrderMerchantMinor, EnrollRule enrollRule, String status, int submitted, int approved, int rejected, EnrollmentVO mine) {
+        this(activityNo, name, triggerType, triggerAmountMinor, triggerQty, benefitType, benefitAmountMinor, startAt, endAt, enrollDeadline, platformShareBp, budgetMinor, reservedMinor, perOrderPlatformMinor, perOrderMerchantMinor, enrollRule, status, submitted, approved, rejected, mine, null);
+    }
+    public PlatformActivityVO withDocumentNo(String number) {
+        return new PlatformActivityVO(activityNo, name, triggerType, triggerAmountMinor, triggerQty, benefitType, benefitAmountMinor, startAt, endAt, enrollDeadline, platformShareBp, budgetMinor, reservedMinor, perOrderPlatformMinor, perOrderMerchantMinor, enrollRule, status, submitted, approved, rejected, mine, number);
+    }
+
     }
 
     /**

@@ -15,6 +15,7 @@ import { join } from "node:path";
 const OUT = new URL("../out/", import.meta.url).pathname;
 const html = readFileSync(join(OUT, "index.html"), "utf8");
 const problems = [];
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ops-web";
 
 /**
  * 全量扫产物，不只扫 index.html。
@@ -33,9 +34,9 @@ function allFiles(dir) {
 const files = allFiles(OUT);
 
 // 1. 资源前缀。落在 /_next/ 上 = 白屏，且首页仍然返回 200
-if (!/(src|href)="\/ops-web\/_next\//.test(html)) {
+if (!html.includes(`src="${basePath}/_next/`) && !html.includes(`href="${basePath}/_next/`)) {
   const sample = html.match(/(?:src|href)="[^"]*_next[^"]*"/)?.[0] ?? "（一个 _next 引用都没有）";
-  problems.push(`资源没带 /ops-web 前缀：${sample}\n    → 少了 NEXT_PUBLIC_BASE_PATH=/ops-web`);
+  problems.push(`资源没带 ${basePath} 前缀：${sample}\n    → 检查 NEXT_PUBLIC_BASE_PATH=${basePath}`);
 }
 
 // 2. 开发机地址。烧进去的话线上会去打访问者自己的 127.0.0.1，接口全 ERR_BLOCKED / 连接拒绝，
@@ -62,4 +63,4 @@ if (problems.length) {
   problems.forEach((p, i) => console.error(`  ${i + 1}. ${p}\n`));
   process.exit(1);
 }
-console.log("✓ 产物检查通过：/ops-web 前缀在、无开发机地址");
+console.log(`✓ 产物检查通过：${basePath} 前缀在、无开发机地址`);

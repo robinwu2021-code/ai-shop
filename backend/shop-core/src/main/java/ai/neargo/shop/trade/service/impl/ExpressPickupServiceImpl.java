@@ -21,7 +21,11 @@ import ai.neargo.shop.trade.service.MerchantOrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -63,6 +67,13 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     private final MerchantDebtPort debtPort;
     private final MerchantOrderService merchantOrderService;
     private final PlatformSwitchPort switchPort;
+    /** 叫件落行那一小段的事务（见 {@link #create}）。setter 注入，不动构造签名 */
+    private TransactionTemplate tx;
+
+    @Autowired
+    public void setTransactionManager(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.tx = new TransactionTemplate(manager);
+    }
 
     public ExpressPickupServiceImpl(ExpressPickupPort port, ExpressPickupMapper pickupMapper,
                                     StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
@@ -125,22 +136,22 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         /*
          * **先落行、再下单**。反过来的话，通道那边已经派了快递员，而我们这边一行都没有 ——
          * 回调来了认不出、运费也记不上。先落的这行在下单失败时改成 FAILED 留着，排查用。
+         *
+         * **落行与「有没有进行中的取件单」在同一个短事务里、先锁子单行**（上面那句 open() 只是快路径）。此前它
+         * 与 insert 之间没有串行点：商家连点两下（或两个店员同时点），两个请求都查到「没有」，
+         * 各落一行、各向通道下一单 —— 来两个快递员、运费记两笔。锁在子单上而不是加唯一键：
+         * 一张子单本来就只该有一张进行中的取件单，而「进行中」是状态集合，唯一键表达不了。
+         * 事务只包落行这一小段、<b>不包通道调用</b>：网络调用期间持着子单行锁，
+         * 同单的其它写（发货、售后占位）会被一个第三方接口的延迟拖住。
          */
-        OrdExpressPickup p = new OrdExpressPickup();
-        p.setPickupNo(BizKey.next(BizKey.EXPRESS_PICKUP));
-        p.setSubOrderNo(sub.getSubOrderNo());
-        p.setOrderNo(sub.getOrderNo());
-        p.setEntityNo(sub.getEntityNo());
-        p.setStoreNo(senderStoreNo(sub));
-        p.setProvider(OrdExpressPickup.PROVIDER_KUAIDI100);
-        p.setCarrier(carrier);
-        p.setStatus(OrdExpressPickup.CREATED);
-        p.setWeightG(weightG);
-        p.setFreightBookedMinor(0L);
-        // 环境在下单这一刻定、并落库：之后开关怎么拨，这一单的取消都回到它下单的那个环境
-        p.setSandbox(testMode());
-        stamp(p, true);
-        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        OrdExpressPickup p = tx.execute(status -> {
+            DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, sub.getSubOrderNo()).last("FOR UPDATE")));
+            if (open(sub.getSubOrderNo()).isPresent()) {
+                throw BizException.of(ErrorCode.EXPRESS_PICKUP_EXISTS);
+            }
+            return book(sub, carrier, weightG);
+        });
 
         ExpressPickupPort.Booked b = port.create(new ExpressPickupPort.CreateCmd(
                 p.getPickupNo(), carrier, weightG, cargo(sub), sender, receiver, Boolean.TRUE.equals(p.getSandbox())));
@@ -160,6 +171,26 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         log.info("[express] 代下单 {} sub={} carrier={} weight={}g taskId={}",
                 p.getPickupNo(), sub.getSubOrderNo(), carrier, weightG, b.taskId());
         return toVO(p);
+    }
+
+    /** 落一行 CREATED 的取件单。调用方持着子单行锁。 */
+    private OrdExpressPickup book(OrdSubOrder sub, String carrier, int weightG) {
+        OrdExpressPickup p = new OrdExpressPickup();
+        p.setPickupNo(BizKey.next(BizKey.EXPRESS_PICKUP));
+        p.setSubOrderNo(sub.getSubOrderNo());
+        p.setOrderNo(sub.getOrderNo());
+        p.setEntityNo(sub.getEntityNo());
+        p.setStoreNo(senderStoreNo(sub));
+        p.setProvider(OrdExpressPickup.PROVIDER_KUAIDI100);
+        p.setCarrier(carrier);
+        p.setStatus(OrdExpressPickup.CREATED);
+        p.setWeightG(weightG);
+        p.setFreightBookedMinor(0L);
+        // 环境在下单这一刻定、并落库：之后开关怎么拨，这一单的取消都回到它下单的那个环境
+        p.setSandbox(testMode());
+        stamp(p, true);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        return p;
     }
 
     @Override
@@ -210,14 +241,30 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
             return false;
         }
         ExpressPickupPort.Callback cb = parsed.get();
-        String tid = cb.taskId() != null ? cb.taskId() : taskId;
+        /*
+         * 认单只用签名覆盖到的标识（通道订单号优先，其次签名里的 taskId）；
+         * 表单 taskId 不在签名里，**不能拿它选行** —— 否则一条自己的合法回调改个 taskId
+         * 就能推动别人的取件单。表单 taskId 只做比对：与选中行对不上就不认。
+         */
+        if (cb.orderId() == null && cb.taskId() == null) {
+            log.warn("[express] 回调签名报文里没有 orderId / taskId，无从认单 taskId(表单)={}", taskId);
+            return false;
+        }
         OrdExpressPickup p = DataScopeContext.executeWithoutScope(() ->
                 pickupMapper.selectOne(Wrappers.<OrdExpressPickup>lambdaQuery()
-                        .eq(OrdExpressPickup::getTaskId, tid)
+                        .eq(cb.orderId() != null, OrdExpressPickup::getProviderOrderId, cb.orderId())
+                        .eq(cb.orderId() == null, OrdExpressPickup::getTaskId, cb.taskId())
                         .last("limit 1")));
         if (p == null) {
-            // 下单那一侧还没写回 taskId（回调比下单返回还快）：回失败让通道重推，不丢这条
-            log.warn("[express] 回调认不出取件单 taskId={} status={}", tid, cb.providerStatus());
+            // 下单那一侧还没写回 orderId / taskId（回调比下单返回还快）：回失败让通道重推，不丢这条
+            log.warn("[express] 回调认不出取件单 orderId={} taskId={} status={}",
+                    cb.orderId(), cb.taskId(), cb.providerStatus());
+            return false;
+        }
+        if ((cb.taskId() != null && !cb.taskId().equals(p.getTaskId()))
+                || (taskId != null && !taskId.isBlank() && !taskId.trim().equals(p.getTaskId()))) {
+            log.warn("[express] 回调标识互相矛盾，不认 pickupNo={} 行taskId={} 签名taskId={} 表单taskId={}",
+                    p.getPickupNo(), p.getTaskId(), cb.taskId(), taskId);
             return false;
         }
 

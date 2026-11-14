@@ -33,6 +33,8 @@ import java.util.List;
 
 @Service
 public class PointsInspectionServiceImpl implements PointsInspectionService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final PointsReadStore read;
     private final PointsOperationsStore store;
     private final PointsOperatorJournal journal;
@@ -41,6 +43,15 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     private final PointsReconService recon;
     private final Clock clock;
     private final ObjectMapper json = new ObjectMapper();
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.points.store.PointsFactStore sourceFacts;
+    private String lifecycleOrder(String type,String event) {
+        var row=sourceFacts.inbox(event);if(row==null)return null;
+        var fact=json.readTree(text(row,"payload_json"));
+        require(type.equals(fact.path("typeCode").asText()),"POINTS_ORDER_REFERENCE_CONFLICT");
+        return fact.path("subOrderNo").asText(null);
+    }
+
 
     public PointsInspectionServiceImpl(
             PointsReadStore read,
@@ -119,6 +130,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     public TransactionDetail transaction(String type, String voucherNo) {
         type(type);
         require(nonblank(voucherNo), "POINTS_TRANSACTION_INPUT_INVALID");
+        voucherNo=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",voucherNo);
         var row = store.voucherByNo(type, voucherNo);
         require(row != null, "POINTS_VOUCHER_UNKNOWN");
         var direction = direction(text(row, "biz_ref"));
@@ -129,13 +141,13 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
 
     private VoucherView voucher(Map<String, Object> r) {
         return new VoucherView(num(r, "id"), text(r, "voucher_no"), text(r, "biz_ref"),
-                text(r, "currency"), num(r, "rate_points"), num(r, "rate_minor"));
+                text(r, "currency"), num(r, "rate_points"), num(r, "rate_minor"), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER, "MAIN", text(r, "voucher_no")));
     }
 
     private TransactionDirection direction(String ref) {
         if (ref == null) return null;
         if (ref.startsWith("GRANT:")) return TransactionDirection.EARN;
-        if (ref.startsWith("HOLD:") || ref.startsWith("RELEASE:") || ref.startsWith("FINALIZE:")) return TransactionDirection.REDEEM;
+        if (ref.startsWith("HOLD:") || ref.startsWith("RELEASE:") || ref.startsWith("FINALIZE:") || ref.startsWith("PAID:")) return TransactionDirection.REDEEM;
         if (ref.startsWith("CANCEL:") || ref.startsWith("REFUND_CLOSE:") || ref.startsWith("REFUND_CONFIRM:")) return TransactionDirection.REVERSAL;
         return null;
     }
@@ -171,18 +183,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     @Override
     public VoucherPage vouchers(String type, long after, int limit) {
         page(type, after, limit);
-        var rows =
-                store.page(type, Kind.VOUCHER, after, limit).stream()
-                        .map(
-                                r ->
-                                        new VoucherView(
-                                                num(r, "id"),
-                                                text(r, "voucher_no"),
-                                                text(r, "biz_ref"),
-                                                text(r, "currency"),
-                                                num(r, "rate_points"),
-                                                num(r, "rate_minor")))
-                        .toList();
+        var rows = store.page(type, Kind.VOUCHER, after, limit).stream().map(this::voucher).toList();
         return new VoucherPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
     }
@@ -196,8 +197,11 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                         ? holder == null && subject == null
                         : holder != null && nonblank(subject),
                 "POINTS_ENTRY_FILTER_REQUIRED");
-        var rows =
-                store.entries(type, holder, subject, voucher, after, limit).stream()
+        voucher=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",voucher);
+        var raw=store.entries(type, holder, subject, voucher, after, limit);
+        var aliases=documentNumbers.findAll(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",
+                raw.stream().map(r -> text(r,"voucher_no")).toList());
+        var rows = raw.stream()
                         .map(
                                 r ->
                                         new EntryView(
@@ -209,7 +213,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 Bucket.valueOf(text(r, "bucket")),
                                                 num(r, "delta_points"),
                                                 num(r, "after_points"),
-                                                time(r, "created_at")))
+                                                time(r, "created_at"),aliases.get(text(r,"voucher_no"))))
                         .toList();
         return new EntryPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
@@ -218,8 +222,10 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     @Override
     public FlowPage flows(String type, long after, int limit) {
         page(type, after, limit);
-        var rows =
-                store.page(type, Kind.FLOW, after, limit).stream()
+        var raw=store.page(type, Kind.FLOW, after, limit);
+        var aliases=documentNumbers.findAll(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",
+                raw.stream().map(r -> text(r,"voucher_no")).toList());
+        var rows = raw.stream()
                         .map(
                                 r ->
                                         new FlowView(
@@ -228,10 +234,64 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 text(r, "voucher_no"),
                                                 FlowBucket.valueOf(text(r, "bucket")),
                                                 num(r, "delta_minor"),
-                                                num(r, "after_minor")))
+                                                num(r, "after_minor"),aliases.get(text(r,"voucher_no"))))
                         .toList();
         return new FlowPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
+    }
+
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public String earningOrder(String type, String voucherNo) {
+        type(type);
+        var voucher = store.voucherByNo(type, voucherNo);
+        if (voucher == null) return null;
+        var ref = text(voucher, "biz_ref");
+        if (ref == null) return null;
+        if (ref.startsWith("REFUND_CONFIRM:")) {
+            var refund=read.position(PositionMove.Kind.REFUND.table(),ref.substring("REFUND_CONFIRM:".length()));
+            if(refund==null)return null;
+            var saved=json.readValue(text(refund,"payload_json"),ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl.RefundSnapshot.class);
+            require(type.equals(saved.command().typeCode()),"POINTS_ORDER_REFERENCE_CONFLICT");return saved.command().subOrderNo();
+        }
+        if (ref.startsWith("HOLD:") || ref.startsWith("RELEASE:")) {
+            String reference=ref.substring(ref.indexOf(':')+1);
+            String root=reference.startsWith("H2")?reference:PointsKeys.position("H","ORDER",reference);
+            var held=read.position(PositionMove.Kind.REDEEM.table(),root);if(held==null)return null;
+            var saved=json.readValue(text(held,"payload_json"),ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.HoldSnapshot.class);
+            require(type.equals(saved.outcome().typeCode()),"POINTS_ORDER_REFERENCE_CONFLICT");
+            return saved.outcome().shares().size()==1?saved.outcome().shares().getFirst().subOrderNo():null;
+        }
+        if (ref.startsWith("REFUND_CLOSE:")) {
+            var saved=read.voucher(ref);if(saved==null)return null;
+            var result=json.readValue(text(saved,"result_json"),ai.neargo.shop.pay.points.lifecycle.RefundClosureService.Outcome.class);
+            require(ref.equals("REFUND_CLOSE:"+PointsKeys.position("C",type,result.subOrderNo())),"POINTS_ORDER_REFERENCE_CONFLICT");
+            return result.subOrderNo();
+        }
+        if (ref.startsWith("PAID:") || ref.startsWith("FINALIZE:") || ref.startsWith("CANCEL:")) {
+            return lifecycleOrder(type,ref.substring(ref.indexOf(':')+1));
+        }
+        if (!ref.startsWith("GRANT:")) return null;
+        var row = read.position(PositionMove.Kind.GRANT.table(),
+                ai.neargo.shop.pay.points.operation.PointsOperationKeys.grantPosition(type, ref));
+        if (row == null) return null;
+        var grant = json.readValue(text(row, "payload_json"), ai.neargo.shop.pay.points.earn.impl.EarnServiceImpl.GrantSnapshot.class);
+        require(type.equals(grant.command().typeCode()), "POINTS_ORDER_REFERENCE_CONFLICT");
+        return grant.command().subOrderNo();
+    }
+
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public EarningView earning(String type, String subOrderNo) {
+        type(type);
+        require(nonblank(subOrderNo), "POINTS_EARN_INPUT_INVALID");
+        var row = read.position(PositionMove.Kind.GRANT.table(), PointsKeys.position("G", type, subOrderNo));
+        if (row == null) return null;
+        var grant = json.readValue(text(row,"payload_json"), ai.neargo.shop.pay.points.earn.impl.EarnServiceImpl.GrantSnapshot.class);
+        return new EarningView(text(row,"state"), grant.decision().expectedPoints(), grant.outcome().grantedPoints(),
+                Math.max(0, grant.activatedPoints()-grant.reclaimedAvailable()),
+                Math.max(0, grant.outcome().grantedPoints()-grant.activatedPoints()-grant.reclaimedPending()),
+                Math.addExact(grant.reclaimedPending(),grant.reclaimedAvailable()),grant.outcome().reason());
     }
 
     @Override

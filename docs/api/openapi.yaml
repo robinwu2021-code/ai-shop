@@ -689,18 +689,34 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
-    InventoryState:
+    InventorySyncEventState:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Delivery state of an inventory/order synchronization event."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Outbox mechanism which persisted the synchronization event."
+    InventoryOnboardingState:
       type: "string"
       enum:
         - "UNMANAGED"
         - "INITIALIZING"
         - "MAPPED"
-      description: "Inventory wire value domain."
+      description: "Inventory onboarding progression; MAPPED means a physical inventory mapping exists."
     InventoryAccountingMode:
       type: "string"
       const: "PAYMENT_DEDUCT"
-      description: "Physical inventory is currently deducted on payment (InventoryOverviewQuery.render)."
-    StockSyncOperationStatus:
+      description: "Current backend accounting policy: inventory is deducted when payment completes."
+    StockSyncOperationState:
       type: "string"
       enum:
         - "PROCESSING"
@@ -708,8 +724,8 @@ components:
         - "FAILED"
         - "BLOCKED"
         - "COMPLETED"
-      description: "Inventory wire value domain."
-    StockAlignmentBatchStatus:
+      description: "Processing state of a persisted stock synchronization command."
+    StockAlignmentBatchState:
       type: "string"
       enum:
         - "PREVIEW"
@@ -719,23 +735,7 @@ components:
         - "COMPLETED"
         - "STALE"
         - "EXPIRED"
-      description: "Inventory wire value domain."
-    InventoryTraceStatus:
-      type: "string"
-      enum:
-        - "COMPLETED"
-        - "PENDING"
-        - "FAILED"
-        - "WARNING"
-        - "SKIPPED"
-        - "ARCHIVED"
-      description: "Inventory wire value domain."
-    InventoryOutboxMode:
-      type: "string"
-      enum:
-        - "UNIFIED"
-        - "LEGACY"
-      description: "Inventory wire value domain."
+      description: "Preview and execution state of a stock alignment batch."
     StockOverview:
       type: "object"
       properties:
@@ -751,11 +751,11 @@ components:
             - "null"
           description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
-          "$ref": "#/components/schemas/InventoryState"
+          "$ref": "#/components/schemas/InventoryOnboardingState"
           description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
           "$ref": "#/components/schemas/InventoryAccountingMode"
-          description: "Physical inventory deduction point; the current service deducts on payment."
+          description: "Current accounting policy; the server only supports payment-time deduction."
         onHand:
           type:
             - "number"
@@ -1622,6 +1622,11 @@ components:
     StockSyncOperationRecord:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         operationNo:
           type: "string"
           description: "Identifier of this stock synchronization operation."
@@ -1632,7 +1637,7 @@ components:
           type: "string"
           description: "Business reason recorded for the synchronization."
         status:
-          "$ref": "#/components/schemas/StockSyncOperationStatus"
+          "$ref": "#/components/schemas/StockSyncOperationState"
           description: "Current processing state of the operation."
         result:
           anyOf:
@@ -1739,6 +1744,11 @@ components:
     StockAlignmentBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "Identifier of this inventory alignment batch."
@@ -1757,7 +1767,7 @@ components:
             - "null"
           description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
-          "$ref": "#/components/schemas/StockAlignmentBatchStatus"
+          "$ref": "#/components/schemas/StockAlignmentBatchState"
           description: "Current preview or execution state of the batch."
         completed:
           type: "number"
@@ -2016,6 +2026,11 @@ components:
     Coupon:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         couponNo:
           type: "string"
           description: "券单号"
@@ -2483,6 +2498,11 @@ components:
     MarketingCampaign:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         campaignNo:
           type: "string"
           description: "活动单号"
@@ -2624,6 +2644,11 @@ components:
     MerchantCoupon:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         couponNo:
           type: "string"
           description: "券模板号 —— 一张券和它的模板是两个对象"
@@ -2841,6 +2866,11 @@ components:
     CouponIssueBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         issueNo:
           type: "string"
           description: "这一批发放的编号"
@@ -3078,6 +3108,11 @@ components:
     MyFission:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         fissionNo:
           type: "string"
           description: "活动号。端上只用来回传，不显示"
@@ -4026,6 +4061,39 @@ components:
         - "expiresAt"
       additionalProperties: false
       description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
+    OrderPointsEarningState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "EXPECTED"
+        - "PROCESSING"
+        - "PENDING"
+        - "AVAILABLE"
+        - "RETRYABLE"
+        - "MANUAL"
+        - "SKIPPED"
+        - "RECLAIMED"
+      description: "Order reward processing projection; accepted work is not a posted account credit."
+    OrderPointsRedemptionState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "HELD"
+        - "RELEASED"
+        - "CONSUMED"
+        - "REFUND_PROCESSING"
+        - "RETURNED"
+        - "PARTIALLY_RETURNED"
+      description: "Lifecycle of the order points hold and its subsequent returns."
+    OrderPointsRefundState:
+      type: "string"
+      enum:
+        - "NONE"
+        - "PROCESSING"
+        - "MANUAL"
+        - "COMPLETED"
+      description: "Processing state of the order points refund projection."
     StorePointTypeStatus:
       type: "string"
       enum:
@@ -4043,6 +4111,15 @@ components:
     StorePointType:
       type: "object"
       properties:
+        earningPaused:
+          type: "boolean"
+          description: "Whether new earning is paused; existing accounting obligations still complete."
+        orderDefault:
+          type: "boolean"
+          description: "Whether this type is the server-selected default for order rewards."
+        name:
+          type: "string"
+          description: "积分名称"
         deductRatioBp:
           type: "number"
           description: "最大抵扣比例，万分比"
@@ -4079,6 +4156,7 @@ components:
           "$ref": "#/components/schemas/StorePointTypeStatus"
           description: "服务端业务状态"
       required:
+        - "name"
         - "deductRatioBp"
         - "idleDays"
         - "typeCode"
@@ -4161,6 +4239,22 @@ components:
               voucherNo:
                 type: "string"
                 description: "原记账凭证编号"
+              voucherDocumentNo:
+                type:
+                  - "string"
+                  - "null"
+              direction:
+                type:
+                  - "string"
+                  - "null"
+              businessRef:
+                type:
+                  - "string"
+                  - "null"
+              orderNo:
+                type:
+                  - "string"
+                  - "null"
               holderType:
                 type: "string"
                 const: "STORE"
@@ -4640,6 +4734,9 @@ components:
           items:
             type: "string"
           description: "这些角色合起来的权限码，**已取并集**（老板是 `[\"*\"]`）。\n\n端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。"
+        actorNo:
+          type: "string"
+          description: "当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。"
       required:
         - "merchantNo"
         - "currentStoreNo"
@@ -5417,6 +5514,51 @@ components:
     Store:
       type: "object"
       properties:
+        market:
+          type:
+            - "string"
+            - "null"
+          description: "门店所属主体的经营市场；未补经营上下文的列表可为空"
+        currency:
+          type:
+            - "string"
+            - "null"
+          description: "经营市场币种，取 sys_market；市场元数据不可用时为空"
+        currencyScale:
+          type:
+            - "number"
+            - "null"
+          description: "币种的小数位数，取 sys_market；市场元数据不可用时为空"
+        timeZone:
+          type:
+            - "string"
+            - "null"
+          description: "经营市场时区，取 sys_market；市场元数据不可用时为空"
+        industryCode:
+          type:
+            - "string"
+            - "null"
+          description: "建店保存的行业码；自填行业为 OTHER，存量门店可为空"
+        subIndustryCode:
+          type:
+            - "string"
+            - "null"
+          description: "建店保存的子业态码；自填子业态为 OTHER，存量门店可为空"
+        businessTypeCode:
+          type:
+            - "string"
+            - "null"
+          description: "门店经营类型码，存量门店可为空"
+        industryText:
+          type:
+            - "string"
+            - "null"
+          description: "选择 OTHER 时填写的行业名称，未自填时为空"
+        subIndustryText:
+          type:
+            - "string"
+            - "null"
+          description: "选择 OTHER 时填写的子业态名称，未自填时为空"
         storeNo:
           type: "string"
           description: "门店号。一旦生成不再变 —— 换主体只换归属，不换它"
@@ -5475,7 +5617,8 @@ components:
       enum:
         - "ACTIVE"
         - "READONLY"
-      description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+        - "SUSPENDED"
+      description: "门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。"
     BusinessMode:
       type: "string"
       enum:
@@ -5524,7 +5667,7 @@ components:
           description: "门店名快照，列表直接显示，省一次查询"
         role:
           "$ref": "#/components/schemas/StaffRole"
-          description: "MANAGER 店长 / CLERK 店员"
+          description: "角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码"
       required:
         - "storeNo"
         - "storeName"
@@ -5610,6 +5753,16 @@ components:
     SettleBill:
       type: "object"
       properties:
+        batchDocumentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing settlement batch number; absent for historical unmapped batches."
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         settleNo:
           type: "string"
           description: "结算单号"
@@ -5716,6 +5869,11 @@ components:
     MySettleBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         batchNo:
           type: "string"
           description: "批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它"
@@ -6342,6 +6500,16 @@ components:
           items:
             "$ref": "#/components/schemas/PlanTier"
           description: "三档对比，顺序即展示顺序（后端按 sort 排好）"
+        suspendedStoreDetails:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SuspendedStore"
+          description: "同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。"
+        graceUntil:
+          type:
+            - "number"
+            - "null"
+          description: "宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。\n**后端算好给**，端上不要再按「到期 + 7 天」自己推。"
       required:
         - "planCode"
         - "planName"
@@ -6390,6 +6558,24 @@ components:
         - "current"
       additionalProperties: false
       description: "档位对比的一行。"
+    SuspendedStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "门店号"
+        name:
+          type: "string"
+          description: "门店名"
+        openOrders:
+          type: "number"
+          description: "还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约"
+      required:
+        - "storeNo"
+        - "name"
+        - "openOrders"
+      additionalProperties: false
+      description: "被方案降级压成只读的一家店。"
     MerchantApplyStatus:
       type: "object"
       properties:
@@ -6662,6 +6848,74 @@ components:
         - "at"
       additionalProperties: false
       description: "Receipt of an audited statement decision; this does not assert bank payout success."
+    OrderPointsEarning:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+          description: "Parent order identifier for the reward inspection."
+        typeCode:
+          type: "string"
+          description: "Unique points-type code; separate points types never share balances or rules."
+        name:
+          type: "string"
+          description: "Human-readable name displayed for this business resource."
+        currency:
+          type: "string"
+          description: "ISO currency code determining the interpretation of monetary amounts."
+        state:
+          "$ref": "#/components/schemas/OrderPointsEarningState"
+          description: "Current processing projection for the submitted business operation."
+        redemptionState:
+          "$ref": "#/components/schemas/OrderPointsRedemptionState"
+          description: "Processing state of the order's points hold, consumption and subsequent returns."
+        usedPoints:
+          type: "number"
+          description: "Points actually consumed by this order's completed redemption."
+        refundState:
+          "$ref": "#/components/schemas/OrderPointsRefundState"
+          description: "Processing state of points returned for this order's refund."
+        returnedPoints:
+          type: "number"
+          description: "Points actually returned to the account by completed refund operations."
+        expectedPoints:
+          type: "number"
+          description: "Original expected reward points frozen when the order was accepted."
+        grantedPoints:
+          type: "number"
+          description: "Reward points actually posted to the account ledger."
+        pendingPoints:
+          type: "number"
+          description: "Granted points still awaiting conversion to an available balance."
+        availablePoints:
+          type: "number"
+          description: "Granted points that have become available for use."
+        reclaimedPoints:
+          type: "number"
+          description: "Previously granted points subsequently recovered by refunds or reversals."
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "Business reason recorded for the operation, rejection or manual recovery."
+      required:
+        - "orderNo"
+        - "typeCode"
+        - "name"
+        - "currency"
+        - "state"
+        - "redemptionState"
+        - "usedPoints"
+        - "refundState"
+        - "returnedPoints"
+        - "expectedPoints"
+        - "grantedPoints"
+        - "pendingPoints"
+        - "availablePoints"
+        - "reclaimedPoints"
+        - "reason"
+      additionalProperties: false
+      description: "Server-projected earning for an authorized order; accepted work is not an account credit."
     MessageType:
       type: "string"
       enum:
@@ -6719,6 +6973,141 @@ components:
         - "read"
         - "at"
       additionalProperties: false
+    FeedbackCategory:
+      type: "string"
+      enum:
+        - "BUG"
+        - "PAYMENT"
+        - "IDEA"
+        - "OTHER"
+      description: "回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。"
+    FeedbackStatus:
+      type: "string"
+      enum:
+        - "OPEN"
+        - "REPLIED"
+        - "CLOSED"
+      description: "回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」"
+    FeedbackDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+          description: "请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null"
+        method:
+          type: "string"
+          description: "HTTP 方法"
+        path:
+          type: "string"
+          description: "请求路径（已脱敏）"
+        outcome:
+          type: "string"
+          description: "结果摘要，如 `ok`、`error 70006`"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。"
+    MerchantFeedback:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类"
+        description:
+          type: "string"
+          description: "描述原文"
+        status:
+          "$ref": "#/components/schemas/FeedbackStatus"
+          description: "处理状态"
+        reply:
+          type:
+            - "string"
+            - "null"
+          description: "客服回复；没回复为 null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（核对属于本账号才存）"
+        createdAt:
+          type: "string"
+          description: "提交时间（ISO-8601 UTC）"
+        repliedAt:
+          type:
+            - "string"
+            - "null"
+          description: "回复时间（ISO-8601 UTC）；没回复为 null"
+      required:
+        - "feedbackNo"
+        - "category"
+        - "description"
+        - "status"
+        - "reply"
+        - "storeNo"
+        - "createdAt"
+        - "repliedAt"
+      additionalProperties: false
+      description: "「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数"
+    FeedbackReceipt:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+      required:
+        - "feedbackNo"
+      additionalProperties: false
+      description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
+    AppVersionInfo:
+      type: "object"
+      properties:
+        platform:
+          "$ref": "#/components/schemas/AppPlatform"
+          description: "归一后的平台"
+        latest:
+          type: "string"
+          description: "最新版；空串 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED"
+        notes:
+          type: "array"
+          items:
+            type: "string"
+          description: "按 Accept-Language 取的更新说明，没填回落繁中"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址（只会是 App Store 或 Google Play 的 https 地址）"
+        upgradeRequired:
+          type:
+            - "boolean"
+            - "null"
+          description: "只在请求带了 build 时有值；端上应以它为准"
+      required:
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "upgradeRequired"
+      additionalProperties: false
+      description: "版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。"
     SpecValueAdded:
       type: "object"
       properties:
@@ -8020,7 +8409,7 @@ components:
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
         geometry:
           type: "string"
-          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。"
+          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。\n**请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。"
       required:
         - "level"
         - "refCode"
@@ -8489,6 +8878,9 @@ components:
           items:
             type: "string"
           description: "SUBSET 时适用的范围项 area_no"
+        inherited:
+          type: "boolean"
+          description: "这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体 `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。"
       required:
         - "channel"
         - "enabled"
@@ -8641,10 +9033,35 @@ components:
           type:
             - "number"
             - "null"
-          description: "经度 ×1e6。**全站坐标一律 gcj02**"
+          description: "经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636）"
         bannerUrl:
           type: "string"
           description: "门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉"
+        name:
+          type:
+            - "string"
+            - "null"
+          description: "门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename`"
+        slug:
+          type:
+            - "string"
+            - "null"
+          description: "门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug`"
+        status:
+          anyOf:
+            - "$ref": "#/components/schemas/StoreStatus"
+            - type: "null"
+          description: "门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。"
+        isDefault:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是主体的默认门店（只读）"
+        planSuspended:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」"
       required:
         - "announcement"
         - "openHours"
@@ -9754,6 +10171,11 @@ components:
     PlatformActivity:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; absent for historical rows without a mapping."
         activityNo:
           type: "string"
           description: "活动单号"
@@ -10411,6 +10833,16 @@ components:
     Order:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human order number (OD/OS); historical unmapped rows leave it empty."
+        payDocumentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number."
         orderNo:
           type: "string"
           description: "订单单号"
@@ -10628,6 +11060,11 @@ components:
     AfterSale:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
@@ -12257,6 +12694,783 @@ components:
       required:
         - "typeCode"
       additionalProperties: false
+    StoredValueStoresQuery:
+      type: "object"
+      properties:
+        cursor:
+          type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        size:
+          type: "number"
+          description: "Maximum records per page requested or returned by the server."
+      additionalProperties: false
+    StoredValueRecordsQuery:
+      type: "object"
+      properties:
+        cursor:
+          type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        size:
+          type: "number"
+          description: "Maximum records per page requested or returned by the server."
+        type:
+          "$ref": "#/components/schemas/StoredValueType"
+          description: "Record, target or calculation classification used to interpret this object."
+        startDate:
+          type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
+        endDate:
+          type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
+        focusDocumentNo:
+          type: "string"
+          description: "Human-facing document number to locate within the account's authorized records."
+      additionalProperties: false
+    StoredValueType:
+      type: "string"
+      enum:
+        - "ALL"
+        - "RECHARGE"
+        - "REDEMPTION"
+    StoredValueLocateQuery:
+      type: "object"
+      properties:
+        focusDocumentNo:
+          type: "string"
+          description: "Human-facing document number to locate within the authorized issuer records."
+      required:
+        - "focusDocumentNo"
+      additionalProperties: false
+    StoredValueIssuerRecordsQuery:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        type:
+          type: "string"
+          enum:
+            - "ALL"
+            - "RECHARGE"
+            - "REDEMPTION"
+          description: "Requested stored-value record classification; ALL disables the classification filter."
+        startDate:
+          type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format."
+        endDate:
+          type: "string"
+          description: "Inclusive final business date in YYYY-MM-DD format."
+        focusDocumentNo:
+          type: "string"
+          description: "Human-facing document number to locate within the authorized issuer records."
+        cursor:
+          type: "string"
+          description: "Opaque continuation cursor; omit for the first page."
+        size:
+          type: "number"
+          description: "Maximum number of records requested in this page."
+      required:
+        - "issuerRef"
+      additionalProperties: false
+    StoredValueAuthorizeRequest:
+      type: "object"
+      properties:
+        orderRevision:
+          type: "number"
+          description: "Previously confirmed service order revision; stale submissions are rejected."
+        quoteRef:
+          type: "string"
+          description: "Server-issued reference to the immutable consumption quote."
+        selectionDigest:
+          type: "string"
+          description: "Digest binding confirmation to the exact selected wallet and service lines."
+        requestKey:
+          type: "string"
+          description: "Idempotency key binding retries to the original customer authorization."
+      required:
+        - "orderRevision"
+        - "quoteRef"
+        - "selectionDigest"
+        - "requestKey"
+      additionalProperties: false
+    StoredValueStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "Store identifier scoping the requested operation or returned business record."
+        storeName:
+          type: "string"
+          description: "Store display name captured for the record or selection."
+        lastOccurredAt:
+          type: "string"
+          description: "Time of the most recent account record; null when there are no records."
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Type of the most recent stored-value record, excluding the ALL query filter."
+      required:
+        - "storeNo"
+        - "storeName"
+        - "lastOccurredAt"
+        - "lastType"
+      additionalProperties: false
+    StoredValueStoresPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueStore"
+          description: "Business records returned by the current query."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
+        hasMore:
+          type: "boolean"
+          description: "Whether a further page is available using nextCursor."
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueRecord:
+      type: "object"
+      properties:
+        type:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Record, target or calculation classification used to interpret this object."
+        title:
+          type: "string"
+          description: "Human-readable title of the stored-value business record."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining the interpretation of monetary amounts."
+        signedAmountMinor:
+          type: "number"
+          description: "Signed change in stored-value balance, in minor currency units."
+        occurredAt:
+          type: "string"
+          description: "Time the server recorded the business operation."
+        documentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing document number; null or absent for historical unmapped records."
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        storeName:
+          type:
+            - "string"
+            - "null"
+          description: "Store display name attached to the service or record."
+      required:
+        - "type"
+        - "title"
+        - "currency"
+        - "signedAmountMinor"
+        - "occurredAt"
+        - "documentNo"
+      additionalProperties: false
+    StoredValueRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Issuer identity and business context for the selected record collection."
+        store:
+          type: "object"
+          properties:
+            storeNo:
+              type: "string"
+              description: "Store identifier scoping the requested operation or returned business record."
+            storeName:
+              type: "string"
+              description: "Store display name captured for the record or selection."
+            businessTimeZone:
+              type: "string"
+              description: "IANA time zone used to interpret the store's business dates."
+          required:
+            - "storeNo"
+            - "storeName"
+            - "businessTimeZone"
+          additionalProperties: false
+          description: "Authorized store identity and business time zone for the returned records."
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+              description: "Record, target or calculation classification used to interpret this object."
+            startDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive first business date in YYYY-MM-DD format."
+            endDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive final business date in YYYY-MM-DD format."
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+          description: "Effective record filters after the server has normalized the request."
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+          description: "Business records returned by the current query."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when the result is exhausted."
+        hasMore:
+          type: "boolean"
+          description: "Whether a further page is available using nextCursor."
+      required:
+        - "store"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuer:
+      type: "object"
+      properties:
+        issuerRef:
+          type: "string"
+          description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+          description: "Whether the selected stored-value resource belongs to one store or a brand."
+        name:
+          type: "string"
+          description: "Display name of the selected stored-value issuer or wallet."
+        entityNo:
+          type: "string"
+          description: "Operating entity identifier associated with this issuer."
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code determining monetary minor-unit interpretation."
+        businessTimeZone:
+          type:
+            - "string"
+            - "null"
+          description: "IANA business time zone; null when the issuer has no single-store zone."
+        lastType:
+          "$ref": "#/components/schemas/Exclude_StoredValueType_ALL"
+          description: "Type of the most recent record, excluding the ALL query filter."
+        lastOccurredAt:
+          type: "string"
+          description: "Timestamp of the most recent record for this issuer."
+      required:
+        - "issuerRef"
+        - "scopeType"
+        - "name"
+        - "entityNo"
+        - "storeNo"
+        - "currency"
+        - "businessTimeZone"
+        - "lastType"
+        - "lastOccurredAt"
+      additionalProperties: false
+    StoredValueNotificationCapability:
+      type: "object"
+      properties:
+        channel:
+          type: "string"
+          const: "WXSUB"
+          description: "Delivery or collection channel used by this capability or route."
+        available:
+          type: "boolean"
+          description: "Whether this capability or preset is available in the current deployment."
+        templateId:
+          type:
+            - "string"
+            - "null"
+          description: "Messaging template identifier; null when the capability is not configured."
+        reasonCode:
+          type:
+            - "string"
+            - "null"
+          description: "Machine-readable reason this capability is unavailable; null when available."
+      required:
+        - "channel"
+        - "available"
+        - "templateId"
+        - "reasonCode"
+      additionalProperties: false
+    StoredValueIssuersPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Records returned in this page under the current authorized selection."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when all records have been returned."
+        hasMore:
+          type: "boolean"
+          description: "Whether another page is available using nextCursor."
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueIssuerRecordsPage:
+      type: "object"
+      properties:
+        issuer:
+          "$ref": "#/components/schemas/StoredValueIssuer"
+          description: "Issuer identity and business context for the selected record collection."
+        filter:
+          type: "object"
+          properties:
+            type:
+              "$ref": "#/components/schemas/StoredValueType"
+              description: "Record, target or calculation classification used to interpret this object."
+            startDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive first business date in YYYY-MM-DD format."
+            endDate:
+              type:
+                - "string"
+                - "null"
+              description: "Inclusive final business date in YYYY-MM-DD format."
+          required:
+            - "type"
+            - "startDate"
+            - "endDate"
+          additionalProperties: false
+          description: "Effective record filters after server normalization."
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StoredValueRecord"
+          description: "Records returned in this page under the current authorized selection."
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "Opaque cursor for the next page; null when all records have been returned."
+        hasMore:
+          type: "boolean"
+          description: "Whether another page is available using nextCursor."
+      required:
+        - "issuer"
+        - "filter"
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    StoredValueService:
+      type: "object"
+      properties:
+        serviceOrderNo:
+          type: "string"
+          description: "Identifier of the original stored-value consumption service order."
+        operationNo:
+          type: "string"
+          description: "Stable operation identifier used to recover the original execution."
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        storeNo:
+          type: "string"
+          description: "Store identifier for the service or ledger record; null when no single store applies."
+        storeName:
+          type: "string"
+          description: "Store display name attached to the service or record."
+        serviceStaffName:
+          type:
+            - "string"
+            - "null"
+          description: "Service staff display name; null when no staff member is assigned."
+        serviceAt:
+          type:
+            - "string"
+            - "null"
+          description: "Service completion timestamp; null before completion."
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemNo:
+                type: "string"
+                description: "Identifier of this service order line."
+              title:
+                type: "string"
+                description: "Human-readable service item title."
+              quantity:
+                type: "number"
+                description: "Positive quantity of the selected service item."
+            required:
+              - "itemNo"
+              - "title"
+              - "quantity"
+            additionalProperties: false
+          description: "Service order lines and their positive purchased quantities."
+        confirmation:
+          anyOf:
+            - type: "object"
+              properties:
+                orderRevision:
+                  type: "number"
+                  description: "Previously confirmed service order revision; stale submissions are rejected."
+                quoteRef:
+                  type: "string"
+                  description: "Server-issued reference to the immutable consumption quote."
+                selectionDigest:
+                  type: "string"
+                  description: "Digest binding confirmation to the exact selected wallet and service lines."
+                expiresAt:
+                  type: "string"
+                  description: "Server expiry timestamp after which the reference or confirmation must be refreshed."
+              required:
+                - "orderRevision"
+                - "quoteRef"
+                - "selectionDigest"
+                - "expiresAt"
+              additionalProperties: false
+            - type: "null"
+          description: "Immutable customer confirmation terms; null when confirmation is not available."
+        payment:
+          anyOf:
+            - type: "object"
+              properties:
+                assetKind:
+                  type: "string"
+                  description: "Asset kind selected for payment; stored-value services use STORED_VALUE."
+                currency:
+                  "$ref": "#/components/schemas/CurrencyCode"
+                  description: "ISO currency code determining monetary minor-unit interpretation."
+                amountMinor:
+                  type: "number"
+                  description: "Total service or payment amount in minor currency units."
+                scopeType:
+                  type: "string"
+                  enum:
+                    - "STORE"
+                    - "BRAND"
+                  description: "Whether the selected stored-value resource belongs to one store or a brand."
+                issuerName:
+                  type:
+                    - "string"
+                    - "null"
+                  description: "Issuer display name; null when no issuer is selected."
+              required:
+                - "assetKind"
+                - "currency"
+                - "amountMinor"
+                - "scopeType"
+                - "issuerName"
+              additionalProperties: false
+            - type: "null"
+          description: "Stored-value payment snapshot; null before payment terms are available."
+      required:
+        - "serviceOrderNo"
+        - "operationNo"
+        - "status"
+        - "storeNo"
+        - "storeName"
+        - "serviceStaffName"
+        - "serviceAt"
+        - "items"
+        - "confirmation"
+        - "payment"
+      additionalProperties: false
+    StoredValueAuthorization:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Current server-owned lifecycle state of this operation or service."
+        operationNo:
+          type:
+            - "string"
+            - "null"
+          description: "Stable operation identifier used to recover the original execution."
+        useStatus:
+          type:
+            - "string"
+            - "null"
+          description: "Server-owned asset usage state; null before a usage exists."
+      required:
+        - "status"
+        - "operationNo"
+        - "useStatus"
+      additionalProperties: false
+    PointsOrderStatePhase:
+      type: "string"
+      enum:
+        - "NONE"
+        - "RAW"
+        - "ADMITTED"
+        - "UNKNOWN"
+        - "READY"
+        - "RECONFIRM"
+        - "CANCEL_REQUESTED"
+        - "CANCELLED"
+      description: "PointsOrderState 的 phase 取值域，按服务端契约校验。"
+    OrderPointsQuoteState:
+      type: "string"
+      enum:
+        - "AVAILABLE"
+        - "UNAVAILABLE"
+      description: "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+    BuyerPointsAccountStatus:
+      type: "string"
+      enum:
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "BuyerPointsAccount 的 status 取值域，按服务端契约校验。"
+    BuyerPointsEntryBucket:
+      type: "string"
+      enum:
+        - "AVAILABLE"
+        - "PENDING"
+        - "HELD"
+        - "REFUND_RESERVED"
+      description: "BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。"
+    PointsOrderState:
+      type: "object"
+      properties:
+        phase:
+          "$ref": "#/components/schemas/PointsOrderStatePhase"
+          description: "源下单处理阶段"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "phase"
+        - "reason"
+      additionalProperties: false
+    OrderPointsQuote:
+      type: "object"
+      properties:
+        state:
+          "$ref": "#/components/schemas/OrderPointsQuoteState"
+          description: "服务端处理状态"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "服务端不可用原因或操作审计原因"
+        pointsUsed:
+          type: "number"
+          description: "按服务端报价使用的积分数量"
+        deductMinor:
+          type: "number"
+          description: "积分抵扣金额，最小货币单位"
+        ratePoints:
+          type: "number"
+          description: "换算比例的积分数量"
+        rateMinor:
+          type: "number"
+          description: "换算比例的最小货币单位数量"
+        basePayMinor:
+          type: "number"
+          description: "积分抵扣前的应付金额，最小货币单位"
+        stores:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              storeNo:
+                type: "string"
+                description: "积分业务隔离的门店编号"
+              merchantNo:
+                type: "string"
+                description: "门店归属主体编号，不作为积分隔离维度"
+              policyVersion:
+                type: "number"
+                description: "报价所绑定的门店策略版本"
+              pointsUsed:
+                type: "number"
+                description: "按服务端报价使用的积分数量"
+              deductMinor:
+                type: "number"
+                description: "积分抵扣金额，最小货币单位"
+            required:
+              - "storeNo"
+              - "merchantNo"
+              - "policyVersion"
+              - "pointsUsed"
+              - "deductMinor"
+            additionalProperties: false
+          description: "按门店拆分的服务端报价"
+      required:
+        - "state"
+        - "reason"
+        - "pointsUsed"
+        - "deductMinor"
+        - "ratePoints"
+        - "rateMinor"
+        - "basePayMinor"
+        - "stores"
+      additionalProperties: false
+    BuyerPointsAccount:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "积分名称"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        market:
+          type: "string"
+          description: "市场代码"
+        currency:
+          type: "string"
+          description: "ISO 货币代码"
+        status:
+          "$ref": "#/components/schemas/BuyerPointsAccountStatus"
+          description: "服务端业务状态"
+        earningPaused:
+          type: "boolean"
+          description: "仅暂停新增赠送，不代表禁止已有余额抵扣"
+        balance:
+          type: "number"
+          description: "可用积分余额"
+        pendingBalance:
+          type: "number"
+          description: "待激活积分余额"
+        heldBalance:
+          type: "number"
+          description: "当前占用积分余额"
+        ratePoints:
+          type: "number"
+          description: "换算比例的积分数量"
+        rateMinor:
+          type: "number"
+          description: "换算比例的最小货币单位数量"
+        deductRatioBp:
+          type: "number"
+          description: "最大抵扣比例，万分比"
+        idleDays:
+          type: "number"
+          description: "账户无活动失效天数"
+        frozen:
+          type: "boolean"
+          description: "是否冻结该账户新增使用"
+        expireAt:
+          type:
+            - "number"
+            - "null"
+          description: "服务端计算的过期时间，Unix 毫秒；无则为空"
+      required:
+        - "name"
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "status"
+        - "balance"
+        - "pendingBalance"
+        - "heldBalance"
+        - "ratePoints"
+        - "rateMinor"
+        - "deductRatioBp"
+        - "idleDays"
+        - "frozen"
+        - "expireAt"
+      additionalProperties: false
+    BuyerPointsEntry:
+      type: "object"
+      properties:
+        voucherNo:
+          type:
+            - "string"
+            - "null"
+          description: "Internal accounting voucher identifier used for authorized ledger references."
+        voucherDocumentNo:
+          type:
+            - "string"
+            - "null"
+          description: "Human-facing accounting voucher number; absent for historical unmapped vouchers."
+        direction:
+          type:
+            - "string"
+            - "null"
+          description: "Accounting direction of the posted points entry."
+        businessRef:
+          type:
+            - "string"
+            - "null"
+          description: "Original business operation reference associated with the posted points entry."
+        orderNo:
+          type:
+            - "string"
+            - "null"
+          description: "Parent order identifier for the reward inspection."
+        entryNo:
+          type: "string"
+          description: "不可变积分分录编号"
+        bucket:
+          "$ref": "#/components/schemas/BuyerPointsEntryBucket"
+          description: "积分账本或资金池分桶"
+        points:
+          type: "number"
+          description: "积分数量"
+        balanceAfter:
+          type: "number"
+          description: "该分录完成后的账本余额"
+        at:
+          type: "number"
+          description: "服务端事件时间，Unix 毫秒"
+      required:
+        - "entryNo"
+        - "bucket"
+        - "points"
+        - "balanceAfter"
+        - "at"
+      additionalProperties: false
+    BuyerPointsEntryPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/BuyerPointsEntry"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
     PayInit:
       type: "object"
       properties:
@@ -12351,6 +13565,11 @@ components:
       type: "object"
       additionalProperties:
         type: "string"
+    Exclude_StoredValueType_ALL:
+      type: "string"
+      enum:
+        - "RECHARGE"
+        - "REDEMPTION"
 paths:
   "/mp/user/otp/send":
     post:
@@ -13878,6 +15097,41 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Order"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/order/{orderNo}/points-earning":
+    get:
+      operationId: "orderPointsEarning"
+      summary: "订单赠送积分进度"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/OrderPointsEarning"
                 required:
                   - "code"
                   - "msg"
@@ -16251,6 +17505,393 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Review"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders":
+    get:
+      operationId: "storedValuePendingServices"
+      summary: "My pending service confirmations"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/entitlement-service-orders/{orderNo}":
+    get:
+      operationId: "storedValueService"
+      summary: "My service confirmation"
+      tags:
+        - "entitlement-service-orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueService"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/orders/{orderNo}/entitlement-authorizations":
+    post:
+      operationId: "storedValueAuthorize"
+      summary: "Confirm frozen service and wallet"
+      tags:
+        - "orders"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueAuthorization"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StoredValueAuthorizeRequest"
+  "/mp/stored-value/issuers":
+    get:
+      operationId: "storedValueIssuers"
+      summary: "Owned funded wallets"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuersPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/records/locate":
+    get:
+      operationId: "storedValueLocateIssuer"
+      summary: "Locate owned wallet by durable document"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "focusDocumentNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Human-facing document number to locate within the authorized issuer records."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/issuer-records":
+    get:
+      operationId: "storedValueIssuerRecords"
+      summary: "Owned issuer history"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "issuerRef"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier."
+        - name: "type"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "ALL"
+              - "RECHARGE"
+              - "REDEMPTION"
+            description: "Requested stored-value record classification; ALL disables the classification filter."
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
+        - name: "focusDocumentNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Human-facing document number to locate within the authorized issuer records."
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum number of records requested in this page."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueIssuerRecordsPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/stores":
+    get:
+      operationId: "storedValueStores"
+      summary: "本人有储值记录的门店"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueStoresPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/store/{storeNo}/records":
+    get:
+      operationId: "storedValueRecords"
+      summary: "本人门店储值与核销记录"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "Maximum records per page requested or returned by the server."
+        - name: "type"
+          in: "query"
+          required: false
+          schema:
+            "$ref": "#/components/schemas/StoredValueType"
+            description: "Record, target or calculation classification used to interpret this object."
+        - name: "startDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format."
+        - name: "endDate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Inclusive final business date in YYYY-MM-DD format."
+        - name: "focusDocumentNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "Human-facing document number to locate within the account's authorized records."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueRecordsPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/stored-value/notification-capability":
+    get:
+      operationId: "storedValueNotificationCapability"
+      summary: "储值消费微信通知能力"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoredValueNotificationCapability"
                 required:
                   - "code"
                   - "msg"

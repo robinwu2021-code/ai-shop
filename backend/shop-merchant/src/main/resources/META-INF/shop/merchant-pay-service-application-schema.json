@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "owner": "merchant-paysync",
+  "purpose": "MERCHANT_PAY_SERVICE_APPLICATION_V1",
+  "platformVersion": 660,
+  "migrationScript": "V660__merchant_pay_service_application.sql",
+  "migrationSha256": "217383dbb70cbee6d0cf72b6dab15936cb227f480d38d84b71b596e02aba2d75",
+  "table": {
+    "name": "mch_pay_service_application",
+    "engine": "InnoDB",
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_bin",
+    "columns": [
+      {
+        "name": "id",
+        "type": "bigint",
+        "nullable": false,
+        "default": null,
+        "charset": null,
+        "collation": null
+      },
+      {
+        "name": "tenant_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "default": "'MAIN'",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "entity_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "source_caller",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "source_scope",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "request_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "request_hash",
+        "type": "char(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "profile_revision",
+        "type": "bigint",
+        "nullable": false,
+        "default": null,
+        "charset": null,
+        "collation": null
+      },
+      {
+        "name": "source_event_id",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "actor_realm",
+        "type": "varchar(16)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "actor_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "request_json",
+        "type": "longtext",
+        "nullable": false,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime(3)",
+        "nullable": false,
+        "default": null,
+        "charset": null,
+        "collation": null
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime(3)",
+        "nullable": false,
+        "default": null,
+        "charset": null,
+        "collation": null
+      },
+      {
+        "name": "created_by",
+        "type": "varchar(64)",
+        "nullable": true,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "updated_by",
+        "type": "varchar(64)",
+        "nullable": true,
+        "default": null,
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      {
+        "name": "version",
+        "type": "bigint",
+        "nullable": false,
+        "default": "0",
+        "charset": null,
+        "collation": null
+      },
+      {
+        "name": "deleted",
+        "type": "int",
+        "nullable": false,
+        "default": "0",
+        "charset": null,
+        "collation": null
+      }
+    ],
+    "primaryKey": [
+      "id"
+    ],
+    "unique": {
+      "uk_mpsa_request": [
+        "tenant_no",
+        "source_caller",
+        "source_scope",
+        "request_no"
+      ],
+      "uk_mpsa_revision": [
+        "tenant_no",
+        "entity_no",
+        "source_caller",
+        "source_scope",
+        "profile_revision"
+      ],
+      "uk_mpsa_event": [
+        "tenant_no",
+        "source_caller",
+        "source_scope",
+        "source_event_id"
+      ]
+    },
+    "checks": {
+      "ck_mpsa_base": "tenant_no='MAIN' AND profile_revision>0 AND version=0 AND deleted=0",
+      "ck_mpsa_actor": "actor_realm IN ('OPERATOR','MERCHANT') AND CHAR_LENGTH(TRIM(actor_no))>0",
+      "ck_mpsa_hash": "request_hash REGEXP '^[a-f0-9]{64}$'",
+      "ck_mpsa_json": "JSON_VALID(request_json)"
+    }
+  },
+  "triggers": [
+    {
+      "name": "trg_mpsa_no_update",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "table": "mch_pay_service_application",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Payment service submission original is immutable';\nEND"
+    },
+    {
+      "name": "trg_mpsa_no_delete",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "table": "mch_pay_service_application",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Payment service submission original is permanent';\nEND"
+    }
+  ]
+}

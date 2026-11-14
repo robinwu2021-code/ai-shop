@@ -61,7 +61,6 @@ class BundleServiceTest extends FoodWriteGuardFixture {
                 + "group_no VARCHAR(32),sku_no VARCHAR(32),units_per_pick DECIMAL(12,3),"
                 + "min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),"
                 + "price_mode VARCHAR(24),sort_no INT,UNIQUE(group_no,sku_no))");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_BUNDLE_CHANGED"));
         return f;
     }
     private void run(BiConsumer<AssertableApplicationContext,Fixture> test) {
@@ -80,6 +79,25 @@ class BundleServiceTest extends FoodWriteGuardFixture {
         return new ReplaceBundleDefinitionReq(v, List.of(group("G1", "1", "1", null)),
                 List.of(choice("C1", "G1", "SIDE", "INCLUDED", "1", "1", "1")));
     }
+    @Test void foreignBundleValidatesRootBaseAndChoicesBeforeAtomicDefinitionWrite() {
+        run((c, f) -> {
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            var service = new BundleServiceImpl(c.getBean(BundleMapper.class), c.getBean(BundleGroupMapper.class),
+                    c.getBean(BundleChoiceMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
+                    source.currencies);
+            service.createBundle("E", "A", "actor", new CreateBundleReq("MEAL"), "foreign-create");
+            var result = service.replaceDefinition("E", "A", "MEAL", "actor", fixed(0), "foreign-definition");
+            assertThat(result.version()).isEqualTo(1);
+            assertThat(service.getBundle("E", "A", "MEAL").config().data().choices()).hasSize(1);
+            source.corrupt = true;
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", "MEAL", "actor", fixed(1), "corrupt"))
+                    .isInstanceOf(BizException.class);
+            assertThat(f.sql().queryForObject("SELECT version FROM fnb_bundle", Long.class)).isEqualTo(1);
+        });
+    }
+
     @Test void fixedAndSelectableDefinitionsReadRealChildrenAndReplayWithoutDuplicates() {
         run((c,f) -> {
             var s = c.getBean(BundleService.class);

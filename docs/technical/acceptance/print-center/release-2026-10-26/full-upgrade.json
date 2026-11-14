@@ -1,0 +1,1 @@
+{"scenario":"FULL_APPLICATION_587_TO_LATEST","mode":"RAW_UNMODIFIED_APPLICATION_FLYWAY_HISTORY","status":"FAILED","failedStage":"BUILD_FULL_587_BASELINE","errorType":"SQLException","error":"Unknown collation: 'utf8mb4_uca1400_ai_ci'"}

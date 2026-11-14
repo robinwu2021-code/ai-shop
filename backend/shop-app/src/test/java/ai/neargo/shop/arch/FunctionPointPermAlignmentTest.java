@@ -52,6 +52,11 @@ class FunctionPointPermAlignmentTest {
     /** 运营端的判权入口只有这两个。 */
     private static final Pattern GUARD = Pattern.compile("@perm\\.can(Any)?\\(");
     private static final Pattern PERMS_REF = Pattern.compile("Perms\\.([A-Z_0-9]+)");
+    /**
+     * 商城可移植 starter 不挂 @PreAuthorize：方法体里 context.operator("commerce:…") 由宿主按实时会话与
+     * 功能点判权（与 OpsEndpointPermTest / gen-perm-endpoint-matrix.mjs 同一规则）。
+     */
+    private static final Pattern OPERATOR_CODE = Pattern.compile("context\\.operator\\(\"([a-z][a-z:_-]*)\"\\)");
 
     /**
      * **已知欠账**，立闸门那天就存在的。只准变短，不准变长。
@@ -137,14 +142,12 @@ class FunctionPointPermAlignmentTest {
     private Set<String> permCodesUsedByEndpoints() throws IOException {
         Map<String, String> literal = permLiterals();
         Set<String> out = new TreeSet<>();
-        /*
-         * 元器件的六个运营码：**端点在独立项目 ai-hxkey 里**（elec-svc，2026-09-30 迁出），本仓库扫不到它们。
-         * 菜单与授权仍登在主系统库里（V370/V371），所以按 ElecInternal 的声明算作「有端点」。
-         * 这六个码是否真的挂在端点上，由 ai-hxkey 的 ElecEndpointAuthTest 与 ElecOpsFlowTest 的权限用例钉着。
-         */
-        out.addAll(elecPermLiterals().values());
+        // V528 retired the electronic-components menus and grants after their
+        // endpoints moved to ai-hxkey. Count only actual endpoints in this repo;
+        // the external client's permission constants do not constitute handlers.
         for (Path p : sources()) {
             String src = Files.readString(p);
+            for (Matcher op = OPERATOR_CODE.matcher(src); op.find(); ) out.add(op.group(1));
             if (!src.contains("@perm.can")) {
                 continue;
             }
@@ -160,19 +163,6 @@ class FunctionPointPermAlignmentTest {
                     }
                 }
             }
-        }
-        return out;
-    }
-
-    /** {@code ElecInternal} 的常量名 → 字面量（元器件的六个运营权限码在那里声明） */
-    private static Map<String, String> elecPermLiterals() throws IOException {
-        Path f = Path.of("..").toRealPath()
-                .resolve("elec/elec-api/src/main/java/ai/neargo/elec/api/ElecInternal.java");
-        Map<String, String> out = new TreeMap<>();
-        Matcher m = Pattern.compile("String\\s+(PERM_[A-Z_0-9]+)\\s*=\\s*\"([^\"]+)\"")
-                .matcher(Files.readString(f));
-        while (m.find()) {
-            out.put(m.group(1), m.group(2));
         }
         return out;
     }

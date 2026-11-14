@@ -356,4 +356,10 @@ public class StlBill extends BaseEntity {
      * 而生产代码里没有任何一处给它赋值。
      */
     private String currency;
+
+    /** 市场（db/pay V8 · I3） */
+    private String market;
+
+    /** 来源支付单 pay_order.id */
+    private Long payOrderId;
 }

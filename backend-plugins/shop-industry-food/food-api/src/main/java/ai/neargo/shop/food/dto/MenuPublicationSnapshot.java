@@ -7,12 +7,20 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import tools.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-/** Schema four preserves restaurant display and immutable dependencies without granting price or stock authority. */
+/** Menu formats four and six preserve original display and dependencies without granting price or stock authority. */
 public record MenuPublicationSnapshot(int contentSchema,String configKind,String configNo,
         @JsonProperty(required=true) @JsonDeserialize(using=CatalogRevisionDeserializer.class) long sourceVersion,
-        Captured menu,List<SkuIdentityFact> skuFacts,List<GoodsFact> goodsFacts,String approvalRef) {
+        Captured menu,List<SkuIdentityFact> skuFacts,List<GoodsFact> goodsFacts,String approvalRef,
+        @JsonInclude(JsonInclude.Include.NON_NULL) PublicationMarketContext marketContext) {
     public MenuPublicationSnapshot { skuFacts=List.copyOf(skuFacts); goodsFacts=List.copyOf(goodsFacts); }
+    /** Old constructors intentionally omit market context so frozen legacy bytes and hashes remain stable. */
+    public MenuPublicationSnapshot(int contentSchema, String configKind, String configNo, long sourceVersion,
+            Captured menu, List<SkuIdentityFact> skuFacts, List<GoodsFact> goodsFacts, String approvalRef) {
+        this(contentSchema, configKind, configNo, sourceVersion, menu, skuFacts, goodsFacts, approvalRef, null);
+    }
+
     @JsonAnySetter public void rejectUnknown(String key,Object value) {
         throw new IllegalArgumentException("Unknown menu snapshot field");
     }

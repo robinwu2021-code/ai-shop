@@ -20,5 +20,16 @@ package ai.neargo.shop.merchant.dto;
  *                   被邀请去别人店里当店员的人拿不到这一位（而他压根不该在列表里看到这张证照）
  */
 public record EntityVO(String entityNo, String name, String status, boolean verified,
-                       String legalForm, int storeCount, boolean isPrimary, boolean canManage) {
+                       String legalForm, int storeCount, boolean isPrimary, boolean canManage,
+                       String review, String applyNo, String rejectReason, String taxNo, String owner) {
+    public EntityVO(String entityNo, String name, String status, boolean verified, String legalForm,
+                    int storeCount, boolean isPrimary, boolean canManage) {
+        this(entityNo, name, status, verified, legalForm, storeCount, isPrimary, canManage,
+                "PENDING_LICENSE".equals(status) ? "NONE" : "APPROVED", null, "", "", "");
+    }
+
+    public EntityVO withReview(String review, String applyNo, String rejectReason, String taxNo, String owner) {
+        return new EntityVO(entityNo, name, status, verified, legalForm, storeCount, isPrimary, canManage,
+                review, applyNo, rejectReason, taxNo, owner);
+    }
 }

@@ -52,9 +52,11 @@ class OutboxRuntimeTest extends OutboxTestFixture {
             runner.recoverDue();
             assertThat(runner.awaitIdle(Duration.ofSeconds(2))).isTrue();
             assertThat(calls.get()).isEqualTo(1);
-            // Unregistered handler b is a visible failure, not falsely acknowledged.
+            // Another host owns b: this worker must leave its delivery available, without claiming it.
             assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox_delivery WHERE handler_id='b'",String.class))
-                    .isEqualTo("FAILED");
+                    .isEqualTo("PENDING");
+            assertThat(jdbc.queryForObject("SELECT attempt_count FROM sys_outbox_delivery WHERE handler_id='b'",Integer.class))
+                    .isZero();
         }
     }
     @Test

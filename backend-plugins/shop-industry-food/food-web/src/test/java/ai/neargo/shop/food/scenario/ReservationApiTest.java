@@ -1,5 +1,8 @@
 package ai.neargo.shop.food.scenario;
 
+import org.mockito.Mockito;
+import org.mockito.ArgumentMatchers;
+import ai.neargo.shop.food.dto.ListReservationsQuery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,10 +23,17 @@ class ReservationApiTest {
     final WebApplicationContextRunner runner=new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(FoodWebAutoConfiguration.class))
             .withUserConfiguration(FoodPolicyApiTest.PolicyHost.class,CheckApiTest.Security.class)
-            .withBean(ReservationService.class,() -> (entity,store,query) -> {
-                assertThat(entity).isEqualTo("E");assertThat(store).isEqualTo("A");
-                assertThat(query.from()).isEqualTo(Instant.parse("2026-10-21T12:00:00Z"));
-                return PageData.of(List.of(new ReservationVO("R1",2,query.from(),query.to(),"CONFIRMED",null,null,0L)),1,1,20);
+            .withBean(ReservationService.class,() -> {
+                var service=Mockito.mock(ReservationService.class);
+                Mockito.when(service.listReservations(ArgumentMatchers.anyString(),
+                        ArgumentMatchers.anyString(),ArgumentMatchers.any())).thenAnswer(call -> {
+                    String entity=call.getArgument(0),store=call.getArgument(1);
+                    ListReservationsQuery query=call.getArgument(2);
+                    assertThat(entity).isEqualTo("E");assertThat(store).isEqualTo("A");
+                    assertThat(query.from()).isEqualTo(Instant.parse("2026-10-21T12:00:00Z"));
+                    return PageData.of(List.of(new ReservationVO("R1",2,query.from(),query.to(),"CONFIRMED",null,null,0L)),1,1,20);
+                });
+                return service;
             }).withPropertyValues("shop.food.enabled=true","spring.profiles.active=api");
     @Test void queryUsesOriginalStorePermissionsAndTypedDates() {
         runner.run(c -> {

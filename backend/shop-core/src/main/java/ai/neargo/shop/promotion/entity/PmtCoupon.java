@@ -17,6 +17,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_coupon")
 public class PmtCoupon extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 现金：{@code benefitValue} 是面额（分） */
     public static final String CASH = "CASH";
@@ -96,6 +99,16 @@ public class PmtCoupon extends BaseEntity {
      */
     public long discountFor(long base) {
         return CouponCalculation.discount(benefitMode, benefitValue, benefitCapMinor, base);
+    }
+
+    /**
+     * 此刻开始了没有。<b>绝对有效期的券在开始时刻之前不能用，不论它是怎么到手的</b>。
+     *
+     * <p>领券中心按窗口判「能不能领」，定向发放却不判开始时刻；而持有那一张（{@code PmtUserCoupon#usableAt}）
+     * 只记了到期时刻 —— 「双十一当天可用」的券提前定向发出去，当天就能抵扣。相对有效期的券领到即开始。
+     */
+    public boolean startedAt(long now) {
+        return !ABSOLUTE.equals(validityMode) || startAt == null || startAt <= now;
     }
 
     /** 一张能用几次。次卡（豆浆 5 杯）就是这一列 &gt; 1 */

@@ -87,7 +87,7 @@ class PointsDeductFlowTest {
 
     @Test
     void detached_cash_order_does_not_read_or_debit_legacy_balance() throws Exception {
-        String token=login("13700137005"); String user=userNoOf(token);
+        String token=login("13709137005"); String user=userNoOf(token);
         givePoints(user,10000); addToCart(token,"G0001","SK0001",2);
         JsonNode order=placeOrder(token,0);
         assertThat(order.get("amount").get("pointsDeductMinor").asLong()).isZero();
@@ -99,7 +99,7 @@ class PointsDeductFlowTest {
 
     @Test
     void repeated_cash_cancellation_does_not_create_points() throws Exception {
-        String token=login("13700137006"); String user=userNoOf(token);
+        String token=login("13709137006"); String user=userNoOf(token);
         givePoints(user,10000); addToCart(token,"G0001","SK0001",2);
         String order=placeOrder(token,0).get("orderNo").asString();
         cancel(token,order);

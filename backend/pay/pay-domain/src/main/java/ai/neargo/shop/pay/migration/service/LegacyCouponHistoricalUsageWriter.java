@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.migration.service;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.*;
 /** Original facts only, in the parent's pay import transaction. Deliberately has no financial/event dependency. */
 @Component
 public class LegacyCouponHistoricalUsageWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntUsageMapper usages;
     private final EntMigrationUsageMapper mappings;
     private final EntOwnerRegistryMapper owners;
@@ -36,6 +40,7 @@ public class LegacyCouponHistoricalUsageWriter {
             row.setAssetKind("ORDER_COUPON");row.setTitle("历史优惠券核销");row.setUnits(1);row.setAmountMinor(fact.amountMinor());row.setCurrency("CNY");
             row.setItemsSnapshot("[]");row.setSourceOrderNo(fact.orderNo());row.setStatus(fact.revertedAt()==null?"COMMITTED":"REVERSED");
             row.setOccurredAt(EntitlementRecords.utc(fact.occurredAt()));EntitlementRecords.changed(usages.insert(row));
+            documents.bind(DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), row.getUsageNo());
             var mapped=new EntMigrationUsage();EntitlementRecords.audit(mapped,ctx);mapped.setImportNo(importNo);
             mapped.setSourceUsageNo(fact.sourceUsageNo());mapped.setSourceInstanceNo(fact.sourceInstanceNo());mapped.setUsageNo(fact.usageNo());
             mapped.setInstanceNo(fact.instanceNo());mapped.setSourceHash(fact.sourceHash());mapped.setSourceRevertedAt(EntitlementRecords.utc(fact.revertedAt()));

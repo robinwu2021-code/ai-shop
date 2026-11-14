@@ -73,8 +73,6 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
                             + "effective_at DATETIME(3),status VARCHAR(16),previous_revision_no VARCHAR(32),"
                             + "scope_store_nos TEXT,"
                             + "UNIQUE(entity_no,config_kind,config_no,revision))");
-                    c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of(
-                            "PLATFORM:FOOD_BUNDLE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
                     test.accept(c, f);
                 });
     }

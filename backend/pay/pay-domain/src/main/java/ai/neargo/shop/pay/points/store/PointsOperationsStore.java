@@ -44,6 +44,8 @@ public interface PointsOperationsStore {
 
     Map<String, Object> lockEvent(long id);
 
+    String eventFailure(String typeCode, long eventId);
+
     Map<String, Object> accountHead(
             String typeCode,
             ai.neargo.shop.pay.points.model.HolderType holderType,

@@ -63,7 +63,10 @@ public interface EntitlementGrantPort {
         }
     }
 
-    record GrantView(String grantNo, State status, List<String> instanceNos, SourceRef sourceRef) {
+    record GrantView(String grantNo, State status, List<String> instanceNos, SourceRef sourceRef, String documentNo) {
+        public GrantView(String grantNo, State status, List<String> instanceNos, SourceRef sourceRef) {
+            this(grantNo, status, instanceNos, sourceRef, null);
+        }
         public GrantView {
             ContractChecks.id(grantNo);
             ContractChecks.present(status);

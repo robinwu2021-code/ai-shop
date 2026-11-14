@@ -55,7 +55,11 @@ class TableHasProducerTest {
     private static final List<String> SEEDED = List.of(
             "lgs_carrier", "lgs_carrier_code", "mch_admission_policy", "sys_channel_category_rule",
             "sys_function", "sys_function_point", "sys_industry", "sys_legal_form",
-            "sys_merchant_plan_def", "sys_pay_channel");
+            "sys_merchant_plan_def", "sys_pay_channel",
+            // 进销存调用系统登记：db/inventory V16 种子（SHOP / SHAREHUB / CHARGING）；新增系统走迁移
+            "inv_client_system",
+            // 支付产品与地区：db/pay V4 种子；运营维护入口随 I5 支付运营接口
+            "pay_channel_product", "pay_channel_product_market");
     // 元器件的 elc_* 表 2026-09-30 随元器件迁到独立项目 ai-hxkey，不在本仓库扫描范围内
 
     /**
@@ -67,7 +71,16 @@ class TableHasProducerTest {
     private static final Map<String, String> NO_PRODUCER = new LinkedHashMap<>();
 
     static {
+        NO_PRODUCER.put("mch_resource_occupation", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，header生产写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_unit", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，永久consume/direct单位写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_segment", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，实际分段证据写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_bucket", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，实际占用桶投影写入属于暂缓C2");
         // Stage C retires the old engine. These tables remain only for historical test fixtures.
+        // 支付服务 I3（TDD-支付服务-I3支付单退款流水）：表先建、写入逐片落地，落地一片删一行
+        NO_PRODUCER.put("pay_refund_review_rule", "db/pay V8 种子；运营维护入口随 I5");
+        NO_PRODUCER.put("pay_app", "db/pay V7 种子 MALL / FOOD；第三方接入方入口随 I5");
+        NO_PRODUCER.put("sec_key_policy", "W5 密钥模块：无策略行时按 DDL 默认值（重叠 7 天、提前 30 天提醒、启用前须验证）；"
+                + "运营维护策略随密钥运营接口（完成度复核 §3.5 接口一行）");
         NO_PRODUCER.put("pts_user_account", "积分 V3 已下线旧余额入口，生产使用 pts_account");
         NO_PRODUCER.put("pts_user_ledger", "积分 V3 已下线旧流水入口，生产使用 pts_voucher/pts_entry");
         NO_PRODUCER.put("stl_points_pool", "积分 V3 废除商家返分费入池，生产使用 pts_fund_pool");

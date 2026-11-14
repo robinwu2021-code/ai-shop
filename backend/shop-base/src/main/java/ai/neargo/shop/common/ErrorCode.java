@@ -9,6 +9,9 @@ package ai.neargo.shop.common;
  */
 public enum ErrorCode {
 
+    /** No authentic capability/tax publication evidence; a saved draft is not permission to activate it. */
+    PRICING_OWNER_UNSUPPORTED(40190, "err.pricing.owner_unsupported"),
+
     // ---- 1xxxx 通用 ----
     PRINT_BLOCKED(82001, "err.print.blocked"),
     PRINT_CONFLICT(82002, "err.print.conflict"),
@@ -31,8 +34,19 @@ public enum ErrorCode {
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+    /**
+     * 客户端版本低于运营端配的「最低支持版本」，写请求被拒（TDD-商户App问题回报与版本 V7）。
+     *
+     * <p>由 {@code ClientVersionGateFilter} 在过滤器层直接写响应：{@code msg} 是机器码
+     * {@code CLIENT_UPGRADE_REQUIRED}、{@code data} 带 {@code minSupported} 与 {@code storeUrl} ——
+     * App 收到就进强制升级页。只靠 App 弹窗的话，拦得住的只有「会弹窗的新包」，
+     * 真正有问题的老包恰恰不认识那个弹窗；服务端拒写才是止血。
+     */
+    CLIENT_UPGRADE_REQUIRED(10426, "err.client.upgrade_required"),
     /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
     GEO_UNAVAILABLE(10503, "err.geo.unavailable"),
+    /** Shared booking/actual resource authority is unavailable; no industry-specific fallback is permitted. */
+    RESOURCE_DEPENDENCY_UNAVAILABLE(10505, "err.resource.dependency_unavailable"),
 
     /*
      * 发码限流的两条。**分成两个码而不是共用 10429**：端上要做的事完全不同 ——
@@ -78,6 +92,7 @@ public enum ErrorCode {
      * 而页面其余文案是端上 i18n 的中文，**同一屏两种语言**。
      */
     OTP_INVALID(10455, "err.otp.invalid"),
+    SMS_VERIFICATION_DISABLED(10515, "err.sms.verification_disabled"),
 
     /**
      * 这个手机号<b>已经绑在你自己账号上了</b>。
@@ -194,6 +209,7 @@ public enum ErrorCode {
     ZIP_TOO_LARGE(10472, "err.zip.too_large"),
     /** 商家画的配送范围多边形不合法（顶点太少/太多、坐标越界、退化成零面积）。ADR-034 */
     SERVICE_AREA_POLYGON_INVALID(10473, "err.service_area.polygon_invalid"),
+    LOGIN_TICKET_INVALID(10474, "err.auth.login_ticket_invalid"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。
@@ -355,6 +371,15 @@ public enum ErrorCode {
 
     /** Do not report cash-order cleanup complete when an older order still contains points liabilities. */
     ORDER_POINTS_MANUAL_REQUIRED(20014, "err.trade.order_points_manual_required"),
+    CHECKOUT_QUOTE_STALE(20015, "err.trade.checkout_quote_stale"),
+    CHECKOUT_UNSUPPORTED_SELECTION(20016, "err.trade.checkout_unsupported_selection"),
+    CHECKOUT_CONFIRMATION_REQUIRED(20017, "err.trade.checkout_confirmation_required"),
+    CHECKOUT_DEPENDENCY_UNAVAILABLE(20019, "err.trade.checkout_dependency_unavailable"),
+    CHECKOUT_OPERATION_REJECTED(20020, "err.trade.checkout_operation_rejected"),
+    CHECKOUT_PAYMENT_CONFLICT(20021, "err.trade.checkout_payment_conflict"),
+    CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
+    CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
+    MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
@@ -539,6 +564,7 @@ public enum ErrorCode {
     /** A disabled new rights workflow is not a missing staff permission and must not trigger a login redirect. */
     ENTITLEMENT_FEATURE_UNAVAILABLE(40040, "err.entitlement.feature_unavailable"),
     MEMBER_CODE_INVALID(40041, "err.member.code_invalid"),
+    MEMBER_GUEST_UNAVAILABLE(40042, "err.member.guest_unavailable"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
@@ -593,6 +619,7 @@ public enum ErrorCode {
     POINTS_FUNDS_UNAVAILABLE(50042, "err.points.funds_unavailable"),
     POINTS_EVIDENCE_REQUIRED(50043, "err.points.evidence_required"),
     POINTS_OPERATION_REJECTED(50044, "err.points.operation_rejected"),
+    POINTS_TYPE_DUPLICATE(50045, "err.points.type_duplicate"),
 
     // ---- 6xxxx 风控 ----
     RISK_BLOCKED(60001, "err.risk.blocked"),
@@ -955,6 +982,48 @@ public enum ErrorCode {
     STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
     STOCK_SHARED_SOURCE(70081, "err.inventory.shared_source"),
 
+    /** 支付服务 I3：调用方不在能力矩阵内，或这家门店不在它的范围里（设计 v4 §2.8.2） */
+    PAY_FORBIDDEN(70082, "err.pay.forbidden"),
+    /** 支付单 / 退款单查无此号（或不属于这个调用方） */
+    PAY_ORDER_NOT_FOUND(70083, "err.pay.order_not_found"),
+    /** 同一调用方单号再建一次而内容不同：幂等键撞了别的请求 */
+    PAY_ORDER_CONFLICT(70084, "err.pay.order_conflict"),
+    /** 支付单当前状态不允许这个动作。回显状态 */
+    PAY_ORDER_STATE(70085, "err.pay.order_state"),
+    /** 退款超出可退余额（实收 − 已退 − 在途占用）。回显可退余额 */
+    PAY_REFUND_EXCEEDS(70086, "err.pay.refund_exceeds"),
+    /** 退款必须由商家操作员发起：内部系统不能以系统身份退款 */
+    PAY_REFUND_OPERATOR_REQUIRED(70087, "err.pay.refund_operator_required"),
+    /** 两人复核：申请人、第一复核人、第二复核人不能是同一个人 */
+    PAY_APPROVAL_SAME_PERSON(70088, "err.pay.approval_same_person"),
+    /** 收款商户绑定被拒：别的主体的门店、别的市场、商户不是 ACTIVE、渠道不符。回显原因 */
+    PAY_BINDING_INVALID(70089, "err.pay.binding_invalid"),
+    /** 同门店同渠道已有在途进件（R06）：等它出结果，或先撤回 */
+    PAY_ONBOARDING_INFLIGHT(70090, "err.pay.onboarding_inflight"),
+    /** 进件单当前状态不允许这个动作（如审核中再提交、回填来的旧进件单由旧流程推进）。回显原因 */
+    PAY_ONBOARDING_STATE(70091, "err.pay.onboarding_state"),
+    /** 接入方当日退款额度不足（开放 API，安全规范 §2.3）。回显还能退多少 */
+    PAY_APP_REFUND_LIMIT(70092, "err.pay.app_refund_limit"),
+    /** 收银令牌过期、已作废或支付单已关（安全规范 §2.5：除「不存在」外只回这一种） */
+    PAY_CHECKOUT_EXPIRED(70093, "err.pay.checkout_expired"),
+    /** 静态码超单笔上限或单码日累计上限 */
+    PAY_CHECKOUT_LIMIT(70094, "err.pay.checkout_limit"),
+    /*
+     * 开放 API 的细分错误（TDD-支付服务-开放API加解密-API清单 §1.3；开发计划 M3.7）。
+     * 只细分「接入方自己能改」的：时钟、重放、字段加密。签名错、AppId 不存在、环境不符仍是统一的 UNAUTHORIZED ——
+     * 细到「哪一步不对」就成了探测器。
+     */
+    /** 时间戳在 ±300 秒窗口外：对方时钟偏了 */
+    PAY_OPEN_TIMESTAMP_EXPIRED(70095, "err.pay.open_timestamp_expired"),
+    /** nonce 在窗口内用过：重放，或调用方重试时没换 nonce */
+    PAY_OPEN_REPLAYED(70096, "err.pay.open_replayed"),
+    /** 标了 x-sensitive 的字段传了明文 */
+    PAY_OPEN_FIELD_ENCRYPT_REQUIRED(70097, "err.pay.open_field_encrypt_required"),
+    /** 加密字段解不开（版本不认识 / 标签不符 / OAEP 参数错 —— 不分哪一步） */
+    PAY_OPEN_FIELD_DECRYPT_FAILED(70098, "err.pay.open_field_decrypt_failed"),
+    /** 外部密钥服务（KMS / HSM）不可用 */
+    PAY_KEY_SERVICE_UNAVAILABLE(70099, "err.pay.key_service_unavailable"),
+
     /*
      * 快递代下单（TDD-快递100商家寄件）。
      *
@@ -1086,6 +1155,8 @@ public enum ErrorCode {
      * 他要做的是升套餐（或先停用一家），这两件事之间没有任何关系。
      */
     STORE_QUOTA_EXCEEDED(70020, "err.merchant.store_quota_exceeded"),
+    STORE_BUSINESS_TYPE_REQUIRED(70198, "err.store.business_type_required"),
+    STORE_COMMERCE_MIGRATION_REQUIRED(70199, "err.store.commerce_migration_required"),
 
     /**
      * 门店被平台强制下线，商家的启停操作一律拒绝。
@@ -1296,7 +1367,13 @@ public enum ErrorCode {
      * <b>刻意不用 FORBIDDEN(10403)</b>：那个在前端 FORBIDDEN_CODES 里会触发全局「无权限」处理（跳登录），
      * 而「非本人」要的是页面提示「这单不是寄给你的」，不是登出 —— 用它会把人踢进登录死循环。
      */
-    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient");
+    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient"),
+
+    /** Bounded appointment search cannot prove that capacity is unavailable. */
+    BEAUTY_SEARCH_INCOMPLETE(80104, "err.beauty.search_incomplete"),
+    BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE(80105, "err.beauty.arrival_requires_reschedule"),
+    BEAUTY_SOURCE_CUSTOMER_REQUIRED(80106, "err.beauty.source_customer_required"),
+    BEAUTY_DEPENDENCY_UNAVAILABLE(80107, "err.beauty.dependency_unavailable");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
     // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。

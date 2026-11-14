@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * 实体基类：物理主键 + 租户键 + 审计 + 乐观锁 + 逻辑删除。
  *
  * <p><b>主键约定</b>：{@code id} 是库内自增物理主键，<b>不对外、不进 URL、不进响应</b>；
- * 对外稳定标识一律用业务键 {@code xxxNo}（由 {@link BizKey} 生成）。
+ * 对外定位使用稳定业务键 {@code xxxNo}；普通实体码由 {@link BizKey} 生成，人工单据号使用统一编号组件。
  * 这条不是洁癖 —— 一旦 {@code id} 出现在 URL 里，分库或数据迁移就再也做不了。
  *
  * <p>{@code tenantNo} 一期恒为 {@code MAIN}（[矩阵 P-17.1.6] 预留），不启用行级租户隔离。

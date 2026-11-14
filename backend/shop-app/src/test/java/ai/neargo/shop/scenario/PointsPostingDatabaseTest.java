@@ -55,6 +55,8 @@ import javax.sql.DataSource;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
         properties = {
+        // 只手工建了几张表：支付 v4 迁移（db/pay）要 ALTER 平台表，与 h2db profile 一样不在这里跑
+        "shop.pay.flyway.enabled=false",
             "spring.datasource.url=${points.jdbc.url:jdbc:h2:mem:points_posting_db;MODE=MySQL;DATABASE_TO_LOWER=TRUE}",
             "spring.datasource.username=${points.jdbc.user:sa}",
             "spring.datasource.password=${points.jdbc.password:}",
@@ -73,6 +75,13 @@ class PointsPostingDatabaseTest {
     }
 
     static void initializeSchema(DataSource dataSource) {
+        try {
+            String numbers = new ClassPathResource("db/migration/V542__document_numbers.sql")
+                    .getContentAsString(java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ");
+            new ResourceDatabasePopulator(new org.springframework.core.io.ByteArrayResource(
+                    numbers.getBytes(java.nio.charset.StandardCharsets.UTF_8))).execute(dataSource);
+        } catch (java.io.IOException ex) { throw new IllegalStateException(ex); }
         new ResourceDatabasePopulator(
                         new ClassPathResource("db/migration/V425__points_v3_ledger.sql"))
                 .execute(dataSource);
@@ -513,7 +522,10 @@ class PointsPostingDatabaseTest {
 
     @Configuration
     @EnableTransactionManagement
-    @Import({PayDataSourceConfig.class, PointsPostingServiceImpl.class, MybatisPostingStore.class})
+    @Import({PayDataSourceConfig.class, PointsPostingServiceImpl.class, MybatisPostingStore.class,
+        ai.neargo.shop.pay.numbering.PayDocumentNumberConfiguration.class,
+        ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers.class,
+        ai.neargo.shop.pay.entitlement.service.PayRightsNumberReservations.class})
     static class Config {
         @Bean
         MybatisPlusInterceptor interceptor() {

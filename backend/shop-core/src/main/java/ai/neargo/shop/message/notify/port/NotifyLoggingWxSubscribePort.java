@@ -46,6 +46,9 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
      * 而换模板是运营行为不是运维行为，为它发一次版不合理。密钥的边界不变。
      */
     @Override
+    public boolean configuredForApp(String scene) { return delegate.configuredForApp(scene); }
+
+    @Override
     public String templateId(String scene) {
         String override = configured(scene);
         if (override != null && !override.isBlank()) {
@@ -118,6 +121,7 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
          * 而真发出去的是新品提醒。switch 漏了 case 至少有个 default 能打出来。
          */
         return switch (scene) {
+            case WxSubscribePort.SCENE_STORED_VALUE_REDEEMED -> "TPL_WX_STORED_VALUE_REDEEMED";
             case WxSubscribePort.SCENE_REFUNDED -> "TPL_WX_REFUNDED";
             case WxSubscribePort.SCENE_NEW_GOODS -> "TPL_WX_NEW_GOODS";
             case WxSubscribePort.SCENE_ELEC_QUOTED -> "TPL_WX_ELEC_QUOTED";

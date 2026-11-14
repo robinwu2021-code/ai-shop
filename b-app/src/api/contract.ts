@@ -1,3 +1,12 @@
+import type {StoredValueFinanceApi} from "./stored-value-finance";
+import type { PayApi } from "./pay";
+import type { MallApi } from "./mall";
+import type { StoredValueGovernanceApi } from "./stored-value-governance";
+import type { IssuerApi } from "./stored-value-issuers";
+import type { ManagementApi } from "./management-types";
+import type { OrderPointsEarning } from "@shared/types";
+import type { AppVersionInfo, FeedbackReceipt, MerchantFeedback } from "@shared/types";
+import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 B 端 BFF `/mb/**`（C 端是 `/mp/**`）。
@@ -44,6 +53,7 @@ import type {
   CrossStoreCompare,
   CrossStoreOverview,
   CurrencyCode,
+  CustomerReference,
   DailyFlowPage,
   DailyReport,
   DeliveryRule,
@@ -261,6 +271,28 @@ export interface ExpressQuote {
   listPriceMinor: number;
 }
 
+/** 本店可选的一家快递公司（TDD-商户App快递公司 E1、E5） */
+export interface ExpressCompanyOption {
+  /** 承运商码：大陆是微信 delivery_id，台湾是我方自定义码；发货、改运单、发货设置都提交它 */
+  code: string;
+  /** 按市场原文给的展示名（不随语言翻译） */
+  name: string;
+  /** false = 照样能发货，只是查不到轨迹 */
+  traceSupported: boolean;
+}
+
+/**
+ * 本店能选的快递公司（`GET /biz/express/companies`，TDD-商户App快递公司）。
+ * `companies` 的顺序就是发货界面的显示顺序；只随后端发版变化，按门店缓存到切店即可。
+ */
+export interface ExpressCompanyList {
+  /** 已按部署默认回落的经营市场（门店所属主体没填市场时不再是空） */
+  market: string;
+  /** 这家店能不能「叫快递上门」：通道开着、且通道的承运商与本市场清单有交集 */
+  courierPickupAvailable: boolean;
+  companies: ExpressCompanyOption[];
+}
+
 /**
  * 门店发货设置（TDD-快递100商家寄件 §7 AC12）。五项都可空：空 = 用 `default*` 那一份
  * （门店名 / 店主登录手机 / 门店地址）。`default*` 给端上当 placeholder，让商家看到「不填会用什么」。
@@ -352,6 +384,7 @@ export interface Statement {
 
 /** 一行 = 一张结算单 */
 export interface StatementLine {
+  documentNo?: string | null;
   settleNo: string;
   orderNo: string;
   subOrderNo: string;
@@ -813,6 +846,7 @@ import type {
   ZipPlanReq,
   ZipImported,
   PickupSelfBuildReq,
+  ResolveMemberCodeReq,
   StaffLoginReq,
   StoreEditReq,
   StoreFulfillmentSaveReq,
@@ -820,6 +854,7 @@ import type {
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
   SaveShipSettingReq,
+  SubmitFeedbackReq,
 } from "./requests";
 
 /** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
@@ -840,9 +875,30 @@ export interface EstateList {
   stale: boolean;
 }
 
-export interface MerchantApi {
-  // 既有端点与 mock 已注册，补齐公开接口声明。
-  mResolveMemberCode(body: { memberCode: string; storeNo: string }): Promise<{ customerRef: string; maskedName: string; expiresAt: string }>;
+export interface MerchantApi extends ManagementApi,IssuerApi,StoredValueGovernanceApi,StoredValueFinanceApi,PayApi,MallApi {
+  mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
+  mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
+  mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;
+  mSvCandidates(q:{storeNo:string;phone?:string;keyword?:string}):Promise<PageResult<SV.SvCandidate>>;
+  mSvSelectCustomer(body:{storeNo:string;source:SV.SvSelectionSource}):Promise<SV.SvSelectedCustomer>;
+  mSvConfirmOffline(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
+  mSvContext(storeNo:string):Promise<SV.SvContext>;
+  mSvPlans(q:{storeNo:string;status?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvPlan>>;
+  mSvPlan(planNo:string,storeNo:string):Promise<SV.SvPlan>;
+  mSvCreatePlan(body:SV.SvPlanCreate,key:string):Promise<SV.SvPlan>;
+  mSvPlanStatus(planNo:string,body:{storeNo:string;status:string;expectedRevision:number},key:string):Promise<SV.SvPlan>;
+  mSvAccounts(q:{storeNo:string;keyword?:string;cursor?:string;size?:number}):Promise<SV.SvPage<SV.SvAccount>>;
+  mSvAccount(accountRef:string,storeNo:string):Promise<SV.SvAccount>;
+  mSvRecords(q:SV.SvRecordsQuery):Promise<SV.SvPage<SV.SvRecord>>;
+  mSvRecord(recordNo:string,storeNo:string):Promise<SV.SvRecord>;
+  mSvResolveRecharge(body:SV.SvRechargeCreate,key:string):Promise<{found:boolean;recharge:SV.SvProgress|null}>;
+  mSvCancelCreate(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
+  mSvCreateRecharge(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
+  mSvRecharge(rechargeNo:string):Promise<SV.SvProgress>;
+  mSvSubmit(rechargeNo:string,body:SV.SvReceipt,key:string):Promise<SV.SvProgress>;
+  mSvReceive(rechargeNo:string,body:SV.SvReceive,key:string):Promise<SV.SvProgress>;
+  mSvCancel(rechargeNo:string,body:{expectedRevision:number;reason:string},key:string):Promise<SV.SvProgress>;
+  mResolveMemberCode(body:{memberCode:string;storeNo:string}):Promise<SV.SvCustomer>;
 
   // ---- 账号与入驻（B-11.1）
   mLogin(req: LoginReq): Promise<MerchantLoginResp>;
@@ -1557,6 +1613,7 @@ export interface MerchantApi {
       to?: string;
     },
   ): Promise<PageResult<Order>>;
+  mOrderPointsEarning(orderNo: string): Promise<OrderPointsEarning[]>;
   mOrderDetail(orderNo: string): Promise<Order>;
   mOrderInventoryTrace(orderNo: string): Promise<MerchantInventoryTrace>;
   mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;
@@ -1587,6 +1644,12 @@ export interface MerchantApi {
    * 权限用 `biz:receive` 不是 `biz:order:view`：后者是只读权限，配送员也持有。
    */
   mConfirmOfflinePay(subOrderNo: string): Promise<Order>;
+
+  /**
+   * 本店可选的快递公司（门店范围，按门店所属主体的经营市场给；biz:ship 或 biz:store 任一即可读）。
+   * 发货、改运单、发货设置的承运商从这里选，提交 `code`
+   */
+  mExpressCompanies(): Promise<ExpressCompanyList>;
 
   // ---- 快递代下单（TDD-快递100商家寄件）。权限与发货同一个 biz:ship
   /** 各家报价，按价从低到高；查不到价的那家不出现 */
@@ -1760,6 +1823,8 @@ export interface MerchantApi {
 
   // ---- 客户与复购（B-11.2.8）
   mCustomers(): Promise<MerchantCustomer[]>;
+  /** 识别会员码，返回仅在原主体、门店和操作人范围内有效的短期顾客引用；不代表支付授权。 */
+  mResolveMemberCode(payload: ResolveMemberCodeReq): Promise<CustomerReference>;
 
   /**
    * 会员列表。
@@ -2057,6 +2122,20 @@ export interface MerchantApi {
    * 上一班的人不能继续收到这家店的订单推送。
    */
   mUnregisterPushToken(clientId: string): Promise<void>;
+
+  // ---- 问题回报与版本（TDD-商户App问题回报与版本）
+  /**
+   * 提交问题回报。账号级，不要求选门店；同一账号 10 分钟 5 条（超了 10429）。
+   * 带的门店号不属于本账号时只丢弃门店号，照常落库。
+   */
+  mSubmitFeedback(req: SubmitFeedbackReq): Promise<FeedbackReceipt>;
+  /** 我的回报：最近 50 条，新的在前，带客服回复。状态可能是 CLOSED（显示「已结案」） */
+  mMyFeedback(): Promise<MerchantFeedback[]>;
+  /**
+   * 版本检查（匿名）。`build` 带了才回 `upgradeRequired`，端上以它为准。
+   * 写请求带 `X-App-Platform` / `X-App-Version` 且低于最低版时，服务端回 10426 CLIENT_UPGRADE_REQUIRED。
+   */
+  mAppVersion(platform: string, build?: string): Promise<AppVersionInfo>;
 
   // ---- 通知设置（TDD-来单四渠道与商家通知设置）
   /** 本店的四条通道开关（三个场景各一组）与企微群是否配过 */

@@ -389,3 +389,43 @@ AC-1、AC-15 是界面：`vue-tsc` + 按原型在 mock 下自查截图。AC-4、
    集单价同样受此限制 —— 集单请用单规格商品，或 P2 把活动价下沉到 SKU 级。
 7. **一张子单里有两个集单活动的货会被拒**（`PERIOD_MIXED`）：一单只能挂一期，否则其中一期的汇总少掉这几件。
 8. **期取消时未付款的子单不处理**：它们由超时关单关掉；截单后才付款的单由 `cancelUndecided` 补扫近 3 天已取消的期退掉。
+
+
+## §8 C06 拼团、集单与求团App正式接线（2026-11-10）
+
+### §0 范围
+
+按用户继续C06零售App补齐，库存最后。本批复用已有拼团/集单/报价服务与v26页面，修正原型合同，不调整活动胜出、退款政策或台湾开放范围；普通活动管理旧ops入口与其余零售页面继续在C06记录，不宣称整项完成。
+
+### §1 正式合同与实现选择
+
+- 活动列表只支持includeEnded，App按triggerType筛GROUP/CUTOFF；活动商品由goodsNos取得，不依赖不存在的goods块。开团选择时经正式商品详情读取名称/价格，读不到不补假值；活动/自提点失败不可按成功默认继续。
+- GROUP/CUTOFF均为PRICE，创建带原storeNo、goodsNos、总quota及可选budgetMinor；按市场currencyScale精确转分。新表单明确长期有效，以总份数约束；集单每天一期，不提交被后端拒绝的RECURRING。保留集单minQty/periodQuota和截止/提货时间；非法非空值不能被转成省略。
+- 团的need由服务端返回，不从人数重新推断；FAILED不代表渠道退款已完成，正式VO没有refundedMinor/failReason时不显示虚构金额/原因或承诺固定迟到款补退期限。
+- 求团读interestedCount；报价读merchant、priceMinor、minCount、desc、revisions/locked/status，mine由原商家号判断，锁价或失效报价不允许改；写仍沿现有QuoteReq，不用读结构反推写字段。
+- 页面API冻结原店/主体/用户/会话和campaign权限，异步选择/确认与回执均沿原作用域。商品选择复用同一原店、正式读取权限biz:stock与分页，并继承原营销页campaign守卫。所有金额按原店币种/精度显示，不硬编码TWD×100。
+- 原集单备货清单仍可读取；创建库存单仅依既有inventoryOpen门禁，不在本批启用或新增库存接线。
+
+### §2 执行清单
+
+- [x] group_buy_api.dart对齐正式列表/商品/团/报价结构，补作用域守卫。
+- [x] group_buy_pages.dart补创建参数、金额/份数校验、开团元数据选择、锁价/退款结果和旧页隔离；mock_v26.dart及既有旅程按正式形状对账。
+- [x] 新增正式fixture的API/页面验证，运行受影响旅程、限定analyze；后端仅定向验证已有拼团/期与报价语义。
+- [x] 一次只读复核及必要修复，更新原报告/两CSV/App交接，不提交部署。
+
+### §5 验证
+
+| AC/边界 | 验证证据 |
+|---|---|
+| 正式活动/商品 | `activities filter official mixed array...`、`activity goods load official metadata...`覆盖真实goodsNos、includeEnded和客户端玩法筛选，不依赖mock自造goods块；campaign+stock自定义角色可读，不要求goods编辑权限。 |
+| 正式报价/团/日期 | 嵌套merchant/priceMinor/minCount/desc/revisions/interestedCount、mine归属、后端need、退款金额未知及期日期字符串均有断言；锁价按钮不可改，FAILED不显示“已全额退款”。 |
+| 创建写体 | GROUP按3位精度提交12345/100500的价格/预算、原storeNo、PRICE/ALWAYS_ON/总quota；CUTOFF非法非空minQty先拦截，修正后提交总quota=50与periodQuota=200、价格1234，二者不混用；0位精度拒绝小数。 |
+| 隔离/失败/分页 | 原API失效不发送；旧表单回调在换店后不发请求；商品选择超过50条继续读并在换店后隐藏；仅撤campaign而保留stock时原营销选择页也立即隐藏；自提点查询失败不默认不限点继续开团。 |
+| App新增计数 | `group_buy_contract_test.dart`共15个不同场景分组/增量通过：初轮11/11（`/tmp/ai-shop-c06-group-v2.log`）；复核及扩展边界轮6/6中4项为原场景受影响复验、2项新增（`/tmp/ai-shop-c06-group-incremental.log`）；撤campaign选择页1/1（`/tmp/ai-shop-c06-group-scope.log`）。库存未启用时备货可读、创建库存单不可用1/1（`/tmp/ai-shop-c06-group-inventory-gate.log`）。不把重跑相加。 |
+| 既有旅程 | `v26_flows_test.dart`5/5：建活动、开/散团、结果、集单决定/备货、报价改价；开/散团使用retailComplete=true，确认完整零售mock路由仍能读取团商品元数据（经原商品读权限）。`v23_flows_test.dart`的M3商品选择1/1，验证复用方兼容。日志`/tmp/ai-shop-c06-group-journeys-v2.log`及`/tmp/ai-shop-c06-group-picker-compat.log`。 |
+| 后端既有权威 | `ActivityGroupBuyTest#groupNeedsAtLeastTwo/#groupBenefitMustBePrice`、`PeriodFlowTest#batchParamsValidated`、`M6cGroupFlowTest#quoteAndReviseDifferAfterLock/#priceRevisionIsPublic/#interestIsIntentNotOrder`共6/6。日志`/tmp/ai-shop-c06-group-backend.log`。未改Java生产文件；沿前批冻结运行classpath限定编译/执行3个测试源码，不称当前全仓重编或真实资金验收。 |
+| 静态/复核 | 受影响6组Dart路径限定analyze无问题，变更文件空白检查通过；四个语言源的2个新增词条对账通过并重新生成。一次review的商品读取权限、原调用方权限守卫两处P2已修复，对应验证包含在15项内。 |
+
+§6实现对账：group_buy_api/pages、复用goods_picker、mock_v26和mock_onboarding_server的v26原entity参数/已授权mock商品元数据分支；新增group_buy_contract_test并调整v26旅程必填总份数及退款断言；新增groupRefundUnconfirmed/groupQuoteInactive两键与生成物。原mock内部演示台账不当正式退款回执；真实退款金额/进度仍从原订单与渠道取得。
+
+首次既有旅程编译遇到其他会话服务业新增词条尚未生成；相应ARB出现后统一gen-l10n，实际工作区5条旅程通过，未改该服务业业务文件。本批不新增后端端点/DDL、不部署，不改live白名单、台湾开放或库存开关；真实团购资格、订单支付退款、供应商与地区合同仍需单列验收，不能把模拟通过等同开放。普通活动/券管理旧ops入口等C06余项继续保留，库存映射与166启用保持最后。

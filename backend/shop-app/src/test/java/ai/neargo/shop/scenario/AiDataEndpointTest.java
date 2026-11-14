@@ -111,7 +111,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC2 ★ 店主 B 端令牌 → 身份（商户号·OWNER·门店）；无效令牌 / C 端令牌 → 40100")
     void sessionVerify() throws Exception {
-        String btk = merchant("12600177001", "AI取数·身份");
+        String btk = merchant("18600177001", "AI取数·身份");
         Ctx c = ctx(btk);
 
         JsonNode d = call(post(BASE + "/session/verify"), "{\"token\":\"" + btk + "\"}").get("data");
@@ -123,7 +123,7 @@ class AiDataEndpointTest {
         assertThat(call(post(BASE + "/session/verify"), "{\"token\":\"btk_nosuch\"}").get("code").asInt())
                 .isEqualTo(40100);
         // ★ 店主本人的 C 端令牌：解析器按 user_no 也认得出他是店主，挡住它的只有 realm 这一道
-        String consumer = TestLogin.consumer(mvc(), json, otpStore, "12600177001");
+        String consumer = TestLogin.consumer(mvc(), json, otpStore, "18600177001");
         assertThat(call(post(BASE + "/session/verify"), "{\"token\":\"" + consumer + "\"}").get("code").asInt())
                 .as("C 端令牌不是商家身份，哪怕是店主本人的").isEqualTo(40100);
     }
@@ -131,7 +131,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC8 stores/list 回该商户的门店号与名称")
     void storesList() throws Exception {
-        Ctx c = ctx(merchant("12600177011", "AI取数·门店"));
+        Ctx c = ctx(merchant("18600177011", "AI取数·门店"));
         JsonNode items = call(tenant(post(BASE + "/stores/list"), c.merchantNo, null), "{}").get("data").get("items");
         assertThat(items.size()).isEqualTo(1);
         assertThat(items.get(0).get("store_id").asString()).isEqualTo(c.storeNo);
@@ -143,7 +143,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC3 ★★★ 今天的营业额 / 单量 = 工作台首页的数（同口径：成交不含取消，金额换成元）")
     void metricsEqualDashboard() throws Exception {
-        String btk = merchant("12600177021", "AI取数·对账");
+        String btk = merchant("18600177021", "AI取数·对账");
         Ctx c = ctx(btk);
         LocalDateTime now = LocalDateTime.now();
         subOrder(c, OrdSubOrder.COMPLETED, 12_345L, now);
@@ -172,7 +172,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC3 退款按退款日归属、按子单归店；按日趋势 + 环比")
     void refundsTrendAndCompare() throws Exception {
-        Ctx c = ctx(merchant("12600177031", "AI取数·退款"));
+        Ctx c = ctx(merchant("18600177031", "AI取数·退款"));
         LocalDateTime now = LocalDateTime.now();
         String sub = subOrder(c, OrdSubOrder.REFUNDED, 3_000L, now.minusDays(1));
         subOrder(c, OrdSubOrder.COMPLETED, 2_000L, now);
@@ -201,8 +201,8 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC4 ★★ 门店不属于该商户 / 员工号不属于该商户 → 40300，不回任何数据")
     void foreignStoreIsForbidden() throws Exception {
-        Ctx a = ctx(merchant("12600177041", "AI取数·甲店"));
-        Ctx b = ctx(merchant("12600177042", "AI取数·乙店"));
+        Ctx a = ctx(merchant("18600177041", "AI取数·甲店"));
+        Ctx b = ctx(merchant("18600177042", "AI取数·乙店"));
         subOrder(b, OrdSubOrder.COMPLETED, 8_800L, LocalDateTime.now());
         long ms = System.currentTimeMillis();
         String body = "{\"metrics\":[\"success_amount\"],\"date_from\":" + (ms - 86_400_000L) + ",\"date_to\":" + ms + "}";
@@ -223,7 +223,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC5 区间 > 400 天 → 41300；区间内没有成交 → data_basis=NONE（不是 0）")
     void rangeLimitAndNoData() throws Exception {
-        Ctx c = ctx(merchant("12600177051", "AI取数·空店"));
+        Ctx c = ctx(merchant("18600177051", "AI取数·空店"));
         long ms = System.currentTimeMillis();
         JsonNode big = call(tenant(post(BASE + "/metrics/query"), c.merchantNo, c.storeNo),
                 "{\"metrics\":[\"success_amount\"],\"date_from\":" + (ms - 401L * 86_400_000L) + ",\"date_to\":" + ms + "}");
@@ -245,7 +245,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC6 区间销量排行：按商品聚合已支付未退款的明细，销售额为元，DESC 多者在前")
     void salesRanking() throws Exception {
-        Ctx c = ctx(merchant("12600177061", "AI取数·排行"));
+        Ctx c = ctx(merchant("18600177061", "AI取数·排行"));
         LocalDateTime now = LocalDateTime.now();
         item(subOrder(c, OrdSubOrder.COMPLETED, 1_500L, now), "G-A", "苹果", 3, 1_500L);
         item(subOrder(c, OrdSubOrder.WAIT_FULFILL, 4_000L, now), "G-B", "香蕉", 5, 4_000L);
@@ -265,8 +265,8 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("AC7 ★ 他人商户的 SKU → 40400（与不存在同一个回答）；自己的 SKU 回价格为元")
     void skuIsMerchantScoped() throws Exception {
-        Ctx a = ctx(merchant("12600177071", "AI取数·SKU甲"));
-        Ctx b = ctx(merchant("12600177072", "AI取数·SKU乙"));
+        Ctx a = ctx(merchant("18600177071", "AI取数·SKU甲"));
+        Ctx b = ctx(merchant("18600177072", "AI取数·SKU乙"));
         String goodsNo = "GAI" + System.nanoTime() % 1_000_000_000L;
         String skuNo = goods(a, goodsNo, "AI取数测试商品", 500L, 10);
 
@@ -290,7 +290,7 @@ class AiDataEndpointTest {
     @Test
     @DisplayName("★ 带门店的问答按覆盖层给库存：设了行的店报它自己那一行，同商户没设行的店回 0 而不是主体总量")
     void stockFollowsTheStoreOverrideLayer() throws Exception {
-        String btk = merchant("12600177081", "AI取数·店级库存");
+        String btk = merchant("18600177081", "AI取数·店级库存");
         Ctx c = ctx(btk);
         String branch = createStore(btk, "AI取数·分店");
         String goodsNo = "GAIST" + System.nanoTime() % 1_000_000_000L;
@@ -363,6 +363,7 @@ class AiDataEndpointTest {
         s.setSubOrderNo(no);
         s.setOrderNo("ORDAI" + System.nanoTime() % 1_000_000_000L);
         s.setUserNo("UAI" + System.nanoTime() % 100_000_000L);
+        s.setIdentityRevision(1L);
         s.setEntityNo(c.merchantNo);
         s.setStoreNo(c.storeNo);
         s.setStatus(status);

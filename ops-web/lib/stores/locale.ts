@@ -6,8 +6,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Locale = "zh" | "en";
-export const LOCALE_DIR: Record<Locale, "ltr" | "rtl"> = { zh: "ltr", en: "ltr" };
+export type Locale = "zh" | "zh-TW" | "en";
+
+export function parseLocale(value: string | null | undefined): Locale | null {
+  return value === "zh" || value === "zh-CN" ? "zh" : value === "zh-TW" ? "zh-TW" : value === "en" || value === "en-US" ? "en" : null;
+}
+export const LOCALE_DIR: Record<Locale, "ltr" | "rtl"> = { zh: "ltr", "zh-TW": "ltr", en: "ltr" };
 export const DEFAULT_LOCALE: Locale = "zh";
 export const LOCALE_STORAGE_KEY = "shop-ops-locale";
 
@@ -32,6 +36,9 @@ export const useLocaleStore = create<LocaleState>()(
         set({ locale: l });
       },
     }),
-    { name: LOCALE_STORAGE_KEY },
+    { name: LOCALE_STORAGE_KEY, merge: (persisted, current) => ({
+      ...current,
+      locale: parseLocale((persisted as { locale?: string } | undefined)?.locale) ?? DEFAULT_LOCALE,
+    }) },
   ),
 );

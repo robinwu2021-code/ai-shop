@@ -17,6 +17,10 @@ import java.util.function.Supplier;
 public class RemoteCatalogService implements CatalogService {
     private final CatalogInternalApi api;
     public RemoteCatalogService(CatalogInternalApi api) { this.api = api; }
+    @Override public CatalogVO scheduledCart(String entity, String store, String cartNo) {
+        MenuDefinitionPolicy.key(entity); MenuDefinitionPolicy.key(store); MenuDefinitionPolicy.key(cartNo);
+        return call(() -> api.scheduledCart(new CatalogInternalApi.ScheduledQuery(entity, store, cartNo)));
+    }
     @Override public CatalogVO read(String entity, String store, CatalogQuery query) {
         MenuDefinitionPolicy.key(entity); MenuDefinitionPolicy.key(store); CatalogPolicy.query(query);
         var result = call(() -> api.read(new CatalogInternalApi.Query(entity, store, query)));

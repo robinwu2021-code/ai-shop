@@ -4,8 +4,8 @@ import ai.neargo.shop.pay.channel.PayFundsOperations;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Operation;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Receipt;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Request;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
 import org.springframework.stereotype.Component;
@@ -18,11 +18,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class PayPointsFundsAdapter implements PointsFundsGateway {
     private static final FundsCapabilities NONE = new FundsCapabilities(false, false, false, false);
-    private final PayGatewayRouter router;
+    /** 渠道层：资金动作是能力实现顺带实现的 {@link PayFundsOperations}（W2：替代按渠道名的路由表） */
+    private final LegacyChannelBridge channels;
     private final PayChannelMasterService master;
 
-    public PayPointsFundsAdapter(PayGatewayRouter router, PayChannelMasterService master) {
-        this.router = router;
+    public PayPointsFundsAdapter(LegacyChannelBridge channels, PayChannelMasterService master) {
+        this.channels = channels;
         this.master = master;
     }
 
@@ -107,11 +108,7 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
     }
 
     private PayFundsOperations nativeGateway(FundsContext context) {
-        if (!router.supports(context.channel())) {
-            return null;
-        }
-        var gateway = router.of(context.channel());
-        return gateway instanceof PayFundsOperations funds ? funds : null;
+        return channels.capability(context.channel(), PayFundsOperations.class).orElse(null);
     }
 
     private FundsResult result(FundsCommand command, Receipt receipt) {

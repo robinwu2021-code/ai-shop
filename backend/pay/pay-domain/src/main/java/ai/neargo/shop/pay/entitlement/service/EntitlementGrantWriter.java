@@ -39,6 +39,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Pay-only transactions; external fact lookups must finish before invoking this component. */
 @Component
 public class EntitlementGrantWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntGrantMapper grants;
     private final EntitlementSourceFence fences;
     private final EntInstanceMapper instances;
@@ -70,6 +72,7 @@ public class EntitlementGrantWriter {
         var original = grants.lock(context.tenantNo(), c.grantNo());
         if (original == null || !original.getPayloadHash().equals(row.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
+        documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_GRANT, context.tenantNo(), original.getGrantNo());
         if ("PAID_CARD_ORDER".equals(c.sourceRef().sourceType())) {
             original.setReservationNo(sales.transfer(context, prepared));
         } else {
@@ -149,7 +152,7 @@ public class EntitlementGrantWriter {
                 Wrappers.<EntInstance>lambdaQuery().eq(EntInstance::getTenantNo, row.getTenantNo())
                         .eq(EntInstance::getGrantNo, row.getGrantNo()).orderByAsc(EntInstance::getUnitIndex))
                 .stream().map(EntInstance::getInstanceNo).toList() : List.of();
-        return new GrantView(row.getGrantNo(), State.valueOf(row.getStatus()), ids, source);
+        return new GrantView(row.getGrantNo(), State.valueOf(row.getStatus()), ids, source, documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_GRANT, row.getTenantNo(), row.getGrantNo()));
     }
     public static String digest(String payload) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

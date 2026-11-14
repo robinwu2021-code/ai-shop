@@ -1,6 +1,10 @@
 package ai.neargo.shop.message.mapper;
 
 import ai.neargo.shop.message.entity.MsgMessage;
+import ai.neargo.shop.message.dto.MessageVOs.PaymentUnread;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
 import ai.neargo.shop.message.entity.MsgSubscribe;
 import ai.neargo.shop.message.entity.MsgTemplate;
 import ai.neargo.shop.message.entity.MsgTicket;
@@ -27,6 +31,14 @@ public final class MessageMappers {
     }
 
     public interface MessageMapper extends BaseMapper<MsgMessage> {
+        @Select("SELECT p.entity_no AS entityNo,p.store_no AS storeNo,COALESCE(p.n,0) AS unreadCount,"
+                + " g.n AS globalUnreadCount FROM (SELECT COUNT(*) AS n FROM notify_message"
+                + " WHERE receiver_type='STAFF' AND receiver_no=#{receiverNo} AND is_read=0 AND deleted=0) g"
+                + " LEFT JOIN (SELECT entity_no,store_no,COUNT(*) AS n FROM notify_message"
+                + " WHERE receiver_type='STAFF' AND receiver_no=#{receiverNo} AND biz_type='PAYMENT'"
+                + " AND is_read=0 AND deleted=0 GROUP BY entity_no,store_no) p ON 1=1")
+        List<PaymentUnread> paymentUnreadScopes(@Param("receiverNo") String receiverNo);
+
 
         /**
          * 这个 dedupKey 用过没有 —— <b>连软删的行一起看</b>。

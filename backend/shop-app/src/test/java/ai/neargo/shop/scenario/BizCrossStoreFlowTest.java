@@ -77,7 +77,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★ FREE 访问两个端点都被明确拒绝（70023 且说清当前档位），升到 PRO 才能看")
     void freePlanIsDeniedThenProCanSee() throws Exception {
-        String biz = merchant("12601000001", "跨店·免费店");
+        String biz = merchant("18601000001", "跨店·免费店");
 
         /*
          * ★ 拒绝要**明确**，不是返回空数据。
@@ -115,7 +115,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★★ 跨店总览的数字 = 各店订单列表的真实单量与金额 —— 守的是「不另存计数器」")
     void overviewMatchesPerStoreOrderList() throws Exception {
-        String biz = merchant("12601000010", "跨店·对账总店");
+        String biz = merchant("18601000010", "跨店·对账总店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
 
         String storeA = defaultStoreNo(biz);
@@ -196,7 +196,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★ 单店商家看到的总览 = 他那一家的数据（不是空列表，也不是报错）")
     void singleStoreMerchantSeesHisOwnStore() throws Exception {
-        String biz = merchant("12601000020", "跨店·单店铺");
+        String biz = merchant("18601000020", "跨店·单店铺");
         // 单店商家也可能买了包（他正准备开第二家）—— 这一页在那之前就该是对的
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
 
@@ -225,7 +225,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★ 复购率 = 窗口内下过 ≥2 单的买家 ÷ 下过单的买家；没单的店是 0 不是除零")
     void repeatRateCountsBuyersWhoCameBack() throws Exception {
-        String biz = merchant("12601000030", "跨店·复购总店");
+        String biz = merchant("18601000030", "跨店·复购总店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
 
         String storeA = defaultStoreNo(biz);
@@ -263,7 +263,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★ 评分是主体级、放在顶层 —— 每店那一行里**没有**这个字段")
     void ratingIsEntityLevelAndNotPerStore() throws Exception {
-        String biz = merchant("12601000035", "跨店·评分店");
+        String biz = merchant("18601000035", "跨店·评分店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
         createStore(biz, "跨店·评分分店");
 
@@ -295,7 +295,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★ 缺货数只数已启用店级库存的 SKU —— 没设过店级库存的不算这家店缺货")
     void outOfStockCountsOnlyStoreManagedSkus() throws Exception {
-        String biz = merchant("12601000040", "跨店·缺货总店");
+        String biz = merchant("18601000040", "跨店·缺货总店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
 
         String storeA = defaultStoreNo(biz);
@@ -340,7 +340,7 @@ class BizCrossStoreFlowTest {
     @Test
     @DisplayName("★★ 子账号只被授权 A 店 —— 总览里就只有 A 店，看不到 B 店的流水")
     void staffOnlySeesAuthorizedStore() throws Exception {
-        String owner = merchant("12601000050", "跨店·授权总店");
+        String owner = merchant("18601000050", "跨店·授权总店");
         TestPlan.grantPro(planMapper, merchantNoOf(owner));
 
         String storeA = defaultStoreNo(owner);
@@ -358,7 +358,7 @@ class BizCrossStoreFlowTest {
         assertThat(overview(owner).get("data").get("stores")).hasSize(2);
 
         // 只把 A 店授权给店长（MANAGER 有 biz:customer，能看经营数据）
-        String staffPhone = "12601000059";
+        String staffPhone = "18601000059";
         String accountNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)

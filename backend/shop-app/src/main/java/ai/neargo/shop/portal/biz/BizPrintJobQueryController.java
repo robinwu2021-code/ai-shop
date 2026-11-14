@@ -83,7 +83,7 @@ public class BizPrintJobQueryController {
     public OrderPrintSummaryVO getOrderSummary(
             @PathVariable("orderNo") String orderNo, @ModelAttribute GetOrderSummaryQuery query) {
         var actor = actors.merchant(null);
-        if (!actor.dataScopes().contains("SOURCE_ORDER_READ"))
+        if (!PrintSourceDataScopes.hasAnySource(actor.dataScopes()))
             throw new PrintFailure("print.forbidden");
         return service0.getOrderSummary(orderNo, query, actor);
     }

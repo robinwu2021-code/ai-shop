@@ -59,6 +59,8 @@ public class GoodsServiceImpl implements GoodsService {
     private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
     /** 买家在哪儿能看到什么 —— 查询时现算（方案-商品可见性改查询时关联） */
     private final GoodsVisibility visibility;
+    /** 门店售价覆盖层 —— 买家侧展示要与下单取价（GoodsQueryPortImpl.snapshot）同一个数 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
@@ -66,7 +68,9 @@ public class GoodsServiceImpl implements GoodsService {
                             ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort,
                             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                             ai.neargo.shop.product.service.StoreStockReader storeStockReader,
-                            GoodsVisibility visibility) {
+                            GoodsVisibility visibility,
+                            ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper) {
+        this.storePriceMapper = storePriceMapper;
         this.visibility = visibility;
         this.storeGoodsMapper = storeGoodsMapper;
         this.storeStockReader = storeStockReader;
@@ -160,8 +164,10 @@ public class GoodsServiceImpl implements GoodsService {
         // SKU 要一次批量取：逐条查是列表页 N+1 的经典来源
         Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
         var flash = campaignPort.flashPrices(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        Map<String, Long> storePrice = storePricesOf(rows, skus, null);
         return rows.stream()
-                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())))
+                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo()),
+                        storePrice))
                 .toList();
     }
 
@@ -186,9 +192,11 @@ public class GoodsServiceImpl implements GoodsService {
                 .collect(java.util.stream.Collectors.toMap(PrdGoods::getGoodsNo, g -> g, (a, b) -> a));
         Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
         var flash = campaignPort.flashPrices(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        Map<String, Long> storePrice = storePricesOf(rows, skus, null);
         // ★ 顺序按运营配的来，不是按查出来的顺序 —— 数据库不保证 IN 的返回序
         return goodsNos.stream().map(byNo::get).filter(java.util.Objects::nonNull)
-                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())))
+                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo()),
+                        storePrice))
                 .toList();
     }
 
@@ -384,12 +392,35 @@ public class GoodsServiceImpl implements GoodsService {
             }
         });
         Map<String, String> storeNames = storeNamesOf(storeOfGoods.values());
+        // 门店价按「下单时会落的那家店」取：归属店，没有归属才用门户的 storeNo —— 与 snapshot 同序
+        Map<String, Long> storePrice = storePricesOf(page.getRecords(), skus, q.storeNo());
         List<GoodsVO> records = page.getRecords().stream()
                 .map(g -> withStoreScope(
-                        toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())),
+                        toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo()),
+                                storePrice),
                         storeOfGoods.get(g.getGoodsNo()), storeNames))
                 .toList();
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    /**
+     * 买家能不能打开这件货：<b>必须过审</b>（APPROVED）。
+     *
+     * <p>{@code detail()} 是商家与运营共用的组装，不看任何状态 —— 买家详情直接复用它，
+     * 于是草稿、待审、被驳回、被平台强制下架的商品，拿到货号就能看全内容
+     * （强制下架的处置在买家那里等于没发生）。列表与下单快照早就按 APPROVED 判了，只漏了详情。
+     *
+     * <p><b>过审后商家自己下架的仍可看</b>（VO 的 onSale=false，端上据此灰掉购买）：
+     * 收藏夹、订单里的历史链接要能打开，看到「已下架」比看到「不存在」诚实。
+     * 不存在与未过审回同一个 NOT_FOUND —— 后者不该被确认存在。
+     */
+    private void requireBuyerVisible(String goodsNo) {
+        PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
+                Wrappers.<PrdGoods>lambdaQuery().select(PrdGoods::getAuditStatus)
+                        .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
+        if (g == null || !"APPROVED".equals(g.getAuditStatus())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
     }
 
     /** 商品的归属门店（V384）；没有归属返回 null */
@@ -480,7 +511,7 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public GoodsVO detailForBuyer(String goodsNo, String storeNo) {
-        GoodsVO v = detail(goodsNo);
+        requireBuyerVisible(goodsNo);
         /*
          * ★ 商品只属于一家门店（V384，ADR-031）：有归属就按它 —— 链接上带的门店号只是「从哪进来的」，
          * 不决定这件货由谁卖。库存、店名都按归属店取。没有归属（测试种子）才用调用方给的。
@@ -489,6 +520,19 @@ public class GoodsServiceImpl implements GoodsService {
         if (owner != null) {
             storeNo = owner;
         }
+        /*
+         * 不复用 detail()：那一份是商家/运营的组装，SKU 价是主体价。买家这里要叠门店价 ——
+         * 下单取价（GoodsQueryPortImpl.snapshot）一直叠着，详情不叠的话「页面 ¥10、扣款 ¥12」。
+         */
+        PrdGoods row = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
+                Wrappers.<PrdGoods>lambdaQuery().eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        Map<String, List<PrdSku>> rowSkus = loadSkus(List.of(goodsNo));
+        GoodsVO v = toVO(row, rowSkus.getOrDefault(goodsNo, List.of()),
+                campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo),
+                storePricesOf(List.of(row), rowSkus, storeNo));
         /*
          * **库存只在调用方真正传了 storeNo 时才换**（AC8：不带门店时给主体总量，口径不变 ——
          * 单店商家、从首页推荐进来的都走这一支）。换库存与下面「解析门店名」是两件事，别绑在一起：
@@ -636,6 +680,8 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo) {
+        // 与买家详情同一道门：没过审的货连单个规格的价都不该问得到
+        requireBuyerVisible(goodsNo);
         // ★ 与本类其它公共目录查询同一条规矩：买家侧读 SKU 必须显式豁免数据域。
         // prd_sku 登记 MERCHANT 锚点之后，不豁免就是 1=0 —— 症状是「规格切换后价格取不到」
         PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
@@ -647,8 +693,11 @@ public class GoodsServiceImpl implements GoodsService {
         if (sku == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        // 单 SKU 询价也要吃特价 —— 否则规格切换时价格会跳回原价
-        var vo = toSkuVO(sku, campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo));
+        // 单 SKU 询价也要吃特价 —— 否则规格切换时价格会跳回原价；门店价同理（归属店）
+        String owner = ownerStoreOf(goodsNo);
+        Long storePrice = owner == null ? null
+                : storePriceAt(owner, List.of(skuNo)).get(skuNo);
+        var vo = toSkuVO(sku, campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo), storePrice);
         return new ai.neargo.shop.product.dto.SkuPriceVO(
                 vo.skuNo(), vo.spec(), vo.price(), vo.originPrice(), vo.stock());
     }
@@ -701,6 +750,14 @@ public class GoodsServiceImpl implements GoodsService {
      * @param flashPrice 限时特价；null 表示这件商品此刻没有特价活动
      */
     private GoodsVO toVO(PrdGoods g, List<PrdSku> skus, Long flashPriceRaw) {
+        return toVO(g, skus, flashPriceRaw, Map.of());
+    }
+
+    /**
+     * @param storePrice skuNo → 门店售价（买家侧叠的覆盖层，见 {@link #storePricesOf}）；
+     *                   商家/运营视角传空 —— 他们看的、改的是主体价，门店价另有一列
+     */
+    private GoodsVO toVO(PrdGoods g, List<PrdSku> skus, Long flashPriceRaw, Map<String, Long> storePrice) {
         /*
          * 多规格商品不套用商品级特价 —— 与 GoodsQueryPortImpl 同一条规则。
          * 两处都要判：一处管展示、一处管钱，只改一处会让「页面特价、下单原价」。
@@ -708,7 +765,7 @@ public class GoodsServiceImpl implements GoodsService {
         Long flashPrice = skus.size() > 1 ? null : flashPriceRaw;
         // 展示价取最低 SKU 价（端上「¥x 起」）。无 SKU 的商品不该上架，这里兜底为 0 而不是抛错，
         // 否则一条脏数据会让整个列表页 500
-        long listPrice = skus.stream().mapToLong(s -> s.getPrice() == null ? 0L : s.getPrice()).min().orElse(0L);
+        long listPrice = skus.stream().mapToLong(s -> ownPrice(s, storePrice.get(s.getSkuNo()))).min().orElse(0L);
         /*
          * 特价生效时，**原价挪到划线价**上 —— 只改售价不给划线价，用户看到的是
          * 一个孤零零的低价，既感知不到优惠，也无法判断值不值。
@@ -752,7 +809,7 @@ public class GoodsServiceImpl implements GoodsService {
                 g.getRating() == null ? 0d : g.getRating() / 10d,
                 nz(g.getRatingCount()), minPrice, minOrigin,
                 readList(g.getFulfillments()), readSpecGroups(g.getSpecGroups()),
-                skus.stream().map(s -> toSkuVO(s, flashPrice)).toList(),
+                skus.stream().map(s -> toSkuVO(s, flashPrice, storePrice.get(s.getSkuNo()))).toList(),
                 nz(g.getSales()), g.getCutoffAt(), g.getArrivalDesc(), g.getWeighed(), g.getOrigin(),
                 g.getDurationMin(), g.getStoreName(), nz(g.getLimitPerUser()),
                 Boolean.TRUE.equals(g.getOnSale()),
@@ -832,11 +889,57 @@ public class GoodsServiceImpl implements GoodsService {
                 : new GoodsVO.GroupBuyConfVO(g.getGroupMinCount(), g.getGroupPriceMinor());
     }
 
-    private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice) {
+    /** 售价基数：门店定过价用门店价，否则主体价。特价在它之上再覆盖 —— 与 snapshot 同序 */
+    private static long ownPrice(PrdSku s, Long storePrice) {
+        if (storePrice != null) {
+            return storePrice;
+        }
+        return s.getPrice() == null ? 0L : s.getPrice();
+    }
+
+    /**
+     * 这批货在<b>下单时会落的那家店</b>的门店价（skuNo → 价）。
+     *
+     * <p>判据与 {@code GoodsQueryPortImpl.snapshot} 逐条对齐：有归属门店（V384）按归属店，
+     * 没有归属才用调用方给的门店；没有门店行的 SKU 不出现（回退主体价，<b>不是 0</b>）。
+     * 此前买家列表/详情/询价只看主体价，而结算叠了门店价 —— 页面 ¥10，扣款 ¥12。
+     */
+    private Map<String, Long> storePricesOf(List<PrdGoods> rows, Map<String, List<PrdSku>> skus, String fallbackStore) {
+        Map<String, Long> out = new HashMap<>();
+        Map<String, List<String>> skuNosByStore = new HashMap<>();
+        for (PrdGoods g : rows) {
+            String st = g.getStoreNo() != null && !g.getStoreNo().isBlank() ? g.getStoreNo() : fallbackStore;
+            if (st == null || st.isBlank()) {
+                continue;
+            }
+            for (PrdSku s : skus.getOrDefault(g.getGoodsNo(), List.of())) {
+                skuNosByStore.computeIfAbsent(st, k -> new java.util.ArrayList<>()).add(s.getSkuNo());
+            }
+        }
+        skuNosByStore.forEach((st, nos) -> out.putAll(storePriceAt(st, nos)));
+        return out;
+    }
+
+    private Map<String, Long> storePriceAt(String storeNo, List<String> skuNos) {
+        if (skuNos.isEmpty()) {
+            return Map.of();
+        }
+        // ★ 买家侧读门店价同样是公共目录查询，显式豁免数据域（见类注释）
+        return DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)
+                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)))
+                .stream().filter(r -> r.getPrice() != null)
+                .collect(Collectors.toMap(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo,
+                        ai.neargo.shop.product.entity.PrdStorePrice::getPrice, (a, b) -> a));
+    }
+
+    private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice, Long storePrice) {
         // 可售 = 总库存 - 已锁定：把锁定量直接从展示库存里扣掉，端上就不会出现
         // 「显示有货但下单提示库存不足」
         int available = nz(s.getStock()) - nz(s.getLockedStock());
-        long own = s.getPrice() == null ? 0L : s.getPrice();
+        long own = ownPrice(s, storePrice);
         // 同 toVO：划线价那一支不能用三元 —— long 与可空 Long 混在一起会被拆箱成 long
         Long origin;
         if (flashPrice != null) {
@@ -851,9 +954,12 @@ public class GoodsServiceImpl implements GoodsService {
                 // 商家侧由 MerchantGoodsServiceImpl 单独查一次补上（那边才需要整份回填）
                 null,
                 /*
-                 * 门店价同样**不发给买家**：这条路径没有门店上下文（商品挂主体，
-                 * 店是下单时由自提点定的），给一个「某家店的价」只会与他实际付的钱不符。
-                 * 买家侧的门店价在结算那一步生效，见 OrderServiceImpl.split()。
+                 * storePrice 这一列（商家侧的「本店另定价」）**不发给买家**。买家看到的门店价
+                 * 已经并进上面的 price 里了（ownPrice：按归属店取，与下单 snapshot 同序）——
+                 * 再单独发一列只会让端上不知道该显示哪个。
+                 *
+                 * 这里原先写的是「买家侧没有门店上下文，门店价在结算那一步生效」：
+                 * V384 之后商品有归属门店，那句前提不成立了，留下的是「页面 ¥10、扣款 ¥12」。
                  */
                 null,
                 // 成本价同理：进货价是商家的经营秘密，买家端恒空

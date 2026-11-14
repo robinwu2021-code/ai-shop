@@ -20,6 +20,9 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
 import { readSchema, AUDIT, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "../../../scripts/lib/ddl.mjs";
 
+// @ts-expect-error -- shared evidence validator is an ES module without declarations
+import { persistenceOwners } from "../../../scripts/lib/persistence-owners.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
 
@@ -38,6 +41,24 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  mch_brand_financial_change: "既有P6预留品牌财务变更投影；当前没有独立生产读写入口，P6完整阶段仍待交付，不作为本批餐饮数据来源。",
+  mkt_counter_campaign_fence: "共享 marketing owner 协调行由 CounterCampaignFenceMapper 显式 exact-PK SQL 维护，SELECT revision 返回 Long；不映射 ORM 实体，不是 beauty 表或业务账。",
+  sys_outbox_stream: "平台事件流序号由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 加锁分配，按 stream_key 查询 next_sequence；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  sys_outbox_delivery: "平台投递状态由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 追加、认领和回写，按投递 id 或 event_no/handler_id 查询；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  sys_outbox_operation: "平台重放/跳过审计由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 追加，按 request_id 查询幂等操作；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  prd_stock_sync_operation: "库存同步幂等操作由 StockReconcileService 的 JdbcTemplate 维护，按 operation_no 读取结果并按门店查询历史，映射 OperationResult/OperationRecord 与 JSON 结果；已有 JDBC/record 模型，无独立 ORM 实体。",
+  prd_stock_alignment_batch: "库存初始对齐批次由 StockAlignmentService 的 JdbcTemplate 维护，按 batch_no/entity_no/store_no 查询 Batch 并生成 BatchView；已有 JDBC/record 工作流模型，无独立 ORM 实体。",
+  prd_stock_alignment_line: "库存初始对齐明细由 StockAlignmentService 的 JdbcTemplate 追加和回写，按 batch_no/line_no 查询 StoredLine 并生成 LineView；已有 JDBC/record 快照模型，无独立 ORM 实体。",
+  ord_refund_coupon_scope: "退款券分摊冻结范围由 RefundObligationMapper 的持久 SQL 写入并按 order_no 查询，RefundCouponScopeServiceImpl/RefundObligationServiceImpl 读写 Scope record 的 JSON 快照；采用 SQL mapper/record 模型，无独立 ORM 实体。",
+  ord_refund_obligation: "退款券/库存义务由 RefundObligationMapper 的持久 SQL 创建、锁定和回写，按 execution_no 查询 Map 行并由退款服务生成 Progress record；采用 SQL mapper/record 模型，无独立 ORM 实体。",
+  inv_outbox_stream: "库存事件流序号由 JdbcOutboxStore 固定 Source.INVENTORY 的 JdbcTemplate 加锁分配，按 stream_key 查询 next_sequence；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  inv_outbox_delivery: "库存投递状态由 JdbcOutboxStore 固定 Source.INVENTORY 的 JdbcTemplate 追加、认领和回写，按投递 id 或 event_no/handler_id 查询；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  inv_outbox_operation: "库存重放/跳过审计由 JdbcOutboxStore 固定 Source.INVENTORY 的 JdbcTemplate 追加，按 request_id 查询幂等操作；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
+  inv_event_consumed: "库存消费幂等收件记录由 TransactionalOutboxHandler 的 JdbcTemplate 与消费效果同事务插入，按 event_no/handler 唯一键冲突识别已消费；OutboxConfiguration 为 INVENTORY 选择该收件表和库存事务，无独立 ORM 实体。",
+  pay_platform_collection_head: "平台线下收款档案的当前版本指针，由 PlatformOfflineLedger 经 JdbcTemplate 在行锁内读写，不使用 ORM 实体。",
+  pay_platform_collection_profile: "平台线下收款档案的不可变版本（发出后的指引原样保留），由 PlatformOfflineLedger 经 JdbcTemplate 追加与按版本读取，不使用 ORM 实体。",
+  inv_coordinated_reservation: "商城硬件协调预留（生命周期3），只由 CoordinatedInventoryService 经 JdbcTemplate 在库存事务内读写，旧库存接口不得改写，不使用 ORM 实体。",
+  inv_coordinated_shipment: "商城硬件协调发货证据，只由 CoordinatedInventoryService 经 JdbcTemplate 追加，不使用 ORM 实体。",
   pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
@@ -114,31 +135,59 @@ const NO_ENTITY_YET: Record<string, string> = {
    */
 };
 
-/** Resolve mapped superclass fields, rather than assuming every entity extends BaseEntity. */
-function inheritedFields(file: string, seen = new Set<string>()): string[] {
-  if (seen.has(file) || !existsSync(file)) return [];
-  seen.add(file);
-  const src = readFileSync(file, "utf8");
-  const fields = [...src.matchAll(/private\s+[\w.]+(?:<[^>]*>)?\s+(\w+)\s*;/g)].map((m) => m[1]!);
-  const parent = src.match(/class\s+\w+\s+extends\s+(\w+)/)?.[1];
-  if (!parent) return fields;
-  const imported = src.match(new RegExp(`import\\s+([\\w.]+\\.${parent})\\s*;`))?.[1];
-  const parentFile = imported
-    ? join(file.slice(0, file.indexOf("/src/main/java/") + 15), imported.replaceAll(".", "/") + ".java")
-    : join(file, "..", parent + ".java");
-  return [...fields, ...inheritedFields(parentFile, seen)];
+// shedlock 进这里而不是 NO_ENTITY_YET：**它不是欠账，是框架自管表**。
+// 表结构由 ShedLock 硬编码（列名不能改），读写全在 JdbcTemplateLockProvider 内部，
+// 配一个实体反而会让人以为可以用它读锁状态 —— 而那样读到的是不带锁语义的快照。
+/*
+ * 会话与登录日志六张进这里而不是 NO_ENTITY_YET：**它们不是欠账，是有意不配实体**。
+ *
+ * <p>读写全在 `shop-auth-store` 的 SessionDao / LoginLogDao 里，用 `JdbcClient`
+ * 原生 SQL（按 token_hash 单点查、按 user_no 取登录史、GC 的 DELETE）。
+ * 配一个 MyBatis 实体的害处是实在的：数据域是 MyBatis-Plus 的拦截器，
+ * 有了实体这些表就会被它看见 —— 而它们恰恰不该被按业务归属过滤
+ * （撤销轮询与失败登录流按用途就是跨用户的）。
+ * 同 shedlock 那条：配实体反而会让人以为可以那样用它。
+ */
+const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
+  + "|(usr|mch|ops)_(session|login_log))$");
+
+/** 返回既无 ORM 实体、也无精确非 ORM 登记的业务表。 */
+function unregisteredBusinessTables(
+  schemaTables: Iterable<string>,
+  entities: ReadonlyMap<string, unknown>,
+  registrations: Readonly<Record<string, string>>,
+): string[] {
+  return [...schemaTables]
+    .filter((t) => !IGNORE.test(t) && !entities.has(t) && !sqlOwners.has(t) && !Object.hasOwn(registrations, t));
 }
 
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
-function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string> }>()) {
+function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string>; source: string }>()) {
   for (const e of readdirSync(dir)) {
     if (e === "target" || e === "node_modules") continue;
     const p = join(dir, e);
     if (statSync(p).isDirectory()) scanEntities(p, out);
     else if (e.endsWith(".java")) {
-      const src = readFileSync(p, "utf8");
+      let src = readFileSync(p, "utf8");
       const t = src.match(/@TableName\("(\w+)"\)/)?.[1];
       if (!t) continue;
+      const seen = new Set<string>([p]);
+      let child = src;
+      let childFile = p;
+      for (;;) {
+        const parent = child.match(/\bclass\s+\w+\s+extends\s+(\w+)/)?.[1];
+        if (!parent || parent === "BaseEntity") break;
+        const imported = child.match(new RegExp(`import\\s+([\\w.]+\\.${parent});`))?.[1];
+        const samePackage = join(childFile, "..", `${parent}.java`);
+        const parentFile = existsSync(samePackage) ? samePackage : imported
+          ? join(childFile.slice(0, childFile.indexOf("/src/main/java/")), "src/main/java", ...imported.split(".")) + ".java" : null;
+        if (!parentFile || !existsSync(parentFile)) throw new Error(`Cannot resolve entity parent ${parent}: ${p}`);
+        if (seen.has(parentFile)) throw new Error(`Cyclic entity inheritance: ${p}`);
+        seen.add(parentFile);
+        childFile = parentFile;
+        child = readFileSync(parentFile, "utf8");
+        src += "\n" + child;
+      }
       // `private Long x;` / `private List<String> y;` / `private Map<String, X> z;`
       // `@TableField("col")` 显式映射优先 —— 全库改名（merchant_no→entity_no）后
       // 字段名与列名分离是常态，对齐要按**实际映射到的列**算。
@@ -147,14 +196,10 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
         [...src.matchAll(
           /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
         )].map((m) => {
-          const column = m[1]!.match(/@TableField\(\s*"(\w+)"\s*\)/)?.[1];
+          const column = m[1]!.match(/@(?:[\w]+\.)*TableField\(\s*"(\w+)"\s*\)/)?.[1];
           return column ? camel(column) : m[2]!;
         }),
       );
-      const superclass = src.match(/class\s+\w+\s+extends\s+(\w+)/)?.[1];
-      if (superclass) {
-        for (const field of inheritedFields(join(p, "..", superclass + ".java"))) fields.add(field);
-      }
       /*
        * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
        * FulShipment 与 LgsWaybill 都映射 lgs_waybill）。这条检查要回答的是「这一列有没有人读得到」，
@@ -162,8 +207,8 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
        */
       const prev = out.get(t);
       out.set(t, prev
-        ? { file: `${prev.file} + ${p.slice(ROOT.length + 1)}`, fields: new Set([...prev.fields, ...fields]) }
-        : { file: p.slice(ROOT.length + 1), fields });
+        ? { file: `${prev.file} + ${p.slice(ROOT.length + 1)}`, fields: new Set([...prev.fields, ...fields]), source: prev.source + "\n" + src }
+        : { file: p.slice(ROOT.length + 1), fields, source: src });
     }
   }
   return out;
@@ -173,6 +218,10 @@ const schema: Map<string, { cols: { name: string }[] }> = existsSync(BACKEND)
   ? readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR])
   : new Map();
 const entities = existsSync(BACKEND) ? scanEntities(BACKEND) : new Map();
+const sqlOwners = persistenceOwners(ROOT, JSON.parse(readFileSync(join(ROOT, "scripts/lib/persistence-owners.json"), "utf8")));
+for (const table of sqlOwners) {
+  if (!schema.has(table)) throw new Error(`Persistence owner names a missing table: ${table}`);
+}
 
 /** SQL adapters are mappings too: require their real table binding and every business column. */
 const SQL_PERSISTENCE: Record<string, string> = {
@@ -260,7 +309,7 @@ describe("Java 实体与库表对齐", () => {
     expect(fields?.has("sourceSnapshotJson")).toBe(false);
   });
 
-  it("继承的打印租户归属与修订字段也必须参与对齐", () => {
+  it("打印实体继承的业务归属与修订字段参与真实列对齐", () => {
     expect(entities.get("prn_agent")?.fields.has("entityNo")).toBe(true);
     expect(entities.get("prn_agent")?.fields.has("revision")).toBe(true);
   });
@@ -317,12 +366,12 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
 
   it("实体没有库里不存在的字段 —— 那种写入会在运行时才炸", () => {
     const ghost: string[] = [];
-    for (const [table, { file, fields }] of entities) {
+    for (const [table, { file, fields, source }] of entities) {
       const cols = new Set(businessCols(table));
       // @TableField(exist = false) 的字段不落库，扫描认不出来，所以只报有把握的：
       // 名字看起来像列（非集合、非 transient）却在库里没有
       const extra = [...fields].filter(
-        (f) => !cols.has(f) && !BASE_FIELDS.has(f) && !readFileSync(join(ROOT, file), "utf8")
+        (f) => !cols.has(f) && !BASE_FIELDS.has(f) && !source
           .match(new RegExp(`exist\\s*=\\s*false[^;]*?\\b${f}\\b|\\b${f}\\b[^;]*?exist\\s*=\\s*false`)),
       );
       if (extra.length) ghost.push(`${table}（${file}）多出：${extra.join("、")}`);
@@ -334,23 +383,7 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
   });
 
   it("每张业务表都有实体，或已登记为「知道欠着」", () => {
-    // shedlock 进这里而不是 NO_ENTITY_YET：**它不是欠账，是框架自管表**。
-    // 表结构由 ShedLock 硬编码（列名不能改），读写全在 JdbcTemplateLockProvider 内部，
-    // 配一个实体反而会让人以为可以用它读锁状态 —— 而那样读到的是不带锁语义的快照。
-    /*
-     * 会话与登录日志六张进这里而不是 NO_ENTITY_YET：**它们不是欠账，是有意不配实体**。
-     *
-     * <p>读写全在 `shop-auth-store` 的 SessionDao / LoginLogDao 里，用 `JdbcClient`
-     * 原生 SQL（按 token_hash 单点查、按 user_no 取登录史、GC 的 DELETE）。
-     * 配一个 MyBatis 实体的害处是实在的：数据域是 MyBatis-Plus 的拦截器，
-     * 有了实体这些表就会被它看见 —— 而它们恰恰不该被按业务归属过滤
-     * （撤销轮询与失败登录流按用途就是跨用户的）。
-     * 同 shedlock 那条：配实体反而会让人以为可以那样用它。
-     */
-    const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
-      + "|(usr|mch|ops)_(session|login_log))$");
-    const naked = [...schema.keys()]
-      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET) && !(t in SQL_PERSISTENCE));
+    const naked = unregisteredBusinessTables(schema.keys(), entities, NO_ENTITY_YET);
     expect(
       naked,
       "这些表没有 Java 实体，也没登记原因：\n  " +
@@ -358,6 +391,46 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
         "\n→ 要么补实体，要么登记进 NO_ENTITY_YET 并写清何时补。" +
         "\n  留着不管的后果：这张表只能靠手写 SQL 访问，而没人知道它已经建好了。",
     ).toEqual([]);
+  });
+
+  it("登记的非 ORM 表通过分类，未登记的新业务表仍被拒绝", () => {
+    const probe = "quality_unregistered_business_probe";
+    expect(unregisteredBusinessTables([...schema.keys(), probe], entities, NO_ENTITY_YET))
+      .toEqual([probe]);
+  });
+
+  it("删去真实非 ORM 登记后，真实业务表与未知 probe 都被拒绝", () => {
+    const registrations = { ...NO_ENTITY_YET };
+    delete registrations.pts_account;
+    const probe = "quality_unregistered_business_probe";
+    expect(unregisteredBusinessTables([...schema.keys(), probe], entities, registrations).sort())
+      .toEqual([probe, "pts_account"].sort());
+  });
+
+  it("已验证 SQL owner 可独立提供分类，未知来源仍被拒绝", () => {
+    const registrations = { ...NO_ENTITY_YET };
+    delete registrations.sys_outbox_stream;
+    expect(sqlOwners.has("sys_outbox_stream")).toBe(true);
+    expect(unregisteredBusinessTables(["sys_outbox_stream", "quality_unregistered_sql_probe"], entities, registrations))
+      .toEqual(["quality_unregistered_sql_probe"]);
+  });
+
+  it("已有积分、物流登记与新增 JDBC owner 表共同参与分类", () => {
+    const tables = ["pts_account", "lgs_push_event", "sys_outbox_stream", "prd_stock_sync_operation",
+      "prd_stock_alignment_batch", "prd_stock_alignment_line", "ord_refund_coupon_scope",
+      "ord_refund_obligation", "inv_outbox_delivery", "inv_event_consumed"];
+    for (const table of tables) {
+      expect(schema.has(table), `真实迁移缺少 ${table}`).toBe(true);
+      expect(entities.has(table), `${table} 应由非 ORM owner 维护`).toBe(false);
+    }
+    expect(unregisteredBusinessTables(tables, entities, NO_ENTITY_YET)).toEqual([]);
+  });
+
+  it("继承的登记键与自带原型键不能放行未知业务表", () => {
+    const probe = "quality_unregistered_business_probe";
+    const registrations = Object.assign(Object.create({ [probe]: "继承键不是登记" }), NO_ENTITY_YET);
+    expect(unregisteredBusinessTables([probe, "toString"], entities, registrations))
+      .toEqual([probe, "toString"]);
   });
 
   it("SQL persistence mappings must bind their table and cover every business column", () => {
@@ -391,4 +464,23 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     const stale = Object.keys(NO_ENTITY_YET).filter((t) => entities.has(t));
     expect(stale, `这些表已经有实体了，请从 NO_ENTITY_YET 删除：${stale.join("、")}`).toEqual([]);
   });
+});
+
+
+describe("manual execution permanent authority entity alignment", () => {
+  const schema = readSchema(ROOT);
+  const entities = scanEntities(BACKEND);
+  for (const table of ["ord_service_execution_unit", "ord_service_execution", "ord_service_execution_action"]) {
+    it(`${table} declares every business column and inherits actual BaseEntity`, () => {
+      const entity = entities.get(table);
+      expect(entity).toBeDefined();
+      const columns = schema.get(table)?.cols.filter((c: { name: string }) => !AUDIT.has(c.name))
+        .map((c: { name: string }) => camel(c.name));
+      expect(columns).toBeDefined();
+      expect([...entity!.fields].filter(field => !BASE_FIELDS.has(field)).sort()).toEqual(columns!.sort());
+      const source = readFileSync(join(ROOT, entity!.file), "utf8");
+      expect(source).toMatch(/extends BaseEntity/);
+      expect(NO_ENTITY_YET[table]).toBeUndefined();
+    });
+  }
 });

@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -49,6 +50,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             FROZEN, Set.of(ACTIVE));
 
     private final MchEntityMapper merchantMapper;
+    private final PayMerchantMirror payMirror;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper communityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
@@ -115,7 +117,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
             org.springframework.beans.factory.ObjectProvider<
-                    ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort) {
+                    ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort,
+                    PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.channelPickupMapper = channelPickupMapper;
         this.visitQueryPort = visitQueryPort;
         this.authCodeMapper = authCodeMapper;
@@ -791,6 +795,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         m.setFundsMode(mode);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
         return toVO(m);
     }
@@ -880,7 +885,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
      * 只查店号会把所有合并结算的门店误判成「没有收款账户」。
      */
     private String activePayMerchantNo(MchStore store) {
+        // 带上主体：门店换了主体后，旧主体为这家店开的号不再是它的（F02 · Review R26）
         var own = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                .eq(MchPaymentMerchant::getEntityNo, store.getEntityNo())
                 .eq(MchPaymentMerchant::getStoreNo, store.getStoreNo())
                 .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
                 .last("LIMIT 1"));
@@ -1086,9 +1093,22 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             q.setEntityNo(merchantNo);
         } else {
             q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(Wrappers.<MchQualification>lambdaQuery()
+                    .eq(MchQualification::getEntityNo, merchantNo)
                     .eq(MchQualification::getQualNo, cmd.qualNo()).last("limit 1")));
-            if (q == null) {
+            /*
+             * 按 qualNo 取出来的行**必须属于这次的主体**：查询本身绕开了数据域，
+             * 不比对 entity_no 的话，拿到别家 qualNo 的人就能改写别家的证、还顺手把它置成 VALID。
+             * 不属于 → 与「不存在」同一个回答，不泄露这个号在别家存在。
+             */
+            if (q == null || !Objects.equals(q.getEntityNo(), merchantNo)) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            /*
+             * 平台撤销（REVOKED）是平台的结论，不是有效期问题：原地重存既不能把它翻回 VALID，
+             * 也不能改写那张被撤销的证（撤销要留痕，见 revokeQualification）。要重新登记就新建一条。
+             */
+            if (MchQualification.REVOKED.equals(q.getStatus())) {
+                throw BizException.of(ErrorCode.CONFLICT);
             }
         }
         q.setQualType(cmd.qualType());

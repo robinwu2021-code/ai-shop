@@ -1,5 +1,6 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -22,6 +23,24 @@
 -- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
 -- 写测试时只声明真正需要的那些。
 
+
+CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";
+
+
+CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunctions.length";
+
+
+-- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql | trg_ccf_mkt_campaign_insert,trg_ccf_mkt_campaign_update,trg_ccf_mkt_campaign_delete,trg_ccf_pmt_activity_insert,trg_ccf_pmt_activity_update,trg_ccf_pmt_activity_delete,trg_ccf_pmt_activity_version_insert,trg_ccf_pmt_activity_version_update,trg_ccf_pmt_activity_version_delete,trg_ccf_pmt_activity_goods_insert,trg_ccf_pmt_activity_goods_update,trg_ccf_pmt_activity_goods_delete,trg_ccf_pmt_activity_rule_insert,trg_ccf_pmt_activity_rule_update,trg_ccf_pmt_activity_rule_delete,trg_ccf_pmt_enrollment_insert,trg_ccf_pmt_enrollment_update,trg_ccf_pmt_enrollment_delete,trg_ccf_pmt_enrollment_goods_insert,trg_ccf_pmt_enrollment_goods_update,trg_ccf_pmt_enrollment_goods_delete
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V605__execution_stock_retention.sql | prd_execution_retention
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V606__execution_retention_route.sql | prd_execution_retention_route
+
+-- Native capability unavailable; common contract retained: backend/shop-app/src/main/resources/db/migration/V621__resource_actual_occupation.sql | source=42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d | descriptor=42be14dbf98e39bf379a1c0516a2807591aaa4c37cde3d377fe79f41e15cf5b9 | retained=a2bad068da939c35065b86cf2675f8e0778ff3c144a8312d5426ff686837c725,c1a7ee8fd9884ebfe175f5343dc05d7778975c247253a9eb6241c5abedd1068b,a48fd8433ad3a61b56f6951d011c9eef9d8b6db064bcc5da8823856105a6b274,a78a37f08bd452ea08dc8c78303feb892cf42ac6c599b27fc5f61b997e0dff1c,10a25d2b4227b7b72a168fea7ecf8d4cca47a109f59093f7f26d0ed01bb4e0f7,4a033423cad5ffe9c4f28aa4178ab61fa3f286f4b51fe1a980f41fdcfb6669b3,0c38c1ae51fc4b834306c17f4a7c53d2604981cebfaea3dd5610523e41c6eac9,9c4b47435e099c42b32d28d5a0b87e5fb0705b39b4a974f6931c786efb702190,694dbbb8ef0cdc0a90deb703f4cd42a0a3d1f9c4c483f8c58b621ac0910e5c2a,fee8e2cdf0b5aa80356c70e3c687199542c13395f85131776df916d2f8e0fce2,98dd3db3e514bb81d7660c76740897f5608eb26d97d940b6d78732d325d02ec1,534282b5e123f12538286b3192b9dad91e4867aa159a3444c4de5db72758057b,7a9a041df206f7e08091f891fd6a56aad22ced12f58f6c9d5e62e13a1a0d5b34,a4decbe699c301004e59b72ee40c061e5aa4e6b22ed8db27d0f54d3c547bd192,698bbe6f52715aa06a95c31f4ab6283a41b6f7549bb9ae3b9682aa4f410a62e5,8a645193e464b960dad15b93a6cfad769a73c69cd476d24212dcfec663bdc467,3d6eaa54d33c7fcce682bc58ba20211e35b3124588ba3cc735ff9efc796c5190,52b6959fb456e634bbb66c7cadcb0493000a3090821fa8f0995581a57d6d81dd,94ed3000899e07dab794c1fa1114f9d3b9f260dd74d28693276c1c47e27b0aef,2a583d2902eb866f8f4203606ec45e45614e4ed73b76cc170acfae3d16b37596,2da7680578969c724ccbd77a3f5d245206cace874e45ce76ed176babf639c1a8,ffd8ea80243c06ea22b580d90c207b25680896403469c6a03f537c3ee4dc20c2,50741c50b6e5968b6d774bb50354f280383ae949ccbdfd3597fb23b1a26bcc97,88eaca7f2ab7aadd5161c398b15f14868f25fca9e02ba4c337c3b1f7a72e9ab8,7b5fb306a579cfd169a298cbc8211de5ea9cb0e23d66aa158765b337d386b8ce,e498fcee5ca71910fedddd451048270c3515a0591218348b16ae5f26ec8d5f78,71ce07ea9ffe07ac63fa112a8ba90ee6b185c66034d31ae2cd573548de824c05,3db6137cabcc2b58bcfe37c9bc249a6df9133aacce3935dc34b3ba3159d851c2,c8f7d2e16bfef8b004f66770c1d53a3ac354faf38b21eba5f1fa2a9d6929fbba,7098f5fa866627e2a2a6a5b3b5de62b53c92fa3d91c84443678b8f8d1162595c,fdd0fa7a5e4d4966c9f5734640f1bf6ee0654f87f5c1d5a08c665b1ea223e206,e02621c0fe8cbec594ec80084567cbfac3c0c191669375f9f59fea2c51c399e4,32162f65d10e2e5938bb9344644444047df4bbf681da836c9d2efc95d4f97f35,53fd875fcdd5a1f339dca74fd5a1274611261ddf9d5ca265534abe3e2e0e3c4d,002185f5822684bfff2372f78ae1909c389cb4a70d8e1b9c8b0aab5b370b6797,bb84d2c11c742d25be86131a80cfd2d9881b0a6b5d6162d96af339835a16356f,d67625a1824d60a2eacd75c97a4a3c4a71f5dfe8eeba449f1a1cfc9caa984d95,b0f97bea9baf9d079a80180113549456cf55f1f8968853e93dd67aa67b004506,ff1ff07aa7ced53dd4a6decd3517b0b2042b358cfac504702a49e67f2f95d8f0,b499ec636527250db4bf18ef3cb3503f3d05f02af1a3cc2c6f0dfd3d14752424,524c0ee11c65b46d416ee3977079bdc2cc02ac52253cbfd3e225901f1f113192,b3601f613f4cd3069c9a96188e51fe13ae3e84e5824a949d48ec6c5e70ce104a,6a3610150974c17716288e97ff64bf6265f7324229dd5a8126e8c6ee446ec340,0af6bafa3dc5c177a52deb413cddc75531884d2f7c7f39e3d4e94b1eb2a8f159,6443e3c5ca0eb2292a96a0f43c4a739f8aca1941a2306f5712c4a648ae4db920,2caef7c3e9ad2b1967849321cd07fed39b51165b465d58d3cd5273d0a122c5ac,38072ac41951686ceeea36018ba8d44b8b51a62e1859ec9f1d2e13a079c50574,22dd9590806b7e7819c3b88d3750095512fe581f29852d731f1f497e7c48d5e0,30bb3d6121d396c9a46c827df5d9dd0388b6c03ce6c1ad5b3a57264d24c44c94,0a13cf90f94cd206d9827ef9f98d609c843f8e124a57a42009da5018c9feff5c,bfbf8a7e8ec5f648c85ad6916580d14f3facd9c6f2910c4d4fc4f6f062605531,48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4,3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905
+
+-- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V660__merchant_pay_service_application.sql | trg_mpsa_no_update,trg_mpsa_no_delete
 
 CREATE TABLE IF NOT EXISTS cmt_community
 (
@@ -265,9 +284,9 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_coupon_no UNIQUE (coupon_no),
     CONSTRAINT ck_mkt_migration_state CHECK (
-    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    (CASE migration_state WHEN 'OPEN' THEN TRUE WHEN 'DRAINING' THEN TRUE WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END)
     AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
-    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (NOT (CASE migration_state WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END) OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
     AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
@@ -493,6 +512,15 @@ CREATE TABLE IF NOT EXISTS notify_ticket
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     assigned_to  VARCHAR(64)  DEFAULT NULL,
     assigned_at  BIGINT(20)   DEFAULT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'C_USER',
+    category VARCHAR(16) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    store_dropped TINYINT(1) NOT NULL DEFAULT 0,
+    client_version VARCHAR(32) DEFAULT NULL,
+    client_platform VARCHAR(16) DEFAULT NULL,
+    error_code VARCHAR(64) DEFAULT NULL,
+    page VARCHAR(128) DEFAULT NULL,
+    diagnostics TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ticket_no UNIQUE (ticket_no)
 );
@@ -534,8 +562,16 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     fulfill_stage  VARCHAR(16) NULL,
     restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
     return_received_at BIGINT NULL,
+    source_system VARCHAR(32) NULL,
+    source_request_key CHAR(64) NULL,
+    source_request_hash CHAR(64) NULL,
+    CONSTRAINT uk_after_sale_source_request UNIQUE (source_system, source_request_key),
     PRIMARY KEY (id),
-    CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
+    CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no),
+    CONSTRAINT ck_after_sale_source_request CHECK (
+    (source_system IS NULL AND source_request_key IS NULL AND source_request_hash IS NULL)
+    OR (source_system IS NOT NULL AND source_request_key IS NOT NULL AND source_request_hash IS NOT NULL)
+)
 );
 
 CREATE TABLE IF NOT EXISTS ord_item
@@ -570,6 +606,12 @@ CREATE TABLE IF NOT EXISTS ord_item
     paid_share_minor BIGINT(20) NOT NULL DEFAULT 0,
     refunded_qty     INT(11)    NOT NULL DEFAULT 0,
     refunded_minor   BIGINT(20) NOT NULL DEFAULT 0,
+    sale_quantity DECIMAL(20,6) NULL,
+    quantity_unit VARCHAR(32) NULL,
+    source_component_ref VARCHAR(64) NULL,
+    activity_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    activity_benefit_type VARCHAR(16) NULL,
+    activity_benefit_minor BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -577,7 +619,7 @@ CREATE TABLE IF NOT EXISTS ord_order
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     order_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     community_no VARCHAR(64) DEFAULT NULL,
     pay_amount BIGINT(20) NOT NULL DEFAULT 0,
     goods_amount BIGINT(20) NOT NULL DEFAULT 0,
@@ -601,8 +643,41 @@ CREATE TABLE IF NOT EXISTS ord_order
     offline_confirmed_by VARCHAR(64) DEFAULT NULL,
     offline_confirmed_at BIGINT DEFAULT NULL,
     points_integrated TINYINT NOT NULL DEFAULT 0,
+    fee_minor BIGINT NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    receipt_provenance VARCHAR(24) NULL,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_order_no UNIQUE (order_no)
+    CONSTRAINT uk_order_no UNIQUE (order_no),
+    CONSTRAINT ck_order_manual_provenance CHECK (receipt_provenance IS NULL OR
+         (admission_kind='MANUAL_OFFLINE' AND receipt_provenance='MANUAL_DECLARATION'
+          AND pay_channel IS NULL AND pay_trade_no IS NULL)),
+    CONSTRAINT ck_order_admission_kind CHECK (((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END) AND customer_kind <> 'CHANNEL')
+   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')),
+    CONSTRAINT ck_counter_order_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND operation_no IS NOT NULL
+        AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND operation_no IS NOT NULL
+        AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0) OR (customer_kind='CHANNEL' AND admission_kind='CHANNEL' AND user_no IS NULL
+        AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
+        AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND operation_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0))
 );
 
 CREATE TABLE IF NOT EXISTS ord_status_log
@@ -628,7 +703,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     sub_order_no VARCHAR(64) NOT NULL,
     order_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     entity_name VARCHAR(128) DEFAULT NULL,
     fulfillment VARCHAR(24) DEFAULT NULL,
@@ -686,9 +761,46 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     open_after_sale_no VARCHAR(40) DEFAULT NULL,
     receiver_salutation VARCHAR(16) DEFAULT NULL,
     inventory_lifecycle_version INT NOT NULL DEFAULT 1,
+    fee_minor BIGINT NULL,
+    fulfillment_authority VARCHAR(32) NULL,
+    source_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_sub_checkout_operation UNIQUE (tenant_no,source_operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
-    CONSTRAINT uk_verify_code UNIQUE (verify_code)
+    CONSTRAINT uk_verify_code UNIQUE (verify_code),
+    CONSTRAINT ck_sub_checkout_authority CHECK (
+        (fulfillment_authority IS NULL AND source_operation_no IS NULL)
+        OR (fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION' AND source_operation_no IS NOT NULL AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY')),
+    CONSTRAINT ck_sub_manual_kind CHECK ((admission_kind='LEGACY_FUNDED' AND customer_kind <> 'CHANNEL') OR
+   (admission_kind='MANUAL_OFFLINE' AND customer_kind <> 'CHANNEL'
+    AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'
+    AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY') OR
+   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)),
+    CONSTRAINT ck_counter_sub_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND source_operation_no IS NOT NULL
+        AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no))>0
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(source_operation_no))>0
+        AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'
+        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION')))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND source_operation_no IS NOT NULL
+        AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no))>0
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(source_operation_no))>0
+        AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'
+        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION') OR (customer_kind='CHANNEL' AND admission_kind='CHANNEL' AND user_no IS NULL
+        AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
+        AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0
+        AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -847,7 +959,14 @@ CREATE TABLE IF NOT EXISTS prd_stock_lock
     store_no VARCHAR(64) DEFAULT NULL,
     presale TINYINT(4) NOT NULL DEFAULT 0,
     fulfillment_ref VARCHAR(64) DEFAULT NULL,
-    PRIMARY KEY (id)
+    source_manifest_hash CHAR(64) NULL,
+    source_store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    lifecycle_version INT NULL,
+    confirmation_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_stock_original_manifest CHECK ((source_manifest_hash IS NULL AND source_store_no IS NULL AND lifecycle_version IS NULL
+          AND confirmation_operation_no IS NULL) OR
+         (source_manifest_hash IS NOT NULL AND (CASE lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND qty>0))
 );
 
 CREATE TABLE IF NOT EXISTS pts_user_account
@@ -1043,6 +1162,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     points_funding_ticket VARCHAR(40) DEFAULT NULL,
     points_funding_ready_at BIGINT DEFAULT NULL,
     split_protocol_version INT NOT NULL DEFAULT 0,
+    market VARCHAR(8) NULL,
+    pay_order_id BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1097,6 +1218,31 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_query_at BIGINT DEFAULT NULL,
     refund_terminal_proof LONGTEXT DEFAULT NULL,
     refund_recovery_proof LONGTEXT DEFAULT NULL,
+    initiating_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    receipt_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    platform_dispatch_at BIGINT DEFAULT NULL,
+    platform_close_fence VARCHAR(128) DEFAULT NULL,
+    platform_receipt_json MEDIUMTEXT DEFAULT NULL,
+    platform_checkout_json MEDIUMTEXT DEFAULT NULL,
+    platform_handoff_state VARCHAR(16) DEFAULT NULL,
+    platform_bank_ref_key VARCHAR(64) DEFAULT NULL,
+    platform_collection_ref_key VARCHAR(64) DEFAULT NULL,
+    platform_manual_proof MEDIUMTEXT DEFAULT NULL,
+    platform_reconciliation_proof MEDIUMTEXT DEFAULT NULL,
+    sub_merchant_id VARCHAR(64) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
+    pay_order_id BIGINT NULL,
+    pay_refund_id BIGINT NULL,
+    pay_merchant_id BIGINT NULL,
+    funds_path VARCHAR(24) NULL,
+    market VARCHAR(8) NULL,
+    sec_key_version INT NULL,
+    channel_amount_minor BIGINT NULL,
+    channel_currency CHAR(3) NULL,
+    CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
+    CONSTRAINT uk_platform_bank_reference UNIQUE (platform_bank_ref_key),
+    CONSTRAINT uk_platform_collection_reference UNIQUE (platform_collection_ref_key),
+    CONSTRAINT uk_payment_receipt_no UNIQUE (tenant_no,receipt_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
@@ -1299,6 +1445,10 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel
     max_split_rate INT(11) NOT NULL DEFAULT 10000,
     currency VARCHAR(8) NOT NULL DEFAULT 'CNY',
     settle_cycle VARCHAR(16) NOT NULL DEFAULT 'T+1',
+    callback_style VARCHAR(16) NOT NULL DEFAULT 'PATH',
+    sandbox_host VARCHAR(128) NULL,
+    prod_host VARCHAR(128) NULL,
+    supports_statement TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_sys_pay_channel UNIQUE (pay_channel)
 );
@@ -1324,6 +1474,7 @@ CREATE TABLE IF NOT EXISTS sys_ops_staff
     pickup_no VARCHAR(64) DEFAULT NULL,
     last_login_at BIGINT(20) DEFAULT NULL,
     must_change_password TINYINT(4) NOT NULL DEFAULT 0,
+    second_factor_exempt TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ops_staff_no UNIQUE (staff_no),
     CONSTRAINT uk_ops_staff_username UNIQUE (username)
@@ -1424,6 +1575,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     acode_base64 MEDIUMTEXT NULL,
     market VARCHAR(8) NOT NULL DEFAULT 'CN',
     self_operated TINYINT NOT NULL DEFAULT 0,
+    ownership_change_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -1464,6 +1616,9 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     agreed_at BIGINT NULL,
     referrer_phone VARCHAR(32) DEFAULT NULL,
     industry_note VARCHAR(64) DEFAULT NULL,
+    market_code VARCHAR(8) NULL,
+    store_profile TEXT NULL,
+    store_no VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)
@@ -1574,7 +1729,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
@@ -1614,6 +1769,15 @@ CREATE TABLE IF NOT EXISTS mch_store
     ship_weight_g INT(11) DEFAULT NULL,
     slug VARCHAR(32) DEFAULT NULL,
     banner_url VARCHAR(512) NULL,
+    business_type_code VARCHAR(32) NULL,
+    commerce_model VARCHAR(16) NULL,
+    business_type_changed_at BIGINT NULL,
+    industry_text VARCHAR(40) NULL,
+    sub_industry_text VARCHAR(40) NULL,
+    coord_sys VARCHAR(8) NULL,
+    industry_code VARCHAR(32) NULL,
+    sub_industry_code VARCHAR(48) NULL,
+    ownership_change_no VARCHAR(64) NULL,
     CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
@@ -1665,6 +1829,7 @@ CREATE TABLE IF NOT EXISTS usr_account
     last_place VARCHAR(128) DEFAULT NULL,
     last_community_no VARCHAR(64) DEFAULT NULL,
     last_located_at DATETIME DEFAULT NULL,
+    market VARCHAR(8) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_user_no UNIQUE (user_no),
     CONSTRAINT uk_openid UNIQUE (openid),
@@ -2312,6 +2477,8 @@ CREATE TABLE IF NOT EXISTS stl_recon_diff
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     axis VARCHAR(16) NOT NULL DEFAULT 'PAYMENT',
+    dedup_key VARCHAR(191) DEFAULT NULL,
+    note VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_recon_diff_no UNIQUE (diff_no),
     CONSTRAINT uk_recon_diff_payment UNIQUE (bill_date,pay_channel,payment_no,diff_type)
@@ -3566,9 +3733,9 @@ CREATE TABLE IF NOT EXISTS pmt_coupon
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no),
     CONSTRAINT ck_pmt_migration_state CHECK (
-    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    (CASE migration_state WHEN 'OPEN' THEN TRUE WHEN 'DRAINING' THEN TRUE WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END)
     AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
-    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (NOT (CASE migration_state WHEN 'FROZEN' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE ELSE CASE WHEN migration_state IS NULL THEN NULL ELSE FALSE END END) OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
     AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
@@ -3669,6 +3836,7 @@ CREATE TABLE IF NOT EXISTS pmt_apply
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    budget_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_apply_no UNIQUE (apply_no)
 );
@@ -4218,6 +4386,7 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel_market
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL DEFAULT 'ENABLED',
     PRIMARY KEY (id),
     CONSTRAINT uk_channel_market UNIQUE (tenant_no, pay_channel, market)
 );
@@ -4885,11 +5054,11 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
     pay_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
-    endpoint VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    endpoint VARCHAR(128) NOT NULL,
     idem_key VARCHAR(128) NULL,
     request_hash VARCHAR(64) NOT NULL,
-    stock_authority VARCHAR(16) NOT NULL,
+    stock_authority VARCHAR(32) NOT NULL,
     stock_needs_json TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     error_code VARCHAR(64) NULL,
@@ -4901,9 +5070,64 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    creation_kind VARCHAR(16) NOT NULL DEFAULT 'LEGACY',
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NULL,
+    counter_plan_json LONGTEXT NULL,
+    plan_hash CHAR(64) NULL,
+    reservation_operation_no CHAR(64) NULL,
+    reservation_state VARCHAR(16) NULL,
+    reservation_observation_json LONGTEXT NULL,
+    reservation_observation_hash CHAR(64) NULL,
+    inventory_owner VARCHAR(32) NULL,
+    CONSTRAINT uk_counter_intent_operation UNIQUE (tenant_no,creation_kind,caller,operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
-    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key)
+    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key),
+    CONSTRAINT ck_counter_intent_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+        AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+        AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_intent_stage CHECK (
+        (creation_kind='LEGACY' AND customer_kind='USER' AND identity_revision IS NOT NULL
+         AND identity_revision>0 AND counter_plan_json IS NULL AND plan_hash IS NULL
+         AND confirmation_no IS NULL AND sub_order_no IS NULL AND reservation_state IS NULL
+         AND reservation_operation_no IS NULL AND reservation_observation_json IS NULL
+         AND reservation_observation_hash IS NULL AND authority_namespace_hash IS NULL)
+        OR (creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+            AND endpoint='POST /biz/service-orders/counter-orders' AND idem_key IS NOT NULL
+            AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+            AND confirmation_no IS NOT NULL AND sub_order_no IS NOT NULL
+            AND authority_namespace_hash IS NOT NULL AND authority_namespace_hash REGEXP '^[a-f0-9]{64}$'
+            AND counter_plan_json IS NOT NULL AND (counter_plan_json IS JSON)
+            AND (counter_plan_json IS JSON OBJECT)
+            AND plan_hash IS NOT NULL AND plan_hash REGEXP '^[a-f0-9]{64}$'
+            AND reservation_operation_no IS NOT NULL AND reservation_operation_no REGEXP '^[a-f0-9]{64}$'
+            AND reservation_state IS NOT NULL AND (CASE reservation_state WHEN 'NOT_SENT' THEN TRUE WHEN 'UNKNOWN' THEN TRUE WHEN 'RESERVED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN reservation_state IS NULL THEN NULL ELSE FALSE END END)
+            AND ((reservation_observation_json IS NULL AND reservation_observation_hash IS NULL)
+                 OR (reservation_observation_json IS NOT NULL AND (reservation_observation_json IS JSON)
+                     AND (reservation_observation_json IS JSON OBJECT)
+                     AND reservation_observation_hash IS NOT NULL
+                     AND reservation_observation_hash REGEXP '^[a-f0-9]{64}$'))))
 );
 
 CREATE TABLE IF NOT EXISTS ord_payment_resolution
@@ -4928,6 +5152,8 @@ CREATE TABLE IF NOT EXISTS ord_payment_resolution
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    origin_out_trade_no VARCHAR(64) NULL,
+    refund_error_code VARCHAR(128) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_payment_resolution UNIQUE (pay_no, payment_no)
 );
@@ -5121,6 +5347,8 @@ CREATE TABLE IF NOT EXISTS pts_point_type
     status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
     active_market VARCHAR(16) DEFAULT NULL,
     fallback_rule_json MEDIUMTEXT DEFAULT NULL,
+    name VARCHAR(80) NOT NULL,
+    CONSTRAINT uk_pts_type_name UNIQUE (name),
     CONSTRAINT uk_pts_type UNIQUE (type_code),
     CONSTRAINT uk_pts_active_market UNIQUE (active_market),
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -6320,7 +6548,7 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     tenant_no VARCHAR(32) NOT NULL,
     ticket_hash CHAR(64) NOT NULL,
     purpose VARCHAR(24) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NULL,
     store_no VARCHAR(64) NULL,
     actor_no VARCHAR(64) NULL,
@@ -6333,10 +6561,24 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
+    operator_scope_type VARCHAR(24) NULL,
+    issuer_no VARCHAR(64) NULL,
+    brand_scope_revision BIGINT NULL,
+    scope_member_no VARCHAR(64) NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
-    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
+    CONSTRAINT ck_mbr_identification_purpose CHECK (
+ (purpose='MEMBER_CODE' AND user_no IS NOT NULL AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL)
+ OR (purpose='CUSTOMER_REFERENCE' AND user_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL)
+ OR (purpose='CUSTOMER_SELECTION' AND customer_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NULL)
+),
+    CONSTRAINT ck_mbr_ticket_actor_namespace CHECK (
+        (actor_realm IS NULL AND actor_kind IS NULL)
+        OR (purpose='CUSTOMER_REFERENCE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_authorization
@@ -6376,8 +6618,11 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
     CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),
     CHECK (source_revision>=0 AND amount_minor>=0),
     CHECK (expires_at>created_at),
-    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR (status IN ('CANCELLED','EXPIRED'))),
-    CHECK (status IN ('PENDING','AUTHORIZED','CANCELLED','EXPIRED'))
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL)
+        OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL
+            AND authorized_at IS NOT NULL AND authorized_at<expires_at)
+        OR ((CASE status WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))),
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_source_decision
@@ -6412,7 +6657,11 @@ CREATE TABLE IF NOT EXISTS ord_ent_source_decision
     CONSTRAINT uk_source_intent UNIQUE (tenant_no,purpose,source_key),
     CONSTRAINT uk_source_settled UNIQUE (tenant_no,purpose,settled_source_key),
     CHECK (source_revision>=0 AND amount_minor>=0),
-    CHECK ((status='CANCELLED' AND settled_source_key IS NULL AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT'))) OR (status='COMMITTED' AND settled_source_key IS NOT NULL AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT') OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
+    CHECK ((status='CANCELLED' AND settled_source_key IS NULL
+        AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT')))
+        OR (status='COMMITTED' AND settled_source_key IS NOT NULL
+        AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT')
+        OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
 );
 
 CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
@@ -6451,7 +6700,7 @@ CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
     CONSTRAINT uk_card_sale_unit UNIQUE (tenant_no, order_line_no, unit_index, entitlement_index),
     CHECK (unit_index > 0 AND entitlement_index > 0 AND unit_price_minor >= 0),
     CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL)),
-    CONSTRAINT ck_card_sale_delivery CHECK (delivery_status IN ('PENDING','ACKNOWLEDGED'))
+    CONSTRAINT ck_card_sale_delivery CHECK ((CASE delivery_status WHEN 'PENDING' THEN TRUE WHEN 'ACKNOWLEDGED' THEN TRUE ELSE CASE WHEN delivery_status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_outbox
@@ -6477,7 +6726,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_outbox
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_event UNIQUE (tenant_no,event_no),
     CHECK (schema_version > 0 AND attempts >= 0),
-    CHECK (status IN ('PENDING','SENT','DEAD'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'SENT' THEN TRUE WHEN 'DEAD' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_inbox
@@ -6520,7 +6769,7 @@ CREATE TABLE IF NOT EXISTS pmt_preset_template
     PRIMARY KEY (id),
     CONSTRAINT uk_preset UNIQUE (tenant_no,template_code,template_version),
     CHECK (template_version > 0),
-    CHECK (catalog_kind IN ('ACTIVITY','PAID_PRODUCT'))
+    CHECK ((CASE catalog_kind WHEN 'ACTIVITY' THEN TRUE WHEN 'PAID_PRODUCT' THEN TRUE ELSE CASE WHEN catalog_kind IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_activity_version
@@ -7005,7 +7254,7 @@ CREATE TABLE IF NOT EXISTS ent_usage
      AND amount_minor IS NOT NULL AND amount_minor>0 AND source_order_no IS NOT NULL)
  OR (protocol='MIGRATED' AND migration_import_no IS NOT NULL AND asset_kind='ORDER_COUPON'
      AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
-     AND amount_minor IS NOT NULL AND amount_minor>=0 AND status IN ('COMMITTED','REVERSED'))
+     AND amount_minor IS NOT NULL AND amount_minor>=0 AND (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 )
 );
 
@@ -7052,8 +7301,9 @@ CREATE TABLE IF NOT EXISTS pay_ent_source_fence
     PRIMARY KEY (id),
     CONSTRAINT uk_ent_fence_source UNIQUE (tenant_no,purpose,source_key),
     CONSTRAINT uk_ent_fence_operation UNIQUE (tenant_no,purpose,operation_no),
-    CHECK (status IN ('OPEN','CANCELLED')),
-    CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL) OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL)
+        OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_order_use
@@ -7081,8 +7331,9 @@ CREATE TABLE IF NOT EXISTS ord_ent_order_use
     CONSTRAINT uk_order_use_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_order_use_order UNIQUE (tenant_no,order_no),
     CONSTRAINT uk_order_use_source UNIQUE (tenant_no,source_key),
-    CHECK (status IN ('PENDING','APPLIED','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
-    CHECK ((status IN ('PENDING','APPLIED') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL)
+        OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_payment_seal
@@ -7156,8 +7407,11 @@ CREATE TABLE IF NOT EXISTS ent_code_token
     PRIMARY KEY (id),
     CONSTRAINT uk_token UNIQUE (tenant_no,token_hash),
     CONSTRAINT uk_token_request UNIQUE (tenant_no,user_no,request_key_hash),
-    CHECK (status IN ('ACTIVE','USED','REVOKED')),
-    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR (status IN ('ACTIVE','REVOKED') AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'USED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL
+        AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL)
+        OR ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_operation_no IS NULL AND consumed_store_no IS NULL
+        AND consumed_actor_no IS NULL AND consumed_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_benefit_intent
@@ -7179,7 +7433,7 @@ CREATE TABLE IF NOT EXISTS pmt_benefit_intent
     PRIMARY KEY (id),
     CONSTRAINT uk_benefit_intent UNIQUE (tenant_no,intent_no),
     CONSTRAINT uk_benefit_request UNIQUE (tenant_no,user_no,request_key_hash),
-    CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_service_order
@@ -7214,10 +7468,11 @@ CREATE TABLE IF NOT EXISTS ord_ent_service_order
     CONSTRAINT uk_service_order UNIQUE (tenant_no,service_order_no),
     CONSTRAINT uk_service_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_service_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
-    CHECK (status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
-    CHECK (status NOT IN ('PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','COMMITTED') OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
-    CHECK (status NOT IN ('PENDING','COMMIT_DECIDED','COMMITTED') OR command_snapshot IS NOT NULL),
-    CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+    CHECK ((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
+    CHECK (NOT (CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR command_snapshot IS NOT NULL),
+    CHECK (((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL)
+        OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_entitlement_binding
@@ -7242,7 +7497,7 @@ CREATE TABLE IF NOT EXISTS prd_entitlement_binding
     PRIMARY KEY (id),
     CONSTRAINT uk_product_entitlement UNIQUE (tenant_no,goods_no,sku_no),
     CHECK (units_per_item BETWEEN 1 AND 100),
-    CHECK (status IN ('ACTIVE','DISABLED'))
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS prd_ent_binding_command
@@ -7261,7 +7516,8 @@ CREATE TABLE IF NOT EXISTS prd_ent_binding_command
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_card_binding_request UNIQUE (tenant_no,request_key),
-    CHECK ((status='PENDING' AND response_snapshot IS NULL) OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
+    CHECK ((status='PENDING' AND response_snapshot IS NULL)
+        OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS sv_account
@@ -7269,7 +7525,7 @@ CREATE TABLE IF NOT EXISTS sv_account
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
     account_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     currency VARCHAR(8) NOT NULL,
     status VARCHAR(16) NOT NULL,
@@ -7284,10 +7540,15 @@ CREATE TABLE IF NOT EXISTS sv_account
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_customer_owner UNIQUE (tenant_no,customer_no,entity_no,store_no,currency),
+    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,store_no,currency),
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
-    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,currency),
-    CHECK (status IN ('ACTIVE','FROZEN')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'FROZEN' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0),
     CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor)
 );
@@ -7299,10 +7560,10 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     recharge_no VARCHAR(64) NOT NULL,
     request_id VARCHAR(64) NOT NULL,
     payload_hash CHAR(64) NOT NULL,
-    reservation_no VARCHAR(64) NOT NULL,
-    activity_no VARCHAR(64) NOT NULL,
-    activity_version_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    reservation_no VARCHAR(64) NULL,
+    activity_no VARCHAR(64) NULL,
+    activity_version_no VARCHAR(64) NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -7332,18 +7593,41 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     received_receipt_key CHAR(64) NULL,
     cancellation_reason VARCHAR(500) NULL,
     cancelled_at DATETIME(3) NULL,
+    source_kind VARCHAR(16) NOT NULL DEFAULT 'ACTIVITY',
+    plan_no VARCHAR(64) NULL,
+    plan_version_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    tier_no VARCHAR(64) NULL,
+    collection_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
+    quota_reservation_no VARCHAR(64) NULL,
     CONSTRAINT uk_sv_received_receipt UNIQUE (tenant_no,entity_no,received_receipt_key),
     PRIMARY KEY (id),
     CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
     CONSTRAINT uk_recharge_request UNIQUE (tenant_no,request_id),
     CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
     CHECK (principal_minor>0 AND bonus_minor>=0),
-    CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
-    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
-    CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK ((CASE status WHEN 'WAIT_COLLECTION' THEN TRUE WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR
+        (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
-        OR (status<>'CANCELLED' AND cancelled_at IS NULL))
+        OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
+    CONSTRAINT ck_sv_collection_receipt CHECK (
+    NOT (CASE status WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR
+    (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL
+     AND (CASE collection_method WHEN 'CASH' THEN TRUE WHEN 'TRANSFER' THEN TRUE WHEN 'MERCHANT_OFFLINE' THEN TRUE ELSE CASE WHEN collection_method IS NULL THEN NULL ELSE FALSE END END)
+     AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)
+),
+    CONSTRAINT ck_sv_recharge_source CHECK (
+ (source_kind='ACTIVITY' AND reservation_no IS NOT NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL AND plan_no IS NULL AND plan_version_no IS NULL)
+ OR (source_kind='PLAN' AND reservation_no IS NULL AND activity_no IS NULL AND activity_version_no IS NULL AND plan_no IS NOT NULL AND plan_version_no IS NOT NULL)
+ OR (source_kind='ISSUER_RELEASE' AND reservation_no IS NULL AND plan_no IS NULL AND plan_version_no IS NULL AND activity_no IS NOT NULL AND activity_version_no IS NOT NULL
+     AND customer_no IS NOT NULL AND issuer_no IS NOT NULL AND issuer_version_no IS NOT NULL AND release_no IS NOT NULL AND tier_no IS NOT NULL AND collection_entity_no IS NOT NULL AND settlement_entity_no IS NOT NULL)
+)
 );
 
 CREATE TABLE IF NOT EXISTS sv_lot
@@ -7353,7 +7637,7 @@ CREATE TABLE IF NOT EXISTS sv_lot
     lot_no VARCHAR(64) NOT NULL,
     account_no VARCHAR(64) NOT NULL,
     recharge_no VARCHAR(64) NOT NULL,
-    activity_version_no VARCHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NULL,
     principal_minor BIGINT NOT NULL,
     bonus_minor BIGINT NOT NULL,
     held_principal_minor BIGINT NOT NULL DEFAULT 0,
@@ -7366,6 +7650,14 @@ CREATE TABLE IF NOT EXISTS sv_lot
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    plan_version_no VARCHAR(64) NULL,
+    recharge_store_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    issuer_version_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    tier_no VARCHAR(64) NULL,
+    collection_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_lot UNIQUE (tenant_no,lot_no),
     CONSTRAINT uk_lot_recharge UNIQUE (tenant_no,recharge_no),
@@ -7393,6 +7685,7 @@ CREATE TABLE IF NOT EXISTS sv_voucher
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_voucher UNIQUE (tenant_no,voucher_no),
     CONSTRAINT uk_sv_biz UNIQUE (tenant_no,biz_type,biz_no),
@@ -7422,7 +7715,7 @@ CREATE TABLE IF NOT EXISTS sv_user_store_index
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -7438,6 +7731,8 @@ CREATE TABLE IF NOT EXISTS sv_user_store_index
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_customer_store UNIQUE (tenant_no,customer_no,store_no),
     PRIMARY KEY (id),
     CONSTRAINT sv_user_store_index_uk_user_store UNIQUE (tenant_no,user_no,store_no)
 );
@@ -7461,9 +7756,9 @@ CREATE TABLE IF NOT EXISTS sv_posting_line
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_posting_line UNIQUE (tenant_no,voucher_no,line_no),
     CHECK (line_no>0 AND amount_minor>0),
-    CHECK (pool IN ('PRINCIPAL','BONUS')),
-    CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
-    CHECK (side IN ('DEBIT','CREDIT'))
+    CHECK ((CASE pool WHEN 'PRINCIPAL' THEN TRUE WHEN 'BONUS' THEN TRUE ELSE CASE WHEN pool IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE book WHEN 'CUSTOMER_CLAIM' THEN TRUE WHEN 'MERCHANT_OBLIGATION' THEN TRUE ELSE CASE WHEN book IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE side WHEN 'DEBIT' THEN TRUE WHEN 'CREDIT' THEN TRUE ELSE CASE WHEN side IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_recharge_intent
@@ -7488,7 +7783,7 @@ CREATE TABLE IF NOT EXISTS pmt_recharge_intent
     CONSTRAINT uk_recharge_intent UNIQUE (tenant_no,intent_no),
     CONSTRAINT uk_recharge_intent_pay UNIQUE (tenant_no,recharge_no),
     CONSTRAINT uk_recharge_intent_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
-    CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'CREDITED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS sv_hold_allocation
@@ -7506,6 +7801,9 @@ CREATE TABLE IF NOT EXISTS sv_hold_allocation
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    allocation_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sv_alloc UNIQUE (tenant_no,operation_no,lot_no),
     CHECK (principal_minor>=0 AND bonus_minor>=0)
@@ -7537,8 +7835,8 @@ CREATE TABLE IF NOT EXISTS ent_sale_reservation
     PRIMARY KEY (id),
     CONSTRAINT uk_sale_reservation UNIQUE (tenant_no,reservation_no),
     CONSTRAINT uk_sale_reservation_source UNIQUE (tenant_no,source_key),
-    CHECK (status IN ('RESERVING','RESERVED','TRANSFERRED','RELEASED')),
-    CHECK (status NOT IN ('RESERVED','TRANSFERRED') OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
+    CHECK ((CASE status WHEN 'RESERVING' THEN TRUE WHEN 'RESERVED' THEN TRUE WHEN 'TRANSFERRED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (NOT (CASE status WHEN 'RESERVED' THEN TRUE WHEN 'TRANSFERRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
     CHECK (status <> 'TRANSFERRED' OR grant_no IS NOT NULL),
     CHECK (status <> 'RELEASED' OR source_decision_no IS NOT NULL)
 );
@@ -7565,7 +7863,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_exception
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_exception UNIQUE (tenant_no,exception_no),
     CONSTRAINT uk_exception_source UNIQUE (tenant_no,kind,biz_no),
-    CHECK (status IN ('OPEN','PROCESSING','RESOLVED'))
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'PROCESSING' THEN TRUE WHEN 'RESOLVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_exception_action
@@ -7591,9 +7889,9 @@ CREATE TABLE IF NOT EXISTS pay_ent_exception_action
     PRIMARY KEY(id),
     CONSTRAINT uk_exception_action UNIQUE (tenant_no,action_no),
     CONSTRAINT uk_exception_request UNIQUE (tenant_no,request_key),
-    CHECK (status IN ('PENDING','DONE')),
+    CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'DONE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (status <> 'DONE' OR response_snapshot IS NOT NULL),
-    CONSTRAINT ck_exception_action_kind CHECK (operation_kind IN ('RETRY_GRANT','QUERY_SOURCE','RETRY_EVENT','QUERY_EVENT'))
+    CONSTRAINT ck_exception_action_kind CHECK ((CASE operation_kind WHEN 'RETRY_GRANT' THEN TRUE WHEN 'QUERY_SOURCE' THEN TRUE WHEN 'RETRY_EVENT' THEN TRUE WHEN 'QUERY_EVENT' THEN TRUE ELSE CASE WHEN operation_kind IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_recon_run
@@ -7624,9 +7922,9 @@ CREATE TABLE IF NOT EXISTS pay_ent_recon_run
     CONSTRAINT uk_ent_recon_no UNIQUE (tenant_no,recon_no),
     CONSTRAINT uk_ent_recon_request UNIQUE (tenant_no,request_key),
     CHECK (checked_count>=0 AND diff_count>=0 AND diff_count<=checked_count),
-    CHECK (axis IN ('ISSUANCE','RIGHTS','HOLD','MONEY')),
+    CHECK ((CASE axis WHEN 'ISSUANCE' THEN TRUE WHEN 'RIGHTS' THEN TRUE WHEN 'HOLD' THEN TRUE WHEN 'MONEY' THEN TRUE ELSE CASE WHEN axis IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (axis<>'MONEY' OR currency IS NOT NULL),
-    CHECK (status IN ('RUNNING','COMPLETED','FAILED'))
+    CHECK ((CASE status WHEN 'RUNNING' THEN TRUE WHEN 'COMPLETED' THEN TRUE WHEN 'FAILED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
@@ -7652,7 +7950,7 @@ CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
     PRIMARY KEY (id),
     CONSTRAINT uk_ent_recon_diff UNIQUE (tenant_no,diff_no),
     CONSTRAINT uk_ent_recon_resource UNIQUE (tenant_no,recon_no,resource_no,diff_kind),
-    CHECK (status IN ('OPEN','ACKNOWLEDGED','RESOLVED'))
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'ACKNOWLEDGED' THEN TRUE WHEN 'RESOLVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ent_owner_registry
@@ -7675,12 +7973,12 @@ CREATE TABLE IF NOT EXISTS ent_owner_registry
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_source_owner UNIQUE (tenant_no,source_system,source_kind,source_no),
-    CHECK (source_system IN ('MKT_LEGACY','PMT','PAY')),
-    CHECK (source_kind IN ('TEMPLATE','INSTANCE','USAGE')),
-    CHECK (owner_system IN ('CORE_LEGACY','PAY')),
-    CHECK (status IN ('PREPARING','VERIFIED','CUTOVER','ARCHIVED')),
-    CHECK (owner_system<>'CORE_LEGACY' OR status IN ('PREPARING','VERIFIED')),
-    CHECK (owner_system<>'PAY' OR (status IN ('CUTOVER','ARCHIVED') AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK ((CASE source_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE source_kind WHEN 'TEMPLATE' THEN TRUE WHEN 'INSTANCE' THEN TRUE WHEN 'USAGE' THEN TRUE ELSE CASE WHEN source_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE owner_system WHEN 'CORE_LEGACY' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN owner_system IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'VERIFIED' THEN TRUE WHEN 'CUTOVER' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (owner_system<>'CORE_LEGACY' OR (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'VERIFIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (owner_system<>'PAY' OR ((CASE status WHEN 'CUTOVER' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
     CHECK (status<>'VERIFIED' OR (target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
     CHECK (source_system<>'PAY' OR owner_system='PAY')
 );
@@ -7719,7 +8017,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_stage
     CONSTRAINT uk_migration_stage UNIQUE (tenant_no,stage_no),
     CONSTRAINT uk_migration_stage_request UNIQUE (tenant_no,request_key),
     CONSTRAINT uk_migration_stage_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
-    CHECK (source_system IN ('MKT_LEGACY','PMT')),
+    CHECK ((CASE source_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (source_schema_version=1 AND frozen_revision>=0),
     CHECK (payload_bytes BETWEEN 1 AND 8388608),
     CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
@@ -7727,7 +8025,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_stage
     CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
     CHECK (CHAR_LENGTH(watermark)=64 AND CHAR_LENGTH(content_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (status='STAGED'),
-    CONSTRAINT ck_migration_manifest_version CHECK (manifest_version IN (1,2)),
+    CONSTRAINT ck_migration_manifest_version CHECK ((CASE manifest_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN manifest_version IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_migration_manifest_history CHECK (
    (manifest_version=1 AND history_available IS NULL)
    OR (history_available IS NOT NULL AND
@@ -7766,7 +8064,8 @@ CREATE TABLE IF NOT EXISTS ent_migration_alias
     CONSTRAINT uk_migration_alias_request UNIQUE (tenant_no,request_key),
     CHECK (canonical_stage_no=pmt_stage_no AND pmt_stage_no<>mkt_stage_no),
     CHECK (matched_instance_count>=0),
-    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64 AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64
+        AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (CHAR_LENGTH(TRIM(reason))>0),
     CHECK (status='RECOGNIZED')
 );
@@ -7821,14 +8120,27 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_operation
     PRIMARY KEY(id),
     CONSTRAINT uk_legacy_coupon_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_legacy_coupon_checkout UNIQUE (tenant_no,checkout_no),
-    CHECK (origin_system IN ('MKT_LEGACY','PMT','PAY') AND source_version=1),
+    CHECK ((CASE origin_system WHEN 'MKT_LEGACY' THEN TRUE WHEN 'PMT' THEN TRUE WHEN 'PAY' THEN TRUE ELSE CASE WHEN origin_system IS NULL THEN NULL ELSE FALSE END END) AND source_version=1),
     CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (discount_minor IS NULL OR discount_minor>0),
-    CHECK (status IN ('PREPARING','HELD','COMMITTED','RELEASED','REVERSED')),
-    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND status IN ('PREPARING','RELEASED')) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
-    CHECK ((status IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (status NOT IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
-    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq))) OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL AND release_asset_seq IS NULL)),
-    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL) OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'HELD' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL
+         AND hold_asset_seq IS NULL AND held_at IS NULL AND (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+     OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL
+         AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+    CHECK (((CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL
+         AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL
+         AND source_committed_at IS NOT NULL)
+     OR (NOT (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NULL AND commit_decision_no IS NULL
+         AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL
+         AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq)))
+     OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL
+         AND release_asset_seq IS NULL)),
+    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL
+         AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL)
+     OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL
+         AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
@@ -7862,10 +8174,13 @@ CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
     CONSTRAINT uk_legacy_checkout_no UNIQUE (tenant_no,checkout_no),
     CONSTRAINT uk_legacy_checkout_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_legacy_checkout_order UNIQUE (tenant_no,order_no),
-    CONSTRAINT ck_legacy_checkout_state CHECK ( (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_state CHECK (
+   (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
     CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0),
     CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
-   (pay_state IN ('PENDING','NONE') AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
+   ((CASE pay_state WHEN 'PENDING' THEN TRUE WHEN 'NONE' THEN TRUE ELSE CASE WHEN pay_state IS NULL THEN NULL ELSE FALSE END END) AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
    OR (pay_state='COMMITTED' AND status='COMMITTED' AND reversal_snapshot IS NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
    OR (pay_state='RELEASED' AND status='ABORTED' AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
    OR (pay_state='REVERSED' AND status='COMMITTED' AND reversal_snapshot IS NOT NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)),
@@ -7909,7 +8224,7 @@ CREATE TABLE IF NOT EXISTS ent_migration_plan
     CONSTRAINT uk_migration_plan_stage UNIQUE (tenant_no,stage_no),
     CONSTRAINT uk_migration_plan_request UNIQUE (tenant_no,request_key),
     CONSTRAINT uk_migration_plan_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY')),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (alias_no IS NULL OR source_system='PMT'),
     CHECK (status='PLANNED' AND deleted=0),
     CHECK (asset_count>=0 AND archival_count>=0 AND version_count>=1),
@@ -7966,7 +8281,7 @@ CREATE TABLE IF NOT EXISTS pmt_migration_source
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY(id),
     CONSTRAINT uk_migration_source UNIQUE (tenant_no,source_system,source_template_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0)
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version=0)
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_import
@@ -8023,9 +8338,10 @@ CREATE TABLE IF NOT EXISTS ent_migration_asset
     CONSTRAINT uk_migration_asset_source UNIQUE (tenant_no,source_system,source_instance_no),
     CONSTRAINT uk_migration_asset_target UNIQUE (tenant_no,instance_no),
     CONSTRAINT uk_migration_asset_baseline UNIQUE (tenant_no,baseline_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version=0),
     CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
-    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL) OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
+    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL)
+     OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_usage
@@ -8074,7 +8390,8 @@ CREATE TABLE IF NOT EXISTS pmt_migration_return
     CONSTRAINT uk_migration_return UNIQUE (tenant_no,return_no),
     CONSTRAINT uk_migration_return_source UNIQUE (tenant_no,source_usage_no),
     CHECK (status='COMMITTED' AND deleted=0 AND version>=0),
-    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL) OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
+    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL)
+     OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_return
@@ -8136,8 +8453,9 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_issue
     PRIMARY KEY(id),
     CONSTRAINT uk_legacy_issue_no UNIQUE (tenant_no,issue_no),
     CONSTRAINT uk_legacy_issue_batch UNIQUE (tenant_no,batch_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND mode IN ('TARGETED','CENTER') AND deleted=0 AND version>=0),
-    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL) OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND (CASE mode WHEN 'TARGETED' THEN TRUE WHEN 'CENTER' THEN TRUE ELSE CASE WHEN mode IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version>=0),
+    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL)
+     OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
@@ -8166,8 +8484,397 @@ CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY(id),
     CONSTRAINT uk_pay_coupon_projection UNIQUE (tenant_no,instance_no),
-    CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
+    CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND version=0 AND deleted=0),
     CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    current_version_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    migrated_release_no VARCHAR(64) NULL,
+    governed_activity_no VARCHAR(64) NULL,
+    governed_tier_key VARCHAR(64) NULL,
+    legacy_name_key VARCHAR(100) GENERATED ALWAYS AS (CASE WHEN governed_activity_no IS NULL THEN name ELSE NULL END),
+    CONSTRAINT uk_sv_plan_governed_tier UNIQUE (tenant_no,governed_activity_no,governed_tier_key),
+    CONSTRAINT uk_sv_plan_legacy_name UNIQUE (tenant_no,entity_no,store_no,legacy_name_key),
+    CONSTRAINT uk_sv_plan UNIQUE (tenant_no,plan_no),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge_plan_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    plan_no VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    paid_amount_minor BIGINT NOT NULL,
+    bonus_amount_minor BIGINT NOT NULL,
+    scope_snapshot TEXT NOT NULL,
+    schema_version INT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_plan_version UNIQUE (tenant_no,version_no),
+    CONSTRAINT uk_sv_plan_version_index UNIQUE (tenant_no,plan_no,version_index),
+    CHECK (paid_amount_minor>0 AND bonus_amount_minor>=0),
+    CHECK (paid_amount_minor<=9223372036854775807-bonus_amount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_statement
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    record_no VARCHAR(64) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    account_seq BIGINT NOT NULL,
+    user_no VARCHAR(64) NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    type VARCHAR(16) NOT NULL,
+    business_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    signed_amount_minor BIGINT NOT NULL,
+    balance_after_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    plan_no VARCHAR(64) NULL,
+    plan_version_no VARCHAR(64) NULL,
+    paid_amount_minor BIGINT NULL,
+    bonus_amount_minor BIGINT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    scope_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    operating_entity_no VARCHAR(64) NULL,
+    settlement_entity_no VARCHAR(64) NULL,
+    scope_type VARCHAR(24) NULL,
+    CONSTRAINT uk_sv_statement UNIQUE (tenant_no,record_no),
+    CONSTRAINT uk_sv_statement_voucher UNIQUE (tenant_no,voucher_no),
+    CHECK (balance_after_minor>=0),
+    CHECK ((type='RECHARGE' AND signed_amount_minor>0) OR (type='REDEMPTION' AND signed_amount_minor<0))
+);
+
+CREATE TABLE IF NOT EXISTS sv_customer_identity
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_customer_binding UNIQUE (tenant_no,customer_no),
+    CONSTRAINT uk_sv_user_binding UNIQUE (tenant_no,user_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_earn_rule
+(
+    type_code VARCHAR(64) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    PRIMARY KEY(type_code, scope_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_earn_rule_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    request_id VARCHAR(100) NOT NULL,
+    type_code VARCHAR(64) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_ord_earn_request UNIQUE (request_id),
+    CONSTRAINT uk_ord_earn_revision UNIQUE (type_code,scope_no,revision)
+);
+
+CREATE TABLE IF NOT EXISTS pay_document_sequence
+(
+    seq_key VARCHAR(32) NOT NULL,
+    next_value BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq_key)
+);
+
+CREATE TABLE IF NOT EXISTS core_document_number
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_core_document_no UNIQUE (document_no),
+    CONSTRAINT uk_core_document_source UNIQUE (tenant_no,document_type,source_system,source_resource_type,source_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_document_number
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_document_no UNIQUE (document_no),
+    CONSTRAINT uk_pay_document_source UNIQUE (tenant_no,document_type,source_system,source_resource_type,source_no)
+);
+
+CREATE TABLE IF NOT EXISTS notify_stored_value_task
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    recipient VARCHAR(64) NOT NULL,
+    scene VARCHAR(64) NOT NULL,
+    event_no VARCHAR(128) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    document_no VARCHAR(64) NULL,
+    values_json TEXT NOT NULL,
+    open_id VARCHAR(128) NULL,
+    template_id VARCHAR(128) NULL,
+    status VARCHAR(24) NOT NULL,
+    reason_code VARCHAR(64) NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_sv_notify_business UNIQUE (tenant_no, usage_no, recipient, scene)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_space
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    owner_actor_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    bootstrap_source_account_no VARCHAR(64) NOT NULL,
+    bootstrap_key VARCHAR(64) NOT NULL,
+    bootstrap_hash CHAR(64) NOT NULL,
+    auth_revision BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_space_uk_1 UNIQUE (tenant_no,management_no),
+    CONSTRAINT mch_management_space_uk_2 UNIQUE (tenant_no,owner_actor_no,bootstrap_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(24) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    permission_code VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    authority_source_type VARCHAR(24) NOT NULL,
+    authority_source_no VARCHAR(64) NOT NULL,
+    delegatable TINYINT NOT NULL DEFAULT 0,
+    authority_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_management_grant_uk_1 UNIQUE (tenant_no,grant_no),
+    CONSTRAINT mch_management_grant_uk_2 UNIQUE (tenant_no,management_no,actor_no,resource_type,resource_no,permission_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    logo VARCHAR(512) NULL,
+    status VARCHAR(24) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    name_key VARCHAR(100) NOT NULL,
+    create_key VARCHAR(64) NOT NULL,
+    create_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    stored_value_status VARCHAR(24) NOT NULL DEFAULT 'NONE',
+    legal_entity_no VARCHAR(64) NULL,
+    CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
+    CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
+    CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_store_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    binding_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    effective_to DATETIME(3) NULL,
+    scope_revision BIGINT NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_store_binding_uk_1 UNIQUE (tenant_no,binding_no),
+    CONSTRAINT mch_brand_store_binding_uk_2 UNIQUE (tenant_no,active_store_no),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE WHEN 'ENDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_change
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    from_brand_no VARCHAR(64) NULL,
+    to_brand_no VARCHAR(64) NULL,
+    expected_scope_revision BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    check_snapshot TEXT NOT NULL,
+    authorization_snapshot TEXT NOT NULL,
+    reason VARCHAR(255) NULL,
+    expected_store_version BIGINT NOT NULL,
+    expected_from_brand_revision BIGINT NULL,
+    expected_to_brand_revision BIGINT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    check_expires_at DATETIME(3) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    decision VARCHAR(16) NULL,
+    decided_by VARCHAR(64) NULL,
+    decided_at DATETIME(3) NULL,
+    decision_key VARCHAR(64) NULL,
+    decision_hash CHAR(64) NULL,
+    pending_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE status WHEN 'CHECKED' THEN TRUE WHEN 'PREPARING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mch_brand_change_uk_1 UNIQUE (tenant_no,change_no),
+    CONSTRAINT mch_brand_change_uk_2 UNIQUE (tenant_no,store_no,command_key),
+    CONSTRAINT mch_brand_change_uk_3 UNIQUE (tenant_no,pending_store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_member
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    first_store_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    joined_at DATETIME(3) NOT NULL,
+    shared_profile TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_member_uk_1 UNIQUE (tenant_no,scope_member_no),
+    CONSTRAINT mbr_scope_member_uk_2 UNIQUE (tenant_no,scope_type,scope_no,customer_no),
+    CHECK ((CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN scope_type IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_store_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    store_profile_no VARCHAR(64) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    remark VARCHAR(500) NULL,
+    advisor_actor_no VARCHAR(64) NULL,
+    first_seen_at DATETIME(3) NOT NULL,
+    last_seen_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_store_profile_uk_1 UNIQUE (tenant_no,store_profile_no),
+    CONSTRAINT mbr_store_profile_uk_2 UNIQUE (tenant_no,store_no,customer_no)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_scope_legacy_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    link_no VARCHAR(64) NOT NULL,
+    legacy_member_no VARCHAR(64) NOT NULL,
+    scope_member_no VARCHAR(64) NOT NULL,
+    migration_no VARCHAR(64) NOT NULL,
+    identity_evidence TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT mbr_scope_legacy_link_uk_1 UNIQUE (tenant_no,link_no),
+    CONSTRAINT mbr_scope_legacy_link_uk_2 UNIQUE (tenant_no,legacy_member_no,scope_member_no)
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_template
@@ -8195,7 +8902,7 @@ CREATE TABLE IF NOT EXISTS ord_pricing_template
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_pricing_template_no UNIQUE (tenant_no,template_no),
     CHECK (draft_version >= 0),
-    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT uk_ord_pricing_template_code UNIQUE (tenant_no,industry_code,template_code),
     CHECK ((draft_content IS JSON)),
     CONSTRAINT ck_ord_pricing_seed_shape CHECK (
@@ -8258,7 +8965,7 @@ CREATE TABLE IF NOT EXISTS ord_store_pricing_config
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_store_pricing_config_no UNIQUE (tenant_no,config_no),
     CHECK (draft_version >= 0),
-    CHECK (status IN ('ACTIVE','ARCHIVED')),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'ARCHIVED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT uk_ord_store_pricing_scope UNIQUE (tenant_no,store_no,industry_code),
     CHECK ((draft_override IS JSON))
 );
@@ -8299,13 +9006,1464 @@ CREATE TABLE IF NOT EXISTS ord_store_pricing_revision
     CHECK ((effective_snapshot IS JSON))
 );
 
+CREATE TABLE IF NOT EXISTS sv_issuer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_issuer_version_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    write_mode VARCHAR(24) NOT NULL DEFAULT 'LEGACY',
+    CONSTRAINT sv_issuer_uk_1 UNIQUE (tenant_no,issuer_no),
+    CONSTRAINT sv_issuer_uk_2 UNIQUE (tenant_no,scope_type,scope_no),
+    CHECK ((CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN scope_type IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS sv_issuer_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    configuration_key VARCHAR(64) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    version_index BIGINT NOT NULL,
+    settlement_entity_no VARCHAR(64) NOT NULL,
+    collection_mode VARCHAR(24) NOT NULL,
+    clearing_mode VARCHAR(24) NOT NULL,
+    debit_allocation_mode VARCHAR(24) NOT NULL,
+    bonus_bearer VARCHAR(24) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    collection_config TEXT NOT NULL,
+    clearing_rule TEXT NOT NULL,
+    entity_acceptance TEXT NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issuer_version_uk_1 UNIQUE (tenant_no,issuer_version_no),
+    CONSTRAINT sv_issuer_version_uk_2 UNIQUE (tenant_no,issuer_no,version_index),
+    CONSTRAINT uk_configuration_key UNIQUE (tenant_no,issuer_no,configuration_key)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issuer_store_access
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    access_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    operating_entity_no VARCHAR(64) NOT NULL,
+    source_binding_no VARCHAR(64) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    can_issue TINYINT NOT NULL,
+    can_redeem TINYINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    effective_from DATETIME(3) NOT NULL,
+    effective_to DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issuer_store_access_uk_1 UNIQUE (tenant_no,access_no),
+    CONSTRAINT sv_issuer_store_access_uk_2 UNIQUE (tenant_no,issuer_no,store_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_release
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NULL,
+    activity_version_no VARCHAR(64) NULL,
+    draft_revision_no VARCHAR(64) NULL,
+    release_index BIGINT NOT NULL,
+    source_kind VARCHAR(24) NOT NULL,
+    legacy_plan_version_no VARCHAR(64) NULL,
+    currency VARCHAR(8) NOT NULL,
+    starts_at DATETIME(3) NOT NULL,
+    ends_at DATETIME(3) NULL,
+    state VARCHAR(24) NOT NULL,
+    redemption_scope_mode VARCHAR(24) NOT NULL,
+    scope_snapshot TEXT NOT NULL,
+    policy_versions TEXT NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    legacy_activity_version_no VARCHAR(64) NULL,
+    activity_version_hash CHAR(64) NULL,
+    CONSTRAINT uk_legacy_activity_version UNIQUE (tenant_no,legacy_activity_version_no),
+    CONSTRAINT sv_release_uk_1 UNIQUE (tenant_no,release_no),
+    CONSTRAINT sv_release_uk_2 UNIQUE (tenant_no,activity_version_no),
+    CONSTRAINT sv_release_uk_3 UNIQUE (tenant_no,activity_no,draft_revision_no),
+    CONSTRAINT uk_4 UNIQUE (tenant_no,issuer_no,activity_no,release_index),
+    CONSTRAINT uk_5 UNIQUE (tenant_no,legacy_plan_version_no),
+    CONSTRAINT ck_sv_release_source CHECK (
+ ((CASE source_kind WHEN 'V2_ACTIVITY' THEN TRUE WHEN 'V2_BRAND_ACTIVITY' THEN TRUE ELSE CASE WHEN source_kind IS NULL THEN NULL ELSE FALSE END END) AND activity_no IS NOT NULL AND draft_revision_no IS NOT NULL)
+ OR (source_kind='LEGACY_PLAN' AND legacy_plan_version_no IS NOT NULL)
+ OR (source_kind='LEGACY_ACTIVITY' AND activity_no IS NOT NULL AND legacy_activity_version_no IS NOT NULL AND activity_version_no IS NOT NULL AND activity_version_no=legacy_activity_version_no)
+)
+);
+
+CREATE TABLE IF NOT EXISTS sv_release_tier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    tier_no VARCHAR(64) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    ordinal INT NOT NULL,
+    paid_amount_minor BIGINT NOT NULL,
+    bonus_amount_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    legacy_tier_key VARCHAR(128) NULL,
+    projected_plan_version_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_tier_projected_plan UNIQUE (tenant_no,projected_plan_version_no),
+    CONSTRAINT uk_legacy_activity_tier UNIQUE (tenant_no,release_no,legacy_tier_key),
+    CONSTRAINT sv_release_tier_uk_1 UNIQUE (tenant_no,tier_no),
+    CONSTRAINT sv_release_tier_uk_2 UNIQUE (tenant_no,release_no,paid_amount_minor),
+    CONSTRAINT sv_release_tier_uk_3 UNIQUE (tenant_no,release_no,ordinal),
+    CHECK (paid_amount_minor>0 AND bonus_amount_minor>=0),
+    CHECK (paid_amount_minor<=9223372036854775807-bonus_amount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_quota
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    quota_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    currency VARCHAR(8) NOT NULL,
+    outstanding_minor BIGINT NOT NULL,
+    reserved_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_quota_issuer UNIQUE (tenant_no,issuer_no,currency),
+    CONSTRAINT sv_issue_quota_uk_1 UNIQUE (tenant_no,quota_no),
+    CONSTRAINT sv_issue_quota_uk_2 UNIQUE (tenant_no,store_no,currency),
+    CHECK (outstanding_minor>=0 AND reserved_minor>=0),
+    CHECK (outstanding_minor<=9223372036854775807-reserved_minor),
+    CONSTRAINT ck_sv_quota_scope CHECK ((store_no IS NOT NULL AND issuer_no IS NULL) OR (store_no IS NULL AND issuer_no IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_quota_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    quota_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    policy_versions TEXT NOT NULL,
+    expires_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_issue_quota_reservation_uk_1 UNIQUE (tenant_no,reservation_no),
+    CONSTRAINT sv_issue_quota_reservation_uk_2 UNIQUE (tenant_no,recharge_no),
+    CHECK (amount_minor>0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_customer_issuer_index
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    customer_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    has_recharge TINYINT NOT NULL,
+    last_recharge_at DATETIME(3) NULL,
+    last_activity_at DATETIME(3) NULL,
+    last_occurrence_store_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT sv_customer_issuer_index_uk_1 UNIQUE (tenant_no,customer_no,issuer_no,currency),
+    CONSTRAINT sv_customer_issuer_index_uk_2 UNIQUE (tenant_no,account_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_price_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    quote_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    subject_no VARCHAR(32) DEFAULT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    root_scope_no VARCHAR(32) DEFAULT NULL,
+    scope_version BIGINT DEFAULT NULL,
+    channel VARCHAR(32) NOT NULL,
+    quote_phase VARCHAR(32) NOT NULL,
+    store_revision_no VARCHAR(32) NOT NULL,
+    template_revision_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    engine_spec_version VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    facts_hash CHAR(64) NOT NULL,
+    economics_hash CHAR(64) NOT NULL,
+    facts_snapshot LONGTEXT NOT NULL,
+    config_snapshot LONGTEXT NOT NULL,
+    plan_snapshot LONGTEXT NOT NULL,
+    result_snapshot LONGTEXT NOT NULL,
+    schema_version INT NOT NULL,
+    goods_minor BIGINT NOT NULL,
+    price_adjustment_minor BIGINT NOT NULL,
+    activity_discount_minor BIGINT NOT NULL,
+    coupon_discount_minor BIGINT NOT NULL,
+    manual_discount_minor BIGINT NOT NULL,
+    points_discount_minor BIGINT NOT NULL,
+    waiver_minor BIGINT NOT NULL,
+    fee_minor BIGINT NOT NULL,
+    net_minor BIGINT NOT NULL,
+    tax_minor BIGINT NOT NULL,
+    receivable_minor BIGINT NOT NULL,
+    consideration_offset_minor BIGINT NOT NULL,
+    stored_planned_minor BIGINT NOT NULL,
+    other_planned_minor BIGINT NOT NULL,
+    remaining_due_minor BIGINT NOT NULL,
+    cash_due_minor BIGINT NOT NULL,
+    cash_tender_minor BIGINT DEFAULT NULL,
+    cash_change_minor BIGINT DEFAULT NULL,
+    status VARCHAR(32) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    superseded_by VARCHAR(32) DEFAULT NULL,
+    retained_ref VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_price_quote_no UNIQUE (tenant_no,quote_no),
+    CHECK ((CASE status WHEN 'READY' THEN TRUE WHEN 'EXPIRED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (schema_version = 1),
+    CHECK (source_version >= 0),
+    CHECK ((root_scope_no IS NULL AND scope_version IS NULL) OR (root_scope_no IS NOT NULL AND scope_version IS NOT NULL AND scope_version >= 0)),
+    CHECK (net_minor + tax_minor = receivable_minor),
+    CHECK (remaining_due_minor >= 0),
+    CHECK (cash_due_minor <= other_planned_minor),
+    CHECK ((cash_tender_minor IS NULL AND cash_change_minor IS NULL AND cash_due_minor = 0) OR (cash_tender_minor IS NOT NULL AND cash_change_minor IS NOT NULL AND cash_tender_minor >= cash_due_minor AND cash_change_minor = cash_tender_minor - cash_due_minor)),
+    CHECK ((facts_snapshot IS JSON)),
+    CHECK ((config_snapshot IS JSON)),
+    CHECK ((plan_snapshot IS JSON)),
+    CHECK ((result_snapshot IS JSON)),
+    CHECK (goods_minor >= 0),
+    CHECK (activity_discount_minor >= 0),
+    CHECK (coupon_discount_minor >= 0),
+    CHECK (manual_discount_minor >= 0),
+    CHECK (points_discount_minor >= 0),
+    CHECK (waiver_minor >= 0),
+    CHECK (fee_minor >= 0),
+    CHECK (net_minor >= 0),
+    CHECK (tax_minor >= 0),
+    CHECK (receivable_minor >= 0),
+    CHECK (consideration_offset_minor >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_price_quote_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    quote_line_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    pricing_unit_ref CHAR(64) NOT NULL,
+    source_line_no VARCHAR(64) NOT NULL,
+    parent_source_line_no VARCHAR(64) DEFAULT NULL,
+    component_ref VARCHAR(64) DEFAULT NULL,
+    invoice_line_ref VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(32) NOT NULL,
+    sku_no VARCHAR(32) NOT NULL,
+    line_kind VARCHAR(32) NOT NULL,
+    quantity_start DECIMAL(20,6) NOT NULL,
+    quantity_end DECIMAL(20,6) NOT NULL,
+    quantity DECIMAL(20,6) NOT NULL,
+    unit_price_minor BIGINT NOT NULL,
+    goods_minor BIGINT NOT NULL,
+    price_adjustment_minor BIGINT NOT NULL,
+    activity_discount_minor BIGINT NOT NULL,
+    coupon_discount_minor BIGINT NOT NULL,
+    manual_discount_minor BIGINT NOT NULL,
+    points_discount_minor BIGINT NOT NULL,
+    waiver_minor BIGINT NOT NULL,
+    fee_minor BIGINT NOT NULL,
+    net_minor BIGINT NOT NULL,
+    tax_minor BIGINT NOT NULL,
+    receivable_minor BIGINT NOT NULL,
+    consideration_offset_minor BIGINT NOT NULL,
+    invoice_base_minor BIGINT NOT NULL,
+    tax_class VARCHAR(32) NOT NULL,
+    eligibility_snapshot LONGTEXT NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    sort_order INT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_price_quote_line UNIQUE (tenant_no,quote_line_no),
+    CONSTRAINT uk_ord_price_quote_unit UNIQUE (tenant_no,quote_no,pricing_unit_ref),
+    CHECK (quantity_start >= 0 AND quantity_end > quantity_start),
+    CHECK (quantity = quantity_end - quantity_start),
+    CHECK (invoice_base_minor >= 0),
+    CHECK (net_minor + tax_minor = receivable_minor),
+    CHECK ((eligibility_snapshot IS JSON)),
+    CHECK ((source_snapshot IS JSON)),
+    CHECK (goods_minor >= 0),
+    CHECK (activity_discount_minor >= 0),
+    CHECK (coupon_discount_minor >= 0),
+    CHECK (manual_discount_minor >= 0),
+    CHECK (points_discount_minor >= 0),
+    CHECK (waiver_minor >= 0),
+    CHECK (fee_minor >= 0),
+    CHECK (net_minor >= 0),
+    CHECK (tax_minor >= 0),
+    CHECK (receivable_minor >= 0),
+    CHECK (consideration_offset_minor >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_price_quote_allocation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    allocation_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    quote_line_no VARCHAR(32) NOT NULL,
+    allocation_kind VARCHAR(32) NOT NULL,
+    stage VARCHAR(32) NOT NULL,
+    step_order INT NOT NULL,
+    benefit_ref VARCHAR(64) NOT NULL,
+    owner VARCHAR(32) NOT NULL,
+    owner_quote_ref VARCHAR(128) NOT NULL,
+    application_ref VARCHAR(64) NOT NULL,
+    rule_no VARCHAR(64) NOT NULL,
+    rule_version VARCHAR(64) NOT NULL,
+    basis_minor BIGINT NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    payable_rate_bp INT DEFAULT NULL,
+    quantity_start DECIMAL(20,6) NOT NULL,
+    quantity_end DECIMAL(20,6) NOT NULL,
+    algorithm_version VARCHAR(64) NOT NULL,
+    evidence_snapshot LONGTEXT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_price_quote_allocation UNIQUE (tenant_no,allocation_no),
+    CONSTRAINT uk_ord_price_quote_application UNIQUE (tenant_no,quote_no,step_order,application_ref,quote_line_no),
+    CHECK (basis_minor >= 0 AND amount_minor >= 0),
+    CHECK (quantity_start >= 0 AND quantity_end > quantity_start),
+    CHECK (payable_rate_bp IS NULL OR payable_rate_bp BETWEEN 0 AND 10000),
+    CHECK ((evidence_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS prd_sku_pricing_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    policy_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    goods_no VARCHAR(32) NOT NULL,
+    sku_no VARCHAR(32) NOT NULL,
+    promotion_eligible TINYINT NOT NULL,
+    tax_class VARCHAR(24) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_sku_pricing_policy_no UNIQUE (policy_no),
+    CONSTRAINT uk_sku_pricing_policy_scope UNIQUE (tenant_no, entity_no, store_no, sku_no),
+    CONSTRAINT ck_sku_pricing_policy_flag CHECK ((CASE promotion_eligible WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN promotion_eligible IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sku_pricing_policy_tax CHECK ((CASE tax_class WHEN 'STANDARD' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE WHEN 'OUT_OF_SCOPE' THEN TRUE ELSE CASE WHEN tax_class IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sku_pricing_policy_version CHECK (version >= 1 AND version <= 9007199254740991)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_funding_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    funding_source_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    quote_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    economics_hash CHAR(64) NOT NULL,
+    preparation_hash CHAR(64) NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    cancel_reason VARCHAR(128) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    basis_snapshot LONGTEXT NULL,
+    CONSTRAINT uk_pricing_funding_source_no UNIQUE (funding_source_no),
+    CONSTRAINT uk_pricing_funding_source_quote UNIQUE (tenant_no, quote_no),
+    CONSTRAINT ck_pricing_funding_source_amount CHECK (amount_minor >= 0),
+    CONSTRAINT ck_pricing_funding_source_state CHECK (
+        (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL)),
+    CONSTRAINT ck_pricing_funding_basis_json CHECK (basis_snapshot IS NULL OR (basis_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_order_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    buyer_no VARCHAR(32) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    source_subject_no VARCHAR(32) NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    confirmation_digest CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    order_mode VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    allocations_json LONGTEXT NULL,
+    economics_hash CHAR(64) NULL,
+    payment_out_trade_no VARCHAR(64) NULL,
+    payment_channel VARCHAR(32) NULL,
+    payment_state VARCHAR(32) NULL,
+    payment_request_json LONGTEXT NULL,
+    pay_params_json LONGTEXT NULL,
+    params_expires_at BIGINT NULL,
+    next_recovery_at BIGINT NULL,
+    last_recovery_code VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NULL,
+    updated_by VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    party_no VARCHAR(32) NULL,
+    party_snapshot TEXT NULL,
+    demand_plan_no VARCHAR(64) NULL,
+    demand_plan_hash VARCHAR(64) NULL,
+    demand_plan_snapshot TEXT NULL,
+    delivery_snapshot LONGTEXT NULL,
+    inventory_owner VARCHAR(32) NULL,
+    CONSTRAINT uk_industry_order_no UNIQUE (tenant_no, order_no),
+    CONSTRAINT uk_industry_source_version UNIQUE (tenant_no, entity_no, store_no, source_system, source_type, source_no, source_version)
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    policy_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    target_type VARCHAR(24) NOT NULL,
+    target_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    current_version_no VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_policy_no UNIQUE (tenant_no,policy_no),
+    CONSTRAINT uk_sv_policy_target UNIQUE (tenant_no,management_no,target_type,target_no,currency),
+    CONSTRAINT ck_sv_policy_target CHECK ((CASE target_type WHEN 'SPACE' THEN TRUE WHEN 'BRAND_STORES' THEN TRUE WHEN 'STORE' THEN TRUE ELSE CASE WHEN target_type IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_policy_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_policy_space CHECK (target_type <> 'SPACE' OR target_no=management_no),
+    CONSTRAINT ck_sv_policy_revision CHECK (version>=0 AND (CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS sv_issue_policy_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    policy_version_no VARCHAR(64) NOT NULL,
+    policy_no VARCHAR(64) NOT NULL,
+    version_index BIGINT NOT NULL,
+    configuration_key VARCHAR(64) NOT NULL,
+    allow_issue TINYINT NOT NULL,
+    require_approval TINYINT NOT NULL,
+    max_bonus_bps INT NOT NULL,
+    max_paid_minor BIGINT NOT NULL,
+    max_bonus_minor BIGINT NOT NULL,
+    max_active_days INT NOT NULL,
+    max_outstanding_minor BIGINT NOT NULL,
+    effect_mode VARCHAR(24) NOT NULL,
+    parent_version_refs TEXT NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    permission_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_policy_version UNIQUE (tenant_no,policy_version_no),
+    CONSTRAINT uk_sv_policy_sequence UNIQUE (tenant_no,policy_no,version_index),
+    CONSTRAINT uk_sv_policy_command UNIQUE (tenant_no,policy_no,configuration_key),
+    CONSTRAINT ck_sv_policy_boolean CHECK ((CASE allow_issue WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN allow_issue IS NULL THEN NULL ELSE FALSE END END) AND (CASE require_approval WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN require_approval IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_policy_amounts CHECK (max_paid_minor>0 AND max_bonus_minor>=0 AND max_outstanding_minor>0),
+    CONSTRAINT ck_sv_policy_ratio CHECK (max_bonus_bps>=0 AND max_bonus_bps<=10000),
+    CONSTRAINT ck_sv_policy_duration CHECK (max_active_days>0),
+    CONSTRAINT ck_sv_policy_effect CHECK (effect_mode='NEW_ISSUANCE_ONLY'),
+    CONSTRAINT ck_sv_policy_version_revision CHECK (version_index>0 AND version>=0 AND (CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_sv_release_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    link_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    draft_revision_no VARCHAR(64) NOT NULL,
+    draft_hash CHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NULL,
+    issuer_no VARCHAR(64) NULL,
+    release_no VARCHAR(64) NULL,
+    release_hash CHAR(64) NULL,
+    publish_command_no VARCHAR(64) NOT NULL,
+    state VARCHAR(32) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_principal VARCHAR(64) NOT NULL,
+    scope_snapshot TEXT NOT NULL,
+    permission_snapshot TEXT NOT NULL,
+    policy_versions TEXT NOT NULL,
+    policy_hash CHAR(64) NOT NULL,
+    approval_required TINYINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL DEFAULT 'STORE',
+    scope_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_link_no UNIQUE (tenant_no,link_no),
+    CONSTRAINT uk_sv_link_draft UNIQUE (tenant_no,activity_no,draft_revision_no),
+    CONSTRAINT uk_sv_link_version UNIQUE (tenant_no,activity_version_no),
+    CONSTRAINT uk_sv_link_release UNIQUE (tenant_no,release_no),
+    CONSTRAINT uk_sv_link_command UNIQUE (tenant_no,publish_command_no),
+    CONSTRAINT ck_sv_link_state CHECK ((CASE state WHEN 'DRAFT' THEN TRUE WHEN 'PENDING_APPROVAL' THEN TRUE WHEN 'APPROVED' THEN TRUE WHEN 'PREPARING' THEN TRUE WHEN 'PAY_READY' THEN TRUE WHEN 'ACTIVE' THEN TRUE WHEN 'STOP_REQUESTED' THEN TRUE WHEN 'STOPPED' THEN TRUE WHEN 'STALE' THEN TRUE WHEN 'BLOCKED_POLICY' THEN TRUE WHEN 'FAILED' THEN TRUE ELSE CASE WHEN state IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_sv_link_approval CHECK ((CASE approval_required WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN approval_required IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_sv_approval
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    approval_no VARCHAR(64) NOT NULL,
+    link_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    draft_revision_no VARCHAR(64) NOT NULL,
+    draft_hash CHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    management_no VARCHAR(64) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_principal VARCHAR(64) NOT NULL,
+    decided_by VARCHAR(64) NULL,
+    decided_principal VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    draft_snapshot TEXT NOT NULL,
+    policy_versions TEXT NOT NULL,
+    policy_hash CHAR(64) NOT NULL,
+    decision_reason VARCHAR(255) NULL,
+    decision_key VARCHAR(64) NULL,
+    decision_hash CHAR(64) NULL,
+    decided_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(24) NOT NULL DEFAULT 'STORE',
+    scope_no VARCHAR(64) NULL,
+    CONSTRAINT uk_sv_approval_no UNIQUE (tenant_no,approval_no),
+    CONSTRAINT uk_sv_approval_draft UNIQUE (tenant_no,activity_no,draft_revision_no),
+    CONSTRAINT ck_sv_approval_status CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPROVED' THEN TRUE WHEN 'RETURNED' THEN TRUE WHEN 'STALE' THEN TRUE WHEN 'BLOCKED_POLICY' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS prn_device
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    device_no VARCHAR(32) NOT NULL,
+    vendor VARCHAR(32) NOT NULL,
+    connection_type VARCHAR(16) NOT NULL,
+    credential_ref VARCHAR(64) NOT NULL,
+    bridge_actor_no VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    capabilities LONGTEXT NOT NULL,
+    last_seen_at DATETIME(3) NULL,
+    online TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    authorization_version BIGINT NOT NULL DEFAULT 0,
+    revoke_reason VARCHAR(255) NULL,
+    revoked_by VARCHAR(64)  NULL,
+    revoke_key VARCHAR(128)  NULL,
+    revocation_history MEDIUMTEXT NULL,
+    active_job_no VARCHAR(32) NULL,
+    active_attempt_no VARCHAR(32) NULL,
+    active_fence_epoch BIGINT NOT NULL DEFAULT 0,
+    physical_key VARCHAR(192) NULL,
+    execution_resolution_history MEDIUMTEXT NULL,
+    CONSTRAINT uk_prn_device_no UNIQUE (device_no),
+    CONSTRAINT ck_prn_device_caps CHECK ((capabilities IS JSON)),
+    CONSTRAINT uk_prn_device_physical UNIQUE (physical_key)
+);
+
+CREATE TABLE IF NOT EXISTS prn_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    template_code VARCHAR(32) NOT NULL,
+    revision INT NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    content TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT prn_template_uk_prn_template_no UNIQUE (template_no),
+    CONSTRAINT uk_prn_template_revision UNIQUE (tenant_no, entity_no, store_no, template_code, revision),
+    CONSTRAINT ck_prn_template_revision CHECK (revision > 0)
+);
+
+CREATE TABLE IF NOT EXISTS prn_route
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    route_no VARCHAR(32) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    station_no VARCHAR(32) NOT NULL DEFAULT '',
+    device_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    copies INT NOT NULL,
+    match_rule LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT prn_route_uk_prn_route_no UNIQUE (route_no),
+    CONSTRAINT uk_prn_route_target UNIQUE (tenant_no, entity_no, store_no, scene, station_no, device_no),
+    CONSTRAINT ck_prn_route_copies CHECK (copies BETWEEN 1 AND 10),
+    CONSTRAINT ck_prn_route_rule CHECK ((match_rule IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS prn_job
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    job_no VARCHAR(32) NOT NULL,
+    source_event_no VARCHAR(64) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    device_no VARCHAR(32) NOT NULL,
+    part_no VARCHAR(32) NOT NULL,
+    copy_index INT NOT NULL,
+    template_no VARCHAR(32) NOT NULL,
+    document_snapshot LONGTEXT NOT NULL,
+    rendered_content LONGTEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    original_job_no VARCHAR(32) NULL,
+    dedup_key CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    event_root_key CHAR(64) NULL,
+    reprint_reason VARCHAR(256) NULL,
+    requested_by VARCHAR(64) NOT NULL,
+    lease_until DATETIME(3) NULL,
+    current_attempt_no VARCHAR(32) NULL,
+    lease_token VARCHAR(64) NULL,
+    attempt_count INT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    request_no VARCHAR(32) NULL,
+    batch_no VARCHAR(32) NULL,
+    document_key VARCHAR(64) NULL,
+    route_rule_key VARCHAR(64) NULL,
+    target_key VARCHAR(32) NULL,
+    required TINYINT NOT NULL DEFAULT 1,
+    printer_no VARCHAR(32) NULL,
+    template_version_no VARCHAR(32) NULL,
+    renderer_version VARCHAR(32) NULL,
+    layout_profile_snapshot TEXT NULL,
+    layout_snapshot TEXT NULL,
+    template_resolution_snapshot TEXT NULL,
+    payload_snapshot TEXT NULL,
+    document_hash VARCHAR(64) NULL,
+    route_snapshot TEXT NULL,
+    priority INT NOT NULL DEFAULT 0,
+    printer_sequence BIGINT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retry_count INT NULL,
+    next_retry_at DATETIME(3) NULL,
+    deadline_at DATETIME(3) NULL,
+    result_evidence VARCHAR(24) NULL,
+    confirmed_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    last_error_summary VARCHAR(255) NULL,
+    parent_job_no VARCHAR(32) NULL,
+    root_job_no VARCHAR(32) NULL,
+    job_kind VARCHAR(16) NULL,
+    resolution_status VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    replacement_job_no VARCHAR(32) NULL,
+    cancel_requested_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    rich_document_snapshot MEDIUMTEXT NULL,
+    delivery_stage VARCHAR(24) NULL,
+    execution_released_at DATETIME(3) NULL,
+    CONSTRAINT uk_prn_printer_sequence UNIQUE (tenant_no, printer_no, printer_sequence),
+    CONSTRAINT uk_prn_job_copy UNIQUE (tenant_no, batch_no, document_key, route_rule_key, target_key, copy_index),
+    CONSTRAINT uk_prn_job_no UNIQUE (job_no),
+    CONSTRAINT uk_prn_job_dedup UNIQUE (dedup_key),
+    CONSTRAINT uk_prn_event_root UNIQUE (event_root_key),
+    CONSTRAINT ck_prn_job_document CHECK ((document_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS prn_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    attempt_no VARCHAR(32) NOT NULL,
+    job_no VARCHAR(32) NOT NULL,
+    sequence_no INT NOT NULL,
+    channel_job_no VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    response_code VARCHAR(64) NULL,
+    started_at DATETIME(3) NOT NULL,
+    finished_at DATETIME(3) NULL,
+    lease_token VARCHAR(64) NOT NULL,
+    bridge_actor_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    printer_no VARCHAR(32) NULL,
+    attempt_index INT NULL,
+    dispatch_key VARCHAR(64) NULL,
+    agent_no VARCHAR(32) NULL,
+    agent_session_epoch BIGINT NULL,
+    fence_epoch BIGINT NULL,
+    connection_revision BIGINT NULL,
+    credential_ref VARCHAR(32) NULL,
+    connection_snapshot TEXT NULL,
+    adapter_version VARCHAR(32) NULL,
+    provider_scope VARCHAR(64) NULL,
+    provider_job_id VARCHAR(128) NULL,
+    provider_reference_hash VARCHAR(64) NULL,
+    request_hash VARCHAR(64) NULL,
+    transport_hash VARCHAR(64) NULL,
+    submitted_at DATETIME(3) NULL,
+    accepted_at DATETIME(3) NULL,
+    result_observed_at DATETIME(3) NULL,
+    next_query_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    result_summary TEXT NULL,
+    authorization_epoch BIGINT NULL,
+    CONSTRAINT uk_prn_attempt_provider UNIQUE (tenant_no, provider_reference_hash),
+    CONSTRAINT uk_prn_attempt_dispatch UNIQUE (tenant_no, dispatch_key),
+    CONSTRAINT uk_prn_attempt_index UNIQUE (tenant_no, job_no, attempt_index),
+    CONSTRAINT uk_prn_attempt_no UNIQUE (attempt_no),
+    CONSTRAINT uk_prn_attempt_sequence UNIQUE (tenant_no, job_no, sequence_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_fulfillment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    fulfillment_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    operation_key CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    verify_code_hash CHAR(64) NOT NULL,
+    expected_sub_version BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    inventory_receipt_json LONGTEXT NULL,
+    error_code VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    fulfillment_kind VARCHAR(32) NULL,
+    plan_hash VARCHAR(64) NULL,
+    command_snapshot TEXT NULL,
+    CONSTRAINT uk_industry_fulfillment_no UNIQUE (fulfillment_no),
+    CONSTRAINT uk_industry_fulfillment_key UNIQUE (tenant_no,entity_no,store_no,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_price_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    policy_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    reason_code VARCHAR(32) NOT NULL,
+    manual_kind VARCHAR(16) NOT NULL,
+    enabled TINYINT(1) NOT NULL DEFAULT 0,
+    self_limit_minor BIGINT NOT NULL,
+    max_limit_minor BIGINT NOT NULL,
+    min_payable_rate_bp INT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_manual_policy_no UNIQUE (policy_no),
+    CONSTRAINT uk_manual_policy_scope UNIQUE (tenant_no,entity_no,store_no,currency,reason_code,manual_kind),
+    CHECK (self_limit_minor = 0 AND max_limit_minor >= 0),
+    CHECK (min_payable_rate_bp >= 0 AND min_payable_rate_bp <= 10000)
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_price_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    adjustment_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    subject_no VARCHAR(32) NULL,
+    manual_kind VARCHAR(16) NOT NULL,
+    requested_minor BIGINT NULL,
+    payable_rate_bp INT NULL,
+    currency CHAR(3) NOT NULL,
+    discount_minor BIGINT NOT NULL,
+    reason_code VARCHAR(32) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    source_json LONGTEXT NOT NULL,
+    preparation_hash CHAR(64) NOT NULL,
+    config_hash CHAR(64) NOT NULL,
+    tax_hash CHAR(64) NOT NULL,
+    policy_no VARCHAR(32) NOT NULL,
+    policy_version BIGINT NOT NULL,
+    operation_key CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    approval_mode VARCHAR(24) NOT NULL,
+    approved_by VARCHAR(32) NULL,
+    approved_at DATETIME(3) NULL,
+    evaluated_at DATETIME(3) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_manual_adjustment_no UNIQUE (adjustment_no),
+    CONSTRAINT uk_manual_adjustment_key UNIQUE (tenant_no,entity_no,store_no,operation_key),
+    CHECK (discount_minor > 0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_clearing_entry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    clearing_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    allocation_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    issuer_version_no VARCHAR(64) NOT NULL,
+    recharge_store_no VARCHAR(64) NOT NULL,
+    redemption_store_no VARCHAR(64) NOT NULL,
+    payer_entity_no VARCHAR(64) NOT NULL,
+    payee_entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    principal_used_minor BIGINT NOT NULL,
+    bonus_used_minor BIGINT NOT NULL,
+    payable_minor BIGINT NOT NULL,
+    issuer_borne_minor BIGINT NOT NULL,
+    entry_type VARCHAR(24) NOT NULL,
+    original_clearing_no VARCHAR(64) NULL,
+    decision_no VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    source_event_key CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_clearing_no UNIQUE (tenant_no,clearing_no),
+    CONSTRAINT uk_sv_clearing_source UNIQUE (tenant_no,source_event_key),
+    CHECK ((CASE entry_type WHEN 'USE' THEN TRUE WHEN 'REVERSAL' THEN TRUE WHEN 'ADJUSTMENT' THEN TRUE ELSE CASE WHEN entry_type IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (entry_type<>'USE' OR (principal_used_minor>=0 AND bonus_used_minor>=0 AND principal_used_minor+bonus_used_minor>0 AND payable_minor>=0 AND payable_minor<=principal_used_minor AND issuer_borne_minor=bonus_used_minor AND original_clearing_no IS NULL AND decision_no IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_activity_owner
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_pmt_brand_activity UNIQUE (tenant_no,activity_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_financial_activation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    activation_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_financial_activation UNIQUE (tenant_no,activation_no),
+    CONSTRAINT uk_brand_financial_subject UNIQUE (tenant_no,brand_no),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS sv_settlement_bill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    bill_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    payer_entity_no VARCHAR(64) NOT NULL,
+    payee_entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    period_from DATETIME(3) NOT NULL,
+    period_to DATETIME(3) NOT NULL,
+    bill_kind VARCHAR(24) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    payable_minor BIGINT NOT NULL,
+    registered_payment_minor BIGINT NOT NULL DEFAULT 0,
+    confirmed_receipt_minor BIGINT NOT NULL DEFAULT 0,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    source_count BIGINT NOT NULL,
+    source_watermark BIGINT NOT NULL,
+    payer_reconciled_by VARCHAR(64) NULL,
+    payer_reconciled_at DATETIME(3) NULL,
+    payee_reconciled_by VARCHAR(64) NULL,
+    payee_reconciled_at DATETIME(3) NULL,
+    dispute_no VARCHAR(64) NULL,
+    dispute_previous_status VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_settlement_bill UNIQUE (tenant_no,bill_no),
+    CONSTRAINT uk_sv_settlement_period UNIQUE (tenant_no,issuer_no,payer_entity_no,payee_entity_no,currency,period_from,period_to),
+    CHECK (period_from<period_to),
+    CHECK ((CASE bill_kind WHEN 'CROSS_ENTITY' THEN TRUE WHEN 'INTERNAL_RECON' THEN TRUE ELSE CASE WHEN bill_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (payable_minor>=0 AND registered_payment_minor>=0 AND confirmed_receipt_minor>=0 AND confirmed_receipt_minor<=registered_payment_minor AND registered_payment_minor<=payable_minor),
+    CHECK ((bill_kind='INTERNAL_RECON' AND payer_entity_no=payee_entity_no AND payable_minor=0) OR (bill_kind='CROSS_ENTITY' AND payer_entity_no<>payee_entity_no)),
+    CHECK (source_count>0 AND source_watermark>0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_settlement_bill_item
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    item_no VARCHAR(64) NOT NULL,
+    bill_no VARCHAR(64) NOT NULL,
+    clearing_no VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_settlement_item UNIQUE (tenant_no,item_no),
+    CONSTRAINT uk_sv_settlement_clearing UNIQUE (tenant_no,clearing_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_settlement_payment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    payment_no VARCHAR(64) NOT NULL,
+    bill_no VARCHAR(64) NOT NULL,
+    payer_entity_no VARCHAR(64) NOT NULL,
+    payee_entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    paid_at DATETIME(3) NOT NULL,
+    payment_method VARCHAR(24) NOT NULL,
+    receipt_ciphertext VARBINARY(2048) NOT NULL,
+    receipt_key_id VARCHAR(32) NOT NULL,
+    receipt_digest CHAR(64) NOT NULL,
+    active_receipt_digest CHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE status WHEN 'REGISTERED' THEN TRUE WHEN 'RECEIPT_CONFIRMED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) THEN receipt_digest ELSE NULL END),
+    evidence_refs TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    registered_by VARCHAR(64) NOT NULL,
+    registered_principal_no VARCHAR(64) NOT NULL,
+    received_by VARCHAR(64) NULL,
+    received_principal_no VARCHAR(64) NULL,
+    received_at DATETIME(3) NULL,
+    void_reason VARCHAR(255) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_settlement_payment UNIQUE (tenant_no,payment_no),
+    CONSTRAINT uk_sv_settlement_receipt UNIQUE (tenant_no,payer_entity_no,active_receipt_digest),
+    CHECK (amount_minor>0),
+    CHECK ((CASE payment_method WHEN 'TRANSFER' THEN TRUE WHEN 'CASH' THEN TRUE WHEN 'OTHER' THEN TRUE ELSE CASE WHEN payment_method IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE status WHEN 'REGISTERED' THEN TRUE WHEN 'RECEIPT_CONFIRMED' THEN TRUE WHEN 'VOIDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (status<>'RECEIPT_CONFIRMED' OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_by<>registered_by AND received_principal_no IS NOT NULL AND received_principal_no<>registered_principal_no))
+);
+
+CREATE TABLE IF NOT EXISTS sv_settlement_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    bill_no VARCHAR(64) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    command_no VARCHAR(64) NOT NULL,
+    event_snapshot TEXT NOT NULL,
+    bill_revision BIGINT NOT NULL,
+    reason VARCHAR(255) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_settlement_event UNIQUE (tenant_no,event_no),
+    CONSTRAINT uk_sv_settlement_event_command UNIQUE (tenant_no,command_no),
+    CONSTRAINT uk_sv_settlement_event_revision UNIQUE (tenant_no,bill_no,bill_revision)
+);
+
+CREATE TABLE IF NOT EXISTS sv_activity_daily_summary
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NULL,
+    source_kind VARCHAR(32) NOT NULL,
+    release_no VARCHAR(64) NOT NULL,
+    occurrence_store_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    business_date DATE NOT NULL,
+    credited_paid_minor BIGINT NOT NULL,
+    credited_bonus_minor BIGINT NOT NULL,
+    used_principal_minor BIGINT NOT NULL,
+    used_bonus_minor BIGINT NOT NULL,
+    reversed_minor BIGINT NOT NULL,
+    clearing_minor BIGINT NOT NULL,
+    recharge_count BIGINT NOT NULL,
+    usage_count BIGINT NOT NULL,
+    customer_count BIGINT NOT NULL,
+    source_watermark BIGINT NOT NULL,
+    projection_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_activity_daily UNIQUE (tenant_no,issuer_no,release_no,occurrence_store_no,currency,business_date)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_financial_change
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    from_brand_no VARCHAR(64) NULL,
+    to_brand_no VARCHAR(64) NULL,
+    original_actor_no VARCHAR(64) NOT NULL,
+    command_key VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    pay_prepare_snapshot TEXT NULL,
+    status VARCHAR(32) NOT NULL,
+    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) THEN store_no ELSE NULL END),
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_financial_change UNIQUE (tenant_no,change_no),
+    CONSTRAINT uk_brand_financial_change_command UNIQUE (tenant_no,original_actor_no,command_key),
+    CONSTRAINT uk_brand_financial_change_store UNIQUE (tenant_no,active_store_no),
+    CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE WHEN 'COMPLETED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS sv_financial_membership_change
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    change_no VARCHAR(64) NOT NULL,
+    issuer_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    operating_entity_no VARCHAR(64) NOT NULL,
+    direction VARCHAR(16) NOT NULL,
+    old_binding_no VARCHAR(64) NULL,
+    new_binding_no VARCHAR(64) NULL,
+    old_revision BIGINT NOT NULL,
+    new_revision BIGINT NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_sv_membership_change UNIQUE (tenant_no,change_no,issuer_no),
+    CHECK ((CASE direction WHEN 'LEAVE' THEN TRUE WHEN 'JOIN' THEN TRUE ELSE CASE WHEN direction IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK ((CASE status WHEN 'PREPARED' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (new_revision>old_revision)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_fulfillment_progress
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    fulfilled_qty DECIMAL(24,6) NOT NULL,
+    unit VARCHAR(16) NOT NULL,
+    plan_hash VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_industry_fulfill_progress UNIQUE (tenant_no,entity_no,sub_order_no,order_item_id,source_component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_amendment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    source_return_no VARCHAR(32) NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    evidence_snapshot TEXT NULL,
+    inventory_snapshot TEXT NULL,
+    status VARCHAR(24) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    expected_sub_version BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    receivable_delta_minor BIGINT NOT NULL DEFAULT 0,
+    replacement_cart_no VARCHAR(32) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(32) NULL,
+    net_delta_minor BIGINT NULL,
+    tax_delta_minor BIGINT NULL,
+    CONSTRAINT uk_industry_amendment_no UNIQUE (amendment_no),
+    CONSTRAINT uk_industry_amendment_key UNIQUE (tenant_no,entity_no,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_amendment_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    amendment_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    quantity DECIMAL(24,6) NOT NULL,
+    physical_reduction_qty DECIMAL(24,6) NOT NULL,
+    cancel_qty DECIMAL(24,6) NOT NULL,
+    unit VARCHAR(16) NOT NULL,
+    disposition VARCHAR(16) NOT NULL,
+    receivable_reduction_minor BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    net_reduction_minor BIGINT NOT NULL,
+    tax_reduction_minor BIGINT NOT NULL,
+    CONSTRAINT uk_industry_amendment_line UNIQUE (amendment_no,order_item_id,source_component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_receivable_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    net_delta_minor BIGINT NULL,
+    tax_delta_minor BIGINT NULL,
+    CONSTRAINT uk_receivable_amendment UNIQUE (amendment_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_fee_line_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    amendment_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_fee_line_adjustment UNIQUE (amendment_no,order_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    definition_snapshot TEXT NOT NULL,
+    request_key CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_revision UNIQUE (revision_no),
+    CONSTRAINT uk_pricing_fee_rule_command UNIQUE (entity_no,store_no,request_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_scope
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    scope_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    goods_basis_minor BIGINT NOT NULL,
+    fee_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL,
+    CONSTRAINT uk_pricing_fee_scope UNIQUE (entity_no,store_no,scope_no,rule_no),
+    CHECK (goods_basis_minor>=0 AND fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_application
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    scope_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    original_goods_basis_minor BIGINT NOT NULL DEFAULT 0,
+    current_goods_basis_minor BIGINT NOT NULL DEFAULT 0,
+    current_quantity DECIMAL(20,6) NOT NULL DEFAULT 0,
+    fee_minor BIGINT NOT NULL,
+    adjusted_fee_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_application UNIQUE (application_no),
+    CONSTRAINT uk_pricing_fee_quote_scope UNIQUE (entity_no,store_no,quote_no,rule_no,scope_no),
+    CHECK (fee_minor>=0 AND adjusted_fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_advice
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    current_fee_minor BIGINT NOT NULL,
+    target_fee_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_pricing_fee_advice UNIQUE (entity_no,store_no,application_no,source_hash),
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (target_fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_reconciliation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    before_goods_minor BIGINT NOT NULL,
+    after_goods_minor BIGINT NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT uk_fee_reconciliation UNIQUE (entity_no,application_no,amendment_no)
+);
+
 CREATE TABLE IF NOT EXISTS prn_agent
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     agent_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     name VARCHAR(64) NOT NULL,
     platform VARCHAR(24) NOT NULL,
     status VARCHAR(24) NOT NULL,
@@ -8328,9 +10486,9 @@ CREATE TABLE IF NOT EXISTS prn_printer
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     printer_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     name VARCHAR(64) NOT NULL,
     physical_key VARCHAR(128) NOT NULL,
     connection_type VARCHAR(16) NOT NULL,
@@ -8358,7 +10516,7 @@ CREATE TABLE IF NOT EXISTS prn_credential_version
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     credential_ref VARCHAR(32) NOT NULL,
     printer_no VARCHAR(32) NOT NULL,
     version_number INT NOT NULL,
@@ -8378,7 +10536,7 @@ CREATE TABLE IF NOT EXISTS prn_printer_runtime
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     printer_no VARCHAR(32) NOT NULL,
     active_job_no VARCHAR(32) NULL,
     active_attempt_no VARCHAR(32) NULL,
@@ -8395,14 +10553,14 @@ CREATE TABLE IF NOT EXISTS prn_printer_runtime
     CONSTRAINT uk_prn_runtime UNIQUE (tenant_no, printer_no)
 );
 
-CREATE TABLE IF NOT EXISTS prn_template
+CREATE TABLE IF NOT EXISTS prn_template_catalog
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     template_no VARCHAR(32) NOT NULL,
-    scope_key VARCHAR(64) NOT NULL,
-    store_no VARCHAR(32) NULL,
+    scope_key VARCHAR(80) NOT NULL,
+    store_no VARCHAR(64) NULL,
     scene VARCHAR(32) NOT NULL,
     variant_code VARCHAR(32) NOT NULL,
     name VARCHAR(64) NOT NULL,
@@ -8411,7 +10569,7 @@ CREATE TABLE IF NOT EXISTS prn_template
     revision BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_prn_template_no UNIQUE (tenant_no, template_no),
+    CONSTRAINT prn_template_catalog_uk_prn_template_no UNIQUE (tenant_no, template_no),
     CONSTRAINT uk_prn_template_scope UNIQUE (tenant_no, entity_no, scope_key, scene, variant_code)
 );
 
@@ -8419,7 +10577,7 @@ CREATE TABLE IF NOT EXISTS prn_template_version
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     template_version_no VARCHAR(32) NOT NULL,
     template_no VARCHAR(32) NOT NULL,
     version_number INT NOT NULL,
@@ -8440,20 +10598,20 @@ CREATE TABLE IF NOT EXISTS prn_template_version
     CONSTRAINT uk_prn_tpl_version UNIQUE (tenant_no, template_no, version_number)
 );
 
-CREATE TABLE IF NOT EXISTS prn_route
+CREATE TABLE IF NOT EXISTS prn_route_catalog
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     route_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     scene VARCHAR(32) NOT NULL,
     current_version_no VARCHAR(32) NULL,
     status VARCHAR(16) NOT NULL,
     revision BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_prn_route_no UNIQUE (tenant_no, route_no),
+    CONSTRAINT prn_route_catalog_uk_prn_route_no UNIQUE (tenant_no, route_no),
     CONSTRAINT uk_prn_route_scene UNIQUE (tenant_no, entity_no, store_no, scene)
 );
 
@@ -8461,7 +10619,7 @@ CREATE TABLE IF NOT EXISTS prn_route_version
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     route_version_no VARCHAR(32) NOT NULL,
     route_no VARCHAR(32) NOT NULL,
     version_number INT NOT NULL,
@@ -8481,9 +10639,9 @@ CREATE TABLE IF NOT EXISTS prn_scene_policy
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     policy_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     scene VARCHAR(32) NOT NULL,
     current_version_no VARCHAR(32) NULL,
     enabled TINYINT NOT NULL DEFAULT 0,
@@ -8509,7 +10667,7 @@ CREATE TABLE IF NOT EXISTS prn_policy_version
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     policy_version_no VARCHAR(32) NOT NULL,
     policy_no VARCHAR(32) NOT NULL,
     version_number INT NOT NULL,
@@ -8529,11 +10687,11 @@ CREATE TABLE IF NOT EXISTS prn_request
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     request_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
-    order_no VARCHAR(32) NULL,
-    sub_order_no VARCHAR(32) NULL,
+    store_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NULL,
+    sub_order_no VARCHAR(64) NULL,
     biz_type VARCHAR(32) NOT NULL,
     biz_no VARCHAR(64) NOT NULL,
     biz_revision VARCHAR(64) NOT NULL,
@@ -8564,10 +10722,10 @@ CREATE TABLE IF NOT EXISTS prn_batch
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     batch_no VARCHAR(32) NOT NULL,
     request_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     batch_kind VARCHAR(16) NOT NULL,
     generation_key VARCHAR(64) NOT NULL,
     parent_batch_no VARCHAR(32) NULL,
@@ -8590,102 +10748,11 @@ CREATE TABLE IF NOT EXISTS prn_batch
     CONSTRAINT uk_prn_batch_generation UNIQUE (tenant_no, request_no, generation_key)
 );
 
-CREATE TABLE IF NOT EXISTS prn_job
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
-    job_no VARCHAR(32) NOT NULL,
-    request_no VARCHAR(32) NOT NULL,
-    batch_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
-    scene VARCHAR(32) NOT NULL,
-    document_key VARCHAR(64) NOT NULL,
-    route_rule_key VARCHAR(64) NOT NULL,
-    target_key VARCHAR(32) NOT NULL,
-    copy_index INT NOT NULL,
-    required TINYINT NOT NULL DEFAULT 1,
-    printer_no VARCHAR(32) NOT NULL,
-    template_version_no VARCHAR(32) NULL,
-    renderer_version VARCHAR(32) NOT NULL,
-    layout_profile_snapshot TEXT NOT NULL,
-    layout_snapshot TEXT NOT NULL,
-    template_resolution_snapshot TEXT NOT NULL,
-    payload_snapshot TEXT NOT NULL,
-    document_snapshot MEDIUMTEXT NOT NULL,
-    document_hash VARCHAR(64) NOT NULL,
-    route_snapshot TEXT NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    priority INT NOT NULL DEFAULT 0,
-    printer_sequence BIGINT NOT NULL,
-    retry_count INT NOT NULL DEFAULT 0,
-    max_retry_count INT NOT NULL,
-    next_retry_at DATETIME(3) NULL,
-    deadline_at DATETIME(3) NULL,
-    current_attempt_no VARCHAR(32) NULL,
-    result_evidence VARCHAR(24) NULL,
-    confirmed_at DATETIME(3) NULL,
-    last_error_code VARCHAR(64) NULL,
-    last_error_summary VARCHAR(255) NULL,
-    parent_job_no VARCHAR(32) NULL,
-    root_job_no VARCHAR(32) NOT NULL,
-    job_kind VARCHAR(16) NOT NULL,
-    resolution_status VARCHAR(24) NOT NULL DEFAULT 'OPEN',
-    replacement_job_no VARCHAR(32) NULL,
-    cancel_requested_at DATETIME(3) NULL,
-    finished_at DATETIME(3) NULL,
-    revision BIGINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_prn_job_no UNIQUE (tenant_no, job_no),
-    CONSTRAINT uk_prn_job_copy UNIQUE (tenant_no, batch_no, document_key, route_rule_key, target_key, copy_index),
-    CONSTRAINT uk_prn_printer_sequence UNIQUE (tenant_no, printer_no, printer_sequence)
-);
-
-CREATE TABLE IF NOT EXISTS prn_attempt
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
-    attempt_no VARCHAR(32) NOT NULL,
-    job_no VARCHAR(32) NOT NULL,
-    printer_no VARCHAR(32) NOT NULL,
-    attempt_index INT NOT NULL,
-    dispatch_key VARCHAR(64) NOT NULL,
-    agent_no VARCHAR(32) NULL,
-    agent_session_epoch BIGINT NULL,
-    fence_epoch BIGINT NOT NULL,
-    connection_revision BIGINT NOT NULL,
-    credential_ref VARCHAR(32) NULL,
-    connection_snapshot TEXT NOT NULL,
-    adapter_version VARCHAR(32) NOT NULL,
-    status VARCHAR(24) NOT NULL,
-    provider_scope VARCHAR(64) NOT NULL,
-    provider_job_id VARCHAR(128) NULL,
-    provider_reference_hash VARCHAR(64) NULL,
-    request_hash VARCHAR(64) NOT NULL,
-    transport_hash VARCHAR(64) NULL,
-    submitted_at DATETIME(3) NULL,
-    accepted_at DATETIME(3) NULL,
-    result_observed_at DATETIME(3) NULL,
-    next_query_at DATETIME(3) NULL,
-    last_error_code VARCHAR(64) NULL,
-    result_summary TEXT NULL,
-    finished_at DATETIME(3) NULL,
-    revision BIGINT NOT NULL DEFAULT 0,
-    created_at DATETIME(3) NOT NULL,
-    updated_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_prn_attempt_no UNIQUE (tenant_no, attempt_no),
-    CONSTRAINT uk_prn_attempt_index UNIQUE (tenant_no, job_no, attempt_index),
-    CONSTRAINT uk_prn_attempt_dispatch UNIQUE (tenant_no, dispatch_key),
-    CONSTRAINT uk_prn_attempt_provider UNIQUE (tenant_no, provider_reference_hash)
-);
-
 CREATE TABLE IF NOT EXISTS prn_receipt
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     receipt_no VARCHAR(32) NOT NULL,
     attempt_no VARCHAR(32) NULL,
     source_type VARCHAR(16) NOT NULL,
@@ -8712,9 +10779,9 @@ CREATE TABLE IF NOT EXISTS prn_operation
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     operation_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     operation_type VARCHAR(32) NOT NULL,
     actor_type VARCHAR(16) NOT NULL,
     actor_no VARCHAR(64) NOT NULL,
@@ -8740,9 +10807,9 @@ CREATE TABLE IF NOT EXISTS prn_incident
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     incident_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     incident_type VARCHAR(32) NOT NULL,
     target_type VARCHAR(16) NOT NULL,
     target_no VARCHAR(64) NOT NULL,
@@ -8768,8 +10835,8 @@ CREATE TABLE IF NOT EXISTS prn_store_stream
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     last_sequence BIGINT NOT NULL DEFAULT 0,
     retained_from_sequence BIGINT NOT NULL DEFAULT 1,
     revision BIGINT NOT NULL DEFAULT 0,
@@ -8782,10 +10849,10 @@ CREATE TABLE IF NOT EXISTS prn_action_log
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     log_no VARCHAR(32) NOT NULL,
     store_sequence BIGINT NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     operation_no VARCHAR(32) NULL,
     target_type VARCHAR(32) NOT NULL,
     target_no VARCHAR(64) NOT NULL,
@@ -8810,9 +10877,9 @@ CREATE TABLE IF NOT EXISTS prn_reconcile_cursor
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     cursor_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     source_kind VARCHAR(32) NOT NULL,
     watermark_at DATETIME(3) NOT NULL,
     watermark_no VARCHAR(64) NOT NULL,
@@ -8833,9 +10900,9 @@ CREATE TABLE IF NOT EXISTS prn_simulation_run
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     simulation_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     operation_no VARCHAR(32) NOT NULL,
     scene VARCHAR(32) NOT NULL,
     source_type VARCHAR(16) NOT NULL,
@@ -8867,9 +10934,9 @@ CREATE TABLE IF NOT EXISTS prn_export_task
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
     export_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     operation_no VARCHAR(32) NOT NULL,
     export_key VARCHAR(64) NOT NULL,
     source_type VARCHAR(16) NOT NULL,
@@ -8910,11 +10977,11 @@ CREATE TABLE IF NOT EXISTS ord_print_fact
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
     print_fact_no VARCHAR(32) NOT NULL,
-    order_no VARCHAR(32) NOT NULL,
-    sub_order_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
     source_fact_key VARCHAR(64) NOT NULL,
     receipt_intent_key VARCHAR(64) NULL,
     biz_revision VARCHAR(64) NOT NULL,
@@ -8933,6 +11000,3120 @@ CREATE TABLE IF NOT EXISTS ord_print_fact
     CONSTRAINT uk_ord_print_fact_no UNIQUE (tenant_no, print_fact_no),
     CONSTRAINT uk_ord_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
     CONSTRAINT uk_ord_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
+);
+
+CREATE TABLE IF NOT EXISTS biz_print_fact
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    print_fact_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NULL,
+    sub_order_no VARCHAR(64) NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    owner_event_hash VARCHAR(64) NOT NULL,
+    source_fact_key VARCHAR(64) NOT NULL,
+    receipt_intent_key VARCHAR(64) NULL,
+    biz_revision VARCHAR(64) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    trigger_type VARCHAR(32) NOT NULL,
+    payload_schema_version INT NOT NULL,
+    source_occurred_at DATETIME(3) NOT NULL,
+    snapshot TEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    printability VARCHAR(16) NOT NULL,
+    block_code VARCHAR(64) NULL,
+    diagnostics TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_biz_print_fact_no UNIQUE (tenant_no, print_fact_no),
+    CONSTRAINT uk_biz_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
+    CONSTRAINT uk_biz_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    personnel_no VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    avatar_ref VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    contact_ref VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_1 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT ck_mch_personnel_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_3 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'LEFT' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    link_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    mch_account_no VARCHAR(32) NULL,
+    linked_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_account_1 UNIQUE (tenant_no, entity_no, link_no),
+    CONSTRAINT uk_mch_personnel_account_2 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT uk_mch_personnel_account_3 UNIQUE (tenant_no, entity_no, mch_account_no),
+    CONSTRAINT ck_mch_personnel_account_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_account_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_store
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    assignment_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    public_visible TINYINT NOT NULL,
+    level_code VARCHAR(32) NULL,
+    sort_order INT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_store_1 UNIQUE (tenant_no, entity_no, assignment_no),
+    CONSTRAINT ck_mch_personnel_store_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_store_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_store_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_store_4 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_store_5 CHECK ((CASE public_visible WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN public_visible IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_position
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    position_no VARCHAR(32) NOT NULL,
+    assignment_no VARCHAR(32) NOT NULL,
+    position_code VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_position_1 UNIQUE (tenant_no, entity_no, position_no),
+    CONSTRAINT uk_mch_personnel_position_2 UNIQUE (tenant_no, entity_no, assignment_no, position_code),
+    CONSTRAINT ck_mch_personnel_position_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_position_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_position_3 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_skill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    skill_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    goods_no VARCHAR(32) NOT NULL,
+    sku_no VARCHAR(32) NULL,
+    level_code VARCHAR(32) NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    verified_by VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_skill_1 UNIQUE (tenant_no, entity_no, skill_no),
+    CONSTRAINT ck_mch_personnel_skill_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_skill_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_skill_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_skill_4 CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'VERIFIED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    resource_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    resource_type VARCHAR(24) NOT NULL,
+    personnel_no VARCHAR(32) NULL,
+    name VARCHAR(64) NOT NULL,
+    capacity INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    open_occupation_no VARCHAR(32) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_resource_no UNIQUE (tenant_no, entity_no, resource_no),
+    CONSTRAINT uk_mch_resource_personnel UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT ck_mch_resource_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_resource_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_type CHECK ((CASE resource_type WHEN 'STAFF' THEN TRUE WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'SUSPENDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_capacity CHECK (capacity > 0),
+    CONSTRAINT ck_mch_resource_shape CHECK (
+        (resource_type='STAFF' AND store_no IS NULL AND personnel_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(personnel_no)) > 0 AND capacity=1)
+        OR ((CASE resource_type WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END) AND store_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(store_no)) > 0 AND personnel_no IS NULL)
+    ),
+    CONSTRAINT ck_mch_resource_identity CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0),
+    CONSTRAINT ck_mch_resource_open_ref CHECK (
+        open_occupation_no IS NULL OR CHAR_LENGTH(TRIM(open_occupation_no)) > 0
+    )
+);
+
+CREATE TABLE IF NOT EXISTS mch_schedule_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    rule_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    timezone VARCHAR(64) NOT NULL,
+    weekday_mask INT NOT NULL,
+    start_minute INT NOT NULL,
+    end_minute INT NOT NULL,
+    end_day_offset INT NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_to DATE NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_rule_no UNIQUE (tenant_no, entity_no, rule_no),
+    CONSTRAINT ck_mch_schedule_rule_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_rule_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_days CHECK (weekday_mask BETWEEN 1 AND 127),
+    CONSTRAINT ck_mch_schedule_rule_minutes CHECK (start_minute BETWEEN 0 AND 1439 AND end_minute BETWEEN 0 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_offset CHECK ((CASE end_day_offset WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN end_day_offset IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_duration CHECK (end_day_offset*1440+end_minute-start_minute BETWEEN 1 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_dates CHECK (valid_to IS NULL OR valid_to >= valid_from),
+    CONSTRAINT ck_mch_schedule_rule_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_timezone CHECK (CHAR_LENGTH(TRIM(timezone)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS mch_schedule_change_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    change_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    source_ref VARCHAR(64) NOT NULL,
+    before_revision BIGINT NOT NULL,
+    after_revision BIGINT NOT NULL,
+    affected_refs TEXT NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_change_no UNIQUE (tenant_no, entity_no, change_no),
+    CONSTRAINT ck_mch_schedule_change_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_change_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_change_revision CHECK (before_revision >= 0 AND after_revision > before_revision)
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_owner
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32)  NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    current_hold_no VARCHAR(32) NULL,
+    owner_version BIGINT NOT NULL DEFAULT 0,
+    source_revision BIGINT NULL,
+    occupation_association_state VARCHAR(24)  NOT NULL DEFAULT 'UNBOUND',
+    planned_resource_command_no VARCHAR(32)  NULL,
+    planned_resource_command_hash CHAR(64)  NULL,
+    execution_reference_json LONGTEXT  NULL,
+    execution_reference_hash CHAR(64)  NULL,
+    execution_plan_hash CHAR(64)  NULL,
+    initial_start_command_no VARCHAR(32)  NULL,
+    seal_command_no VARCHAR(32)  NULL,
+    CONSTRAINT uk_rco_owner_planned UNIQUE (tenant_no, entity_no, planned_resource_command_no),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_owner_1 UNIQUE (tenant_no, entity_no, owner_no),
+    CONSTRAINT uk_booking_owner_2 UNIQUE (tenant_no, entity_no, store_no, source_type, source_no),
+    CONSTRAINT ck_booking_owner_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_owner_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_owner_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_owner_f3 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_booking_owner_f4 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_booking_owner_f5 CHECK (CHAR_LENGTH(TRIM(source_type)) > 0 AND CHAR_LENGTH(source_type)=CHAR_LENGTH(TRIM(source_type))),
+    CONSTRAINT ck_booking_owner_f6 CHECK (CHAR_LENGTH(TRIM(source_no)) > 0 AND CHAR_LENGTH(source_no)=CHAR_LENGTH(TRIM(source_no))),
+    CONSTRAINT ck_booking_owner_f7 CHECK (current_hold_no IS NULL OR (CHAR_LENGTH(TRIM(current_hold_no)) > 0 AND CHAR_LENGTH(current_hold_no)=CHAR_LENGTH(TRIM(current_hold_no)))),
+    CONSTRAINT ck_booking_owner_revision CHECK (owner_version >= 0 AND (source_revision IS NULL OR source_revision >= 0)),
+    CONSTRAINT ck_booking_owner_head CHECK ((current_hold_no IS NULL AND source_revision IS NULL) OR (current_hold_no IS NOT NULL AND source_revision IS NOT NULL)),
+    CONSTRAINT ck_rco_owner_association CHECK (((occupation_association_state='UNBOUND' AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND execution_plan_hash IS NULL AND initial_start_command_no IS NULL AND seal_command_no IS NULL) OR ((CASE occupation_association_state WHEN 'ACCEPTED' THEN TRUE WHEN 'SEALED_BEFORE_ACCEPT' THEN TRUE ELSE CASE WHEN occupation_association_state IS NULL THEN NULL ELSE FALSE END END) AND source_type='SERVICE_EXECUTION' AND deleted=0 AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_reference_json IS NOT NULL AND (execution_reference_json IS JSON) AND execution_reference_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND ((occupation_association_state='ACCEPTED' AND initial_start_command_no IS NOT NULL AND seal_command_no IS NULL) OR (occupation_association_state='SEALED_BEFORE_ACCEPT' AND initial_start_command_no IS NULL AND seal_command_no IS NOT NULL))))),
+    CONSTRAINT ck_rco_booking_owner_planned_resource_command_hash CHECK (planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_booking_owner_execution_reference_hash CHECK (execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_booking_owner_execution_plan_hash CHECK (execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$')
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    command_no VARCHAR(32) NOT NULL,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    action VARCHAR(32)  NOT NULL,
+    request_key_hash CHAR(64)  NOT NULL,
+    payload_hash CHAR(64)  NOT NULL,
+    frozen_payload LONGTEXT NOT NULL,
+    expected_owner_version BIGINT NOT NULL,
+    source_revision BIGINT NOT NULL,
+    target_hold_no VARCHAR(32) NULL,
+    expected_hold_version BIGINT NULL,
+    expected_lease_revision BIGINT NULL,
+    status VARCHAR(24)  NOT NULL,
+    result_payload LONGTEXT NULL,
+    rejection_code VARCHAR(64) NULL,
+    wait_reason VARCHAR(128) NULL,
+    next_retry_at DATETIME(3) NULL,
+    initiated_by VARCHAR(64) NOT NULL,
+    command_kind VARCHAR(24)  NOT NULL DEFAULT 'BOOKING_V1',
+    payload_schema VARCHAR(64)  NULL,
+    execution_reference_json LONGTEXT  NULL,
+    execution_reference_hash CHAR(64)  NULL,
+    planned_resource_command_no VARCHAR(32)  NULL,
+    planned_resource_command_hash CHAR(64)  NULL,
+    execution_plan_hash CHAR(64)  NULL,
+    original_start_command_no VARCHAR(32)  NULL,
+    actor_namespace VARCHAR(24)  NULL,
+    actor_provenance_hash CHAR(64)  NULL,
+    machine_purpose VARCHAR(32)  NULL,
+    observation_epoch BIGINT NOT NULL DEFAULT 0,
+    original_result_no VARCHAR(32)  NULL,
+    original_result_revision BIGINT NULL,
+    original_result_hash CHAR(64)  NULL,
+    occupation_outcome VARCHAR(32)  NULL,
+    seal_no VARCHAR(32)  NULL,
+    seal_revision BIGINT NULL,
+    seal_hash CHAR(64)  NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_resource_command_1 UNIQUE (tenant_no, entity_no, command_no),
+    CONSTRAINT uk_resource_command_2 UNIQUE (tenant_no, entity_no, store_no, action, request_key_hash),
+    CONSTRAINT ck_resource_command_version CHECK (version >= 0),
+    CONSTRAINT ck_resource_command_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_command_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_resource_command_f3 CHECK (CHAR_LENGTH(TRIM(command_no)) > 0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))),
+    CONSTRAINT ck_resource_command_f4 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_resource_command_f5 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_resource_command_f6 CHECK (CHAR_LENGTH(TRIM(action)) > 0 AND CHAR_LENGTH(action)=CHAR_LENGTH(TRIM(action))),
+    CONSTRAINT ck_resource_command_f7 CHECK (request_key_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_resource_command_f8 CHECK (payload_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_resource_command_f9 CHECK (target_hold_no IS NULL OR (CHAR_LENGTH(TRIM(target_hold_no)) > 0 AND CHAR_LENGTH(target_hold_no)=CHAR_LENGTH(TRIM(target_hold_no)))),
+    CONSTRAINT ck_resource_command_f10 CHECK (CHAR_LENGTH(TRIM(status)) > 0 AND CHAR_LENGTH(status)=CHAR_LENGTH(TRIM(status))),
+    CONSTRAINT ck_resource_command_f11 CHECK (rejection_code IS NULL OR (CHAR_LENGTH(TRIM(rejection_code)) > 0 AND CHAR_LENGTH(rejection_code)=CHAR_LENGTH(TRIM(rejection_code)))),
+    CONSTRAINT ck_resource_command_f12 CHECK (wait_reason IS NULL OR (CHAR_LENGTH(TRIM(wait_reason)) > 0 AND CHAR_LENGTH(wait_reason)=CHAR_LENGTH(TRIM(wait_reason)))),
+    CONSTRAINT ck_resource_command_f13 CHECK (CHAR_LENGTH(TRIM(initiated_by)) > 0 AND CHAR_LENGTH(initiated_by)=CHAR_LENGTH(TRIM(initiated_by))),
+    CONSTRAINT ck_resource_command_status CHECK ((CASE status WHEN 'ACCEPTED' THEN TRUE WHEN 'SUCCEEDED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_command_revision CHECK (expected_owner_version >= 0 AND source_revision >= 0 AND (expected_hold_version IS NULL OR expected_hold_version >= 0) AND (expected_lease_revision IS NULL OR expected_lease_revision >= 1)),
+    CONSTRAINT ck_resource_command_target CHECK (target_hold_no IS NOT NULL OR (expected_hold_version IS NULL AND expected_lease_revision IS NULL)),
+    CONSTRAINT ck_resource_command_payload CHECK ((frozen_payload IS JSON) AND (result_payload IS NULL OR (result_payload IS JSON))),
+    CONSTRAINT ck_resource_command_result CHECK ((status='ACCEPTED' AND result_payload IS NULL AND rejection_code IS NULL) OR (status='SUCCEEDED' AND result_payload IS NOT NULL AND rejection_code IS NULL) OR (status='REJECTED' AND result_payload IS NOT NULL AND rejection_code IS NOT NULL)),
+    CONSTRAINT ck_resource_command_retry CHECK (status='ACCEPTED' OR (wait_reason IS NULL AND next_retry_at IS NULL)),
+    CONSTRAINT ck_resource_command_action CHECK (((command_kind='BOOKING_V1' AND (CASE action WHEN 'RESERVE' THEN TRUE WHEN 'PROTECT' THEN TRUE WHEN 'CONFIRM' THEN TRUE WHEN 'RENEW' THEN TRUE WHEN 'RELEASE' THEN TRUE WHEN 'EXPIRE' THEN TRUE WHEN 'RECONCILE' THEN TRUE WHEN 'REPLACE' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND payload_schema IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_plan_hash IS NULL AND original_start_command_no IS NULL AND actor_namespace IS NULL AND actor_provenance_hash IS NULL AND machine_purpose IS NULL AND observation_epoch=0 AND original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL AND seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND (CASE action WHEN 'START' THEN TRUE WHEN 'SEAL_START' THEN TRUE WHEN 'CHANGE' THEN TRUE WHEN 'END' THEN TRUE WHEN 'COMPLETE_CLEANING' THEN TRUE WHEN 'VALIDATE_WORKFLOW' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND payload_schema IS NOT NULL AND execution_reference_json IS NOT NULL AND (execution_reference_json IS JSON) AND execution_reference_hash IS NOT NULL AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND (CASE actor_namespace WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE WHEN 'MACHINE' THEN TRUE ELSE CASE WHEN actor_namespace IS NULL THEN NULL ELSE FALSE END END) AND actor_provenance_hash IS NOT NULL))),
+    CONSTRAINT ck_rco_command_result CHECK (observation_epoch>=0 AND ((original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL) OR (command_kind='OCCUPATION_V1' AND status<>'ACCEPTED' AND original_result_no IS NOT NULL AND original_result_revision>0 AND original_result_hash IS NOT NULL AND (CASE occupation_outcome WHEN 'APPLIED' THEN TRUE WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END))) AND ((seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND status='SUCCEEDED' AND seal_no IS NOT NULL AND seal_revision>0 AND seal_hash IS NOT NULL AND (CASE occupation_outcome WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END)))),
+    CONSTRAINT ck_rco_command_execution_reference_hash CHECK (execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_planned_resource_command_hash CHECK (planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_execution_plan_hash CHECK (execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_actor_provenance_hash CHECK (actor_provenance_hash IS NULL OR actor_provenance_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_original_result_hash CHECK (original_result_hash IS NULL OR original_result_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_seal_hash CHECK (seal_hash IS NULL OR seal_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_purpose CHECK (command_kind='BOOKING_V1' OR (payload_schema=CONCAT('RESOURCE_OCCUPATION_',action,'_V1') AND (((CASE actor_namespace WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_namespace IS NULL THEN NULL ELSE FALSE END END) AND machine_purpose IS NULL) OR (actor_namespace='MACHINE' AND action='SEAL_START' AND machine_purpose='RESOURCE_CANCEL_BEFORE_EFFECT_V1')))),
+    CONSTRAINT ck_rco_command_original_start CHECK (command_kind='BOOKING_V1' OR (action='START' AND original_start_command_no IS NULL) OR action='SEAL_START' OR ((CASE action WHEN 'CHANGE' THEN TRUE WHEN 'END' THEN TRUE WHEN 'COMPLETE_CLEANING' THEN TRUE WHEN 'VALIDATE_WORKFLOW' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND original_start_command_no IS NOT NULL)),
+    CONSTRAINT ck_rco_command_terminal_proof CHECK (command_kind='BOOKING_V1' OR status<>'SUCCEEDED' OR original_result_no IS NOT NULL),
+    CONSTRAINT ck_rco_command_seal_outcome CHECK ((occupation_outcome IS NULL OR NOT (CASE occupation_outcome WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END)) OR (action='SEAL_START' AND seal_no IS NOT NULL AND ((occupation_outcome='NEVER_ACCEPTED_SEALED' AND original_start_command_no IS NULL) OR (occupation_outcome='CANCELLED_BEFORE_EFFECT' AND original_start_command_no IS NOT NULL))))
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource_bucket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    bucket_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    start_at DATETIME(3) NOT NULL,
+    end_at DATETIME(3) NOT NULL,
+    capacity INT NOT NULL,
+    held_qty INT NOT NULL DEFAULT 0,
+    confirmed_qty INT NOT NULL DEFAULT 0,
+    capacity_revision BIGINT NOT NULL DEFAULT 0,
+    occupied_qty INT NOT NULL DEFAULT 0,
+    cleaning_qty INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_resource_bucket_1 UNIQUE (tenant_no, entity_no, bucket_no),
+    CONSTRAINT uk_resource_bucket_2 UNIQUE (tenant_no, entity_no, resource_no, start_at),
+    CONSTRAINT ck_resource_bucket_version CHECK (version >= 0),
+    CONSTRAINT ck_resource_bucket_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_bucket_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_resource_bucket_f3 CHECK (CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))),
+    CONSTRAINT ck_resource_bucket_f4 CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))),
+    CONSTRAINT ck_resource_bucket_grid CHECK (MOD(MINUTE(start_at),5)=0 AND SECOND(start_at)=0 AND EXTRACT(MICROSECOND FROM start_at)=0 AND end_at=TIMESTAMPADD(MINUTE,5,start_at)),
+    CONSTRAINT ck_resource_bucket_range CHECK (start_at >= '1000-01-03 00:00:00.000' AND end_at <= '9999-12-29 00:00:00.000'),
+    CONSTRAINT ck_resource_bucket_revision CHECK (capacity_revision >= 0),
+    CONSTRAINT ck_resource_bucket_capacity CHECK (capacity>0 AND held_qty>=0 AND confirmed_qty>=0 AND occupied_qty>=0 AND cleaning_qty>=0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+occupied_qty+cleaning_qty<=capacity)
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_hold
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    hold_no VARCHAR(32) NOT NULL,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    command_no VARCHAR(32) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    lease_revision BIGINT NOT NULL,
+    status VARCHAR(24)  NOT NULL,
+    expiration_policy VARCHAR(32)  NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    creation_plan_hash CHAR(64)  NOT NULL,
+    current_plan_hash CHAR(64)  NOT NULL,
+    plan_revision BIGINT NOT NULL,
+    replaces_hold_no VARCHAR(32) NULL,
+    replaced_by_hold_no VARCHAR(32) NULL,
+    termination_reason VARCHAR(64) NULL,
+    terminated_at DATETIME(3) NULL,
+    execution_started_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_hold_1 UNIQUE (tenant_no, entity_no, hold_no),
+    CONSTRAINT uk_booking_hold_2 UNIQUE (tenant_no, entity_no, command_no),
+    CONSTRAINT ck_booking_hold_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_hold_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_hold_f3 CHECK (CHAR_LENGTH(TRIM(hold_no)) > 0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no))),
+    CONSTRAINT ck_booking_hold_f4 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_booking_hold_f5 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_booking_hold_f6 CHECK (CHAR_LENGTH(TRIM(command_no)) > 0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))),
+    CONSTRAINT ck_booking_hold_f7 CHECK (CHAR_LENGTH(TRIM(status)) > 0 AND CHAR_LENGTH(status)=CHAR_LENGTH(TRIM(status))),
+    CONSTRAINT ck_booking_hold_f8 CHECK (CHAR_LENGTH(TRIM(expiration_policy)) > 0 AND CHAR_LENGTH(expiration_policy)=CHAR_LENGTH(TRIM(expiration_policy))),
+    CONSTRAINT ck_booking_hold_f9 CHECK (creation_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_booking_hold_f10 CHECK (current_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_booking_hold_f11 CHECK (replaces_hold_no IS NULL OR (CHAR_LENGTH(TRIM(replaces_hold_no)) > 0 AND CHAR_LENGTH(replaces_hold_no)=CHAR_LENGTH(TRIM(replaces_hold_no)))),
+    CONSTRAINT ck_booking_hold_f12 CHECK (replaced_by_hold_no IS NULL OR (CHAR_LENGTH(TRIM(replaced_by_hold_no)) > 0 AND CHAR_LENGTH(replaced_by_hold_no)=CHAR_LENGTH(TRIM(replaced_by_hold_no)))),
+    CONSTRAINT ck_booking_hold_f13 CHECK (termination_reason IS NULL OR (CHAR_LENGTH(TRIM(termination_reason)) > 0 AND CHAR_LENGTH(termination_reason)=CHAR_LENGTH(TRIM(termination_reason)))),
+    CONSTRAINT ck_booking_hold_status CHECK ((CASE status WHEN 'HELD' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'RELEASED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_policy CHECK ((CASE expiration_policy WHEN 'LOCAL_TTL' THEN TRUE WHEN 'SOURCE_COORDINATED' THEN TRUE ELSE CASE WHEN expiration_policy IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_revision CHECK (source_revision >= 0 AND lease_revision >= 1 AND plan_revision >= 1),
+    CONSTRAINT ck_booking_hold_terminal CHECK (((CASE status WHEN 'HELD' THEN TRUE WHEN 'CONFIRMED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND termination_reason IS NULL AND terminated_at IS NULL) OR ((CASE status WHEN 'RELEASED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND termination_reason IS NOT NULL AND terminated_at IS NOT NULL)),
+    CONSTRAINT ck_booking_hold_execution CHECK (status <> 'HELD' OR execution_started_at IS NULL),
+    CONSTRAINT ck_booking_hold_links CHECK ((replaces_hold_no IS NULL OR replaces_hold_no <> hold_no) AND (replaced_by_hold_no IS NULL OR replaced_by_hold_no <> hold_no))
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    unit_no VARCHAR(32) NOT NULL,
+    hold_no VARCHAR(32) NOT NULL,
+    bucket_no VARCHAR(32) NOT NULL,
+    allocation_revision BIGINT NOT NULL,
+    qty INT NOT NULL,
+    source_line_ref VARCHAR(128)  NOT NULL,
+    released_at DATETIME(3) NULL,
+    release_command_no VARCHAR(32) NULL,
+    consume_occupation_unit_no VARCHAR(32)  NULL,
+    consumed_at DATETIME(3) NULL,
+    consume_command_no VARCHAR(32)  NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_hold_unit_1 UNIQUE (tenant_no, entity_no, unit_no),
+    CONSTRAINT uk_booking_hold_unit_2 UNIQUE (tenant_no, entity_no, hold_no, allocation_revision, bucket_no, source_line_ref),
+    CONSTRAINT ck_booking_hold_unit_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_hold_unit_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_unit_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_hold_unit_f3 CHECK (CHAR_LENGTH(TRIM(unit_no)) > 0 AND CHAR_LENGTH(unit_no)=CHAR_LENGTH(TRIM(unit_no))),
+    CONSTRAINT ck_booking_hold_unit_f4 CHECK (CHAR_LENGTH(TRIM(hold_no)) > 0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no))),
+    CONSTRAINT ck_booking_hold_unit_f5 CHECK (CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))),
+    CONSTRAINT ck_booking_hold_unit_f6 CHECK (CHAR_LENGTH(TRIM(source_line_ref)) > 0 AND CHAR_LENGTH(source_line_ref)=CHAR_LENGTH(TRIM(source_line_ref))),
+    CONSTRAINT ck_booking_hold_unit_f7 CHECK (release_command_no IS NULL OR (CHAR_LENGTH(TRIM(release_command_no)) > 0 AND CHAR_LENGTH(release_command_no)=CHAR_LENGTH(TRIM(release_command_no)))),
+    CONSTRAINT ck_booking_unit_quantity CHECK (qty > 0 AND allocation_revision >= 1),
+    CONSTRAINT ck_booking_unit_release CHECK ((released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL)),
+    CONSTRAINT ck_rco_unit_consume CHECK ((consume_occupation_unit_no IS NULL AND consumed_at IS NULL AND consume_command_no IS NULL) OR (consume_occupation_unit_no IS NOT NULL AND consumed_at IS NOT NULL AND consume_command_no IS NOT NULL AND released_at IS NULL AND release_command_no IS NULL AND deleted=0))
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_catalog
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_no VARCHAR(32) NOT NULL,
+    current_version_no VARCHAR(32) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_scope UNIQUE (tenant_no, entity_no, store_no),
+    CONSTRAINT uk_prd_catalog_no UNIQUE (tenant_no, entity_no, catalog_no),
+    CONSTRAINT ck_prd_catalog_revision CHECK (version >= 1),
+    CONSTRAINT ck_prd_catalog_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_catalog_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_version_no VARCHAR(32) NOT NULL,
+    catalog_no VARCHAR(32) NOT NULL,
+    revision_index BIGINT NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    frozen_payload LONGTEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_version_no UNIQUE (tenant_no, entity_no, catalog_version_no),
+    CONSTRAINT uk_prd_catalog_revision UNIQUE (tenant_no, entity_no, catalog_no, revision_index),
+    CONSTRAINT ck_prd_catalog_version_revision CHECK (revision_index >= 1 AND version >= 0),
+    CONSTRAINT ck_prd_catalog_payload CHECK ((frozen_payload IS JSON)),
+    CONSTRAINT ck_prd_catalog_hash CHECK (CHAR_LENGTH(snapshot_hash) = 64),
+    CONSTRAINT ck_prd_catalog_version_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_guest_registration
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    contact_cipher TEXT NULL,
+    display_name VARCHAR(80) NULL,
+    claim_token_hash CHAR(64) NOT NULL,
+    claim_token_cipher TEXT NOT NULL,
+    state VARCHAR(16) NOT NULL,
+    claimed_user_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claimed_at DATETIME(3) NULL,
+    claim_key_hash CHAR(64) NULL,
+    claim_request_hash CHAR(64) NULL,
+    claim_actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claim_actor_realm VARCHAR(16) NULL,
+    claim_actor_kind VARCHAR(8) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_guest_no UNIQUE (tenant_no, guest_no),
+    CONSTRAINT uk_mbr_guest_key UNIQUE (tenant_no, entity_no, store_no, actor_realm, actor_kind, actor_no, key_hash),
+    CONSTRAINT ck_mbr_guest_actor CHECK (actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mbr_guest_state CHECK (
+        (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL
+            AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL
+            AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL)
+        OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL
+            AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL
+            AND claim_actor_realm='MERCHANT' AND (CASE claim_actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN claim_actor_kind IS NULL THEN NULL ELSE FALSE END END))),
+    CONSTRAINT ck_mbr_guest_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    scope_hash CHAR(64) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    current_quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    place_key_hash CHAR(64) NULL,
+    place_payload_hash CHAR(64) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_revision BIGINT NOT NULL DEFAULT 0,
+    source_observation_hash CHAR(64) NULL,
+    last_error_code VARCHAR(64) NULL,
+    next_retry_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    manual_observation_revision BIGINT NOT NULL DEFAULT 0,
+    manual_observation_hash CHAR(64) NULL,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    purchase_authority VARCHAR(40) NOT NULL DEFAULT 'CONSUMER_SESSION',
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_counter_place_namespace UNIQUE (tenant_no,authority_namespace_hash,place_key_hash),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_operation UNIQUE (tenant_no,caller,operation_no),
+    CONSTRAINT uk_checkout_prepare_key UNIQUE (tenant_no,caller,entity_no,store_no,request_key_hash),
+    CONSTRAINT uk_checkout_place_key UNIQUE (tenant_no,buyer_no,place_key_hash),
+    CONSTRAINT uk_checkout_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_checkout_sub_order UNIQUE (tenant_no,sub_order_no),
+    CONSTRAINT ck_checkout_operation_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND scope_revision>0),
+    CONSTRAINT ck_checkout_operation_actor CHECK (actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_phase CHECK ((CASE phase WHEN 'QUOTED' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'CREATED' THEN TRUE WHEN 'REQUOTE_REQUIRED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_created CHECK ((phase='CREATED' AND order_no IS NOT NULL AND sub_order_no IS NOT NULL AND confirmation_no IS NOT NULL AND place_key_hash IS NOT NULL) OR (phase<>'CREATED' AND order_no IS NULL AND sub_order_no IS NULL)),
+    CONSTRAINT ck_checkout_operation_confirmation CHECK ((phase='QUOTED' AND confirmation_no IS NULL AND place_key_hash IS NULL) OR ((CASE phase WHEN 'CONFIRMED' THEN TRUE WHEN 'CREATED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END) AND confirmation_no IS NOT NULL) OR (CASE phase WHEN 'REQUOTE_REQUIRED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_place CHECK ((place_key_hash IS NULL AND place_payload_hash IS NULL) OR (place_key_hash IS NOT NULL AND place_payload_hash IS NOT NULL)),
+    CONSTRAINT ck_checkout_operation_source CHECK (source_revision>=0 AND ((source_revision=0 AND source_observation_hash IS NULL) OR (source_revision>0 AND source_observation_hash IS NOT NULL))),
+    CONSTRAINT ck_checkout_operation_json CHECK ((command_json IS JSON)),
+    CONSTRAINT ck_checkout_operation_deleted CHECK (deleted=0),
+    CONSTRAINT ck_checkout_admission_kind CHECK ((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_manual_observation CHECK (manual_observation_revision>=0 AND
+        ((manual_observation_revision=0 AND manual_observation_hash IS NULL) OR
+         (manual_observation_revision>0 AND manual_observation_hash IS NOT NULL))),
+    CONSTRAINT ck_counter_operation_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_operation_authority CHECK (
+        (purchase_authority='CONSUMER_SESSION' AND customer_kind='USER'
+         AND identity_revision IS NOT NULL AND identity_revision>0 AND account_no IS NULL)
+        OR (purchase_authority='MERCHANT_RECORDED_IN_PERSON' AND admission_kind='MANUAL_OFFLINE'
+            AND account_no IS NOT NULL AND CHAR_LENGTH(TRIM(account_no))>0)),
+    CONSTRAINT ck_counter_operation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$')
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    pricing_json LONGTEXT NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_quote UNIQUE (tenant_no,quote_no),
+    CONSTRAINT uk_checkout_quote_revision UNIQUE (tenant_no,caller,operation_no,revision),
+    CONSTRAINT ck_checkout_quote_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND revision=1),
+    CONSTRAINT ck_checkout_quote_status CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'CONSUMED' THEN TRUE WHEN 'EXPIRED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_quote_json CHECK ((pricing_json IS JSON)),
+    CONSTRAINT ck_checkout_quote_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_confirmation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    quote_revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    purpose VARCHAR(40) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    confirmed_at DATETIME(3) NOT NULL,
+    consumed_at DATETIME(3) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    purchase_authority VARCHAR(40) NOT NULL DEFAULT 'CONSUMER_SESSION',
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    accepted_at DATETIME(3) NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_counter_accept_namespace UNIQUE (tenant_no,authority_namespace_hash,request_key_hash),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_confirmation UNIQUE (tenant_no,confirmation_no),
+    CONSTRAINT uk_checkout_confirm_key UNIQUE (tenant_no,buyer_no,request_key_hash),
+    CONSTRAINT uk_checkout_confirm_quote UNIQUE (tenant_no,caller,operation_no,quote_no),
+    CONSTRAINT ck_checkout_confirm_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND quote_revision=1),
+    CONSTRAINT ck_checkout_confirm_money CHECK (amount_minor>=0 AND currency='CNY' AND purpose='ORDINARY_SERVICE_PURCHASE'),
+    CONSTRAINT ck_checkout_confirm_state CHECK ((status='CONSUMED' AND consumed_at IS NOT NULL AND order_no IS NOT NULL) OR ((CASE status WHEN 'AUTHORIZED' THEN TRUE WHEN 'REVOKED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_at IS NULL AND order_no IS NULL)),
+    CONSTRAINT ck_checkout_confirm_deleted CHECK (deleted=0),
+    CONSTRAINT ck_counter_confirmation_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_confirmation_authority CHECK (
+        (purchase_authority='CONSUMER_SESSION' AND customer_kind='USER'
+         AND identity_revision IS NOT NULL AND identity_revision>0
+         AND accepted_at IS NULL AND actor_no IS NULL AND actor_realm IS NULL
+         AND actor_kind IS NULL AND account_no IS NULL)
+        OR (purchase_authority='MERCHANT_RECORDED_IN_PERSON' AND admission_kind='MANUAL_OFFLINE'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND actor_no IS NOT NULL AND CHAR_LENGTH(TRIM(actor_no))>0
+            AND actor_realm IS NOT NULL AND actor_realm='MERCHANT'
+            AND actor_kind IS NOT NULL AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)
+            AND account_no IS NOT NULL AND CHAR_LENGTH(TRIM(account_no))>0
+            AND accepted_at IS NOT NULL AND accepted_at<=confirmed_at)),
+    CONSTRAINT ck_counter_confirmation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$')
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    source_line_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    client_line_ref VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    goods_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sku_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quantity INT NOT NULL,
+    uom VARCHAR(8) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_source_line UNIQUE (tenant_no,source_line_no),
+    CONSTRAINT uk_checkout_client_line UNIQUE (tenant_no,caller,operation_no,client_line_ref),
+    CONSTRAINT uk_checkout_item UNIQUE (tenant_no,order_item_id),
+    CONSTRAINT ck_checkout_line_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY'),
+    CONSTRAINT ck_checkout_line_count CHECK (quantity BETWEEN 1 AND 999 AND uom='COUNT'),
+    CONSTRAINT ck_checkout_line_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_payment_request
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payment_operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    actor_account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    action VARCHAR(24) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    request_json LONGTEXT NOT NULL,
+    payment_request_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_payment_operation UNIQUE (tenant_no,payment_operation_no),
+    CONSTRAINT uk_checkout_payment_key UNIQUE (tenant_no,actor_realm,actor_kind,actor_no,action,request_key_hash),
+    CONSTRAINT ck_checkout_payment_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY'),
+    CONSTRAINT ck_checkout_payment_actor CHECK ((action='INITIATE_PAYMENT' AND actor_realm='CONSUMER' AND actor_kind='USR' AND actor_account_no IS NULL) OR (action='OFFLINE_RECEIPT' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END) AND actor_account_no IS NOT NULL)),
+    CONSTRAINT ck_checkout_payment_json CHECK ((request_json IS JSON) AND (payment_request_json IS JSON)),
+    CONSTRAINT ck_checkout_payment_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS stl_payment_order_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_payment_order_guard UNIQUE (order_no),
+    CONSTRAINT ck_payment_order_guard_live CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS stl_payment_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    canonical_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    owner_kind VARCHAR(24) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    request_hash CHAR(64) NOT NULL,
+    payment_request_json LONGTEXT NOT NULL,
+    offline_request_json LONGTEXT NULL,
+    purpose VARCHAR(8) NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    payment_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    out_trade_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    send_started_at DATETIME(3) NULL,
+    pay_params_json LONGTEXT NULL,
+    pay_params_expires_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    method VARCHAR(16) NULL,
+    evidence_ref VARCHAR(255) COLLATE utf8mb4_bin NULL,
+    evidence_json LONGTEXT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
+    actor_account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    received_at DATETIME(3) NULL,
+    note VARCHAR(500) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_payment_operation UNIQUE (operation_no),
+    CONSTRAINT uk_payment_receipt_evidence UNIQUE (tenant_no,evidence_ref),
+    CONSTRAINT ck_payment_operation_scope CHECK ((CASE owner_kind WHEN 'CHECKOUT' THEN TRUE WHEN 'LEGACY_TRADE' THEN TRUE ELSE CASE WHEN owner_kind IS NULL THEN NULL ELSE FALSE END END) AND (owner_kind='LEGACY_TRADE' OR (tenant_no='MAIN' AND entity_no IS NOT NULL AND store_no IS NOT NULL))),
+    CONSTRAINT ck_payment_operation_phase CHECK ((CASE phase WHEN 'PREPARED' THEN TRUE WHEN 'OPENED' THEN TRUE WHEN 'SENDING' THEN TRUE WHEN 'PAYABLE' THEN TRUE WHEN 'UNKNOWN' THEN TRUE WHEN 'SUCCEEDED' THEN TRUE WHEN 'REJECTED' THEN TRUE WHEN 'ALIASED' THEN TRUE WHEN 'MANUAL_REQUIRED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_payment_operation_mapping CHECK ((phase='PREPARED' AND payment_no IS NULL AND out_trade_no IS NULL AND canonical_operation_no IS NULL) OR (phase<>'PREPARED' AND payment_no IS NOT NULL AND out_trade_no IS NOT NULL AND canonical_operation_no IS NOT NULL)),
+    CONSTRAINT ck_payment_operation_alias CHECK ((phase='ALIASED' AND canonical_operation_no<>operation_no AND send_started_at IS NULL AND pay_params_json IS NULL AND evidence_ref IS NULL AND evidence_json IS NULL) OR (phase<>'ALIASED' AND (canonical_operation_no IS NULL OR canonical_operation_no=operation_no))),
+    CONSTRAINT ck_payment_operation_purpose CHECK ((CASE purpose WHEN 'ONLINE' THEN TRUE WHEN 'OFFLINE' THEN TRUE ELSE CASE WHEN purpose IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_payment_operation_offline_request CHECK ((purpose='ONLINE' AND offline_request_json IS NULL) OR (purpose='OFFLINE' AND offline_request_json IS NOT NULL AND (offline_request_json IS JSON))),
+    CONSTRAINT ck_payment_operation_prepared_evidence CHECK (phase<>'PREPARED' OR (evidence_ref IS NULL AND evidence_json IS NULL)),
+    CONSTRAINT ck_payment_operation_offline CHECK (purpose<>'OFFLINE' OR (CASE phase WHEN 'PREPARED' THEN TRUE WHEN 'ALIASED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END) OR (method IS NOT NULL AND (CASE method WHEN 'CASH' THEN TRUE WHEN 'BANK_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND actor_no IS NOT NULL AND actor_realm IS NOT NULL AND actor_realm='MERCHANT' AND actor_kind IS NOT NULL AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END) AND actor_account_no IS NOT NULL AND received_at IS NOT NULL AND ((method='CASH' AND note IS NOT NULL AND CHAR_LENGTH(note)>0) OR (method='BANK_TRANSFER' AND evidence_ref IS NOT NULL AND evidence_json IS NOT NULL)))),
+    CONSTRAINT ck_payment_operation_evidence CHECK ((evidence_ref IS NULL AND evidence_json IS NULL) OR (evidence_ref IS NOT NULL AND evidence_json IS NOT NULL AND (evidence_json IS JSON))),
+    CONSTRAINT ck_payment_operation_json CHECK ((payment_request_json IS JSON) AND (pay_params_json IS NULL OR (pay_params_json IS JSON))),
+    CONSTRAINT ck_payment_operation_params CHECK ((pay_params_json IS NULL AND pay_params_expires_at IS NULL) OR (pay_params_json IS NOT NULL AND pay_params_expires_at IS NOT NULL)),
+    CONSTRAINT ck_payment_operation_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_service_admission
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    declaration_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'MANUAL_OFFLINE',
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    method VARCHAR(24) NOT NULL,
+    declared_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    received_at DATETIME(3) NOT NULL,
+    recorded_at DATETIME(3) NOT NULL,
+    note VARCHAR(500) NULL,
+    receipt_provenance VARCHAR(24) NOT NULL DEFAULT 'MANUAL_DECLARATION',
+    phase VARCHAR(24) NOT NULL,
+    admission_revision BIGINT NOT NULL DEFAULT 1,
+    order_revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    stock_authority VARCHAR(16) NOT NULL,
+    stock_lifecycle_version INT NOT NULL,
+    stock_manifest_json LONGTEXT NOT NULL,
+    stock_manifest_hash CHAR(64) NOT NULL,
+    stock_operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    stock_outcome VARCHAR(16) NULL,
+    stock_state VARCHAR(24) NULL,
+    stock_observation_hash CHAR(64) NULL,
+    reason_code VARCHAR(64) NULL,
+    next_retry_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_manual_declaration UNIQUE (tenant_no,declaration_no),
+    CONSTRAINT uk_manual_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_manual_operation UNIQUE (tenant_no,caller,operation_no),
+    CONSTRAINT uk_manual_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
+    CONSTRAINT ck_manual_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND
+        admission_kind='MANUAL_OFFLINE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_manual_money CHECK (declared_minor>0 AND currency='CNY' AND
+        (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND receipt_provenance='MANUAL_DECLARATION'),
+    CONSTRAINT ck_manual_phase CHECK ((CASE phase WHEN 'RECEIVED' THEN TRUE WHEN 'STOCK_PENDING' THEN TRUE WHEN 'ADMITTED' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_manual_revisions CHECK (admission_revision>0 AND order_revision>=0 AND version>0 AND deleted=0),
+    CONSTRAINT ck_manual_stock CHECK ((CASE stock_authority WHEN 'PLATFORM' THEN TRUE WHEN 'DUAL' THEN TRUE WHEN 'INVENTORY' THEN TRUE ELSE CASE WHEN stock_authority IS NULL THEN NULL ELSE FALSE END END) AND
+        (CASE stock_lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN stock_lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND (stock_manifest_json IS JSON)
+        AND (stock_manifest_json IS JSON OBJECT)),
+    CONSTRAINT ck_manual_admitted CHECK (phase<>'ADMITTED' OR
+        (stock_outcome IS NOT NULL AND stock_outcome='APPLIED' AND stock_state IS NOT NULL
+         AND (CASE stock_state WHEN 'ALLOCATED' THEN TRUE WHEN 'CONSUMED' THEN TRUE ELSE CASE WHEN stock_state IS NULL THEN NULL ELSE FALSE END END) AND stock_observation_hash IS NOT NULL)),
+    CONSTRAINT ck_manual_times CHECK (received_at<=recorded_at),
+    CONSTRAINT ck_counter_admission_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller='BEAUTY'
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller='BEAUTY'
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0))
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    action_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    declaration_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    admission_revision BIGINT NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    reason_code VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_manual_action UNIQUE (tenant_no,action_no),
+    CONSTRAINT uk_manual_action_revision UNIQUE (tenant_no,declaration_no,admission_revision),
+    CONSTRAINT ck_manual_action CHECK (tenant_no='MAIN' AND admission_revision>0 AND version>0 AND deleted=0
+        AND (CASE action WHEN 'RECEIPT_RECORDED' THEN TRUE WHEN 'STOCK_OBSERVED' THEN TRUE WHEN 'ADMISSION_CHANGED' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END)
+        AND (result_json IS JSON) AND (result_json IS JSON OBJECT))
+);
+
+CREATE TABLE IF NOT EXISTS mkt_counter_campaign_fence
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    scope_kind VARCHAR(16)  NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (tenant_no, scope_kind, scope_no),
+    CONSTRAINT ck_mkt_counter_fence_scope CHECK ((CASE scope_kind WHEN 'PLATFORM' THEN TRUE WHEN 'ENTITY' THEN TRUE ELSE CASE WHEN scope_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mkt_counter_fence_revision CHECK (revision >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    policy_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    allow_platform_collected TINYINT NOT NULL DEFAULT 0,
+    allow_cash_on_delivery TINYINT NOT NULL DEFAULT 0,
+    max_single_minor BIGINT NOT NULL,
+    max_outstanding_minor BIGINT NOT NULL,
+    reserved_minor BIGINT NOT NULL DEFAULT 0,
+    hold_seconds INT NOT NULL,
+    CONSTRAINT uk_ord_channel_policy_no UNIQUE (policy_no),
+    CONSTRAINT uk_ord_channel_policy_scope UNIQUE (tenant_no,entity_no,store_no,channel_store_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_import
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    admission_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    external_order_key VARCHAR(64) NOT NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    fence BIGINT NOT NULL DEFAULT 0,
+    lease_until DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    import_ref VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    funding_status VARCHAR(32) NOT NULL,
+    policy_no VARCHAR(32) NULL,
+    policy_snapshot LONGTEXT NULL,
+    reserved_minor BIGINT NOT NULL DEFAULT 0,
+    preparation_no VARCHAR(32) NULL,
+    acceptance_receipt_ref VARCHAR(128) NULL,
+    platform_acceptance_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    allocations_json LONGTEXT NULL,
+    CONSTRAINT uk_ord_channel_import_no UNIQUE (admission_no),
+    CONSTRAINT uk_ord_channel_import_source UNIQUE (tenant_no,entity_no,store_no,source_system,import_ref),
+    CONSTRAINT uk_ord_channel_import_original UNIQUE (tenant_no,entity_no,store_no,channel_store_key,external_order_key),
+    CONSTRAINT uk_ord_channel_import_business UNIQUE (tenant_no,entity_no,store_no,source_system,source_no,source_version),
+    CONSTRAINT uk_ord_channel_import_order UNIQUE (order_no),
+    CONSTRAINT uk_ord_channel_import_suborder UNIQUE (sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    quote_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    merchant_receivable_minor BIGINT NOT NULL,
+    customer_payable_minor BIGINT NOT NULL,
+    source_receipt_ref VARCHAR(256) NOT NULL,
+    retained_order_no VARCHAR(32) NULL,
+    CONSTRAINT uk_ord_channel_quote_no UNIQUE (quote_no),
+    CONSTRAINT uk_ord_channel_quote_admission UNIQUE (admission_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_preparation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    preparation_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    generation BIGINT NOT NULL,
+    reservation_ref VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    plan_snapshot LONGTEXT NULL,
+    plan_hash VARCHAR(64) NULL,
+    inventory_receipt_snapshot LONGTEXT NULL,
+    preparation_receipt_ref VARCHAR(128) NULL,
+    valid_until DATETIME(3) NULL,
+    previous_preparation_no VARCHAR(32) NULL,
+    inventory_owner VARCHAR(32) NULL,
+    CONSTRAINT uk_ord_channel_preparation_no UNIQUE (preparation_no),
+    CONSTRAINT uk_ord_channel_preparation_generation UNIQUE (admission_no,generation),
+    CONSTRAINT uk_ord_channel_preparation_reservation UNIQUE (reservation_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_admission_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    import_ref VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    withdrawal_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_ord_channel_guard UNIQUE (tenant_no,entity_no,store_no,source_system,import_ref)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    PRIMARY KEY(entity_no,store_no,selection_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_revision
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(entity_no,store_no,selection_no,revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_draft
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    PRIMARY KEY(entity_no,store_no,selection_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_command
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    action_key VARCHAR(32) NOT NULL,
+    key_hash VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    result_json LONGTEXT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(entity_no,store_no,action_key,key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_party
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    party_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    party_key VARCHAR(64) NOT NULL,
+    external_customer_ref VARCHAR(128) NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    display_name VARCHAR(256) NULL,
+    CONSTRAINT uk_retail_channel_party_no UNIQUE (party_no),
+    CONSTRAINT uk_retail_channel_party_identity UNIQUE (tenant_no,entity_no,store_no,channel_store_key,party_key)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_import_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    guard_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(32) NOT NULL,
+    original_document_hash VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    withdrawal_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_retail_channel_guard_no UNIQUE (guard_no),
+    CONSTRAINT uk_retail_channel_guard_import UNIQUE (tenant_no,entity_no,store_no,import_no)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_order_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    source_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(32) NOT NULL,
+    original_document_hash VARCHAR(64) NOT NULL,
+    financial_hash VARCHAR(64) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    external_order_key VARCHAR(64) NOT NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    party_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    origin_snapshot LONGTEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    preparation_snapshot LONGTEXT NULL,
+    acceptance_snapshot LONGTEXT NULL,
+    cancellation_snapshot LONGTEXT NULL,
+    acceptance_receipt_ref VARCHAR(128) NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_retail_channel_source_no UNIQUE (source_no),
+    CONSTRAINT uk_retail_channel_source_import UNIQUE (tenant_no,entity_no,store_no,import_no),
+    CONSTRAINT uk_retail_channel_source_external UNIQUE (tenant_no,channel_store_key,external_order_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_after_sale
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    decision_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    external_case_ref VARCHAR(128) NOT NULL,
+    request_key_hash VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    decision_snapshot LONGTEXT NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    refund_ceiling_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    funds_status VARCHAR(32) NOT NULL,
+    inventory_status VARCHAR(40) NOT NULL,
+    inventory_receipt_snapshot LONGTEXT NULL,
+    CONSTRAINT uk_ord_channel_after_sale UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_ord_channel_after_sale_case UNIQUE (tenant_no,entity_no,store_no,admission_no,external_case_ref),
+    CONSTRAINT uk_ord_channel_after_sale_request UNIQUE (tenant_no,entity_no,store_no,admission_no,request_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_after_sale_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    decision_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_line_ref VARCHAR(128) NOT NULL,
+    component_ref VARCHAR(64) NOT NULL,
+    physical_quantity DECIMAL(24,6) NOT NULL,
+    refund_ceiling_minor BIGINT NOT NULL,
+    CONSTRAINT uk_ord_channel_after_sale_line UNIQUE (tenant_no,decision_no,source_line_ref,component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_external_certificate_use
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    authorization_no VARCHAR(32) NOT NULL,
+    original_authorization_no VARCHAR(32) NULL,
+    purpose VARCHAR(16) NOT NULL DEFAULT 'USE',
+    reversal_ref VARCHAR(32) NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    preview_ref VARCHAR(32) NOT NULL,
+    preview_hash VARCHAR(64) NOT NULL,
+    certificate_identity_hash VARCHAR(64) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    quantity DECIMAL(20,6) NOT NULL,
+    unit VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    decision_ref VARCHAR(32) NULL,
+    original_receipt_ref VARCHAR(256) NULL,
+    CONSTRAINT uk_external_certificate_authorization UNIQUE (authorization_no),
+    CONSTRAINT uk_external_certificate_preview UNIQUE (tenant_no,entity_no,store_no,preview_ref),
+    CONSTRAINT uk_external_certificate_reverse UNIQUE (tenant_no,original_authorization_no,reversal_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_funding_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    history_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    previous_collection VARCHAR(32) NULL,
+    admitted_collection VARCHAR(32) NOT NULL,
+    previous_snapshot LONGTEXT NULL,
+    admitted_snapshot LONGTEXT NOT NULL,
+    original_collection_hash VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_ord_channel_funding_history UNIQUE (history_no),
+    CONSTRAINT uk_ord_channel_funding_collection UNIQUE (tenant_no,entity_no,store_no,admission_no,admitted_collection)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_fulfillment_evidence
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_order_ref VARCHAR(64) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    fulfillment_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    receipt_no VARCHAR(32) NOT NULL,
+    stage VARCHAR(24) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    inventory_receipt_hash CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    payload_snapshot LONGTEXT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_channel_fulfillment_action UNIQUE (tenant_no,fulfillment_no,revision_no),
+    CONSTRAINT uk_channel_fulfillment_receipt UNIQUE (tenant_no,receipt_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_food_stock_bridge_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(128) NOT NULL,
+    intent_hash CHAR(64) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_ord_food_stock_bridge_command UNIQUE (tenant_no,entity_no,store_no,plan_no,action,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    command_id VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    aggregate_id VARCHAR(128) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_management_command UNIQUE (command_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_platform_collection_head
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    current_version BIGINT NOT NULL,
+    enabled TINYINT NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_platform_collection_profile
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    profile_version BIGINT NOT NULL,
+    instructions_json MEDIUMTEXT NOT NULL,
+    configured_by VARCHAR(64) NOT NULL,
+    reason VARCHAR(1024) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no, profile_version)
+);
+
+CREATE TABLE IF NOT EXISTS usr_test_identity
+(
+    id             BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    identity_type  VARCHAR(16) NOT NULL,
+    identity_value VARCHAR(128) NOT NULL,
+    enabled        TINYINT(4)  NOT NULL DEFAULT 1,
+    remark         VARCHAR(128) DEFAULT NULL,
+    tenant_no      VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at     DATETIME    NOT NULL,
+    created_by     VARCHAR(64) DEFAULT NULL,
+    updated_at     DATETIME    NOT NULL,
+    updated_by     VARCHAR(64) DEFAULT NULL,
+    version        BIGINT(20)  NOT NULL DEFAULT 0,
+    deleted        TINYINT(4)  NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_test_identity UNIQUE (identity_type, identity_value)
+);
+
+CREATE TABLE IF NOT EXISTS ord_offline_record
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    record_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency CHAR(3) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    note VARCHAR(400) NULL,
+    received_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    corrected TINYINT NOT NULL DEFAULT 0,
+    recorded_by VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    idem_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    biz_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_offline_record_no UNIQUE (tenant_no,record_no),
+    CONSTRAINT uk_offline_record_idem UNIQUE (tenant_no,entity_no,store_no,idem_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ord_offline_record_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    record_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(16) NOT NULL,
+    from_amount_minor BIGINT NULL,
+    to_amount_minor BIGINT NULL,
+    from_method VARCHAR(16) NULL,
+    to_method VARCHAR(16) NULL,
+    from_received_at DATETIME(3) NULL,
+    to_received_at DATETIME(3) NULL,
+    reason VARCHAR(400) NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sys_app_version
+(
+    id                    BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    app_code              VARCHAR(32)  NOT NULL,
+    platform              VARCHAR(16)  NOT NULL,
+    latest_version        VARCHAR(32)  DEFAULT NULL,
+    min_supported_version VARCHAR(32)  DEFAULT NULL,
+    notes                 TEXT         DEFAULT NULL,
+    store_url             VARCHAR(255) DEFAULT NULL,
+    tenant_no             VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at            DATETIME     NOT NULL,
+    created_by            VARCHAR(64)  DEFAULT NULL,
+    updated_at            DATETIME     NOT NULL,
+    updated_by            VARCHAR(64)  DEFAULT NULL,
+    version               BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted               TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_app_version UNIQUE (tenant_no, app_code, platform)
+);
+
+CREATE TABLE IF NOT EXISTS sys_store_industry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    industry_code VARCHAR(32) NOT NULL,
+    sub_industry_code VARCHAR(48) NOT NULL DEFAULT '',
+    business_type_code VARCHAR(32) NOT NULL,
+    name_zh VARCHAR(32) NOT NULL,
+    name_tw VARCHAR(32) NOT NULL,
+    name_en VARCHAR(64) NULL,
+    sort INT NOT NULL DEFAULT 0,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sys_store_industry UNIQUE (tenant_no, industry_code, sub_industry_code)
+);
+
+CREATE TABLE IF NOT EXISTS usr_login_ticket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    ticket_hash CHAR(64) NOT NULL,
+    purpose VARCHAR(16) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    verified_type VARCHAR(16) NOT NULL,
+    verified_value VARCHAR(191) NULL,
+    agreed TINYINT NOT NULL DEFAULT 0,
+    market_code VARCHAR(16) NULL,
+    origin_token_hash CHAR(64) NULL,
+    origin_principal VARCHAR(64) NULL,
+    origin_kind VARCHAR(8) NULL,
+    identity_nos VARCHAR(1024) NOT NULL,
+    can_create_owner TINYINT NOT NULL DEFAULT 0,
+    expires_at DATETIME NOT NULL,
+    consumed_at DATETIME NULL,
+    tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_login_ticket_hash UNIQUE (ticket_hash)
+);
+
+CREATE TABLE IF NOT EXISTS mch_store_entity_claim
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+    claim_no VARCHAR(64) NOT NULL,
+    owner_user_no VARCHAR(64) NOT NULL,
+    request_no VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    source_scope VARCHAR(128) NOT NULL,
+    source_entity_no VARCHAR(64) NOT NULL,
+    target_entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_ref VARCHAR(64) NOT NULL,
+    expected_store_version BIGINT NOT NULL,
+    expected_pay_revision BIGINT NOT NULL,
+    source_retire_planned TINYINT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    remote_ref VARCHAR(64) NULL,
+    revoked_staff INT NOT NULL DEFAULT 0,
+    placeholder_retired TINYINT NOT NULL DEFAULT 0,
+    result_json MEDIUMTEXT NULL,
+    last_error VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE state WHEN 'COMPLETED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN state IS NULL THEN NULL ELSE FALSE END END) THEN NULL ELSE store_no END),
+    active_source_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN (CASE state WHEN 'COMPLETED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN state IS NULL THEN NULL ELSE FALSE END END) THEN NULL ELSE source_entity_no END),
+    CONSTRAINT uk_store_claim_no UNIQUE (tenant_no,claim_no),
+    CONSTRAINT uk_store_claim_request UNIQUE (tenant_no,owner_user_no,request_no),
+    CONSTRAINT uk_store_claim_active_store UNIQUE (tenant_no,active_store_no),
+    CONSTRAINT uk_store_claim_active_source UNIQUE (tenant_no,active_source_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_operating_entity
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    operating_entity_no VARCHAR(64) NOT NULL,
+    owner_user_no VARCHAR(64) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    legal_subject_no VARCHAR(64) NULL,
+    status VARCHAR(16) NOT NULL,
+    create_key VARCHAR(64) NOT NULL,
+    create_hash CHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_operating_entity_no UNIQUE (tenant_no,operating_entity_no),
+    CONSTRAINT uk_operating_entity_create UNIQUE (tenant_no,owner_user_no,create_key),
+    CONSTRAINT ck_operating_entity_market CHECK ((CASE market WHEN 'CN' THEN TRUE WHEN 'TW' THEN TRUE WHEN 'AE' THEN TRUE ELSE CASE WHEN market IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_operating_entity_status CHECK ((CASE status WHEN 'ENABLED' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_plan_offer
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    offer_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    PRIMARY KEY (tenant_no,offer_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_plan_purchase
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    buyer_no VARCHAR(64) NOT NULL,
+    buyer_kind VARCHAR(16) NOT NULL,
+    request_no VARCHAR(64) NOT NULL,
+    request_json TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    open_entity VARCHAR(64) DEFAULT NULL,
+    payment_no VARCHAR(64) DEFAULT NULL,
+    closure_json TEXT DEFAULT NULL,
+    created_at BIGINT NOT NULL,
+    creator_no VARCHAR(64) NOT NULL,
+    creator_kind VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_plan_request UNIQUE (tenant_no,creator_kind,creator_no,request_no),
+    PRIMARY KEY (tenant_no,order_no),
+    CONSTRAINT uk_plan_open_entity UNIQUE (tenant_no,open_entity)
+);
+
+CREATE TABLE IF NOT EXISTS mch_plan_purchase_claim
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    claim_no VARCHAR(64) NOT NULL,
+    command_json TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    review_note VARCHAR(500) DEFAULT NULL,
+    PRIMARY KEY (tenant_no,order_no,claim_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_plan_purchase_action
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    action_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    command_json TEXT NOT NULL,
+    confirmed_at BIGINT NOT NULL,
+    kind VARCHAR(16) NOT NULL DEFAULT 'CONFIRM',
+    status VARCHAR(32) NOT NULL,
+    payment_no VARCHAR(64) DEFAULT NULL,
+    failure_code VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (tenant_no,order_no,action_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_plan_purchase_evidence
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    asset_key VARCHAR(512) NOT NULL,
+    submitter_no VARCHAR(64) NOT NULL,
+    subject_kind VARCHAR(16) NOT NULL,
+    purpose VARCHAR(32) NOT NULL,
+    PRIMARY KEY (tenant_no,asset_key)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_brand_audience_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    snapshot_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    legal_entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    resource_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    resource_version VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    planned_count INT NOT NULL,
+    pre_skipped_count INT NOT NULL,
+    pre_skip_json TEXT NOT NULL,
+    recipients_json TEXT NOT NULL,
+    member_facts_json TEXT NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    claimed_command_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_brand_audience_snapshot UNIQUE (tenant_no,snapshot_no),
+    CONSTRAINT ck_brand_audience_counts CHECK(planned_count>=0 AND pre_skipped_count>=0 AND pre_skipped_count<=planned_count
+ AND planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_coupon_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    definition_hash CHAR(64) NOT NULL,
+    source_json TEXT NOT NULL,
+    cost_rule_version_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_template_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_version_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_revision BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_coupon_source UNIQUE (tenant_no,source_no),
+    CONSTRAINT uk_brand_coupon_template UNIQUE (tenant_no,native_template_no),
+    CONSTRAINT uk_brand_coupon_version UNIQUE (tenant_no,native_version_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_coupon_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    status VARCHAR(24) NOT NULL,
+    request_json TEXT NOT NULL,
+    checkpoint_json TEXT NOT NULL,
+    response_json TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_coupon_command UNIQUE (tenant_no,command_no),
+    CONSTRAINT uk_brand_coupon_namespace UNIQUE (tenant_no,namespace_hash),
+    CONSTRAINT uk_brand_coupon_operation UNIQUE (tenant_no,operation_hash)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_marketing_command
+(
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_id CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY(tenant_no,command_id)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    rule_version_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    headquarters_bp INT NOT NULL,
+    store_bp INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    published_at DATETIME(3) NULL,
+    CONSTRAINT uk_brand_cost_rule UNIQUE (tenant_no,rule_version_no),
+    CHECK (headquarters_bp>=0 AND store_bp>=0 AND headquarters_bp+store_bp=10000)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(16) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    resource_version VARCHAR(64) NOT NULL,
+    rule_version_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    headquarters_bp INT NOT NULL,
+    store_bp INT NOT NULL,
+    stores_json TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_brand_cost_snapshot UNIQUE (tenant_no,resource_type,resource_version)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    resource_version VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    consumer_entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    total_minor BIGINT NOT NULL,
+    basis_json TEXT NOT NULL,
+    refund_state_json TEXT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_brand_cost_source UNIQUE (tenant_no,source_type,source_no),
+    CHECK (total_minor>0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_statement
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    expense_entity_no VARCHAR(64) NOT NULL,
+    statement_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    through_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    total_minor BIGINT NOT NULL,
+    headquarters_minor BIGINT NOT NULL,
+    store_minor BIGINT NOT NULL,
+    facts_json TEXT NULL,
+    created_at DATETIME(3) NOT NULL,
+    confirmed_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_cost_statement UNIQUE (tenant_no,statement_no),
+    CHECK (total_minor=headquarters_minor+store_minor)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_fact
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    event_kind VARCHAR(16) NOT NULL,
+    expense_entity_no VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    headquarters_minor BIGINT NOT NULL,
+    store_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    statement_no VARCHAR(64) NULL,
+    CONSTRAINT uk_brand_cost_fact UNIQUE (tenant_no,source_type,source_no,event_no,expense_entity_no),
+    CHECK (amount_minor=headquarters_minor+store_minor)
+);
+
+CREATE TABLE IF NOT EXISTS mch_pay_service_application
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32)  NOT NULL,
+    source_caller VARCHAR(64)  NOT NULL,
+    source_scope VARCHAR(64)  NOT NULL,
+    request_no VARCHAR(64)  NOT NULL,
+    request_hash CHAR(64)  NOT NULL,
+    profile_revision BIGINT NOT NULL,
+    source_event_id VARCHAR(64)  NOT NULL,
+    actor_realm VARCHAR(16)  NOT NULL,
+    actor_no VARCHAR(64)  NOT NULL,
+    request_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mpsa_request UNIQUE (tenant_no,source_caller,source_scope,request_no),
+    CONSTRAINT uk_mpsa_revision UNIQUE (tenant_no,entity_no,source_caller,source_scope,profile_revision),
+    CONSTRAINT uk_mpsa_event UNIQUE (tenant_no,source_caller,source_scope,source_event_id),
+    CONSTRAINT ck_mpsa_base CHECK (tenant_no='MAIN' AND profile_revision>0 AND version=0 AND deleted=0),
+    CONSTRAINT ck_mpsa_actor CHECK ((CASE actor_realm WHEN 'OPERATOR' THEN TRUE WHEN 'MERCHANT' THEN TRUE ELSE CASE WHEN actor_realm IS NULL THEN NULL ELSE FALSE END END) AND CHAR_LENGTH(TRIM(actor_no))>0),
+    CONSTRAINT ck_mpsa_hash CHECK (request_hash REGEXP '^[a-f0-9]{64}$'),
+    CONSTRAINT ck_mpsa_json CHECK ((request_json IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_state
+(
+    state_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    scope_hash VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_rate
+(
+    rate_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    hits INT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pay_channel_product
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    product_code VARCHAR(64) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    access_mode VARCHAR(24) NOT NULL,
+    pay_type VARCHAR(24) NOT NULL,
+    pay_method VARCHAR(32) NOT NULL,
+    channel_method VARCHAR(32) NOT NULL,
+    allowed_funds_paths VARCHAR(32) NOT NULL,
+    refund_mode VARCHAR(24) NOT NULL,
+    partial_refund TINYINT(1) NOT NULL DEFAULT 0,
+    max_partial_refunds INT NOT NULL DEFAULT 0,
+    refund_interval_seconds INT NOT NULL DEFAULT 0,
+    refund_window_days INT NOT NULL DEFAULT 0,
+    two_phase TINYINT(1) NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL,
+    sort_no INT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_channel_product_1 UNIQUE (product_code),
+    CONSTRAINT uk_pay_channel_product_2 UNIQUE (pay_channel,access_mode,pay_type,pay_method)
+);
+
+CREATE TABLE IF NOT EXISTS pay_channel_product_market
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_channel_product_id BIGINT NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    single_min_minor BIGINT NOT NULL DEFAULT 0,
+    single_max_minor BIGINT NOT NULL DEFAULT 0,
+    amount_scale TINYINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_channel_product_market_1 UNIQUE (pay_channel_product_id,market)
+);
+
+CREATE TABLE IF NOT EXISTS pay_api_request_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    trace_id VARCHAR(64) NOT NULL,
+    entry VARCHAR(24) NOT NULL,
+    api VARCHAR(128) NOT NULL,
+    pay_action VARCHAR(32) NOT NULL,
+    source_type VARCHAR(24) NOT NULL,
+    source_id BIGINT NULL,
+    app_no VARCHAR(64) NULL,
+    client_type VARCHAR(24) NOT NULL,
+    client_ip VARCHAR(64) NULL,
+    user_agent_digest CHAR(64) NULL,
+    device_id VARCHAR(64) NULL,
+    operator_no VARCHAR(64) NULL,
+    biz_type VARCHAR(24) NULL,
+    biz_no VARCHAR(64) NULL,
+    idempotency_key VARCHAR(128) NULL,
+    store_id BIGINT NULL,
+    request_amount_minor BIGINT NULL,
+    request_currency CHAR(3) NULL,
+    pay_order_id BIGINT NULL,
+    pay_refund_id BIGINT NULL,
+    request_masked TEXT NULL,
+    request_raw_id BIGINT NULL,
+    response_masked TEXT NULL,
+    http_status INT NULL,
+    result_code VARCHAR(64) NULL,
+    outcome VARCHAR(24) NOT NULL,
+    elapsed_ms INT NULL,
+    received_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    source_service VARCHAR(64) NULL,
+    source_module VARCHAR(24) NULL,
+    source_instance VARCHAR(128) NULL,
+    source_ip VARCHAR(64) NULL,
+    origin_api VARCHAR(128) NULL,
+    origin_client VARCHAR(24) NULL,
+    origin_ip VARCHAR(64) NULL,
+    origin_ua_digest CHAR(64) NULL,
+    sign_key_version INT NULL,
+    encrypt_serial VARCHAR(64) NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_channel_call_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    trace_id VARCHAR(64) NOT NULL,
+    invocation_no VARCHAR(64) NOT NULL,
+    market VARCHAR(8) NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    access_mode VARCHAR(24) NULL,
+    scene VARCHAR(24) NOT NULL,
+    operation VARCHAR(24) NOT NULL,
+    api VARCHAR(64) NOT NULL,
+    pay_merchant_id BIGINT NULL,
+    ref_type VARCHAR(24) NULL,
+    ref_id BIGINT NULL,
+    pay_order_id BIGINT NULL,
+    stl_payment_id BIGINT NULL,
+    out_trade_no VARCHAR(64) NULL,
+    attempt INT NOT NULL DEFAULT 1,
+    retry_of_id BIGINT NULL,
+    source_type VARCHAR(24) NOT NULL,
+    source_id BIGINT NULL,
+    client_type VARCHAR(24) NOT NULL,
+    request_amount_minor BIGINT NULL,
+    request_currency CHAR(3) NULL,
+    channel_amount_text VARCHAR(32) NULL,
+    amount_scale TINYINT NULL,
+    response_amount_minor BIGINT NULL,
+    response_currency CHAR(3) NULL,
+    fee_minor BIGINT NULL,
+    http_method VARCHAR(8) NOT NULL,
+    url_path VARCHAR(255) NOT NULL,
+    request_masked TEXT NULL,
+    request_raw_id BIGINT NULL,
+    response_masked TEXT NULL,
+    response_raw_id BIGINT NULL,
+    http_status INT NULL,
+    elapsed_ms INT NULL,
+    channel_trade_no VARCHAR(64) NULL,
+    outcome VARCHAR(24) NOT NULL,
+    outcome_class VARCHAR(24) NULL,
+    unified_error_code VARCHAR(64) NULL,
+    error_code VARCHAR(64) NULL,
+    error_msg VARCHAR(255) NULL,
+    fault_policy VARCHAR(128) NULL,
+    breaker_state VARCHAR(24) NULL,
+    sent_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_callback_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    trace_id VARCHAR(64) NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    notify_type VARCHAR(24) NOT NULL,
+    path_ref VARCHAR(64) NOT NULL,
+    route_style VARCHAR(24) NOT NULL,
+    pay_merchant_id BIGINT NULL,
+    pay_onboarding_id BIGINT NULL,
+    http_method VARCHAR(8) NOT NULL,
+    remote_ip VARCHAR(64) NULL,
+    headers_masked TEXT NULL,
+    body_masked TEXT NULL,
+    pay_raw_payload_id BIGINT NULL,
+    raw_sha256 CHAR(64) NOT NULL,
+    verify_result VARCHAR(24) NOT NULL,
+    notify_amount_minor BIGINT NULL,
+    notify_currency CHAR(3) NULL,
+    fee_minor BIGINT NULL,
+    amount_matched TINYINT(1) NULL,
+    unified_status VARCHAR(24) NULL,
+    outcome VARCHAR(24) NOT NULL,
+    outcome_reason VARCHAR(255) NULL,
+    pay_order_id BIGINT NULL,
+    pay_refund_id BIGINT NULL,
+    stl_payment_id BIGINT NULL,
+    out_trade_no VARCHAR(64) NULL,
+    channel_trade_no VARCHAR(64) NULL,
+    ack_body VARCHAR(255) NULL,
+    replay_of_id BIGINT NULL,
+    replayed_by VARCHAR(64) NULL,
+    received_at DATETIME(3) NOT NULL,
+    handled_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_raw_payload
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    kind VARCHAR(24) NOT NULL,
+    storage VARCHAR(24) NOT NULL,
+    cipher_text MEDIUMTEXT NULL,
+    object_key VARCHAR(255) NULL,
+    data_key_cipher VARCHAR(512) NOT NULL,
+    sec_master_key_id BIGINT NOT NULL,
+    sha256 CHAR(64) NOT NULL,
+    size_bytes INT NOT NULL,
+    retain_until DATE NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_pay_raw_payload_1 CHECK ((storage = 'DB' AND cipher_text IS NOT NULL) OR (storage = 'OBJECT' AND object_key IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pay_biz_notify
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    trace_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    event_key VARCHAR(128) NOT NULL,
+    state_version INT NOT NULL,
+    target_type VARCHAR(24) NOT NULL,
+    pay_app_id BIGINT NOT NULL,
+    target_url VARCHAR(512) NULL,
+    pay_order_id BIGINT NULL,
+    pay_refund_id BIGINT NULL,
+    notify_amount_minor BIGINT NULL,
+    notify_currency CHAR(3) NULL,
+    payload_masked TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_at DATETIME(3) NULL,
+    delivered_at DATETIME(3) NULL,
+    given_up_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    enc_key_version INT NULL,
+    sign_key_version INT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_biz_notify_1 UNIQUE (target_type,pay_app_id,event_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_biz_notify_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_biz_notify_id BIGINT NOT NULL,
+    attempt INT NOT NULL,
+    trigger_type VARCHAR(24) NOT NULL,
+    triggered_by VARCHAR(64) NULL,
+    sent_at DATETIME(3) NOT NULL,
+    http_status INT NULL,
+    response_masked VARCHAR(1024) NULL,
+    elapsed_ms INT NULL,
+    outcome VARCHAR(24) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_biz_notify_attempt_1 UNIQUE (pay_biz_notify_id,attempt)
+);
+
+CREATE TABLE IF NOT EXISTS pay_channel_followup
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    invocation_no VARCHAR(64) NOT NULL,
+    trace_id VARCHAR(64) NOT NULL,
+    operation VARCHAR(24) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    pay_merchant_id BIGINT NULL,
+    pay_order_id BIGINT NULL,
+    stl_payment_id BIGINT NULL,
+    pay_refund_id BIGINT NULL,
+    status VARCHAR(24) NOT NULL,
+    open_key VARCHAR(100) NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_at DATETIME(3) NOT NULL,
+    last_result VARCHAR(255) NULL,
+    resolved_at DATETIME(3) NULL,
+    pay_exception_id BIGINT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_channel_followup_1 UNIQUE (open_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_channel_lifecycle_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_channel VARCHAR(32) NOT NULL,
+    pay_merchant_id BIGINT NULL,
+    from_state VARCHAR(24) NOT NULL,
+    to_state VARCHAR(24) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_app
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    app_no VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    scopes VARCHAR(255) NOT NULL,
+    ip_whitelist VARCHAR(1024) NULL,
+    webhook_url VARCHAR(512) NULL,
+    return_url_whitelist VARCHAR(1024) NULL,
+    rate_limit_qps INT NOT NULL DEFAULT 20,
+    daily_refund_limit_minor BIGINT NOT NULL DEFAULT 0,
+    sandbox TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    sign_type VARCHAR(16) NOT NULL DEFAULT 'HMAC',
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_app_1 UNIQUE (app_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_order
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_order_no VARCHAR(64) NOT NULL,
+    pay_app_id BIGINT NOT NULL,
+    out_order_no VARCHAR(64) NOT NULL,
+    biz_type VARCHAR(24) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    entity_name_snapshot VARCHAR(128) NOT NULL,
+    store_name_snapshot VARCHAR(128) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    paid_minor BIGINT NOT NULL DEFAULT 0,
+    refunded_minor BIGINT NOT NULL DEFAULT 0,
+    reserved_refund_minor BIGINT NOT NULL DEFAULT 0,
+    subject VARCHAR(128) NOT NULL,
+    scene VARCHAR(24) NOT NULL,
+    pay_type VARCHAR(24) NULL,
+    pay_method VARCHAR(32) NULL,
+    pay_channel_product_id BIGINT NULL,
+    pay_merchant_id BIGINT NULL,
+    pay_channel VARCHAR(32) NULL,
+    access_mode VARCHAR(24) NULL,
+    funds_path VARCHAR(24) NULL,
+    sub_merchant_id VARCHAR(64) NULL,
+    sec_key_version INT NULL,
+    status VARCHAR(24) NOT NULL,
+    notify_url VARCHAR(512) NULL,
+    return_url VARCHAR(512) NULL,
+    source_type VARCHAR(24) NOT NULL,
+    source_id BIGINT NOT NULL,
+    operator_no VARCHAR(64) NULL,
+    user_id BIGINT NULL,
+    request_sha256 CHAR(64) NOT NULL,
+    expire_at DATETIME(3) NOT NULL,
+    succeeded_at DATETIME(3) NULL,
+    closed_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    payer_blob_id BIGINT NULL,
+    payer_masked VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_order_1 UNIQUE (pay_order_no),
+    CONSTRAINT uk_pay_order_2 UNIQUE (pay_app_id,out_order_no),
+    CONSTRAINT ck_pay_order_1 CHECK (paid_minor >= 0 AND refunded_minor >= 0 AND reserved_refund_minor >= 0),
+    CONSTRAINT ck_pay_order_2 CHECK (refunded_minor + reserved_refund_minor <= paid_minor)
+);
+
+CREATE TABLE IF NOT EXISTS pay_refund
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_refund_no VARCHAR(64) NOT NULL,
+    pay_order_id BIGINT NOT NULL,
+    pay_app_id BIGINT NOT NULL,
+    out_refund_no VARCHAR(64) NOT NULL,
+    biz_refund_no VARCHAR(64) NULL,
+    store_id BIGINT NOT NULL,
+    currency CHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    refund_mode VARCHAR(24) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    requested_by VARCHAR(64) NOT NULL,
+    authorized_by VARCHAR(64) NULL,
+    pay_refund_review_rule_id BIGINT NULL,
+    hit_reasons VARCHAR(255) NULL,
+    pay_approval_id BIGINT NULL,
+    stl_payment_id BIGINT NULL,
+    offline_proof_ref VARCHAR(255) NULL,
+    source_type VARCHAR(24) NOT NULL,
+    source_id BIGINT NOT NULL,
+    failed_reason VARCHAR(255) NULL,
+    succeeded_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    refund_account_blob_id BIGINT NULL,
+    refund_account_masked VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_refund_1 UNIQUE (pay_refund_no),
+    CONSTRAINT uk_pay_refund_2 UNIQUE (pay_app_id,out_refund_no),
+    CONSTRAINT ck_pay_refund_1 CHECK (amount_minor > 0)
+);
+
+CREATE TABLE IF NOT EXISTS pay_refund_review_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    rule_code VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(64) NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    store_id BIGINT NULL,
+    source_type VARCHAR(24) NOT NULL DEFAULT '',
+    pay_method VARCHAR(32) NOT NULL DEFAULT '',
+    single_amount_minor BIGINT NULL,
+    daily_amount_minor BIGINT NULL,
+    refund_ratio_bp INT NULL,
+    after_days INT NULL,
+    always_review TINYINT(1) NOT NULL DEFAULT 0,
+    review_timeout_minutes INT NOT NULL DEFAULT 1440,
+    drafted_by VARCHAR(64) NOT NULL,
+    activated_by VARCHAR(64) NULL,
+    activated_at DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_refund_review_rule_1 UNIQUE (rule_code,version_index),
+    CONSTRAINT uk_pay_refund_review_rule_2 UNIQUE (active_key),
+    CONSTRAINT ck_pay_refund_review_rule_1 CHECK (status <> 'ACTIVE' OR always_review = 1 OR single_amount_minor IS NOT NULL OR daily_amount_minor IS NOT NULL OR refund_ratio_bp IS NOT NULL OR after_days IS NOT NULL),
+    CONSTRAINT ck_pay_refund_review_rule_2 CHECK (activated_by IS NULL OR activated_by <> drafted_by)
+);
+
+CREATE TABLE IF NOT EXISTS pay_approval
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    subject_type VARCHAR(24) NOT NULL,
+    subject_id BIGINT NOT NULL,
+    subject_sha256 CHAR(64) NOT NULL,
+    amount_minor BIGINT NULL,
+    currency CHAR(3) NULL,
+    requested_by VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    open_key VARCHAR(64) NULL,
+    first_reviewer VARCHAR(64) NULL,
+    first_decided_at DATETIME(3) NULL,
+    second_reviewer VARCHAR(64) NULL,
+    second_decided_at DATETIME(3) NULL,
+    reject_reason VARCHAR(255) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_approval_1 UNIQUE (open_key),
+    CONSTRAINT ck_pay_approval_1 CHECK (first_reviewer IS NULL OR first_reviewer <> requested_by),
+    CONSTRAINT ck_pay_approval_2 CHECK (second_reviewer IS NULL OR (second_reviewer <> requested_by AND second_reviewer <> first_reviewer))
+);
+
+CREATE TABLE IF NOT EXISTS pay_exception
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    kind VARCHAR(24) NOT NULL,
+    pay_order_id BIGINT NOT NULL,
+    stl_payment_id BIGINT NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency CHAR(3) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    resolution VARCHAR(255) NULL,
+    note VARCHAR(512) NULL,
+    handled_by VARCHAR(64) NULL,
+    handled_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_exception_1 UNIQUE (kind,stl_payment_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_checkout_session
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    token_sha256 CHAR(64) NOT NULL,
+    pay_order_id BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    expire_at DATETIME(3) NOT NULL,
+    user_id BIGINT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_checkout_session_1 UNIQUE (token_sha256)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ledger_voucher
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    voucher_no VARCHAR(64) NOT NULL,
+    voucher_type VARCHAR(24) NOT NULL,
+    ref_type VARCHAR(24) NOT NULL,
+    ref_id BIGINT NULL,
+    idem_key VARCHAR(128) NOT NULL,
+    reversal_of_id BIGINT NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    total_minor BIGINT NOT NULL,
+    biz_date DATE NOT NULL,
+    funds_path VARCHAR(24) NULL,
+    source_type VARCHAR(24) NULL,
+    source_id BIGINT NULL,
+    operator_no VARCHAR(64) NULL,
+    memo VARCHAR(255) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_ledger_voucher_1 UNIQUE (voucher_no),
+    CONSTRAINT uk_pay_ledger_voucher_2 UNIQUE (idem_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ledger_entry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_ledger_voucher_id BIGINT NOT NULL,
+    line_no INT NOT NULL,
+    account VARCHAR(24) NOT NULL,
+    direction CHAR(2) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency CHAR(3) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_merchant_id BIGINT NULL,
+    pay_channel VARCHAR(32) NULL,
+    market VARCHAR(8) NOT NULL,
+    funds_path VARCHAR(24) NULL,
+    pay_order_id BIGINT NULL,
+    biz_date DATE NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_ledger_entry_1 UNIQUE (pay_ledger_voucher_id,line_no),
+    CONSTRAINT ck_pay_ledger_entry_1 CHECK (amount_minor > 0),
+    CONSTRAINT ck_pay_ledger_entry_2 CHECK ((CASE direction WHEN 'DR' THEN TRUE WHEN 'CR' THEN TRUE ELSE CASE WHEN direction IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS pay_onboarding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    onboarding_no VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    access_mode VARCHAR(24) NOT NULL,
+    funds_path VARCHAR(24) NOT NULL,
+    parent_pay_merchant_id BIGINT NULL,
+    legal_form VARCHAR(24) NULL,
+    current_version INT NOT NULL DEFAULT 1,
+    status VARCHAR(24) NOT NULL,
+    channel_apply_no VARCHAR(64) NULL,
+    sign_url VARCHAR(512) NULL,
+    reject_reason VARCHAR(512) NULL,
+    pay_merchant_id BIGINT NULL,
+    entity_name_snapshot VARCHAR(128) NOT NULL,
+    store_name_snapshot VARCHAR(128) NOT NULL,
+    initiator_type VARCHAR(24) NOT NULL,
+    initiator_no VARCHAR(64) NOT NULL,
+    submitted_at DATETIME(3) NULL,
+    decided_at DATETIME(3) NULL,
+    inflight_key VARCHAR(100) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_1 UNIQUE (onboarding_no),
+    CONSTRAINT uk_pay_onboarding_2 UNIQUE (inflight_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_onboarding_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_onboarding_id BIGINT NOT NULL,
+    version_index INT NOT NULL,
+    out_request_no VARCHAR(64) NOT NULL,
+    materials_sha256 CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    channel_apply_no VARCHAR(64) NULL,
+    result_code VARCHAR(64) NULL,
+    reject_reason VARCHAR(512) NULL,
+    submitted_by VARCHAR(64) NULL,
+    submitted_at DATETIME(3) NULL,
+    decided_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_version_1 UNIQUE (pay_onboarding_id,version_index),
+    CONSTRAINT uk_pay_onboarding_version_2 UNIQUE (out_request_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_onboarding_material
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_onboarding_version_id BIGINT NOT NULL,
+    field_code VARCHAR(64) NOT NULL,
+    field_kind VARCHAR(24) NOT NULL,
+    value_text VARCHAR(1024) NULL,
+    value_masked VARCHAR(255) NULL,
+    sec_secret_blob_id BIGINT NULL,
+    file_ref VARCHAR(255) NULL,
+    file_sha256 CHAR(64) NULL,
+    channel_media_id VARCHAR(255) NULL,
+    channel_media_expire_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_onboarding_material_1 UNIQUE (pay_onboarding_version_id,field_code),
+    CONSTRAINT ck_pay_onboarding_material_1 CHECK (field_kind <> 'SENSITIVE' OR (sec_secret_blob_id IS NOT NULL AND value_text IS NULL)),
+    CONSTRAINT ck_pay_onboarding_material_2 CHECK (field_kind <> 'FILE' OR file_ref IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_no VARCHAR(64) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    store_id BIGINT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    access_mode VARCHAR(24) NOT NULL,
+    funds_path VARCHAR(24) NOT NULL,
+    channel_merchant_id VARCHAR(64) NOT NULL,
+    sub_merchant_id VARCHAR(64) NOT NULL DEFAULT '',
+    parent_pay_merchant_id BIGINT NULL,
+    pay_onboarding_id BIGINT NULL,
+    sec_key_id BIGINT NULL,
+    sec_key_version INT NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL,
+    legal_form VARCHAR(24) NULL,
+    invoice_capable TINYINT(1) NOT NULL DEFAULT 0,
+    settle_account_type VARCHAR(24) NULL,
+    settle_account_masked VARCHAR(64) NULL,
+    settle_cycle VARCHAR(24) NULL,
+    fee_bearer VARCHAR(24) NULL,
+    split_reversible TINYINT(1) NULL,
+    priority INT NOT NULL DEFAULT 100,
+    entity_name_snapshot VARCHAR(128) NULL,
+    activated_at DATETIME(3) NULL,
+    activated_by VARCHAR(64) NULL,
+    refund_only_at DATETIME(3) NULL,
+    closed_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_1 UNIQUE (pay_merchant_no),
+    CONSTRAINT uk_pay_merchant_2 UNIQUE (pay_channel,channel_merchant_id,sub_merchant_id),
+    CONSTRAINT ck_pay_merchant_1 CHECK (owner_type = 'PLATFORM' OR store_id IS NOT NULL),
+    CONSTRAINT ck_pay_merchant_3 CHECK (access_mode = 'MERCHANT_OWN' OR parent_pay_merchant_id IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_id BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    pay_merchant_id BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(64) NULL,
+    bound_by VARCHAR(64) NOT NULL,
+    bound_at DATETIME(3) NOT NULL,
+    unbound_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_binding_1 UNIQUE (active_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_product
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_id BIGINT NOT NULL,
+    pay_channel_product_id BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    source VARCHAR(24) NOT NULL,
+    quota_limit_minor BIGINT NOT NULL DEFAULT 0,
+    quota_period VARCHAR(16) NULL,
+    quota_used_minor BIGINT NOT NULL DEFAULT 0,
+    opened_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_merchant_product_1 UNIQUE (pay_merchant_id,pay_channel_product_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_merchant_status_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_merchant_id BIGINT NOT NULL,
+    from_status VARCHAR(24) NOT NULL,
+    to_status VARCHAR(24) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    pay_approval_id BIGINT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    changed_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_app_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_app_id BIGINT NOT NULL,
+    store_id BIGINT NOT NULL,
+    actions VARCHAR(128) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    granted_by VARCHAR(64) NOT NULL,
+    granted_at DATETIME(3) NOT NULL,
+    revoked_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_app_grant_1 UNIQUE (pay_app_id,store_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_api_nonce
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    caller_type VARCHAR(24) NOT NULL,
+    caller_id BIGINT NOT NULL,
+    nonce VARCHAR(64) NOT NULL,
+    expire_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_api_nonce_1 UNIQUE (caller_type,caller_id,nonce)
+);
+
+CREATE TABLE IF NOT EXISTS pay_qr_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    qr_code VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    table_ref VARCHAR(64) NULL,
+    currency CHAR(3) NOT NULL,
+    single_limit_minor BIGINT NOT NULL,
+    daily_limit_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    created_by_type VARCHAR(24) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_qr_code_1 UNIQUE (qr_code)
+);
+
+CREATE TABLE IF NOT EXISTS pay_terminal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    terminal_sn VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_merchant_id BIGINT NOT NULL,
+    model VARCHAR(64) NOT NULL,
+    reader_kit VARCHAR(64) NULL,
+    app_version VARCHAR(32) NULL,
+    status VARCHAR(24) NOT NULL,
+    activation_code_sha256 CHAR(64) NULL,
+    activation_expire_at DATETIME(3) NULL,
+    device_fingerprint VARCHAR(128) NULL,
+    sec_key_id BIGINT NULL,
+    daily_refund_limit_minor BIGINT NOT NULL DEFAULT 0,
+    last_seen_at DATETIME(3) NULL,
+    activated_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_1 UNIQUE (terminal_sn)
+);
+
+CREATE TABLE IF NOT EXISTS pay_manager_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_id BIGINT NOT NULL,
+    manager_account_id BIGINT NOT NULL,
+    code_hash VARCHAR(128) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    locked_until DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_manager_code_1 UNIQUE (store_id,manager_account_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_terminal_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_terminal_id BIGINT NOT NULL,
+    biz_date DATE NOT NULL,
+    currency CHAR(3) NOT NULL,
+    reported_count INT NOT NULL,
+    reported_minor BIGINT NOT NULL,
+    reported_void_count INT NOT NULL DEFAULT 0,
+    reported_void_minor BIGINT NOT NULL DEFAULT 0,
+    server_count INT NULL,
+    server_minor BIGINT NULL,
+    status VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_batch_1 UNIQUE (pay_terminal_id,biz_date)
+);
+
+CREATE TABLE IF NOT EXISTS sec_master_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    kms_key_id VARCHAR(128) NOT NULL,
+    provider VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(48) NULL,
+    activated_at DATETIME(3) NULL,
+    rotated_at DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_master_key_1 UNIQUE (kms_key_id),
+    CONSTRAINT uk_sec_master_key_2 UNIQUE (active_key)
+);
+
+CREATE TABLE IF NOT EXISTS sec_secret_blob
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    cipher_text TEXT NOT NULL,
+    data_key_cipher VARCHAR(512) NOT NULL,
+    sec_master_key_id BIGINT NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    aad_sha256 CHAR(64) NOT NULL,
+    rewrapped_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    max_age_days INT NOT NULL DEFAULT 0,
+    warn_before_days INT NOT NULL DEFAULT 30,
+    overlap_days INT NOT NULL DEFAULT 7,
+    dual_control TINYINT(1) NOT NULL DEFAULT 1,
+    verify_before_enable TINYINT(1) NOT NULL DEFAULT 1,
+    reveal_on_issue_only TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_policy_1 UNIQUE (namespace,owner_type,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    counterparty VARCHAR(32) NULL,
+    direction VARCHAR(24) NOT NULL,
+    key_usage VARCHAR(24) NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    material_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_version INT NOT NULL DEFAULT 0,
+    sec_key_policy_id BIGINT NULL,
+    expires_at DATETIME(3) NULL,
+    last_used_at DATETIME(3) NULL,
+    use_count BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_1 UNIQUE (namespace,owner_type,owner_id,direction,key_usage,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    version_index INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(32) NULL,
+    sec_secret_blob_id BIGINT NULL,
+    public_material TEXT NULL,
+    fingerprint VARCHAR(64) NOT NULL,
+    external_key_id VARCHAR(64) NULL,
+    source VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NULL,
+    valid_to DATETIME(3) NULL,
+    entered_by VARCHAR(64) NOT NULL,
+    verified_at DATETIME(3) NULL,
+    verify_evidence VARCHAR(128) NULL,
+    enabled_by VARCHAR(64) NULL,
+    enabled_at DATETIME(3) NULL,
+    overlap_until DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    revoked_by VARCHAR(64) NULL,
+    revoked_at DATETIME(3) NULL,
+    revoke_reason VARCHAR(255) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    storage_tier VARCHAR(8) NOT NULL DEFAULT 'L2',
+    display_prefix VARCHAR(16) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_version_1 UNIQUE (sec_key_id,version_index),
+    CONSTRAINT uk_sec_key_version_2 UNIQUE (active_key),
+    CONSTRAINT ck_sec_key_version_1 CHECK (sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL),
+    CONSTRAINT ck_sec_key_version_2 CHECK (enabled_by IS NULL OR enabled_by <> entered_by)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    sec_key_version_id BIGINT NULL,
+    event_type VARCHAR(24) NOT NULL,
+    operator_type VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    reason VARCHAR(255) NULL,
+    client_ip VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_access_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    access_type VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    sec_key_id BIGINT NULL,
+    sec_secret_blob_id BIGINT NULL,
+    target_type VARCHAR(24) NULL,
+    target_id BIGINT NULL,
+    accessor_no VARCHAR(64) NOT NULL,
+    accessor_role VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    client_ip VARCHAR(64) NULL,
+    accessed_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_sec_access_log_1 CHECK (sec_key_id IS NOT NULL OR sec_secret_blob_id IS NOT NULL OR target_id IS NOT NULL),
+    CONSTRAINT ck_sec_access_log_2 CHECK (access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL)
 );
 
 -- 种子数据
@@ -11033,7 +16214,7 @@ VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
 INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
 SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
 FROM (
-    
+
     SELECT 'ORDER_PAID' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
     SELECT 'ORDER_PAID', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
     SELECT 'ORDER_ARRIVED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -11044,7 +16225,7 @@ FROM (
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
-    
+
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'PUSH', 1, 'RING' UNION ALL
     SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -12059,7 +17240,7 @@ INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF12M', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF18M', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF24M', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D30', '30分钟内', 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D60', '1小时', 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D120', '2小时', 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -12080,7 +17261,7 @@ INSERT IGNORE INTO prd_category_spec (category_no, dim_no, usage_type, is_primar
   ('CAT190', 'SD_PACK', NULL, 0, 0, 30, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_ORIGIN', NULL, 0, 0, 40, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label_override, sort, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  
+
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V200ML', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V250ML', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V500ML', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -12092,11 +17273,11 @@ INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label
   ('CAT180', 'SD_PACK', 'SV_PACK_PBOX', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_PACK', 'SV_PACK_PBOTTLE', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_PACK', 'SV_PACK_PBAG', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF7D', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF1M', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF6M', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W250G', '半斤', 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W500G', '1斤', 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W1KG', '2斤', 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -12756,26 +17937,26 @@ UPDATE prd_spec_template
 SET name = '数量', updated_at = NOW(), updated_by = 'SYSTEM'
 WHERE template_no = 'SPT_SEED_NORMAL_COUNT' AND name = '规格';
 INSERT IGNORE INTO prd_spec_value (value_no, dim_no, code, label, numeric_value, numeric_unit, aliases, scope, sort, status, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  
+
   ('SV_CUT_CUTHALF', 'SD_CUT', 'CUTHALF', '半只', NULL, NULL, NULL, 'PLATFORM', 15, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_WEIGHT_W3KG', 'SD_WEIGHT', 'W3KG', '3kg', 3000, 'g', '["6斤", "6斤装", "3千克"]', 'PLATFORM', 3000, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_VOLUME_V30ML', 'SD_VOLUME', 'V30ML', '30ml', 30, 'ml', NULL, 'PLATFORM', 30, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('SV_VOLUME_V60ML', 'SD_VOLUME', 'V60ML', '60ml', 60, 'ml', NULL, 'PLATFORM', 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('SV_VOLUME_V400ML', 'SD_VOLUME', 'V400ML', '400ml', 400, 'ml', NULL, 'PLATFORM', 400, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_DURATION_D240', 'SD_DURATION', 'D240', '240分钟', 240, '分钟', '["4小时"]', 'PLATFORM', 240, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 UPDATE prd_spec_value SET aliases = '["单次", "一次"]', updated_at = NOW(), updated_by = 'SYSTEM'
 WHERE value_no = 'SV_TIMES_T1' AND aliases IS NULL;
 INSERT IGNORE INTO prd_category_spec (category_no, dim_no, usage_type, is_primary, required, sort, status, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  ('CAT110', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT140', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT140', 'SD_CUT',   NULL, 0, 0, 80, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT210', 'SD_WEIGHT',NULL, 0, 0, 50, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT210', 'SD_SIZE',  NULL, 0, 0, 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT240', 'SD_SIZE',  NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT310', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
+  ('CAT110', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT140', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT140', 'SD_CUT',   NULL, 0, 0, 80, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT210', 'SD_WEIGHT',NULL, 0, 0, 50, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT210', 'SD_SIZE',  NULL, 0, 0, 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT240', 'SD_SIZE',  NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT310', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 UPDATE prd_goods SET spec_groups = '[{"name": "重量", "options": ["10斤装", "20斤装"], "optionCodes": ["W5KG", "W10KG"], "templateNo": "SD_WEIGHT"}]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE goods_no = 'G0001' AND spec_groups = '[{"name":"规格","options":["10斤装","20斤装"]}]';
 UPDATE prd_goods SET spec_groups = '[{"name": "容量", "options": ["5L"], "optionCodes": ["V5L"], "templateNo": "SD_VOLUME"}]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE goods_no = 'G0002' AND spec_groups = '[{"name":"规格","options":["5L"]}]';
@@ -13801,9 +18982,9 @@ VALUES
   ('CAT120', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
-  
-  
+
+
+
   ('CAT121', 'SD_WEIGHT', NULL, 1, 0, 10, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_WEIGHT', NULL, 1, 0, 10, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT121', 'SD_ORIGIN', 'PROP', 0, 0, 200, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -13918,7 +19099,7 @@ VALUES
      'elec:part:read', 'elec:part:read', 'IMPLEMENTED', 1, 'P-19.3', 'MENU', 30, NOW(), NOW()),
     ('OPS_ELEC__TAB_BASE', 'OPS_ELEC', '基础数据', '主数据', '/elec?tab=base',
      'elec:base:manage', 'elec:base:manage', 'IMPLEMENTED', 1, 'P-19.4', 'MENU', 40, NOW(), NOW()),
-    
+
     ('ACT__ELEC_RFQ_QUOTE', 'OPS_ELEC', 'elec:rfq:quote', '页面内操作', NULL,
      'elec:rfq:quote', 'elec:rfq:quote', 'IMPLEMENTED', 1, NULL, 'ACTION', 910, NOW(), NOW()),
     ('ACT__ELEC_SUPPLIER_MANAGE', 'OPS_ELEC', 'elec:supplier:manage', '页面内操作', NULL,
@@ -14368,6 +19549,103 @@ WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND 
       AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL))
       AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_STORE_ACCESS'
   );
+UPDATE sys_function
+SET name='积分运营', href='/points/types', updated_at=CURRENT_TIMESTAMP
+WHERE function_code='OPS_POINTS' AND end_code='OPS' AND deleted=0;
+INSERT IGNORE INTO sys_role_point
+  (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_CONFIGURATION',source.end_code,source.entity_no,source.tenant_no,
+       CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+FROM sys_role_point source
+WHERE source.end_code='OPS' AND source.deleted=0
+  AND source.point_code IN ('OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_point existing
+    WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code
+      AND existing.tenant_no=source.tenant_no
+      AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL))
+      AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_CONFIGURATION'
+  );
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='积分设置', group_name='积分配置', href='/points/types',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=10, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_CONFIGURATION' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='平台预算', group_name='积分资金', href='/points/budget',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=20, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_TREASURY' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='积分账户', group_name='积分账务', href='/points/accounts',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=30, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_QUERIES' AND deleted=0;
+UPDATE sys_function_point
+SET function_code='OPS_POINTS', name='发放与核销', group_name='积分账务', href='/points/transactions',
+    ui_perm_code='finance:settle:read', perm_code='finance:settle:read', backend_status='IMPLEMENTED',
+    ui_ready=1, matrix_code='P-12.1', sort=40, updated_at=CURRENT_TIMESTAMP
+WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS' AND deleted=0;
+UPDATE sys_role_point
+SET deleted=1, updated_at=CURRENT_TIMESTAMP
+WHERE end_code='OPS' AND point_code IN (
+  'OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS'
+) AND deleted=0;
+UPDATE sys_function_point
+SET deleted=1, ui_ready=0, updated_at=CURRENT_TIMESTAMP
+WHERE point_code IN (
+  'OPS_FINANCE__TAB_POINTS','OPS_FINANCE__TAB_POINTS_POLICY','OPS_POINTS__TAB_STORE_ACCESS'
+) AND deleted=0;
+UPDATE pts_point_type SET name=type_code WHERE name IS NULL OR TRIM(name)='';
+UPDATE sv_account SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_recharge SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_statement SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE sv_user_store_index SET customer_no=user_no WHERE customer_no IS NULL;
+UPDATE mbr_identity_ticket SET customer_no=user_no WHERE customer_no IS NULL;
+INSERT IGNORE INTO sys_function_point
+ (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_EARNING_RULES','OPS_POINTS','赠送规则','积分配置','/points/earning-rules',
+       'finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1',15,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_EARNING_RULES');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT source.role_code,'OPS_POINTS__TAB_EARNING_RULES',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+FROM sys_role_point source
+WHERE source.point_code='OPS_POINTS__TAB_CONFIGURATION' AND source.end_code='OPS' AND source.deleted=0
+ AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code
+ AND existing.point_code='OPS_POINTS__TAB_EARNING_RULES' AND existing.end_code=source.end_code
+ AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0);
+INSERT IGNORE INTO notify_scene_channel
+    (tenant_no,scene_code,audience,channel,enabled,push_level,version,deleted,created_at,updated_at,created_by,updated_by)
+VALUES
+    ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
+    ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_READ','OPS_SYSTEM','查看结账模板','结账配置',NULL,
+        'pricing:template:read','pricing:template:read','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_UPDATE','OPS_SYSTEM','维护结账模板草稿','结账配置',NULL,
+        'pricing:template:update','pricing:template:update','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TEMPLATE_PUBLISH','OPS_SYSTEM','发布结账模板','结账配置',NULL,
+        'pricing:template:publish','pricing:template:publish','IMPLEMENTED',0,'P-4.2','ACTION',90,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TAX_READ','OPS_SYSTEM','查看默认税配置','结账配置',NULL,
+        'pricing:tax:read','pricing:tax:read','IMPLEMENTED',0,'P-4.2','ACTION',91,NOW(),NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,
+     matrix_code,point_type,sort,created_at,updated_at)
+VALUES ('OPS_PRICING_TAX_UPDATE','OPS_SYSTEM','维护默认税配置','结账配置',NULL,
+        'pricing:tax:update','pricing:tax:update','IMPLEMENTED',0,'P-4.2','ACTION',92,NOW(),NOW());
+UPDATE pmt_sv_release_link SET scope_no=store_no WHERE scope_type='STORE';
+UPDATE pmt_sv_approval SET scope_no=store_no WHERE scope_type='STORE';
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:read"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:submit"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:submit"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:print:reprint"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:print:reprint"',perms)=0;
@@ -14386,22 +19664,717 @@ INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,h
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PRINT_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PRINT_READ' AND end_code='OPS');
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PRINT_RESOLVE','OPS_SYSTEM','打印对账处理','打印管理',NULL,'ops:print:resolve','ops:print:resolve','IMPLEMENTED',0,NULL,'ACTION',990,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PRINT_RESOLVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PRINT_RESOLVE' AND end_code='OPS');
-INSERT IGNORE INTO sys_function_point
-  (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,gated_by,point_type,sort,created_at,updated_at)
-VALUES ('OPS_PRINT','OPS_IAM','打印监控与对账','运行监控','/print','ops:print:read','ops:print:read',
-        'IMPLEMENTED',1,'P-17.1','shop.print.enabled','MENU',989,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-ON DUPLICATE KEY UPDATE function_code='OPS_IAM',name='打印监控与对账',group_name='运行监控',href='/print',
-  ui_perm_code='ops:print:read',perm_code='ops:print:read',backend_status='IMPLEMENTED',ui_ready=1,
-  matrix_code='P-17.1',gated_by='shop.print.enabled',point_type='MENU',deleted=0,updated_at=CURRENT_TIMESTAMP;
-INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
-SELECT DISTINCT source.role_code,'OPS_PRINT',source.end_code,source.entity_no,source.tenant_no,
-       CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
-FROM sys_role_point source
-WHERE source.point_code='ACT__PRINT_READ' AND source.end_code='OPS' AND source.deleted=0
-  AND NOT EXISTS (
-    SELECT 1 FROM sys_role_point existing
-    WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code
-      AND existing.tenant_no=source.tenant_no
-      AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL))
-      AND existing.deleted=0 AND existing.point_code='OPS_PRINT'
-  );
+UPDATE mch_brand SET logo = REPLACE(logo, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE logo LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,gated_by,sort,created_at,updated_at)
+VALUES ('OPS_PRINTING','OPS_IAM','打印运营','打印运营','/printing','ops:print:read','ops:print:read','IMPLEMENTED',1,'P-17.1','MENU','shop.print.enabled',50,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT 'SUPER_ADMIN','OPS_PRINTING','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PRINTING' AND end_code='OPS');
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_PAY', '支付运营', 'OPS', 'CreditCard', '/pay-ops/orders', 115, 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE function_code = function_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_01','OPS_PAY','支付单','支付单','/pay-ops/orders','pay:order:view','pay:order:view','IMPLEMENTED',1,'P-12.1','MENU',10,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_02','OPS_PAY','退款复核','退款','/pay-ops/refunds','pay:refund:view','pay:refund:view','IMPLEMENTED',1,'P-12.1','MENU',20,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_03','OPS_PAY','业务通知','记录','/pay-ops/notifies','pay:log:view','pay:log:view','IMPLEMENTED',1,'P-12.1','MENU',30,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_04','OPS_PAY','支付异常','支付单','/pay-ops/exceptions','pay:order:view','pay:order:view','IMPLEMENTED',1,'P-12.1','MENU',40,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_REFUND_REVIEW','OPS_PAY','退款复核（通过 / 驳回）','退款',NULL,'pay:refund:review','pay:refund:review','IMPLEMENTED',1,NULL,'ACTION',50,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_NOTIFY_RESEND','OPS_PAY','业务通知手动重推','记录',NULL,'pay:notify:resend','pay:notify:resend','IMPLEMENTED',1,NULL,'ACTION',60,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ORDER_MANAGE','OPS_PAY','支付异常处置（原路退回 / 无需处置）','支付单',NULL,'pay:order:manage','pay:order:manage','IMPLEMENTED',1,NULL,'ACTION',70,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_QR_MANAGE','OPS_PAY','收款码风控停用','支付单',NULL,'pay:qr:manage','pay:qr:manage','IMPLEMENTED',0,NULL,'ACTION',80,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_01','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_01' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_02','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_02' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_03','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_03' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_04','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_04' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_REFUND_REVIEW','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_NOTIFY_RESEND','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_NOTIFY_RESEND' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ORDER_MANAGE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ORDER_MANAGE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_QR_MANAGE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_QR_MANAGE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_01','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_01' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_02','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_02' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_03','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_03' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_04','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_04' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','ACT__PAY_REFUND_REVIEW','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='ACT__PAY_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_05','OPS_PAY','接入方与授权','接入','/pay-ops/apps','pay:app:manage','pay:app:manage','IMPLEMENTED',1,'P-12.1','MENU',90,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_06','OPS_PAY','请求记录','记录','/pay-ops/request-logs','pay:log:view','pay:log:view','IMPLEMENTED',1,'P-12.1','MENU',100,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_07','OPS_PAY','静态收款码','支付单','/pay-ops/qr-codes','pay:qr:manage','pay:qr:manage','IMPLEMENTED',1,'P-12.1','MENU',110,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_08','OPS_PAY','平台证书与密钥','密钥','/pay-ops/platform-keys','sec:key:view','sec:key:view','IMPLEMENTED',1,'P-12.1','MENU',120,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_APP_CREDENTIAL_REVOKE','OPS_PAY','吊销接入方密钥','接入',NULL,'pay:app-credential:revoke','pay:app-credential:revoke','IMPLEMENTED',1,NULL,'ACTION',130,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__SEC_KEY_WRITE','OPS_PAY','吊销平台密钥版本','密钥',NULL,'sec:key:write','sec:key:write','IMPLEMENTED',1,NULL,'ACTION',140,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__SEC_KEY_ENABLE','OPS_PAY','启用平台密钥版本（两人）','密钥',NULL,'sec:key:enable','sec:key:enable','IMPLEMENTED',1,NULL,'ACTION',150,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+UPDATE sys_function_point SET ui_ready=1, updated_at=NOW() WHERE point_code='ACT__PAY_QR_MANAGE';
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_05','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_05' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_06','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_06' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_07','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_07' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_08','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_08' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_APP_CREDENTIAL_REVOKE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_APP_CREDENTIAL_REVOKE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_WRITE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_ENABLE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_ENABLE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_06','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_06' AND end_code='OPS');
+UPDATE ord_checkout_operation SET authority_namespace_hash=SHA2(CONCAT(
+    'LEGACY_CHECKOUT_NAMESPACE_V1',CHAR_LENGTH(tenant_no),':',tenant_no,
+    CHAR_LENGTH(caller),':',caller,CHAR_LENGTH(entity_no),':',entity_no,
+    CHAR_LENGTH(store_no),':',store_no,CHAR_LENGTH(actor_realm),':',actor_realm,
+    CHAR_LENGTH(actor_kind),':',actor_kind,CHAR_LENGTH(actor_no),':',actor_no),256)
+WHERE authority_namespace_hash IS NULL;
+UPDATE ord_checkout_confirmation SET authority_namespace_hash=SHA2(CONCAT(
+    'LEGACY_CHECKOUT_NAMESPACE_V1',CHAR_LENGTH(tenant_no),':',tenant_no,
+    CHAR_LENGTH(caller),':',caller,CHAR_LENGTH(operation_no),':',operation_no,
+    CHAR_LENGTH(buyer_no),':',buyer_no),256)
+WHERE authority_namespace_hash IS NULL;
+INSERT IGNORE INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)
+VALUES ('MAIN', 'PLATFORM', 'PLATFORM', 0);
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_READ','OPS_SYSTEM','商城目录读取','商业商城',NULL,'commerce:catalog:read','commerce:catalog:read','IMPLEMENTED',0,NULL,'ACTION',1100,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_EDIT','OPS_SYSTEM','商城目录草稿编辑','商业商城',NULL,'commerce:catalog:edit','commerce:catalog:edit','IMPLEMENTED',0,NULL,'ACTION',1101,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_EDIT','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_EDIT' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_PUBLISH','OPS_SYSTEM','商城目录发布与停售','商业商城',NULL,'commerce:catalog:publish','commerce:catalog:publish','IMPLEMENTED',0,NULL,'ACTION',1102,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_PUBLISH','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_PUBLISH' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_ORDER_READ','OPS_SYSTEM','商城订单读取','商业商城',NULL,'commerce:mall:order:read','commerce:mall:order:read','IMPLEMENTED',0,NULL,'ACTION',1103,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_ORDER_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_ORDER_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SHIPMENT_WRITE','OPS_SYSTEM','商城硬件发货','商业商城',NULL,'commerce:mall:shipment:write','commerce:mall:shipment:write','IMPLEMENTED',0,NULL,'ACTION',1104,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SHIPMENT_WRITE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SHIPMENT_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_REFUND_REVIEW','OPS_SYSTEM','商城退款审核','商业商城',NULL,'commerce:refund:review','commerce:refund:review','IMPLEMENTED',0,NULL,'ACTION',1105,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_REFUND_REVIEW','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_READ','OPS_SYSTEM','权益来源读取','商业商城',NULL,'commerce:subscription:read','commerce:subscription:read','IMPLEMENTED',0,NULL,'ACTION',1106,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_GRANT','OPS_SYSTEM','零金额独立端赠送','商业商城',NULL,'commerce:subscription:grant','commerce:subscription:grant','IMPLEMENTED',0,NULL,'ACTION',1107,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_GRANT','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_GRANT' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_REVOKE','OPS_SYSTEM','零金额赠送来源撤销','商业商城',NULL,'commerce:subscription:revoke','commerce:subscription:revoke','IMPLEMENTED',0,NULL,'ACTION',1108,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_REVOKE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_REVOKE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_ASSISTED_PURCHASE','OPS_SYSTEM','商城代客线下购买','商业商城',NULL,'commerce:mall:assisted:purchase','commerce:mall:assisted:purchase','IMPLEMENTED',0,NULL,'ACTION',1109,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_ASSISTED_PURCHASE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_ASSISTED_PURCHASE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_EVIDENCE','OPS_SYSTEM','线下付款凭证读取与平台凭证上传','商业商城',NULL,'commerce:mall:offline:evidence','commerce:mall:offline:evidence','IMPLEMENTED',0,NULL,'ACTION',1110,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_EVIDENCE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_EVIDENCE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_REVIEW','OPS_SYSTEM','线下付款申报拒绝','商业商城',NULL,'commerce:mall:offline:review','commerce:mall:offline:review','IMPLEMENTED',0,NULL,'ACTION',1111,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_REVIEW','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_CONFIRM','OPS_SYSTEM','线下实际到账核款','商业商城',NULL,'commerce:mall:offline:confirm','commerce:mall:offline:confirm','IMPLEMENTED',0,NULL,'ACTION',1112,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_CONFIRM','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_CONFIRM' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_VOID','OPS_SYSTEM','线下订单对账作废','商业商城',NULL,'commerce:mall:offline:void','commerce:mall:offline:void','IMPLEMENTED',0,NULL,'ACTION',1113,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_VOID','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_VOID' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_REFUND_CONFIRM','OPS_SYSTEM','线下退款实际出款确认','商业商城',NULL,'commerce:mall:offline:refund:confirm','commerce:mall:offline:refund:confirm','IMPLEMENTED',0,NULL,'ACTION',1114,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_REFUND_CONFIRM','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_REFUND_CONFIRM' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_COLLECTION_PROFILE_READ','OPS_SYSTEM','平台收款档案读取','商业商城',NULL,'commerce:collection:profile:read','commerce:collection:profile:read','IMPLEMENTED',0,NULL,'ACTION',1115,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_COLLECTION_PROFILE_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_COLLECTION_PROFILE_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_COLLECTION_PROFILE_WRITE','OPS_SYSTEM','平台收款档案配置','商业商城',NULL,'commerce:collection:profile:write','commerce:collection:profile:write','IMPLEMENTED',0,NULL,'ACTION',1116,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_COLLECTION_PROFILE_WRITE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_COLLECTION_PROFILE_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE', 'OPS_MERCHANT', '经营类型与套餐', '套餐商城', '/mall', 'commerce:catalog:read', 'commerce:catalog:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 82, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_PRODUCTS', 'OPS_MERCHANT', '商城商品与SKU', '套餐商城', '/mall?tab=products', 'commerce:catalog:read', 'commerce:catalog:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 83, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_PRODUCTS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_PRODUCTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_PRODUCTS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_ORDERS', 'OPS_MERCHANT', '商城订单', '套餐商城', '/mall?tab=orders', 'commerce:mall:order:read', 'commerce:mall:order:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 84, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_ORDERS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_ORDERS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_ORDERS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_CLAIMS', 'OPS_MERCHANT', '线下核款', '套餐商城', '/mall?tab=claims', 'commerce:mall:offline:review', 'commerce:mall:offline:review', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 85, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_CLAIMS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_CLAIMS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_CLAIMS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_COLLECTION', 'OPS_MERCHANT', '平台收款档案', '套餐商城', '/mall?tab=collection', 'commerce:collection:profile:read', 'commerce:collection:profile:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 86, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_COLLECTION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_COLLECTION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_COLLECTION');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_ASSISTED', 'OPS_MERCHANT', '代客线下购买', '套餐商城', '/mall?tab=assisted', 'commerce:mall:assisted:purchase', 'commerce:mall:assisted:purchase', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 87, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_ASSISTED');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_ASSISTED', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_ASSISTED');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_SOURCES', 'OPS_MERCHANT', '门店权益来源', '套餐商城', '/mall?tab=sources', 'commerce:subscription:read', 'commerce:subscription:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 88, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_SOURCES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_SOURCES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_SOURCES');
+UPDATE sys_function_point SET sort = 89, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_SOURCES'    AND sort = 88;
+UPDATE sys_function_point SET sort = 88, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_ASSISTED'   AND sort = 87;
+UPDATE sys_function_point SET sort = 87, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_COLLECTION' AND sort = 86;
+UPDATE sys_function_point SET sort = 86, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_CLAIMS'     AND sort = 85;
+UPDATE sys_function_point SET sort = 85, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_ORDERS'     AND sort = 84;
+UPDATE sys_function_point SET sort = 84, updated_at = NOW() WHERE point_code = 'OPS_COMMERCE__TAB_PRODUCTS'   AND sort = 83;
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_CATEGORIES', 'OPS_MERCHANT', '商城商品分类', '套餐商城', '/mall?tab=categories', 'commerce:catalog:read', 'commerce:catalog:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 83, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_CATEGORIES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_CATEGORIES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_CATEGORIES');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MERCHANT_STORE_NEARPAY_SYNC', 'OPS_MERCHANT', '门店信息重推支付系统', '门店', NULL, 'merchant:store:nearpay-sync', 'merchant:store:nearpay-sync', 'IMPLEMENTED', 0, NULL, 'ACTION', 92, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MERCHANT_STORE_NEARPAY_SYNC');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_STORE_NEARPAY_SYNC', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_STORE_NEARPAY_SYNC');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MERCHANT_MERCHANT_PAY_APPLY', 'OPS_MERCHANT', '申请支付服务', '商家档案', NULL, 'merchant:merchant:pay-apply', 'merchant:merchant:pay-apply', 'IMPLEMENTED', 0, NULL, 'ACTION', 93, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MERCHANT_MERCHANT_PAY_APPLY');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_MERCHANT_PAY_APPLY', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_MERCHANT_PAY_APPLY');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:manage"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:manage"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'OPS_SYSTEM__TAB_APPVERSION', 'OPS_IAM', 'App 版本', '运行配置', '/system?tab=appVersion', 'system:param:read', 'system:param:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', NULL, 105, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_APPVERSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'TECH_OPS', 'OPS_SYSTEM__TAB_APPVERSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'ACT__SYSTEM_APP_VERSION_UPDATE', 'OPS_IAM', 'system:app-version:update', '页面内操作', NULL, 'system:app-version:update', 'system:app-version:update', 'IMPLEMENTED', 1, NULL, 'ACTION', NULL, 922, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__SYSTEM_APP_VERSION_UPDATE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_APP_VERSION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_APP_VERSION_UPDATE');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:booking:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:booking:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:booking:manage"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:booking:manage"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:booking:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:booking:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:collect"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:collect"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'OWNER', '老板', '["*"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'MANAGER', '店长', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods","biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:print:read","biz:print:submit","biz:print:reprint","biz:print:extra","biz:print:device","biz:print:config","biz:print:resolve","biz:print:simulate","biz:print:export","mch:pay:order:view","mch:pay:offline:record","mch:pay:offline:manage","biz:booking:view","biz:booking:manage","mch:pay:collect"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'CLERK', '店员', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:print:read","biz:print:submit","biz:print:reprint","biz:print:simulate","biz:print:export","mch:pay:order:view","mch:pay:offline:record","biz:booking:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'PICKER', '理货员', '["biz:receive","biz:stock"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'COURIER', '配送员', '["biz:ship","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'CS', '客服', '["biz:review","biz:aftersale","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_store_industry (tenant_no, industry_code, sub_industry_code, business_type_code, name_zh, name_tw, name_en,
+                          sort, enabled, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+('MAIN', 'FOOD', '', 'FOOD', '餐饮', '餐飲', 'Food & beverage', 10, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_BREAKFAST', 'FOOD', '早餐店', '早餐店', 'Breakfast', 10, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_CHINESE', 'FOOD', '中式餐馆', '中式餐館', 'Chinese restaurant', 20, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_FASTFOOD', 'FOOD', '快餐便当', '快餐便當', 'Fast food & bento', 30, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_SNACK', 'FOOD', '小吃', '小吃', 'Snacks', 40, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_DRINK', 'FOOD', '手摇饮料', '手搖飲料', 'Tea & drinks', 50, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_CAFE', 'FOOD', '咖啡厅', '咖啡廳', 'Cafe', 60, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_BAKERY', 'FOOD', '烘焙甜点', '烘焙甜點', 'Bakery & desserts', 70, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_HOTPOT', 'FOOD', '火锅', '火鍋', 'Hot pot', 80, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_BBQ', 'FOOD', '烧烤', '燒烤', 'Barbecue', 90, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_JPKR', 'FOOD', '日韩料理', '日韓料理', 'Japanese & Korean', 100, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_WESTERN', 'FOOD', '西餐', '西餐', 'Western', 110, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'FOOD', 'FOOD_BAR', 'FOOD', '酒吧', '酒吧', 'Bar', 120, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', '', 'RETAIL', '零售', '零售', 'Retail', 20, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_CVS', 'RETAIL', '便利店 / 超市', '便利商店 / 超市', 'Convenience & supermarket', 10, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_FRESH', 'RETAIL', '生鲜蔬果', '生鮮蔬果', 'Fresh produce', 20, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_FASHION', 'RETAIL', '服饰鞋包', '服飾鞋包', 'Apparel & bags', 30, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_COSMETIC', 'RETAIL', '美妆个护', '美妝個護', 'Beauty & personal care', 40, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_BABY', 'RETAIL', '母婴用品', '母嬰用品', 'Mother & baby', 50, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_DIGITAL', 'RETAIL', '数码家电', '數位家電', 'Electronics', 60, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_DAILY', 'RETAIL', '日用百货', '日用百貨', 'Household goods', 70, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_PET', 'RETAIL', '宠物用品', '寵物用品', 'Pet supplies', 80, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_BOOK', 'RETAIL', '书店文具', '書店文具', 'Books & stationery', 90, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'RETAIL', 'RETAIL_DRUG', 'RETAIL', '药妆保健', '藥妝保健', 'Pharmacy & health', 100, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', '', 'SERVICE', '服务业', '服務業', 'Services', 30, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_HAIR', 'SERVICE', '美发', '美髮', 'Hair salon', 10, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_NAIL', 'SERVICE', '美甲美睫', '美甲美睫', 'Nails & lashes', 20, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_SKIN', 'SERVICE', '美容护肤', '美容護膚', 'Beauty & skincare', 30, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_SPA', 'SERVICE', '按摩 SPA', '按摩 SPA', 'Massage & spa', 40, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_FITNESS', 'SERVICE', '健身瑜伽', '健身瑜伽', 'Fitness & yoga', 50, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_PET', 'SERVICE', '宠物美容', '寵物美容', 'Pet grooming', 60, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_LAUNDRY', 'SERVICE', '洗衣', '洗衣', 'Laundry', 70, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_REPAIR', 'SERVICE', '维修', '維修', 'Repair', 80, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_EDU', 'SERVICE', '教育培训', '教育培訓', 'Education', 90, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0),
+('MAIN', 'SERVICE', 'SERVICE_PHOTO', 'SERVICE', '摄影', '攝影', 'Photography', 100, 1, NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_merchant_plan_def
+(plan_code,name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,tenant_no,created_at,updated_at,version,deleted)
+SELECT 'FREE','孵化版',3,0,0,0,1,10,'MAIN',NOW(),NOW(),0,0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def WHERE plan_code='FREE');
+INSERT IGNORE INTO sys_merchant_plan_def
+(plan_code,name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,tenant_no,created_at,updated_at,version,deleted)
+SELECT 'PRO','成长版',10,3,1,14,1,20,'MAIN',NOW(),NOW(),0,0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def WHERE plan_code='PRO');
+INSERT IGNORE INTO sys_merchant_plan_def
+(plan_code,name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,tenant_no,created_at,updated_at,version,deleted)
+SELECT 'CHAIN','连锁版',30,15,1,14,1,30,'MAIN',NOW(),NOW(),0,0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def WHERE plan_code='CHAIN');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'ACT__SYSTEM_PARAM_READ','OPS_SYSTEM','system:param:read','仅后端',NULL,NULL,'system:param:read','IMPLEMENTED',0,NULL,'ACTION',930,NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__SYSTEM_PARAM_READ');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT DISTINCT g.role_code,'ACT__SYSTEM_PARAM_READ',g.end_code,NOW(),NOW()
+FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code
+WHERE p.point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND p.perm_code='system:param:read';
+DELETE FROM sys_role_point WHERE point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND role_code<>'SUPER_ADMIN'
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code
+                  WHERE p.point_code NOT IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+                    AND g.role_code=sys_role_point.role_code AND g.end_code=sys_role_point.end_code
+                    AND p.perm_code=CASE WHEN sys_role_point.point_code='OPS_SYSTEM__TAB_AUTHCODE'
+                                         THEN 'product:category:read' ELSE 'system:industry:read' END);
+UPDATE sys_function_point SET
+  ui_perm_code=CASE WHEN point_code='OPS_SYSTEM__TAB_AUTHCODE' THEN 'product:category:read' ELSE 'system:industry:read' END,
+  perm_code=CASE WHEN point_code='OPS_SYSTEM__TAB_AUTHCODE' THEN 'product:category:read' ELSE 'system:industry:read' END,
+  updated_at=NOW()
+WHERE point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT DISTINCT authority_grant.role_code,menu.point_code,authority_grant.end_code,NOW(),NOW()
+FROM sys_role_point authority_grant
+JOIN sys_function_point authority ON authority.point_code=authority_grant.point_code
+JOIN sys_function_point menu ON menu.perm_code=authority.perm_code
+WHERE menu.point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND authority_grant.end_code='OPS';
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_SYSTEM__TAB_STOREINDUSTRY','OPS_SYSTEM','门店行业与子行业','经营范围','/system?tab=storeIndustry',
+  'commerce:catalog:read','commerce:catalog:read','IMPLEMENTED',1,'P-17.1','MENU',95,NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT 'SUPER_ADMIN','OPS_SYSTEM__TAB_STOREINDUSTRY','OPS',NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND end_code='OPS');
+UPDATE sys_function_point SET gated_by='commerce.catalog.enabled' WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY';
+UPDATE sys_function SET name='工作台',sort=10,updated_at=NOW() WHERE function_code='OPS_DASHBOARD' AND end_code='OPS';
+UPDATE sys_function SET name='商户中心',sort=20,updated_at=NOW() WHERE function_code='OPS_MERCHANT' AND end_code='OPS';
+UPDATE sys_function SET name='商品资料',sort=30,updated_at=NOW() WHERE function_code='OPS_PRODUCT' AND end_code='OPS';
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at) VALUES ('OPS_COMMERCE', '经营服务', 'OPS', 'ShoppingBag', '/mall', 40, 1, NOW(), NOW());
+UPDATE sys_function SET name='经营服务',sort=40,updated_at=NOW() WHERE function_code='OPS_COMMERCE' AND end_code='OPS';
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at) VALUES ('OPS_INVENTORY', '进销存', 'OPS', 'Warehouse', '/inventory', 50, 1, NOW(), NOW());
+UPDATE sys_function SET name='进销存',sort=50,updated_at=NOW() WHERE function_code='OPS_INVENTORY' AND end_code='OPS';
+UPDATE sys_function SET name='订单履约',sort=60,updated_at=NOW() WHERE function_code='OPS_ORDER' AND end_code='OPS';
+UPDATE sys_function SET name='售后治理',sort=70,updated_at=NOW() WHERE function_code='OPS_AFTERSALE' AND end_code='OPS';
+UPDATE sys_function SET name='会员营销',sort=80,updated_at=NOW() WHERE function_code='OPS_MARKETING' AND end_code='OPS';
+UPDATE sys_function SET name='会员管理',sort=90,updated_at=NOW() WHERE function_code='OPS_MEMBER' AND end_code='OPS';
+UPDATE sys_function SET name='经营财务',sort=100,updated_at=NOW() WHERE function_code='OPS_FINANCE' AND end_code='OPS';
+UPDATE sys_function SET name='积分运营',sort=110,updated_at=NOW() WHERE function_code='OPS_POINTS' AND end_code='OPS';
+UPDATE sys_function SET name='内容管理',sort=120,updated_at=NOW() WHERE function_code='OPS_REVIEW' AND end_code='OPS';
+UPDATE sys_function SET name='消息客服',sort=130,updated_at=NOW() WHERE function_code='OPS_MESSAGE' AND end_code='OPS';
+UPDATE sys_function SET name='社区网点',sort=140,updated_at=NOW() WHERE function_code='OPS_COMMUNITY' AND end_code='OPS';
+UPDATE sys_function SET name='风控',sort=150,updated_at=NOW() WHERE function_code='OPS_RISK' AND end_code='OPS';
+UPDATE sys_function SET name='系统设置',sort=160,updated_at=NOW() WHERE function_code='OPS_IAM' AND end_code='OPS';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='入驻审核',group_name='入驻资质',sort=10,updated_at=NOW() WHERE point_code='OPS_MERCHANT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='商家档案',group_name='入驻资质',sort=20,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_LIST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='门店档案',group_name='入驻资质',sort=30,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_STORES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='类目授权',group_name='入驻资质',sort=40,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CATEGORIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='资质档案',group_name='入驻资质',sort=50,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_QUALIFICATIONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='准入押金',group_name='入驻资质',sort=60,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ADMISSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='进件看板',group_name='入驻资质',sort=70,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ONBOARDING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='自营建档',group_name='入驻资质',sort=80,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_SELF_OPERATED' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='代办入驻',group_name='入驻资质',sort=90,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ON_BEHALF' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='自营风险',group_name='入驻资质',sort=100,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_MODE_RISK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='认证管理',group_name='信用处置',sort=110,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_VERIFY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='信用档案',group_name='信用处置',sort=120,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CREDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='违规处置',group_name='信用处置',sort=130,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_BAN' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='链条画像',group_name='经营诊断',sort=140,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CHAIN' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='店招审核',group_name='展示管理',sort=150,updated_at=NOW() WHERE point_code='OPS_STORE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='主页模板',group_name='展示管理',sort=160,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_TEMPLATE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='门店码',group_name='获客',sort=170,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_QRCODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='获客效果',group_name='获客',sort=180,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_EFFECT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品分类',group_name='类目',sort=10,updated_at=NOW() WHERE point_code='OPS_PRODUCT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品管理',group_name='商品',sort=20,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SKUS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品审核',group_name='商品',sort=30,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='预售额度',group_name='预售管理',sort=40,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_STOCK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='规格模板',group_name='规格模板',sort=50,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_TEMPLATES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='通用规格',group_name='规格',sort=60,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPEC_COMMON' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='专用规格',group_name='规格',sort=70,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPEC_SPECIAL' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='类目规格',group_name='规格',sort=80,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_CATEGORY_SPEC' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='当面付禁',group_name='类目',sort=90,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_CATEGORY_PAY_MODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='建品规则',group_name='类目',sort=100,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_BANNED_WORD' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='标准品库',group_name='标准品',sort=110,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPU_STD' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='主题分类',group_name='陈列',sort=120,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_TOPICS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品统计',group_name='统计',sort=130,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_STATS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='套餐授予',group_name='主体套餐',sort=10,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_PLANS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='档位定义',group_name='主体套餐',sort=20,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_PLAN_DEFS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='套餐管理',group_name='门店套餐',sort=30,updated_at=NOW() WHERE point_code='OPS_COMMERCE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='商品分类',group_name='门店套餐',sort=40,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_CATEGORIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='服务商品',group_name='门店套餐',sort=50,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_PRODUCTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='购买订单',group_name='门店套餐',sort=60,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_ORDERS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='线下核款',group_name='门店套餐',sort=70,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_CLAIMS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='收款配置',group_name='门店套餐',sort=80,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_COLLECTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='运营代购',group_name='门店套餐',sort=90,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_ASSISTED' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='订阅权益',group_name='门店套餐',sort=100,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_SOURCES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存概览',group_name='库存治理',sort=10,updated_at=NOW() WHERE point_code='OPS_INVENTORY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存流水',group_name='库存治理',sort=20,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_LEDGER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存对差',group_name='切换判据',sort=30,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_RECON' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='链路健康',group_name='链路',sort=40,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_LINK_HEALTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='开放对接',group_name='对外',sort=50,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_CREDENTIALS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='订单检索',group_name='订单',sort=10,updated_at=NOW() WHERE point_code='OPS_ORDER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='异常订单',group_name='订单',sort=20,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_EXCEPTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='代客下单',group_name='订单',sort=30,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_PROXY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='收款核对',group_name='支付',sort=40,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_PAY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='掉单补偿',group_name='支付',sort=50,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_REPAIR' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='关单规则',group_name='支付',sort=60,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_CLOSE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='批次配车',group_name='到货分拣',sort=70,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='自提分拣',group_name='到货分拣',sort=80,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_SORTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='核销监控',group_name='核销',sort=90,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_REDEEM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='逾期规则',group_name='核销',sort=100,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_OVERDUE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='物流轨迹',group_name='物流',sort=110,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_EXPRESS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='运费模板',group_name='物流',sort=120,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_FREIGHT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='运力配置',group_name='物流',sort=130,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_CARRIER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='售后工单',group_name='处置',sort=10,updated_at=NOW() WHERE point_code='OPS_AFTERSALE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='平台裁决',group_name='处置',sort=20,updated_at=NOW() WHERE point_code='OPS_AFTERSALE__TAB_INTERVENE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='售后规则',group_name='规则',sort=30,updated_at=NOW() WHERE point_code='OPS_AFTERSALE__TAB_FASTREFUND' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='退款分账',group_name='规则',sort=40,updated_at=NOW() WHERE point_code='OPS_AFTERSALE__TAB_REFUND_BACK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='券模板',group_name='优惠券',sort=10,updated_at=NOW() WHERE point_code='OPS_MARKETING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='发放记录',group_name='优惠券',sort=20,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_ISSUES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='活动',group_name='活动',sort=30,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_CAMPAIGNS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='首页推荐',group_name='内容位',sort=40,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_SLOTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='会员权益',group_name='会员',sort=50,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_MEMBER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='券敞口',group_name='敞口',sort=60,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PROMOCOUPONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='活动敞口',group_name='敞口',sort=70,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PROMOACTIVITIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='平台活动',group_name='平台活动',sort=80,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PLATFORM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='报名审核',group_name='平台活动',sort=90,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PLATFORMAUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='商家团',group_name='商家团',sort=100,updated_at=NOW() WHERE point_code='OPS_GROUP' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='需求指派',group_name='求团撮合',sort=110,updated_at=NOW() WHERE point_code='OPS_GROUP__TAB_DEMANDS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='改价记录',group_name='求团撮合',sort=120,updated_at=NOW() WHERE point_code='OPS_GROUP__TAB_QUOTES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='归因规则',group_name='归因引擎',sort=130,updated_at=NOW() WHERE point_code='OPS_GROWTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='归因审计',group_name='归因引擎',sort=140,updated_at=NOW() WHERE point_code='OPS_GROWTH__TAB_TRACES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='邀请有礼',group_name='裂变活动',sort=150,updated_at=NOW() WHERE point_code='OPS_GROWTH__TAB_FISSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MEMBER',name='会员名单',group_name='会员',sort=10,updated_at=NOW() WHERE point_code='OPS_MEMBER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MEMBER',name='人档',group_name='会员',sort=20,updated_at=NOW() WHERE point_code='OPS_MEMBER__TAB_PERSONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MEMBER',name='触达概览',group_name='会员',sort=30,updated_at=NOW() WHERE point_code='OPS_MEMBER__TAB_REACH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='结算分账',group_name='分账结算',sort=10,updated_at=NOW() WHERE point_code='OPS_FINANCE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='分账明细',group_name='分账结算',sort=20,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SPLITS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='经营统计',group_name='分账结算',sort=30,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SETTLE_STATS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='退款分账',group_name='分账结算',sort=40,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_REFUND_BACK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='自营应付',group_name='应付发票',sort=50,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAYABLES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='进项票',group_name='应付发票',sort=60,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PURCHASE_INVOICES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='开票申请',group_name='应付发票',sort=70,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_BUYER_INVOICES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='供应账户',group_name='应付发票',sort=80,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAYOUT_ACCOUNTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='服务费率',group_name='费率',sort=90,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_RATES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='渠道费率',group_name='费率',sort=100,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAY_CHANNELS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='批次放款',group_name='分账结算',sort=110,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SETTLE_BATCHES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='商家欠款',group_name='分账结算',sort=120,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_DEBTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='发票个税',group_name='发票与税',sort=130,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_INVOICE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='渠道报文',group_name='分账结算',sort=140,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='支付单',group_name='支付运营',sort=150,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_ORDERS','OPS_PAY_01') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='支付异常',group_name='支付运营',sort=160,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_EXCEPTIONS','OPS_PAY_04') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='退款复核',group_name='支付运营',sort=170,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_REFUNDS','OPS_PAY_02') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='业务通知',group_name='支付运营',sort=180,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_NOTIFIES','OPS_PAY_03') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='收款码',group_name='支付运营',sort=190,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_QR_CODES','OPS_PAY_07') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='应用授权',group_name='支付运营',sort=200,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_APPS','OPS_PAY_05') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='请求记录',group_name='支付运营',sort=210,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_REQUEST_LOGS','OPS_PAY_06') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='平台密钥',group_name='支付运营',sort=220,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_PLATFORM_KEYS','OPS_PAY_08') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分设置',group_name='积分配置',sort=10,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_CONFIGURATION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='赠送规则',group_name='积分配置',sort=20,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_EARNING_RULES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='平台预算',group_name='积分资金',sort=30,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_TREASURY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='积分账户',group_name='积分账务',sort=40,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_QUERIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_POINTS',name='发放核销',group_name='积分账务',sort=50,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评价审核',group_name='审核',sort=10,updated_at=NOW() WHERE point_code='OPS_REVIEW' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评价申诉',group_name='审核',sort=20,updated_at=NOW() WHERE point_code='OPS_REVIEW__TAB_APPEALS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评分参数',group_name='评分',sort=30,updated_at=NOW() WHERE point_code='OPS_REVIEW__TAB_SCORE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='素材管理',group_name='素材',sort=40,updated_at=NOW() WHERE point_code='OPS_CONTENT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='内容审核',group_name='内容',sort=50,updated_at=NOW() WHERE point_code='OPS_CONTENT__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='榜单问答',group_name='内容',sort=60,updated_at=NOW() WHERE point_code='OPS_CONTENT__TAB_RANK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='通道总览',group_name='触达',sort=10,updated_at=NOW() WHERE point_code='OPS_MESSAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='短信',group_name='触达',sort=20,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_SMS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='邮件',group_name='触达',sort=30,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_MAIL' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='微信订阅',group_name='触达',sort=40,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_WXSUB' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='应用推送',group_name='触达',sort=50,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_APPPUSH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='站内模板',group_name='触达',sort=60,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_INAPP' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='场景通道',group_name='触达',sort=70,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_ROUTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='发送记录',group_name='触达',sort=80,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_NOTIFYLOG' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='营销广播',group_name='触达',sort=90,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_BROADCAST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='客服工单',group_name='客服',sort=100,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_TICKETS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MESSAGE',name='帮助中心',group_name='客服',sort=110,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_FAQ' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='社区网格',group_name='社区网格',sort=10,updated_at=NOW() WHERE point_code='OPS_COMMUNITY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='商家提报',group_name='社区网格',sort=20,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_APPLIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='区划维护',group_name='社区网格',sort=30,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_REGIONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='坐标健康',group_name='社区网格',sort=40,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_HEALTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='位置分布',group_name='社区网格',sort=50,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_DISTRIBUTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='地址库',group_name='社区网格',sort=60,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_PLACES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='自提点',group_name='自提点',sort=70,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_PICKUPS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='临时点',group_name='自提点',sort=80,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_NEIGHBOR' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='风险事件',group_name='识别',sort=10,updated_at=NOW() WHERE point_code='OPS_RISK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='名单申诉',group_name='处置',sort=20,updated_at=NOW() WHERE point_code='OPS_RISK__TAB_BLACKLIST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='拦截规则',group_name='处置',sort=30,updated_at=NOW() WHERE point_code='OPS_RISK__TAB_RULES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='运营账号',group_name='账号',sort=10,updated_at=NOW() WHERE point_code='OPS_IAM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='角色权限',group_name='账号',sort=20,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_ROLES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='菜单顺序',group_name='账号',sort=30,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_MENU' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='审计日志',group_name='审计',sort=40,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='打印运营',group_name='打印运营',sort=50,updated_at=NOW() WHERE point_code='OPS_PRINTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='任务日志',group_name='定时任务',sort=60,updated_at=NOW() WHERE point_code='OPS_JOBS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='外观文案',group_name='外观语言',sort=70,updated_at=NOW() WHERE point_code='OPS_SYSTEM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='市场货币',group_name='外观语言',sort=80,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_MARKET' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='开关灰度',group_name='运行配置',sort=90,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_FLAGS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='存储管理',group_name='运行配置',sort=100,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STORAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='测试账号',group_name='运行配置',sort=110,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_TESTPHONE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='应用版本',group_name='运行配置',sort=120,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_APPVERSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='门店行业',group_name='经营范围',sort=130,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='行业准入',group_name='经营范围',sort=140,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_INDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='经营授权',group_name='经营范围',sort=150,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_AUTHCODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='范围开关',group_name='经营范围',sort=160,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_SCOPE' AND point_type='MENU';
+UPDATE sys_function SET name='工作台',sort=10,updated_at=NOW() WHERE function_code='OPS_DASHBOARD' AND end_code='OPS';
+UPDATE sys_function SET name='商户中心',sort=20,updated_at=NOW() WHERE function_code='OPS_MERCHANT' AND end_code='OPS';
+UPDATE sys_function SET name='商品资料',sort=30,updated_at=NOW() WHERE function_code='OPS_PRODUCT' AND end_code='OPS';
+UPDATE sys_function SET name='经营服务',sort=40,updated_at=NOW() WHERE function_code='OPS_COMMERCE' AND end_code='OPS';
+UPDATE sys_function SET name='进销存',sort=50,updated_at=NOW() WHERE function_code='OPS_INVENTORY' AND end_code='OPS';
+UPDATE sys_function SET name='订单履约',sort=60,updated_at=NOW() WHERE function_code='OPS_ORDER' AND end_code='OPS';
+UPDATE sys_function SET name='售后治理',sort=70,updated_at=NOW() WHERE function_code='OPS_AFTERSALE' AND end_code='OPS';
+UPDATE sys_function SET name='会员营销',sort=80,updated_at=NOW() WHERE function_code='OPS_MARKETING' AND end_code='OPS';
+UPDATE sys_function SET name='经营财务',sort=90,updated_at=NOW() WHERE function_code='OPS_FINANCE' AND end_code='OPS';
+UPDATE sys_function SET name='内容客服',sort=100,updated_at=NOW() WHERE function_code='OPS_REVIEW' AND end_code='OPS';
+UPDATE sys_function SET name='社区网点',sort=110,updated_at=NOW() WHERE function_code='OPS_COMMUNITY' AND end_code='OPS';
+UPDATE sys_function SET name='风控',sort=120,updated_at=NOW() WHERE function_code='OPS_RISK' AND end_code='OPS';
+UPDATE sys_function SET name='系统设置',sort=130,updated_at=NOW() WHERE function_code='OPS_IAM' AND end_code='OPS';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',updated_at=NOW() WHERE point_code='ACT__CATEGORY_MANAGE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_CATALOG_EDIT' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_CATALOG_PUBLISH' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_COLLECTION_PROFILE_WRITE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_MALL_OFFLINE_CONFIRM' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_MALL_OFFLINE_EVIDENCE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_MALL_OFFLINE_REFUND_CONFIRM' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_MALL_OFFLINE_VOID' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_MALL_SHIPMENT_WRITE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_REFUND_REVIEW' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_SUBSCRIPTION_GRANT' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',updated_at=NOW() WHERE point_code='ACT__COMMERCE_SUBSCRIPTION_REVOKE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',updated_at=NOW() WHERE point_code='ACT__FINANCE_INVOICE_VERIFY' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',updated_at=NOW() WHERE point_code='ACT__FINANCE_RATE_READ' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',updated_at=NOW() WHERE point_code='ACT__FINANCE_RECON_RESOLVE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',updated_at=NOW() WHERE point_code='ACT__MEMBER_PERSON_MERGE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',updated_at=NOW() WHERE point_code='ACT__MEMBER_PHONE_REVEAL' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_ADMISSION_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_FULFILLMENT_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_MERCHANT_NUDGE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_MERCHANT_PAY_APPLY' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_MODE_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',updated_at=NOW() WHERE point_code='ACT__MERCHANT_STORE_NEARPAY_SYNC' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',updated_at=NOW() WHERE point_code='ACT__MESSAGE_TEMPLATE_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',updated_at=NOW() WHERE point_code='ACT__MESSAGE_TICKET_HANDLE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',updated_at=NOW() WHERE point_code='ACT__PRODUCT_CATEGORY_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',updated_at=NOW() WHERE point_code='ACT__PRODUCT_SPEC_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',updated_at=NOW() WHERE point_code='ACT__PRODUCT_STD_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',updated_at=NOW() WHERE point_code='ACT__PRODUCT_TOPIC_UPDATE' AND point_type='ACTION';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='入驻审核',group_name='入驻',sort=10,updated_at=NOW() WHERE point_code='OPS_MERCHANT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='代办入驻',group_name='入驻',sort=20,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ON_BEHALF' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='自营建档',group_name='入驻',sort=30,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_SELF_OPERATED' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='进件看板',group_name='入驻',sort=40,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ONBOARDING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='商家档案',group_name='档案',sort=50,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_LIST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='门店档案',group_name='档案',sort=60,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_STORES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='资质档案',group_name='档案',sort=70,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_QUALIFICATIONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='类目授权',group_name='档案',sort=80,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CATEGORIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='认证管理',group_name='档案',sort=90,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_VERIFY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='自营风险',group_name='档案',sort=100,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_MODE_RISK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='信用档案',group_name='信用',sort=110,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CREDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='违规处置',group_name='信用',sort=120,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_BAN' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='链条画像',group_name='诊断',sort=130,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_CHAIN' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='店招审核',group_name='展示获客',sort=140,updated_at=NOW() WHERE point_code='OPS_STORE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='主页模板',group_name='展示获客',sort=150,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_TEMPLATE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='门店码',group_name='展示获客',sort=160,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_QRCODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MERCHANT',name='获客效果',group_name='展示获客',sort=170,updated_at=NOW() WHERE point_code='OPS_STORE__TAB_EFFECT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品分类',group_name='基础资料',sort=10,updated_at=NOW() WHERE point_code='OPS_PRODUCT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='规格模板',group_name='基础资料',sort=20,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_TEMPLATES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='通用规格',group_name='基础资料',sort=30,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPEC_COMMON' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='专用规格',group_name='基础资料',sort=40,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPEC_SPECIAL' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='类目规格',group_name='基础资料',sort=50,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_CATEGORY_SPEC' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='标准品库',group_name='基础资料',sort=60,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SPU_STD' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='主题分类',group_name='基础资料',sort=70,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_TOPICS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='建品规则',group_name='基础资料',sort=80,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_BANNED_WORD' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='限付类目',group_name='基础资料',sort=90,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_CATEGORY_PAY_MODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='门店行业',group_name='经营范围',sort=100,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='行业准入',group_name='经营范围',sort=110,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_INDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='经营授权',group_name='经营范围',sort=120,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_AUTHCODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='范围开关',group_name='经营范围',sort=130,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_SCOPE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品管理',group_name='商品',sort=140,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_SKUS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品审核',group_name='商品',sort=150,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='预售额度',group_name='商品',sort=160,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_STOCK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_PRODUCT',name='商品统计',group_name='商品',sort=170,updated_at=NOW() WHERE point_code='OPS_PRODUCT__TAB_STATS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='套餐授予',group_name='主体套餐',sort=10,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_PLANS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='档位定义',group_name='主体套餐',sort=20,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_PLAN_DEFS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='套餐管理',group_name='门店套餐',sort=30,updated_at=NOW() WHERE point_code='OPS_COMMERCE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='服务分类',group_name='门店套餐',sort=40,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_CATEGORIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='服务商品',group_name='门店套餐',sort=50,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_PRODUCTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='购买订单',group_name='门店套餐',sort=60,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_ORDERS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='线下核款',group_name='门店套餐',sort=70,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_CLAIMS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='收款配置',group_name='门店套餐',sort=80,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_COLLECTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='运营代购',group_name='门店套餐',sort=90,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_ASSISTED' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMERCE',name='订阅权益',group_name='门店套餐',sort=100,updated_at=NOW() WHERE point_code='OPS_COMMERCE__TAB_SOURCES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存概览',group_name='库存治理',sort=10,updated_at=NOW() WHERE point_code='OPS_INVENTORY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存流水',group_name='库存治理',sort=20,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_LEDGER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='库存对差',group_name='切换判据',sort=30,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_RECON' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='链路健康',group_name='链路',sort=40,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_LINK_HEALTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_INVENTORY',name='开放对接',group_name='对外',sort=50,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_CREDENTIALS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='订单检索',group_name='订单',sort=10,updated_at=NOW() WHERE point_code='OPS_ORDER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='异常订单',group_name='订单',sort=20,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_EXCEPTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='代客下单',group_name='订单',sort=30,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_PROXY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='收款核对',group_name='支付',sort=40,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_PAY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='掉单补偿',group_name='支付',sort=50,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_REPAIR' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='关单规则',group_name='支付',sort=60,updated_at=NOW() WHERE point_code='OPS_ORDER__TAB_CLOSE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='批次配车',group_name='到货分拣',sort=70,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='自提分拣',group_name='到货分拣',sort=80,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_SORTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='核销监控',group_name='核销',sort=90,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_REDEEM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='逾期规则',group_name='核销',sort=100,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_OVERDUE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='物流轨迹',group_name='物流',sort=110,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_EXPRESS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='运费模板',group_name='物流',sort=120,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_FREIGHT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_ORDER',name='运力配置',group_name='物流',sort=130,updated_at=NOW() WHERE point_code='OPS_FULFILLMENT__TAB_CARRIER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='售后工单',group_name='处置',sort=10,updated_at=NOW() WHERE point_code='OPS_AFTERSALE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='平台裁决',group_name='处置',sort=20,updated_at=NOW() WHERE point_code='OPS_AFTERSALE__TAB_INTERVENE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_AFTERSALE',name='售后规则',group_name='规则',sort=30,updated_at=NOW() WHERE point_code='OPS_AFTERSALE__TAB_FASTREFUND' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='券模板',group_name='优惠券',sort=10,updated_at=NOW() WHERE point_code='OPS_MARKETING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='发放记录',group_name='优惠券',sort=20,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_ISSUES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='券敞口',group_name='优惠券',sort=30,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PROMOCOUPONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='活动',group_name='活动',sort=40,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_CAMPAIGNS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='活动敞口',group_name='活动',sort=50,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PROMOACTIVITIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='平台活动',group_name='活动',sort=60,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PLATFORM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='报名审核',group_name='活动',sort=70,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_PLATFORMAUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='首页推荐',group_name='活动',sort=80,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_SLOTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='营销广播',group_name='活动',sort=90,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_BROADCAST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='商家团',group_name='拼团',sort=100,updated_at=NOW() WHERE point_code='OPS_GROUP' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='需求指派',group_name='拼团',sort=110,updated_at=NOW() WHERE point_code='OPS_GROUP__TAB_DEMANDS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='改价记录',group_name='拼团',sort=120,updated_at=NOW() WHERE point_code='OPS_GROUP__TAB_QUOTES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='归因规则',group_name='增长',sort=130,updated_at=NOW() WHERE point_code='OPS_GROWTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='归因审计',group_name='增长',sort=140,updated_at=NOW() WHERE point_code='OPS_GROWTH__TAB_TRACES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='邀请有礼',group_name='增长',sort=150,updated_at=NOW() WHERE point_code='OPS_GROWTH__TAB_FISSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='会员名单',group_name='会员',sort=160,updated_at=NOW() WHERE point_code='OPS_MEMBER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='人档',group_name='会员',sort=170,updated_at=NOW() WHERE point_code='OPS_MEMBER__TAB_PERSONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='触达概览',group_name='会员',sort=180,updated_at=NOW() WHERE point_code='OPS_MEMBER__TAB_REACH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='会员权益',group_name='会员',sort=190,updated_at=NOW() WHERE point_code='OPS_MARKETING__TAB_MEMBER' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='积分设置',group_name='积分',sort=200,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_CONFIGURATION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='赠送规则',group_name='积分',sort=210,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_EARNING_RULES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='平台预算',group_name='积分',sort=220,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_TREASURY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='积分账户',group_name='积分',sort=230,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_QUERIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',name='发放核销',group_name='积分',sort=240,updated_at=NOW() WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='结算分账',group_name='分账结算',sort=10,updated_at=NOW() WHERE point_code='OPS_FINANCE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='分账明细',group_name='分账结算',sort=20,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SPLITS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='经营统计',group_name='分账结算',sort=30,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SETTLE_STATS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='退款分账',group_name='分账结算',sort=40,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_REFUND_BACK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='批次放款',group_name='分账结算',sort=50,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_SETTLE_BATCHES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='商家欠款',group_name='分账结算',sort=60,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_DEBTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='自营应付',group_name='应付发票',sort=70,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAYABLES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='供应账户',group_name='应付发票',sort=80,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAYOUT_ACCOUNTS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='进项票',group_name='应付发票',sort=90,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PURCHASE_INVOICES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='开票申请',group_name='应付发票',sort=100,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_BUYER_INVOICES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='发票个税',group_name='应付发票',sort=110,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_INVOICE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='服务费率',group_name='费率对账',sort=120,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_RATES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='渠道费率',group_name='费率对账',sort=130,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_PAY_CHANNELS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='渠道报文',group_name='费率对账',sort=140,updated_at=NOW() WHERE point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='准入押金',group_name='保证金',sort=150,updated_at=NOW() WHERE point_code='OPS_MERCHANT__TAB_ADMISSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='支付单',group_name='支付运营',sort=160,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_ORDERS','OPS_PAY_01') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='支付异常',group_name='支付运营',sort=170,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_EXCEPTIONS','OPS_PAY_04') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='退款复核',group_name='支付运营',sort=180,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_REFUNDS','OPS_PAY_02') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='业务通知',group_name='支付运营',sort=190,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_NOTIFIES','OPS_PAY_03') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='请求记录',group_name='支付运营',sort=200,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_REQUEST_LOGS','OPS_PAY_06') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='收款码',group_name='支付运营',sort=210,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_QR_CODES','OPS_PAY_07') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='应用授权',group_name='支付运营',sort=220,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_APPS','OPS_PAY_05') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='平台密钥',group_name='支付运营',sort=230,updated_at=NOW() WHERE point_code IN ('OPS_FINANCE__PAY_PLATFORM_KEYS','OPS_PAY_08') AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评价审核',group_name='评价',sort=10,updated_at=NOW() WHERE point_code='OPS_REVIEW' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评价申诉',group_name='评价',sort=20,updated_at=NOW() WHERE point_code='OPS_REVIEW__TAB_APPEALS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='评分参数',group_name='评价',sort=30,updated_at=NOW() WHERE point_code='OPS_REVIEW__TAB_SCORE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='素材管理',group_name='素材',sort=40,updated_at=NOW() WHERE point_code='OPS_CONTENT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='内容审核',group_name='素材',sort=50,updated_at=NOW() WHERE point_code='OPS_CONTENT__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='榜单问答',group_name='素材',sort=60,updated_at=NOW() WHERE point_code='OPS_CONTENT__TAB_RANK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='通道总览',group_name='触达',sort=70,updated_at=NOW() WHERE point_code='OPS_MESSAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='短信',group_name='触达',sort=80,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_SMS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='邮件',group_name='触达',sort=90,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_MAIL' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='微信订阅',group_name='触达',sort=100,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_WXSUB' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='应用推送',group_name='触达',sort=110,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_APPPUSH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='站内模板',group_name='触达',sort=120,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_INAPP' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='场景通道',group_name='触达',sort=130,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_ROUTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='发送记录',group_name='触达',sort=140,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_NOTIFYLOG' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='客服工单',group_name='客服',sort=150,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_TICKETS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_REVIEW',name='帮助中心',group_name='客服',sort=160,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_FAQ' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='社区网格',group_name='社区网格',sort=10,updated_at=NOW() WHERE point_code='OPS_COMMUNITY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='商家提报',group_name='社区网格',sort=20,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_APPLIES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='区划维护',group_name='社区网格',sort=30,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_REGIONS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='坐标健康',group_name='社区网格',sort=40,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_HEALTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='位置分布',group_name='社区网格',sort=50,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_DISTRIBUTION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='地址库',group_name='社区网格',sort=60,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_PLACES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='自提点',group_name='自提点',sort=70,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_PICKUPS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_COMMUNITY',name='临时点',group_name='自提点',sort=80,updated_at=NOW() WHERE point_code='OPS_COMMUNITY__TAB_NEIGHBOR' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='风险事件',group_name='识别',sort=10,updated_at=NOW() WHERE point_code='OPS_RISK' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='名单申诉',group_name='处置',sort=20,updated_at=NOW() WHERE point_code='OPS_RISK__TAB_BLACKLIST' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_RISK',name='拦截规则',group_name='处置',sort=30,updated_at=NOW() WHERE point_code='OPS_RISK__TAB_RULES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='运营账号',group_name='账号',sort=10,updated_at=NOW() WHERE point_code='OPS_IAM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='角色权限',group_name='账号',sort=20,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_ROLES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='菜单顺序',group_name='账号',sort=30,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_MENU' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='审计日志',group_name='审计',sort=40,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='打印运营',group_name='打印运营',sort=50,updated_at=NOW() WHERE point_code='OPS_PRINTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='任务日志',group_name='定时任务',sort=60,updated_at=NOW() WHERE point_code='OPS_JOBS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='外观文案',group_name='外观语言',sort=70,updated_at=NOW() WHERE point_code='OPS_SYSTEM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='市场货币',group_name='外观语言',sort=80,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_MARKET' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='开关灰度',group_name='运行配置',sort=90,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_FLAGS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='存储管理',group_name='运行配置',sort=100,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STORAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='测试账号',group_name='运行配置',sort=110,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_TESTPHONE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='应用版本',group_name='运行配置',sort=120,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_APPVERSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_MARKETING',updated_at=NOW() WHERE function_code IN ('OPS_MEMBER','OPS_POINTS');
+UPDATE sys_function_point SET function_code='OPS_REVIEW',updated_at=NOW() WHERE function_code='OPS_MESSAGE';
+UPDATE sys_function SET enabled=0,updated_at=NOW() WHERE function_code IN ('OPS_MEMBER','OPS_POINTS','OPS_MESSAGE') AND end_code='OPS';
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, entity_no, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT a.role_code, 'OPS_FINANCE__TAB_REFUND_BACK', a.end_code, a.entity_no, a.tenant_no, NOW(), 'V658', NOW(), 'V658', 0, 0
+FROM sys_role_point a
+WHERE a.point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK' AND a.deleted = 0
+  AND NOT EXISTS (SELECT 1 FROM (SELECT role_code, entity_no FROM sys_role_point
+                                 WHERE point_code = 'OPS_FINANCE__TAB_REFUND_BACK') f
+                  WHERE f.role_code = a.role_code
+                    AND (f.entity_no = a.entity_no OR (f.entity_no IS NULL AND a.entity_no IS NULL)));
+DELETE FROM sys_role_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
+DELETE FROM sys_function_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
+UPDATE stl_payment_operation SET evidence_ref = REPLACE(evidence_ref, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE evidence_ref LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+UPDATE sys_function_point SET name='入驻申请',href='/merchants',group_name='入驻',sort=10,updated_at=NOW()
+WHERE point_code IN ('OPS_MERCHANT','OPS_MERCHANT__TAB_ON_BEHALF') AND point_type='MENU';
+UPDATE sys_function_point SET name='自营建档',group_name='入驻',sort=20,updated_at=NOW()
+WHERE point_code='OPS_MERCHANT__TAB_SELF_OPERATED' AND point_type='MENU';
+UPDATE sys_function_point SET name='支付开通',group_name='入驻',sort=30,updated_at=NOW()
+WHERE point_code='OPS_MERCHANT__TAB_ONBOARDING' AND point_type='MENU';
+INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
+    allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
+    two_phase, status, sort_no, created_at, updated_at) VALUES
+('WECHAT_JSAPI_DIRECT', 'WECHAT', 'MERCHANT_OWN', 'ONLINE', 'WECHAT_PAY', 'JSAPI', 'AGGREGATED', 'ONLINE', 1, 50, 60, 365, 0, 'ENABLED', 10, NOW(3), NOW(3)),
+('WECHAT_JSAPI_SP', 'WECHAT', 'SERVICE_PROVIDER', 'ONLINE', 'WECHAT_PAY', 'JSAPI', 'DIRECT', 'ONLINE', 1, 50, 60, 365, 0, 'ENABLED', 11, NOW(3), NOW(3)),
+('ALIPAY_APP_SP', 'ALIPAY', 'SERVICE_PROVIDER', 'ONLINE', 'ALIPAY', 'APP', 'DIRECT', 'ONLINE', 1, 0, 0, 365, 0, 'DISABLED', 20, NOW(3), NOW(3)),
+('TEST_ONLINE', 'TEST', 'PLATFORM_SUB', 'ONLINE', 'TEST_PAY', 'TEST_PAY', 'DIRECT,AGGREGATED', 'ONLINE', 1, 20, 0, 365, 0, 'ENABLED', 90, NOW(3), NOW(3));
+INSERT IGNORE INTO pay_channel_product_market (pay_channel_product_id, market, currency, single_min_minor, single_max_minor,
+    amount_scale, status, created_at, updated_at)
+SELECT p.id, 'CN', 'CNY', 1, 0, 2, 'ENABLED', NOW(3), NOW(3) FROM pay_channel_product p
+ WHERE p.product_code IN ('WECHAT_JSAPI_DIRECT', 'WECHAT_JSAPI_SP', 'ALIPAY_APP_SP', 'TEST_ONLINE')
+   AND NOT EXISTS (SELECT 1 FROM pay_channel_product_market x WHERE x.pay_channel_product_id = p.id AND x.market = 'CN');
+INSERT IGNORE INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
+    created_at, updated_at) VALUES
+('MALL', '商城', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read,pay:refund', 200, 0, 0, NOW(3), NOW(3)),
+('FOOD', '餐饮', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read,pay:refund', 200, 0, 0, NOW(3), NOW(3));
+INSERT IGNORE INTO pay_refund_review_rule (rule_code, version_index, status, market, currency, source_type, pay_method,
+    single_amount_minor, daily_amount_minor, refund_ratio_bp, after_days, always_review, review_timeout_minutes,
+    drafted_by, created_at, updated_at) VALUES
+('DEFAULT_CN', 1, 'DRAFT', 'CN', 'CNY', '', '', 100000, 500000, 10000, 90, 0, 1440, 'SYSTEM', NOW(3), NOW(3));
+INSERT IGNORE INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
+    created_at, updated_at) VALUES
+('CHECKOUT', '收银台静态码', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read', 200, 0, 0, NOW(3), NOW(3));
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('TEST', 'CN', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'HK', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SG', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SA', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel
+    (pay_channel, name, enabled, supports_subsidy, supports_split, supports_payout, pay_methods, currency,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', '蓝新金流', 0, 0, 0, 0, '["CARD_ONLINE","ATM","CVS"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'LINE Pay', 0, 0, 0, 0, '["LINE_PAY"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'PayBy', 0, 0, 0, 1, '["WALLET","CARD_ONLINE"]', 'AED',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);

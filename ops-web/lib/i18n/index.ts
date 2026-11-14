@@ -10,16 +10,17 @@
 // LangSwitcher 在 LOCALES.length < 2 时自动隐藏，无需改组件。
 import { zh, type Messages } from "./messages/zh";
 import { en } from "./messages/en";
+import { zhTW } from "./messages/zh-TW";
 import { tNav } from "./nav-labels";
 import { useLocaleStore, type Locale } from "@/lib/stores/locale";
 
 export type { Locale } from "@/lib/stores/locale";
 export { tNav } from "./nav-labels";
-export const LOCALES = ["zh", "en"] as const;
-export const DIR: Record<Locale, "ltr" | "rtl"> = { zh: "ltr", en: "ltr" };
-export const LOCALE_TAG: Record<Locale, string> = { zh: "zh-CN", en: "en-US" };
+export const LOCALES = ["zh", "zh-TW", "en"] as const;
+export const DIR: Record<Locale, "ltr" | "rtl"> = { zh: "ltr", "zh-TW": "ltr", en: "ltr" };
+export const LOCALE_TAG: Record<Locale, string> = { zh: "zh-CN", "zh-TW": "zh-TW", en: "en-US" };
 
-const CATALOG: Record<Locale, Messages> = { zh, en };
+const CATALOG: Record<Locale, Messages> = { zh, "zh-TW": zhTW, en };
 
 function lookup(obj: unknown, path: string): string | undefined {
   const v = path.split(".").reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string, unknown>)[k]), obj);

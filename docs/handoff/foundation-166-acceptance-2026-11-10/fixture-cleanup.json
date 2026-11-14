@@ -1,0 +1,14 @@
+{
+  "controlledDatabaseFixture": true,
+  "fixtureCommerceModel": "LEGACY",
+  "formalStoreCreationPassed": false,
+  "formalCreationQuotaRejection": 70020,
+  "originalPlanChanged": false,
+  "trialActivated": false,
+  "existingPermissionsChanged": false,
+  "sampleInserted": true,
+  "journeyExit": 0,
+  "sampleRemoved": true,
+  "originalPlanUnchanged": true,
+  "status": "PASS"
+}

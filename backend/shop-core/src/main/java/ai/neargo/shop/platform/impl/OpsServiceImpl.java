@@ -1,5 +1,12 @@
 package ai.neargo.shop.platform.impl;
 
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.platform.MarketPhonePolicyService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.common.ratelimit.RateRule;
 import ai.neargo.shop.common.ratelimit.RateLimiter;
 import ai.neargo.shop.spi.notify.MailPort;
@@ -46,6 +53,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.LinkedHashSet;
@@ -54,6 +62,10 @@ import java.util.regex.Pattern;
 
 @Service
 public class OpsServiceImpl implements OpsService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OpsServiceImpl.class);
@@ -65,6 +77,11 @@ public class OpsServiceImpl implements OpsService {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final StaffMapper staffMapper;
+    /** 第二因子：{@code email} 发码到登录邮箱 / {@code off} 只在测试世界（{@link OpsSecondFactorGuard} 拦生产） */
+    @org.springframework.beans.factory.annotation.Value("${shop.ops.auth.second-factor:email}")
+    private volatile String secondFactor;
+    private final OpsLoginGuard loginGuard;
+    private final OpsLoginChallenges loginChallenges;
     private final RoleMemberMapper roleMemberMapper;
     private final RolePermResolver rolePermResolver;
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
@@ -72,6 +89,10 @@ public class OpsServiceImpl implements OpsService {
     private final AuditLogMapper auditLogMapper;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
+    private MerchantQueryPort merchantQueries;
+    private MarketPhonePolicyService marketPhones;
+    @Autowired public void setMarketPhones(MarketPhonePolicyService value) { marketPhones=value; }
+    @Autowired public void setMerchantQueries(MerchantQueryPort value) { merchantQueries=value; }
     private final TokenStore tokenStore;
     /** 分池之后踢人必须指明是哪个池，见 TokenStores 的类注释 */
     private final ai.neargo.shop.auth.TokenStores tokenStores;
@@ -131,7 +152,10 @@ public class OpsServiceImpl implements OpsService {
                           @org.springframework.context.annotation.Lazy
                           ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort,
                           @org.springframework.beans.factory.annotation.Value(
-                                  "${shop.web.base-url:}") String webBaseUrl) {
+                                  "${shop.web.base-url:}") String webBaseUrl,
+                          OpsLoginGuard loginGuard, OpsLoginChallenges loginChallenges) {
+        this.loginGuard = loginGuard;
+        this.loginChallenges = loginChallenges;
         this.opsAlertPort = opsAlertPort;
         this.webBaseUrl = webBaseUrl;
         this.mailPort = mailPort;
@@ -182,6 +206,15 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public LoginResultVO login(String username, String password) {
+        /*
+         * 防撞库（安全规范 §2.7，G9）：账号 15 分钟 5 次失败、或同 IP 20 次失败 → 连密码都不验直接拒。
+         * 锁定期内输对也不放 —— 否则「试到第 6 次刚好对」就是一次成功的撞库。
+         */
+        String ip = clientIp();
+        if (loginGuard.blocked(username, ip)) {
+            log.warn("[ops] 登录被防撞库拦下 user={} ip={}", Masks.email(username), ip);
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
         SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
                         .eq(SysOpsStaff::getUsername, username).last("limit 1")));
@@ -189,18 +222,72 @@ public class OpsServiceImpl implements OpsService {
         // **用户不存在与密码错误返回同一个错误** —— 区分开等于送了个用户名探测器
         if (staff == null || !passwordHasher.matches(password, staff.getPassword())
                 || !"ACTIVE".equals(staff.getStatus())) {
+            loginGuard.failed(username, ip);
             throw BizException.of(ErrorCode.UNAUTHORIZED);
         }
+        loginGuard.succeeded(username);
         /*
          * 存量密码就地升级成 bcrypt。**登录成功这一刻是唯一能拿到明文的时机**。
          *
          * 放在验证之后：验证失败也重写等于把错误密码写进库，
          * 而那种故障发生在「用户下次输对了密码」的时刻，最难让人相信是系统的问题。
          */
-        if (passwordHasher.needsUpgrade(staff.getPassword())) {
+        boolean upgraded = passwordHasher.needsUpgrade(staff.getPassword());
+        if (upgraded) {
             staff.setPassword(passwordHasher.encode(password));
         }
+        if ("email".equals(secondFactor)) {
+            if (!Boolean.TRUE.equals(staff.getSecondFactorExempt())) {
+                if (upgraded) {
+                    staffMapper.updateById(staff);   // 会话要等第二步，升级后的哈希先落库
+                }
+                return challenge(staff);
+            }
+            /*
+             * 白名单账号：第二因子开着也只凭密码放行。**每一次都记审计** ——
+             * 白名单本身是一道被有意打开的缺口，谁、什么时候走了这道缺口必须查得到。
+             */
+            log.warn("[ops] 免二次验证登录 staff={} ip={}", staff.getStaffNo(), ip);
+            audit("STAFF_LOGIN_2FA_EXEMPT", staff.getStaffNo(), "白名单账号免二次验证登录 ip=" + ip, true, null, null);
+        }
         return issue(staff);
+    }
+
+    /**
+     * 第二因子（安全规范 §2.7）：密码对了只发挑战，不发会话 —— 6 位码发到登录邮箱，凭「挑战号 + 码」换会话。
+     * 运营账号就是邮箱（与忘记密码同一个收件地址），不另存第二套联系方式。
+     */
+    private LoginResultVO challenge(SysOpsStaff staff) {
+        OpsLoginChallenges.Issued c = loginChallenges.issue(staff.getStaffNo());
+        mailTemplatePort.send(staff.getUsername(), MailTemplatePort.TPL_OPS_LOGIN_CODE,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale().toLanguageTag(),
+                "【数智邻购】运营端登录验证码 / Ops sign-in code",
+                java.util.Map.of("code", c.code(), "ttlMinutes", "5"),
+                "运营端登录验证码：{code}（{ttlMinutes} 分钟内有效，只能用一次）。\n"
+                        + "如果不是你本人在登录，请立即修改密码并联系管理员。\n\n"
+                        + "Ops sign-in code: {code} (valid for {ttlMinutes} minutes, single use).\n"
+                        + "If this wasn't you, change your password now and tell an administrator.\n",
+                NotifyBizType.OTP, null);
+        return LoginResultVO.challenge(c.challenge(), Masks.email(staff.getUsername()));
+    }
+
+    @Override
+    public LoginResultVO verifySecondFactor(String challenge, String code) {
+        String staffNo = loginChallenges.verify(challenge, code)
+                .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+        SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getStaffNo, staffNo).last("limit 1")));
+        if (staff == null || !"ACTIVE".equals(staff.getStatus())) {
+            // 发码之后被停用：码再对也不放
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        return issue(staff);
+    }
+
+    private static String clientIp() {
+        RequestMetaContext.Meta meta = RequestMetaContext.current();
+        return meta == null ? null : meta.ip();
     }
 
     @Override
@@ -268,12 +355,18 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size) {
+        return searchApplies(status,keyword,page,size,false);
+    }
+
+    @Override
+    public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size, boolean onBehalfOnly) {
         List<String> statuses = status == null || status.isBlank()
                 // 不给状态时只看待办两档 —— 运营台默认打开就该是「要我做的事」
                 ? List.of(MchEntityApply.PENDING, MchEntityApply.REVIEWING)
                 : Arrays.stream(status.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
 
         var q = Wrappers.<MchEntityApply>lambdaQuery()
+                .isNotNull(onBehalfOnly, MchEntityApply::getSubmittedBy)
                 .in(MchEntityApply::getStatus, statuses)
                 /*
                  * 待办按提交顺序（先来先审），历史按最近优先。
@@ -297,6 +390,7 @@ public class OpsServiceImpl implements OpsService {
     @Transactional
     public void acceptApply(String applyNo) {
         MchEntityApply apply = requireApply(applyNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
         move(apply, MchEntityApply.REVIEWING);
         // 不动 activeOwner：受理不是终态，这份申请仍占着「一人一份」的名额
         DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(apply));
@@ -305,7 +399,7 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     @Transactional
-    public void auditApply(String applyNo, boolean approved, String reason,
+    public MerchantApplyVO auditApply(String applyNo, boolean approved, String reason,
                            String serviceScope, List<String> communityNos,
                            List<String> grantCodes) {
         if (!approved && (reason == null || reason.isBlank())) {
@@ -313,22 +407,19 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MchEntityApply apply = requireApply(applyNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
 
-        /*
-         * ★ **代填的人不能审自己填的那一张。**（三期）
-         *
-         * 代填这件事的全部风险就在这里：资料是运营录的，核验不该也是同一个人。
-         * 而<b>光靠角色配置挡不住</b> —— BD 同时持有 merchant:apply:audit
-         * 与 merchant:apply:onbehalf，两个码都在他手里，界面上两个入口都点得开。
-         * 所以这道闸钉在数据上（submitted_by vs 当前审核人），
-         * 不钉在权限表上：角色怎么配都绕不过去。
-         *
-         * 只拦「同一个人」，不拦「代填过的单子」—— 换个人审是正常流程，
-         * 拦掉它等于代填的单子永远审不了。
-         */
+        // 审核权限由既有运营入口校验；同人代填与审核按真实身份留痕。
         String auditor = SecurityUtils.currentUserNo();
-        if (apply.getSubmittedBy() != null && apply.getSubmittedBy().equals(auditor)) {
-            throw BizException.of(ErrorCode.FORBIDDEN);
+
+        if (approved && MchEntityApply.APPROVED.equals(apply.getStatus())) {
+            boolean sameScope=serviceScope==null || serviceScope.isBlank() || serviceScope.equals(apply.getServiceScope());
+            boolean sameCommunities=communityNos==null || communityNos.isEmpty()
+                    || new java.util.HashSet<>(communityNos).equals(new java.util.HashSet<>(readCommunityNos(apply.getCommunityNos())));
+            boolean sameCodes=grantCodes==null || grantCodes.isEmpty()
+                    || new java.util.HashSet<>(grantCodes).equals(new java.util.HashSet<>(readCategoryCodes(apply.getCategoryCodes())));
+            if (!sameScope || !sameCommunities || !sameCodes) throw BizException.of(ErrorCode.CONFLICT);
+            return toVO(apply);
         }
 
         /*
@@ -356,6 +447,8 @@ public class OpsServiceImpl implements OpsService {
 
         LoginUser operator = SecurityUtils.requireUser();
         if (approved) {
+            if (apply.getStoreProfile()!=null && !marketPhones.policy(apply.getMarketCode()).marketEnabled())
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             // 审核通过才创建商家主体：驳回的申请不该在库里留下一个「僵尸商家」
             /*
              * 建商家 + 配可达范围 + 建分账主体，**三件事在 Port 内部同一个事务**。
@@ -371,7 +464,11 @@ public class OpsServiceImpl implements OpsService {
                     apply.getUserNo(), apply.getName(), apply.getLegalForm(),
                     apply.getServiceScope(), readCommunityNos(apply.getCommunityNos()),
                     null, apply.getIndustry(), apply.getDescription(),
-                    apply.getEntityNo()));
+                    apply.getEntityNo(), apply.getMarketCode(), readStoreProfile(apply.getStoreProfile())));
+            if (apply.getStoreProfile()!=null) {
+                String storeNo=merchantQueries.defaultStoreNo(merchantNo).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
+                apply.setStoreNo(storeNo);
+            }
             apply.setEntityNo(merchantNo);
 
             /*
@@ -418,13 +515,71 @@ public class OpsServiceImpl implements OpsService {
 
         // 审核是能改变别人生意的操作 —— 出问题时必须能回答「谁批的」
         audit("MERCHANT_AUDIT", applyNo,
-                (approved ? "通过" : "驳回：" + reason) + "；商家=" + apply.getName());
+                (approved ? "通过" : "驳回：" + reason) + "；商家=" + apply.getName()
+                        + "；submittedBy=" + apply.getSubmittedBy() + "；auditor=" + auditor
+                        + "；sameActor=" + auditor.equals(apply.getSubmittedBy()));
+        return toVO(apply);
     }
 
     @Override
     @Transactional
     public String createApply(SubmitApplyCommand cmd) {
-        return doCreateApply(cmd, null);
+        return doCreateApply(cmd, null, merchantAdminPort::pendingLicenseEntityOf);
+    }
+
+    @Override
+    @Transactional
+    public String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo) {
+        return doCreateApply(cmd, null, owner -> merchantAdminPort.merchantApplicationEntity(owner, selectedEntityNo));
+    }
+
+    @Override
+    @Transactional
+    public MerchantProfileSubmission submitMerchantProfile(SubmitApplyCommand cmd, String selectedEntityNo) {
+        // Preserve owner/placeholder eligibility and the existing one-active-owner unique key.
+        var master = masterDataService.snapshot();
+        if (master.industries().stream().noneMatch(i -> i.industry().equals(cmd.industry()))
+                || master.subjects().stream().noneMatch(s -> s.subjectType().equals(cmd.subject())))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        var active = DataScopeContext.executeWithoutScope(() -> applyMapper.selectOne(
+                Wrappers.<MchEntityApply>lambdaQuery().eq(MchEntityApply::getActiveOwner, cmd.userNo())
+                        .last("limit 1 for update")));
+        boolean replayed = false, revised = false;
+        if (active == null) {
+            createMerchantApply(cmd, selectedEntityNo);
+        } else {
+            merchantAdminPort.merchantApplicationEntity(cmd.userNo(), selectedEntityNo);
+            if (!java.util.Objects.equals(selectedEntityNo, active.getEntityNo()))
+                throw BizException.of(ErrorCode.CONFLICT);
+            if (!MchEntityApply.PENDING.equals(active.getStatus()))
+                throw BizException.of(ErrorCode.APPLY_NOT_EDITABLE);
+            requireSubjectAllowedByIndustry(cmd.industry(), cmd.subject());
+            requireLicenseIfNeeded(cmd);
+            String canonical = masterDataService.canonicalSubject(cmd.subject());
+            String subject = canonical == null ? cmd.subject() : canonical;
+            String items = writeItemsJson(cmd.qualificationItems());
+            String licenses = writeJson(cmd.qualifications());
+            replayed = java.util.Objects.equals(active.getName(), cmd.name())
+                    && java.util.Objects.equals(active.getLegalForm(), subject)
+                    && java.util.Objects.equals(active.getContactName(), cmd.contactName())
+                    && java.util.Objects.equals(active.getContactPhone(), cmd.contactPhone())
+                    && java.util.Objects.equals(active.getIndustry(), cmd.industry())
+                    && java.util.Objects.equals(active.getIndustryNote(), normalizeIndustryNote(cmd))
+                    && java.util.Objects.equals(active.getQualificationItems(), items)
+                    && java.util.Objects.equals(active.getQualifications(), licenses);
+            if (!replayed) {
+                DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
+                        Wrappers.<MchEntityApply>lambdaUpdate().eq(MchEntityApply::getId, active.getId())
+                                .set(MchEntityApply::getName, cmd.name()).set(MchEntityApply::getLegalForm, subject)
+                                .set(MchEntityApply::getContactName, cmd.contactName()).set(MchEntityApply::getContactPhone, cmd.contactPhone())
+                                .set(MchEntityApply::getIndustry, cmd.industry()).set(MchEntityApply::getIndustryNote, normalizeIndustryNote(cmd))
+                                .set(MchEntityApply::getQualificationItems, items).set(MchEntityApply::getQualifications, licenses)));
+                audit("MERCHANT_APPLY_UPDATE", active.getApplyNo(), "商户修订平台资料");
+                revised = true;
+            }
+        }
+        acceptAgreement(cmd.userNo(), selectedEntityNo);
+        return new MerchantProfileSubmission(myApply(cmd.userNo()), replayed, revised);
     }
 
     @Override
@@ -437,14 +592,17 @@ public class OpsServiceImpl implements OpsService {
              */
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return doCreateApply(cmd, submittedBy);
+        if (cmd.storeProfile()!=null) merchantAdminPort.validateInitialStore(cmd.storeProfile());
+        // 运营代填用于独立新建；商户补证保留原有的主体选择与归属校验。
+        return doCreateApply(cmd, submittedBy, owner -> Optional.empty());
     }
 
     /**
      * 自填与代填共用的那一份。**两条路只在末尾分叉**（submitted_by / agreed_at），
      * 前面的几道闸一字不差 —— 抄一份出来的话，日后加一道闸只会加在其中一条上。
      */
-    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy) {
+    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy,
+            java.util.function.Function<String, java.util.Optional<String>> applicationEntity) {
         /*
          * 一人同时只能有一份进行中的申请。
          * 先查是为了给出人话错误；**真正兜底的是 uk_apply_active_owner 唯一键** ——
@@ -461,6 +619,8 @@ public class OpsServiceImpl implements OpsService {
         requireLicenseIfNeeded(cmd);
 
         MchEntityApply apply = new MchEntityApply();
+        apply.setMarketCode(cmd.marketCode());
+        if (cmd.storeProfile()!=null) apply.setStoreProfile(json.writeValueAsString(cmd.storeProfile()));
         apply.setApplyNo(BizKey.next(BizKey.MERCHANT_APPLY));
         apply.setUserNo(cmd.userNo());
         apply.setName(cmd.name());
@@ -506,7 +666,8 @@ public class OpsServiceImpl implements OpsService {
          * 不认领的话会另建一个主体：他补完证照满心欢喜地去看，发现店里空空如也，
          * 而那家有货的店还在另一个看不见的主体下 —— 两家店，他只认得出一家。
          */
-        merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
+        applicationEntity.apply(cmd.userNo()).ifPresent(apply::setEntityNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
         notifyOpsOfNewApply(apply);
         return apply.getApplyNo();
@@ -559,14 +720,26 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public long acceptAgreement(String userNo) {
+        return acceptLatestAgreement(userNo, entity -> true);
+    }
+
+    @Override
+    @Transactional
+    public long acceptAgreement(String userNo, String selectedEntityNo) {
+        return acceptLatestAgreement(userNo, entity -> java.util.Objects.equals(selectedEntityNo, entity));
+    }
+
+    private long acceptLatestAgreement(String userNo, java.util.function.Predicate<String> permittedEntity) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
                         .eq(MchEntityApply::getUserNo, userNo)
-                        .orderByDesc(MchEntityApply::getId).last("limit 1")));
+                        .orderByDesc(MchEntityApply::getId).last("limit 1 for update")));
         if (apply == null) {
             // 没申请过不是异常 —— 他可能只是还没走到那一步
             return 0L;
         }
+        if (!permittedEntity.test(apply.getEntityNo()))
+            throw BizException.of(ErrorCode.FORBIDDEN);
         if (apply.getAgreedAt() != null) {
             // 幂等：已经勾过就原样返回。刷新成现在会让「他什么时候同意的」
             // 每次打开 App 都换一个答案，而那是这一列唯一的用途
@@ -588,7 +761,7 @@ public class OpsServiceImpl implements OpsService {
     private MchEntityApply requireApply(String applyNo) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
-                        .eq(MchEntityApply::getApplyNo, applyNo).last("limit 1")));
+                        .eq(MchEntityApply::getApplyNo, applyNo).last("limit 1 for update")));
         if (apply == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -675,8 +848,21 @@ public class OpsServiceImpl implements OpsService {
     }
 
     private void requireSubjectAllowedByIndustry(String industry, String subject) {
+        /*
+         * **查不到就拒，不是查不到就放。** 曾经 canonicalSubject 返回 null 时下面直接 return，
+         * 于是主数据缺行（166 的 sys_legal_form 只剩 ENTERPRISE）时「自然人 + 线上」被受理并审核通过。
+         * 不传主体仍放行：C 端入驻意向此刻还没问主体。停用行业照收（意向口径），注册表里没有的码不收。
+         */
+        String known = subject == null || subject.isBlank() ? null : masterDataService.canonicalSubject(subject);
+        if (subject != null && !subject.isBlank()
+                && (known == null || !masterDataService.enabledSubjects().contains(known))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (industry == null || industry.isBlank()) {
             return;
+        }
+        if (!industryService.registered(industry)) {
+            throw BizException.of(ErrorCode.INDUSTRY_NOT_FOUND, industry);
         }
         /*
          * 「这个主体受不受行业白名单限制」不再硬编码成 PERSONAL，而是查主数据
@@ -775,6 +961,18 @@ public class OpsServiceImpl implements OpsService {
     }
 
 
+    @Override
+    public java.util.Map<String, MerchantApplyVO> latestAppliesOf(String userNo, List<String> entityNos) {
+        if (entityNos.isEmpty()) return java.util.Map.of();
+        var rows = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                Wrappers.<MchEntityApply>lambdaQuery().eq(MchEntityApply::getUserNo, userNo)
+                        .in(MchEntityApply::getEntityNo, entityNos).orderByDesc(MchEntityApply::getId)));
+        var latest = new java.util.LinkedHashMap<String, MerchantApplyVO>();
+        for (var row : rows) latest.putIfAbsent(row.getEntityNo(), toVO(row));
+        return latest;
+    }
+
+
     // ---------------------------------------------------------------- 审计
 
     @Override
@@ -854,7 +1052,7 @@ public class OpsServiceImpl implements OpsService {
         return new StaffVO(s.getStaffNo(), s.getUsername(), s.getRealName(),
                 roles, perms, s.getStatus(),
                 s.getMerchantNo(), s.getCommunityNo(), s.getPickupNo(), s.getLastLoginAt(),
-                Boolean.TRUE.equals(s.getMustChangePassword()));
+                Boolean.TRUE.equals(s.getMustChangePassword()), Boolean.TRUE.equals(s.getSecondFactorExempt()));
     }
 
     // ---------------------------------------------------------------- 员工写侧
@@ -911,6 +1109,30 @@ public class OpsServiceImpl implements OpsService {
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "DISABLED" : "ACTIVE")),
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "ACTIVE" : "DISABLED")));
+        List<String> roles = readList(staff.getRoles());
+        return toVO(staff, roles, rolePermResolver.of(roles));
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffSecondFactorExempt(String staffNo, boolean exempt, String reason) {
+        if (!notBlank(reason)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);   // 打开一道缺口必须说清为什么，理由进审计
+        }
+        SysOpsStaff staff = requireStaff(staffNo);
+        /*
+         * 不能给自己勾。「能管员工的人」本来就是权限最大的那批，
+         * 允许自助的话等于他们可以随时给自己去掉第二因子 —— 那第二因子防的正是这批账号被盗。
+         */
+        if (staffNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
+        }
+        boolean before = Boolean.TRUE.equals(staff.getSecondFactorExempt());
+        staff.setSecondFactorExempt(exempt);
+        staffMapper.updateById(staff);
+        audit("STAFF_2FA_EXEMPT", staffNo, (exempt ? "加入" : "移出") + "免二次验证白名单：" + reason.trim(), true,
+                objectMapper.writeValueAsString(Map.of("secondFactorExempt", before)),
+                objectMapper.writeValueAsString(Map.of("secondFactorExempt", exempt)));
         List<String> roles = readList(staff.getRoles());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }
@@ -1338,7 +1560,11 @@ public class OpsServiceImpl implements OpsService {
                 readQualItems(a.getQualificationItems()),
                 notBlank(a.getSubmittedBy()),
                 a.getAgreedAt() == null ? 0L : a.getAgreedAt(),
-                a.getReferrerPhone());
+                a.getReferrerPhone(), a.getUserNo(), a.getMarketCode(), readStoreProfile(a.getStoreProfile()), a.getStoreNo());
+    }
+
+    private MerchantAdminPort.InitialStore readStoreProfile(String value) {
+        return value==null ? null : json.readValue(value,MerchantAdminPort.InitialStore.class);
     }
 
     /** 申请单上的结构化资质 → VO。解析不出来给空 —— 审核页不该被脏数据整页打不开 */

@@ -45,7 +45,12 @@ public record CourierOrderVO(String orderNo,
                              int itemQty,
                              long createdAt,
                              /** 收件人：姓名、电话、地址。**这是他干活唯一需要的那块** */
-                             OrderVO.Receiver receiver) {
+                             OrderVO.Receiver receiver, String documentNo, String payDocumentNo) {
+    public CourierOrderVO(String orderNo, String status, String fulfillment, int itemQty, long createdAt,
+                          OrderVO.Receiver receiver) {
+        this(orderNo, status, fulfillment, itemQty, createdAt, receiver, null, null);
+    }
+
 
     /**
      * 从完整视图裁下来。
@@ -59,6 +64,6 @@ public record CourierOrderVO(String orderNo,
         return new CourierOrderVO(o.orderNo(), o.status(), o.fulfillment(), qty, o.createdAt(),
                 // 收件人**原样带过来**：脱敏与否已经在装配 OrderVO 时按履约方式定过了，
                 // 在这里再判一次就是两处规则，而两处迟早分叉
-                o.receiver());
+                o.receiver(), o.documentNo(), o.payDocumentNo());
     }
 }

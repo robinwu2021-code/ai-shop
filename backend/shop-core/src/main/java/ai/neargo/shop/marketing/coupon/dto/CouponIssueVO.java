@@ -17,5 +17,12 @@ public record CouponIssueVO(String issueNo,
                             int count,
                             long amount,
                             String operator,
-                            long createdAt) {
+                            long createdAt, String documentNo) {
+    public CouponIssueVO(String issueNo, String couponNo, String couponName, String target, String targetDesc, int count, long amount, String operator, long createdAt) {
+        this(issueNo, couponNo, couponName, target, targetDesc, count, amount, operator, createdAt, null);
+    }
+    public CouponIssueVO withDocumentNo(String number) {
+        return new CouponIssueVO(issueNo, couponNo, couponName, target, targetDesc, count, amount, operator, createdAt, number);
+    }
+
 }

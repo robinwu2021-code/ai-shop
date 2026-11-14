@@ -70,9 +70,10 @@ function generatorFor(file) {
   });
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(path.resolve(root,"src/api/stored-value-types.ts")),
+  ...collectAll(path.resolve(root, "src/api/points-types.ts")) };
 // 支付协议声明在 C 端合同中，响应不能引用共享类型里不存在的组件。
-for (const name of ["PayInit", "PayMethodList"]) {
+for (const name of ["PayInit", "PayMethodList", "StoredValueStoresPage", "StoredValueRecordsPage", "StoredValueNotificationCapability"]) {
   const schema = generatorFor(path.resolve(root, "src/api/contract.ts")).createSchema(name);
   Object.assign(schemas, schema.definitions ?? {});
 }
@@ -120,6 +121,12 @@ if (Object.keys(renamed).length) {
 // ---------------------------------------------------------------- 3. 组装 OpenAPI
 /** 契约方法 → 响应类型名。手工维护，因为 TS 的返回类型没法在运行时反射出来 */
 const RESPONSE_TYPES = {
+  storedValuePendingServices:"StoredValueService[]",
+  storedValueService:"StoredValueService",
+  storedValueAuthorize:"StoredValueAuthorization",
+  storedValueIssuers:"StoredValueIssuersPage",
+  storedValueLocateIssuer:"StoredValueIssuer",
+  storedValueIssuerRecords:"StoredValueIssuerRecordsPage",
   issueMemberCode: "MemberCodeView",
   confirmGroupBatch: "Order[]",
   cancelAfterSale: "AfterSale",
@@ -164,6 +171,7 @@ const RESPONSE_TYPES = {
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
   orderPreview: "OrderPreview",
+  orderPointsEarning: "OrderPointsEarning[]",
   orderPointsState: "PointsOrderState",
   orderPointsQuote: "OrderPointsQuote",
   pointsAccounts: "BuyerPointsAccount[]",
@@ -266,6 +274,9 @@ const RESPONSE_TYPES = {
   invoiceOfOrder: "InvoiceRequest",
   unreadMessages: "number",
   subscribeReport: "void",
+  storedValueStores: "StoredValueStoresPage",
+  storedValueRecords: "StoredValueRecordsPage",
+  storedValueNotificationCapability: "StoredValueNotificationCapability",
   registerPushToken: "void",
   unregisterPushToken: "void",
 
@@ -314,6 +325,12 @@ const REQUEST_TYPES = {
   chooseQuote: "ChooseQuoteReq",
   merchantList: "MerchantListQuery",
   myStores: "MyStoresQuery",
+  storedValueIssuers:"StoredValueStoresQuery",
+  storedValueLocateIssuer:"StoredValueLocateQuery",
+  storedValueIssuerRecords:"StoredValueIssuerRecordsQuery",
+  storedValueAuthorize:"StoredValueAuthorizeRequest",
+  storedValueStores: "StoredValueStoresQuery",
+  storedValueRecords: "StoredValueRecordsQuery",
   storeNearby: "StoreNearbyQuery",
   storeEnter: "StoreEnterReq",
   storeGoods: "StoreGoodsQuery",
@@ -415,7 +432,7 @@ for (const [key, typeName] of Object.entries(REQUEST_TYPES)) {
 for (const [key, ep] of Object.entries(endpoints)) {
   const bad = ep.path.match(/\/(\w+s)\/:/);
   // goods 是不可数名词（单复同形），address 本来就以 s 结尾 —— 都不是复数
-  if (bad && !/^(goods|address)$/.test(bad[1])) {
+  if (bad && !/^(goods|address)$/.test(bad[1]) && !(key === "storedValueAuthorize" && ep.path === "/mp/orders/:orderNo/entitlement-authorizations")) {
     throw new Error(
       `端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id —— 统一用单数`,
     );

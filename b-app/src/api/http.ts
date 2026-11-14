@@ -1,3 +1,13 @@
+import {storedValueFinanceHttp} from "./stored-value-finance-http";
+import { payHttp } from "./pay-http";
+import { mallHttp } from "./mall-http";
+import {storedValueGovernanceHttp} from "./stored-value-governance-http";
+import {issuerHttpApi} from "./stored-value-issuer-http";
+import {managementHttpApi} from "./management-http";
+import { requirePointsNames } from "@shared/utils/points-name";
+import type { OrderPointsEarning } from "@shared/types";
+import type { AppVersionInfo, FeedbackReceipt, MerchantFeedback } from "@shared/types";
+import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
@@ -7,11 +17,13 @@ import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateL
   GoodsRevision,
   DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PayoutAccount,
-  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate,
+  PurchaseInvoice, Statement, ExpressQuote, ExpressCompanyList, ExpressPickup, ShipSetting, StoreFreightTemplate,
   NotifySetting } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
+  AppVersionQuery,
+  SubmitFeedbackReq,
   AddStaffReq,
   AppealReviewReq,
   AppointmentSlotOpenReq,
@@ -41,6 +53,7 @@ import type {
   RecognizeGoodsReq,
   ReplyReviewReq,
   ReportShortageReq,
+  ResolveMemberCodeReq,
   SaveGoodsReqBody,
   SaveShipSettingReq,
   SaveSpecTemplateReq,
@@ -82,6 +95,7 @@ import type {
   CouponRedeemView,
   CrossStoreCompare,
   CrossStoreOverview,
+  CustomerReference,
   DailyFlowPage,
   DailyReport,
   DeliveryRule,
@@ -199,7 +213,35 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
-  mResolveMemberCode: (body) => http.post(E.mResolveMemberCode.path, body),
+  ...managementHttpApi,
+  ...issuerHttpApi,
+  ...storedValueFinanceHttp,
+  ...payHttp,
+  ...mallHttp,
+  ...storedValueGovernanceHttp,
+  mScopeCandidates:(store,q)=>http.get(buildPath(E.mScopeCandidates.path,{store}),q),
+  mScopeSelectCustomer:(store,body)=>http.post(buildPath(E.mScopeSelectCustomer.path,{store}),body),
+  mScopeEnrollMember:(store,body)=>http.post(buildPath(E.mScopeEnrollMember.path,{store}),body),
+  mSvCandidates:(q)=>http.get<PageResult<SV.SvCandidate>>(E.mSvCandidates.path,q),
+  mSvSelectCustomer:(body)=>http.post<SV.SvSelectedCustomer>(E.mSvSelectCustomer.path,body),
+  mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvConfirmOffline.path,{storeNo:body.storeNo}),body,{'Idempotency-Key':key}),
+  mSvContext:(storeNo)=>http.get<SV.SvContext>(E.mSvContext.path,{storeNo}),
+  mSvPlans:(q)=>http.get<SV.SvPage<SV.SvPlan>>(E.mSvPlans.path,q),
+  mSvPlan:(planNo,storeNo)=>http.get<SV.SvPlan>(buildPath(E.mSvPlan.path,{planNo}),{storeNo}),
+  mSvCreatePlan:(body,key)=>http.post<SV.SvPlan>(E.mSvCreatePlan.path,body,{'Idempotency-Key':key}),
+  mSvPlanStatus:(planNo,body,key)=>http.put<SV.SvPlan>(buildPath(E.mSvPlanStatus.path,{planNo}),body,{'Idempotency-Key':key}),
+  mSvAccounts:(q)=>http.get<SV.SvPage<SV.SvAccount>>(E.mSvAccounts.path,q),
+  mSvAccount:(accountRef,storeNo)=>http.get<SV.SvAccount>(buildPath(E.mSvAccount.path,{accountRef}),{storeNo}),
+  mSvRecords:(q)=>http.get<SV.SvPage<SV.SvRecord>>(buildPath(E.mSvRecords.path,{storeNo:q.storeNo}),q),
+  mSvRecord:(recordNo,storeNo)=>http.get<SV.SvRecord>(buildPath(E.mSvRecord.path,{recordNo,storeNo}),{storeNo}),
+  mSvResolveRecharge:(body,key)=>http.post<{found:boolean;recharge:SV.SvProgress|null}>(buildPath(E.mSvResolveRecharge.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
+  mSvCancelCreate:(body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancelCreate.path,{storeNo:body.storeNo}),body,{"Idempotency-Key":key}),
+  mSvCreateRecharge:(body,key)=>http.post<SV.SvProgress>(E.mSvCreateRecharge.path,body,{'Idempotency-Key':key}),
+  mSvRecharge:(rechargeNo)=>http.get<SV.SvProgress>(buildPath(E.mSvRecharge.path,{rechargeNo})),
+  mSvSubmit:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvSubmit.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+  mSvReceive:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvReceive.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+  mSvCancel:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancel.path,{rechargeNo}),body,{'Idempotency-Key':key}),
+
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),
   mSetDisplayName: (displayName) => http.post<void>(E.mSetDisplayName.path, { displayName }),
@@ -493,6 +535,7 @@ export const httpApi: MerchantApi = {
     order: Order; actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
     priority: number; afterSaleNo: string | null; afterSaleStatus: string | null;
   }>>(E.mOrderWorklist.path, q),
+  mOrderPointsEarning: (orderNo) => http.get<OrderPointsEarning[]>(buildPath(E.mOrderPointsEarning.path, { orderNo })),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
   mOrderInventoryTrace: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mOrderInventoryTrace"]>>>(
     buildPath(E.mOrderInventoryTrace.path, { orderNo })),
@@ -517,6 +560,7 @@ export const httpApi: MerchantApi = {
   mPrepare: (orderNo) => http.post<Order>(buildPath(E.mPrepare.path, { orderNo }), {}),
   mConfirmOfflinePay: (subOrderNo) =>
     http.post<Order>(buildPath(E.mConfirmOfflinePay.path, { orderNo: subOrderNo }), {}),
+  mExpressCompanies: () => http.get<ExpressCompanyList>(E.mExpressCompanies.path),
   mExpressQuotes: (orderNo, weightKg) =>
     http.get<ExpressQuote[]>(buildPath(E.mExpressQuotes.path, { orderNo }), { weightKg } satisfies ExpressQuotesQuery),
   mBookExpress: (orderNo, carrier, weightKg) =>
@@ -624,6 +668,11 @@ export const httpApi: MerchantApi = {
     } satisfies ToggleCampaignReq),
 
   mCustomers: () => http.get<MerchantCustomer[]>(E.mCustomers.path),
+  mResolveMemberCode: (payload) =>
+    http.post<CustomerReference>(E.mResolveMemberCode.path, {
+      memberCode: payload.memberCode,
+      storeNo: payload.storeNo,
+    } satisfies ResolveMemberCodeReq),
   mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
   mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
   mMemberDetail: (memberNo) =>
@@ -722,7 +771,7 @@ export const httpApi: MerchantApi = {
     http.get<StorePointStatementPage>(E.mStorePointStatements.path, { typeCode, after, limit }),
   mConfirmStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mConfirmStorePointStatement.path, request),
   mDisputeStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mDisputeStorePointStatement.path, request),
-  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path),
+  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path).then(requirePointsNames),
   mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
   mStorePointEntries: (typeCode, after = 0, limit = 20) =>
     http.get<StorePointEntryPage>(E.mStorePointEntries.path, { typeCode, after, limit }),
@@ -744,6 +793,12 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mRegisterPushToken.path, { platform, provider, clientId }),
   mUnregisterPushToken: (clientId) =>
     http.post<void>(E.mUnregisterPushToken.path, { clientId }),
+
+  // 问题回报与版本（TDD-商户App问题回报与版本）
+  mSubmitFeedback: (req) => http.post<FeedbackReceipt>(E.mSubmitFeedback.path, req satisfies SubmitFeedbackReq),
+  mMyFeedback: () => http.get<MerchantFeedback[]>(E.mMyFeedback.path),
+  mAppVersion: (platform, build) =>
+    http.get<AppVersionInfo>(E.mAppVersion.path, { platform, ...(build ? { build } : {}) } satisfies AppVersionQuery),
 
   // ---- 通知设置（TDD-来单四渠道与商家通知设置）。门店级，作用于 X-Store-No 那一家
   mNotifySetting: () => http.get<NotifySetting>(E.mNotifySetting.path),

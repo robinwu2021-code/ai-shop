@@ -1,5 +1,7 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -20,13 +22,18 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ActivityServiceImpl implements ActivityService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(ActivityServiceImpl.class);
@@ -65,12 +72,12 @@ public class ActivityServiceImpl implements ActivityService {
     @Override
     public List<ActivityVO> list(String entityNo, boolean includeEnded) {
         return DataScopeContext.executeWithoutScope(() ->
-                        activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                                 .eq(PmtActivity::getEntityNo, entityNo)
                                 .isNull(PmtActivity::getDraftSnapshot)
                                 .ne(!includeEnded, PmtActivity::getStatus, PmtActivity.ENDED)
                                 .isNull(PmtActivity::getArchivedAt)
-                                .orderByDesc(PmtActivity::getId)))
+                                .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo))
                 .stream().map(this::vo).toList();
     }
 
@@ -80,8 +87,11 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     @Override
-    @Transactional
     public ActivityVO save(String entityNo, ActivityDraft d, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1), () -> saveNumbered(entityNo, d, operatorNo));
+    }
+
+    private ActivityVO saveNumbered(String entityNo, ActivityDraft d, String operatorNo) {
         PmtActivity a = d.activityNo() == null || d.activityNo().isBlank()
                 ? null : require(entityNo, d.activityNo());
         boolean create = a == null;
@@ -107,6 +117,7 @@ public class ActivityServiceImpl implements ActivityService {
             throw BizException.of(ErrorCode.ACTIVITY_RULE_LOCKED);
         }
         assertSane(a, d);
+        assertGoodsOwned(a, d.goodsNos());
         assertNoGroupOverlap(a, d);
         boolean started = !create && started(a);
         if (!started) {
@@ -115,7 +126,7 @@ public class ActivityServiceImpl implements ActivityService {
         }
 
         if (create) {
-            activityMapper.insert(a);
+            documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", a, a.getActivityNo(), activityMapper::insert, PmtActivity::setDocumentNo);
         } else {
             updateOrFail(a);
         }
@@ -244,8 +255,8 @@ public class ActivityServiceImpl implements ActivityService {
             if (c.activityNo().equals(a.getActivityNo())) {
                 continue;   // 改自己
             }
-            PmtActivity other = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, c.activityNo()).last("limit 1"));
+            PmtActivity other = documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, c.activityNo()).last("limit 1")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo);
             if (other != null && PmtActivity.TRIGGER_GROUP.equals(other.getTriggerType())) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
@@ -568,6 +579,34 @@ public class ActivityServiceImpl implements ActivityService {
         this.memberPort = memberPort;
     }
 
+    /** 参与商品归属校验。setter 注入：直接 new 本类的切片测试里没有它时不校验，运行时恒在 */
+    private ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
+
+    /**
+     * 参与商品必须是<b>这个活动的主体自己的货</b>。
+     *
+     * <p>算价按货号反查活动（{@code idx_pmt_goods_ref}），不看活动是谁建的 —— 此前这里照单全收，
+     * A 店建一个 ¥0.01 的限时特价、填上 B 店的货号，B 的货就在全平台按 A 定的价卖。
+     * 与统一模型同一个判据（ActivityVersionServiceImpl 的权益商品校验用的 {@code goodsOwned}），
+     * 别家的货一律当不存在：区分「不存在」与「不是你的」就是一个货号归属探测器。
+     */
+    private void assertGoodsOwned(PmtActivity a, List<String> goodsNos) {
+        if (productFacts == null || goodsNos == null) {
+            return;
+        }
+        java.util.Set<String> nos = new java.util.LinkedHashSet<>();
+        goodsNos.stream().filter(x -> !blank(x)).forEach(nos::add);
+        String tenant = blank(a.getTenantNo()) ? "MAIN" : a.getTenantNo();
+        if (!nos.isEmpty() && !productFacts.goodsOwned(tenant, a.getEntityNo(), nos)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
     private void saveGoods(String entityNo, String activityNo, List<String> goodsNos) {
         // **物理删**，不是逻辑删 —— 唯一键不含 deleted，逻辑删会让第二次保存撞键。
         // 见 ActivityGoodsMapper.hardDeleteByActivity 的注释
@@ -635,8 +674,8 @@ public class ActivityServiceImpl implements ActivityService {
         List<ConflictVO> out = new ArrayList<>();
         for (PmtActivityGoods g : hits) {
             PmtActivity a = DataScopeContext.executeWithoutScope(() ->
-                activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, g.getActivityNo()).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, g.getActivityNo()).last("limit 1")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
             // 只报还在跑的：已结束的活动不构成冲突，报出来只会让人以为要处理
             if (a == null || !PmtActivity.RUNNING.equals(a.getStatus())) {
                 continue;
@@ -670,7 +709,7 @@ public class ActivityServiceImpl implements ActivityService {
                 a.isActiveAt(System.currentTimeMillis(), MARKET_ZONE) && a.hasQuotaLeft(),
                 a.getCutoffTime(), a.getPickupOffset(), a.getPickupFrom(),
                 a.getMinQty(), a.getPeriodQuota(), a.getDecideHours(), a.getGroupHours(),
-                PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType()) ? rulesOf(a.getActivityNo()) : List.of());
+                PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType()) ? rulesOf(a.getActivityNo()) : List.of()).withDocumentNo(a.getDocumentNo());
     }
 
     /** 单次优惠。改单价那种算不出来（要看原价），保守记 0 —— 敞口以限量为准 */
@@ -681,9 +720,9 @@ public class ActivityServiceImpl implements ActivityService {
 
     private PmtActivity require(String entityNo, String activityNo) {
         PmtActivity a = DataScopeContext.executeWithoutScope(() ->
-                activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getEntityNo, entityNo)
-                .eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
+                .eq(PmtActivity::getActivityNo, activityNo).last("limit 1")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         if (a == null || a.getDraftSnapshot() != null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

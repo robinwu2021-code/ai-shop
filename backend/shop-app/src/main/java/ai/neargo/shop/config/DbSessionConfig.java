@@ -8,6 +8,9 @@ import ai.neargo.auth.store.LoginLogWriter;
 import ai.neargo.auth.store.SessionDao;
 import ai.neargo.auth.store.SessionProfile;
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.AccountSessionVerifier;
+import ai.neargo.shop.auth.store.DbAccountSessionVerifier;
+import org.springframework.transaction.PlatformTransactionManager;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.RealmRoutingTokenStore;
 import ai.neargo.shop.auth.TokenStore;
@@ -58,6 +61,16 @@ import java.util.concurrent.TimeUnit;
 public class DbSessionConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DbSessionConfig.class);
+
+    @Bean
+    @Conditional(TokenStoreSelection.MerchantUsesDb.class)
+    AccountSessionVerifier merchantAccountSessionVerifier(JdbcClient authJdbcClient,
+            MerchantIdentityLoader merchants, ConsumerIdentityLoader consumers,
+            PlatformTransactionManager manager) {
+        return new DbAccountSessionVerifier(
+                new SessionDao(authJdbcClient, SessionProfiles.MERCHANT),
+                new CompositeIdentityLoader<>(merchants, consumers), Clock.systemDefaultZone(), manager);
+    }
 
     @Bean
     @Primary

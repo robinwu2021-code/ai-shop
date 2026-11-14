@@ -193,12 +193,12 @@ public class AdmissionPortImpl implements AdmissionPort {
         };
     }
 
-    /** T 轴：3=快递 2=自提核销 1=商家自送；认不出返回 0。 */
+    /** T 轴：3=快递 2=自提核销 1=商家自行交付；堂食无独立第三方交付留痕，沿用T1矩阵。 */
     private int traceOf(String fulfillment) {
         return switch (String.valueOf(fulfillment)) {
             case Fulfillments.EXPRESS -> 3;
             case Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP -> 2;
-            case Fulfillments.MERCHANT_DELIVERY -> 1;
+            case Fulfillments.MERCHANT_DELIVERY, Fulfillments.DINE_IN -> 1;
             default -> 0;
         };
     }

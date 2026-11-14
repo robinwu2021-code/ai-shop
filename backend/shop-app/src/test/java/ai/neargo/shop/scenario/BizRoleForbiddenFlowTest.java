@@ -60,7 +60,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 店员打不开结算页 —— 这是本次要修的那个越权口子")
     void clerkCannotSeeMoney() throws Exception {
-        Staff s = staffWithRoles("12600250001", "结算越权店", "12600250002", "CLERK");
+        Staff s = staffWithRoles("18600250001", "结算越权店", "18600250002", "CLERK");
 
         // 矩阵 §2.2 写着店员「无财务、无结算账户可见性」，此前这条约束根本不存在
         forbidden(s, get("/biz/settle/bills"));
@@ -72,7 +72,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★ 注解真的在生效 —— 店员能做的事仍然能做")
     void clerkCanStillDoHisJob() throws Exception {
-        Staff s = staffWithRoles("12600250010", "店员本职店", "12600250011", "CLERK");
+        Staff s = staffWithRoles("18600250010", "店员本职店", "18600250011", "CLERK");
 
         // 如果 @PreAuthorize 在 /biz 链路上根本不生效，上一条会失败；
         // 如果判断写反了（把店员该做的也挡了），这一条会失败。两条一起才说明它是对的
@@ -84,7 +84,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★ 店员改不了价，但改得了库存 —— 这条缝是权限边界")
     void clerkChangesStockButNotPrice() throws Exception {
-        Staff s = staffWithRoles("12600250020", "改价越权店", "12600250021", "CLERK");
+        Staff s = staffWithRoles("18600250020", "改价越权店", "18600250021", "CLERK");
 
         forbidden(s, post("/biz/goods/save")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +99,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★ 店员管不了门店结构与员工 —— 那是提权路径")
     void clerkCannotTouchStructure() throws Exception {
-        Staff s = staffWithRoles("12600250030", "结构越权店", "12600250031", "CLERK");
+        Staff s = staffWithRoles("18600250030", "结构越权店", "18600250031", "CLERK");
 
         forbidden(s, post("/biz/store/create")
                 .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"我自己开的店\"}"));
@@ -112,7 +112,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 多角色取并集 —— 店员+配送员两样都能干，但仍碰不到钱")
     void multiRoleUnionInRealRequest() throws Exception {
-        Staff s = staffWithRoles("12600250040", "一人多岗店", "12600250041", "CLERK", "COURIER");
+        Staff s = staffWithRoles("18600250040", "一人多岗店", "18600250041", "CLERK", "COURIER");
 
         allowed(s, get("/biz/pickup/orders"));   // 店员带来的
         allowed(s, get("/biz/order"));           // 两个角色都有
@@ -126,7 +126,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★ 理货员不能核销 —— 核销要面对顾客，他只对货")
     void pickerCannotVerify() throws Exception {
-        Staff s = staffWithRoles("12600250050", "理货员店", "12600250051", "PICKER");
+        Staff s = staffWithRoles("18600250050", "理货员店", "18600250051", "PICKER");
 
         allowed(s, get("/biz/pickup/picking"));
         forbidden(s, post("/biz/pickup/verify")
@@ -138,7 +138,7 @@ class BizRoleForbiddenFlowTest {
     @DisplayName("★★ 在这家店没有任何授权 = 零权限，不是「默认店员」")
     void noGrantInThisStoreMeansNothing() throws Exception {
         // 建了员工但**不给任何门店角色**
-        Staff s = staffWithRoles("12600250060", "无授权店", "12600250061");
+        Staff s = staffWithRoles("18600250060", "无授权店", "18600250061");
 
         forbidden(s, get("/biz/order"));
         forbidden(s, get("/biz/pickup/orders"));
@@ -148,7 +148,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 员工刷新页面后档案还在 —— 他没有 C 端账号，那不是「登录失效」")
     void staffKeepsProfileAfterRefresh() throws Exception {
-        Staff s = staffWithRoles("12600250080", "刷新掉线店", "12600250081", "CLERK");
+        Staff s = staffWithRoles("18600250080", "刷新掉线店", "18600250081", "CLERK");
 
         /*
          * 浏览器实测出来的：登录接口自己组装档案，所以登录那一刻一切正常，
@@ -171,7 +171,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 店员看得到门店列表，且只看得到授权给他的那几家")
     void staffSeesOnlyHisStores() throws Exception {
-        String owner = merchant("12600250090", "两家店");
+        String owner = merchant("18600250090", "两家店");
         String a = firstStore(owner);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
         TestPlan.grantPro(mvc(), json, planMapper, owner);
@@ -185,7 +185,7 @@ class BizRoleForbiddenFlowTest {
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12600250091\"}"))
+                        .content("{\"loginPhone\":\"18600250091\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
         mvc().perform(post("/biz/staff/" + staffNo + "/store")
@@ -196,7 +196,7 @@ class BizRoleForbiddenFlowTest {
         // 门店切换器靠它。要 biz:store 的话店员一家都切不了 ——
         // 而「A 店店长 + B 店店员」正是多门店授权的主要用途
         String body = mvc().perform(get("/biz/store/list")
-                        .header("Authorization", "Bearer " + staffLogin("12600250091")))
+                        .header("Authorization", "Bearer " + staffLogin("18600250091")))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).contains(a);
@@ -207,13 +207,13 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 配送员的订单列表不含金额与核销码 —— 判权放行了，视图仍要裁")
     void courierGetsNarrowedOrderView() throws Exception {
-        String owner = merchant("12600250100", "配送裁剪店");
+        String owner = merchant("18600250100", "配送裁剪店");
         /*
          * **必须先真的下一单**。空列表下「不含 amount」这条断言是恒真的 ——
          * 撤掉裁剪它照样绿，那就不是守卫是装饰。
          */
-        placePaidOrder(owner, "12600250102");
-        Staff courier = staffFor(owner, "12600250101", "COURIER");
+        placePaidOrder(owner, "18600250102");
+        Staff courier = staffFor(owner, "18600250101", "COURIER");
 
         /*
          * 他有 biz:order:view，所以这个请求**是通的** —— 这正是难点：
@@ -238,9 +238,9 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★★ 店员兼配送**不裁** —— 判的是「谁给了他 order:view」，不是「有没有配送员这个角色」")
     void clerkWhoAlsoDeliversKeepsFullView() throws Exception {
-        String owner = merchant("12600250110", "一人两岗店");
-        placePaidOrder(owner, "12600250112");
-        Staff both = staffFor(owner, "12600250111", "CLERK", "COURIER");
+        String owner = merchant("18600250110", "一人两岗店");
+        placePaidOrder(owner, "18600250112");
+        Staff both = staffFor(owner, "18600250111", "CLERK", "COURIER");
 
         String body = mvc().perform(get("/biz/order")
                         .header("Authorization", "Bearer " + both.token()))
@@ -254,12 +254,12 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★★ 授权变更要留痕（B-11.10.3）—— 三个月后答得出「谁把他提成了店长」")
     void grantsAreLogged() throws Exception {
-        String owner = merchant("12600250120", "留痕店");
+        String owner = merchant("18600250120", "留痕店");
         String store = firstStore(owner);
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12600250121\"}"))
+                        .content("{\"loginPhone\":\"18600250121\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
 
@@ -298,12 +298,12 @@ class BizRoleForbiddenFlowTest {
          * 于是「用 Collectors.toMap 装脱敏号」一路绿灯，
          * 连上真库第一次点开变更记录就是 500（toMap 对 null 值抛 NPE）。
          */
-        String owner = merchant("12600250140", "无号老板店");
+        String owner = merchant("18600250140", "无号老板店");
         String store = firstStore(owner);
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12600250141\"}"))
+                        .content("{\"loginPhone\":\"18600250141\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
         grant(owner, staffNo, store, "CLERK", true);
@@ -319,12 +319,12 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★ 撤销一个他本来就没有的角色不留痕 —— 否则日志里全是没发生过的事")
     void revokingSomethingHeNeverHadIsNotLogged() throws Exception {
-        String owner = merchant("12600250130", "空撤销店");
+        String owner = merchant("18600250130", "空撤销店");
         String store = firstStore(owner);
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12600250131\"}"))
+                        .content("{\"loginPhone\":\"18600250131\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
 
@@ -351,7 +351,7 @@ class BizRoleForbiddenFlowTest {
     @Test
     @DisplayName("★ 老板不受任何限制 —— 对照组，证明拒绝不是因为链路本身坏了")
     void ownerPassesEverything() throws Exception {
-        String owner = merchant("12600250070", "老板对照店");
+        String owner = merchant("18600250070", "老板对照店");
         mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + owner))
                 .andExpect(jsonPath("$.code").value(0));
         mvc().perform(get("/biz/staff").header("Authorization", "Bearer " + owner))

@@ -22,5 +22,12 @@ public record CouponVO(String couponNo,
                         * 它要把 merchantNo 换成店名，而端上手里只有一个号。
                         * 展示用，实际校验仍在服务端（{@code discountFor}）。
                         */
-                       String scopeDesc) {
+                       String scopeDesc, String documentNo) {
+    public CouponVO(String couponNo, String title, String type, long faceMinor, int discountRate, long thresholdMinor, long maxDiscountMinor, String funder, String merchantNo, long startAt, long endAt, int remain, boolean received, String status, String scopeDesc) {
+        this(couponNo, title, type, faceMinor, discountRate, thresholdMinor, maxDiscountMinor, funder, merchantNo, startAt, endAt, remain, received, status, scopeDesc, null);
+    }
+    public CouponVO withDocumentNo(String number) {
+        return new CouponVO(couponNo, title, type, faceMinor, discountRate, thresholdMinor, maxDiscountMinor, funder, merchantNo, startAt, endAt, remain, received, status, scopeDesc, number);
+    }
+
 }

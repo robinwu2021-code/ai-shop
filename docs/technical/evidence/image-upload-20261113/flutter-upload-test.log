@@ -1,0 +1,6 @@
+00:00 +0: loading /tmp/image-upload-app-20261113/image_upload_live_test.dart
+00:00 +0: real App multipart upload and Flutter image rendering on both 166 domains
+IMAGE_ACCEPTANCE_BODY_DONE
+IMAGE_ACCEPTANCE_TEARDOWN
+IMAGE_ACCEPTANCE_CLEANED
+00:03 +1: All tests passed!

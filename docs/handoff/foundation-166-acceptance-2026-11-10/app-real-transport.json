@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "realAppApiClient": true,
+  "realWorkspaceAccessRepository": true,
+  "mockTransport": false,
+  "notificationSent": false,
+  "exitCode": 0
+}

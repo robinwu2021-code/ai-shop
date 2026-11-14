@@ -1,9 +1,16 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.mapper.SettleMappers.FeeRuleMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import ai.neargo.shop.pay.entity.StlFeeRule;
 import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +40,29 @@ class FeeRuleFlowTest {
 
     @Autowired
     private FeeRuleService feeRuleService;
+
+    @Autowired
+    private FeeRuleMapper feeRules;
+
+    private long lastIdBefore;
+
+    /*
+     * 本类加的规则都是**立即或很快生效**的平台级费率（8%、自带客流 4%……），而 stl_fee_rule 全库一份。
+     * 不撤的话，按字母序排在后面的结算用例（M7 的费率说明、账单佣金……）全拿到改过的费率。
+     * 按 id 水位撤：只动本条用例自己加的行。
+     */
+    @BeforeEach
+    void rememberWatermark() {
+        StlFeeRule last = DataScopeContext.executeWithoutScope(() -> feeRules.selectOne(
+                Wrappers.<StlFeeRule>lambdaQuery().orderByDesc(StlFeeRule::getId).last("limit 1")));
+        lastIdBefore = last == null ? 0 : last.getId();
+    }
+
+    @AfterEach
+    void withdrawOwnRules() {
+        DataScopeContext.executeWithoutScope(() -> feeRules.delete(
+                Wrappers.<StlFeeRule>lambdaQuery().gt(StlFeeRule::getId, lastIdBefore)));
+    }
 
     @Test
     @DisplayName("★ 初始四格与上线前的配置一致：第三方自带客流 0、平台客流 5%")
@@ -121,6 +151,37 @@ class FeeRuleFlowTest {
         assertThat(feeRuleService.rateOf("CONSIGNMENT", StlFeeRule.PLATFORM, System.currentTimeMillis()))
                 .as("费率查不到就按最高档收，是会真的多扣商家钱的")
                 .isZero();
+    }
+
+    /*
+     * **用完即还原。** 费率是全局配置，而本类往「第三方 · 平台客流」插了 8%、往「自带客流」插了 4% ——
+     * 生效时刻都在 now 附近，之后同一个 H2 库里跑的测试全都按新费率算。
+     * 2026-10-24 shop-app 改为字母序执行后，F 排在 M 前面，M7SettleFlowTest#rateCardIsVisibleToMerchant
+     * 读到的自带客流费率从 0 变成 400；单独跑 M7 全绿、跟在本类后面就红（2026-10-25 实测，开发计划 §10 L1-3）。
+     * 只删本方法新增的行：按方法前后的规则号做差，种子与别的测试类写的行一行不碰。
+     */
+    private java.util.Set<String> rulesBefore;
+
+    @BeforeEach
+    void rememberExistingRules() {
+        rulesBefore = ruleNos();
+    }
+
+    @AfterEach
+    void removeRulesAddedHere() {
+        var added = ruleNos();
+        added.removeAll(rulesBefore);
+        if (!added.isEmpty()) {
+            feeRuleMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<StlFeeRule>lambdaQuery().in(StlFeeRule::getRuleNo, added));
+        }
+    }
+
+    private java.util.Set<String> ruleNos() {
+        var all = new java.util.HashSet<String>();
+        feeRuleMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.<StlFeeRule>lambdaQuery())
+                .forEach(r -> all.add(r.getRuleNo()));
+        return all;
     }
 
     /** 停用一个版本。走 Service 没有停用入口（费率只增不改），测试里直接改库。 */

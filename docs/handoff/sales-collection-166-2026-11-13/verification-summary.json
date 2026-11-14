@@ -1,0 +1,30 @@
+{
+  "backend": {
+    "tests": 73,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "ops": {
+    "tests": 23,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "basePath": "/ops-shop"
+  },
+  "app": {
+    "relatedTests": 72,
+    "evidenceReused": "unchanged source tests from same task",
+    "normal166Build": "PASS",
+    "sourceCommit": "8851f92",
+    "installedDevice": "emulator-5560"
+  },
+  "currentNativeState": "ANNUAL_SALES_ORDER_AWAITING_PAYMENT",
+  "freshStoreCreated": true,
+  "realFundsConfirmed": false,
+  "freshStoreNo": "ST261113Y693VWBMKT",
+  "opsOrderReadByApp": true,
+  "appOrderReadByOps": true,
+  "appOrderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+  "stoppedLegacyRetailTestSkus": 4,
+  "subscriptionStillFree": true
+}

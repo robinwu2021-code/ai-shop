@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGenerator } from "ts-json-schema-generator";
+import { resourcePluralityOffenders } from "../../scripts/api-path-convention.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
@@ -27,7 +28,7 @@ const body = epSrc.slice(epSrc.indexOf("export const ENDPOINTS"));
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT|DELETE)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -56,19 +57,25 @@ const knownPlural = new Set(
     .filter((l) => l.trim() && !l.startsWith("#"))
     .map((l) => l.split("\t")[0]),
 );
+// Reuse the existing repository path debt for old brace-id contracts. This is
+// the same frozen baseline checked by api-path-naming, not a second allowance.
+const knownPaths = new Set(fs.readFileSync(path.resolve(root, "../known-plural-paths.txt"), "utf8")
+  .split("\n").map(line => line.trim()).filter(line => line && !line.startsWith("#")));
+const normalizeIds = value => value.replace(/:([^/]+)/g, "{$1}");
 const fixedPlural = [...knownPlural];
 
-// 与 C 端同一条规矩：带 id 的资源段用单数；前缀必须是 /biz（ADR-007）
+// Respect the deployed namespace convention; prefix remains /biz (ADR-007).
 for (const [key, ep] of Object.entries(endpoints)) {
-  const bad = ep.path.match(/\/(\w+s)\/:/);
-  if (bad && !/^(goods|address)$/.test(bad[1])) {
-    if (!knownPlural.has(key)) {
+  const bad = resourcePluralityOffenders(ep.path);
+  if (bad.length) {
+    if (!knownPlural.has(key) && !bad.every(segment => knownPaths.has(`${normalizeIds(ep.path)}  ${segment}`))) {
       throw new Error(
-        `端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id。\n` +
-          "  ADR-007 是资源段用单数。确实要破例的话，把它加进 b-app/scripts/known-plural-paths.txt 并写清理由。",
+        `端点 "${key}" 的路径 ${ep.path} 资源段 "${bad.join(", ")}" 不符合其既有命名空间约定。\n` +
+          "  旧 /biz 和 /mp 使用单数；/biz/management 与门店作用域子资源使用复数。不要重命名已发布接口或扩大历史基线。",
       );
     }
-    fixedPlural.splice(fixedPlural.indexOf(key), 1);
+    const index = fixedPlural.indexOf(key);
+    if (index >= 0) fixedPlural.splice(index, 1);
   }
   /*
    * `/common/**` 是跨端公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。
@@ -109,11 +116,23 @@ function collectAll(file) {
     expose: "all",
     topRef: true,
     additionalProperties: false,
+    // JavaScript helper functions are not JSON wire contracts.
+    functions: "hide",
   });
-  return gen.createSchema("*").definitions ?? {};
+  const definitions = gen.createSchema("*").definitions ?? {};
+  // Hidden exported functions produce the library's impossible wildcard sentinel.
+  // It is not a named wire type; remove it only when exact and unreferenced.
+  if (JSON.stringify(definitions["*"]) === '{"not":{}}') {
+    const { "*": sentinel, ...dataDefinitions } = definitions;
+    if (JSON.stringify(dataDefinitions).includes('"#/definitions/*"')) {
+      throw new Error("Hidden-function sentinel is referenced by a data contract");
+    }
+    return dataDefinitions;
+  }
+  return definitions;
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(responseFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(responseFile), ...collectAll(path.resolve(root,"src/api/stored-value-types.ts")), ...collectAll(path.resolve(root,"src/api/stored-value-issuers.ts")) };
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
   process.exit(1);
@@ -152,6 +171,137 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+ mSvFinancialBrandOriginal:"SvFinancialBrandOriginal",
+ mSvPrepareFinancePermissions:"SvFinancialPermissionResult",
+mSvFinancialBrandStart:"SvFinancialBrandChange",
+mSvFinancialBrandChange:"SvFinancialBrandChange",
+mSvFinancialBrandResume:"SvFinancialBrandChange",
+
+  mSvFinanceCapability: "SvFinanceCapability",
+  mSvFinanceResources: "SvFinanceResource[]",
+  mSvBrandSummary: "SvSummary",
+  mSvStoreSummary: "SvSummary",
+  mSvBrandStoreBreakdown: "SvFinanceStorePage",
+  mSvLocalIssuerSummary: "SvFinanceSummaryPage",
+  mSvActivitySummary: "SvFinanceActivityPage",
+  mSvSettlementBills: "SvFinanceBillPage",
+  mSvSettlementBill: "SvSettlementBill",
+  mSvSettlementActions: "SvBillActions",
+  mSvSettlementItems: "SvFinanceItemPage",
+  mSvSettlementEvents: "SvFinanceEventPage",
+  mSvSettlementPayments: "SvFinancePaymentPage",
+  mSvSettlementGenerate: "SvGenerated",
+  mSvSettlementReconcile: "SvSettlementBill",
+  mSvSettlementDispute: "SvSettlementBill",
+  mSvSettlementResolveDispute: "SvSettlementBill",
+  mSvSettlementAdjust: "SvSettlementBill",
+  mSvSettlementRegister: "SvSettlementPayment",
+  mSvSettlementPaymentResolution: "SvPaymentResolution",
+  mSvSettlementReceipt: "SvSettlementPayment",
+  mSvSettlementVoid: "SvSettlementPayment",
+
+  mSvBrandActivities: "SvGovernanceActivitiesPage",
+  mSvBrandActivity: "SvGovernanceDetail",
+  mSvBrandActivitySave: "SvActivity",
+  mSvBrandActivityDraftEdit: "SvActivity",
+  mSvBrandActivityCheck: "SvActivityCheck",
+  mSvBrandActivitySubmit: "SvSubmission",
+  mSvBrandActivityStop: "SvSubmission",
+  mSvBrandActivityCopy: "SvActivity",
+  mSvBrandActivityContext: "SvGovernanceContext",
+  mSvBrandActivityPresets: "SvGovernancePresetsPage",
+  mSvBrandActivitySchedule: "SvGovernanceSchedule",
+  mSvConsumptionCancel:"SvOperation",
+  mSvConsumptionResolve:"SvConsumptionResolution",
+  mSvConsumptionPreview:"SvConsumptionPreview",
+  mSvConsumptionOrder:"SvServiceView",
+  mSvConsume:"SvOperation",
+  mSvWallets:"SvWallet[]",
+  mSvWalletRecords:"SvRecordPage",
+  mSvBrandCapability:"SvBrandCapability",
+  mSvBrandActivate:"SvBrandActivation",
+  mSvGovernanceCapability: "SvGovernanceCapability",
+  mSvPreparePolicyPermissions: "SvGovernancePrepared",
+  mSvPolicyTargets: "SvPolicyTargetOption[]",
+  mSvPolicies: "SvPolicy[]",
+  mSvPolicyCreate: "SvPolicy",
+  mSvPolicyEdit: "SvPolicy",
+  mSvEffectivePolicy: "SvEffectivePolicy",
+  mSvActivities: "SvGovernanceActivitiesPage",
+  mSvActivity: "SvGovernanceDetail",
+  mSvActivitySave: "SvActivity",
+  mSvActivityDraftEdit: "SvActivity",
+  mSvActivityCheck: "SvActivityCheck",
+  mSvActivitySubmit: "SvSubmission",
+  mSvActivityStop: "SvSubmission",
+  mSvActivityCopy: "SvActivity",
+  mSvApprovals: "SvGovernanceApprovalsPage",
+  mSvApproval: "SvApproval",
+  mSvApprovalDecide: "SvApproval",
+  mSvActivityContext: "SvGovernanceContext",
+  mSvActivityPresets: "SvGovernancePresetsPage",
+  mSvActivitySchedule: "SvGovernanceSchedule",
+
+  mSvIssuer: "SvIssuerLookup",
+  mSvStoreIssuerConfiguration: "SvIssuerLookup",
+  mSvConfigureIssuer: "IssuerView",
+  mSvConfigureStoreIssuer: "IssuerView",
+  mSvIssuerImpact: "IssuerImpact",
+  mSvIssuerVersion: "IssuerView",
+  mSvIssuerEntities: "SvIssuerEntity[]",
+  mSvStoreIssuers: "StoreIssuerOptions",
+  mSvRechargeOptions: "SvIssuerRechargeOptions",
+  mSvIssuerRoutes: "IssuerRoute[]",
+  mSvPrepareIssuer: "IssuerView",
+  mSvRefreshIssuer: "IssuerAccessAck",
+  mSvIssuerRecharge: "SvProgress",
+  mSvIssuerCancel: "SvProgress",
+
+  mScopeCandidates: "ScopeCandidatePage",
+  mScopeSelectCustomer: "ScopeSelectedCustomer",
+  mScopeEnrollMember: "ScopeMemberSummary",
+  mSvCandidates: "PageResult<SvCandidate>",
+  mSvSelectCustomer: "SvSelectedCustomer",
+  mSvConfirmOffline: "SvProgress",
+  mSvContext: "SvContext",
+  mSvPlans: "SvPlanPage",
+  mSvPlan: "SvPlan",
+  mSvCreatePlan: "SvPlan",
+  mSvPlanStatus: "SvPlan",
+  mSvAccounts: "SvAccountPage",
+  mSvAccount: "SvAccount",
+  mSvRecords: "SvRecordPage",
+  mSvRecord: "SvRecord",
+  mSvResolveRecharge: "SvRechargeResolve",
+  mSvCancelCreate: "SvProgress",
+  mSvCreateRecharge: "SvProgress",
+  mSvRecharge: "SvProgress",
+  mSvSubmit: "SvProgress",
+  mSvReceive: "SvProgress",
+  mSvCancel: "SvProgress",
+
+  mManagementRecipients: "ManagementRecipientPage",
+  mManagementContext: "ManagementContext",
+  mCreateManagementSpace: "ManagementSpace",
+  mManagementResources: "ManagementGrantPage",
+  mManagementGrant: "ManagementGrant",
+  mRevokeManagementGrant: "ManagementGrant",
+  mManagementEntities: "ManagementResourcePage",
+  mManagementStores: "ManagementResourcePage",
+  mPaymentMerchantCandidates: "PaymentMerchant[]",
+  mBrands: "ManagementBrandPage",
+  mCreateBrand: "Brand",
+  mBrand: "Brand",
+  mEditBrand: "Brand",
+  mBrandStatus: "Brand",
+  mBrandStores: "ManagementResourcePage",
+  mBrandAudit: "ManagementAuditPage",
+  mStoreOperatingContext: "OperatingContext",
+  mCheckBrandChange: "BrandImpact",
+  mSubmitBrandChange: "BrandChange",
+  mBrandChange: "BrandChange",
+  mDecideBrandChange: "BrandChange",
+
   /*
    * 2026-08-28 一次补齐 **97 条**。它们是逐批加进契约的，谁都没回来登记这张表 ——
    * 而漏一条整份 spec 就不生成（硬失败），于是 `openapi-b.yaml` 停在原地，
@@ -183,12 +333,39 @@ const RESPONSE_TYPES = {
   mMyInvoices: "PurchaseInvoice[]",
   mPendingInvoice: "PendingInvoice",
   mStatement: "Statement",
+  mPayServiceStatus: "PayServiceStatus",
+  mPayCollect: "PayCollectResult",
+  mPayRefunds: "PayRefundItem[]",
+  mPayRefund: "PayRefundItem",
+  mPayStatement: "PayDailyStatement",
+  mPayQrCodes: "PayQrCode[]",
+  mPayCreateQrCode: "PayQrCode",
+  mPayDisableQrCode: "void",
+  mPayAppGrants: "PayAppGrant[]",
+  mPayGrantApp: "PayAppGrant",
+  mPayRevokeGrant: "void",
+  mPayRecordOffline: "OfflineRecord",
+  mPayOfflineRecords: "OfflineRecordPage",
+  mPayOfflineSummary: "OfflineRecordSummary",
+  // 平台商城（./mall.ts）
+  mMallStorefront: "MallStorefront",
+  mMallOfflineQuote: "MallQuote",
+  mMallPlaceOrder: "MallOrder",
+  mMallOrders: "MallOrderSummary[]",
+  mMallOrder: "MallOrderDetail",
+  mMallIssueInstructions: "MallOfflineInstructions",
+  mMallInstructions: "MallOfflineInstructions",
+  mMallReserveEvidence: "MallEvidenceTicket",
+  mMallUploadEvidence: "MallEvidenceUploaded",
+  mMallSubmitClaim: "MallOfflineClaim",
+  mMallClaims: "MallOfflineClaim[]",
   mOpenStorePayment: "PaymentApplyment",
   mSubmitInvoice: "PurchaseInvoice",
   mPayoutAccounts: "PayoutAccount[]",
   mSubmitPayoutAccount: "PayoutAccount",
   mCloseAppointmentSlot: "AppointmentSlot",
   mConfirmOfflinePay: "Order",
+  mExpressCompanies: "ExpressCompanyList",
   mExpressQuotes: "ExpressQuote[]",
   mBookExpress: "ExpressPickup",
   mExpressPickup: "ExpressPickup",
@@ -425,6 +602,9 @@ const RESPONSE_TYPES = {
   mSubscribeReport: "void",
   mRegisterPushToken: "void",
   mUnregisterPushToken: "void",
+  mSubmitFeedback: "FeedbackReceipt",
+  mMyFeedback: "MerchantFeedback[]",
+  mAppVersion: "AppVersionInfo",
   mGoodsList: "PageResult<Goods>",
   mGoodsDetail: "Goods",
   // 双版本（V279）。mGoodsDraft 的线上形状是 SaveGoodsReqBody（提交体镜像），
@@ -445,6 +625,7 @@ const RESPONSE_TYPES = {
   mSpecTemplates: "SpecTemplate[]",
   mSaveSpecTemplate: "SpecTemplate",
   mOrderList: "PageResult<Order>",
+  mOrderPointsEarning: "OrderPointsEarning[]",
   mOrderDetail: "Order",
   mOrderTrace: "ShipmentTrace",
   mOrderUpdates: "LogisticsUpdateRecord[]",
@@ -506,6 +687,131 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mPayRecordOffline: "OfflineRecordCreateReq",
+  mPayOfflineRecords: "OfflineRecordListQuery",
+  mPayOfflineSummary: "OfflineRecordSummaryQuery",
+  mSubmitFeedback: "SubmitFeedbackReq",
+  mAppVersion: "AppVersionQuery",
+ mSvFinancialBrandOriginal:"SvFinancialOriginalQuery",
+ mSvPrepareFinancePermissions:"SvFinanceManagementQuery",
+mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFinanceManagementQuery",mSvFinancialBrandResume:"SvFinanceManagementQuery",
+
+  mSvFinanceResources: "SvFinanceDirectoryQuery",
+  mSvBrandSummary: "SvReportQuery",
+  mSvStoreSummary: "SvReportQuery",
+  mSvBrandStoreBreakdown: "SvReportQuery",
+  mSvLocalIssuerSummary: "SvReportQuery",
+  mSvActivitySummary: "SvFinanceActivityQuery",
+  mSvSettlementBills: "SvFinanceQuery",
+  mSvSettlementBill: "SvFinanceManagementQuery",
+  mSvSettlementActions: "SvFinanceManagementQuery",
+  mSvSettlementItems: "SvFinanceCursorQuery",
+  mSvSettlementEvents: "SvFinanceCursorQuery",
+  mSvSettlementPayments: "SvFinanceCursorQuery",
+  mSvSettlementGenerate: "SvGenerationRequest",
+  mSvSettlementReconcile: "SvDecisionRequest",
+  mSvSettlementDispute: "SvDecisionRequest",
+  mSvSettlementResolveDispute: "SvResolutionRequest",
+  mSvSettlementAdjust: "SvAdjustmentRequest",
+  mSvSettlementRegister: "SvPaymentRequest",
+  mSvSettlementPaymentResolution: "SvFinanceResolutionQuery",
+  mSvSettlementReceipt: "SvReceiptRequest",
+  mSvSettlementVoid: "SvVoidRequest",
+
+  mSvBrandActivities: "SvGovernanceActivityQuery",
+  mSvBrandActivity: "SvGovernanceStoreQuery",
+  mSvBrandActivitySave: "SvGovernanceDraft",
+  mSvBrandActivityDraftEdit: "SvGovernanceDraft",
+  mSvBrandActivityCheck: "SvGovernanceCommand",
+  mSvBrandActivitySubmit: "SvGovernanceCommand",
+  mSvBrandActivityStop: "SvGovernanceCommand",
+  mSvBrandActivityCopy: "SvGovernanceCommand",
+  mSvBrandActivityContext: "SvGovernanceContextQuery",
+  mSvBrandActivityPresets: "SvGovernancePresetQuery",
+  mSvBrandActivitySchedule: "SvGovernanceScheduleQuery",
+  mSvConsumptionCancel:"SvConsumptionStoreQuery",
+  mSvConsumptionResolve:"SvConsumptionCreate",
+  mSvConsumptionPreview:"SvConsumptionCreate",
+  mSvConsumptionOrder:"SvConsumptionStoreQuery",
+  mSvConsume:"SvConsumptionSubmit",
+  mSvWalletRecords:"SvWalletRecordsQuery",
+  mSvBrandActivate:"SvBrandActivationRequest",
+  mSvPreparePolicyPermissions: "SvGovernanceManagement",
+  mSvPolicyTargets: "SvGovernanceManagement",
+  mSvPolicies: "SvGovernancePolicyQuery",
+  mSvPolicyCreate: "SvGovernancePolicyCreate",
+  mSvPolicyEdit: "SvGovernancePolicyEdit",
+  mSvEffectivePolicy: "SvGovernanceStoreQuery",
+  mSvActivities: "SvGovernanceActivityQuery",
+  mSvActivity: "SvGovernanceStoreQuery",
+  mSvActivitySave: "SvGovernanceDraft",
+  mSvActivityDraftEdit: "SvGovernanceDraft",
+  mSvActivityCheck: "SvGovernanceCommand",
+  mSvActivitySubmit: "SvGovernanceCommand",
+  mSvActivityStop: "SvGovernanceCommand",
+  mSvActivityCopy: "SvGovernanceCommand",
+  mSvApprovals: "SvGovernanceApprovalQuery",
+  mSvApproval: "SvGovernanceManagement",
+  mSvApprovalDecide: "SvGovernanceDecision",
+  mSvActivityContext: "SvGovernanceContextQuery",
+  mSvActivityPresets: "SvGovernancePresetQuery",
+  mSvActivitySchedule: "SvGovernanceScheduleQuery",
+
+  mSvIssuer: "SvIssuerManagementQuery",
+  mSvStoreIssuerConfiguration: "SvIssuerManagementQuery",
+  mSvConfigureIssuer: "IssuerConfigureRequest",
+  mSvConfigureStoreIssuer: "IssuerConfigureRequest",
+  mSvIssuerImpact: "IssuerConfigureRequest",
+  mSvIssuerVersion: "IssuerConfigureRequest",
+  mSvIssuerEntities: "SvIssuerEntitiesQuery",
+  mSvRechargeOptions: "SvIssuerRechargeOptionsQuery",
+  mSvIssuerRoutes: "SvIssuerRouteQuery",
+  mSvPrepareIssuer: "SvIssuerManagementQuery",
+  mSvRefreshIssuer: "SvIssuerManagementQuery",
+  mSvIssuerCancel: "SvCancelReq",
+
+  mScopeCandidates: "ScopeCandidateQuery",
+  mScopeSelectCustomer: "ScopeSelectCustomerReq",
+  mScopeEnrollMember: "ScopeMemberCreateReq",
+  mSvCandidates: "SvCandidatesQuery",
+  mSvSelectCustomer: "SvSelectCustomerReq",
+  mSvConfirmOffline: "SvRechargeCreate",
+  mSvContext: "SvStoreQuery",
+  mSvPlans: "SvPlansQuery",
+  mSvPlan: "SvStoreQuery",
+  mSvCreatePlan: "SvPlanCreate",
+  mSvPlanStatus: "SvPlanStatusReq",
+  mSvAccounts: "SvAccountsQuery",
+  mSvAccount: "SvStoreQuery",
+  mSvRecords: "SvRecordsQuery",
+  mSvRecord: "SvStoreQuery",
+  mSvResolveRecharge: "SvRechargeCreate",
+  mSvCancelCreate: "SvRechargeCreate",
+  mSvCreateRecharge: "SvRechargeCreate",
+  mSvSubmit: "SvReceipt",
+  mSvReceive: "SvReceive",
+  mSvCancel: "SvCancelReq",
+
+  mCreateManagementSpace: "ManagementSpaceCreateReq",
+  mManagementRecipients: "ManagementResourcesQuery",
+  mManagementResources: "ManagementResourcesQuery",
+  mManagementGrant: "ManagementGrantReq",
+  mRevokeManagementGrant: "ManagementRevokeQuery",
+  mManagementEntities: "ManagementPageQuery",
+  mManagementStores: "ManagementStoresQuery",
+  mPaymentMerchantCandidates: "ManagementMerchantsQuery",
+  mBrands: "ManagementBrandsQuery",
+  mCreateBrand: "ManagementBrandCreateReq",
+  mEditBrand: "ManagementBrandEditReq",
+  mBrandStatus: "ManagementBrandStatusReq",
+  mBrandStores: "ManagementPageQuery",
+  mBrandAudit: "ManagementPageQuery",
+  mStoreOperatingContext: "ManagementStoreContextQuery",
+  mCheckBrandChange: "ManagementBrandCheckReq",
+  mSubmitBrandChange: "ManagementBrandChangeSubmitReq",
+  mDecideBrandChange: "ManagementBrandDecisionReq",
+
+  mResolveMemberCode: "ResolveMemberCodeReq",
   mStorePointStatement: "StorePointStatementQuery",
   mStorePointStatementLines: "StorePointStatementLinesQuery",
   mStorePointStatements: "StorePointsEntriesQuery",
@@ -519,6 +825,9 @@ const REQUEST_TYPES = {
   mTerminateStorePointAgreement: "StorePointsTypeQuery",
   mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
+  mMallOfflineQuote: "MallQuoteRequest",
+  mMallPlaceOrder: "MallPlaceRequest",
+  mMallSubmitClaim: "MallOfflineClaimRequest",
   mStaffLogin: "StaffLoginReq",
   mApply: "MerchantApplyReqBody",
   mSubmitPayment: "SubmitPaymentReq",
@@ -632,8 +941,10 @@ for (const [key, ep] of Object.entries(endpoints)) {
     required: true,
     schema: { type: "string" },
   }));
-  if (ep.method === "GET" && reqType) params.push(...queryParams(reqType));
+  if ((ep.method === "GET" || ep.method === "DELETE") && reqType) params.push(...queryParams(reqType));
 
+  // Existing published P6 Java routes require the original command identity for all finance mutations.
+  if (["mSvFinancialBrandStart", "mSvSettlementGenerate", "mSvSettlementReconcile", "mSvSettlementDispute", "mSvSettlementResolveDispute", "mSvSettlementAdjust", "mSvSettlementRegister", "mSvSettlementReceipt", "mSvSettlementVoid", "mPayRecordOffline"].includes(key)) params.push({name:"Idempotency-Key",in:"header",required:true,schema:{type:"string"}});
   const op = {
     operationId: key,
     summary: ep.summary,

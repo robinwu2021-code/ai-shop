@@ -1,6 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.message.NotificationConsumer;
+import ai.neargo.shop.spi.notify.WxSubscribePort;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import ai.neargo.shop.message.NotifyScene;
 import ai.neargo.shop.message.entity.MsgSceneChannel;
 import ai.neargo.shop.message.mapper.MessageMappers.SceneChannelMapper;
@@ -34,10 +38,16 @@ class SceneChannelSeedTest {
     @Autowired
     private SceneChannelMapper mapper;
 
+    private static Set<String> handledScenes() {
+        // Stored value is consumed by its durable ledger, not the generic NotificationConsumer.
+        return Stream.concat(NotificationConsumer.handledScenes().stream(),
+                Stream.of(WxSubscribePort.SCENE_STORED_VALUE_REDEEMED)).collect(Collectors.toSet());
+    }
+
     @Test
     @DisplayName("每个处理中的场景都落了种子：INAPP 开启 + 至少一条加速通道")
     void everyHandledSceneIsSeeded() {
-        for (String scene : NotificationConsumer.handledScenes()) {
+        for (String scene : handledScenes()) {
             List<MsgSceneChannel> rows = mapper.selectList(
                     Wrappers.<MsgSceneChannel>lambdaQuery()
                             .eq(MsgSceneChannel::getSceneCode, scene));
@@ -90,10 +100,10 @@ class SceneChannelSeedTest {
         assertThat(seeded)
                 .as("场景×通道配置表一行都没读到 —— 种子没跑？还是这张表被数据域过滤挡住了？"
                         + "读不到就等于没查，不能算通过")
-                .hasSizeGreaterThanOrEqualTo(NotifyScene.ALL.size());
+                .hasSizeGreaterThanOrEqualTo(handledScenes().size());
 
         List<String> unknown = seeded.stream()
-                .filter(code -> !NotifyScene.ALL.contains(code))
+                .filter(code -> !handledScenes().contains(code))
                 .toList();
 
         /*

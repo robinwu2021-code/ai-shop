@@ -1,13 +1,19 @@
 package ai.neargo.shop.user.service.impl;
 
-import ai.neargo.shop.spi.notify.SmsPort;
-import ai.neargo.shop.common.ratelimit.OtpSendGuard;
+import ai.neargo.shop.common.otp.OtpEntries;
+import ai.neargo.shop.common.otp.OtpScenes;
+import ai.neargo.shop.common.otp.service.OtpSendService;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
+import ai.neargo.shop.common.otp.service.OtpSendService.OtpContext;
+import ai.neargo.shop.common.otp.service.OtpSendService.SendCommand;
+import ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand;
+import ai.neargo.shop.auth.RequestMetaContext;
+import java.util.Map;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.EmailOtpService;
 import ai.neargo.shop.user.service.MpSessionService;
 import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.auth.Realm;
-import ai.neargo.shop.user.service.OtpTestPhoneService;
-import ai.neargo.shop.common.OtpStore;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
@@ -18,16 +24,17 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
 import ai.neargo.shop.user.IdentityType;
 import ai.neargo.shop.user.entity.UsrAccount;
+import ai.neargo.shop.user.policy.RegistrationMarkets;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.mapper.UserMappers.IdentityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +60,6 @@ public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     /** 密码最短长度。与端上的校验保持一致；服务端也判，因为端上那道挡不住直接打接口的人 */
     private static final int PWD_MIN_LEN = 6;
@@ -85,71 +91,38 @@ public class AuthServiceImpl implements AuthService {
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ai.neargo.shop.spi.user.StaffSessionPort staffSessionPort = ai.neargo.shop.spi.user.StaffSessionPort.NONE;
-    private final OtpStore otpStore;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
 
-    /**
-     * 固定验证码（**只给本地联调与 E2E**）。
-     *
-     * <p>为什么需要它：进程外的测试拿不到随机码 —— 日志抓码不可靠（缓冲、轮转、并发混叠），
-     * 而「登录」是每一条旅程的第一步，拿不到码等于一条都跑不了。
-     *
-     * <p><b>三条护栏</b>：
-     * <ul>
-     *   <li>默认空 = 真随机，什么都不打开</li>
-     *   <li>一旦设了值，启动时打 WARN —— 它必须在日志里显眼到不可能被带上生产</li>
-     *   <li>它不绕过校验，只是让码可预测：验证码该过期还是过期、该消费还是消费</li>
-     * </ul>
-     */
-    private final String fixedOtp;
-    private final OtpTestPhoneService testPhoneService;
-
-    private final OtpSendGuard sendGuard;
-    private final SmsPort smsPort;
     private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
     /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
     private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
 
+    private final OtpSendService otp;
+
+
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            WxPhonePort wxPhonePort, MpSessionService mpSessions,
-                           TokenStore tokenStore, OtpStore otpStore,
-                           OtpSendGuard sendGuard,
-                           SmsPort smsPort,
+                           TokenStore tokenStore,
                            ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
                            ai.neargo.shop.auth.PasswordHasher passwordHasher,
                            ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
                            ai.neargo.shop.user.service.PersonService personService,
-                           @org.springframework.beans.factory.annotation.Value(
-                                   "${shop.auth.otp.fixed:}") String fixedOtp,
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
-                           OtpTestPhoneService testPhoneService) {
+                           OtpSendService otp) {
         this.wxPhonePort = wxPhonePort;
         this.mpSessions = mpSessions;
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
-        this.otpStore = otpStore;
-        this.sendGuard = sendGuard;
-        this.smsPort = smsPort;
         this.wxAuthPort = wxAuthPort;
         this.passwordHasher = passwordHasher;
         this.rateLimiter = rateLimiter;
         this.personService = personService;
-        this.fixedOtp = fixedOtp;
         this.fissionPort = fissionPort;
-        this.testPhoneService = testPhoneService;
-        if (usingFixedOtp()) {
-            /*
-             * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
-             * WARN 在启动刷屏里是背景噪音，而这条说的是「此刻任何人都能登进任何账号」。
-             */
-            log.error("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
-                    + "任何人都能用这个码登录任意手机号，且不再发真实短信。"
-                    + "**生产环境绝不能出现这条日志**（prod profile 下会直接拒绝启动）", fixedOtp);
-        }
+        this.otp = otp;
     }
 
     @Override
@@ -162,51 +135,72 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void sendOtp(String phone, String senderKey) {
-        /*
-         * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
-         * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
-         * 两件事对不上，只会让他再点一次。
-         */
-        sendGuard.check(phone, senderKey);
-
-        if (usingFixedOtp()) {
-            /*
-             * 预设码**不走短信通道**。走的话有两个代价：真实通道下每次自动化测试
-             * 都在烧短信费，而且给人发一条「你的验证码是 123456」的真短信 ——
-             * 那个码谁都知道，等于把它做成了一把公开的钥匙。
-             */
-            otpStore.save(phone, fixedOtp);
-            log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
-            return;
-        }
-        /*
-         * 测试号白名单（TDD-测试号固定验证码）。**位置有讲究**：
-         *
-         *   · 在 sendGuard 之后 —— 白名单号不该绕过限流。绕过的话，那个号就是一条
-         *     免费的、无限次的发码通道，而它的码是公开可猜的。
-         *   · 在生成随机码之前 —— 放在之后的话，随机码会先写进 OtpStore，
-         *     把上一条固定码冲掉，然后再被固定码覆盖回去。中间那一瞬正确的码是哪个，
-         *     取决于两次 save 的顺序，而两次 save 之间任何一次 verify 都会失败。
-         *   · **不调 smsPort** —— 这是它与「把码写进库再捞出来」那个方案的关键差别：
-         *     后者只改了存码那半句，短信照样会发给一个真实号段的陌生人。
-         *
-         * 与上面的 usingFixedOtp() 的差别只有一处，但是关键的一处：
-         * **作用域从「任意手机号」收窄到「列表里的号」**。
-         */
-        var fixed = testPhoneService.fixedCodeFor(phone);
-        if (fixed.isPresent()) {
-            otpStore.save(phone, fixed.get());
-            log.warn("[otp] 测试号白名单命中 {}，已下发固定验证码（未发短信）", mask(phone));
-            return;
-        }
-        String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
-        otpStore.save(phone, code);
-        smsPort.sendOtp(phone, code);
+        otp.send(new SendCommand(OtpScenes.LOGIN, Channel.SMS, phone, null, null, Map.of(), null), otpContext(senderKey));
     }
 
-    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
-    private boolean usingFixedOtp() {
-        return fixedOtp != null && !fixedOtp.isBlank();
+    private OtpContext otpContext(String senderKey) {
+        var meta = RequestMetaContext.current();
+        return new OtpContext(OtpEntries.LEGACY_AUTH, meta == null ? null : meta.ip(), senderKey);
+    }
+
+    /** 测试身份白名单（TDD-测试身份白名单登录）。setter 注入，理由同 原有部署配置；没注入 = 关 */
+    private ai.neargo.shop.user.service.TestIdentityService testIdentities;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTestIdentities(ai.neargo.shop.user.service.TestIdentityService testIdentities) {
+        this.testIdentities = testIdentities;
+    }
+
+    private boolean testIdentity(String type, String value) {
+        return testIdentities != null && testIdentities.isTestIdentity(type, value);
+    }
+
+    private String defaultMarket = "CN";
+    private String registrationMarketsCsv = "";
+
+    /** 部署默认经营地区。setter 注入，理由同 原有部署配置 */
+    @Value("${shop.merchant.default-market:CN}")
+    public void setDefaultMarket(String market) {
+        this.defaultMarket = market;
+    }
+
+    /** 可注册地区（TDD-注册地区与三步建店）。缺省空 = 只有部署默认 */
+    @Value("${shop.merchant.registration-markets:}")
+    public void setRegistrationMarkets(String csv) {
+        this.registrationMarketsCsv = csv;
+    }
+
+    /** 每次现算：两个 setter 的注入顺序不保证，提前合成会拿到半份配置 */
+    private RegistrationMarkets registrationMarkets() {
+        return RegistrationMarkets.of(registrationMarketsCsv, defaultMarket);
+    }
+
+    @Override
+    public String accountMarket(String userNo) {
+        var markets = registrationMarkets();
+        if (userNo == null || userNo.isBlank()) return markets.defaultMarket();
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        String market = user == null ? null : user.getMarket();
+        return market == null || market.isBlank() ? markets.defaultMarket() : market;
+    }
+
+    @Override
+    public String loginIdentifier(String userNo) {
+        if (userNo == null || userNo.isBlank()) return null;
+        String phone = phoneOf(userNo);
+        if (phone != null) return phone;
+        UsrIdentity email = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.EMAIL)
+                .last("limit 1"));
+        return email == null ? null : email.getIdentityValue();
+    }
+
+    @Override
+    public EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
+        var result = otp.send(new SendCommand(OtpScenes.LOGIN, Channel.EMAIL, email, null, locale, Map.of(), null), otpContext(null));
+        return new EmailOtpService.Delivery(result.expiresInSeconds(), result.resendAfterSeconds());
     }
 
     /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
@@ -330,6 +324,63 @@ public class AuthServiceImpl implements AuthService {
     private static final String ROLE_STAFF = "STAFF";
 
     @Override
+    public VerifiedPrincipal verify(LoginCommand cmd) {
+        if (GRANT_PASSWORD.equals(cmd.grantType())) {
+            var account = loginByPassword(cmd, false);
+            requireUsable(account);
+            boolean email = cmd.principal().contains("@");
+            return new VerifiedPrincipal(email ? IdentityType.EMAIL : IdentityType.PHONE,
+                    email ? EmailOtpService.normalize(cmd.principal()) : cmd.principal().trim(), account.getUserNo());
+        }
+        if (!GRANT_PHONE_OTP.equals(cmd.grantType()) && !GRANT_EMAIL_OTP.equals(cmd.grantType())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var credential = resolveCredentials(cmd).getFirst();
+        var identity = findIdentity(credential);
+        String userNo = identity == null ? null : identity.getUserNo();
+        if (userNo != null) requireUsable(accountOf(userNo));
+        return new VerifiedPrincipal(credential.type(), credential.value(), userNo);
+    }
+
+    @Override
+    @Transactional
+    public UsrAccount enterVerified(VerifiedPrincipal principal, Boolean agreed, String marketCode) {
+        return enterVerified(principal, new LoginCommand(
+                IdentityType.EMAIL.equals(principal.type()) ? GRANT_EMAIL_OTP : GRANT_PHONE_OTP,
+                principal.value(), null, null, null, agreed, marketCode), true);
+    }
+
+    private UsrAccount enterVerified(VerifiedPrincipal principal, LoginCommand command, boolean requireAgreement) {
+        if ("ACCOUNT".equals(principal.type())) {
+            var account = accountOf(principal.userNo());
+            requireUsable(account);
+            return account;
+        }
+        var credential = new Credential(principal.type(), principal.value(),
+                IdentityType.EMAIL.equals(principal.type()) ? "APP" : null);
+        var existing = findIdentity(credential);
+        if (principal.userNo() != null && (existing == null || !principal.userNo().equals(existing.getUserNo()))) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (existing == null && requireAgreement && !Boolean.TRUE.equals(command.agreed()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        var account = findOrCreate(List.of(credential), command);
+        requireUsable(account);
+        return account;
+    }
+
+    private UsrAccount accountOf(String userNo) {
+        var account = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        if (account == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return account;
+    }
+
+    private void requireUsable(UsrAccount account) {
+        if ("BANNED".equals(account.getStatus())) throw BizException.of(ErrorCode.RISK_BLOCKED);
+    }
+
+    @Override
     @Transactional
     public LoginResult login(LoginCommand cmd) {
         /*
@@ -337,10 +388,17 @@ public class AuthServiceImpl implements AuthService {
          * 找不到人就建户。密码走它的话，输错手机号会**当场给他开一个空账号**，
          * 而用户看到的是「登录成功，但我的店没了」。
          */
-        List<Credential> credentials = GRANT_PASSWORD.equals(cmd.grantType()) ? List.of() : resolveCredentials(cmd);
-        UsrAccount user = GRANT_PASSWORD.equals(cmd.grantType())
-                ? loginByPassword(cmd)
-                : findOrCreate(credentials, cmd);
+        List<Credential> credentials;
+        UsrAccount user;
+        if (GRANT_PHONE_OTP.equals(cmd.grantType()) || GRANT_EMAIL_OTP.equals(cmd.grantType())) {
+            var verified = verify(cmd);
+            credentials = List.of(new Credential(verified.type(), verified.value(),
+                    IdentityType.EMAIL.equals(verified.type()) ? "APP" : null));
+            user = enterVerified(verified, cmd, false);
+        } else {
+            credentials = GRANT_PASSWORD.equals(cmd.grantType()) ? List.of() : resolveCredentials(cmd);
+            user = GRANT_PASSWORD.equals(cmd.grantType()) ? loginByPassword(cmd) : findOrCreate(credentials, cmd);
+        }
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
@@ -410,7 +468,8 @@ public class AuthServiceImpl implements AuthService {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
         }
         registerNewCredentials(user, List.of(phoneCredential));
-        if (req.merchantNo() != null && !req.merchantNo().isBlank()) {
+        // 同 findOrCreate：端上自报的 merchantNo 只补空归属，不改写已有归属
+        if (user.getEntityNo() == null && req.merchantNo() != null && !req.merchantNo().isBlank()) {
             user.setEntityNo(req.merchantNo());
             userMapper.updateById(user);
         }
@@ -449,43 +508,62 @@ public class AuthServiceImpl implements AuthService {
      * 共用一个键的话，一次撞库会把真用户的发码额度也耗光。
      */
     private UsrAccount loginByPassword(LoginCommand cmd) {
+        return loginByPassword(cmd, true);
+    }
+
+    private UsrAccount loginByPassword(LoginCommand cmd, boolean updateHash) {
         String phone = cmd.principal() == null ? "" : cmd.principal().trim();
         String raw = cmd.credential() == null ? "" : cmd.credential();
         if (phone.isBlank() || raw.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        // principal 带 @ 就按邮箱身份找人（ADR-051）；限流键也分开，免得两种身份互相耗额度
+        boolean email = phone.contains("@");
+        if (email) {
+            phone = EmailOtpService.normalize(phone);
+        }
+        String rateKey = "pwd:login:" + (email ? "EMAIL:" + phone : phone);
         ai.neargo.shop.common.ratelimit.RateLimiter.Decision d =
-                rateLimiter.tryAcquire("pwd:login:" + phone, PWD_TRY_RULE);
+                rateLimiter.tryAcquire(rateKey, PWD_TRY_RULE);
         if (!d.allowed()) {
-            log.warn("[auth] 密码登录触发限流 phone={} —— 撞库的典型形状", mask(phone));
+            log.warn("[auth] 密码登录触发限流 principal={} —— 撞库的典型形状",
+                    email ? "***@***" : mask(phone));
             throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
         }
 
-        UsrIdentity phoneId = findIdentity(new Credential(IdentityType.PHONE, phone, null));
+        UsrIdentity phoneId = findIdentity(
+                new Credential(email ? IdentityType.EMAIL : IdentityType.PHONE, phone, null));
         if (phoneId == null) {
             // 查无此人也报 10456：分开说等于送一个账号探测接口（见 ErrorCode 注释）
             throw BizException.of(ErrorCode.PASSWORD_INVALID);
         }
-        UsrIdentity pwd = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+        /*
+         * 测试身份白名单：统一密码登录**已存在**的账号（没设过密码也行）；查无此人仍是上面的 10456，
+         * 不会因此建户。统一密码不对时照常走真实密码 —— robin 这类真实账号自己的密码不受影响。
+         */
+        boolean unified = testIdentities != null && testIdentities.acceptsPassword(
+                email ? ai.neargo.shop.user.service.TestIdentityService.EMAIL
+                        : ai.neargo.shop.user.service.TestIdentityService.PHONE, phone, raw);
+        UsrIdentity pwd = unified ? null : identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
                 .eq(UsrIdentity::getUserNo, phoneId.getUserNo())
                 .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
                 .last("limit 1"));
-        if (pwd == null) {
+        if (!unified && pwd == null) {
             throw BizException.of(ErrorCode.PASSWORD_NOT_SET);
         }
-        if (!passwordHasher.matches(raw, pwd.getIdentityValue())) {
+        if (!unified && !passwordHasher.matches(raw, pwd.getIdentityValue())) {
             throw BizException.of(ErrorCode.PASSWORD_INVALID);
         }
         /*
          * 密码算法升级（如 bcrypt 轮数提高）时就地重写一次 —— 与运营端同一套做法。
          * 不做的话老用户的哈希永远停在旧强度上，而他们恰恰是存在最久的那批账号。
          */
-        if (passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
+        if (updateHash && pwd != null && passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
             pwd.setIdentityValue(passwordHasher.encode(raw));
             identityMapper.updateById(pwd);
         }
         // 登录成功清掉失败计数：否则真用户输错几次再输对，仍会被之前的计数挡住
-        rateLimiter.reset("pwd:login:" + phone);
+        rateLimiter.reset(rateKey);
 
         UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
                 .eq(UsrAccount::getUserNo, phoneId.getUserNo()).last("limit 1"));
@@ -601,20 +679,32 @@ public class AuthServiceImpl implements AuthService {
                 verifyOtp(cmd.principal(), cmd.credential());
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
             }
+            case GRANT_EMAIL_OTP -> List.of(new Credential(IdentityType.EMAIL,
+                    verifyEmailOtp(cmd.principal(), cmd.credential()), "APP"));
             case GRANT_APPLE ->
-                // TODO(S4) 校验 identityToken 签名后取 sub。
-                // Apple 永远给不出手机号，所以真接通后这里之后要接一道「强制绑定手机号」
-                    List.of(new Credential(IdentityType.APPLE_SUB, cmd.principal(), "APP"));
+                /*
+                 * TODO(S4) 校验 identityToken 签名后取 sub；Apple 永远给不出手机号，
+                 * 真接通后这里之后还要接一道「强制绑定手机号」。
+                 *
+                 * <p>**验签接通前一律拒绝，不能把 principal 当 sub 收下**：principal 是调用方
+                 * 自己报的字符串，此前直接拿它查 APPLE_SUB 凭证 —— 任何人报出别人的 sub
+                 * 就能拿到那个账号的 token，报一个新串就能无限注册。与未知 grant 同码 10400。
+                 */
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
     }
 
     private void verifyOtp(String phone, String code) {
-        if (!otpStore.verifyAndConsume(phone, code)) {
-            // **不是 10400**：那句「请求参数有误」让用户去检查自己传了什么，
-            // 而他要做的只是再看一眼短信、或者重新要一个码
+        if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.LOGIN, Channel.SMS, phone, null, code), otpContext(null)))
             throw BizException.of(ErrorCode.OTP_INVALID);
-        }
+    }
+
+    private String verifyEmailOtp(String email, String code) {
+        String normalized = EmailOtpService.normalize(email);
+        if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.LOGIN, Channel.EMAIL, normalized, null, code), otpContext(null)))
+            throw BizException.of(ErrorCode.OTP_INVALID);
+        return normalized;
     }
 
     /**
@@ -636,12 +726,24 @@ public class AuthServiceImpl implements AuthService {
                 log.error("凭证 {} 指向不存在的用户 {}，登录中止", credentials.getFirst().type(), userNo);
                 throw BizException.of(ErrorCode.INTERNAL_ERROR);
             }
-            // 从店铺码进来的老用户：刷新常去店，归因由 marketing 域按优先级裁决（S5）
-            if (cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
+            /*
+             * 从店铺码进来的老用户：**只在归属尚为空时补上**，不改写已有归属。
+             *
+             * <p>merchantNo 是端上自报的（店铺码 / 分享链接参数），此前每次登录都拿它覆盖
+             * entity_no —— 换个店铺码再登一次，用户就被「转」给了另一家商户，归因被任意改写。
+             * 归属在建户时定下（{@link #createAccount}），之后的改动由 marketing 域按优先级裁决（S5），
+             * 不在登录这条路上顺手做。
+             */
+            if (user.getEntityNo() == null && cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
                 user.setEntityNo(cmd.merchantNo());
                 userMapper.updateById(user);
             }
         } else {
+            // 邮箱首登即注册，协议必须主动确认（TDD-B端邮箱验证码注册登录 AC3）。
+            // 只管邮箱这条新路：手机号的既有行为另有端依赖，不在本期改。
+            if (GRANT_EMAIL_OTP.equals(cmd.grantType()) && !Boolean.TRUE.equals(cmd.agreed())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             user = createAccount(cmd);
         }
 
@@ -749,6 +851,8 @@ public class AuthServiceImpl implements AuthService {
         user.setAvatar("");
         user.setStatus("NORMAL");
         user.setEntityNo(cmd.merchantNo());
+        // 经营地区只在这里写（AC1–AC3）：这一支才是「新账号」，老账号再带别的地区登录不改
+        user.setMarket(registrationMarkets().resolve(cmd.marketCode()));
         userMapper.insert(user);
         /*
          * ★ 邀请落台账。**只在这里调** —— 这一支才是「新账号」；

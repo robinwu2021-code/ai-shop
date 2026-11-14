@@ -35,7 +35,8 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
 
     @Override
     public String templateId(String scene) {
-        return "STUB_TPL_" + scene;
+        // No invented stored-value template may escape through the capability endpoint.
+        return SCENE_STORED_VALUE_REDEEMED.equals(scene) ? null : "STUB_TPL_" + scene;
     }
 
     @Override

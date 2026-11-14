@@ -1,0 +1,751 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "餐饮复用的共享收费与原库存估值接口",
+    "version": "2026-10-25"
+  },
+  "paths": {
+    "/biz/pricing/fee-rules/{ruleNo}": {
+      "get": {
+        "operationId": "get__biz_pricing_fee_rules_ruleNo_",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "ruleNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPricingFeeRuleController.java",
+        "x-permission": "biz:pricing:config:read",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FeeRule"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post__biz_pricing_fee_rules_ruleNo_",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "ruleNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPricingFeeRuleController.java",
+        "x-permission": "biz:pricing:config:publish",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FeeRule"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeeSaveRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      }
+    },
+    "/biz/pricing/fee-scopes/{scopeNo}/adjustments": {
+      "get": {
+        "operationId": "get__biz_pricing_fee_scopes_scopeNo_adjustments",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "scopeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPricingFeeScopeController.java",
+        "x-permission": "biz:pricing:config:read",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdjustmentAuthority"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      }
+    },
+    "/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply": {
+      "post": {
+        "operationId": "post__biz_pricing_fee_scopes_scopeNo_adjustments_applicationNo_apply",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "scopeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPricingFeeScopeController.java",
+        "x-permission": "biz:pricing:config:publish",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AmendmentReceipt"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeeApplyRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      }
+    },
+    "/biz/inventory/items/{item}/valuation": {
+      "get": {
+        "operationId": "get__biz_inventory_items_item_valuation",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizInventoryValuationController.java",
+        "x-permission": "biz:stock",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ValuationPolicy"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post__biz_inventory_items_item_valuation",
+        "summary": "共享非资金业务支持；前端按后续任务接入",
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-java-source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizInventoryValuationController.java",
+        "x-permission": "biz:stock",
+        "x-scope": "主体/门店/actor来自当前认证上下文，不由请求传入",
+        "responses": {
+          "200": {
+            "description": "标准API包装内的实际返回对象；金额为币种最小单位",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ValuationPolicy"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数"
+          },
+          "403": {
+            "description": "无权限/范围不符"
+          },
+          "409": {
+            "description": "版本、原键或来源冲突"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuationPolicy"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BizToken": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Scope": {
+        "type": "object",
+        "properties": {
+          "tenantNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          }
+        }
+      },
+      "FeeDefinition": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TEA",
+              "HOTPOT",
+              "PACKAGING",
+              "SERVICE",
+              "MINIMUM"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "PER_QUANTITY",
+              "FIXED",
+              "PERCENT",
+              "MINIMUM"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "unitAmountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rateBp": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "taxClass": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "ZERO_RATED",
+              "EXEMPT",
+              "OUT_OF_SCOPE",
+              "UNKNOWN"
+            ]
+          }
+        }
+      },
+      "FeeSaveRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/FeeDefinition"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "definition",
+          "status",
+          "reason"
+        ]
+      },
+      "FeeRule": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "ruleNo": {
+            "type": "string"
+          },
+          "revisionNo": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/FeeDefinition"
+          }
+        }
+      },
+      "AdjustmentAuthority": {
+        "type": "object",
+        "properties": {
+          "applicationNo": {
+            "type": "string"
+          },
+          "orderNo": {
+            "type": "string"
+          },
+          "subOrderNo": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "sourceHash": {
+            "type": "string"
+          },
+          "currentFeeMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetFeeMinor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "FeeApplyRequest": {
+        "type": "object",
+        "properties": {
+          "expectedSubVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sourceHash": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedSubVersion",
+          "sourceHash",
+          "reason"
+        ]
+      },
+      "ValuationPolicy": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "costMethod": {
+            "type": "string"
+          },
+          "unitCostMinor": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "batchTracked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "costMethod",
+          "batchTracked"
+        ]
+      },
+      "AmendmentLine": {
+        "type": "object",
+        "properties": {
+          "orderItemId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "sourceComponentRef": {
+            "type": "string"
+          },
+          "reducedQty": {
+            "type": "number"
+          },
+          "physicalReductionQty": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "receivableReductionMinor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SourceRef": {
+        "type": "object",
+        "properties": {
+          "sourceSystem": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "sourceNo": {
+            "type": "string"
+          },
+          "scopeNo": {
+            "type": "string"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeVersion": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        }
+      },
+      "OriginalReference": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceRef"
+          },
+          "orderNo": {
+            "type": "string"
+          },
+          "subOrderNo": {
+            "type": "string"
+          }
+        }
+      },
+      "AmendmentReceipt": {
+        "type": "object",
+        "properties": {
+          "amendmentNo": {
+            "type": "string"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/OriginalReference"
+          },
+          "status": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "boolean"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "receivableAdjustmentMinor": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "effectiveReceivableMinor": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "subOrderVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AmendmentLine"
+            }
+          },
+          "replacementCartNo": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BizToken": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

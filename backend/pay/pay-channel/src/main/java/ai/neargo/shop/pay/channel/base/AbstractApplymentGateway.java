@@ -55,7 +55,7 @@ public abstract class AbstractApplymentGateway implements PayApplymentGateway {
 
     @Override
     public final ApplymentResult query(String channelApplyNo) {
-        Map<String, Object> resp = client.post(queryApi(channelApplyNo), Map.of());
+        Map<String, Object> resp = client.post(queryApi(channelApplyNo), buildQuery(channelApplyNo));
         ApplymentResult r = parseResult(resp);
         log.info("[applyment] {} 查询 apply={} → {}{}", payChannel(), channelApplyNo, r.status(),
                 r.rejectReason() == null ? "" : "（" + r.rejectReason() + "）");
@@ -69,6 +69,13 @@ public abstract class AbstractApplymentGateway implements PayApplymentGateway {
 
     /** 查询接口坐标。微信是路径带单号，支付宝是接口名 + 参数。 */
     protected abstract String queryApi(String channelApplyNo);
+
+    /**
+     * 查询的业务参数。默认空 —— 微信把申请单号拼在路径里；支付宝的查询接口名固定，单号必须进参数（F06 · Review R25）。
+     */
+    protected Map<String, Object> buildQuery(String channelApplyNo) {
+        return Map.of();
+    }
 
     /** 把进件资料映射成通道要的报文。**这是各家差别最大的地方**。 */
     protected abstract Map<String, Object> buildSubmit(SubmitCommand cmd);

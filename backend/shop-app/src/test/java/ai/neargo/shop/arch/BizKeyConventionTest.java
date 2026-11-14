@@ -17,7 +17,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 业务码只许走一个出口 {@link ai.neargo.shop.common.BizKey}（ADR-033）—— <b>禁止「自己攒一个号」</b>。
+ * 普通实体码使用 {@link ai.neargo.shop.common.BizKey}（ADR-033）；人工单号使用 DocumentNumberGenerator。
+ * 内部资产/分录身份不属于人工单号，下面的具名例外保留其既有协议。
  *
  * <h2>为什么要一道源码级的闸门</h2>
  * 业务码的那几条性质（多实例不碰撞、不可枚举、带日期便于运营）全写在 {@code BizKey.next} 里。
@@ -79,7 +80,7 @@ class BizKeyConventionTest {
     }
 
     @Test
-    @DisplayName("★★★ 全仓不许有第二处「自己攒业务码」—— 业务码只走 BizKey.next（ADR-033）")
+    @DisplayName("★★★ 普通实体键不自行拼接——人工单号及具名内部身份另有协议")
     void noInlineBusinessKeyGeneration() throws IOException {
         List<String> violations = new ArrayList<>();
         for (Path main : mainSourceRoots()) {
@@ -92,7 +93,7 @@ class BizKeyConventionTest {
                     Matcher m = LITERAL_PREFIX_NO_SETTER.matcher(src);
                     while (m.find()) {
                         String stmt = statementAt(src, m.start());
-                        if (VOLATILE_SOURCE.matcher(stmt).find()) {
+                        if (VOLATILE_SOURCE.matcher(stmt).find() && !approvedInternalIdentity(f, stmt)) {
                             violations.add(BACKEND.relativize(f) + " → " + stmt.strip());
                         }
                     }
@@ -107,17 +108,103 @@ class BizKeyConventionTest {
                 .isEmpty();
     }
 
-    /** backend 下每个模块的 main 源码根。少一个模块也无妨 —— 走得到的就扫 */
-    private static List<Path> mainSourceRoots() throws IOException {
-        List<Path> roots = new ArrayList<>();
-        try (Stream<Path> modules = Files.list(BACKEND)) {
-            for (Path mod : (Iterable<Path>) modules.filter(Files::isDirectory)::iterator) {
-                Path main = mod.resolve("src/main/java");
-                if (Files.isDirectory(main)) {
-                    roots.add(main);
-                }
+    /** Preserve opaque asset/ledger identities; this never exempts human documentNo setters. */
+    private static boolean approvedInternalIdentity(Path file,String statement) {
+        String path = file.toString().replace('\\', '/');
+        if (path.endsWith("/pay/entitlement/service/EntitlementGrantWriter.java")) {
+            return statement.contains("asset.setInstanceNo(") || statement.contains("entry.setEntryNo(");
+        }
+        // Ledger entries remain opaque immutable identities; their parent vouchers carry human numbers.
+        if (path.endsWith("/pay/entitlement/service/impl/EntitlementPostingServiceImpl.java")) {
+            return statement.contains("row.setEntryNo(");
+        }
+        // Legacy usages retain protocol identity, with a separate EU mapping bound on insert.
+        if (path.endsWith("/pay/migration/service/LegacyCouponUsageRecorder.java")
+                && statement.contains("row.setUsageNo(")) {
+            return true;
+        }
+        String relative = BACKEND.toAbsolutePath().normalize()
+                .relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+        // CL is an immutable original item link; PO is durable payment process identity;
+        // RC identifies an actual successful receipt. None is a human document number.
+        return switch (relative) {
+            case "shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java" ->
+                    originalOpaqueUuid(statement, "row.setSourceLineNo", "CL");
+            case "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java",
+                    "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutPaymentServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "row.setPaymentOperationNo", "PO");
+            case "pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentOperationServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "row.setOperationNo", "PO");
+            case "pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "patch.setReceiptNo", "RC");
+            default -> false;
+        };
+    }
+
+    /** Only the existing opaque UUID form is classified; timestamps and counters remain violations. */
+    private static boolean originalOpaqueUuid(String statement, String setter, String prefix) {
+        String expected = setter + "(\"" + prefix + "\"+UUID.randomUUID().toString().replace(\"-\",\"\"))";
+        String compact = statement.replaceAll("\\s+", "");
+        return compact.equals(expected) || compact.equals(expected + ";");
+    }
+
+    @Test
+    void opaqueOriginalIdentitiesAreLimitedToTheirExactOwnerFileSetterAndUuidForm() {
+        record Identity(String file, String setter, String prefix) { }
+        var originals = List.of(
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+                        "row.setSourceLineNo", "CL"),
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java",
+                        "row.setPaymentOperationNo", "PO"),
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutPaymentServiceImpl.java",
+                        "row.setPaymentOperationNo", "PO"),
+                new Identity("pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentOperationServiceImpl.java",
+                        "row.setOperationNo", "PO"),
+                new Identity("pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java",
+                        "patch.setReceiptNo", "RC"));
+        for (var original : originals) {
+            Path file = BACKEND.resolve(original.file());
+            String uuid = "(\"" + original.prefix() + "\" + UUID.randomUUID().toString().replace(\"-\", \"\"))";
+            String statement = original.setter() + uuid;
+            String receiver = original.setter().substring(0, original.setter().indexOf('.'));
+            assertThat(looksLikeRollYourOwn(statement)).as(original.file()).isTrue();
+            assertThat(approvedInternalIdentity(file, statement)).as(original.file()).isTrue();
+            assertThat(approvedInternalIdentity(BACKEND.resolve("other/" + original.file()), statement))
+                    .as("The same setter in another source file must remain guarded").isFalse();
+            assertThat(approvedInternalIdentity(file, receiver + ".setOrderNo" + uuid))
+                    .as("Other entity setters in an approved file must remain guarded").isFalse();
+            assertThat(approvedInternalIdentity(file, original.setter()
+                    + "(\"" + original.prefix() + "\" + System.currentTimeMillis())"))
+                    .as("A timestamp cannot replace an opaque original UUID").isFalse();
+            assertThat(approvedInternalIdentity(file, original.setter()
+                    + "(\"OTHER\" + UUID.randomUUID().toString().replace(\"-\", \"\"))"))
+                    .as("The existing identity prefix is part of its protocol").isFalse();
+            assertThat(approvedInternalIdentity(file, receiver + ".setDocumentNo" + uuid))
+                    .as("Human documentNo remains outside every internal identity classification").isFalse();
+        }
+    }
+
+    @Test void humanNumbersCannotUseRandomEntityOrDigestGenerators() throws IOException {
+        Pattern setter=Pattern.compile("\\.setDocumentNo\\(");
+        Pattern forbidden=Pattern.compile("BizKey\\.next|randomUUID|currentTimeMillis|nanoTime|digest\\(");
+        var violations=new ArrayList<String>();
+        for(Path main:mainSourceRoots())try(var files=Files.walk(main)) {
+            for(Path file:files.filter(p->p.toString().endsWith(".java")).toList()) {
+                String source=stripComments(Files.readString(file));var matcher=setter.matcher(source);
+                while(matcher.find())if(forbidden.matcher(statementAt(source,matcher.start())).find())
+                    violations.add(BACKEND.relativize(file).toString());
             }
         }
-        return roots;
+        assertThat(violations).as("documentNo must come from the registered generator").isEmpty();
+        assertThat(forbidden.matcher("row.setDocumentNo(BizKey.next(BizKey.ORDER))").find()).isTrue();
+        assertThat(approvedInternalIdentity(Path.of("x/pay/entitlement/service/EntitlementGrantWriter.java"),
+            "row.setDocumentNo(UUID.randomUUID())")).isFalse();
+    }
+
+    /** backend 下每个模块的 main 源码根。少一个模块也无妨 —— 走得到的就扫 */
+    private static List<Path> mainSourceRoots() throws IOException {
+        try (var paths=Files.walk(BACKEND,5)) {
+            return paths.filter(Files::isDirectory).filter(path->path.endsWith(Path.of("src/main/java"))).toList();
+        }
     }
 }

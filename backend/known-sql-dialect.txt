@@ -73,8 +73,8 @@ backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql	alter-column-
 backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql	uca1400-collation
 backend/shop-app/src/main/resources/db/migration/V8__sys_setting.sql	uca1400-collation
 backend/shop-app/src/main/resources/db/migration/V9__mch_violation.sql	uca1400-collation
-backend/shop-inventory/src/main/resources/db/inventory/V1__inventory_baseline.sql	uca1400-collation
-backend/shop-inventory/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql	uca1400-collation
+backend/inventory/inventory-domain/src/main/resources/db/inventory/V1__inventory_baseline.sql	uca1400-collation
+backend/inventory/inventory-domain/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql	uca1400-collation
 backend/shop-app/src/main/resources/db/migration/V288__market_and_test_channel.sql	alter-column-if-exists
 
 # ── 2026-09-05 追加两条。**这份基线本来「只准变短」，这次它变长了，说明白为什么** ──

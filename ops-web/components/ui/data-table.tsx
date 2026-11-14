@@ -40,8 +40,12 @@ export interface Column<T> {
    *
    * <p>底色走 `bg-inherit` 跟着行走（斑马纹、hover 都不会脱节），
    * 所以 `TBody` 那边给奇数行补了显式底色 —— 缺了它，滑动时下层文字会透上来。
+   *
+   * <p>`"always"`：任何宽度都钉。给放在**窄容器**里的表（抽屉、侧栏）—— 那里桌面宽度照样横滚，
+   * 套餐商城订单抽屉里的「核款 / 拒绝申报」就是 1024 宽时整列落在看不见的地方（2026-11-05 实测）。
+   * 不溢出时 sticky 没有任何视觉效果。
    */
-  stickyEnd?: boolean;
+  stickyEnd?: boolean | "always";
 }
 
 export type SortDir = "asc" | "desc";
@@ -169,9 +173,15 @@ export function DataTable<T>({
        * 写 `right-0` 的话这一列会钉到错的一边（仓库里那道 check-rtl-physical 盯的就是它）。
        * `md:static` 让桌面完全回到原样：那一侧本来就不需要钉。
        */
-      c.stickyEnd && "sticky end-0 z-[1] bg-inherit md:static md:z-auto",
+      c.stickyEnd === "always" && "sticky end-0 z-[1] bg-inherit",
+      c.stickyEnd === true && "sticky end-0 z-[1] bg-inherit md:static md:z-auto",
       c.className,
     );
+  /*
+   * 钉住的表头格要实色：`bg-inherit` 继承的是中间那层透明的 `<tr>`，不是 `<thead>` 的 bg-muted，
+   * 横滚时下面的列名会透上来（「操作」叠着「申报金额」，2026-11-05 实测）。
+   */
+  const headClass = (c: Column<T>) => cn(colClass(c), c.stickyEnd && "bg-muted");
   const colStyle = (c: Column<T>) => (c.width ? { width: c.width } : undefined);
   /**
    * 列显式声明过对齐时打个标。
@@ -185,11 +195,11 @@ export function DataTable<T>({
 
   const headerCell = (c: Column<T>, i: number) => {
     const sortable = !!c.sortKey && !!onSortChange;
-    if (!sortable) return <TH key={i} className={colClass(c)} style={colStyle(c)}>{c.header}</TH>;
+    if (!sortable) return <TH key={i} className={headClass(c)} style={colStyle(c)}>{c.header}</TH>;
     const active = sortKey === c.sortKey;
     const Icon = active ? (sortDir === "desc" ? ChevronDown : ChevronUp) : ChevronsUpDown;
     return (
-      <TH key={i} className={colClass(c)} style={colStyle(c)}>
+      <TH key={i} className={headClass(c)} style={colStyle(c)}>
         <button
           type="button"
           className={cn(

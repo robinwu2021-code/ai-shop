@@ -38,6 +38,9 @@ public interface MailTemplatePort {
     /** 运营密码重置。参数：{@code realName} / {@code token} / {@code ttlMinutes}。 */
     String TPL_OPS_RESET_PWD = "TPL_MAIL_OPS_RESET_PWD";
 
+    /** 运营登录第二因子验证码。参数：{@code code} / {@code ttlMinutes}。尚无库内模板，按调用方内置文案发 */
+    String TPL_OPS_LOGIN_CODE = "TPL_MAIL_OPS_LOGIN_CODE";
+
     /**
      * @param to             收件邮箱
      * @param templateNo     {@code notify_template.template_no}

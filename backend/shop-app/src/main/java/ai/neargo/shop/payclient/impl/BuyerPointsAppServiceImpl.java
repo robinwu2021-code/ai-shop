@@ -1,4 +1,6 @@
 package ai.neargo.shop.payclient.impl;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
@@ -23,6 +25,10 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
         this.inspection = inspection;
     }
 
+    private ai.neargo.shop.payclient.PointsOrderLinkService links;
+    @Autowired
+    public void setOrderLinks(ai.neargo.shop.payclient.PointsOrderLinkService links) { this.links=links; }
+
     @Override
     public List<Account> accounts(String userNo) {
         if (userNo == null || userNo.isBlank())
@@ -35,6 +41,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
             accounts.add(
                     new Account(
                             type.typeCode(),
+                            type.name(),
                             type.market(),
                             type.currency(),
                             type.status().name(),
@@ -46,7 +53,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
                             type.deductRatioBp(),
                             type.idleDays(),
                             balance.frozen(),
-                            balance.expireAt()));
+                            balance.expireAt(), type.earningPaused()));
         }
         return List.copyOf(accounts);
     }
@@ -56,6 +63,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
         if (userNo == null || userNo.isBlank())
             throw new IllegalArgumentException("POINTS_BUYER_REQUIRED");
         var page = inspection.entries(typeCode, HolderType.USER, userNo, null, after, limit);
+        var metadata = new ai.neargo.shop.payclient.PointsEntryMetadata(inspection, typeCode, links == null ? null : sub -> links.forUser(sub, userNo));
         return new EntryPage(
                 page.rows().stream()
                         .map(
@@ -65,7 +73,9 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
                                                 row.bucket().name(),
                                                 row.deltaPoints(),
                                                 row.afterPoints(),
-                                                row.at()))
+                                                row.at(), row.voucherNo(), row.voucherDocumentNo(),
+                                                metadata.forVoucher(row.voucherNo()).direction(),
+                                                metadata.forVoucher(row.voucherNo()).businessRef(), metadata.forVoucher(row.voucherNo()).orderNo()))
                         .toList(),
                 page.next(),
                 page.hasMore());

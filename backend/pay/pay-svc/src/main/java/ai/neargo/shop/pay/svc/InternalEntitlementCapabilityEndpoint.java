@@ -23,4 +23,9 @@ public class InternalEntitlementCapabilityEndpoint {
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String supplied) {
         return InternalServiceResponses.invoke(token, supplied, () -> owner.status(request.tenantNo()));
     }
+    @PostMapping(PayInternalPaths.ENT_PRICING_CAPABILITIES)
+    public ResponseEntity<?> pricing(@RequestBody PayCapabilityRequests.Pricing request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String supplied) {
+        return InternalServiceResponses.invoke(token, supplied, () -> owner.pricing(request.scope()));
+    }
 }

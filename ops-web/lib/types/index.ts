@@ -21,6 +21,7 @@ export * from "./message";
 export * from "./content";
 export * from "./system";
 export * from "./job";
+export * from "./commerce";
 
 /**
  * 运营侧看到的一条会员（P8）。
@@ -184,6 +185,8 @@ export interface PlatformEnrollRule {
  * 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。
  */
 export interface OpsPlatformActivity {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 活动号 */
   activityNo: string;
   /** 名称 */
@@ -326,3 +329,15 @@ export interface OpsPromoActivity {
   /** 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 */
   flags: string[];
 }
+
+export type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection, EarningCategory } from "../points-earning";
+
+export type { PrintTarget, PrintHealth, PrintFleetHealth, PrintIncident, PrintIncidentPage, PrintReconcileRequest, PrintOperation } from "../api/print-types";
+
+// DTOs for the offline purchase/refund APIs exported for OpenAPI schema generation.
+export type {
+  PlanMoney,EntityPlanOffer,EntityPlanOfferEdit,EntityPlanClaim,EntityPlanConfirm,
+  EntityPlanVoid,EntityPlanAction,EntityPlanPurchase,EntityAssistedRequest,
+  EntityAssistanceContext,EntityPlanEvidenceTicket,EntityPlanSignedRead,
+} from "../entity-plan-purchase-types";
+export type {CashMoney,CashReceipt,CashRefundRequest,CashPayout,CashRefund} from "../offline-cash-types";

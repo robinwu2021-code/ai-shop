@@ -319,7 +319,7 @@ onShow(() => {
         <view v-if="b.batchStatus" class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.batchNo") }}</text>
           <view class="sh-row">
-            <text class="sh-num">{{ b.batchNo }}</text>
+            <text v-if="b.batchDocumentNo" class="sh-num">{{ b.batchDocumentNo }}</text>
             <text class="sh-chip batch__chip" :class="batchTone(b.batchStatus)">
               {{ $t(`settle.batchStatus${b.batchStatus}`) }}
             </text>

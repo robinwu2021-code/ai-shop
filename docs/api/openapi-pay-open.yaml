@@ -1,0 +1,410 @@
+# 支付开放 API 对外契约（手写；交给接入方的那一份）。
+# 与代码的一致性由 backend/shop-app/src/test/java/ai/neargo/shop/contract/OpenPayContractTest.java 守着：
+# 路由、x-sensitive 字段、鉴权与签名头、错误码、推送信封、测试向量 —— 一边改了另一边没改即红。
+# 规则来源：docs/technical/TDD-支付服务-开放API加解密与密钥分发.md §2.4（P1–P5）· TDD-支付服务-开放API加解密-API清单.md
+openapi: "3.1.0"
+info:
+  title: "支付开放 API"
+  version: "1.1.0"
+  license:
+    name: "UNLICENSED"
+  description: |
+    第三方接入方（PARTNER）调用支付服务。所有请求按 P1 签名；所有响应（含 401 / 403）按 P2 签名。
+    标了 `x-sensitive: true` 的字段必须按 P3 加密后传入，查询只回掩码。推送按 P4 加密、P2 签名。
+
+    口径：响应包 `{code, message, data, requestId}`（`code` 为 0 即成功），camelCase，金额为最小货币单位整数，
+    时间为 UTC 毫秒。AppSecret 形如 `sk_live_…` / `sk_test_…`，**前缀不参与 HMAC**，HMAC 密钥是前缀之后那 32 位。
+
+    v1.1（2026-10-28）相对 v1.0 的变化：响应签名头（P2）；敏感字段加密（P3）；推送 resource 加密（P4）且推送签名改为 P2；
+    `X-Key-Serial` / `X-Encrypt-Serial`；细分错误码；来源 IP 不在白名单由 401 改为 403；缺 scope 改为 403 FORBIDDEN。
+  x-signing:
+    request-P1: |
+      X-Signature = Base64(HMAC-SHA256(HMAC 密钥, 待签串))
+      待签串 = METHOD \n PATH \n 规范化查询串 \n X-App-Id \n X-Timestamp \n X-Nonce \n hex(SHA256(请求体))
+      规范化查询串：按键排序、RFC 3986 编码、& 连接；无查询串为空行。
+    response-P2: |
+      X-Signature = Base64(HMAC-SHA256(当前 AppSecret 版本, X-Timestamp \n X-Nonce \n hex(SHA256(响应体))))
+      平台生成 X-Timestamp / X-Nonce；密钥在平台密钥模块时另带 X-Key-Serial。AppId 不存在的 401 不签。
+    field-P3: |
+      AES-256-GCM；密钥 = EncryptKey 的 UTF-8 字节（32 字节）；IV 每个字段独立随机 12 字节；
+      AAD = AppId|字段路径（JSON 点路径，camelCase），如 APP7Q2K9XW|refundAccount.accountNo；
+      字段值 = Base64(IV ‖ 密文 ‖ 16 字节 Tag)；请求头 X-Encrypt-Serial = EncryptKey 的 KeySerial。
+    webhook-P4: |
+      resource.algorithm = AEAD_AES_256_GCM；密钥 = keySerial 指向的 EncryptKey；
+      nonce = Base64(12 字节随机)，单独一个字段，每次推送（含重推）新生成；
+      associatedData = eventType|eventId；ciphertext = Base64(密文 ‖ Tag)，不含 nonce。
+      接入方还没有 EncryptKey 时推送体带明文 data（过渡）。重推用首投时的密钥版本。
+  x-test-vectors:
+    AppId: "APP7Q2K9XW"
+    AppSecret: "sk_test_Zk3Qm9Lp2Xv7Rt5Wb8Nc4Hd6Jf1Gs0Ay"
+    hmacKey: "Zk3Qm9Lp2Xv7Rt5Wb8Nc4Hd6Jf1Gs0Ay"
+    EncryptKey: "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx"
+    P1:
+      request: 'POST /open/pay/v1/orders；body {"outOrderNo":"M20261026001","amountMinor":12000,"currency":"TWD","payMethod":"LINEPAY"}；Timestamp 1761465600000；Nonce 8c1f0e2a5b7d4c3e9f60a1b2c3d4e5f6'
+      bodyHash: "a5c9b0a01becc5121d926a7d702ff9e6d0d335367a53b9787e6e481d37bd9a35"
+      signature: "nsNjeNX+z0xMF/hIgsbFLBkbDWOFBAIYwMnKD+fQVxU="
+      wrongWithPrefix: "COTZmHskHe/MoBidbfalyUR4Qx96IXyeiRbFmEZboFA="
+    P2:
+      response: '{}；Timestamp 1761465601000；Nonce 5d2c9e7a1f3b4a6c8e0d2f4b6a8c0e1f'
+      signature: "umstQTPXokyyX02RxHKAeiNbQUc1VAAvHykNvWaInfQ="
+    P3:
+      plaintext: "8123004567"
+      iv: "a1b2c3d4e5f60718293a4b5c"
+      aad: "APP7Q2K9XW|refundAccount.accountNo"
+      value: "obLD1OX2BxgpOktc59/SAi1E7uW27KsqhePcgjLC58SwEbcblEo="
+    P4:
+      nonce: "Dw4NDAsKCQgHBgUE"
+      associatedData: "payment.succeeded|EVT20261026000001"
+      ciphertext: "i6y9W9OYb/Ebq+KW8d0K0AKGhVL6Gytj2b7m1PdHZiEHtZziNWb9FWMoK51p4/8zRI+rV7RVFlkNG22WDiVt9bUuTikZw1x5FJNj00sHucvBKouVA9nWskgdhbnZijhhODpEMGqfsRtlyXu+1d0Gig2FPt5TL08SvdMd8tDLDgT5wbA7AIE="
+      plaintext: '{"payOrderNo":"P20261026000001","outOrderNo":"M20261026001","status":"SUCCEEDED","amountMinor":12000,"currency":"TWD"}'
+  x-error-codes:
+    - {http: 401, code: 10401, name: UNAUTHORIZED, when: "AppId 不存在 / 停用 / 环境不符 / 签名错 / 密钥已吊销 / 缺签名头（统一，不细分）"}
+    - {http: 401, code: 70095, name: PAY_OPEN_TIMESTAMP_EXPIRED, when: "X-Timestamp 不在 ±300 秒内"}
+    - {http: 401, code: 70096, name: PAY_OPEN_REPLAYED, when: "X-Nonce 在窗口内用过"}
+    - {http: 403, code: 10403, name: FORBIDDEN, when: "来源 IP 不在白名单；缺该接口的 scope"}
+    - {http: 400, code: 70097, name: PAY_OPEN_FIELD_ENCRYPT_REQUIRED, when: "x-sensitive 字段传了明文"}
+    - {http: 400, code: 70098, name: PAY_OPEN_FIELD_DECRYPT_FAILED, when: "加密字段解不开（版本不认识 / 标签不符 / 字段被挪到别的路径），不分哪一步"}
+    - {http: 503, code: 70099, name: PAY_KEY_SERVICE_UNAVAILABLE, when: "密钥服务不可用（带了敏感字段的请求无法安全落库）"}
+servers:
+  - url: "https://pay.example.com"
+    description: "按环境替换；沙箱 AppId 只能打沙箱、生产 AppId 只能打生产"
+security:
+  - appSignature: []
+components:
+  securitySchemes:
+    appSignature:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: "P1：见 info.x-signing.request-P1；同时必须带 X-App-Id / X-Timestamp / X-Nonce"
+  parameters:
+    AppId:
+      name: X-App-Id
+      in: header
+      required: true
+      schema: {type: string}
+    Timestamp:
+      name: X-Timestamp
+      in: header
+      required: true
+      description: "毫秒；与服务器时间相差 ±300 秒内"
+      schema: {type: string}
+    Nonce:
+      name: X-Nonce
+      in: header
+      required: true
+      description: "8–64 位，窗口内不得重复"
+      schema: {type: string}
+    Signature:
+      name: X-Signature
+      in: header
+      required: true
+      schema: {type: string}
+    KeySerial:
+      name: X-Key-Serial
+      in: header
+      required: false
+      description: "推荐：签名用的 AppSecret 版本；带了只用那一版验，不带逐把试可用版本"
+      schema: {type: string}
+    EncryptSerial:
+      name: X-Encrypt-Serial
+      in: header
+      required: false
+      description: "有 x-sensitive 字段时必填：加密用的 EncryptKey 的 KeySerial"
+      schema: {type: string}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: {type: string}
+  headers:
+    X-Request-Id: {schema: {type: string}}
+    X-Timestamp: {schema: {type: string}, description: "P2：平台生成"}
+    X-Nonce: {schema: {type: string}, description: "P2：平台生成"}
+    X-Key-Serial: {schema: {type: string}, description: "P2：签名用的 AppSecret 版本（密钥在平台密钥模块时）"}
+    X-Signature: {schema: {type: string}, description: "P2：见 info.x-signing.response-P2"}
+  responses:
+    Signed:
+      description: "成功；响应按 P2 签名"
+      headers:
+        X-Request-Id: {$ref: "#/components/headers/X-Request-Id"}
+        X-Timestamp: {$ref: "#/components/headers/X-Timestamp"}
+        X-Nonce: {$ref: "#/components/headers/X-Nonce"}
+        X-Key-Serial: {$ref: "#/components/headers/X-Key-Serial"}
+        X-Signature: {$ref: "#/components/headers/X-Signature"}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+    Error:
+      description: "失败（错误码见 info.x-error-codes）；该 AppId 的 401 / 403 同样按 P2 签名"
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        code: {type: integer, description: "0 = 成功"}
+        message: {type: string}
+        data: {}
+        requestId: {type: string}
+    Payer:
+      type: object
+      description: "付款人（选填）；传了必须按 P3 加密，查询只回掩码"
+      properties:
+        phone: {type: string, x-sensitive: true}
+        email: {type: string, x-sensitive: true}
+        name: {type: string, x-sensitive: true}
+    RefundAccount:
+      type: object
+      description: "线下退款（ATM / 超商付款）收款账号；按 P3 加密，查询只回掩码"
+      properties:
+        bankCode: {type: string, x-sensitive: true}
+        accountNo: {type: string, x-sensitive: true}
+        accountName: {type: string, x-sensitive: true}
+    CreateOrderRequest:
+      type: object
+      required: [outOrderNo, storeRef, amountMinor, currency, subject]
+      properties:
+        outOrderNo: {type: string, maxLength: 64}
+        storeRef: {type: string, description: "门店号（须在授权里含 COLLECT）"}
+        amountMinor: {type: integer, minimum: 1}
+        currency: {type: string, description: "须与门店市场币种一致"}
+        subject: {type: string}
+        expireMinutes: {type: integer, minimum: 1, maximum: 1440, default: 30}
+        bizNo: {type: string}
+        payer: {$ref: "#/components/schemas/Payer"}
+    StartRequest:
+      type: object
+      required: [payMethod]
+      properties:
+        payMethod: {type: string}
+        payerOpenId: {type: string}
+        payerAppId: {type: string}
+    CloseRequest:
+      type: object
+      properties:
+        reason: {type: string}
+    RefundRequest:
+      type: object
+      required: [outRefundNo, amountMinor]
+      properties:
+        outRefundNo: {type: string, maxLength: 64}
+        amountMinor: {type: integer, minimum: 1}
+        reason: {type: string}
+        refundAccount: {$ref: "#/components/schemas/RefundAccount"}
+    MaskedFields:
+      type: object
+      additionalProperties: {type: string}
+      description: "敏感字段的掩码，如 {\"phone\":\"1380****5678\"}；不回密文、不回明文"
+    Order:
+      type: object
+      properties:
+        payOrderNo: {type: string}
+        outOrderNo: {type: string}
+        status: {type: string}
+        amountMinor: {type: integer}
+        paidMinor: {type: integer}
+        refundedMinor: {type: integer}
+        currency: {type: string}
+        market: {type: string}
+        payChannel: {type: string}
+        payMethod: {type: string}
+        expireAt: {type: integer}
+        succeededAt: {type: integer}
+        closedAt: {type: integer}
+        checkoutUrl: {type: string, description: "仅建单时给（带一次性令牌）"}
+        payer: {$ref: "#/components/schemas/MaskedFields"}
+    Refund:
+      type: object
+      properties:
+        payRefundNo: {type: string}
+        outRefundNo: {type: string}
+        status: {type: string}
+        amountMinor: {type: integer}
+        currency: {type: string}
+        succeededAt: {type: integer}
+        refundAccount: {$ref: "#/components/schemas/MaskedFields"}
+    StartResult:
+      type: object
+      properties:
+        payOrderNo: {type: string}
+        outTradeNo: {type: string}
+        payChannel: {type: string}
+        payParams: {type: object, additionalProperties: {type: string}}
+    PayMethod:
+      type: object
+      properties:
+        payMethod: {type: string}
+        payChannel: {type: string}
+        accessMode: {type: string}
+    WebhookEvent:
+      type: object
+      properties:
+        eventId: {type: string}
+        eventType: {type: string, enum: [PAYMENT_SUCCEEDED, PAYMENT_CLOSED, REFUND_SUCCEEDED, REFUND_FAILED]}
+        stateVersion: {type: integer, description: "丢弃版本更旧的通知"}
+        createdAt: {type: integer}
+        resource:
+          type: object
+          description: "P4；见 info.x-signing.webhook-P4"
+          properties:
+            algorithm: {type: string, const: AEAD_AES_256_GCM}
+            keySerial: {type: string}
+            nonce: {type: string}
+            associatedData: {type: string}
+            ciphertext: {type: string}
+        data: {type: object, description: "过渡：接入方还没有 EncryptKey 时才有（明文，只含掩码内容）"}
+paths:
+  /open/pay/v1/orders:
+    post:
+      summary: "建单（幂等：同 outOrderNo 同内容返回原单，内容不同 409）"
+      x-scope: "pay:create"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {$ref: "#/components/parameters/EncryptSerial"}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateOrderRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+    get:
+      summary: "按接入方单号查单"
+      x-scope: "pay:read"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: outOrderNo, in: query, required: true, schema: {type: string}}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/orders/{payOrderNo}:
+    get:
+      summary: "查单（敏感字段只回掩码）"
+      x-scope: "pay:read"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: payOrderNo, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/orders/{payOrderNo}/pay:
+    post:
+      summary: "选方式发起支付（冻结路由）"
+      x-scope: "pay:create"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: payOrderNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/StartRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/orders/{payOrderNo}/close:
+    post:
+      summary: "关单（关前必查单）"
+      x-scope: "pay:create"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: payOrderNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CloseRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/orders/{payOrderNo}/refunds:
+    post:
+      summary: "申请退款（日限额；线下退款带收款账号）"
+      x-scope: "pay:refund"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {$ref: "#/components/parameters/EncryptSerial"}
+        - {name: payOrderNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RefundRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/refunds/{payRefundNo}:
+    get:
+      summary: "查退款（收款账号只回掩码）"
+      x-scope: "pay:read"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: payRefundNo, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+  /open/pay/v1/stores/{storeRef}/pay-methods:
+    get:
+      summary: "门店可用支付方式"
+      x-scope: "pay:read"
+      parameters:
+        - {$ref: "#/components/parameters/AppId"}
+        - {$ref: "#/components/parameters/Timestamp"}
+        - {$ref: "#/components/parameters/Nonce"}
+        - {$ref: "#/components/parameters/Signature"}
+        - {$ref: "#/components/parameters/KeySerial"}
+        - {name: storeRef, in: path, required: true, schema: {type: string}}
+        - {name: market, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {$ref: "#/components/responses/Signed"}
+        default: {$ref: "#/components/responses/Error"}
+webhooks:
+  paymentEvent:
+    post:
+      summary: "推送（平台 → 接入方 webhook_url）：resource 按 P4 加密，按 P2 签名；2xx 即送达，否则退避重试 ≥ 24h"
+      parameters:
+        - {name: X-App-Id, in: header, required: true, schema: {type: string}}
+        - {name: X-Timestamp, in: header, required: true, schema: {type: string}}
+        - {name: X-Nonce, in: header, required: true, schema: {type: string}}
+        - {name: X-Key-Serial, in: header, required: false, schema: {type: string}}
+        - {name: X-Signature, in: header, required: true, schema: {type: string}}
+        - {name: X-Event-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WebhookEvent"}
+      responses:
+        "200": {description: "已收到（按 eventId 幂等，以查单为准再发货）"}

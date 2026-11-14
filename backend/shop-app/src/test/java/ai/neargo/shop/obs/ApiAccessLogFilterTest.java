@@ -180,4 +180,21 @@ class ApiAccessLogFilterTest {
         assertThat(lines(access)).isEmpty();
         assertThat(lines(slow)).as("慢日志不受那个开关影响").hasSize(1);
     }
+
+    @Test
+    @DisplayName("★★★ 内部调用（M2.6）：访问行带调用方、来源服务与实例、上游接口与来源端；rid 沿用来源的追踪号 —— 不带 IP 与操作人")
+    void internalCallsCarryTheirSource() throws Exception {
+        var req = new MockHttpServletRequest("POST", "/internal/core/entitlement/grant");
+        req.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/internal/core/entitlement/grant");
+        req.setAttribute(ai.neargo.shop.config.obs.InternalCallFilter.CALLER_ATTRIBUTE, "PAY_SVC");
+        req.setAttribute(ai.neargo.shop.config.obs.InternalCallFilter.SOURCE_ATTRIBUTE,
+                new ai.neargo.shop.spi.pay.CallSource("pay-svc", null, "pay-01", "10.0.2.5", "req-pay-77",
+                        "POST /mp/orders/{orderNo}/pay", "APP_C", "223.104.1.1", null, "U-1", null));
+        filter(1000).doFilter(req, new MockHttpServletResponse(), (rq, rs) -> { });
+
+        String line = lines(access).getFirst();
+        assertThat(line).contains(" rid=req-pay-77").contains(" caller=PAY_SVC").contains(" src=pay-svc@pay-01")
+                .contains(" origin=APP_C:POST_/mp/orders/{orderNo}/pay");
+        assertThat(line).as("慢日志会被贴进聊天框：不带终端用户 IP 与账号").doesNotContain("223.104").doesNotContain("U-1");
+    }
 }

@@ -60,7 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code /ops/fulfillment/carriers}（P-5.2 物流那一半）**本类不覆盖** ——
  * 它们在本轮由另一条并行会话现场落地，边写边测会测到半成品。缺口记在验收报告里。
  *
- * <p>手机号段 {@code 126005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 2xxxx 段归本类。
+ * <p>手机号段 {@code 186005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 2xxxx 段归本类。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -103,7 +103,7 @@ class OpsFulfillmentFlowTest {
     @Test
     @DisplayName("★ 核销监控的三个数与真实订单逐一对得上，宽限期一改逾期数立刻变")
     void redeemStatsFollowRealOrdersAndOverdueRule() throws Exception {
-        String biz = merchant("12600520001", "履约·核销监控店");
+        String biz = merchant("18600520001", "履约·核销监控店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
 
@@ -125,7 +125,7 @@ class OpsFulfillmentFlowTest {
         assertThat(paid.overdue() - before.overdue()).isZero();
 
         // 站长登记两单到货 —— 平台侧一条都不写订单状态，它只读
-        String station = loginAsOwnerOf("M0001", "12600520002");
+        String station = loginAsOwnerOf("M0001", "18600520002");
         markArrived(station, List.of(o1.subOrderNo(), o2.subOrderNo()));
 
         RedeemStatVO arrived = redeem();
@@ -198,7 +198,7 @@ class OpsFulfillmentFlowTest {
     @Test
     @DisplayName("★ 批次件数现算自订单 · 跳步被拒 · 签收之后才进分拣 · 缺件上报后 shortQty 跟着变")
     void batchDispatchThenSorting() throws Exception {
-        String biz = merchant("12600520010", "履约·分拣汇总店");
+        String biz = merchant("18600520010", "履约·分拣汇总店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
 
@@ -249,7 +249,7 @@ class OpsFulfillmentFlowTest {
          * shortQty 只能恒为 0 —— 页面上那个红色徽标永远不亮，
          * 而看的人会把「永远不亮」读成「今天没缺件」。
          */
-        String station = loginAsOwnerOf("M0001", "12600520011");
+        String station = loginAsOwnerOf("M0001", "18600520011");
         markArrived(station, List.of(o1.subOrderNo()));
         reportShortage(station, o1.subOrderNo(), skuNo, "SHORTAGE", "少了一袋");
 

@@ -1,0 +1,52 @@
+{
+  "mode": "REAL_ISOLATED_H2_HTTP",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "/ops/print/health",
+      "result": "PASS"
+    },
+    {
+      "name": "/ops/print/health merchant denied",
+      "result": "PASS"
+    },
+    {
+      "name": "/ops/print/incidents",
+      "result": "PASS"
+    },
+    {
+      "name": "/ops/print/incidents merchant denied",
+      "result": "PASS"
+    },
+    {
+      "name": "health scope rejected tenant",
+      "result": "PASS"
+    },
+    {
+      "name": "health scope rejected store",
+      "result": "PASS"
+    },
+    {
+      "name": "reconciliation exact replay same operation",
+      "result": "PASS"
+    },
+    {
+      "name": "reconciliation changed intent conflicts",
+      "result": "PASS"
+    },
+    {
+      "name": "scoped operation lookup",
+      "result": "PASS"
+    },
+    {
+      "name": "operation wrong store denied",
+      "result": "PASS"
+    }
+  ],
+  "operationStatus": "SUCCEEDED",
+  "limits": [
+    "dry-run reconciliation only; no real compensation or printing",
+    "no physical dispatch or vendor call",
+    "not full UI browser coverage"
+  ]
+}

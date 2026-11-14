@@ -1,11 +1,11 @@
 package ai.neargo.shop.inventory.api.open;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
-import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
-import ai.neargo.shop.inventory.service.OpenApiCredentialService;
-import ai.neargo.shop.inventory.service.StockCountService;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
+import ai.neargo.inventory.domain.dto.InventoryVOs.LedgerPageVO;
+import ai.neargo.inventory.domain.service.OpenApiCredentialService;
+import ai.neargo.inventory.domain.service.StockCountService;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 对外接口（商家自己的 ERP / 收银系统调）。
@@ -43,12 +45,15 @@ public class OpenInventoryController {
     private final OpenApiCredentialService credentials;
     private final StockQueryService query;
     private final StockCountService counts;
+    /** 切流（M8）：AppKey 仍在这里认；认出的业主已翻到库存服务时，转给服务的 /console/platform（服务不对外） */
+    private final InventoryConsoleRoute route;
 
     public OpenInventoryController(OpenApiCredentialService credentials, StockQueryService query,
-                                   StockCountService counts) {
+                                   StockCountService counts, InventoryConsoleRoute route) {
         this.credentials = credentials;
         this.query = query;
         this.counts = counts;
+        this.route = route;
     }
 
     /*
@@ -72,6 +77,10 @@ public class OpenInventoryController {
                                  @RequestParam(required = false) String locationId,
                                  @RequestParam(defaultValue = "100") int size) {
         String owner = credentials.ownerOf(key, secret, SCOPE_READ);
+        String entity = route.remoteEntityOfOwner(owner);
+        if (entity != null) return route.viaFor(entity, "OPENAPI", c -> c.get("/platform/balances",
+                params("type", "all", "locationId", locationId, "size", size),
+                new tools.jackson.core.type.TypeReference<List<BalanceVO>>() { }));
         return query.balances(owner, locationId, "all", Math.min(size, PAGE_MAX));
     }
 
@@ -87,6 +96,9 @@ public class OpenInventoryController {
                                @RequestParam(required = false) Long since,
                                @RequestParam(defaultValue = "100") int size) {
         String owner = credentials.ownerOf(key, secret, SCOPE_READ);
+        String entity = route.remoteEntityOfOwner(owner);
+        if (entity != null) return route.viaFor(entity, "OPENAPI", c -> c.get("/platform/ledger",
+                params("cursor", since, "size", size), LedgerPageVO.class));
         return query.ledger(owner, null, null, null, since, Math.min(size, PAGE_MAX));
     }
 
@@ -104,6 +116,9 @@ public class OpenInventoryController {
                            @RequestHeader(value = "X-App-Secret", required = false) String secret,
                            @RequestBody SyncReq req) {
         String owner = credentials.ownerOf(key, secret, SCOPE_SYNC);
+        String entity = route.remoteEntityOfOwner(owner);
+        if (entity != null) return route.viaFor(entity, "OPENAPI:" + req.requestId(),
+                c -> c.post("/platform/stock-sync", req, SyncResult.class));
         for (SyncLine l : req.lines()) {
             counts.adjustOne(owner, req.locationId(), l.itemId(), l.qty(),
                     "OTHER", "OPENAPI:" + req.requestId());

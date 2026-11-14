@@ -1,0 +1,37 @@
+# Task55D 直客接待与原操作恢复
+前置55C已完成：产品commit22e1d8938a6ad2a45b2c44e40480d7a7d64668bf，review-task-55c-r3.md SpecPASS/QualityApproved，I1–I5关闭。当前ready7/27私表，V1–V7不可修改。你是本子任务唯一实施者，不派子agent。先读此brief——这是需求与准确取值；主TDD Task55、task-55-design.md §3/7.2/8/9/10中的55D及既有ADR045是上位合同，不读取/执行整个主计划。
+本任务先完成task-55d-design.md（实际辅助签名、DTO、持久payload/phase、锁序、DAG、用户恢复/后台对账边界、AC与真实selector），发根技术核对；根放行后持续RED→编码→GREEN，不重新请求用户批准。新方案仅在既有Task55授权内补准确实现，不改业务边界。
+## 目标和准确公共合同
+实现ReceptionService.receiveWalkIn(String entityNo,String currentStoreNo,String actorNo,ReceiveWalkInReq req,String idempotencyKey) → WalkInVO，BAPI-048。
+ReceiveWalkInReq字段顺序：String storeNo,String customerRef,String guestNo,List<AppointmentItemReq> items,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt。可信store匹配，customerRef/guestNo恰一，qty展开≤10，真实可售SERVICE/P1定义；列表防御复制/拒null元素，业务号≤32、actor≤64、票据≤256、key≤128、对外UTC日期，proof相关toString脱敏。
+WalkInVO字段顺序：String operationNo,String operationState,String appointmentNo,WorkOrderVO workOrder,OffsetDateTime startAt,String recoveryAction；PENDING时workOrder=null，回显原选定startAt，不伪成功。
+OperationVO现有5字段operationNo/appointmentNo/state/action/recoveryAction末尾加String workOrderNo,String failureCode，保留旧五参构造器与语义。ServiceOperationQuery/Recovery原签名保持；原预约查询/恢复行为保持。公开HTTP/远程接线归59，本D只交真实Service/DTO/本域辅助与Job，不创建未来空Service/Controller或fake owner。已有Remote实现若真因接口增量无法编译，采用最小fail-closed兼容并明示59接线，不把default算交付。
+## 直客流程和原子链接
+当前CUSTOMER+BOOKING_MANAGE先于新动作。真实owner验证customerRef/guestNo得到规范身份，先持久外层RECEIVED与稳定derivedKey，再准备资源；禁持久票据、联系方式、claimToken/新授权。沿已验证身份续行，成功原键仍先当前权限+完整namespace/requestHash，再回原冻结结果。
+startAt=null：按原项目资源offset与before-buffer求最早未来5分钟服务网格，所有预留区间起点严格未来；指定时间同样严格未来/5分钟网格/bookingAheadDays，不发明30分钟上限。持久selectedStartAt、完整计划、派生号后不重选；过期返回PENDING/failureCode=ARRIVAL_REQUIRES_RESCHEDULE，等待当前有权人显式协调。
+复用AppointmentMatching、AppointmentPreparationService.prepareReception和AppointmentCoordinator.advance，不复制资源saga。为新CREATE接待补真实prepare原子写体：在同一个短TX创建preview/root/fence/current/预约operation及acceptPayload，原子把previewNo/appointmentNo/appointmentOperationNo/derivedKey绑定回原外层并置RESOURCE_PENDING。调用RPC均在锁外；禁止外层db.tx套内部REQUIRES_NEW。不改普通预约own规则。既有链接直接沿原号原bytes，不另建preview/hold。
+锁序沿原根→fence→current→外层operation→工单/context/tasks/submission→log/outbox；新CREATE尚无根时精确设计须说明稳定同外层串行化与根创建顺序，避免和已有REPLACE形成反向锁。
+资源RESERVE/CONFIRM明确成功后ARRIVAL_PENDING；用已持久规范身份、成功hold和接待到本预约的完整绑定做受限内部签到，再OPEN_PENDING复用C唯一最终工单写体（可最小补openReception入口），最后SUCCEEDED。内部签到只供已绑定048；普通052仍必须已有CHECKED_IN。新单仍OPEN/UNBOUND、PENDING任务/空执行事实、草稿不外送，交易/支付/开工均后续。
+UNKNOWN不创建工单/task；丢accept响应靠当前授权用户重放原accept，取得同commandNo；丢confirm响应只沿原命令查询/reconcile。RELEASE_REQUIRED继续PENDING/failureCode=RESOURCE_RELEASE_REQUIRED，保留fence及原hold，等待当前有权者沿原cancel/release协调，不能伪拒绝/清未知占用。仅明确无剩余副作用或owner明确拒绝才REJECTED。
+第二名当前有权员工可按operationNo继续原已核身份流程；所有owner看到当前真实actor，禁止伪造原员工/SecurityContext。原操作原key/payload/canonical保持。031未知guestNo仅原登记actor重放，operationNo=null，不纳入generic恢复。GUEST→USER若桥接原GUEST身份，复用现有CustomerOwnership/同scope不可变receipt，不回写历史预约。
+## 原号读取/恢复与后台对账
+按可信tenant/entity/store SQL先查本域reception operation；存在就类型分派，不存在才原appointment路径；不得catch任意NOT_FOUND/SQL错误fallback或根据不可信前缀授权。GET仅纯读，无RPC推进/guest签发。查询BOOKING_VIEW或MANAGE，恢复当前CUSTOMER+MANAGE并按动作继续原行；跨店/tenant/无权不可读取。接待claim恢复复用已实际存在的GuestRegistrationServiceImpl.recoverClaim(entity,store,actor,operationNo)，不要照旧草案虚构单参API。接待动作按实际action判别安全VO，成功不假造新的OperationVO状态。
+ReceptionRecovery.scan()只后台扫描RESOURCE_PENDING、nextRetryAt到期/lease可取且已链接原appointment operation有非空receipt、绑定可真实reconcile项；LIMIT50之前排除待原actor/新proof/ARRIVAL_PENDING/OPEN_PENDING等用户项。nextRetryAt ASC,id ASC；lease30秒，finally未终态nextRetryAt+30秒/失败+60秒并清lease，避免前50垄断。仅调用已有AppointmentCoordinator.recover对账已接受命令；不accept新命令/guest.get/签发授权/自动签到开单，终态只可置ARRIVAL_PENDING并nextRetryAt=null。
+新增RecoveryJob复用现有JobHandler/JobDeclaration、@Profile("api")和本域配置模式，无内置timer。保持beauty关闭/错误部署形态不装配、无授权不伪装staff。Task60的顶层store→job.config迁移和beauty域登记欠账不在D顺手扩改。
+## C实际可复用接口与防回退
+C有单一ReceptionReassignment，ReceptionCoordinator.reassign仅委托；WorkOrderCoordinator向下依赖该辅助，不反依赖ReceptionCoordinator/Service。D保持此无环DAG，不用Lazy/ObjectProvider隐藏内域循环。
+PreparedWorkOrderScope已有可信ResourceBookingPort.Scope，WorkOrderPreparation有统一冻结读取/verifyLocked。最终C写体及SQL授权/真实子行投影直接复用，缺失D入口应最小暴露/拆单一辅助，禁止复制。新canonical仅作用prepared/context，原预约GUEST保留；已有pending canonical/hash/payload不随claim/目录变化重建。C成功同键CONFLICT恢复严格同完整namespace/hash/原outer，SUCCEEDED终态不可回退；同预约既有workOrder或actualtask守卫和历史软删唯一键保持。
+现有receiveWalkIn接口/DTO、内部prepared签名与旧设计文字如有差别，以真实源码+冻结业务合同为准，精确设计先列清楚再改。V7资源容量多份可共享同一物理resource，不能resourceNo去重。台账/三语/Java规范按零售部分，ServiceImpl直接本域Mapper，不造Repository。
+## 验证和交付
+先设计技术核对，再真实行为RED/实现/GREEN；编译/夹具/环境错误单列，不作业务RED。WalkInRecoveryIT覆盖：原子prepare故障无半链接；无/指定时间及before-buffer网格；真实范围与草稿一次写入；accept/confirm丢响应+服务重建沿原bytes/key/commandNo；第二员工当前actor且不冒用；原成功重放/改参/撤权/异键竞争；过期不重计划；确定拒绝保守释放；所有RPC无本域TX；后台无guest.get/新accept/签到/开单；65待用户项后eligible及60eligible跨批轮转。公平性同schema不同业务号，不做120次schema初始化。至少一个防线有效消融RED→还原GREEN，报告区分前置TDD与后验消融。
+真实HOST消费链在shop-app现有BeautyReceptionIdentityIT或同归属IT，验证真实customer/guest/claim/receipt与直客新链，资源准入fixture边界明示，不引入beauty-core到member内部生产依赖。用C相同已有测试夹具复用，别继承IT重复执行整套。B/C/BM03受影响回归选真实存在的方法名并记录实际selector/统计；最终必要reactor/wiring、当前V1→V7严格升级、架构/三语/生成/SQL检查按变化，避免无关全backend反复跑。旧宿主OpsPoints/V506/[beauty,store]归60，不放宽或掩盖。
+原生统一本机cached mysql:9.7.2，普通BEAUTY_TEST_DISK=1/64MB，不用失败128MiB校准。每批启动前只读Colima MemAvailable≥512MiB，单UUID容器串行/pullnever/localhost/readiness/finally只清自己；不足报告不删他人容器、不重启/改全局VM。JDK21=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home；Maven离线repo=/tmp/codex-beauty-bm01-m2。
+更新真实JSON/API/Java方法/数据库设计生成物（不造迁移，ready7/27表）；报告task-55d-report.md含命令与完整输出路径、边界与历史失败；精确owned列表，排除根mainTDD/progress/brief/总体design/review。无push/merge/共享或生产部署。先返回已实现commit前审查快照tree和diff供根独立review，根放行后再精确产品commit；未审不标55D/Task55/BM04完成。后续56–60另任务。
+
+## 启动前技术核对补充（根2026-10-23）
+- CONFIRM明确终态后，既有reconcile会在验证receipt/intent phase3/terminalHash后清active_intent_no，但保留永久fence行与原hold；RELEASE_REQUIRED依旧外层PENDING待当前授权者cancel/release，不能开单。UNKNOWN保留活动指针/current证据。brief的“保留fence”不是强迫已完成命令永远active，禁止修改BM03已审协议来制造此锁死。
+- 当前C persist同TX完成WorkOrderVO结果；D最终WalkInVO必须在同一个范围提交事务内以准确typed包装保存，不可先SUCCEEDED/WorkOrderVO后另TX覆写。扩共享写体的最小结果适配，不复制数据写体/不循环依赖。
+- 当前selectOpenedForWorkOrder仅允许OPEN_WORK_ORDER。D实际048动作须同步加入已实现动作集合，保留原tenant/entity/store/context/root/canonical/sourceOperation等全父链及SUCCEEDED guard；加入D建成后B/C读取和错父链负例。
+- 网格按实际所有项目资源窗口的offset/buffer验证严格未来，包括后续项目较大before-buffer；不把旧草案“第一个项目”文字当放松全部资源窗口约束。
+
+技术核对通过后实施约束：当前恢复员工、原外层命名空间中的员工、已关联预约操作的真实创建员工可能不同；以原记录的完整绑定核验历史，用现有AppointmentAccess/ReceptionAccess核验当前权限，不自造realm/subjectKind白名单或要求三者字面相等。来源详情读取同时限定已实现action/endpoint配对：OPEN_WORK_ORDER对应BAPI-052/BAPI-054，RECEIVE_WALK_IN对应BAPI-048，并保留完整父链。后台SQL资格用于排队，完整Binding/hash/receipt/intent权威核验仍复用Java既有助手，写状态前再锁内核持久证据与版本；不把SQL资格当授权。

@@ -49,10 +49,12 @@ const community = useCommunityStore();
 const location = useLocationStore();
 const themeVisible = ref(false);
 const pointAccounts = ref<BuyerPointsAccount[]>([]);
+const pointsFailed = ref(false);
 const pointsHint = computed(() => {
+  if (pointsFailed.value) return String(t("points.nameLoadFailed"));
   const first = pointAccounts.value[0];
   if (pointAccounts.value.length === 1 && first)
-    return `${first.typeCode} · ${t("points.entryHint", { n: first.balance })}`;
+    return `${first.name} · ${t("points.entryHint", { n: first.balance })}`;
   return pointAccounts.value.length > 1
     ? String(t("points.typeCount", { n: pointAccounts.value.length }))
     : String(t("points.viewLedger"));
@@ -176,6 +178,8 @@ const displayName = computed(() =>
 function gotoCommunity() {
   uni.navigateTo({ url: ROUTES.address });
 }
+
+function gotoStoredValue() { uni.navigateTo({ url: ROUTES.storedValue }); }
 
 function gotoPoints() {
   uni.navigateTo({ url: ROUTES.points });
@@ -566,14 +570,14 @@ function refreshMe() {
     // 登出之后不该还挂着别人的邀请进度
     fission.value = null;
   }
-  if (FEATURES.points && user.isPhoneLogin) {
-    api.pointsAccounts().then((accounts) => { if (user.token === token) pointAccounts.value = accounts; })
-      .catch(() => { if (user.token === token) pointAccounts.value = []; });
-  } else pointAccounts.value = [];
+  if (config.flag("points") && user.isPhoneLogin) {
+    api.pointsAccounts().then((accounts) => { if (user.token === token) { pointAccounts.value = accounts; pointsFailed.value = false; } })
+      .catch(() => { if (user.token === token) { pointAccounts.value = []; pointsFailed.value = true; } });
+  } else { pointAccounts.value = []; pointsFailed.value = false; }
 }
 onShow(refreshMe);
 watch(() => user.isPhoneLogin ? user.token : "", () => {
-  applyStatus.value = null; unread.value = 0; fission.value = null; pointAccounts.value = [];
+  applyStatus.value = null; unread.value = 0; fission.value = null; pointAccounts.value = []; pointsFailed.value = false;
   refreshMe();
 });
 </script>
@@ -675,7 +679,11 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
       <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
       </view>
-      <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoStoredValue">
+        <text class="txt-body cell__label">{{ $t("storedValue.title") }}</text>
+        <text class="txt-caption cell__value">{{ $t("storedValue.entryHint") }}</text>
+      </view>
+      <view v-if="config.flag('points')" class="sh-cell sh-row sh-row--between" @tap="pointsFailed ? refreshMe() : gotoPoints()">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
         <text class="txt-caption cell__value sh-num">{{ pointsHint }}</text>
       </view>

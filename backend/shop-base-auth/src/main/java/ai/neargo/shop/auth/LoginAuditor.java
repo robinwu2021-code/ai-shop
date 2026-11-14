@@ -68,6 +68,10 @@ public interface LoginAuditor {
             return null;
         }
         String p = principal.trim();
+        if (p.contains("@")) {
+            // 邮箱一律整体遮盖：审计要的是「这一次失败了」，不是「谁的邮箱」
+            return "***@***";
+        }
         return p.length() == 11 && p.chars().allMatch(Character::isDigit)
                 ? p.substring(0, 3) + "****" + p.substring(7)
                 : p;

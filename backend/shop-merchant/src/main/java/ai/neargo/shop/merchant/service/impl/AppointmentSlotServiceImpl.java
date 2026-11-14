@@ -51,6 +51,17 @@ public class AppointmentSlotServiceImpl implements AppointmentSlotService {
     }
 
     @Override
+    public String storeOf(String merchantNo, String slotNo) {
+        MchAppointmentSlot slot = DataScopeContext.executeWithoutScope(() ->
+                slotMapper.selectOne(Wrappers.<MchAppointmentSlot>lambdaQuery()
+                        .eq(MchAppointmentSlot::getSlotNo, slotNo).last("LIMIT 1")));
+        if (slot == null || !slot.getEntityNo().equals(merchantNo)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return slot.getStoreNo();
+    }
+
+    @Override
     @Transactional
     public SlotVO close(String merchantNo, String slotNo) {
         MchAppointmentSlot slot = DataScopeContext.executeWithoutScope(() ->

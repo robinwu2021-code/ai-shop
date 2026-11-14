@@ -22,7 +22,7 @@ import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import BizLoginConsent from "@/components/biz/biz-login-consent.vue";
 import BizPhoneLoginButton from "@/components/biz/biz-phone-login-button.vue";
-import { ACTIVITY_NONE, FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { ACTIVITY_NONE, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, distance as fmtDistance, money } from "@shared/utils/format";
 import { pricingFor } from "@shared/strategies/pricing";
 import type { OrderPointsQuote } from "@/api/contract";
@@ -356,7 +356,7 @@ const amountStale = ref(false);
  * 点了支付之后才知道，而那时候平台既解释不清也补救不了。
  */
 const capability = ref<CheckoutCapability | null>(null);
-const pointsEnabled = computed(() => FEATURES.points && capability.value?.pointsEnabled === true);
+const pointsEnabled = computed(() => config.flag("points") && capability.value?.pointsEnabled === true);
 
 /**
  * 这一单里**送不到这个地址**的商家。空数组 = 都送得到。

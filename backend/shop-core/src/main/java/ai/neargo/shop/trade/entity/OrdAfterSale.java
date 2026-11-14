@@ -15,6 +15,9 @@ import lombok.Setter;
 @Setter
 @TableName("ord_after_sale")
 public class OrdAfterSale extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     public static final String APPLIED = "APPLIED";
     public static final String REFUNDING = "REFUNDING";
@@ -137,6 +140,11 @@ public class OrdAfterSale extends BaseEntity {
      * 否则会多补一次，而多出来的那几件不会有任何地方报错。
      */
     private Integer stockRestored;
+
+    /** Immutable source request identity; historical consumer cases have no external source claim. */
+    private String sourceSystem;
+    private String sourceRequestKey;
+    private String sourceRequestHash;
 
     /** Receiving a return does not imply that the goods are fit to restock. */
     private Boolean restockApproved;

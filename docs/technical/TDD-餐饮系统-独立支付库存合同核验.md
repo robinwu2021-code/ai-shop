@@ -33,8 +33,8 @@
 ### 1.2 库存：独立库不等于跨进程合同
 
 - [InventoryStockPort](../../backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java) 在 `stock-authority=INVENTORY` 时提供主实现，直接调用 ReservationService、StockCountService、InventoryAclService、LocationService 及恢复/收货适配。
-- [InventoryDataSourceConfig](../../backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/config/InventoryDataSourceConfig.java) 已提供独立数据源、事务与迁移历史；本地数据库隔离不是 HTTP 跨进程的证据。
-- [ReservationService](../../backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationService.java) 有本地预留、提交、分配、出库、释放、取消墓碑和到期恢复能力，但没有对外的“按原预留引用查询完整结果”方法；实现的 `find` 是私有方法。
+- [InventoryDataSourceConfig](../../backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/config/InventoryDataSourceConfig.java) 已提供独立数据源、事务与迁移历史；本地数据库隔离不是 HTTP 跨进程的证据。
+- [ReservationService](../../backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/ReservationService.java) 有本地预留、提交、分配、出库、释放、取消墓碑和到期恢复能力，但没有对外的“按原预留引用查询完整结果”方法；实现的 `find` 是私有方法。
 - [OpenInventoryController](../../backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/open/OpenInventoryController.java) 只有 `GET /open/v1/items`、`GET /open/v1/stock-ledger`、`POST /open/v1/stock:sync`。它使用 X-App-Key/X-App-Secret 和 read/stock:sync 权限，不能拿盘点同步冒充订单预留、释放或原路恢复，也不能直接换成内部服务密钥调用。
 
 ### 1.3 环境资料的证据等级
@@ -97,7 +97,7 @@
 ### 2.3 容易被默认值掩盖的合同差异
 
 1. [StockPort](../../backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockPort.java) 的allocatePaid、issue、releaseAllocated默认可空执行；原路恢复/收货默认抛UnsupportedOperationException；returnReceiptStatus默认NOT_TRACKED；sellable默认MAX_VALUE。新远程实现必须逐项覆写并验收，不能把默认值当“成功”或“库存无限”。
-2. [ReservationServiceImpl.reserve](../../backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationServiceImpl.java) 在同owner/externalRef命中既有有效预留时直接回原reservationId，没有先比较全部lines/qty/lifecycleVersion；本地幂等不等于远程同键异参已经拒绝。CORE-01B须冻结/校验请求摘要，同时验证同键并发，不能只靠前端不改参。
+2. [ReservationServiceImpl.reserve](../../backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/impl/ReservationServiceImpl.java) 在同owner/externalRef命中既有有效预留时直接回原reservationId，没有先比较全部lines/qty/lifecycleVersion；本地幂等不等于远程同键异参已经拒绝。CORE-01B须冻结/校验请求摘要，同时验证同键并发，不能只靠前端不改参。
 3. 跨owner的lock目前依赖同一inv事务保证整批全成或全败；远程客户端逐owner调用会改变这个保证。须由权威侧批量原子受理，或另行评审订单持久化意图的分组恢复合同，不能用普通for循环代替。
 4. 当前StockPort的数量是int。餐饮称重菜、配料组合及BOM扣料的BigDecimal/基础单位转换、精度与损耗没有在该交易接口中表达；不得静默取整。CORE-02A要指定单位和精度合同，既有整数份数能力可先按受支持范围交付。
 5. lifecycleVersion=2表示已付分配与交接出库分离，不自动证明“先吃后付”已支持。未收款受理、信用/押金/额度与释放时点必须有对应核心授权和库存承诺；不能直接调用allocatePaid假装支付已完成。

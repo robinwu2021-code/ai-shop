@@ -10,6 +10,16 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Reverse facts and durable event handoff, shared by the real main-app server and pay-svc client. */
 public interface CoreEntitlementInternalApi {
+    @PostExchange(BrandCouponSourceInternal.TEMPLATE_VALIDATION)
+    BrandCouponSourceInternal.ValidationReply validateBrandCouponTemplate(
+            @RequestBody BrandCouponSourceInternal.TemplateValidation request);
+    @PostExchange(BrandCouponSourceInternal.USE_VALIDATION)
+    BrandCouponSourceInternal.UseReply validateBrandCouponUse(
+            @RequestBody BrandCouponSourceInternal.UseValidation request);
+    @PostExchange(BrandCouponSourceInternal.AUDIENCE)
+    EntitlementIssueAudiencePort.AudienceSnapshot brandCouponAudience(
+            @RequestBody BrandCouponSourceInternal.AudienceQuery request);
+
     @PostExchange(EntitlementCoreInternal.LEGACY_COUPON_AUDIENCE)
     LegacyCouponAudiencePort.Fact legacyCouponAudience(@RequestBody EntitlementCoreInternal.LegacyAudience request);
     @PostExchange(EntitlementCoreInternal.HISTORY_RETURN_SOURCE)

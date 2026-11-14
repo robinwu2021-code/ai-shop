@@ -1,0 +1,15 @@
+{
+  "build": "SUCCESS",
+  "tests": 3,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.paybridge.StoredValueNotificationSubscriberTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "log": "/tmp/print-stored-value-notify-guard-green.log",
+  "scope": "Test aligns exact USER recipient and inbox content with proxied pushTo writer; fixed event-and-recipient SHA256 dedup key; no production changes"
+}

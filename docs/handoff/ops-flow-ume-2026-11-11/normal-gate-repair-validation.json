@@ -1,0 +1,259 @@
+{
+  "baseCommit": "c51adc96d09b0dbcc4918f107478e1950b08dee6",
+  "scope": "Current source boundaries, mandatory native fixture wiring, regional SMS policy and independent reviewer preparation. Normal clean HEAD full pre-push remains required before remote push.",
+  "latestPassingReports": [
+    {
+      "name": "ai.neargo.shop.arch.ArchitectureTest",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "name": "ai.neargo.shop.arch.BackendI18nParityTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.arch.BizEndpointPermTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.arch.BizKeyConventionTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.arch.InventoryDisabledContextTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.commercebridge.BizFoundationAccessMysqlTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.commercebridge.BizIdentityNativeMysqlTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.commercebridge.BizLoginStoreNativeMysqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.commercebridge.CommerceAccessSecurityFlowTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.commercebridge.StoreEntityClaimCoordinatorMysqlTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.invbridge.ExecutionStockRetentionExhaustionTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.invbridge.ExecutionStockRetentionRecoveryJobTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.portal.biz.BrandMarketingCommandBindingTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.portal.biz.BrandMarketingHttpContractTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.promotion.BrandCouponApplicationMysqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.scenario.ExecutionStockRetentionArchitectureTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.member.scope.MemberBrandScopeTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.member.scope.MemberIdentityConflictTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.member.scope.MemberScopeReferenceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.member.service.BrandAudienceSnapshotMysqlTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.platform.MarketPhonePolicyServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.promotion.cost.BrandPromotionCostInputTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.promotion.cost.BrandPromotionCostNativeMysqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.trade.order.service.create.CounterEconomicCompatibilityTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.trade.service.impl.ChannelFulfillmentEvidenceStoreTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.trade.service.impl.NativeChannelAfterSaleServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.user.ProfileAndPasswordTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.user.service.EmailOtpAuthTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.user.service.RegionalSmsAdmissionTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.user.service.SmsMockPrefixTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.inventory.service.InventoryAvailabilityPortTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "ai.neargo.shop.inventory.service.impl.FoodStockProjectionRemoteTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "totals": {
+    "tests": 186,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "commands": [
+    "mvn -B -o -fae -pl shop-app -am clean test -Dtest=<31 affected classes> -Dsurefire.failIfNoSpecifiedTests=false + managed MySQL9 and disposable native cost database",
+    "mvn -B -o -fae -pl shop-app -am test -Dtest=BizFoundationAccessMysqlTest,BizIdentityNativeMysqlTest,BizLoginStoreNativeMysqlTest,CommerceAccessSecurityFlowTest -Dsurefire.failIfNoSpecifiedTests=false",
+    "mvn -B -o -fae -pl shop-app -am test -Dtest=CommerceAccessSecurityFlowTest -Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "rerunNotes": "Initial clean run passed architecture and native financial cases but exposed required beans absent in old manual contexts. Only affected native contexts were rerun after wiring fixes; encoded-route fixture was then rerun alone after adding its required review assembler. Latest per-class XML above is authoritative; earlier broad logs retain their failures.",
+  "nativeFinancialEvidence": "Two native cost tests use the unchanged V652/V484 production DDL and real refund facts adapter; processed stale refund snapshots retain amounts, unprocessed mismatched sub-order snapshots conflict. Dedicated cm_cost_ops_gate schema and private credential file removed in finally.",
+  "review": "Independent read-only review found no blocking change to transaction/SQL/permissions; source-only actual design inventory refreshed.",
+  "baseline": "No baseline increased; 3 previously fixed backend exceptions removed.",
+  "logs": [
+    {
+      "name": "normal-gate-boundaries-focused.log",
+      "sha256": "d458b26fbbcb2995c5ab769975ac83b172d4fb5469d94a4ebe684a62787190ae"
+    },
+    {
+      "name": "normal-native-access-fixtures.log",
+      "sha256": "7b896416c2d1c7df06cff8327d8997a60ee999c66c71fe8da53cc76d450c2c41"
+    },
+    {
+      "name": "normal-native-access-encoded.log",
+      "sha256": "6afaa5c592abc47af8bd0bf8df2467effa58d8a2c92da84e66f6b26afc7ee46d"
+    }
+  ]
+}

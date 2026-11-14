@@ -1,3 +1,12 @@
+/** Order reward processing projection; accepted work is not a posted account credit. */
+export type OrderPointsEarningState = "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
+
+/** Lifecycle of the order points hold and its subsequent returns. */
+export type OrderPointsRedemptionState = "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+
+/** Processing state of the order points refund projection. */
+export type OrderPointsRefundState = "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+
 /** StorePointType 的 status 取值域，按服务端契约校验。 */
 export type StorePointTypeStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
@@ -21,6 +30,12 @@ import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
+  /** Whether new earning is paused; existing accounting obligations still complete. */
+  earningPaused?: boolean;
+  /** Whether this type is the server-selected default for order rewards. */
+  orderDefault?: boolean;
+  /** 积分名称 */
+  name: string;
   /** 最大抵扣比例，万分比 */
   deductRatioBp: number;
   /** 无活动失效天数 */
@@ -77,6 +92,10 @@ export interface StorePointEntryPage {
     entryNo: string;
     /** 原记账凭证编号 */
     voucherNo: string;
+    voucherDocumentNo?: string | null;
+    direction?: string | null;
+    businessRef?: string | null;
+    orderNo?: string | null;
     /** 账本持有人类型 */
     holderType: "STORE";
     /** 账本持有人编号，与持有人类型联合定位 */
@@ -400,6 +419,12 @@ export interface BizScope {
    * 而分岔的表现是「看得见但点了报错」。
    */
   perms: string[];
+  /**
+   * 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值**
+   * （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。
+   * 老后端不下发 → 当成不认识，显示「店內人員」。
+   */
+  actorNo?: string;
 }
 /**
  * 结算流水状态。**与后端 `StlBill` 逐字一致**。
@@ -1167,6 +1192,10 @@ export interface PermOption {
  * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
  */
 export interface SettleBill {
+  /** Human-facing settlement batch number; absent for historical unmapped batches. */
+  batchDocumentNo?: string | null;
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
   /** 对应的子订单号 —— 分账以它为单位 */
@@ -1286,6 +1315,8 @@ export type SettleBatchStatus =
  * 我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
  */
 export interface MySettleBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 */
   batchNo: string;
   /** 支付通道码。**不同通道账期不同，所以不合批** */
@@ -1716,6 +1747,25 @@ export interface MerchantPlan {
   suspendedStores: string[];
   /** 三档对比，顺序即展示顺序（后端按 sort 排好） */
   tiers: PlanTier[];
+  /**
+   * 同 `suspendedStores` 那几家，带门店号与未完成订单数。
+   * `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。
+   */
+  suspendedStoreDetails?: SuspendedStore[];
+  /**
+   * 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。
+   * **后端算好给**，端上不要再按「到期 + 7 天」自己推。
+   */
+  graceUntil?: number | null;
+}
+/** 被方案降级压成只读的一家店。 */
+export interface SuspendedStore {
+  /** 门店号 */
+  storeNo: string;
+  /** 门店名 */
+  name: string;
+  /** 还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约 */
+  openOrders: number;
 }
 /** 档位对比的一行。 */
 export interface PlanTier {
@@ -1766,7 +1816,6 @@ export interface MerchantApplyStatus {
   //
   // 为什么整份带回来而不是只给状态：驳回往往只缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」—— 而重来的人有相当一部分就不回来了。
-
   /** 联系人姓名 */
   contactName: string;
   /** 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 */
@@ -1813,7 +1862,6 @@ export interface MerchantApplyStatus {
    * 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。
    */
   asPickupPoint?: boolean;
-
   /**
    * <b>这张单是运营代填的</b>（三期）。
    *
@@ -1915,4 +1963,38 @@ export interface StorePointStatementReceipt {
   reference: string;
   /** 操作受理时间，毫秒时间戳 */
   at: number;
+}
+
+/** Server-projected earning for an authorized order; accepted work is not an account credit. */
+export interface OrderPointsEarning {
+  /** Parent order identifier for the reward inspection. */
+  orderNo: string;
+  /** Unique points-type code; separate points types never share balances or rules. */
+  typeCode: string;
+  /** Human-readable name displayed for this business resource. */
+  name: string;
+  /** ISO currency code determining the interpretation of monetary amounts. */
+  currency: string;
+  /** Current processing projection for the submitted business operation. */
+  state: OrderPointsEarningState;
+  /** Processing state of the order's points hold, consumption and subsequent returns. */
+  redemptionState: OrderPointsRedemptionState;
+  /** Points actually consumed by this order's completed redemption. */
+  usedPoints: number;
+  /** Processing state of points returned for this order's refund. */
+  refundState: OrderPointsRefundState;
+  /** Points actually returned to the account by completed refund operations. */
+  returnedPoints: number;
+  /** Original expected reward points frozen when the order was accepted. */
+  expectedPoints: number;
+  /** Reward points actually posted to the account ledger. */
+  grantedPoints: number;
+  /** Granted points still awaiting conversion to an available balance. */
+  pendingPoints: number;
+  /** Granted points that have become available for use. */
+  availablePoints: number;
+  /** Previously granted points subsequently recovered by refunds or reversals. */
+  reclaimedPoints: number;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason: string | null;
 }

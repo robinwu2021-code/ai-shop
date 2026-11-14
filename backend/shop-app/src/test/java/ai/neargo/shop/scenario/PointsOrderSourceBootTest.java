@@ -21,6 +21,13 @@ import javax.sql.DataSource;
 @SpringBootTest
 @ActiveProfiles("test")
 class PointsOrderSourceBootTest {
+    @Autowired JdbcTemplate ownerJdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void owners() {
+        StoreOwnerFixture.store(ownerJdbc, "M", "ST");
+    }
+
     @Autowired OrderPointsCoordinator coordinator;
     @Autowired ai.neargo.shop.pay.points.event.PointsEventWorker worker;
     @Autowired ai.neargo.shop.pay.points.store.PointsReadStore payRead;
@@ -32,6 +39,7 @@ class PointsOrderSourceBootTest {
     @Test
     void accepted_pay_event_survives_ack_loss_without_duplicate_kernel_delivery() {
         var fixture = new PointsOrderSourceOutboxTest();
+        fixture.storeOwners = store -> StoreOwnerFixture.store(ownerJdbc, "M", store);
         fixture.journal = journal;
         fixture.bindings = bindings;
         fixture.policies = policies;
@@ -44,8 +52,8 @@ class PointsOrderSourceBootTest {
                 == 0) {
             paySql.update(
                     "INSERT INTO"
-                        + " pts_point_type(type_code,market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
-                        + " VALUES('TYPE','CN','CNY',2,1,'DRAFT',2000,30)");
+                        + " pts_point_type(type_code,name,market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
+                        + " VALUES('TYPE','Source test points','CN','CNY',2,1,'DRAFT',2000,30)");
             paySql.update("INSERT INTO pts_fund_pool(type_code,currency) VALUES('TYPE','CNY')");
         }
         var draft = fixture.draft(UUID.randomUUID().toString());
@@ -122,6 +130,7 @@ class PointsOrderSourceBootTest {
     @Test
     void source_and_platform_outbox_commit_and_rollback_together() {
         var fixture = new PointsOrderSourceOutboxTest();
+        fixture.storeOwners = store -> StoreOwnerFixture.store(ownerJdbc, "M", store);
         fixture.journal = journal;
         fixture.bindings = bindings;
         fixture.policies = policies;

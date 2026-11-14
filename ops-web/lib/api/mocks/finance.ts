@@ -12,6 +12,7 @@ const mockPayouts: Payout[] = [];
 import { pointsInspectionMock } from "./points-inspection";
 import { pointsWorkbenchMock } from "./points-workbench";
 import { pointsTreasuryMock } from "./points-treasury";
+import { pointsEarningMock } from "./points-earning";
 import { pointsConfigurationMock } from "./points-configuration";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -38,10 +39,7 @@ function mustBill(settleNo: string) {
 }
 
 export const financeMock: FinanceApi = {
-  pointsAccounts: async (q) => ({ rows: [], next: q.after ?? 0, hasMore: false }),
-  pointsTransactions: async (q) => ({ rows: [], next: q.after ?? 0, hasMore: false }),
-  pointsTransaction: async () => { fail("演示没有对应凭证", "No corresponding voucher in this demo"); },
-  pointsPeriodStats: async () => { fail("演示没有统计快照", "No statistics snapshots in this demo"); },
+  ...pointsEarningMock,
   pointsAdjustments: (q) => wait({ rows: [], next: q.after ?? 0, hasMore: false }),
   submitPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),
   reviewPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),
@@ -342,10 +340,10 @@ export const financeMock: FinanceApi = {
     const a = db.afterSales.find((x) => x.afterSaleNo === asNo);
     if (!a) notFound("售后单", "After-sales case", asNo);
     if (!a.refundSplitPending) fail("该售后单没有待回退的分账", "This case has no split waiting to be reversed");
-    if (!a.share) fail("该售后单尚未判定赔付比例，无法按比例回退", "Liability shares have not been decided, so the reversal cannot be apportioned");
-    // 回退完成 → 清标记。不清的话队列永远消不掉，运营会反复执行同一单
-    a.refundSplitPending = false;
-    a.status = "REFUNDED";
+    // A manual retry cannot prove reversal or cash arrival, even in the operator preview.
+    a.status = "REFUNDING";
+    a.refundExecution = { executionNo: a.refundExecution?.executionNo ?? `RF-${asNo}`,
+      status: "UNKNOWN", phase: "REVERSAL", errorCode: "REVERSE_UNCONFIRMED", resourceStatus: "PENDING" };
     return wait(a, 400);
   },
 
@@ -575,6 +573,12 @@ export const financeMock: FinanceApi = {
   updatePayChannel: async (channel, v) => {
     const row = db.payChannels.find((c) => c.payChannel === channel);
     if (!row) fail("通道不存在", "Channel not found");
+    // 与后端 PayChannelMasterServiceImpl#updateSettings 一致：W2 起「无市场行 = 不可用」，空列表直接拒
+    if (v.markets !== undefined) {
+      const codes = v.markets.replace(/[[\]"\s]/g, "").split(",").filter(Boolean);
+      if (!codes.length) fail("至少填一个市场；要停用请用开关", "Enter at least one market; use Disable to turn it off");
+      v = { ...v, markets: JSON.stringify(codes) };
+    }
     Object.assign(row, v);
     return wait(withCurrentRate(row), 300);
   },

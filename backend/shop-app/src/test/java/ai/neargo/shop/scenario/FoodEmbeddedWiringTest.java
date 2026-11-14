@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ai.neargo.inventory.domain.mapper.InventoryMappers;
 import ai.neargo.shop.config.FoodDeploymentConfiguration;
 import ai.neargo.shop.config.MybatisPlusConfig;
 import ai.neargo.shop.config.PlatformDataSourceConfig;
@@ -34,7 +35,12 @@ class FoodEmbeddedWiringTest {
         assertThat(present(WEB)).isEqualTo(!SHAPE.equals("retail"));
         assertThat(present(CORE)).isEqualTo(SHAPE.equals("embedded"));
         assertThat(present("ai.neargo.shop.food.server.FoodApplication")).isFalse();
-        for(String service:new String[]{"DiningSession","Check","CheckCart","Reservation","Dish","OptionGroup","Recipe","Menu"}) {
+        assertThat(present("ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl"))
+                .isEqualTo(!SHAPE.equals("retail"));
+        for(String service:new String[]{"DiningSession","Check","CheckCart","DiningPricingFacts","Reservation","Dish","OptionGroup","Recipe","Menu",
+                "DiningOrder","DiningCheckout","DiningReturn","BusinessReturn","BusinessShare","DiningBatchQuery",
+                "KitchenTask","BusinessClose","FoodPrint",
+                "ProductionConsumption","KitchenReturn","Queue","DiningPickupVerification"}) {
             assertThat(present("ai.neargo.shop.food.service."+service+"Service")).isEqualTo(!SHAPE.equals("retail"));
             assertThat(present("ai.neargo.shop.food.foodclient.Remote"+service+"Service")).isEqualTo(!SHAPE.equals("retail"));
             assertThat(present("ai.neargo.shop.food.service.impl."+service+"ServiceImpl")).isEqualTo(SHAPE.equals("embedded"));
@@ -122,12 +128,17 @@ class FoodEmbeddedWiringTest {
                 .flatMap(filter -> Arrays.stream(filter.pattern()))
                 .map(Pattern::compile).toList();
         for (String excluded : new String[] {"ai.neargo.shop.food.mapper.FoodMappers$TableMapper",
-                "ai.neargo.shop.inventory.mapper.InventoryMappers$StockMapper",
                 "ai.neargo.shop.pay.mapper.PayMappers$SettleMapper"}) {
             assertThat(filters.stream().anyMatch(pattern -> pattern.matcher(excluded).matches()))
                     .as("global scan must exclude %s", excluded).isTrue();
         }
         assertThat(filters.stream().noneMatch(pattern ->
                 pattern.matcher("ai.neargo.shop.trade.mapper.OrderMapper").matches())).isTrue();
+        // 进销存搬进独立服务（ADR-046）后包名不在 ai.neargo.shop 下，全局扫描根本够不着它 ——
+        // 比「靠排除规则挡住」更硬。这里守的是「它别被挪回扫描根之下」
+        String inventoryMapper = InventoryMappers.BalanceMapper.class.getName();
+        assertThat(Arrays.stream(MybatisPlusConfig.class.getAnnotationsByType(MapperScan.class))
+                .flatMap(scan -> Arrays.stream(scan.basePackages()))
+                .noneMatch(base -> inventoryMapper.startsWith(base + "."))).isTrue();
     }
 }

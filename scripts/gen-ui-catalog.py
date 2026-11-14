@@ -37,7 +37,9 @@ DOMAINS = [
     ("团购与求团", ["groups", "quotes", "requests", "group", "request", "request-create", "group-host",
                     "group-open"]),
     ("钱", ["settle", "payment", "plan", "wallet", "points", "points-records",
-            "income", "invoice"]),
+            "income", "invoice",
+            # 商家端支付（TDD-支付服务-I5接入层 S8）
+            "pay-collect", "pay-flow", "pay-qrcodes", "pay-grants"]),
     ("数据", ["stats", "cross-store"]),
     # 进销存（P-18）。**独立成一个域，不并进「商品」** —— 那边管的是
     # 「这件货长什么样、能不能卖」，这边管的是「现在有多少、是怎么变成这么多的」
@@ -206,6 +208,21 @@ def read_ops() -> list[dict]:
     return out
 
 
+def read_checkout() -> list[dict]:
+    """收银台 H5：路由表 `checkout-h5/src/routes.ts` 是唯一真源（path / title 两个键，一行一条）。"""
+    src = (ROOT / "checkout-h5/src/routes.ts").read_text(encoding="utf-8")
+    out: list[dict] = []
+    for m in re.finditer(r'\{\s*path:\s*"([^"]+)"[^}]*?title:\s*"([^"]+)"', src):
+        route, title = m.group(1), m.group(2)
+        out.append({
+            "app": "checkout-h5", "route": route, "title": title, "domain": "收银", "tab": False, "status": "已实现",
+            "proto": proto_of("checkout-h5", route.lstrip("/"))[0],
+            "protoUrl": proto_of("checkout-h5", route.lstrip("/"))[1],
+            "preview": DEV_ORIGIN["checkout-h5"] + route,
+        })
+    return out
+
+
 # 原型稿。**登记表只有一份**：prototypes/registry.json（真源在仓库，claude.ai 上的是发布副本）。
 # 此前这里手写了四张表（默认地址、按路由指到哪一份、锚点、还没落地的页面），
 # 三份稿子先后覆盖同一批路由时，谁赢取决于几段 update 的先后 —— 没人说得清。
@@ -245,12 +262,14 @@ def proto_of(app, path):
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
 DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:5176/#",
-              "ops-web": "http://localhost:3000"}
+              "ops-web": "http://localhost:3000",
+              # 收银台 H5 本机用假接口起（npm run dev:mock -w ai-shop-checkout-h5）；路由带参数，预览落到参数占位上
+              "checkout-h5": "http://localhost:5177"}
 
 
 def main() -> None:
     check = "--check" in sys.argv
-    rows = read_uni("b-app") + read_uni("c-app") + read_ops()
+    rows = read_uni("b-app") + read_uni("c-app") + read_ops() + read_checkout()
     # 登记了路由、页面还没建的屏：列成「原型」行。落地之后它自然从 pages.json / nav.ts 里出现，
     # 这里不用删任何东西 —— 判据是路由存不存在，不是人记不记得
     have = {(r["app"], r["route"]) for r in rows}
@@ -258,7 +277,7 @@ def main() -> None:
               "proto": proto_of(a, r)[0], "protoUrl": proto_of(a, r)[1], "preview": None}
              for a, r, t in PROTO_SCREENS if (a, "/" + r) not in have]
 
-    apps = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}
+    apps = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端", "checkout-h5": "收银台 H5"}
     catalog: dict = {"apps": [], "total": len(rows)}
     for app, app_label in apps.items():
         mine = [r for r in rows if r["app"] == app]
@@ -408,7 +427,7 @@ footer{margin-top:70px;border-top:1px solid var(--rule);padding-top:16px;
 </header>
 {{BODY}}
 <footer>已实现 = 路由已存在　原型 = 只有设计稿　待建 = 导航里登记了但页面未建<br>
-「原型」跳设计稿对应的那一屏；「预览」跳本机 dev server（b-app 5175 / c-app 5176 / ops-web 3000，需先启动）<br>
+「原型」跳设计稿对应的那一屏；「预览」跳本机 dev server（b-app 5175 / c-app 5176 / ops-web 3000 / 收银台 H5 5177，需先启动）<br>
 清单不手工维护：加了一页而清单没变，说明该重新跑一次生成器</footer>
 </div>
 """

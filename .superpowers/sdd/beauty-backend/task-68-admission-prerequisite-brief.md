@@ -1,0 +1,11 @@
+# Task68 whole-slice admission prerequisite — bounded design correction
+
+Read review-task-68-design-r2.md separate root handoff verbatim. R2 candidate-display fix is PASS and staysclosed. Root independently confirms actual ManualServiceAdmissionServiceImpl.facts844 unconditional discountMerchant!=0 gate; planned C1 merchantFULL_CUT order cannot reach cashdeclaration/source despite writer success. This pre-existing omission is a load-bearing overall C02 release prerequisite, not a new R2 regression.
+
+Same two owned design artifacts only; append exact consumed-order admissioneconomics contract and reconcile existing ManualServiceAdmissionServiceImpl inventory entry currentlylimitedtodecode/policyunchanged. Preserve approved choices/seal/display/fence/recovery design, not a redesign.
+
+New sealed MERCHANT_RECORDED_IN_PERSON counter only may have positive merchantdiscount when consumed validatedcounter quote matches actual immutable operation/party/entity/store/line/parent-child amounts; merchantMinor==discountMinor==storedchild.discountMerchant, platform0/couponnone/pointsnone/giftsnone/positive due. Actual due/share checks876–901 alreadycorrect; retain them and all existing financial/refund/stock/after-sale exclusions. M1 CONSUMER_SESSION and oldschema0M2a retain strictzero path. New NONE/zero remainsvalidsealedsubset. Do not simply dropmerchantdiscountcheckglobally. Use actual model fields/methods and an exact localhelper signature/stateflow; no newpublicAPI/ledger/migration required.
+
+Do not read current promotion eligibility at consumed-order admission: rules may legitimatelychangeafter ordercreation; compare frozen consumedquote seal/digest/economics to realorderfacts only. No Pay call, ordinarymarkPaid, financialPaid event or manualsourcehash tuple rewrite. Include meaningfultamperedallocation/party/authority/noncounter negatives and realC1 USER/GUEST10000−1000=9000 cashconfirm→source via actualowner in existingplanned testclass; nofakepositive. Tests authored/testcompiledphaseA; execute onlyunifiedB.
+
+Return docs-only report DONE_PENDING_REVIEW; no product/tests/commands/probes/build/native/index/commit/subagents. Root saved exactR2 baseline2docs under task-68-design-r2-base for scopeddesignrereview onthisprerequisite only. Do not reopen approvedR2or auditP3.

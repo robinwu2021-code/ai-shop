@@ -5,6 +5,11 @@ import ai.neargo.shop.pay.channel.TestPayGateway;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import ai.neargo.shop.spi.pay.PayQueryPort;
+import ai.neargo.shop.pay.port.OrdinaryPaymentPortImpl;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 32 个场景用例<b>全绿</b>。S4 之前那三年的「支付链路有测试」就是这个成色。
  *
  * <p>所以这一组直接对着<b>通道那一侧</b>断言：通道有没有收到这笔单、
- * 金额对不对、下单失败时我方流水有没有被关掉。
+ * 金额对不对、发起失败时是否保留原收款意图供权威查回。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -35,6 +40,11 @@ class PayGoesThroughGatewayTest {
 
     @Autowired
     private SettlePort settlePort;
+    @Autowired
+    private PaymentLedgerService paymentLedger;
+    @Autowired
+    @Qualifier("payQueryPortImpl")
+    private PayQueryPort actualChannelQueries;
     @Autowired
     private TestPayGateway testGateway;
     @Autowired
@@ -108,36 +118,61 @@ class PayGoesThroughGatewayTest {
     }
 
     @Test
-    @DisplayName("★★★ 通道没接入时，刚落的流水要被关掉 —— 留着的话对账会永远回查一笔不存在的单")
-    void unreachableChannelClosesTheLedgerRow() {
+    @DisplayName("★★★ 通道未接入属于未知，保留原收款意图与原流水号供查回")
+    void missingChannelKeepsOriginalIntentPending() {
         String orderNo = "OD-GW-" + (++seq);
+        var request = new SettlePort.PaymentOpen(
+                orderNo, "U-GW", null, "NO_SUCH_CHANNEL", 5_000L, "测试商品");
+        var result = settlePort.initPayment(request);
 
-        var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, "U-GW", null, "NO_SUCH_CHANNEL", 5_000L, "测试商品"));
-
-        assertThat(r.success()).isFalse();
-        assertThat(r.message()).contains("未接入");
-
-        StlPayment p = paymentOf(orderNo);
-        assertThat(p).as("流水该落还是要落 —— 没有起点行的话「用户点过支付」这件事无迹可寻").isNotNull();
-        assertThat(p.getStatus())
-                .as("停在 PENDING 的话，对账轴每轮都会去回查一笔通道那边压根不存在的单 —— "
-                        + "而「查询失败绝不关单」那条规则会让它永远留在那里")
-                .isEqualTo(StlPayment.CLOSED);
-        assertThat(p.getErrMsg()).isNotBlank();
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("未接入");
+        assertThat(paymentOf(orderNo)).as("发起尝试必须留下原账本意图").isNotNull();
+        assertThat(paymentOf(orderNo).getStatus()).isEqualTo(StlPayment.PENDING);
+        assertThat(actualOrdinaryPayments().queryChannel(new OrdinaryPaymentPort.Reference(
+                orderNo, "U-GW", result.outTradeNo())).status())
+                .isEqualTo(OrdinaryPaymentPort.ChannelStatus.UNKNOWN);
+        assertOriginalIntentReplayed(request, result.outTradeNo());
     }
 
     @Test
-    @DisplayName("★★ 通道拒单时同样要关掉流水 —— 0 元单是真通道一定会拒的那种")
-    void gatewayRejectionClosesTheLedgerRow() {
+    @DisplayName("★★ 通道明确拒绝本次零元请求，仍不得据此关闭可能已有在途请求的原意图")
+    void definitiveCurrentRejectionKeepsOriginalIntentPending() {
         String orderNo = "OD-GW-" + (++seq);
+        var request = new SettlePort.PaymentOpen(
+                orderNo, "U-GW", null, "TEST", 0L, "测试商品");
+        var result = settlePort.initPayment(request);
 
-        var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, "U-GW", null, "TEST", 0L, "测试商品"));
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("金额必须大于 0");
+        // The actual gateway explicitly rejects this invocation; that is distinct from UNKNOWN.
+        var rejected = testGateway.prepay(new PayGateway.PrepayCommand(
+                result.outTradeNo(), 0, "CNY", "测试商品", "JSAPI", null, null));
+        assertThat(rejected.success()).isFalse();
+        assertThat(rejected.definitiveRejection()).isTrue();
+        assertThat(testGateway.query(result.outTradeNo()).found()).isFalse();
+        assertThat(actualOrdinaryPayments().queryChannel(new OrdinaryPaymentPort.Reference(
+                orderNo, "U-GW", result.outTradeNo())).status())
+                .isEqualTo(OrdinaryPaymentPort.ChannelStatus.NOT_FOUND);
+        assertThat(paymentOf(orderNo).getStatus()).isEqualTo(StlPayment.PENDING);
+        assertOriginalIntentReplayed(request, result.outTradeNo());
+    }
 
-        assertThat(r.success()).as("0 元单下单成功了？真通道一定会拒").isFalse();
-        assertThat(paymentOf(orderNo).getStatus()).isEqualTo(StlPayment.CLOSED);
-        // 通道那边不该有这笔
-        assertThat(testGateway.query(r.outTradeNo()).found()).isFalse();
+    private OrdinaryPaymentPort actualOrdinaryPayments() {
+        // The test profile's primary FakePayQueryPort is programmable reconciliation data.
+        // These assertions require the real router and channel evidence, never its default NOT_FOUND.
+        return new OrdinaryPaymentPortImpl(paymentLedger, actualChannelQueries);
+    }
+
+    private void assertOriginalIntentReplayed(SettlePort.PaymentOpen request, String outTradeNo) {
+        // PAY-01: a local refusal does not disprove an earlier uncertain dispatch on a reused intent.
+        // Query evidence is separate from ledger terminality; retry must preserve the original key.
+        var replay = settlePort.initPayment(request);
+        assertThat(replay.success()).isFalse();
+        assertThat(replay.outTradeNo()).isEqualTo(outTradeNo);
+        assertThat(paymentOf(request.orderNo()).getStatus()).isEqualTo(StlPayment.PENDING);
+        assertThat(DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getOrderNo, request.orderNo()))))
+                .as("原键重放不得新建另一笔收款流水").isEqualTo(1L);
     }
 }

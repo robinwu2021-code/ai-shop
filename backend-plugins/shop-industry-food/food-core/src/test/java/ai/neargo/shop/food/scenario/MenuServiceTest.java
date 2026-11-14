@@ -9,6 +9,12 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.ListMenusQuery;
+import ai.neargo.shop.food.dto.MenuCategoryInput;
+import ai.neargo.shop.food.dto.MenuItemInput;
+import ai.neargo.shop.food.dto.MenuSkuPriceInput;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Market;
+import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper;
@@ -52,9 +58,12 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Exercises actual working rows, native V1 shape, original idempotency and atomic outbox. */
 class MenuServiceTest extends FoodWriteGuardFixture {
-    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail, SqlSessionTemplate template) { }
+    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail, SqlSessionTemplate template,
+            AssertableApplicationContext context) { }
     void run(Consumer<Menus> action) {
         runner().withBean(FoodDataScopeRegistration.class, FoodDataScopeRegistration::new)
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
                 .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f = prepare(c);
             StorePolicyPublicationTest.createPolicyTables(f);
@@ -91,13 +100,14 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             }
             if ("true".equals(System.getenv("FOOD_TEST_DISPOSABLE"))) {
                 new ResourceDatabasePopulator(new ClassPathResource(
-                        "db/industry/food/V6__menu_composition.sql")).execute(f.source());
+                        "db/industry/food/V6__menu_composition.sql"), new ClassPathResource(
+                        "db/industry/food/V25__food_menu_item_prices.sql")).execute(f.source());
             } else {
                 f.sql().execute("CREATE TABLE fnb_menu_category (" + common + "menu_no VARCHAR(32),"
                         + "category_no VARCHAR(32) UNIQUE,name VARCHAR(64),sort_no INT)");
                 f.sql().execute("CREATE TABLE fnb_menu_item (" + common + "menu_item_no VARCHAR(32) UNIQUE,"
                         + "category_no VARCHAR(32),goods_no VARCHAR(32),sort_no INT,enabled BOOLEAN,"
-                        + "sku_scope VARCHAR(16),option_mode VARCHAR(16),UNIQUE(category_no,goods_no))");
+                        + "sku_scope VARCHAR(16),option_mode VARCHAR(16),price_overrides TEXT,UNIQUE(category_no,goods_no))");
                 f.sql().execute("CREATE TABLE fnb_menu_item_sku (" + common + "menu_item_no VARCHAR(32),"
                         + "sku_no VARCHAR(32),selection_mode VARCHAR(16),recipe_no VARCHAR("
                                 + "32),UNIQUE(menu_item_no,sku_no))");
@@ -120,7 +130,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                 if (!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
             }
             var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANGED"));
+            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANGED", "PLATFORM:FOOD_MENU_DISABLED"));
             var fail = new AtomicBoolean();
             GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
                 @Override public GoodsFact getGoods(String entity, String store, String number) {
@@ -147,9 +157,59 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                             template.getMapper(MenuItemOptionGroupMapper.class), catalog),
                     template.getMapper(MenuContextMapper.class), template.getMapper(MenuChannelBindingMapper.class),
                     () -> null);
-            action.accept(new Menus(f, service, fail, template));
+            action.accept(new Menus(f, service, fail, template, c));
         });
     }
+    @Test void completedForeignCompositionReplaysWhileOriginalMarketIsOffline() {
+        foreignCompositionReplay(true);
+    }
+
+    @Test void completedForeignCompositionReplaysAfterOriginalMarketCurrencyChanges() {
+        foreignCompositionReplay(false);
+    }
+
+    private void foreignCompositionReplay(boolean offline) {
+        run(m -> {
+            var c = m.context();
+            var t = m.template();
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            var service = new MenuServiceImpl(t.getMapper(MenuMapper.class), t.getMapper(MenuStoreMapper.class),
+                    t.getMapper(StorePolicyMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
+                    Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC),
+                    t.getMapper(MenuScheduleMapper.class), t.getMapper(MenuExceptionMapper.class),
+                    new MenuCompositionSource(t.getMapper(MenuCategoryMapper.class), t.getMapper(MenuItemMapper.class),
+                            t.getMapper(MenuItemSkuMapper.class), t.getMapper(MenuItemOptionGroupMapper.class),
+                            source.goods), t.getMapper(MenuContextMapper.class),
+                    t.getMapper(MenuChannelBindingMapper.class),
+                    () -> null, source.currencies);
+            var number = service.createMenu("E", "A", "actor", input("Foreign menu"), "create-foreign").configNo();
+            var item = new MenuItemInput(null, "G", 0, true, "EXPLICIT", List.of("SKU"), "REPLACE", List.of(),
+                    List.of(), List.of(new MenuSkuPriceInput("SKU", 1250L, "AED")));
+            var request = new ReplaceMenuCompositionReq("COMPOSITION", 0L,
+                    List.of(new MenuCategoryInput(null, "Drinks", 0, List.of(item))));
+            var first = service.replaceComposition("E", "A", number, "actor", request, "foreign-definition");
+            var tables = List.of("fnb_menu_item", "fnb_action_log", "sys_outbox", "sys_idempotent");
+            var counts = tables.stream().map(table -> m.fixture().sql()
+                    .queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList();
+            if (offline) source.offline = true;
+            else source.market = new Market("TW", "TWD", 2);
+            assertThat(service.replaceComposition("E", "A", number, "actor", request, "foreign-definition"))
+                    .isEqualTo(first);
+            assertThat(tables.stream().map(table -> m.fixture().sql()
+                    .queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList()).isEqualTo(counts);
+            code(() -> service.replaceComposition("E", "A", number, "another", request, "foreign-definition"),
+                    ErrorCode.NOT_FOUND);
+            var changed = new ReplaceMenuCompositionReq("COMPOSITION", 0L,
+                    List.of(new MenuCategoryInput(null, "Other drinks", 0, List.of(item))));
+            code(() -> service.replaceComposition("E", "A", number, "actor", changed, "foreign-definition"),
+                    ErrorCode.CONFLICT);
+            assertThatThrownBy(() -> service.replaceComposition("E", "A", number, "actor", request, "fresh"))
+                    .isInstanceOf(RuntimeException.class);
+        });
+    }
+
     @Test void restrictedScopePaginatesBoundMenusWithTheSameFilteredTotal() {
         run(m -> {
             for (int n = 0; n < 3; n++) m.service().createMenu("E", "A", "actor", input("餐牌" + n), "menu-" + n);
@@ -193,7 +253,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             assertThat(s.getMenu("E", "A", id).config()).isEqualTo(changed);
             assertThat(f.sql().queryForObject("SELECT published_revision_no FROM fnb_menu", String.class))
                     .isEqualTo("HIST");
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isEqualTo(2);
         });
     }
     @Test void replaysBeforePolicyChangesAndRejectsCasAndKeyMutation() {

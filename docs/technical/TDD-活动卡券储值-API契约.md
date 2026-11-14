@@ -1,5 +1,7 @@
 # 活动卡券储值模块API契约
 
+> 2026-10-20 门店版实施修订：余额BalanceQuery必须指定storeNo；/biz/stored-value/accounts返回本店余额，不再返回商家共用余额。独立方案及plan-recharges增量接口按门店开发TDD §1.3实施，旧活动充值保持请求兼容。 详见[TDD-独立储值方案与B端接入](./TDD-独立储值方案与B端接入.md)。
+
 状态：Java后端首期范围已按实现验收；生产切换与前端页面后置 · 2026-10-20
 
 执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
@@ -1050,3 +1052,119 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 私有旧发行Command补充`userKey/count/targetDesc`：只有平台身份且TARGETED无商家选择器时可指定单用户数量；Core独立解析活动账户并回传原操作人，Pay使用原数量创建独立grant，不接受公开任意收件人列表。C领取保持仅本人、1张。Snapshot补充`archivedAt/usedCouponCount`，净核销张数为真实已使用实例去重，不将多次券的次数冒充张数。
 
 旧Fission/派生COUPON活动仍引用的来源在完整源评估中报告`LEGACY_PROGRAM_CONVERSION_REQUIRED`，先转换到统一活动，再申请切换；完整源决定重验当前引用事实及hash。Fission新建绑定与启用在Core根栅栏下校验，不能把迁移后的券重新绑定旧事务发奖路径。原未迁移/平台券继续原有逻辑；第三方奖励不能伪装CENTER本人领取，也不能在Core持锁事务下远调pay。
+
+## 门店独立储值增量（2026-10-20）
+
+| ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
+|---|---|---|---|---|---|---|
+| P60 | GET | /biz/stored-value/context | storeNo | MarketBrief | pay:sv:plan:read | 商家市场币种/精度/时区；也允许管理/充值/账户权限 |
+| P61 | GET | /biz/stored-value/plans | storeNo,status?,cursor?,size | CursorPage<View> | pay:sv:plan:read | 也允许管理或充值权限；仅充值权限只见启用方案 |
+| P62 | POST | /biz/stored-value/plans | Create + Idempotency-Key | View | pay:sv:plan:manage | 同店同名唯一；金额冻结 |
+| P63 | GET | /biz/stored-value/plans/{planNo} | storeNo | View | pay:sv:plan:read | 也允许管理/充值权限 |
+| P64 | PUT | /biz/stored-value/plans/{planNo}/status | Status + Idempotency-Key | View | pay:sv:plan:manage | expectedRevision；不改变经济规则 |
+| P65 | POST | /biz/stored-value/plan-recharges | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | customerRef仅识别；不依赖活动 |
+| P66 | GET | /biz/stored-value/plan-recharges/{rechargeNo} | 原单号 | StoredValueRechargeProgress | pay:sv:recharge:read | 也允许原办理权限 |
+| P67 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/submit | SubmitRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 实收金额/方式/receiptNo，摘要由BFF生成 |
+| P68 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/receive | ReceiveRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:receive | 商家核实收款；RECEIVED等待到账 |
+| P69 | POST | /biz/stored-value/plan-recharges/{rechargeNo}/cancel | CancelRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 确认收款前可取消 |
+| P70 | POST | /biz/stored-value/plan-recharges/resolve | 原CreateRequest + 原Idempotency-Key | ResolveView | pay:sv:recharge:create | 不依赖过期会员引用重新解析 |
+| P71 | POST | /biz/stored-value/plan-recharges/cancel-create | 原CreateRequest + 原Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create | 持久取消栅栏，拒绝晚到创建 |
+| P72 | GET | /biz/stored-value/account-directory | storeNo,keyword?,cursor?,size | CursorPage<AccountView> | pay:sv:account:read | 仅本店成功充值账户；零余额保留 |
+| P73 | GET | /biz/stored-value/accounts/{accountRef} | storeNo | AccountView | pay:sv:account:read | 签名引用绑定操作人/商家/门店，只读 |
+| P74 | GET | /biz/stored-value/records | storeNo,type?,startDate?,endDate?,accountRef?,cursor?,size | CursorPage<RecordView> | pay:sv:account:read | ALL/RECHARGE/REDEMPTION；日历日期按商家市场时区换算 |
+| P75 | GET | /biz/stored-value/records/{recordNo} | storeNo | RecordView | pay:sv:account:read | 按凭证冻结金额及变动后余额 |
+
+具体字段、错误处理与模块映射见[TDD-门店储值实现与交付](./TDD-门店储值实现与交付.md)。新增接口已接入B端；旧活动/C端/运营的延期条目仍按交付登记管理。
+
+
+## 会员底部弹框储值增量（2026-10-20）
+
+| 编号 | 方法 | 路径 | 请求 | 响应 | 权限 | 规则 |
+|---|---|---|---|---|---|---|
+| P80 | GET | /biz/stored-value/customer-candidates | storeNo,phone | PageData<Candidate> | biz:customer pay:sv:recharge:create | 完整手机号，会员可在尚未开户时被找到 |
+| P81 | POST | /biz/stored-value/customer-selections | SelectRequest | Selection | biz:customer pay:sv:recharge:create | 会员／账户来源二选一；独立短时选用凭证 |
+| P82 | POST | /biz/stored-value/plan-recharges/confirm-offline | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create pay:sv:recharge:receive | Pay本地确认、原单重放、MERCHANT_OFFLINE；顾客标识与登录账号分离 |
+
+账户目录补充（2026-10-20）：默认以lastRechargeAt（最后成功储值时间）及账户号倒序分页；新增同名可空时间字段，lastOccurredAt仍表示最近收支。SV_CUSTOMERS_RECHARGE游标与旧排序游标不通用，账户引用不变。搜索会员仍复用P80/P81，不因查询自动开户。
+
+## 发行主体维护增量（2026-10-23，真实Java合同补录）
+
+以下为合并远端后已存在的Java接口，补录公开合同及前端待办；不代表新开发或前端已接入。由ManagementAccess与实际主体授权服务验证，不以登录态替代资源权限。
+
+| ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
+|---|---|---|---|---|---|---|
+| P90 | GET | /biz/management/stored-value/issuers/{issuerNo} | managementNo | Lookup | 管理空间认证及资源读授权 | 先定位真实发行主体再验证scope |
+| P91 | POST | /biz/management/stored-value/migration-manifests | Request(storeNos,pauseReceiptNo) + Idempotency-Key | Manifest | 管理空间认证及实际主体维护授权 | 生成真实迁移清单，不直接改余额 |
+| P92 | POST | /biz/management/stored-value/migration-manifests/{manifestNo}/pause | Request + Idempotency-Key | MaintenanceResult | 管理空间认证及实际主体维护授权 | 原清单暂停证明 |
+| P93 | POST | /biz/management/stored-value/migration-manifests/{manifestNo}/map | Request + Idempotency-Key | MaintenanceResult | 管理空间认证及实际主体维护授权 | 使用原清单及暂停回执，禁止无证映射 |
+
+| C12 | GET | /mp/stored-value/store/{storeNo}/records | type?,startDate?,endDate?,focusDocumentNo?,cursor?,size | StoredValueConsumerViews.Records | 消费者登录本人及实际门店记录归属 | 日期沿门店市场时区，展示真实消费/充值记录 |
+
+| C13 | GET | /mp/stored-value/notification-capability | 无 | Capability | 消费者登录 | 仅真实模板就绪才允许客户端发起通知授权 |
+
+
+## P5 implemented issuer-wallet contracts (2026-10-24)
+
+| ID | Method | Path | Request | Response | Permission | Semantics |
+|---|---|---|---|---|---|---|
+| P94 | GET | /biz/stored-value/brand-capability | - | Capability | management login | P3 key/receipt and P5 schema readiness |
+| P95 | GET | /biz/stored-value/consumptions/orders/{orderNo} | storeNo | ServiceView | pay:sv:consume:create | Owned original in current store |
+| P96 | POST | /biz/stored-value/consumptions/orders/{orderNo}/cancel | storeNo | Operation | pay:sv:consume:create | Cancel original service; never refund a committed use |
+| P97 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts | - | List<AvailableAccount> | pay:sv:account:read | Separate wallets; no automatic opening |
+| P98 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records | issuerRef,accountRef,type,dates,cursor,size | CursorPage<RecordView> | pay:sv:account:read | Only actual execution store records |
+| P99 | POST | /biz/management/brands/{brandNo}/stored-value/issuer/activation | Activate + Idempotency-Key | Ack | management and issuer configuration authority | Frozen full brand membership snapshot |
+| C14 | GET | /mp/stored-value/issuers | cursor?,size | CursorPage<Issuer> | consumer login | Funded owned accounts; distinct brand |
+| C15 | GET | /mp/stored-value/issuer-records | issuerRef,type?,dates?,focusDocumentNo?,cursor?,size | IssuerRecords | consumer account ownership | Actual store; no money pool breakdown |
+| C16 | GET | /mp/stored-value/records/locate | focusDocumentNo | Issuer | consumer original document ownership | Fresh signed issuer reference for durable notifications |
+| P100 | GET | /biz/management/brands/{brandNo}/stored-value/activity-context | managementNo + typed command/query | ContextView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P101 | GET | /biz/management/brands/{brandNo}/stored-value/activity-presets | managementNo + typed command/query | PageData<PresetOption> | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P102 | GET | /biz/management/brands/{brandNo}/stored-value/activity-schedules | managementNo + typed command/query | Schedule | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P103 | GET | /biz/management/brands/{brandNo}/stored-value/activities | managementNo + typed command/query | PageData<ActivityView> | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P104 | POST | /biz/management/brands/{brandNo}/stored-value/activities | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P105 | GET | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo} | managementNo + typed command/query | Detail | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P106 | PUT | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P107 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks | managementNo + typed command/query | Check | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P108 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions | managementNo + typed command/query | Submission | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P109 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance | managementNo + typed command/query | Submission | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+| P110 | POST | /biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies | managementNo + typed command/query | ActivityView | management + exact brand activity resource authority | Core unified activity ownership; brand-scoped approval |
+
+| P111 | POST | /biz/stored-value/consumptions/resolve | Original PreviewRequest + Idempotency-Key | ResolveView | pay:sv:consume:create | Locate the owned original without expired references; no new quote or debit |
+
+| P112 | GET | /biz/stored-value/governance-capability | 无 | Capability(protocol,enabled) | 管理空间认证 | 只读治理能力探测；Core与Pay治理开关及协议1都就绪才enabled=true，不授予维护权限 |
+
+## P6 兼容发布接口（功能仍按能力与资源权限限制）
+
+| 编号 | 方法 | 路径 | 请求/返回 | 所属模块 | 权限 | 状态 |
+|---|---|---|---|---|---|---|
+| P113 | GET | /biz/management/brands/{brandNo}/stored-value/summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P114 | GET | /biz/management/brands/{brandNo}/stored-value/store-breakdown | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P115 | GET | /biz/management/stored-value/store-issuer-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P116 | GET | /biz/stores/{storeNo}/stored-value/store-summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P117 | GET | /biz/management/stored-value/activities/{activityNo}/summary | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P118 | GET | /biz/management/stored-value/financial-resources | 仅实际有 read 权限的发行方；保留原字段，增加同一发行方 canGenerate | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P119 | GET | /biz/management/stored-value/settlement-bills | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P120 | POST | /biz/management/stored-value/settlement-bills/generations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P121 | GET | /biz/management/stored-value/settlement-bills/{billNo} | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P122 | GET | /biz/management/stored-value/settlement-bills/{billNo}/items | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P123 | GET | /biz/management/stored-value/settlement-bills/{billNo}/events | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P124 | GET | /biz/management/stored-value/settlement-bills/{billNo}/payments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P125 | POST | /biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P126 | POST | /biz/management/stored-value/settlement-bills/{billNo}/disputes | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P127 | POST | /biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P128 | POST | /biz/management/stored-value/settlement-bills/{billNo}/adjustments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P129 | POST | /biz/management/stored-value/settlement-bills/{billNo}/payments | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P130 | GET | /biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P131 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+| P132 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/voids | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+
+## P6 业务闭环增量接口
+
+| 编号 | 方法 | 路径 | 请求/返回 | 所属模块 | 权限 | 状态 |
+|---|---|---|---|---|---|---|
+| P133 | GET | /biz/management/stored-value/financial-capability | 实际能力和阻断原因 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P134 | GET | /biz/management/stored-value/settlement-bills/{billNo}/actions | 按账单双方实际主体权限返回动作 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P135 | POST | /biz/management/entities/{entityNo}/stored-value/financial-permissions | 主体所有人显式准备财务权限 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P136 | POST | /biz/management/stores/{storeNo}/stored-value/financial-brand-changes | Start + Idempotency-Key；Core 持久原单 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P137 | GET | /biz/management/stored-value/financial-brand-changes/{changeNo} | 金融品牌变更状态与暂存标记 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P138 | POST | /biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions | 按原单恢复，不新建资金操作 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P139 | GET | /biz/management/stores/{storeNo}/stored-value/financial-brand-change-original | managementNo/commandKey → 原请求定位，未建单返回 original=null | Core/BFF → Merchant | managementAccess.authenticated；实际操作人和门店授权 | P6 closure |

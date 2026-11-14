@@ -1,6 +1,6 @@
 "use client";
 
-// L2/L3 子导航面板：单列，分组=小标题、子功能=条目（ai-kb SecondaryNav 心智）。
+// 三级导航：一级模块 → 分组标题 → 功能入口，沿用菜单数据的 group 与排序。
 // 2026-07-30 删「域」层后：Rail=L1(section)，本组件呈现 L2(分组)+L3(叶子)。
 // 2026-07-30 删 miller（三列逐级）分支：切换入口早已撤掉，只剩老 localStorage
 // 还能走到它 —— 一条没有入口的呈现路径不值得长期维护（navMode 也一并删）。
@@ -75,6 +75,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
   return (
     <Link
       href={leaf.href}
+      aria-current={active ? "page" : undefined}
       className={cn("focus-ring", 
         "flex items-center rounded-field px-2.5 py-1.5 txt-body transition-colors",
         active ? "bg-accent font-medium text-[var(--primary)]" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -102,7 +103,7 @@ export function SecondaryNav() {
 
   const serverHrefs = useServerMenu((s) => s.hrefSet);
   const nav = useNavTree();
-  const section = findActiveSection(pathname, perms, serverHrefs, nav);
+  const section = findActiveSection(pathname, perms, serverHrefs, nav, tab, view);
   const leaves = section ? visibleLeaves(section, perms, serverHrefs) : [];
   const segments = groupedLeaves(leaves);
   // Highlight in the rendered group order, which can differ from the source leaf order.
@@ -153,20 +154,14 @@ function SecondaryNavPanel({ title, segments, segBase, activeIdx }: {
       <div className="relative flex min-h-0 flex-1 flex-col">
       <nav ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-2">
         {segments.map((seg, si) => (
-          <div key={segKey(seg.group, si)} className={cn(seg.group ? "mb-3" : "mb-1")}>
-            {seg.group && (
-              /* 父（分组）：标题化，14px 中黑（txt-strong），比子项更醒目 */
-              <div className="flex items-center gap-2 px-2.5 pb-1 pt-0.5 txt-strong text-foreground">
-                <span className="truncate">{tNav(seg.group)}</span>
-              </div>
-            )}
-            {/* 子（功能）：有分组时缩进，13px 灰；无分组则平铺 */}
-            <div className={cn("space-y-0.5", seg.group && "ms-1")}>
+          <section key={segKey(seg.group, si)} aria-label={seg.group ? tNav(seg.group) : undefined} className="mb-4 last:mb-0">
+            {seg.group && <h3 className="mb-1.5 px-2.5 txt-caption font-semibold text-muted-foreground">{tNav(seg.group)}</h3>}
+            <div className={cn("space-y-0.5", seg.group && "ms-2 ps-2")}>
               {seg.leaves.map((l, i) => (
                 <LeafRow key={l.href + l.label} leaf={l} active={segBase[si] + i === activeIdx} />
               ))}
             </div>
-          </div>
+          </section>
         ))}
       </nav>
         <ScrollHint side="top" show={hint.top} />

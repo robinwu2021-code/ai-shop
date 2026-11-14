@@ -1,0 +1,79 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="品牌及门店双线储值关系", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"A" [label="认证管理账号",shape=box];
+"G" [label="经营管理授权空间与资源岗位",shape=box];
+"B" [label="品牌",shape=box];
+"E" [label="经营主体财务授权",shape=box];
+"BS" [label="品牌门店有效期关系",shape=box];
+"S" [label="门店",shape=box];
+"PM" [label="支付商户 payMerchantNo",shape=box];
+"PC" [label="支付渠道及支付能力",shape=box];
+"C" [label="平台统一顾客",shape=box];
+"M" [label="品牌或单店会员关系",shape=box];
+"W" [label="储值账户 issuer/customer/curr\nency",shape=box];
+"IB" [label="品牌发行方",shape=box];
+"IS" [label="单店发行方",shape=box];
+"SE" [label="指定结算主体与版本",shape=box];
+"ACT" [label="Core活动及版本",shape=box];
+"R" [label="Pay发行配置与金额档位",shape=box];
+"P" [label="Pay门店发行管控",shape=box];
+"L" [label="原批次/凭证/冻结分配",shape=box];
+"CE" [label="清分事实",shape=box];
+"BILL" [label="发行方账期主体账单",shape=box];
+"A" -> "G" [label=""];
+"G" -> "B" [label=""];
+"G" -> "E" [label=""];
+"B" -> "BS" [label=""];
+"BS" -> "S" [label=""];
+"E" -> "S" [label=""];
+"E" -> "PM" [label="一对多"];
+"PM" -> "PC" [label=""];
+"S" -> "PM" [label="本店默认收款配置"];
+"C" -> "M" [label=""];
+"M" -> "B" [label=""];
+"M" -> "S" [label=""];
+"C" -> "W" [label=""];
+"B" -> "IB" [label=""];
+"S" -> "IS" [label=""];
+"IB" -> "W" [label=""];
+"IS" -> "W" [label=""];
+"IB" -> "SE" [label=""];
+"IS" -> "SE" [label=""];
+"ACT" -> "R" [label=""];
+"R" -> "IB" [label=""];
+"R" -> "IS" [label=""];
+"P" -> "IS" [label=""];
+"W" -> "L" [label=""];
+"L" -> "CE" [label=""];
+"CE" -> "BILL" [label=""];
+}
+// Original diagram source, retained for provenance:
+// flowchart TB
+//     A[认证管理账号] --> G[经营管理授权空间与资源岗位]
+//     G --> B[品牌]
+//     G --> E[经营主体财务授权]
+//     B --> BS[品牌门店有效期关系]
+//     BS --> S[门店]
+//     E --> S
+//     E -->|一对多| PM[支付商户 payMerchantNo]
+//     PM --> PC[支付渠道及支付能力]
+//     S -->|本店默认收款配置| PM
+//     C[平台统一顾客] --> M[品牌或单店会员关系]
+//     M --> B
+//     M --> S
+//     C --> W[储值账户 issuer/customer/currency]
+//     B --> IB[品牌发行方]
+//     S --> IS[单店发行方]
+//     IB --> W
+//     IS --> W
+//     IB --> SE[指定结算主体与版本]
+//     IS --> SE
+//     ACT[Core活动及版本] --> R[Pay发行配置与金额档位]
+//     R --> IB
+//     R --> IS
+//     P[Pay门店发行管控] --> IS
+//     W --> L[原批次/凭证/冻结分配]
+//     L --> CE[清分事实]
+//     CE --> BILL[发行方账期主体账单]

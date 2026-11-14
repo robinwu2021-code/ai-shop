@@ -113,7 +113,11 @@ public interface EntitlementQueryPort {
     }
 
     record UsageItem(String usageNo, AssetKind assetKind, String title, Long amountMinor, String currency,
-                     Integer units, String storeNo, String storeName, Instant occurredAt, String status) {
+                     Integer units, String storeNo, String storeName, Instant occurredAt, String status, String documentNo) {
+        public UsageItem(String usageNo, AssetKind assetKind, String title, Long amountMinor, String currency,
+                         Integer units, String storeNo, String storeName, Instant occurredAt, String status) {
+            this(usageNo, assetKind, title, amountMinor, currency, units, storeNo, storeName, occurredAt, status, null);
+        }
     }
 
     record UsageDetail(UsageItem usage, List<UseItem> items, String serviceStaffName, String sourceOrderNo,

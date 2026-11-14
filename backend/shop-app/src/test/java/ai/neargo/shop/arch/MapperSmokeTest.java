@@ -4,6 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import ai.neargo.shop.infra.H2FixtureProjection;
+import java.nio.file.Path;
+import java.sql.SQLException;
+import java.util.IdentityHashMap;
+import java.util.Locale;
+import java.util.Set;
+import javax.sql.DataSource;
+import org.mybatis.spring.mapper.MapperFactoryBean;
+import org.springframework.core.ResolvableType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +40,8 @@ import org.springframework.test.context.TestPropertySource;
  * <b>一个列都没验到</b>。{@code selectList} 发的是 {@code SELECT <每一个映射列> FROM t LIMIT 1}，
  * 实体上多写一列、列名拼错、类型对不上，都会在这里报出来。
  * 空表也算数：SQL 仍然要被数据库解析、列仍然要存在。
+ * 描述符绑定的 native-only 表在 H2 中必须缺席；它们仍发真实查询，并只接受该表不存在，
+ * 不能接受列错误、别的表缺失或意外可查询。MySQL 不应用这份投影。
  *
  * <h2>2026-09-16 加它的由来</h2>
  * <p>当天把生产从 MariaDB 切到 MySQL 9.7。切换本身逐表对过账，但**「应用发出去的每一条 SQL
@@ -91,9 +103,9 @@ class MapperSmokeTest {
     ApplicationContext ctx;
 
     @Test
-    @DisplayName("★★★ 每个 mapper 对自己的表发一次 SELECT，一条都不许炸")
+    @DisplayName("★★★ 每个 mapper 真查询：普通表成功，H2 原生能力按声明缺席")
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void everyMapperCanQueryItsOwnTable() {
+    void everyMapperCanQueryItsOwnTable() throws Exception {
         Map<String, BaseMapper> mappers = ctx.getBeansOfType(BaseMapper.class);
 
         assertThat(mappers.size())
@@ -101,27 +113,84 @@ class MapperSmokeTest {
                         + "那时这条用例会「全绿」，而它一个 SQL 都没发", MIN_MAPPERS)
                 .isGreaterThanOrEqualTo(MIN_MAPPERS);
 
+        var nativeTables = nativeH2TablesByDataSource();
         List<String> failed = new ArrayList<>();
         for (Map.Entry<String, BaseMapper> e : mappers.entrySet()) {
+            var factory = ctx.getBean("&" + e.getKey(), MapperFactoryBean.class);
+            var source = factory.getSqlSessionFactory().getConfiguration().getEnvironment().getDataSource();
+            var entity = ResolvableType.forClass(factory.getMapperInterface())
+                    .as(BaseMapper.class).getGeneric(0).resolve();
+            var table = TableInfoHelper.getTableInfo(entity).getTableName();
+            boolean expectedNativeAbsence = nativeTables.getOrDefault(source, Set.of()).contains(table);
             try {
                 // LIMIT 1：只要一行就够，验的是 SQL 能不能跑、列在不在，不是数据内容
                 e.getValue().selectList(new QueryWrapper<>().last("LIMIT 1"));
+                if (expectedNativeAbsence) {
+                    failed.add(e.getKey() + "  →  declared native-only table unexpectedly queryable on H2: " + table);
+                }
             } catch (Exception ex) {
-                failed.add(e.getKey() + "  →  " + rootCause(ex));
+                if (!expectedNativeAbsence || !isMissingNativeTable(ex, table)) {
+                    failed.add(e.getKey() + "  →  " + rootCause(ex));
+                }
             }
         }
 
         assertThat(failed)
-                .as("这些 mapper 发不出基本查询（%d/%d 失败）", failed.size(), mappers.size())
+                .as("这些 mapper 的真实查询不符合数据源 schema 契约（%d/%d 失败）", failed.size(), mappers.size())
                 .isEmpty();
+    }
+
+    /** Native-only owners stay absent on H2; actual MySQL mappers must all query successfully. */
+    private Map<DataSource, Set<String>> nativeH2TablesByDataSource() throws Exception {
+        var repository = H2FixtureProjection.repositoryRoot(Path.of(""));
+        Map<DataSource, Set<String>> result = new IdentityHashMap<>();
+        registerH2Projection(result, "dataSource", repository,
+                "backend/shop-app/src/main/resources/db/migration");
+        if (ctx.containsBean("invDataSource")) {
+            registerH2Projection(result, "invDataSource", repository,
+                    "backend/inventory/inventory-domain/src/main/resources/db/inventory");
+        }
+        return result;
+    }
+
+    private void registerH2Projection(Map<DataSource, Set<String>> result, String bean, Path repository,
+            String migrations) throws Exception {
+        var source = ctx.getBean(bean, DataSource.class);
+        try (var connection = source.getConnection()) {
+            if ("H2".equals(connection.getMetaData().getDatabaseProductName())) {
+                result.put(source, H2FixtureProjection.load(repository, repository.resolve(migrations))
+                        .nativeTables().keySet());
+            }
+        }
+    }
+
+    private static boolean isMissingNativeTable(Throwable error, String table) {
+        var cause = deepestCause(error);
+        return cause instanceof SQLException sql && "42S02".equals(sql.getSQLState())
+                && sql.getMessage() != null
+                && sql.getMessage().toLowerCase(Locale.ROOT)
+                        .startsWith("table \"" + table.toLowerCase(Locale.ROOT) + "\" not found");
+    }
+
+    @Test
+    void nativeProjectionAcceptsOnlyItsExactMissingTableFailure() {
+        assertThat(isMissingNativeTable(new SQLException("Table \"native_owner\" not found", "42S02"), "native_owner"))
+                .isTrue();
+        assertThat(isMissingNativeTable(new SQLException("Table \"another_owner\" not found", "42S02"), "native_owner"))
+                .isFalse();
+        assertThat(isMissingNativeTable(new SQLException("Column \"missing\" not found", "42S22"), "native_owner"))
+                .isFalse();
+    }
+
+    private static Throwable deepestCause(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
+        return cause;
     }
 
     /** 最里层那句话才说明问题，外面裹着的 MyBatis / Spring 包装层没有信息量。 */
     private static String rootCause(Throwable t) {
-        Throwable c = t;
-        while (c.getCause() != null && c.getCause() != c) {
-            c = c.getCause();
-        }
+        Throwable c = deepestCause(t);
         String m = c.getMessage();
         return c.getClass().getSimpleName() + ": " + (m == null ? "(无消息)" : m.split("\n")[0]);
     }

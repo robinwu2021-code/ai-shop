@@ -1,0 +1,28 @@
+{
+  "type": {
+    "draft": {
+      "typeCode": "RETAIL",
+      "name": "零售",
+      "sortOrder": 1,
+      "enabled": true,
+      "expectedVersion": 4,
+      "reason": null
+    },
+    "version": 4,
+    "catalogVersion": 2
+  },
+  "testSku": {
+    "skuNo": "ops-flow-retail-pro-1111",
+    "productNo": "tw-retail-pro",
+    "title": "【线上验收】零售PRO一日·勿付款",
+    "maxPerOrder": 1,
+    "currentVersionNo": "4b682c4bbc21431c91c565b6f4d843a1",
+    "saleStatus": "ON_SALE",
+    "version": 2
+  },
+  "testVersion": {
+    "status": "PUBLISHED",
+    "version": 2,
+    "draftVersionNo": "4b682c4bbc21431c91c565b6f4d843a1"
+  }
+}

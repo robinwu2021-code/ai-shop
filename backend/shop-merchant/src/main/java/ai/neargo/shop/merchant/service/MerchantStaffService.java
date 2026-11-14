@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service;
 
+import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.merchant.dto.StaffVO;
 
 /**
@@ -54,6 +55,9 @@ public interface MerchantStaffService {
      * 会出现「作用域解析得到、档案查不到」这种自相矛盾的响应。
      */
     String loginPhoneOf(String principal);
+
+    record ProfileDetails(String displayName, String loginPhone) {}
+    ProfileDetails profileDetails(LoginUser user);
 
     /** 当前登录账号的显示名（用户名）。空串 = 没设过。按 principal 自查，不受数据域约束。 */
     String displayNameOf(String principal);

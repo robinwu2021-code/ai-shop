@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.service.PlatformCollectionService;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -58,6 +60,24 @@ public class ReconServiceImpl implements ReconService {
      * 那种单查一次纯属浪费，还会与关单任务抢同一行。
      */
     private final int staleMinutes;
+    /** 掉单巡检一页的行数 */
+    static final int STALE_PAGE = 200;
+    /** 一轮最多查多少笔（W3 E05：十万行积压时不能一轮全拉回来逐笔调渠道） */
+    @Value("${shop.pay.recon.stale-scan.max-per-run:2000}")
+    private int maxPerRun = 2000;
+    /** 每个渠道一轮最多查多少笔：一个渠道积压不饿死别的渠道，也不把它的查单接口打满 */
+    @Value("${shop.pay.recon.stale-scan.per-channel-per-run:500}")
+    private int perChannelPerRun = 500;
+    /** 游标：上一轮停在哪个 id。只在本进程内（多实例时巡检本就由调度锁保证单跑） */
+    private volatile long staleCursor;
+
+    long staleCursor() {
+        return staleCursor;
+    }
+
+    /** 关单后观察窗（小时）：这段时间内关掉的收款尝试仍随掉单巡检回查（I3 S7） */
+    @Value("${shop.pay.recon.closed-watch-hours:26}")
+    private long closedWatchHours = 26;
 
     public ReconServiceImpl(SettleMappers.PaymentMapper paymentMapper,
                             SettleMappers.ReconDiffMapper diffMapper,
@@ -100,11 +120,42 @@ public class ReconServiceImpl implements ReconService {
 
     @Override
     public List<ReconService.Finding> checkStalePayments(long now) {
+        return checkStalePayments(now, new ReconService.ScanLimits(maxPerRun, perChannelPerRun));
+    }
+
+    @Override
+    public List<ReconService.Finding> checkStalePayments(long now, ReconService.ScanLimits limits) {
+        String day=DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
+        var findings=new java.util.ArrayList<ReconService.Finding>();
+        java.util.Map<String,Integer> perChannel=new java.util.HashMap<>();
+        long cursor=staleCursor;
+        while(findings.size()<limits.maxPerRun()) {
+            List<StlPayment> page=stalePage(now,cursor);
+            for(var payment:page) {
+                if(findings.size()>=limits.maxPerRun()) break;
+                if(payment.getId()!=null) cursor=payment.getId();
+                // 渠道份额用完的行这轮跳过：游标照样前移，扫到底从头时再轮到它
+                if(perChannel.merge(String.valueOf(payment.getPayChannel()),1,Integer::sum)>limits.perChannelPerRun()) continue;
+                findings.add(checkAndArchive(payment,day));
+            }
+            if(page.size()<STALE_PAGE) { cursor=0; break; }
+        }
+        staleCursor=cursor;
+        return findings;
+    }
+
+    /** 一页待查：按 id 升序、从游标往后 */
+    private List<StlPayment> stalePage(long now,long cursor) {
         long cutoff = now - staleMinutes * 60_000L;
-        List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
+        return DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
+                    .ne(StlPayment::getPayChannel, "OFFLINE")
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
+                        // 关单后的观察窗（I3 S7）：关单关到了尝试这一层，而渠道没有关单接口、用户仍可能付成；
+                        // 回调又丢了的话只能靠这里查到。窗口有界 —— 待查集合不会再只增不减（R18）
+                        .or(c -> c.eq(StlPayment::getDirection,StlPayment.PAY).eq(StlPayment::getStatus,StlPayment.CLOSED)
+                            .ge(StlPayment::getClosedAt, now - closedWatchHours * 3_600_000L))
                         .or(r -> r.eq(StlPayment::getDirection,StlPayment.REFUND)
                             .and(t -> t.in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
                                 .or(u -> u.eq(StlPayment::getStatus,StlPayment.FAILED)
@@ -112,37 +163,39 @@ public class ReconServiceImpl implements ReconService {
                                         .or().eq(StlPayment::getRefundTerminalProof,"")))
                                 .or().in(StlPayment::getRefundQueryState,"MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED"))))
                     .le(StlPayment::getCreatedAt,java.time.LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(cutoff),ZoneId.systemDefault()))));
-        String day=DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
-        var findings=new java.util.ArrayList<ReconService.Finding>();
-        for(var payment:stale) {
-            ReconService.Finding finding;
-            try { finding=checkOne(payment,day); }
-            catch(RuntimeException invalid) {
-                String error=invalid instanceof IllegalArgumentException
-                        ? "REFUND_RECON_RECEIPT_INVALID" : "REFUND_RECON_WRITE_FAILED";
-                log.warn("[recon] 单笔核对失败 payment={} outRefundNo={} error={} exception={}",
-                        payment.getPaymentNo(),payment.getOutTradeNo(),error,invalid.getClass().getSimpleName());
-                finding=new ReconService.Finding(payment.getPaymentNo(),payment.getOrderNo(),payment.getPayChannel(),
-                        payment.getOutTradeNo(),payment.getDirection(),payment.getAmountMinor(),false,false,true,
-                        0,null,day,payment.getCurrency(),null,error);
-            }
-            if(finding.isRefund() && (finding.requiresManual() || finding.queryFailed())) {
-                try { recordFinding(finding,refundIssueType(finding),
-                        (finding.errorCode()==null?"REFUND_MANUAL_REQUIRED":finding.errorCode())
-                                + " 原退款号="+finding.outTradeNo()+"，需人工核对；不得自动释放或重新付款"); }
-                catch(RuntimeException archiveFailure) {
-                    log.error("[recon] 异常归档失败 payment={} exception={}",
-                            payment.getPaymentNo(),archiveFailure.getClass().getSimpleName());
-                    finding=new ReconService.Finding(finding.paymentNo(),finding.orderNo(),finding.payChannel(),
-                            finding.outTradeNo(),finding.direction(),finding.ourAmountMinor(),false,false,true,
-                            finding.channelAmountMinor(),finding.channelTradeNo(),finding.day(),finding.channelCurrency(),
-                            finding.refundOutcome(),"REFUND_RECON_ARCHIVE_FAILED");
-                }
-            }
-            findings.add(finding);
+                            Instant.ofEpochMilli(cutoff),ZoneId.systemDefault()))
+                    .gt(StlPayment::getId,cursor)
+                    .orderByAsc(StlPayment::getId)
+                    .last("LIMIT "+STALE_PAGE)));
+    }
+
+    /** 单笔核对并归档；一笔失败不挡下一笔 */
+    private ReconService.Finding checkAndArchive(StlPayment payment,String day) {
+        ReconService.Finding finding;
+        try { finding=checkOne(payment,day); }
+        catch(RuntimeException invalid) {
+            String error=invalid instanceof IllegalArgumentException
+                    ? "REFUND_RECON_RECEIPT_INVALID" : "REFUND_RECON_WRITE_FAILED";
+            log.warn("[recon] 单笔核对失败 payment={} outRefundNo={} error={} exception={}",
+                    payment.getPaymentNo(),payment.getOutTradeNo(),error,invalid.getClass().getSimpleName());
+            finding=new ReconService.Finding(payment.getPaymentNo(),payment.getOrderNo(),payment.getPayChannel(),
+                    payment.getOutTradeNo(),payment.getDirection(),payment.getAmountMinor(),false,false,true,
+                    0,null,day,payment.getCurrency(),null,error);
         }
-        return findings;
+        if(finding.isRefund() && (finding.requiresManual() || finding.queryFailed())) {
+            try { recordFinding(finding,refundIssueType(finding),
+                    (finding.errorCode()==null?"REFUND_MANUAL_REQUIRED":finding.errorCode())
+                            + " 原退款号="+finding.outTradeNo()+"，需人工核对；不得自动释放或重新付款"); }
+            catch(RuntimeException archiveFailure) {
+                log.error("[recon] 异常归档失败 payment={} exception={}",
+                        payment.getPaymentNo(),archiveFailure.getClass().getSimpleName());
+                finding=new ReconService.Finding(finding.paymentNo(),finding.orderNo(),finding.payChannel(),
+                        finding.outTradeNo(),finding.direction(),finding.ourAmountMinor(),false,false,true,
+                        finding.channelAmountMinor(),finding.channelTradeNo(),finding.day(),finding.channelCurrency(),
+                        finding.refundOutcome(),"REFUND_RECON_ARCHIVE_FAILED");
+            }
+        }
+        return finding;
     }
 
     private String refundIssueType(ReconService.Finding finding) {
@@ -153,6 +206,8 @@ public class ReconServiceImpl implements ReconService {
     }
 
     private ReconService.Finding checkOne(StlPayment p,String day) {
+        if(PlatformCollectionService.ownsScene(p.getPayScene()))return new ReconService.Finding(p.getPaymentNo(),p.getOrderNo(),p.getPayChannel(),
+                p.getOutTradeNo(),p.getDirection(),p.getAmountMinor(),false,false,false,0,null,day,p.getCurrency(),null,"PLATFORM_RECOVERY_REQUIRED");
         PayQueryPort.Result r;
         ai.neargo.shop.spi.pay.RefundQueryResult.Status status=null;
         String error=null;
@@ -215,18 +270,21 @@ public class ReconServiceImpl implements ReconService {
     /**
      * 落一条差异。
      *
-     * <p>同一笔流水在同一账期只留一条（唯一键 {@code uk_recon_diff_payment}）——
-     * 自查每小时跑一轮，不去重的话一笔掉单会在列表里堆成几十条，
-     * 而运营要逐条点开才知道是同一笔。
+     * <p><b>同一个没解决的问题只有一条</b>，不论哪天发现的（F15 · Review R19）。
+     * 此前去重条件带账期日：自查每天跑，一笔掉单每天新开一条，运营要逐条点开才知道是同一笔。
+     * 已处置（非 PENDING）的不算 —— 同一笔处置后又出问题，是一件新的事，要新开。
+     *
+     * <p>系统生成的说明写 {@code note}；{@code resolution} 只放运营的处置结论（此前被说明占用）。
      */
     private void recordDiff(String day, StlPayment p, PayQueryPort.Result r,
                             String type, String note, Long expectedAmount) {
+        String dedupKey = p.getPayChannel() + "|" + p.getPaymentNo() + "|" + type;
         boolean exists = DataScopeContext.executeWithoutScope(() -> diffMapper.exists(
                 Wrappers.<StlReconDiff>lambdaQuery()
-                        .eq(StlReconDiff::getBillDate, day)
                         .eq(StlReconDiff::getPayChannel, p.getPayChannel())
                         .eq(StlReconDiff::getPaymentNo, p.getPaymentNo())
-                        .eq(StlReconDiff::getDiffType, type)));
+                        .eq(StlReconDiff::getDiffType, type)
+                        .eq(StlReconDiff::getStatus, StlReconDiff.PENDING)));
         if (exists) {
             return;
         }
@@ -242,7 +300,8 @@ public class ReconServiceImpl implements ReconService {
         d.setChannelAmountMinor(r.amountMinor());
         d.setPlatformAmountMinor(expectedAmount == null ? 0L : expectedAmount);
         d.setStatus(StlReconDiff.PENDING);
-        d.setResolution(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
+        d.setDedupKey(dedupKey);
+        d.setNote(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
         DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
     }
 
@@ -323,6 +382,6 @@ public class ReconServiceImpl implements ReconService {
                 d.getStatus(), d.getResolution(), d.getRecoveredOrderNo(),
                 d.getCreatedAt() == null ? 0L
                         : d.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                d.getResolvedAt(), d.getResolvedBy());
+                d.getResolvedAt(), d.getResolvedBy(), d.getNote());
     }
 }

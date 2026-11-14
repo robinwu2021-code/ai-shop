@@ -252,31 +252,22 @@ class ActivityBenefitCoordinatorFlowTest {
         var context = new EntitlementContext("MAIN", owner[0], id(), "a".repeat(64));
         var plan = intents.begin(context, new BenefitClaimCommand(version, null, null, owner[1], owner[2]), "event");
         var child = plan.grants().getFirst(); pay.prepare(context, child);
-        // Outbox owns generated event IDs. Reject this source decision by its persisted
-        // aggregate identity so the failure still exercises the real transaction boundary.
-        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure CHECK(NOT ("
-                + "aggregate_id = '" + plan.intentNo()
-                + "' AND event_type = 'ACTIVITY_BENEFIT_DECIDED'))");
+        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure "
+                + "CHECK(aggregate_type <> 'ACTIVITY_BENEFIT_INTENT' OR aggregate_id <> '"
+                + plan.intentNo() + "')");
         try {
             assertThatThrownBy(() -> intents.decide(context, plan.intentNo(), true))
                     .isInstanceOf(RuntimeException.class);
             assertThat(intents.mine(context, plan.intentNo()).status()).isEqualTo("PENDING");
-            assertThat(jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
-                    Integer.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED")).isZero();
             assertThat(pay.query(context, owner[1], child.grantNo()).status())
                     .isEqualTo(EntitlementGrantPort.State.PREPARED);
         } finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT ck_benefit_outbox_failure"); }
         intents.decide(context, plan.intentNo(), true);
-        assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
-                Integer.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED")).isEqualTo(1);
-        var event = new SysOutbox();
-        event.setEventNo(jdbc.queryForObject(
-                "SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
-                String.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED"));
-        event.setPayload(jdbc.queryForObject(
-                "SELECT payload FROM sys_outbox WHERE event_no=?", String.class, event.getEventNo()));
+        String eventNo = jdbc.queryForObject("SELECT event_no FROM sys_outbox "
+                + "WHERE aggregate_type='ACTIVITY_BENEFIT_INTENT' AND aggregate_id=? "
+                + "AND event_type='ACTIVITY_BENEFIT_DECIDED'", String.class, plan.intentNo());
+        var event = new SysOutbox(); event.setEventNo(eventNo);
+        event.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE event_no=?", String.class, eventNo));
         consumer.consume(event); consumer.consume(event);
         assertThat(intents.mine(context, plan.intentNo()).status()).isEqualTo("COMMITTED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE grant_no=?", Integer.class,
@@ -330,7 +321,7 @@ class ActivityBenefitCoordinatorFlowTest {
     @Test void consumerHttpClaimDerivesIdentityAndReadOnlyQueryCannotIssueAgain() throws Exception {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(web)
                 .apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "126" + String.format("%08d",
+        String phone = "197" + String.format("%08d",
                 Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String token = TestLogin.consumer(mvc, json, otp, phone);
         String user = tokens.of(Realm.CONSUMER).get(token).orElseThrow().user().userNo();

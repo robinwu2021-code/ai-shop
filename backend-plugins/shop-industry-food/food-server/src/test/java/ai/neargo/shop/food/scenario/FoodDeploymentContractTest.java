@@ -38,7 +38,7 @@ class FoodDeploymentContractTest {
 
     @Test
     void disabledFoodStillExposesNotReadyHealthWithoutPersistence() {
-        runner.withPropertyValues("shop.food.enabled=false", "shop.services.internal-token=" + TOKEN).run(context -> {
+        runner.withPropertyValues("shop.food.enabled=false", "shop.services.internal-token=" + TOKEN, ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(context -> {
             assertThat(context).hasNotFailed().doesNotHaveBean(ai.neargo.shop.food.config.FoodSchemaReady.class)
                     .doesNotHaveBean(ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper.class)
                     .doesNotHaveBean(GoodsCatalogQueryPort.class);
@@ -50,7 +50,7 @@ class FoodDeploymentContractTest {
     void standaloneServerHasNoPublicClientMappings() {
         assertThat(getClass().getClassLoader().getResource(
                 "ai/neargo/shop/food/config/FoodWebAutoConfiguration.class")).isNull();
-        runner.withPropertyValues("spring.profiles.active=api,ops", "shop.services.internal-token=" + TOKEN)
+        runner.withPropertyValues("spring.profiles.active=api,ops", "shop.services.internal-token=" + TOKEN, ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY)
                 .run(context -> {
                     assertThat(context).hasNotFailed().hasSingleBean(GoodsCatalogQueryPort.class);
                     assertThat(context.getBean(GoodsCatalogQueryPort.class)).isInstanceOf(CoreGoodsCatalogQueryPortImpl.class);
@@ -68,9 +68,9 @@ class FoodDeploymentContractTest {
 
     @Test
     void missingServiceKeyNeverAuthorizesInternalRequests() {
-        runner.withPropertyValues("shop.services.internal-token=").run(context -> {
+        runner.withPropertyValues("shop.services.internal-token=", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(context -> {
             assertThat(context).hasNotFailed();
-            mvc(context).perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, TOKEN))
+            mvc(context).perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, TOKEN).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()))
                     .andExpect(status().isUnauthorized());
             mvc(context).perform(get("/actuator/health/readiness")).andExpect(status().isServiceUnavailable());
         });
@@ -78,17 +78,17 @@ class FoodDeploymentContractTest {
 
     @Test
     void serviceTokenProtectsInternalGetAndPostWithoutUserSession() {
-        runner.withPropertyValues("shop.services.internal-token=" + TOKEN).run(context -> {
+        runner.withPropertyValues("shop.services.internal-token=" + TOKEN, ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(context -> {
             assertThat(context).hasNotFailed();
             MockMvc mvc = mvc(context);
             mvc.perform(get("/internal/food/test-probe")).andExpect(status().isUnauthorized());
-            mvc.perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, "wrong"))
+            mvc.perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, "wrong").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, TOKEN))
+            mvc.perform(get("/internal/food/test-probe").header(InternalHttp.TOKEN_HEADER, TOKEN).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()))
                     .andExpect(status().isOk()).andExpect(content().json("{\"result\":\"ok\"}"));
-            mvc.perform(post("/internal/food/test-write-probe").header(InternalHttp.TOKEN_HEADER, TOKEN))
+            mvc.perform(post("/internal/food/test-write-probe").header(InternalHttp.TOKEN_HEADER, TOKEN).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()))
                     .andExpect(status().isOk());
-            mvc.perform(get("/mp/food-trap").header(InternalHttp.TOKEN_HEADER, TOKEN))
+            mvc.perform(get("/mp/food-trap").header(InternalHttp.TOKEN_HEADER, TOKEN).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()))
                     .andExpect(status().isUnauthorized());
             assertThat(context.getBean(SecurityFilterChain.class).getFilters())
                     .noneMatch(filter -> filter instanceof AbstractTokenAuthFilter);
@@ -97,7 +97,7 @@ class FoodDeploymentContractTest {
 
     @Test
     void businessReadinessStaysBlockedUntilSchemaAndPortsAreWired() {
-        runner.withPropertyValues("shop.services.internal-token=" + TOKEN).run(context -> {
+        runner.withPropertyValues("shop.services.internal-token=" + TOKEN, ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(context -> {
             assertThat(context).hasNotFailed();
             mvc(context).perform(get("/actuator/health/readiness"))
                     .andExpect(status().isServiceUnavailable())

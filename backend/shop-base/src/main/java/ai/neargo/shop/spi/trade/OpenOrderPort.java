@@ -19,4 +19,12 @@ public interface OpenOrderPort {
      * 已完成、已取消、已退款都不算 —— 那些是终态，注销不影响任何人。
      */
     boolean hasOpenOrders(String userNo);
+
+    /**
+     * 这家门店还有几单没走完 —— 套餐页列「被降级压下的门店」时用（商户 App 字段对齐 A4）。
+     *
+     * <p>口径与 {@link #hasOpenOrders} 同一组终态：状态不在已完成 / 已取消 / 已退款的子订单都算。
+     * 压店只停新单，这些单照常履约（套餐页文案「进行中的订单照常完成」说的就是它们）。
+     */
+    long countOpenByStore(String storeNo);
 }

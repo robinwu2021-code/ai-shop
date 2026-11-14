@@ -1,9 +1,11 @@
 // 覆盖范围：认证登录 + 工作台（P-16.1）。端点前缀 /ops/**（C 端是 /mp/**）。
+import { ApiError } from "../error";
+import type { LoginResp } from "@/lib/types";
 import { client } from "../http-client";
 import type { Role } from "@/lib/auth";
 
 /** 后端 `/ops/auth/login` 的原样响应。**与 ops-web 的 LoginResp 不同形** */
-interface BackendStaff {
+export interface BackendStaff {
   staffNo: string;
   username: string;
   realName: string;
@@ -22,8 +24,10 @@ interface BackendStaff {
 }
 
 interface BackendLogin {
-  token: string;
-  staff?: BackendStaff;
+  token?: string | null;
+  challenge?: string | null;
+  challengeTo?: string | null;
+  staff?: BackendStaff | null;
 }
 
 /**
@@ -79,6 +83,47 @@ export function toBackendRole(opsRole?: string): string | undefined {
 }
 import type { DashboardApi } from "../contracts/dashboard";
 
+function mapLogin(raw: BackendLogin, username = ""): LoginResp {
+  const staff = raw?.staff;
+  if (raw?.challenge) return {
+    username, role: "ANALYST", token: "", perms: [],
+    challenge: raw.challenge, challengeTo: raw.challengeTo ?? undefined,
+  };
+  return {
+    username: staff?.username ?? username,
+    role: toOpsRole(staff?.roles?.[0]), token: raw?.token ?? "", perms: staff?.perms ?? [],
+    merchantNo: staff?.merchantNo, communityNo: staff?.communityNo, pickupNo: staff?.pickupNo,
+  };
+}
+
+/** Complete email 2FA without adding a required method to mock DashboardApi implementations. */
+export async function verifyLoginChallenge(challenge: string, code: string): Promise<LoginResp> {
+  if (!challenge || !/^\d{6}$/.test(code)) throw new Error("A six-digit verification code is required");
+  return dashboardHttp.verifyLogin(challenge, code);
+}
+
+/** Validate a shared token against the real STAFF backend, even in mock UI mode. */
+export async function verifySharedOpsToken(token: string) {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ""}/ops/auth/me`, {
+    headers: { Authorization: `Bearer ${token}`, "Accept": "application/json" },
+    cache: "no-store",
+  });
+  // Only an explicit authentication rejection invalidates the session. Network/5xx/
+  // malformed responses are retryable and must not erase a potentially valid token.
+  if (response.status === 401 || response.status === 403) throw new ApiError(response.status, "Shared operations session is invalid");
+  const body = await response.json();
+  const staff: BackendStaff | undefined = body?.data;
+  if (body?.code === 401 || body?.code === 403 || staff?.status === "DISABLED") throw new ApiError(401, "Shared operations session is invalid");
+  if (!response.ok || (body.code !== undefined && body.code !== 0) || !staff?.username || !Array.isArray(staff.roles)) {
+    throw new Error("Unable to verify the shared operations session. Please retry.");
+  }
+  return {
+    token, username: staff.username, role: toOpsRole(staff.roles[0]),
+    perms: Array.isArray(staff.perms) ? staff.perms.filter((p): p is string => typeof p === "string") : [],
+    merchantNo: staff.merchantNo, communityNo: staff.communityNo, pickupNo: staff.pickupNo,
+  };
+}
+
 export const dashboardHttp: DashboardApi = {
   /*
    * 后端只认凭据，角色由它自己从 STAFF 账号上取 —— 前端传角色等于自己给自己授权。
@@ -93,21 +138,11 @@ export const dashboardHttp: DashboardApi = {
    */
   login: async (username, password) => {
     const raw = await client.post<BackendLogin>("/ops/auth/login", { username, password });
-    const staff = raw?.staff;
-    return {
-      username: staff?.username ?? username,
-      role: toOpsRole(staff?.roles?.[0]),
-      token: raw?.token ?? "",
-      /*
-       * perms 一直在响应里，而此前**这一行不存在** —— 拿到手就丢了，
-       * 判权全靠前端本地的 ROLE_PERMS。两套各自演化的结果是
-       * 「前端显示的权限与后端实际允许的没有任何关系」。
-       */
-      perms: staff?.perms ?? [],
-      merchantNo: staff?.merchantNo,
-      communityNo: staff?.communityNo,
-      pickupNo: staff?.pickupNo,
-    };
+    return mapLogin(raw, username);
+  },
+  verifyLogin: async (challenge, code) => {
+    const raw = await client.post<BackendLogin>("/ops/auth/login/verify", { challenge, code });
+    return mapLogin(raw);
   },
   me: async () => {
     const staff = await client.get<BackendStaff>("/ops/auth/me");
@@ -124,6 +159,7 @@ export const dashboardHttp: DashboardApi = {
   },
   forgotPassword: (username) => client.post("/ops/auth/forgot", { username }),
   resetPassword: (token, newPassword) => client.post("/ops/auth/reset", { token, newPassword }),
+  changeOwnPassword: (oldPassword, newPassword) => client.post("/ops/staffs/me/password", { oldPassword, newPassword }),
   menu: () => client.get("/ops/menu"),
   getDashboardKpi: () => client.get("/ops/dashboard/kpi"),
   getDashboardTrend: () => client.get("/ops/dashboard/trend"),

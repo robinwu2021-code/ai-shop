@@ -1,0 +1,30 @@
+{
+  "mysqlVersion": "9.7.4",
+  "host": "127.0.0.1",
+  "port": 3308,
+  "schema": "payment_source_bootstrap_1f42a509520d8895099a0628",
+  "temporaryUserHost": "localhost",
+  "grantScope": "temporary schema only",
+  "existingBusinessSchemasAccessed": false,
+  "schemaCreated": true,
+  "userCreated": true,
+  "command": "mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=PaymentCollectionSourceBootstrapTest -Dsurefire.failIfNoSpecifiedTests=false -Dsurefire.heap=2g",
+  "credentialTransport": "child environment only; administrator client reads protected defaults-file",
+  "exitCode": 0,
+  "tests": {
+    "tests": 23,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "concurrencyTests": [
+    "concurrentSameTargetOnTwoConnectionsCreatesOnlyOneMapping",
+    "concurrentConflictingTargetsNeverOverwriteTheWinningMapping"
+  ],
+  "schemaDropSucceeded": true,
+  "userDropSucceeded": true,
+  "schemaAbsentAfterCleanup": true,
+  "userAbsentAfterCleanup": true,
+  "privateCredentialAbsentFromLog": true,
+  "timestampUtc": "2026-11-13T18:18:09Z"
+}

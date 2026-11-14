@@ -1,22 +1,38 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {reconcileFoodSource,renderActualFoodSource} from './lib/food-source-inventory.mjs';
+import {renderFoodDeliveryStatus} from './lib/food-delivery-status.mjs';
 import {validateFoodDesign} from './lib/food-design-validation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const src='docs/technical/design/schema/food-system-design.json';const s=JSON.parse(fs.readFileSync(path.join(root,src),'utf8'));
+const planFile=path.join(root,'docs/technical/design/schema/food-code-plan.json');
+const plan=JSON.parse(fs.readFileSync(planFile,'utf8'));
+const latestMigration=dir=>Math.max(...fs.readdirSync(path.join(root,dir)).map(n=>Number(/^V(\d+)__/.exec(n)?.[1]||0)));
+s.currentDelivery.sourceSchema={food:latestMigration('backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food'),core:latestMigration('backend/shop-app/src/main/resources/db/migration'),inventory:latestMigration('backend/inventory/inventory-domain/src/main/resources/db/inventory')};
+const actual=reconcileFoodSource(root,s,plan);
+fs.writeFileSync(path.join(root,src),JSON.stringify(s,null,2)+'\n');
+fs.writeFileSync(planFile,JSON.stringify(plan,null,2)+'\n');
+// The legacy catalog is a generated view of the same canonical table contracts.
+const legacyCatalogFile=path.join(root,'docs/technical/design/schema/food-catalog.schema.json');
+const legacyCatalog=JSON.parse(fs.readFileSync(legacyCatalogFile,'utf8'));
+const canonicalTables=new Map(s.tables.map(t=>[t.name,t]));
+legacyCatalog.tables=legacyCatalog.tables.map(t=>canonicalTables.get(t.name)??t);
+fs.writeFileSync(legacyCatalogFile,JSON.stringify(legacyCatalog,null,2)+'\n');
 validateFoodDesign(s);
 const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE||'@viz-js/viz');const viz=await instance();
 const dir=path.join(root,'docs/technical/design');
 const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const parse=x=>x?x.split(';').map(p=>{const [name,type,...d]=p.split(':');return {name:name.replace(/\?$/,''),type,desc:d.join(':'),required:!name.endsWith('?')}}):[];
-const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?"V1含73张fnb_业务表；增强目标82张，V4新增2张配方草稿表、V5新增1张调整表、V6新增1张餐牌选配表、V7新增1张渠道草稿表、另4张PLANNED；可用迁移版本7，历史经营库执行证据仍V1/73；目标API不代表全部交付，prn/rpt保持共享候选":"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[需求矩阵](../../requirements/餐饮系统-需求矩阵.md) · [逐需求与业务模块对齐](./餐饮系统-API设计.md#八逐需求与业务模块对齐)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
-> 产品依据：[完整需求文档](../../requirements/餐饮系统-完整需求文档.md) · [109项需求矩阵](../../requirements/餐饮系统-需求矩阵.md)。\n\n`;
+const header=title=>`# ${title}\n\n${renderFoodDeliveryStatus(s.currentDelivery)}> 历史与源码发现口径： 源码核对：${s.reviewDate}；云端基线 FOOD V15（83张业务表＋历史表＝84张），源码迁移目标 FOOD V${s.currentDelivery.sourceSchema.food} / CORE V${s.currentDelivery.sourceSchema.core} / INVENTORY V${s.currentDelivery.sourceSchema.inventory}（仅源码发现，不代表已部署）。交付核验状态：${s.deliveryVerification?.status || 'NOT_COMPILED_TESTED_OR_DEPLOYED'}；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。\n\n`;
 const statusNames={DEFINED:'目标已定义',CORE_CONTRACT:'依赖共享/核心合同',DESIGN_GAP:'尚缺专项设计'};
 const counts=Object.fromEntries(Object.keys(statusNames).map(k=>[k,s.requirementAlignment.filter(r=>r.status===k).length]));
 const moduleIndex=()=>`## 零、按业务模块阅读\n\n先查主责模块，再查表字段或接口编号。13个业务模块与A–L持久化域不是一一对应；模块可协作调用相同服务，不能据此复制实体。109项追踪结果：目标已定义${counts.DEFINED}项，依赖共享/核心合同${counts.CORE_CONTRACT}项，尚缺专项设计${counts.DESIGN_GAP}项。以上均为设计状态，非实现验收。\n\n| 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |\n|---|---|---|---|---|\n`+s.businessModules.map(m=>`| ${m.id} | ${m.name} | ${m.requirements.length} | ${m.tables.length} | ${m.apis.length} |\n`).join('')+`\n逐需求表/API引用与未决缺口见API册第八节；首三模块的接口与需求归属见[逐需求与业务模块对齐](./餐饮系统-API设计.md#八逐需求与业务模块对齐)。\n\n`;
 const by=new Map(s.tables.map(t=>[t.name,t]));if(by.size!==s.tables.length)throw Error('Duplicate tables');
 for(const t of s.tables){const fields=new Set([...s.commonFields.map(f=>f[0]),...t.fields.map(f=>f.name)]);for(const u of t.unique)for(const f of u)if(!fields.has(f))throw Error(`Bad unique ${t.name}.${f}`);for(const f of t.fields)if(f.ref){const [tn,fn]=f.ref.split('.');if(by.has(tn)&&!by.get(tn).fields.some(x=>x.name===fn))throw Error(`Bad reference ${f.ref}`)}}
 const groups=[];for(const d of s.domains){const ts=s.tables.filter(t=>t.domain===d.code);for(let i=0;i<ts.length;i+=8)groups.push({id:d.code.toLowerCase()+(1+i/8),label:d.name+' '+(1+i/8),tables:ts.slice(i,i+8)});}
+const generatedDiagramNames=new Set(groups.map(g=>'food-system-'+g.id+'.svg'));
+for(const name of fs.readdirSync(path.join(root,'docs/technical/diagrams')))if(/^food-system-[a-l]\d+\.svg$/.test(name)&&!generatedDiagramNames.has(name))fs.unlinkSync(path.join(root,'docs/technical/diagrams',name));
 for(const g of groups){const lines=['digraph G { graph [rankdir=LR,bgcolor="white",pad="0.3",nodesep="0.35"]; node [shape=plain,fontname="Arial"]; edge [fontsize=10,fontname="Arial",color="#64748b"];'];
  for(const t of g.tables){const rows=t.fields.filter(f=>f.ref||t.unique.some(u=>u.includes(f.name))).slice(0,5);lines.push(`"${t.name}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="8"><TR><TD BGCOLOR="#dcfce7"><B>${e(t.name)}</B><BR/>${e(t.label)}</TD></TR>${rows.map(f=>`<TR><TD ALIGN="LEFT">${e(f.name)}<BR/><FONT POINT-SIZE="10">${e(f.label)}</FONT></TD></TR>`).join('')}</TABLE>>];`)}
  for(const t of g.tables)for(const f of t.fields)if(f.ref&&g.tables.some(x=>x.name===f.ref.split('.')[0]))lines.push(`"${t.name}" -> "${f.ref.split('.')[0]}" [label="${f.name} / ${f.nullable?'0..1':'1'}"];`);
@@ -29,18 +45,18 @@ for(const d of s.domains)overview+=`| ${d.code} | ${d.requirements.join('、')} 
 overview+=`\n## 五、现状依据与取舍\n\n当前真实OrderService.create/createFor/preview/pay/payResult可适配；其Item(goodsNo,skuNo,int qty)没有源行、选配及小数计量透传。ord_order是支付根，ord_sub_order是门店订单，ord_item.id是稳定成交行。基础商品字典prd_spec_dim/prd_spec_value继续复用。源行映射、堂食交付、后付库存、跨根收款、部分退款分别补合同，不能因目标表存在就认定已实现。当前退款仍为整门店订单全额边界。\n\n餐饮菜单不用基础后台类目替代；餐饮口味不再复制字典；套餐/配料组合是配置候选，通用Bundle/Modifier能力确认后复用或迁移，不能双维护。共享打印prn_device与历史prn_printer需选其一；报表新增营业日维度不改变原自然日统计。旧菜品ER被本源中的口味与行分配修订取代，不把两份DDL同时执行。\n\n## 六、实施前验证闸门\n\n领域及表数量是本轮候选设计，不是最终迁移预算。必须逐项确认通用资源/选配/计量/审批/资金接口实现、匿名主体、日结资金对账及专项业态合同；数据库逻辑引用不自动转跨库FK。12域及109项仅表示设计追踪覆盖，完整性能和所有边缘场景仍按需求验收。\n`;
 fs.writeFileSync(path.join(dir,'餐饮系统-领域对象与设计总览.md'),overview);
 let db=header('餐饮系统数据库设计')+moduleIndex();
-db+=`## 一、总览与复用边界\n\n共${s.tables.length}张候选表，按领域分图；先看归属，再看字段。只新增行业业务和缺失共享能力，不复制商品价格、库存、订单金额或资金账。\n\n| 基础事实 | 复用对象 | 餐饮关联 |\n|---|---|---|\n| 商品与销售规格 | prd_goods.goods_no / prd_sku.sku_no | dish、菜单、套餐、收费配料 |\n| 属性字典 | prd_spec_dim.dim_no / prd_spec_value.value_no | 免费做法选择，规则仍由餐饮授权 |\n| 门店上架价格库存 | prd_store_goods / prd_store_price / prd_store_stock及库存服务 | 只通过端口读取，不另建价格库存账 |\n| 支付根与门店订单 | ord_order.order_no / ord_sub_order.sub_order_no | 核心绑定及结账范围 |\n| 成交行 | ord_item.id | food_line分配表 |\n| 身份资源审批会员营销票据资金 | 各权威服务，编号由正式合同定义 | 只保存ref，表名不臆造 |\n| 自然日报表 | rpt_daily_store / rpt_daily_goods / rpt_job_watermark | 原口径保留；新增餐饮指标投影在共享报表库 |\n\n## 二、公共字段与索引规范\n\n所有新表沿用BaseEntity：id自增、tenant_no、审计、version及deleted；entity_no是业务范围不是租户。物理主键为id；业务号唯一，不直接用旧草案PK替换物理主键。下列公共字段合并到每张表，已显式列出的字段不重复。本文是逻辑设计，不是已执行的生产DDL。\n\n| 字段 | 类型 | 约束/意义 |\n|---|---|---|\n`;
+db+=`## 一、总览与复用边界\n\n共${s.tables.length}张候选表，按领域分图；先看归属，再看字段。只新增行业业务和缺失共享能力，不复制商品价格、库存、订单金额或资金账。\n\n| 基础事实 | 复用对象 | 餐饮关联 |\n|---|---|---|\n| 商品与销售规格 | prd_goods.goods_no / prd_sku.sku_no | dish、菜单、套餐、收费配料 |\n| 属性字典 | prd_spec_dim.dim_no / prd_spec_value.value_no | 免费做法选择，规则仍由餐饮授权 |\n| 门店上架价格库存 | prd_store_goods / prd_store_price / prd_store_stock及库存服务 | 只通过端口读取，不另建价格库存账 |\n| 支付根与门店订单 | ord_order.order_no / ord_sub_order.sub_order_no | 核心绑定及结账范围 |\n| 成交行 | ord_item.id | food_line分配表 |\n| 身份资源审批会员营销票据资金 | 各权威服务，编号由正式合同定义 | 只保存ref，表名不臆造 |\n| 自然日报表 | rpt_daily_store / rpt_daily_goods / rpt_job_watermark | 原口径保留；新增餐饮指标投影在共享报表库 |\n\n## 二、公共字段与索引规范\n\n沿BaseEntity的表使用公共字段；明确usesBaseEntity=false的追加迁移表按完整物理字段及primaryKey展示，不补造id或审计列。原公共约定：id自增、tenant_no、审计、version及deleted；entity_no是业务范围不是租户。物理主键为id；业务号唯一，不直接用旧草案PK替换物理主键。下列公共字段合并到每张表，已显式列出的字段不重复。本文是逻辑设计，不是已执行的生产DDL。\n\n| 字段 | 类型 | 约束/意义 |\n|---|---|---|\n`;
 for(const f of s.commonFields)db+=`| ${f.join(' | ')} |\n`;
 db+=`\n公共字段均NOT NULL；id为PK，其余业务可空以字典为准。外部业务号/幂等键以二进制或大小写敏感排序规则存储，避免幂等键大小写被合并。JSON只存冻结展示、受限配置或引用，不作为金额权威。金额bigint为最小单位且必须有币种上下文；数量decimal须单位、精度与核心能力一致；营业事件保留可还原时刻与业务时区/规则版本；持久化沿用现有LocalDateTime和数据源时区约定，先验证UTC转换，不私自改变全项目时间语义。\n\n每表默认追加审计索引(entity_no,created_at,id)，含store_no表追加(entity_no,store_no,updated_at,id)；按父子查询字段追加(entity_no,parent_no,id)。唯一业务号按当前全局编号生成，跨主体查询仍必须加entity_no。静态配置仅停用不删除；流水和正式签核禁止软删覆盖，保留策略另审。\n\n活动桌容量、活动钱箱、活跃应收范围与边缘写者依赖仲裁行锁/CAS及受控写入口，MySQL可空唯一键不能替代这些并发守卫。按需落地占用槽/预占行，实施DDL中必须给出原子SQL及竞态测试。\n\n## 三、分域表关系\n\n箭头表示显式逻辑引用，跨图及跨库引用见字段字典。每图不超过8表；没有箭头的表仍可经服务合同关联，不意味着同一事务。\n`;
 for(const g of groups)db+=`\n### ${g.label}\n\n![${g.label}](../diagrams/food-system-${g.id}.svg)\n\n${g.tables.map(t=>'`'+t.name+'` '+t.label).join('；')}。跨模块编号通过受权服务验证，避免跨库外键或直接JOIN。\n`;
 db+='\n## 四、逐表字段与约束\n';
 for(const m of s.businessModules)db+=`\n**${m.id} ${m.name} 查表索引：** ${m.tables.map(t=>'`'+t+'`').join('、')||'复用共享能力，无餐饮专属表'}。\n`;
-for(const t of s.tables){db+=`\n### ${t.name} · ${t.label}\n\n归属：${t.owner||'餐饮域 '+t.domain}。${t.deployment?'实施状态：'+t.deployment+(t.deployment.startsWith('MIGRATION_')?'（提供'+t.deployment.replace('MIGRATION_','')+'迁移，业务库执行单独验收）。':'（尚未迁移）。'):''}合并公共字段；下面仅列业务列。\n\n| 字段 | 类型 | 必填 | 含义/逻辑引用 |\n|---|---|---|---|\n`;
-for(const f of t.fields)db+=`| \`${f.name}\` | ${f.type} | ${f.nullable?'否':'是'} | ${f.label}${f.ref?' → `'+f.ref+'`':''} |\n`;
+for(const t of s.tables){db+=`\n### ${t.name} · ${t.label}\n\n归属：${t.owner||'餐饮域 '+t.domain}。${t.deployment?'实施状态：'+t.deployment+(t.deployment.startsWith('MIGRATION_')?'（提供'+t.deployment.replace('MIGRATION_','')+'迁移，业务库执行单独验收）。':'（尚未迁移）。'):''}${t.usesBaseEntity===false?'按迁移列出完整字段；主键 '+(t.primaryKey||[]).join(','):'合并公共字段；下面仅列业务列'}。\n\n| 字段 | 类型 | 必填 | 含义/逻辑引用 | 引入/变更 |\n|---|---|---|---|---|\n`;
+for(const f of t.fields)db+=`| \`${f.name}\` | ${f.type} | ${f.nullable?'否':'是'} | ${f.label}${f.ref?' → `'+f.ref+'`':''} | ${f.introducedIn||t.introducedIn||'原设计'}${f.modifiedIn?' / '+f.modifiedIn:''} |\n`;
 db+=`\n唯一键：${t.unique.map(x=>'`('+x.join(', ')+')`').join('；')}。\n\n约束：${t.rules||'同主体、引用有效、状态转换受聚合守卫；配置修改不影响历史快照。'}\n`;}
 db+=`\n## 五、事务、恢复与数据安全\n\n1. 点单先保存批次和请求哈希，调用核心建单后绑定；超时查询同键恢复。受理与厨房任务/事件在餐饮事务落定；outbox与消费去重复用公共设施，不另造通用事件总线。\n2. 核心行分配及退餐数量须锁定同一源行容量或CAS聚合版本；同SKU不同价格、赠品不能仅靠SKU分配。\n3. 结账预占核心应收范围，收款意图落库后调用资金域；调用后未回写可用原业务号查询恢复。取消结账与支付回调竞争由资金权威合同决定，不凭前端状态解冻。\n4. 日结冻结水位与证据，签核不覆盖；晚到事件产生新版本或当前日调整。签核快照与可重算报表投影分开保存。\n5. 非销售现金表不重复存销售收款；资金流水归班映射唯一。跨班跨日归属分别计算，备用金与押金不计营收。\n6. 联系人、凭证、PMS授权与设备密钥只存加密引用；所有查询绑定entity_no及获准门店，不依赖报表库隐式拦截器。\n\n配置发布：当前关系表是草稿头，fnb_config_revision保存聚合完整定义及依赖发布号的不可变快照；可售读取已发布内容，回滚发布新修订。桌台协作用fnb_table_operation保存意图与恢复；批次原始归属和核心资金不可覆盖。销售配额以fnb_sales_quota_claim对每批幂等预占，UNKNOWN不释放；制作与结账去重键使用非空规范键，不能依赖MySQL NULL唯一行为。\n\n候选模型需在正式迁移前补充每表容量、物理分区/归档、索引执行计划和锁SQL；本轮不执行数据库迁移。表名与外部引用以本源为当前评审草案，不能叠加旧表清单。\n`;
 fs.writeFileSync(path.join(dir,'餐饮系统-数据库设计.md'),db);
-let apiDoc=header('餐饮系统API设计')+moduleIndex();
+let apiDoc=header('餐饮系统API设计')+renderActualFoodSource(actual)+moduleIndex();
 apiDoc+=`## 一、协议与能力边界\n\n${s.apis.length}个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。\n\n- /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。\n- Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。\n- 版本字段为CAS expected version；配置发布、结账冻结、日结签核还核验规则版/指纹/水位。path同名字段不得在body覆盖。GET只读，普通分页沿用PageData(records,total,page,size)，page默认1、size默认20最大100；报告专有metadata不改变统一外层。\n- 输出沿用ApiResult<T>：{code:0,msg:"success",data:T}，Controller直接返回VO，由ApiResponseWrapper包装；异常沿用ErrorCode/BizException与现有全局处理器。追踪号使用既有链路，不新增必填requestId响应字段。业务处理中状态放data.status，HTTP状态/异步语义按宿主异常与包装链校验，不建立另一套HTTP-only错误规范。
 - 普通分页沿用PageData(records,total,page,size)；DTO示意不得迫使现有前端改分页壳。int64金额与业务号遵循现有共享序列化，不能将全项目金额强制改字符串；新增decimal数量使用明确精度合同。UTC对外时刻与数据库LocalDateTime转换必须通过现有配置验证，date明确营业日或自然日基准。
 - B端复用Realm.MERCHANT和BizContext；X-Store-No用于解析主体门店。路径/body显式门店必须与已解析的获准门店匹配，不能因过滤器回落默认店而把显式目标写到另一店。跨店报表逐店验证主体及权限集合。
@@ -63,5 +79,101 @@ if(s.catalogEnhancement){
  for(const [name,c] of Object.entries(s.catalogEnhancement.contracts))apiDoc+=`| ${name} / ${c.authority} | ${c.inputDto} | ${c.outputDto} | ${c.implementation} | ${c.errors.join('/')}；${c.queryRecovery} |\n`;
  apiDoc+='\nKeeta：首批规划渠道，按用户决定暂不接入；不注册真实适配器或同步任务。真实报价和库存合同未验收前，增强交易保持关闭。\n';
 }
+if(s.checkoutImplementation?.implementedApis){
+ apiDoc+='\n## 十、历史结账与售后切片（保留原验收范围）\n\n完整目标保留在前文。以下保留既有切片记录，原证据见开发计划§2.4和§6；本批明确排除支付执行。POSTPAY及当前非支付实际路由见第十一节，历史切片不改标为本批全部完成。\n\n| 接口 | 输入 | 输出 | 授权及剩余边界 |\n|---|---|---|---|\n';
+ for(const a of s.checkoutImplementation.implementedApis)apiDoc+=`| \`${a.method} ${a.path}\` | ${a.input.replaceAll('|','/')} | ${a.output.replaceAll('|','/')} | ${a.authorization}；${a.remaining} |\n`;
+ apiDoc+='\n未实现目标：'+s.checkoutImplementation.targetReconciliation.unimplementedTargetApis.join('、')+'。台账范围结账FOOD-API-140仍未开放；当前按单一原批次冻结，不能代表AA或跨根结账。\n';
+}
+
+if(s.nonPaymentImplementation?.implementedApis){
+ const n=s.nonPaymentImplementation;
+ const cell=value=>String(value??'—').replaceAll('|','\\|').replaceAll('\n',' ');
+ const code=value=>'`'+String(value??'—').replaceAll('`','')+'`';
+ apiDoc+='\n## 十一、本批非支付实际API与目标对账\n\n';
+ apiDoc+=`${n.implementedApis.length}条实际公开biz路由，均为 **CODED_PENDING_VERIFICATION**。该标记是逐接口完整目标/营业验收状态，后端批次编译及测试结果独立记录在verification和原TDD收据。此处逐项记录现有Controller/DTO/权限，与前文目标API并列；目标路径相同不表示DTO或完整业务验收一致。原始接口编号、表及历史V1迁移哈希保留。\n\n`;
+ apiDoc+='历史早期差异（后续已扩展员工及匿名/设备POSTPAY，当前入口见实际公开API对照）：该切片POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。\n\n';
+ for(const boundary of n.boundaries||[])apiDoc+='- '+boundary+'\n';
+ apiDoc+='\n### 11.1 实际路由、权限与目标映射\n\n| 实际编号 | 实际方法与路径 | 目标编号/对齐状态 | 请求DTO或参数 | data返回类型 | 实际权限 |\n|---|---|---|---|---|---|\n';
+ for(const a of n.implementedApis){
+  const request=a.requestBodyType||a.requestParameters.filter(p=>p.in!=='header').map(p=>p.in+':'+(p.wireName||p.name)+' '+p.type).join('; ')||'无Body';
+  apiDoc+=`| ${a.implementationId} | ${code(a.method+' '+a.path)} | ${a.targetApiId||'新增，目标未编号'} / ${a.mappingStatus} | ${cell(request)} | ${code(a.responseType)} | ${code(a.permission)} |\n`;
+ }
+ apiDoc+='\n### 11.2 实际参数与合同差异\n';
+ for(const a of n.implementedApis){
+  apiDoc+=`\n#### ${a.implementationId} · ${a.controller}.${a.handler}\n\n${code(a.method+' '+a.path)} · **${a.status}**\n\n`;
+  apiDoc+=`源码：${code(a.sourceFile+':'+a.sourceLine)}。权限：${code(a.permission)}；${a.guard}。\n\n`;
+  apiDoc+='| 输入位置 | 名称 | Java类型/DTO | 必须提供 | 默认值 | 声明约束 |\n|---|---|---|---|---|---|\n';
+  for(const p of a.requestParameters)apiDoc+=`| ${p.in} | ${p.wireName||p.name} | ${code(p.qualifiedType)} | ${p.required?'是':'否'} | ${cell(p.default)} | ${cell(p.annotations.join(' '))} |\n`;
+  apiDoc+=`\n成功输出为ApiResult&lt;T&gt;的data：${code(a.responseType)}。Body及返回字段见11.3的实际DTO声明；打印claim空闲时data为null，不能据此推断原任务是否已投递。\n\n`;
+  if(a.targetApiId)apiDoc+=`目标映射：${a.targetApiId} ${code(a.targetMethod+' '+a.targetPath)}；${a.mappingStatus}。${a.mappingDifference||''}\n\n`;
+  else apiDoc+='目标映射：本批新增实际路由；未删改旧目标或借用不等价编号。\n\n';
+  for(const difference of a.contractDifferences||[])apiDoc+='- '+difference.kind+'：'+difference.fields.map(code).join('、')+'。\n';
+  apiDoc+='\n边界：'+a.notes+'\n';
+ }
+ apiDoc+='\n### 11.3 实际DTO字段声明\n\n以下来自真实Java record；声明约束为空不推断运行时字段必定非空。来源对象、权限及owner真回执仍由Service验证。\n';
+ for(const d of n.actualDtoDefinitions||[]){
+  apiDoc+=`\n#### ${code(d.name)}\n\n来源：${code(d.sourceFile)}。\n\n| 字段 | Java类型 | 声明约束 |\n|---|---|---|\n`;
+  for(const f of d.fields)apiDoc+=`| ${f.name} | ${code(f.type)} | ${cell(f.annotations.join(' '))} |\n`;
+ }
+ apiDoc+='\n### 11.4 未对齐目标与设备未知回执\n\n| 目标 | 目标路径 | 本批对齐状态 | 实际路径 |\n|---|---|---|---|\n';
+ for(const t of n.targetReconciliation||[])apiDoc+=`| ${t.targetApiId} | ${code(t.method+' '+t.path)} | ${t.status}${t.contractStatus?' / '+t.contractStatus:''} | ${t.actualPaths.map(code).join('、')||'未注册对应实际路由'} |\n`;
+ apiDoc+='\n内部打印claim采用ClaimResult信封：显式claim=null表示成功空闲，信封缺失仍报错。历史P2已编码修复：claim必需字段、非空有界key及规范UUID校验；ACK只认最新连续唯一尝试、规范状态及responseCode一致。保留owner允许的FAILED→retry/PENDING重放，远程适配器不以本地时钟拒绝过去租约。失去claim响应可能已留下SENT租约；超时为UNKNOWN，不自动补投。普通retry仅限真实NOT_PRINTED失败，未知回执需原尝试对账或带原单原因的人工补打。\n';
+ apiDoc+='\n### 11.5 自动打印、默认KDS与本批已编码修复\n\n';
+ if(n.printingOwnership)apiDoc+='打印归属：实际公开BizPrintJobController位于food-web的ai.neargo.shop.food.api.biz。enqueue先调用FoodPrintService冻结文档，再调用shop-base的ai.neargo.shop.spi.printing.PrintPort；list/get/retry/reprint直接调用该PrintPort。共享PrintService/PrintServiceImpl、prn Entity与PrintMappers唯一归shop-core的ai.neargo.shop.printing。原/biz/print/jobs仍为PLANNED_SHARED_B_ENTRY_NOT_REGISTERED，目标Req/VO仅PLANNED_TRANSPORT_CONTRACT；实际DTO以本节真实Java声明为准。\n\n';
+ if(n.automaticPrinting)apiDoc+='DINING_ORDER_ACCEPTED先持久化/重放原MAKE票，再读取共享打印配置，对已配置ORDER及原工位KITCHEN route自动入队；与手动首次打印共用原逻辑文档身份。无配置route不造打印任务，入队不代表物理出纸。\n\n';
+ if(n.kdsQueue)apiDoc+='默认KDS只读真实ACCEPTED批次、未CLOSED票及非SERVED/VOIDED任务；显式batchNo可查原历史。MAKE/REMAKE及原票引用保持，轮询不提供SSE/推送送达证明。\n\n';
+ if(n.claimEnvelopeReview?.resolution)apiDoc+='CorePrint回执历史审查保留为历史证据；当前修复登记为CODED_PENDING_VERIFICATION，覆盖显式空闲/缺失信封、最新attempt与规范状态/responseCode、key与UUID及晚到/重复原回执。测试源码：'+code(n.claimEnvelopeReview.resolution.testSourceFile)+'。这不替代硬件真回执或将全目标判定完成。\n';
+}
+
+if(s.staffOrderingImplementation){
+ const staff=s.staffOrderingImplementation;
+ const staffVerified=staff.verification?.result==='PASSED_SCOPED_TEST_SUITES';
+ apiDoc+='\n## 十二、当前员工代客下单切片（'+(staffVerified?'本批后端编译及测试已执行':'编码中，未编译/测试')+'）\n\n';
+ apiDoc+=`本节覆盖后续员工下单增量；前两节保留历史切片的原时点。实际状态为${staff.status}，不代表FOOD-API-042完整目标完成。当前支持POS/WAITER、POSTPAY、真实注册顾客、PICKUP或有有效台账的DINE_IN，以及完整整数MAIN及已支持ADDON；员工身份与顾客分开，禁止冒充消费者Credentials，不执行收款或资产消费。\n\n`;
+ for(const a of staff.implementedApis){
+  apiDoc+=`\`${a.method} ${a.path}\` · ${a.controller}.${a.handler} · ${a.permission}\n\n`;
+  apiDoc+=`请求：\`${a.requestBodyType}\`，Header：\`Idempotency-Key\`；输出data：\`${a.responseType}\`。\n\n`;
+  apiDoc+='| 输入字段 | 类型 | 必填 | 含义 |\n|---|---|---|---|\n';
+  for(const f of staff.requestFields)apiDoc+=`| ${f.name} | ${f.type} | ${f.required?'是':'否'} | ${f.meaning} |\n`;
+  apiDoc+=`\n守卫：${a.guard}。剩余边界：${a.remaining}。\n\n`;
+ }
+ apiDoc+='员工身份持久化复用原fnb批次、原核心订单及来源绑定，组件等结构增量见第十三节；buyer_no保存顾客，operator_no保存员工，actor_realm沿MERCHANT原枚举。内部合同：'+staff.internalContracts.join('、')+'。恢复只查持久化原员工/顾客/批次键，不重开单。\n\n';
+ apiDoc+=staffVerified?'本批已完成记录范围的后端编译和集中测试；真实结果及跳过项见原TDD§2.14。未完成业务与目标合同差异仍保持待办。\n':'当前未运行编译或测试，按全部业务编码→统一编译→集中测试执行；具体待验证方法见真源staffOrderingImplementation.tests及原TDD§2.7。\n';
+}
+
+if(s.businessCodingImplementation){
+ const b=s.businessCodingImplementation;
+ const businessVerified=b.verification?.result==='PASSED_SCOPED_TEST_SUITES';
+ apiDoc+='\n## 十三、连续业务编码的实际合同（'+(businessVerified?'本批后端编译及测试已执行':'未编译/测试')+'）\n\n';
+ apiDoc+=`涉及${b.implementedApis.length}条实际路由，其中${b.newPublicRouteCount}条为相对原提交的新增公开路由；已有路由的DTO/业务扩展与新增分开展示。当前批次状态为${b.status}，仅表示本批已记录的源码或测试范围；原50条非支付收据仍保留其历史时点，目标API与完整需求差异不自动消除。\n\n`;
+ apiDoc+='| 编码编号 | 方法与实际路径 | Java入口 | 请求 | data响应 | 新增路由 | 目标映射 |\n|---|---|---|---|---|---|---|\n';
+ const clean=x=>String(x??'—').replaceAll('|','/').replaceAll('\n',' ');
+ for(const a of b.implementedApis)apiDoc+=`| ${a.implementationId} | \`${a.method} ${a.path}\` | ${a.controller}.${a.handler} | ${clean(a.input)} | ${clean(a.responseType)} | ${a.newPublicRoute?'是':'沿用/扩展'} | ${a.targetApiId||'本次新增业务合同'} / ${a.contractStatus} |\n`;
+ if(b.sharedManualAdjustment){
+  const manual=b.sharedManualAdjustment;
+  apiDoc+='\n### 共享人工调价（shop-core）\n\n复用 '+manual.arithmetic+'，真实门店策略与审批只授权让价，报价在下单时重新核验；不执行收款、退款或资产消费。员工自审限额固定0。\n\n';
+  apiDoc+='| 方法 | 实际路径 | 输入 | 输出 |\n|---|---|---|---|\n';
+  for(const a of manual.apis)apiDoc+=`| ${a.method} | ${a.path} | ${clean(a.input)} | ${clean(a.output)} |\n`;
+  apiDoc+='\n阻断项：'+manual.blocked.join('；')+'。\n';
+ }
+ if(b.pendingCancellationImplementation){
+  const cancel=b.pendingCancellationImplementation;
+  apiDoc+='\n### 处理中批次撤销\n\n仅'+cancel.scope+'。CANCEL_PENDING表示已保存撤销意图，只有原核心RELEASED才能标取消（无原意图时写持久tombstone，有原预占时须原库存确认释放）；正式订单先创建则保留原债务并记录撤销拒绝。\n\n';
+  apiDoc+='来源验证采用原批次冻结价格事实、完整原Command/履约/键及持久撤销审计，不重新检查当前菜单、剩余额度、库存、规则或税配置。缺能力默认拒绝，不回退实时可售接口。复用fnb_order_batch/fnb_action_log，无新表或迁移；已受理退餐、退款及返库不在该取消合同内。'+(businessVerified?'本批后端编译及测试结果见原TDD§2.14。\n':'当前仅编码，未编译/测试。\n');
+ }
+ apiDoc+='\n### 实际DTO字段（当前源码）\n';
+ for(const d of b.dtoRegistry){
+  apiDoc+=`\n#### ${d.name}\n\n| 字段 | Java类型 | 必填 | 声明约束 |\n|---|---|---|---|\n`;
+  for(const f of d.fields)apiDoc+=`| ${f.name} | ${clean(f.type)} | ${f.required?'是':'否'} | ${clean(f.annotations.join(' '))} |\n`;
+ }
+ apiDoc+='\n### 当前边界\n\n预约为FOOD本地真实桌台时段分配，不冒充外部资源或已收订金；转桌/加桌只变同台账物理占位，不迁移原订单/资金；AA为原金额责任分摊，settlementEligible=false，不替代FOOD-API-140；包装/交接始终保留coreDeliveryPending，实物凭证不替代核心库存出库。营业日仅SYNC异常双人交接，AR/退款/支付未知不自动消除。批次查询不返回推断的当前欠款或资金终态。\n\n未完成：'+b.notCompleted.join('；')+'。完整任务保持原TDD未完成状态，不用当前源码条目数量推断全部需求已交付。\n';
+}
+
 fs.writeFileSync(path.join(dir,'餐饮系统-API设计.md'),apiDoc);
 console.log(`Generated 3 design documents, ${groups.length} SVGs; ${s.tables.length} tables, ${s.apis.length} APIs, ${s.domains.reduce((n,d)=>n+d.requirements.length,0)} requirements`);
+
+let tableList=header('餐饮系统数据库表清单')+'| 表 | 引入版本 | 状态 | 实体/SQL映射 |\n|---|---|---|---|\n';
+for(const t of s.tables)tableList+=`| ${t.name} | ${t.introducedIn||t.deployment||'原目标'} | ${t.deployment==='PLANNED'?'PLANNED':Number(t.introducedIn?.slice(1))>15?'源码迁移待部署':'云端V15基线范围/共享独立owner'} | ${t.sourceImplementation?.entityClass||t.sourceImplementation?.mapperClasses.join(', ')||'见原owner'} |\n`;
+tableList+='\n## 共享库本批迁移（原owner）\n\n| Owner | 版本 | 文件 | 变更 |\n|---|---|---|---|\n';
+for(const m of s.sharedSchemaChanges)tableList+=`| ${m.owner} | V${m.version} | ${m.file} | ${m.changes.map(c=>c.action+' '+c.table+(c.field?'.'+c.field.name:'')).join('<br>')} |\n`;
+fs.writeFileSync(path.join(dir,'餐饮系统-数据库表清单.md'),tableList);

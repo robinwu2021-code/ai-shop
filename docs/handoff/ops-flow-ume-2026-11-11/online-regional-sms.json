@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/biz/auth/otp/send",
+    "http": 200,
+    "code": 10515
+  },
+  {
+    "path": "/biz/auth/login",
+    "http": 200,
+    "code": 10515
+  }
+]

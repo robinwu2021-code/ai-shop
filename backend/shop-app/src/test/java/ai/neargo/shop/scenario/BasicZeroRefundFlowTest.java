@@ -41,6 +41,7 @@ class BasicZeroRefundFlowTest {
         jdbc.update("update prd_sku set price=0 where sku_no='SK0003'");
         try (var f = new BasicRefundFixture(context)) {
             var purchase = f.purchase("13207071302");
+            assertOriginalFreeReceipt(purchase.payNo());
             assertThat(jdbc.queryForObject("select pay_amount from ord_order where order_no=?",
                     Long.class, purchase.payNo())).isZero();
             ZeroRefundCrashFixture crash = new ZeroRefundCrashFixture(context);
@@ -61,6 +62,7 @@ class BasicZeroRefundFlowTest {
         jdbc.update("update prd_sku set price=0 where sku_no='SK0003'");
         try (var f = new BasicRefundFixture(context)) {
             var p = f.purchase("13207071301");
+            assertOriginalFreeReceipt(p.payNo());
             assertThat(jdbc.queryForObject("select pay_amount from ord_sub_order where sub_order_no=?",
                     Long.class, p.subNo())).isZero();
             String no = f.apply(p, "REFUND_ONLY");
@@ -78,4 +80,14 @@ class BasicZeroRefundFlowTest {
             jdbc.update("update prd_sku set price=? where sku_no='SK0003'", old);
         }
     }
+    private void assertOriginalFreeReceipt(String orderNo) {
+        String outTradeNo = jdbc.queryForObject("select out_trade_no from stl_payment where order_no=?"
+                + " and direction='PAY' and pay_channel='FREE' and status='SUCCESS'", String.class, orderNo);
+        String providerTradeNo = jdbc.queryForObject("select trade_no from stl_payment where out_trade_no=?"
+                + " and direction='PAY'", String.class, outTradeNo);
+        assertThat(providerTradeNo).isEqualTo("FREE:" + outTradeNo);
+        assertThat(jdbc.queryForObject("select pay_trade_no from ord_order where order_no=?",
+                String.class, orderNo)).isEqualTo(providerTradeNo).isNotEqualTo(outTradeNo);
+    }
+
 }

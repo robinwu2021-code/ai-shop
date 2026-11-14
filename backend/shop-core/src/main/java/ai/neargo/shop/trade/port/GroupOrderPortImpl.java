@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.GroupOrderPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -9,12 +11,17 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 import java.util.List;
 
 /** {@link GroupOrderPort} 的实现。见接口注释。 */
 @Component
 public class GroupOrderPortImpl implements GroupOrderPort {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final Logger log = LoggerFactory.getLogger(GroupOrderPortImpl.class);
 
@@ -41,6 +48,7 @@ public class GroupOrderPortImpl implements GroupOrderPort {
                         .eq(OrdSubOrder::getGroupNo, groupNo)
                         .notIn(OrdSubOrder::getStatus,
                                 List.of(OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED))));
+        return documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, subs.size()), () -> {
         int started = 0;
         for (OrdSubOrder s : subs) {
             // 逐张独立：一张的分账回退失败停在 REFUNDING 等重试，不连累同团其余买家
@@ -54,5 +62,6 @@ public class GroupOrderPortImpl implements GroupOrderPort {
             }
         }
         return started;
+        });
     }
 }

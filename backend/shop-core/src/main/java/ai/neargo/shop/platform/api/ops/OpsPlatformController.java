@@ -57,8 +57,11 @@ public class OpsPlatformController {
     public LoginResultVO login(@jakarta.validation.Valid @RequestBody LoginReq req) {
         try {
             LoginResultVO r = opsService.login(req.username(), req.password());
-            auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
-                    r.staff() == null ? null : r.staff().staffNo());
+            // 开着第二因子时这一步只发了挑战，「登录成功」记在第二步
+            if (r.token() != null) {
+                auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
+                        r.staff() == null ? null : r.staff().staffNo());
+            }
             return r;
         } catch (ai.neargo.shop.common.BizException e) {
             // 失败要留痕。成功那一侧见 LoginAuditor 类注释
@@ -67,6 +70,26 @@ public class OpsPlatformController {
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
+    }
+
+    /**
+     * 第二因子（安全规范 §2.7）：用登录时发到邮箱的 6 位码换会话。免鉴权（此刻还没有会话），安全性在挑战号 + 码 + 次数上限。
+     * 成功与失败都进登录日志 —— 第二步失败多半是有人拿到了密码。
+     */
+    @PostMapping("/ops/auth/login/verify")
+    public LoginResultVO verifyLogin(@jakarta.validation.Valid @RequestBody VerifyReq req) {
+        try {
+            LoginResultVO r = opsService.verifySecondFactor(req.challenge(), req.code());
+            auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR, r.staff() == null ? null : r.staff().staffNo());
+            return r;
+        } catch (ai.neargo.shop.common.BizException e) {
+            auditor.failed(ai.neargo.shop.auth.Realm.OPERATOR, "second-factor",
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
+    }
+
+    public record VerifyReq(@NotBlank String challenge, @NotBlank String code) {
     }
 
     /**
@@ -148,6 +171,16 @@ public class OpsPlatformController {
     @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
     public StaffVO setStaffEnabled(@PathVariable String staffNo, @RequestBody EnabledReq req) {
         return opsService.setStaffEnabled(staffNo, Boolean.TRUE.equals(req.enabled()));
+    }
+
+    /**
+     * 免二次验证白名单。第二因子整体开着（生产只能开着）时，勾了的账号只凭密码登录。
+     * 理由必填、不能给自己勾，变更与每次免验证登录都进审计。
+     */
+    @PostMapping("/ops/staffs/{staffNo}/second-factor-exempt")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
+    public StaffVO setStaffSecondFactorExempt(@PathVariable String staffNo, @RequestBody SecondFactorExemptReq req) {
+        return opsService.setStaffSecondFactorExempt(staffNo, Boolean.TRUE.equals(req.exempt()), req.reason());
     }
 
     /**
@@ -255,8 +288,8 @@ public class OpsPlatformController {
 
     @PostMapping("/ops/merchant/apply/{applyNo}/audit")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
-    public void auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
-        opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
+    public MerchantApplyVO auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
+        return opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
                 req.serviceScope(), req.communityNos(), req.grantCodes());
     }
 
@@ -363,6 +396,9 @@ public class OpsPlatformController {
 
     /** @param reason 必填 —— 关掉一档等于把一类商家挡在门外 */
     public record ScopeEnabledReq(Boolean enabled, String reason) {
+    }
+
+    public record SecondFactorExemptReq(Boolean exempt, String reason) {
     }
 
     public record EnabledReq(Boolean enabled) {

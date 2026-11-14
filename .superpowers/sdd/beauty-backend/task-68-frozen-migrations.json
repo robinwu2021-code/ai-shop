@@ -1,0 +1,1946 @@
+{
+  "files": [
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V100__sku_presale.sql",
+      "sha256": "7cca21db4a95e8bdb32a0236eeb495676a9456a6cfe5acd7cd539a8beb2d6c88"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V101__stock_lock_presale.sql",
+      "sha256": "70306e0568f2417518e925382598a44c8f31c6c26a892caf90e0ded6d53ebc91"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V102__spec_template_status.sql",
+      "sha256": "fd9121b97bec603c7cf82b5b9741035e60a886c26e63ce4a6f9a0d9154e22fee"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V103__spec_template_function_point.sql",
+      "sha256": "40bfd749f869b2f1cccc745ed4aba59e427c26d92b1f138e8e5a55bb51c8ba94"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V104__msg_push_token.sql",
+      "sha256": "6947fe79d5aa16bf36d99a7a9782f77369089ab96ff0cdc1a8fbb8260270665f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V10__mch_store_audit.sql",
+      "sha256": "5759b1e159cd0601e61f58271fde39d3abef41c420f59e52973005361be0653b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V110__stl_withdraw.sql",
+      "sha256": "b916b911ba6d37664e639ef03530e8e204bc5e1181c441c99bca80ded43d77d8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V111__stl_settle_invoice.sql",
+      "sha256": "49186ae636bbfb522093df101ffc4d9983250e76fffdbf9bf6e6b963f96ceb86"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V112__withdraw_function_point.sql",
+      "sha256": "193382dddcb225d643aa86e66ffec82d6928b60baec088abf88393a02081783d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V11__community_grid_fence.sql",
+      "sha256": "b6b3ce497e977fe456fdaf3d09421421e0b834030197e499bf461ebe37deb292"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V120__risk_domain.sql",
+      "sha256": "22a2f4793719b99ade055b16314077c46ea932b0ae64a77061d713e665a7cd7f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V121__growth_attribution_rule_and_fission.sql",
+      "sha256": "7fec1076574839a204d8a87dfb92e45bf7a33e8cec1ccb31e033fb80ee0c4572"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V12__unify_category_type.sql",
+      "sha256": "1af03ce0cee7faab4e7774c5049e96c5ce7f2e6960e0cb637710934f82f8d8e0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V130__fulfillment_batch_dispatch.sql",
+      "sha256": "dbe66739555bd457c97848e1d9472b6f8b95e6971e752cbe0c01ee0270eee671"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V131__fulfillment_shortage_report.sql",
+      "sha256": "c28c82c4dc5e18b650e80ee74350baa4524d39f6b53df5ad0fec434a5d14d28a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V132__fulfillment_shipment.sql",
+      "sha256": "489f6286ffd56b6b659061f6193161739d0229911b5f2f7511d7d9f33a6c45c6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V133__fulfillment_freight_template.sql",
+      "sha256": "167ab32a19429e84443f59c056c5a748046a638e5c852f715c5dd7af786293ca"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V134__fulfillment_carrier.sql",
+      "sha256": "a4bc0b0aff323cdeb29ea7bad79e5f9640670340ed884795deaa3b72e44bdd08"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V135__fulfillment_perm_config.sql",
+      "sha256": "02094e6507eb47702471fd7671812f550ecd3216795f39a4cb4edca2a7a67c73"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V136__growth_risk_perm_config.sql",
+      "sha256": "a838a31fc14eca6a61d52c47dd3fad3fed16de28bf4cfe861622b48d8d4bb04a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V137__data_scope_ops_anchors.sql",
+      "sha256": "8427175ffa93f1a7002dc00352accbb9da03be1134dc95185eaff118a61a5985"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V13__store_stock.sql",
+      "sha256": "5f31e38dde865250cf5eb1a3eba238d36ec797db7b2a84ce0176fb0cbaf1a5f3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V140__notify_channel_menu_points.sql",
+      "sha256": "732a006e75dab79beb42809ff44b08efeaa6a69d0b040a74d55c06b6a6e70344"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V141__msg_template_seed.sql",
+      "sha256": "d0b047494bd56a60509b7d3ae2b0dd2430fb35868151b9a80bf8a2869acc02a9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V142__mail_business_templates.sql",
+      "sha256": "89b08f2e30e22fa53d638205259b6b2716cb99fefeec2486a43eda47ee381676"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V143__fix_template_newlines.sql",
+      "sha256": "50c09fa3d1ac17a459f49a1c59a87ef8a38db99ec1843b7d90b4435ddf4f7991"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V144__inapp_menu_rename.sql",
+      "sha256": "1595449c541f95230a59520165e01402e3d5353e7b580a9eca64325d54b81282"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V145__msg_template_lang.sql",
+      "sha256": "f2aff84543ea218a0c64b0565cd9c23c5de4b3023dcd8b1fdff675fff0ef3b33"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V146__notify_log_template_no.sql",
+      "sha256": "11aff47917c63f22dc5fd22d8ec939a4ff91838514e853383f1f708f0b72bea3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V14__settle_store_account.sql",
+      "sha256": "4cc49591e501cffca0df743d64a2b70261d4e027cd9946ed66f1c8f6eef360cb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V150__merchant_plan.sql",
+      "sha256": "2f31870d085b8e71731ee790fadfc3d6cdb544e427dd216e7933ad69ecfb9c35"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V151__drop_stale_growth_risk_points.sql",
+      "sha256": "0b4c0f096e77dd1eb1f9c2264ee836d4929948969f277086a6b6c01505f02ffc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V152__media_asset.sql",
+      "sha256": "7f0ca9ed643079ef7123a07a770f35241add972386f21beaf4c367fe7b822ed8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V153__merchant_plan_function_point.sql",
+      "sha256": "4f237d32171cb28f108d2fb8839c12563137d5b771f5d8b46a29822991ef9e7b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V154__media_storage_function_point.sql",
+      "sha256": "0a9c347efdfe2b6673f6f9607a3404758658a2ffd791db292e1d21d2b0851184"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V155__review_store_no.sql",
+      "sha256": "69925332ec633b118fafb8cf68c879713f0c6a8c5f8f1fb1a9f6c09da93de25c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V156__msg_scene_channel.sql",
+      "sha256": "1b84c70131a3bef15f478f3aee58a3107e0551a570584c5acda5ff5fca7b8f66"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V157__msg_push_token_provider.sql",
+      "sha256": "231f414f0a2c05de5c2c2b2510cbb0f5d63deb1d75aa214a8ecf85d6a68a0b39"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V158__notify_channel.sql",
+      "sha256": "0802ec05503539756002e144ee308ccc9c2cff0ecd0708d5b357ac970e8214cb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V159__notify_log_provider.sql",
+      "sha256": "16c208bb4ee62fbc8fe7eab5f54f245eb4b9b0d939b4f560717d5decd5d59702"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V15__store_goods.sql",
+      "sha256": "96d8717cd0152f72ebbe2e2fcc5c9c07ec242ce9dad396365b5b7330a94cb55f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V160__notify_channel_secret.sql",
+      "sha256": "57d2056682fb08eac5c5a3149ec407bb8a583b10d87c498d93a49e6ffc5b6933"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V161__notify_push_task.sql",
+      "sha256": "1f7ce3a367baeebb0d001e9c69b45917c8ed46836f51d6fb15f1dd8026e8b77b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V162__rename_msg_to_notify.sql",
+      "sha256": "7f295dd5a60509fb3ffcbbd9bc9d0a9f2bc2fff08540636d6fd5842334892e39"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V163__push_task_menu_point.sql",
+      "sha256": "19c4dfe25d64317d99437bdf7555c35fc6a1fa156013aa8815c8db204a90a084"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V164__mch_entity_acode.sql",
+      "sha256": "a7aa97cbfe1445ce8fac8d0faacfda893104ecb499d851d6e9dc75dd47d5cdc8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V165__category_drives_type.sql",
+      "sha256": "37c5f790ef6c02bbe98eb81d2a16603a448114895252fe0e01f40bcc742f4976"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V166__spu_std.sql",
+      "sha256": "fdea4a4b572d2653d6dbbf19e7302496e380efeca75011b48002ad7c3a840aad"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V167__spu_std_menu.sql",
+      "sha256": "511d88b420f2490517645ac20f5345e2f9acdcd56692d76395146758e5b6ffcf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V168__category_two_level.sql",
+      "sha256": "60cdcff76377171321ee8ac31c837a8d258f8707c70bdf9fd3cd175714ec020a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V169__apply_category_codes.sql",
+      "sha256": "8371101a84a665ea38cdae0a6c741bee84fed9e0d6dd5c70d3726563ea1602d7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V16__pickup_owner_store.sql",
+      "sha256": "54c862c51e122f23a001ab474f0b578ca61202528935e8cf654b039bec76ad1d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V170__store_price.sql",
+      "sha256": "376ea478b5b48170d37bdda7c71581559150a4e6f8f775573e8bd5a7f3ba8dd9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V171__goods_draft_and_detail.sql",
+      "sha256": "b7ffb67c6cdeaea7dfd5af9afca6c03d6bf8b548b4d88f42b476421dd0bbb460"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V172__topic.sql",
+      "sha256": "e5286f592489bb55cc2b03cf52aae223838ae394d74bb456fa1c30b30029db27"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V173__topic_menu.sql",
+      "sha256": "d2be754dd2d755660649bf255004620fb8168a19f02289309408ba4e64e67f89"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V174__spec_template_seed.sql",
+      "sha256": "7b74cdbfb171a8380598a3bfffd778d0b09e10e66580f5628593beed132e1907"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V175__category_more_nodes.sql",
+      "sha256": "2eb0ba7ae87a60f37ffa17d1777fd8f25b6b5290b29a517ee4819234891c8ec4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V176__category_community_coverage.sql",
+      "sha256": "ca9fe32c1876d1dd739036fd693b70646c9a09ec44dc7d86acfab5aa76f8a1e4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V177__category_gate_fix.sql",
+      "sha256": "8d17996fbd3c1aae857d8936e5b003410e414ffcb7bfca48e1f12ac135f8e9ab"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V178__category_menu_rename.sql",
+      "sha256": "a6bfcee7fde4240feb15740eeb83529cf01181a511f157119563ecd3b535702a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V179__demo_community_region.sql",
+      "sha256": "7cc76c0da0512c6cb24ec37a5337d3e7393a246963ce9e89e3f27df52718a256"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V17__campaign_store.sql",
+      "sha256": "863e5f0d19e24fb2ae6bcc045517bf1d99eb1bd74e8d14014c549fbc995739a3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V180__spec_template_by_category.sql",
+      "sha256": "ddc24d287323e9529c4e08995f1a6aef8936cac052c504d8d99a5cf456fd0698"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V182__region_merchant_entry.sql",
+      "sha256": "25b0d490952c708d0b13c4bfe0f47a8e2b735bb6c440042384c8de5b899472c1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V183__region_audit.sql",
+      "sha256": "785f4b839c2e88f6807b98348d3f4d1f8ade3dbd7aa0ce6d9640f30431b396d1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V184__region_audit_function_point.sql",
+      "sha256": "070b691b5594e52a0d701a99f2f7c94db4548179f77d2fb66711bdf928652bd4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V185__settlement_columns.sql",
+      "sha256": "9f4a1edfbf385962f586a5a6847ac1287e3e170b1da0585408b76208d82e4af5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V186__region_tab_rename.sql",
+      "sha256": "fcbcaef443d6b1146d1db701fbdcfd89ade4634c1ecdc351cf37a04cc283100a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V187__store_fulfillment_channel.sql",
+      "sha256": "c0ee7dae385a41d6738c5d1accfe2a9368522037e75eb36f32fa1f68c4e15922"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V188__street_self_effective_pickup_audit.sql",
+      "sha256": "2c14a2ff8a3e868d5f9bf6190b8198747d5177e33b9ec64fe6493812fb5632a7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V189__channel_ops_lock_subset_perm.sql",
+      "sha256": "06039c546ed2bb76714f1d4c82825643344e6c05658fe4d0a07c9ced4ca32f04"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V18__store_role_multi.sql",
+      "sha256": "818a52b5b6e7dcb62d6a13daff0d574fcf989e795aba07fe4760a0b0e5b0b090"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V190__category_full_catalog.sql",
+      "sha256": "6ab72e0772815707dc33a449d8130ea57c289239f130df8a920268949135c09f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V191__geo_columns.sql",
+      "sha256": "691c3a253f818c392826738be14271ec6c1bcac7e2cb04d51a98ca5728d9b807"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V192__region_coords.sql",
+      "sha256": "ba916fedefde69653d585184b83e67fbee91fc3055222d20fb0115b4ac37ee0a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V193__address_region.sql",
+      "sha256": "37127711f95108d06d294b928c8c8bb56e509f600998c34f4841b3848ded5818"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V194__goods_cost_price_detail_images.sql",
+      "sha256": "f0af9757216c73a399faf8115017a1001a1dd1358d0039fa0303539a314a8cb5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V195__spec_library.sql",
+      "sha256": "cdd14797a9cf7933b818c88f41cc329678e22d08c5f9d052e5b5ddb06cf17db3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V196__spec_catalog_seed.sql",
+      "sha256": "ac6f03a4a019805ec46764631fb44fe85f3646ee6a11e2bde1cb66c02d7cd81a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V197__spec_catalog_gap_fill.sql",
+      "sha256": "3ba8773a6512a3d093c252f05c8ff5c8c9fb1a63417452fd93800d2ba737921e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V198__reopen_fresh_categories.sql",
+      "sha256": "56440dd73a572c3ab3084734e0dc304fb2ef4d15a84a7088fa9a87b77ac6e492"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V199__spec_library_menu.sql",
+      "sha256": "280b7f9cfbb81fc2b9b7574e4eca17336ac117fd51acd0eecfbdd06c9294ede2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V19__quote_breach.sql",
+      "sha256": "91c654a76d267d46896b956af7b97d9e223fc4ead6e1a742943867220d93221d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V1__baseline.sql",
+      "sha256": "c8699fd01c8c1739867b7691adcc531f26abd9cce31d6ad8bb4c94d314d22958"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V200__spec_value_merge.sql",
+      "sha256": "141b937667e0e11e3f3685f1d2212f4c1c04a4c6c6ac9b9f032ce16e455402a2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V201__grant_legacy_category_codes.sql",
+      "sha256": "38312cb286858417aa068644e8188e97956d471a5abad2bd0fb0c7e75374b00c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V202__auth_code_qual_type.sql",
+      "sha256": "5f569e8dee9846e1e9bb891b77ccf54b719f805c7612a3a03437157cd5bff856"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V203__community_source.sql",
+      "sha256": "b098151e0247d8a60f5d7ee2fc49eabfa9d6f315db776dc212b553c4e44b4780"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V204__sys_region_name_index.sql",
+      "sha256": "9f4212ab07bc7a55310829b43eff9af4bfa02781cd1478fa20ff507bee77a575"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V205__sys_region_name_index_covering.sql",
+      "sha256": "1f3133b614cdbdc135d4d45b2417b5b63068272fec45e7ec7f52a287e4c67f6b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V206__geo_poi_cache.sql",
+      "sha256": "a90fafd861c4d265707f3cbd2509f59830096142dff0aae37beb1995dbd32617"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V207__backfill_missing_category_name_en.sql",
+      "sha256": "83e1b4640f92eb8c56fff83f90815d68e987303b8148b66ce514e8cdac073728"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V208__geo_poi_cache_scope_len.sql",
+      "sha256": "4ad6275347457d41b0b4152f8bf015e002485dc2254b87be2c7fbf07e36107b7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V209__store_address_detail.sql",
+      "sha256": "d1be093d238de58b100c0ac4f0a7b3e7aa255e1c9e2fab95a01a1a95fde8402e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V20__msg_template.sql",
+      "sha256": "78c0f63c6af810bd3bcf470db66bf8d0518bd8905e3ebc5f786048d3ef291c36"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V210__community_restore_origin_name.sql",
+      "sha256": "83a41c7914f976bd1e5e41afdb707a8385fa2ebd8f441ca8af5ec48b73e65cda"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V211__sys_region_rural_flag.sql",
+      "sha256": "6acf4b08f1157c25109cfb483394953919f0d1bbd4ea3e2099ba93ca0b08fd5b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V212__store_announcement_expiry.sql",
+      "sha256": "d7edc127d8310787cb8939a262b3a2f51ea9232e3002bb52896202fc2a6b907c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V213__merchant_spec_override.sql",
+      "sha256": "88ab7ff949e9ea5af7fbef72bd3ccb0feb49f8a2108a762db0d72618854e7eed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V214__store_audit_store_scope.sql",
+      "sha256": "1d17a05bddcefde34fbb66bc2597d2e69293973cefc35b85821121b50dd0a1b9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V215__store_announcement_at.sql",
+      "sha256": "064bb813f6235b71c1a40d6c260bc24277fee862f9192f2c826eba0482745e07"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V216__category_community_full.sql",
+      "sha256": "74e54c97701c751b10ea950164889054a7890d9d6402696ab19f8be5da02120f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V217__category_spec_for_new_categories.sql",
+      "sha256": "0f010484dd3af574db2c787466c27d6b5cc8289ec2ce291acfbdfa4d82490acf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V219__spu_std_barcode_source.sql",
+      "sha256": "221e2462db713de01597ee7b1c23d3ef6d15e12b91b72dc290b01bd17405949f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V21__coupon_budget.sql",
+      "sha256": "0221aec17a5551a57be6d9010c68f296a5a83da50f1120f2bd6402125dd743f8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V220__spu_std_seed_from_open_data.sql",
+      "sha256": "ebc18ecb0ccf4ab44c240b17e6cd18c9d9d88cbe580e53f96281fa1bd58e3516"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V221__plan_store_quota_raise.sql",
+      "sha256": "83937880cb3efd84b341ec718f7f5f564983235af2018ed21b1fbe475474b117"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V222__usr_person.sql",
+      "sha256": "f8c29b27514e4499c05f16faa7652d95ccfcb6321b406a24f81de0e55da37891"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V223__spec_count_classifier_aliases.sql",
+      "sha256": "63d47f73758cff3eb35579c295b9e8c33bed60fbcadcc401de54586b1533d4a1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V224__mbr_member.sql",
+      "sha256": "53b293492347503e470cfc3c85bdcf8e54c1a3e44c6c556b98200047bb5130e2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V225__spec_template_rename_count.sql",
+      "sha256": "ef8eab5ecf81255ee6c53338371e35fb6134939d8f1d01cce4efdf5ebb15a608"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V226__mbr_tag.sql",
+      "sha256": "268ae6304e6a004eb3f79a78a8866517cf65fa94c04b4632c4c43bc774908133"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V228__category_spec_gaps.sql",
+      "sha256": "8a04bca780667a22ea3bc5b318df7f3f43a0a489afa36292c750ab3197d3d76b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V229__backfill_goods_spec_dims.sql",
+      "sha256": "335953409ed6f450767e87f0f92cea01a9f982c829e9faf14433d2d9967c04ad"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V22__phase1_master_data.sql",
+      "sha256": "94e7039aad0392ccee417c3745fe630507709ebda30e39bf40387b6895e0f64e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V230__mbr_segment.sql",
+      "sha256": "914dbaa5342c29d0070ca639ef37a49ca5e4be55adb25c031247329c7a63b7d0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V231__pmt_coupon.sql",
+      "sha256": "8d6d869014ba3f2a2586a2ee55dfc9e60846d0afc4ba6fb77b8b6266d9516ebe"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V232__pmt_backfill_from_mkt.sql",
+      "sha256": "23491c13343e3caf763efbc6e934c2f11c0b581273a37f5aba49f4103875bba2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V235__spec_service_area_length.sql",
+      "sha256": "86db808f0aeb14a00cd0467f3e72ded0858e0a08ca2d9858c597e39ab7810a38"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V236__backfill_goods_spec_dims_2.sql",
+      "sha256": "cf25f94fccf1bdce07ddf9c2713f8139fe5c5fc1a9d012f7395b4c6ad24645ce"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V23__self_operated_settle.sql",
+      "sha256": "85f74d0b2c024e28b87e26fc429dd740789671827e207c40baa0b951b22dfa77"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V240__pool_store_no.sql",
+      "sha256": "ad47b586e0a49a08e32ff41beaf73a32713d1b4a09f851125be0e4b82531826b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V241__pool_uk_store.sql",
+      "sha256": "ecf777f1d9ceb0490aa3a2fb18faaf52dee42d528e002dae8a284aa9a5f55a81"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V242__pmt_activity.sql",
+      "sha256": "311d65de804a8558a0f61e40d3da879e868adacceec7ee125a4d171b9f6c05f4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V243__mbr_reach_log.sql",
+      "sha256": "2ed889c1875708ade190bdf6b2ebcdb93b8eb33a15768507099254ebbf6c08b3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V244__pay_mode_and_category_points.sql",
+      "sha256": "b347054965ea0fc1b87446bfa2b60eee96386888463cfa6094b028993967e022"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V245__ord_item_category_no.sql",
+      "sha256": "89c4a1ba6fdb79a15cc7304263f382900be1e0d5ee60fba522995645ee62ded3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V246__member_ops_menu.sql",
+      "sha256": "b65f5d534928290c299b4b9f9ed3e4afddeb72aa4c281d53f04fbfb7d909bdc3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V247__goods_pending_on_sale.sql",
+      "sha256": "a9385f5949243ff95198d202779aeebab1bc72c5af28bdfbbf2875f9d1086967"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V248__ops_wiring.sql",
+      "sha256": "16a3109b8c3406cb3f3fc214bab815225d5aac593c078aac782390400219807d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V249__appointment_slot.sql",
+      "sha256": "bc725e0133cb3f5ca9dcf88d8fac2e41c6abd5b3d4e0734c9f44d0ca12d579a3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V24__ops_archive.sql",
+      "sha256": "c1c514be3d3274642339ef1bc0f3c9c72f5b322bebad2663d9babcd4b4661332"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V250__goods_params.sql",
+      "sha256": "c8b8fd3cc7c1c0f5ec8cc8be5e19240c0564ae69fc948c87cc41df7f36c68b22"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V251__menu_category_policy_and_points_switch.sql",
+      "sha256": "1178882bcc141fe7763adf7de2b44971aa8a17ab5aee32da50f17c1b8c512a74"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V252__sku_external_identity.sql",
+      "sha256": "c7fcfad2f6f5e9030e326a1d7a4c78a1eae0c96fcc73640fa5c733ee82f4bcb5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V253__ops_payable_menu.sql",
+      "sha256": "15393e28e2a1c12880b503c2b53ae1954290a4760fbc37c02118797028222d1d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V254__split_confirmed.sql",
+      "sha256": "1f966c18a580ade9bc5b9abf89f3fcd7f85a959ca077790ca3f2b4260668c186"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V255__recon_axis.sql",
+      "sha256": "e34af7d8a8c5a68331d1bdfad046f3a9fec941968f8b6fecdb818e3cfb7f116f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V256__after_sale_stock_restored.sql",
+      "sha256": "0d9aefbdc98a38fd0ebffdfa377e6ad30a3e326251d3297a33a0301a64d10e18"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V25__coupon_issue.sql",
+      "sha256": "7c8427405a89ef29680865f2e2e3468b0259c83a6d49a293d4290ffbbec79ade"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V260__job_def_and_log.sql",
+      "sha256": "97c73255c173cc1028f8fa67d73d543d31175d28ffaffcb05f1ec8b2946319f3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V261__inventory_ops_menu.sql",
+      "sha256": "c8df8dc7936fc6c2640e4eafaaf182b52a6038c9a27dd3621eb8dcf7dd0a3ab9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V262__drop_unused_job_tables.sql",
+      "sha256": "b1435a515349d17f145178e362faf09c1e07a20ebbba24a6e99535965b949db6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V263__inventory_menu_pending.sql",
+      "sha256": "e1ed3968411c8bcfc085230cd7223e41a741a956da8241d0ce4b36502bce1216"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V264__consumer_session.sql",
+      "sha256": "496d8723818503045071251dc8def37b369795b9a7b0720508a1cdb4d8e9b69f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V265__merchant_session.sql",
+      "sha256": "de00aef1ebc750fef1b38e9f3512809b184460bd709102d1fc4d8725cdfc1989"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V266__operator_session.sql",
+      "sha256": "ada446faf2ed32e3300b1da347ff027a589e273721947d90535ab72044292b9b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V267__inventory_menu_pending_perm.sql",
+      "sha256": "48656e68cb252ac71d4184eea02099eaaa9b5615d351ee4b7a9f82b6fab004bf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V268__ops_job_perms.sql",
+      "sha256": "0beff06351d1110ab813ae13ad008e9227a8e2e3da0357689ff581070772d419"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V269__ops_jobs_menu.sql",
+      "sha256": "c63419f9a9fd8d69a720349be5d255914e3d7c893a1cfc88d3645311b9b2f4fc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V26__merchant_qualification.sql",
+      "sha256": "df5bef4cf595b87233234cf8e2350a899a685d1b521d99576f78a83c035d2121"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V270__session_subject_kind.sql",
+      "sha256": "ef3acfd99d417a3a6e15bd199d20d101f8307c89210439b808e521286301a05d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V271__inventory_credentials_menu.sql",
+      "sha256": "de0dcddba8974b37d14f303f1dbcad407eabc03f18becd73d59ddb2c822d7325"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V272__inventory_perm_namespace.sql",
+      "sha256": "99aa41ccee5c334dc4efb0e42ed0321e68bc0cbf6187930a329eb6992417a360"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V273__faq_is_implemented.sql",
+      "sha256": "5d781364644475b889cd66e892f3f2510a99fe4cba3b148ff02a364979b41a9e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V274__pay_channel_rate.sql",
+      "sha256": "97b11405345cfd34cc3723c376e6ba6b9d74e761c1e0ac7e7f2d7a901cdf510d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V276__pay_channel_menu.sql",
+      "sha256": "d20c9a7792f4e5de9c0033cd46debd62f8bc61ed9483e9e5d990ce105b2068dd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V277__goods_list_indexes.sql",
+      "sha256": "b9284b964b19e978200cf1aeb385466e2b9fbe6214d7a3fc695fd00d6b3689bd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V278__scene_channel_function_point.sql",
+      "sha256": "5105056f826b7fc083ed8cdedb2dc2f6d7b372b89e2544417c654c24f88c2650"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V279__goods_draft.sql",
+      "sha256": "5b4faf6ef3b88859b4a706b95973dfa9226b2b8aaae110eb5ca809e29e539a8d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V27__s3_admission_control.sql",
+      "sha256": "40cd8445d501a582828944b1a14624fee52cd6bfea3c6f5ce2c4e04a6b8a1b54"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V280__settle_batch.sql",
+      "sha256": "d73592cffa66ee7bc201f277ba05d889e99e72a92d469aecb9d984a389f91f26"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V281__merchant_debt.sql",
+      "sha256": "a18551ad5c5ce2fb8255be934301a71f4aa2c4e981f55b5435d5f53654db3afe"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V282__fund_risk_shadow.sql",
+      "sha256": "11bdbf59f41197a4ad320b73a6ea93d5850e773df7dff630736564b8ef6d9400"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V283__settle_batch_debt_menu.sql",
+      "sha256": "5908ef5f749e874a15602af0d5c1d2869463f3e26da10bfd2745c79cc7607da2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V284__event_consumed.sql",
+      "sha256": "883fb940d5440b2c83ae1ab3063f3fbe98acc5e0eb7dd82e47e71db8826cb5d3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V285__pay_setting.sql",
+      "sha256": "2508e6a5a32124eb602d110b27a29d63b6f843ce2f50134a583f476ad1b30ce3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V286__pay_channel_message.sql",
+      "sha256": "fb8332715422cbdd912777c7e94f051f32ef764b70e66cc287b026b031823b8f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V287__settle_currency.sql",
+      "sha256": "49dd8acbdd40cd1d1da63af57a7cb3ff8afb9917189c152120ad700e911d21a4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V288__market_and_test_channel.sql",
+      "sha256": "f47fa1858fb9b70437b4249ac9974f5f685600628cb53bc22e10aab853d8db5c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V289__onboarding_menu.sql",
+      "sha256": "df508c63c218fecbf8164078257e39674aef6072382c57942b2c4f7a33d6009f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V28__settle_fee_rule.sql",
+      "sha256": "5ba5a5e9baa51f85afcc8589316402aae7cc2b73a6c356b8507e8efbdfe843e4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V290__store_visit.sql",
+      "sha256": "41d68707320fa28307e8db4468a11641658f7fda15e71bcf1198e2c34599d5f6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V291__acquisition_menu_perm.sql",
+      "sha256": "0e5713a48205d800cf6f53bc83cd8863a5c60e8f79574c3881de198a50a023a2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V292__store_qrcode_print.sql",
+      "sha256": "af07a83fcb7d843610f2de1d66fd914bf8d0e98597467d417ce09ecebe29c995"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V293__qrcode_menu_perm.sql",
+      "sha256": "09d1df4a3cb7d8b7e4bca174bc2791c82c4cef6d5138cea40794b24ddf56d848"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V294__sys_market.sql",
+      "sha256": "8ec97108668d1a52cb72dbf0b6e4fe48f3d307d5c403a42063696ab30716200a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V295__pay_channel_market.sql",
+      "sha256": "c1b441a05957468bec770db271564cff8651a52a4c1ae9b322e8d3d307624881"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V296__merchant_menu_ui_ready.sql",
+      "sha256": "fe44b8da435251f1057358332a9b6653a81dec99b553ad34af6e42d0c9ae81af"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V297__pay_channel_rate_market.sql",
+      "sha256": "143fe6c433d0e9f0980da23c383aed17b932340199786db69dda85b099049c35"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V298__store_code_per_store.sql",
+      "sha256": "fbcb77a97d64194af92e087142de25c097e1628d19d6465ea8a07cf6362ffdb0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V299__money_write_request_no.sql",
+      "sha256": "4d66237c93ad93faf026967be43b9e8bdf96938b765f7f2bce03b52b4967fe4c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V29__goods_fulfillments_backfill.sql",
+      "sha256": "9a9017530cdbef942a3460b71a6d9c679020ab6527e3d280f2e5c2fb45a3d678"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V2__seed_master_data.sql",
+      "sha256": "44c8d38c85c1f5f4d92677f3d23fba1fd81de114d9a25d2fa421156809c65716"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V300__attribution_store_no.sql",
+      "sha256": "f6988b424a704573b324b8f206935c92bf9b3053d5cfdde5a5d1adfbc6ae5180"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V301__channel_message_function_point.sql",
+      "sha256": "cd55f90b9e1124e847a39cf199d792fb92246dc8bc682bf56da5ea1b453934b7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V302__mkt_content_slot.sql",
+      "sha256": "4fe002343a9630ec36b34ee354b7dedad646343e291826288bce8afa562a879b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V303__content_slot_function_point.sql",
+      "sha256": "00eee7b95e60a9bc633d5dca6ba8e316ef899c361032e3bb35af26e14bd5ae66"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V304__auditor_sees_dashboard.sql",
+      "sha256": "7e5553fc81b7f146cdce404e73c278828e9dccb2d52020c5ba325c76e404d92d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V305__merchant_chain_function_point.sql",
+      "sha256": "fc99456a5f373b235a93bcd3fb7e2b2336e3b0fb74210cd8421540fde76c4d6a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V306__link_health_function_point.sql",
+      "sha256": "9f26655d496a22f29840027dd175df821c36be980291d509ab59c89f1d645d8a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V307__merchant_nudge_perm.sql",
+      "sha256": "b5e27041ce9e2a0cd39cfcf73906737991059103b2bb652e1b9654ece02ff4e3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V308__product_stats_function_point.sql",
+      "sha256": "8bec4f719f443e98b670eddb2b54e2267eba1489e2be5dd4eb2c54663e7bd8d6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V309__ops_menu_misnomers.sql",
+      "sha256": "8733ec0d8aeb89ec962eb23c26cf9413b1f2539199c9ff8b335a27f57fba389f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V30__sys_region.sql",
+      "sha256": "f3fc22841a01866e1d367fa4cb7f51d28b8cb26fe483f3036ac93f663607ac80"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V310__payment_payer_openid.sql",
+      "sha256": "005dca6753f9d0a4fec86631da154307b93b5071a67b8b0d7d9f1fd8455fb896"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V311__inventory_repair_perm.sql",
+      "sha256": "91189c13d8d82277e66eedf251ef6259982761dc1faf197f6b9256f706c75f74"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V312__banned_word.sql",
+      "sha256": "561e848e9c951402096f0a79beef294f41853fb0f2b2f6aa4b91eb15d65b591e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V313__pickup_point_coords_backfill.sql",
+      "sha256": "ca1f9b0fe3b22b03649216ed901c68d4d3b27d1ba2cf7a79228a4ff105c5cd55"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V315__product_policy_menu.sql",
+      "sha256": "af9215a3b4a5e141a144962a6c34cfa5d4b271ba694cd0985d2612bcf917c0be"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V316__active_address.sql",
+      "sha256": "7fd1924ef98a7b44c47a77923b46c1a8299ca28ddc115a651aeabe34ccb91ab6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V317__sub_order_attribution_snapshot.sql",
+      "sha256": "ed22d9c2863aa20228538c43901dcda0d05618fb701d1dc9a4f9d9b1da9e6f07"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V318__note_v315_renumber.sql",
+      "sha256": "2d223ac101cf886b4256dfc8e66477ef2147a4b5e074a3d425cebcc4f7fc47ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V319__address_house_no.sql",
+      "sha256": "f9b2039cb080d5cc6479d222e54cd6529936f241b3a4d05bbfce16569525bcff"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V320__coverage_health_menu.sql",
+      "sha256": "b610a2ec20ed50d28021b111477a694a64452498d44054f523c5242743d9a2ec"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V321__community_building_and_area_mode.sql",
+      "sha256": "9b0f8c0b850c15f88fc70d66da64a758f67ac6be4ed1798c69397f4499c2a1c3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V322__ops_distribution_menu.sql",
+      "sha256": "c8e3f35e9b58b49fd817ac0dbdb9993c10747fb6acafad237015473a6899820c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V323__wx_shipping_upload.sql",
+      "sha256": "66d873a154c5614c7b5fee75dfd251658f7111288ad022686a50c469f0cee863"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V324__sys_region_level_comment.sql",
+      "sha256": "57bba7247d0185eb4ff53deca37174f303194b465689c7b4d61e0393f3cf5f6d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V325__ops_menu_merge.sql",
+      "sha256": "618211438bb93ac94b51af639ee41b3dcacade99e4e30d0f3861685f98f501ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V326__perm_seed_drift_faq_envswitch.sql",
+      "sha256": "abc7df249cdd66f657960df780cb33f537d2a512c69e1d15ba8743e7316ca8d4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V327__function_point_gated_by.sql",
+      "sha256": "47455288a7b58b2484fb6de16c30bbdcfe15a447d66eaf8b8012733333e9e3e1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V328__self_operated_function_point.sql",
+      "sha256": "9030b718af66e70d97105dc8a0b57b7e1e8be88e7ac989205041c28db930e582"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V329__entity_self_operated.sql",
+      "sha256": "0a34cb72ce1b21e44b35f4812833e56cdc80ac8a6753976f7860272b8c2ff39d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V32__community_region.sql",
+      "sha256": "26b2b595d162bf2aa540bada432a1fe78b04e51fdbc11579bab80d21a8aa306c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V330__apply_on_behalf.sql",
+      "sha256": "ecf1d004afde106cc8cc8b7a716685c355b85f603c9ebfc8e602f8c7405393b5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V331__apply_on_behalf_function_point.sql",
+      "sha256": "e1f2c8b1a4ab13b9da2162b58a24bd200d36b2f9a64be695a8719691260c64ba"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V332__geo_place.sql",
+      "sha256": "45f7fd1da9872cea3a4ff14ca20a897cdae1ea2ea163b49a79ad72585042dbab"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V333__address_overseas.sql",
+      "sha256": "2fc6d827711a5c3db7c499683ee973b5ff12f0f013296b11cf468df188347f4b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V334__ops_places_menu.sql",
+      "sha256": "838215b5f899bab71eab9e78f41398f25f6eec7a2d79138a9b4e1d119fd1a5ba"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V335__batch_sale_period.sql",
+      "sha256": "e09cc035713fe4017434ca76edca9cd3dbbb498405e93de28ae078aa47381e6f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V336__group_order_link.sql",
+      "sha256": "ca503664b6d516162906dd2c6d6c95d1b6e09d10f9efaba60d9f5976ebb4a9c1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V337__platform_activity_enrollment.sql",
+      "sha256": "d15fda5de6adec7e609de69036ac243d2507bb61ac6044d5feb8eec060b88e58"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V338__member_level_recompute.sql",
+      "sha256": "5c2a20b48292a5f96e1f6794f71035f3ff86b6289f50db6aba4a7a3e7fa4f4d9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V339__audience_snapshot.sql",
+      "sha256": "e14b3190a129ac6872759694c5fdecdcbfec0672201061114627bf04f9caf6a9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V33__service_area.sql",
+      "sha256": "d39f92ab11088a2b2bee0ea3440e27dc3e3ab46c78c03c0d2265962583139a44"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V340__goods_sale_mode.sql",
+      "sha256": "639dbc297f8934d52b199032189e611ab0ca8fb79a4dd6eb101350acd6abb51b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V341__member_reach_task.sql",
+      "sha256": "84f40ae4a4cea2e06459306b5d31db3c46ccb47237c8138ef1a588d10a7974e8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V342__member_reach_pushed.sql",
+      "sha256": "2753ec05c409853f460922a3ff9cf2e82c7e89469a92f4a8853d6edc070cafce"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V343__goods_favorite.sql",
+      "sha256": "9644cb471381ea8aa49cf0699180ca05fdf49b19bc7a2710bc351d622d60ad62"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V344__sub_order_express_company.sql",
+      "sha256": "d3707d638c23506bf50d3a67716d7c7232495378747979046f99f70722bcfdf5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V345__goods_inv_mode.sql",
+      "sha256": "209c4ee0a89ad61ff43d3c1a3574b6f11871cd5a922e52abf877732ef335b4dc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V346__store_stock_sync.sql",
+      "sha256": "310d036a6b7e5382a448784ab4c7766c29d7d28b96f4b7da572d3d120cc88c5b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V347__media_host_img.sql",
+      "sha256": "596bd1e9bc73cdf87b428fa15049c5be7d82b7e6d71dadb01ba7b6215b833b54"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V348__aftersale_rule_menu_rename.sql",
+      "sha256": "c9d1278ba5f90db55f1cc3f6596d73b3e2e19e4592d32e6407d4d7b006b2ba7f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V349__fresh_prop_dims.sql",
+      "sha256": "e62e4e4784e55f2b53df0ab6f4b0f1683aea1783c7643fd1d34f236ae0ecefcf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V34__order_buyer_confirm.sql",
+      "sha256": "de770f2f5bf9699f64fa890f2157c9e3dd1ca3119bd82086078c3a6610629b26"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V350__question_goods_no.sql",
+      "sha256": "d68534a5a0c214c9ba6b4396472032bc4173a9b93b0144db64a2f1ccb7e3c75f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V351__express_pickup.sql",
+      "sha256": "4bce62d91ba2d393ea45ad01dbd8a70b46a72301c1d6ac90ee385f815b42e58a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V352__ship_setting_and_express_sandbox.sql",
+      "sha256": "2c015fa734072f79a932757febe79080b90d532a772269289c0245f718b79cbc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V353__apply_referrer_phone.sql",
+      "sha256": "03df2336225fe9d7729568a273f48783c1b4b237900e70c5d61a3c71dab01014"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V354__otp_test_phone.sql",
+      "sha256": "1698759354b56a46b01eaa28c4f7751eb9cfed62a58bc78fceba7ef8756c2cf6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V355__otp_test_phone_function_point.sql",
+      "sha256": "5a2be9c01ba47bc3c7b0d6a71cc30d7bd5b8552fc350ac722b2281ec05461c42"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V356__goods_new_notified.sql",
+      "sha256": "89b6820125057912291ea25d9f01bf628fbd78826aa2d18eac458d1abf6d7112"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V357__store_slug.sql",
+      "sha256": "353b6e98fa13131ac9e3558e4072b17f9b3b2c4e987216f1ffaa6010b3e02001"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V358__supplier_payout_account.sql",
+      "sha256": "b96cd8f47656f0cb50560a7ce3c6bf2268236fc3c16c801034dcac97db4a8998"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V359__ops_payout_account_menu.sql",
+      "sha256": "37bfa5a1a93736f22557398359d81fd4a0f17b675e0c62448b2addc87220af9c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V35__service_area_audit.sql",
+      "sha256": "77afa157896f3688c803f929ceb517fe4d3189bc5a47f8e0a67b017eda485699"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V360__apply_industry_note.sql",
+      "sha256": "5a3b4c5ab1d97510b416efce3159e55a7db71360d48dda3856b033d4b0581a18"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V361__usr_store_view.sql",
+      "sha256": "fa7cb04a4d42b46783f8ce98fa69a6fa86d2dbe2b20369667f6baf71399322d4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V362__ops_settle_stats_menu.sql",
+      "sha256": "0c686ee08b645f8a9fbf54f8e177f2f5231ee4483543c94e6bd78e2013b33394"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V363__stl_bank_flow.sql",
+      "sha256": "1f0aab38f203f7a31276a612a1dc30ad8ed382bdd96d53bd25eb120b0e816a38"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V364__notify_shipped_scene.sql",
+      "sha256": "ca2948882d9ad0e800ad7b7ae5cdb6459e01d9b851c8d13dbc8ec11ffad4446f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V365__group_notified.sql",
+      "sha256": "aaac9617165d2c2cbe8ca425dfa74177eb7eb6eea5785d00840c8c9a6f519a08"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V366__notify_aftersale_decided.sql",
+      "sha256": "24e2ccefb318774311cbfdfa0dca2824250cec4d952950b9efadb35b00f0fce3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V367__stl_bill_freight.sql",
+      "sha256": "0a83bd422294f11585353b3e2dde652bbcc58bd73fe7c6e3f04327a86050c17d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V368__store_banner.sql",
+      "sha256": "eb24b0768a5f491a39a9a013d3b8abbdad016411119dd79f90b1b1e7f25454ff"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V369__media_host_store_banner.sql",
+      "sha256": "ab60eacaf01ff0917e65e945180f3941003af69a4668f5fff55d1baa0656a2a5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V36__community_apply.sql",
+      "sha256": "1e6273c9b6c61dc2a00029c2d18aa80e28751a9a9c2b79008a29bcb6134df23b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V370__ops_elec_menu.sql",
+      "sha256": "9dc2db58aa9b9c8bea36b5262c434b5226e98f8ab407cc595ad320011038839a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V371__ops_elec_role_grants.sql",
+      "sha256": "6acf2f42aa248845cb52f58c7e07afc628d9aa80e486ee53c1251d49b9f83b86"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V372__usr_account_last_location.sql",
+      "sha256": "2d2ea694008beb3e69c2722d4781f03596f51903569ff766ede76ac7bac37072"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V373__refund_wxsub_off.sql",
+      "sha256": "b40d2ec0836a3cbf5e9082f697214ef3d52bed27e7f47b35082a1798a723e6e3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V374__prop_dims_food_compliance.sql",
+      "sha256": "afea47826f794bf78ea8215ed33b416a17ce5d5190afb41eff9b2e402341af13"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V375__origin_detail_dim.sql",
+      "sha256": "9e792216df092405edfa53145a3ed79c4dc956a1098fa680a32a662659a95ff4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V376__goods_restricted_regions.sql",
+      "sha256": "2912b88dd79a541eadcc5afb29ca1744a29cfda475bc91ce3b89b1b69c1fc4ca"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V377__goods_revision.sql",
+      "sha256": "b331ed2b6999a940e40d9a53a7e5f783a4d09330372b77fa58c2c53147802398"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V378__fruit_weight_params.sql",
+      "sha256": "6f63a1d01088285c3b77048f53f095b603cfa1b090c05a07f0d2476c0255e400"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V379__fresh_variety_ship_from_dim.sql",
+      "sha256": "133147cca865e7a32ff2140af8b27674ac1871a6d09676578e4fc5ec4f748a15"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V37__micro_pay_quota.sql",
+      "sha256": "57ad1646fd81477251010b95b611b889b2cbde7d86109bbc3883b099d64d5104"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V380__drop_community_pool.sql",
+      "sha256": "a7e32534bf94faaae176d17897c7c76a03c64767c4060da80e87d66b9187016a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V381__service_area_store_no.sql",
+      "sha256": "14c253f16b28347319819ac5bc763f659d3a3f20904e3764dc1508eac7cf88c1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V382__drop_ship_from_dim.sql",
+      "sha256": "2e397e02525bc5ce38ea507868ef4d8f4d3d8e9fa4eca79a9be9413f6bbce698"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V383__trace_multi_channel.sql",
+      "sha256": "4eb332058672052f3dfefcabcf1c62a6de8284d9587fb05af1cccc85993a6f60"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V384__goods_store_no.sql",
+      "sha256": "cd097b9fae3f0b41655ba3a5e2ebf7a24a20e6779ffc0ffd1e63f55c2b337a7a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V385__goods_freight_template.sql",
+      "sha256": "31ec4d11cdf6328f20adb732b21ce3cc3928a3fe6b80ba6c94eb8cfd1035c2f4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V386__shipment_signed_confirm_notify.sql",
+      "sha256": "1b605621fded02e2717d3d98bfa732a43d5de378f620f0504852809c145ac08b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V387__logistics_module.sql",
+      "sha256": "5efb295fa58d4d0319753e1b6e77249857c34a6daf806f2098010a90b278f766"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V388__waybill_status_comment.sql",
+      "sha256": "4d0246e5df75b260641276ff0efed7a9f978a1331d7fb391d80b1d8b56726e3a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V389__notify_waybill_scenes.sql",
+      "sha256": "c570e703e13b4d8a219195a9d419506fe4d1ee09e007a5eb4daca2cee7c25bfb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V38__settle_subsidy.sql",
+      "sha256": "ed79f7bbb0228e4ecf081cf2fc475dc5d3df19af91ad629e6e5330d879dbf155"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V390__logistics_replay_perm.sql",
+      "sha256": "dc1a541b61afe53fb69bcc23228a2797b8e73f6c895a50e3393b2528c7fd156c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V391__stl_payout.sql",
+      "sha256": "5742aba84fadce7960ba94a6f5bdc7485bc58b6f8052b53b146cbdb22adb9df4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V392__retire_withdraw_menu_point.sql",
+      "sha256": "b585fcf59ffd23d956ed5bce93a28045dae555892bf8554d7d375c652a607a16"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V393__notify_wxsub_more.sql",
+      "sha256": "c6403a3aa4d471e5ebe76feb8bd81e36f85e0ca5cc3014ead8a263e800a6f43d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V394__mch_notify_pref.sql",
+      "sha256": "5d0047f69cd153e1dac2b74262db76249de8112172220b2eb2a2aeed6fae1cab"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V395__mch_notify_recipient.sql",
+      "sha256": "ddf3f5b6e93d74ce946e4fbd2da46123e619a4bcdbe6ebd6365e49963d4c5ee5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V396__service_area_geometry_cells.sql",
+      "sha256": "df7898fddcadd25cd1c098b3b354f0a6f92ed23130dcdfa67066abb0e584be32"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V398__lnk_short.sql",
+      "sha256": "7dddcaa8e4f32d389334c91e1f8118417d50029371bd8303cbb336ee2b3fe0e3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V399__sys_sequence.sql",
+      "sha256": "8e1cd2ce9ce4e07799935a0389d2ce57fe446c57c527bbea1ee9ea35b788e51b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V3__usr_identity.sql",
+      "sha256": "89fdfe9c55d8a4dc3c7faa24ee778d7d56c033cde6931cdd77f75e845e914761"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V400__after_sale_stage_and_refund_mode.sql",
+      "sha256": "15607be7cb203431ca34c9314a04d8ee103c778279e1fc017d3aa1695e3c36ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V401__order2_shipment_and_item_shipping.sql",
+      "sha256": "84a9c380786ecc15a463d7eb2bace296f3bc5732333a19bcfaa846438ec6127e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V402__status_log_aggregate_and_status_width.sql",
+      "sha256": "6c8c16eefacaf34147363558b1c0b0e3d02abc295d1518a8a1720812787856e4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V403__after_sale_split_return_states.sql",
+      "sha256": "bee0fde14bb445b89309762520e139b651a950837d87aef75a7c61f97311a1f8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V404__line_refund_ledger.sql",
+      "sha256": "ebf211d344c6e569815a6632993f117e08d2b86e7ce5a01e2e5534cb2857071c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V405__settle_bill_partial_reverse.sql",
+      "sha256": "7092c56482183e0e776ae03684e5c55505dfe20944d8c9efd6add5507481f469"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V406__after_sale_open_slot.sql",
+      "sha256": "472dfec32506a2d535c450d326a1e33fcff46f2e26bf269304512abf03503441"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V407__mp_session_operator.sql",
+      "sha256": "0fa6cb091990ec60c4932f5a86cc1c901e5eb8a875545a91d9cb80dc781b618d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V410__order_creation_request_hash.sql",
+      "sha256": "ca185fcd3f2ec3f64047754aba6860cc3665d5332646b58b242ee2fffe0411d5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V411__order_creation_recovery.sql",
+      "sha256": "1d9c5d79c8cd71bb1c048f9fa9bde3e87ff377217ade927c8c9f8f685d6c7852"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V412__order_payment_resolution.sql",
+      "sha256": "5c38070fc92fc5327a63473bddd724c1ae4652730d1f66ae66656b87fe01995a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V413__order_shipping_active_waybill_claim.sql",
+      "sha256": "3b40809716b95018529632f6bb3e2fa24b14c419a18e207cdd7e42c08e441414"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V414__shipment_logistics_source_mapping.sql",
+      "sha256": "c20447abe623606bc8cf3defa89784c3bbcb5628ddccb8daae629487cd9403c4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V415__basic_refund_execution.sql",
+      "sha256": "8e4318adeb6a75c6e8e041079335204f729473c7c9e5b0f49a26d819bd27043d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V416__settlement_refund_basis.sql",
+      "sha256": "ddde8bf191e067974ed6251777f125b76d05b131c1fc2fa20e64e8a8c332cc44"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V417__logistics_channel_subscription.sql",
+      "sha256": "a12303f70155bb270ac0f02f1d4f2f0e20e141f5c4409332236a8b8a98217d16"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V418__logistics_push_audit.sql",
+      "sha256": "3d31ac69404c2287da510c49dde3a650ebc877bed9586c53d38d8ae796aef1f2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V419__logistics_precheck_cache.sql",
+      "sha256": "1e47edc2c34ab07e500d806d84d03afbaa35b49b3924a201d3b52bfe9df73d23"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V420__logistics_status_source.sql",
+      "sha256": "4a7dd9d59555ccda431500b95b3cc9c709cd5b8d993d6b6535c754336a10eab1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V421__logistics_update_history.sql",
+      "sha256": "812e92b69a61f534ea6ddc2d0e1cbe8a95efb352f48a58891763890eb87223ae"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V422__store_favorite_identity.sql",
+      "sha256": "900ed26ff76c78e61d6a4952d2c93cdeac1f84acb4c47d813db95d289450d032"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V423__notify_fulfillment_changed_scene.sql",
+      "sha256": "b20d487195242d7675d097a6f4dc163bf477cd52cd575e8a22a666210b06a2e4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V424__recipient_salutation.sql",
+      "sha256": "5d7ac0c9c7ef979f57d37117afd37eca83c27bc59abd34735ccafe0c55140205"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V425__points_v3_ledger.sql",
+      "sha256": "41b73aa7f7e5d6f46885d891d92d555590198051cc066c4afab75d9ded36c407"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V439__settlement_split_intent.sql",
+      "sha256": "17bdf73ac9da015ab77b866650a406adb95febd2243494d06b3215a490ef50f3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V440__settlement_points_funding.sql",
+      "sha256": "bf384a2f00cfe01900196785c449bc20a2b6feac7f301a353be164ce9542c172"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V441__points_withdrawal_budget_locks.sql",
+      "sha256": "fba003b3c13fe8c44b399ebbcbef364f64c8981a6e77bf9942aab11449b83e7e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V442__points_evidence_business_binding.sql",
+      "sha256": "eee2649aa70d8ae4636f84305eecb2ad1b3ecb2a83a346228d11666cc848cbcb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V443__refund_verified_cash_evidence.sql",
+      "sha256": "65e4b012d53c6b2b2cf3eb67eea850aab90bdac26ed3903a9284601453b92e7b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V444__refund_execution_preparations.sql",
+      "sha256": "513c03587139a8471b6e0fa56023e6a4cef02cbf1377bacb0f9375a710424fb2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V445__refund_dispatch_claim.sql",
+      "sha256": "f5807054895f3e13bfcc829d74ceefed205be26dc03f522e347703e6fec22141"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V446__refund_request_snapshot.sql",
+      "sha256": "b523676ab09c90415c6021b130336abd5f8080fc7c9baad16c6b6a24a5687009"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V447__refund_execution_queue.sql",
+      "sha256": "f3dab987781970bfb7316aa6f1cac635a4028c19bd311b0e266bb815458703d7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V448__payment_request_snapshot.sql",
+      "sha256": "d240c9d057f290e8814847ebf054b487e13947683350f6732dea94ab5c5cc718"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V449__points_statement_original_route_groups.sql",
+      "sha256": "f885d26ca628fcebd34e2e068b97cec2b917db44cb982845505de4aae66c83b3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V450__points_type_fallback_rule.sql",
+      "sha256": "9a5299579490ad415f4ab47a80180d02668f2563266bf25ba61c12f6835db683"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V451__points_operations_workspace_menu.sql",
+      "sha256": "bbf045d2e773000adbc8b897e3d9ed7bb957d76e93a8e84265385c3bed0513d1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V452__order_points_integration.sql",
+      "sha256": "c8cce9b3e20cf0b80f75100ca1732a962f8c18e38e4716bea7f18f6b55aefbeb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V453__order_points_binding.sql",
+      "sha256": "5d8722646faedde7b7c67ea2f6bebe0dfcb431dc149ee82e4cd5f85dbc5f1ad6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V454__order_points_source_facts.sql",
+      "sha256": "f2f4897020783f4d46fdcf04e0497472531b4fa614b1ba64c1498649e2df98d7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V455__order_points_placement.sql",
+      "sha256": "274c5c11f55219d6a9641027c651da7f33abfebc2c99e439b2921f2716349cd1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V456__order_points_source_marker.sql",
+      "sha256": "c620cc2851362ae8aff851306e7d93395eebc5f4d85099ac92378fbaafc1e1d6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V457__order_points_refund_binding.sql",
+      "sha256": "68d164db0370b20ceba7d0a954b10e651b1e986c85d5a1af30db07da8bea3fdf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V458__order_points_refund_outcome.sql",
+      "sha256": "4c112498a82ddfea342b59f9732d179f496064358146e41d03533614e5cd06a4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V459__order_points_recovery_cursor.sql",
+      "sha256": "8b324274bb466c9f942f51fa429d1ea156e4f0e0e95d80925ec9740cff52c5cf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V460__points_settlement_refund_hold.sql",
+      "sha256": "df328b1cf1b31482ebf0af574298e3c0e2677fecb1f34cf7e1897c6d2606eb21"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V461__points_refund_manual_retry.sql",
+      "sha256": "f67f5085ba6e73ef4570ff11d39e1d3e48ad433e500d967b6dfa9f850796fce2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V462__order_points_work_cursor.sql",
+      "sha256": "451419a39c12a3ba7684d7a0bdd651f44cedafbc86e864e102456e4652d7f4f9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V463__cash_refund_split_reversal.sql",
+      "sha256": "8687115b4828ef5959a18988cde853f48d2b177e9985c47c261f4175169b09ea"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V464__retire_legacy_category_points_menu.sql",
+      "sha256": "c988d599703f022b1b14b975e6431ed70aec6e09693923db54d281c2aa295f34"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V465__refund_capacity_and_terminal_receipts.sql",
+      "sha256": "37f5db5301fefd9c2431c90921f8f0ad8d6e65b8cf01eaa4692dd4416e5c3552"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V466__points_availability_projection.sql",
+      "sha256": "2eb540a59bfb4fc8ede05bd27d43fa5e03dbd3197d11ad8bc1cc46642e8e51bc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V467__points_statement_final_fact_projection.sql",
+      "sha256": "278784e6200a5fc1845948ea5e28d1719e31b57762c55fd2758433f2d8c4ea0f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V468__points_user_adjustment.sql",
+      "sha256": "9eb8aafadbf8332856253249a6a38d1719e879fafc4d5b53ede71475f21454e3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V469__points_statement_confirmation.sql",
+      "sha256": "118fdec719d754e6632aa0dc276026d581c6bce16c5cbb9b33fdf64281b5e93a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V470__settlement_split_protocol.sql",
+      "sha256": "d418ca9e5354956573edb4e188dfef230883307a22c3e7489e0fff9f3256c554"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V471__outbox_delivery.sql",
+      "sha256": "f9cdd9e1e2b4ba0e7b32ca19dd57c8c83eb74a349bef9e72dbcc0648c0980f00"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V472__points_refund_supplier_recovery.sql",
+      "sha256": "28aef29e4d1fec2f15f64a96640e4e426220b64c86681306edb9fbfa5c1db0cd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V473__stock_sync_operation.sql",
+      "sha256": "16229a27ff23132dcf67e77ff5619d1cd34cad290aec080d0f4d66f4ec918c7a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V474__stock_alignment_batch.sql",
+      "sha256": "92e948ebc4736e0093f501950f8db93ac58224e1a5f135522e5263a69eb958fd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V475__inventory_lifecycle_snapshot.sql",
+      "sha256": "64cc42d9de537889045fb3a277f8e0d874108c38a58146364c86e2f56af4e272"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V476__refund_closure_obligations.sql",
+      "sha256": "3813fc764eb98ed99b2b84bd0e5b55ddab69822cc2e32b69a4a986e97b3fe9ad"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V477__points_refund_closure_protocol.sql",
+      "sha256": "783db54fd4c99c2b920169165cec977184b472860800ddcb713b3d7ac8472028"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V478__entitlement_catalog.sql",
+      "sha256": "117c6c5c01915e296c97403df5344374993d3f54505960a4d78f9717397fb887"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V479__member_identity_ticket.sql",
+      "sha256": "22b506b8f29c1969f4596dc952905571db44507b9d0153ab590b8dfa1d9fedb4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V480__entitlement_authorization_source_decision.sql",
+      "sha256": "e7f87b12b5b4ed4e7a5440b3e25f22b5ff605ff3fd1083aea737c32ea0665520"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V481__card_sale_entitlement_snapshot.sql",
+      "sha256": "df513acecd0ae224f3d8bd7db71e4c7549fd24aa4b0292338f5f420ecdde7f1d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V482__pay_entitlement_event_outbox_inbox.sql",
+      "sha256": "5cad5f1dcb4582eef082b3b3c004801cc608bde6264a07971658e56a3a88b836"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V483__promotion_preset_catalog.sql",
+      "sha256": "ec8e7c784afb6fbca3643d565654383f3f92766b311cf83ff5d2ae8848170655"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V484__promotion_version_participation.sql",
+      "sha256": "2be2eb70f9f98c07d1fcd1687edb331d1ad84e319586ea212468b7159f682290"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V485__promotion_effect_store_scope.sql",
+      "sha256": "8aade6529202f0f3fccf0c8751ed1eae74ec4bc48fa71b7a761cfc52c624336d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V486__entitlement_issue_capacity.sql",
+      "sha256": "3a24bcc8b159ba2a7a4d646d8c3d430706af97e38da1847b82bc3b0f327d1141"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V487__entitlement_grants_and_ledger.sql",
+      "sha256": "4d607ed5c0b48985f8cbb0e4dfbce748952570daf090fbda59eccaeb6f982317"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V488__entitlement_issue_batch.sql",
+      "sha256": "dc9e4cae0702e3ef3d6037b83183f1324f07b5240bda6b7f1e86fe74050630b5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V489__entitlement_use_and_daily_quota.sql",
+      "sha256": "0917bca47c3cd97d8cc04b657e9be891a66525054151395a7d78becc98261bda"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V490__pay_entitlement_source_fence.sql",
+      "sha256": "03ce1d4de0d47df6284335bfde7c3776d3ac8f8ad6ce1beb5838b5d3e06795ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V491__entitlement_order_use_coordination.sql",
+      "sha256": "6b967bfabcde4340eef64af3f517f8dfd1ac8a26a39bfadfe10e4e8521be0eba"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V492__entitlement_use_reversal.sql",
+      "sha256": "d0b9c9c5ba2a140c7962ca6f24f8c6675c22e6d10becd83b7728af336ee2a793"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V493__entitlement_exchange_code.sql",
+      "sha256": "bd6e0a38cacd0ee26608111d05cc004fd80aeebd9e0ec1fadf045a2a9ab0ccd2"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V494__activity_benefit_intent.sql",
+      "sha256": "4f5a9746866c5c9c3fd3fc4d05860e929a5c8d4d5307734148c32148ee9545ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V495__entitlement_service_order.sql",
+      "sha256": "a6f5f43bd703f9df6309123b4d64fdca961cfc99b7b5714fae04bf188fa12e05"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V496__entitlement_checkout_selection.sql",
+      "sha256": "db49d8cf092a97a3df35ff3a083bed8638a7587c6afa36bf24527a44f200fe47"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V497__card_product_binding.sql",
+      "sha256": "2743b088469cfe3d131e3e623314de0707cac510cdae1536f9512a5b2e88acf5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V498__stored_value_credit_ledger.sql",
+      "sha256": "ffe0b6139a8d6d0468f0a2a0e3e4a7ad8b59418ff9de820f3f16038e102221e9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V499__stored_value_total_balance_bound.sql",
+      "sha256": "a54980d84ae6aa01c0254cec55f1db326147d8e16d8ec4e539252a1d0642aa13"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V4__category_tree.sql",
+      "sha256": "6335b98c660d194ca5cf979e6f83bf34cb977e8d6e4799e5110e72d5cd38bc1a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V500__recharge_source_intent.sql",
+      "sha256": "871ef856727366b1806262cb09d0b0fd30e485ff2d49d0d05cdd6544fef82a3f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V501__stored_value_receipt_lifecycle.sql",
+      "sha256": "8ff993ac2a80d8c66f9d9fabd3c13ccfd129d305df72d01622532d8b9b38e0e9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V502__stored_value_hold_allocation.sql",
+      "sha256": "648ecde53f5ad090c71e0a09451f0c7245d273d7f34cb7ad989cb9f858151133"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V503__paid_card_capacity_reservation.sql",
+      "sha256": "7342381dbc6b696080cb12941f6dc47143ba6e9df56835cb3973573a87ab120d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V504__card_sale_delivery_recovery.sql",
+      "sha256": "c9c0ae940dbfab5c19d667e62bf11ff15db2582f11676c5ae9cc9850f4df00ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V505__pay_entitlement_exception.sql",
+      "sha256": "587c085cc23cf1e3c55f1dd56997d5124c29c26bba8c36af6a1418435641c9fd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V506__entitlement_exception_action.sql",
+      "sha256": "9b930f86c27426e37599d773162add8aa9a81f28b68ea6dbd50f2e4fb322effb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V507__exception_action_kind.sql",
+      "sha256": "ad8966920eed65262be033730a45c889f7e7de3d42e5b2e612a6f3f799a398e1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V508__entitlement_ops_permissions.sql",
+      "sha256": "badbf1617595f0ac6afee8d6e89ecdf2904193b7fe0cea5d9f8192a3ada7e605"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V509__entitlement_reconciliation.sql",
+      "sha256": "f5e268b21a69b0c821a63676a66250f8f24571f723c49585fc8a7bc0fbb3fe50"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V510__entitlement_freeze_permission.sql",
+      "sha256": "8400ffa0716cfd429948cf90f1d43458117183b968e4755a765cba8957f584ed"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V511__entitlement_owner_registry.sql",
+      "sha256": "e723156e4d195cfdba06afe3d3393ab2643ecd578f5a58f4928c68740f989578"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V512__entitlement_lifecycle_scan.sql",
+      "sha256": "65ece0da6891d3fd30fffafca6a9b0bfc18ef86635a87b54dcc7ea09f5a78641"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V513__legacy_coupon_source_fence.sql",
+      "sha256": "995e4891638138a0a7464962835522060f6b61079fc7de2194ead38c274fe37d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V514__exception_event_recovery_actions.sql",
+      "sha256": "cd8784670d632362df7ade66cfe68c5eb1755f670c7ce45205a45face7b663ca"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V515__entitlement_migration_evidence_stage.sql",
+      "sha256": "140dd5d643447fae978a740b84f390b4c9e7e26e439c8ee98fe988513a2cce19"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V516__entitlement_manifest_stage_metadata.sql",
+      "sha256": "e9e04a7693de33ca2cfd7991e42db22d2604ba79c1092c51efb45d0c1d967984"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V517__entitlement_migration_alias.sql",
+      "sha256": "6fc8d09784fda7bbd5bf7aa3764d3768aac2795f13056ccda5e3862408a2bad4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V518__legacy_coupon_pay_operation.sql",
+      "sha256": "b2a2554bd730c47aa804ce049dc35c5b47c63c9576a0bac1fb6b392d9d20e9eb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V519__legacy_coupon_core_checkout.sql",
+      "sha256": "6af0d0b0821e07063fc76da4dd9592f06159cdc281a11d524277af1915b11c20"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V520__legacy_coupon_delivery_recovery.sql",
+      "sha256": "9a7c9086cc70b51fd3aecf4c995d9d142c41785118d7669d7be52b3f893d2412"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V521__legacy_coupon_usage_facts.sql",
+      "sha256": "8c3b1a70dbc9eb501a2792f843caf5c03c76875404d2acf7171d6be3f3cf0993"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V522__legacy_coupon_target_plan.sql",
+      "sha256": "aea6c45947fcf3a9fa3f8303265a4c73112abd9d25c67cdaa6f1d21328be106c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V523__legacy_coupon_source_commit.sql",
+      "sha256": "70397d0c581b4b46a55436d9c2e48a7a1ce3feba6f63e12cfde1e5c12b14cfc7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V524__legacy_coupon_target_import.sql",
+      "sha256": "ea7573a289c9b0ac1be66849b8d5362ac7adbade0b8aa8061990ee3ce176ec3f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V525__legacy_coupon_historical_usage.sql",
+      "sha256": "4bbe7e0823c3adfad2a3d71661ce061dd6940c28bb8f78d98413a77db2b17a1f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V526__legacy_coupon_historical_return.sql",
+      "sha256": "2a2dd41107ab70a1e844db166e629c722dae999ade7bb8ddaf9ca6b53c65d94c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V527__legacy_coupon_issue_projection.sql",
+      "sha256": "f7b0cb59b29a717f759ec8af9e6f7d3f715a9333c5df62162ee79b6129ab80f1"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V528__retire_ops_electronic_components_menu.sql",
+      "sha256": "996e5f25e3f851f4efe05969f35ebc68d9afefd51871d45cb4650e767f491a03"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V529__points_ops_first_pages_menu.sql",
+      "sha256": "587d581e698f8ac0ff20ba6f1d7769804113911eec95e754113bbfc3beca418d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V530__points_pool_request_audit.sql",
+      "sha256": "357294fd01321f64af211606e8819f2b1aaa29d93f9a1db87ae4aa1f8505beb5"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V531__points_operations_query_indexes.sql",
+      "sha256": "fee7b0f582067c427dc4032413be16a6060773ba88753c28dda152fdb7d95e77"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V532__shared_personnel_foundation.sql",
+      "sha256": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V533__shared_resource_identity.sql",
+      "sha256": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V534__shared_schedule_rules.sql",
+      "sha256": "f52c7ee04d31b4d407287e7cf6b200d9a70b308289053ed403996cf25a130997"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V535__shared_resource_booking_foundation.sql",
+      "sha256": "0518429c19edf0f411aefb2e1c296c2df6aab72e93137699ccef0fd54a9dd9c0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V536__shared_store_sales_catalog.sql",
+      "sha256": "3e6733122055963b7dcf7442e0166167defd720682696762c49cafb8ce9b8e16"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V537__shared_guest_registration.sql",
+      "sha256": "9c93c44dc328b4cbf47be8baae6972743e0922aca1a0cf62b84906905b4f0b0f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V538__member_reference_actor_namespace.sql",
+      "sha256": "65f1536102d92776224a8542f12c1e90a4cab1a9e4e07540dffab1cab7a30183"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V539__checkout_source_foundation.sql",
+      "sha256": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+      "sha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V541__manual_service_admission.sql",
+      "sha256": "9d01ae07c112cfdb350f4950c88fe7bfba8297be2053b26f97961f31175f9400"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V542__shared_manual_order_customer_party.sql",
+      "sha256": "91638cf01a977645284f152aede1177223bc97046153aefe48235dd408f813f0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V5__auth_code.sql",
+      "sha256": "a25f64ec16cf920380bc1f06e8045c7bb68a188069ec2981d551c98db9a6e111"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V60__ops_staff_scope.sql",
+      "sha256": "706659158f5abf18f5768f3b65e4f105eeb320399798266fd8604dce854d57ab"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V61__content_center.sql",
+      "sha256": "18b3d86c2f3c66acc08646bf3d896f0ebebfa973da5bd83fa6418f4843c9d3fa"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V62__perm_config.sql",
+      "sha256": "1fa932fcaaa30e4fb6cc914a52b03f0df883c02dd4c87e4408f3501a50ca1cbf"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V63__recon_diff.sql",
+      "sha256": "987b8dc6835f38e56a66834d6421e9831f9657aa204f916e05d34d4ee6387ecc"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V64__perm_code_refine.sql",
+      "sha256": "a2cb7c63d520068cc61078cc42a3865f0f5de246fad2ea83a9078e457cbbbdb3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V65__perm_tighten.sql",
+      "sha256": "659563b2ed49e46685bfb94a9bb35a911023b85c236e0d06edd9e513909c219d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V66__perm_nearest_codes.sql",
+      "sha256": "d8b27d25663c2a56d2ecd4642042aae0348043513cb2974f4d8c9fc07baf44e3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V67__staff_create_and_ui_flag.sql",
+      "sha256": "0bc5c327477cec15459b43b3393aa27d61104d93e81c74487f41c463da37daa3"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V68__mch_staff_log.sql",
+      "sha256": "a100c087c914319442a3a91e866dd5b02670ac00b9bb60727c525c164644b107"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V69__sub_order_receiver_snapshot.sql",
+      "sha256": "f3805833606e65865ece93607b9cbfe8ec00054b01be88091f0eeff6bde72b95"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V6__retire_legacy_categories.sql",
+      "sha256": "70c206a48776dddeaa0c955917644e526fd7eb20685f338941c62b6e09af0af8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V70__audit_log_detail.sql",
+      "sha256": "19507f7b974ed6252015d7746187241d03f738ebcf8db9c5c0341ffab65b7b76"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql",
+      "sha256": "47a72d42c2547b08a4ac268e64eca54345afac8173eee78c3881e428f4fe1a80"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V72__perm_config_realign.sql",
+      "sha256": "236d3e1b9bcf77a4198063696002f3a1aaa53c5b201bc8b2c96dfb9e3e941c6d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V73__fix_admission_point_perm.sql",
+      "sha256": "f5575935ebcf0d2c0df17c8d6c994e1d070b02ca0f9944010a054c3e218b7291"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V74__perm_backend_only_points.sql",
+      "sha256": "465e0a33868f01476193b499de196bab4fb904904cbb564231272320ed032c4c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V75__admission_point_own_perm.sql",
+      "sha256": "856f2892ae6e841af8766b1fe2b4f30b6393894fb61eacdfe6279b58c64c9974"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V76__admission_grant_explicit.sql",
+      "sha256": "0343800f2723c6f33eb00b0029aab9c8956093b2bf19f875dd5f7947ca0e5a29"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V77__iam_menu_order_point.sql",
+      "sha256": "0950ada866f6eb7d9573e29c51947fca183aa992817b280fc3a9fe62429b9b58"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V78__mode_risk_function_point.sql",
+      "sha256": "bdbb1dd05ae3c4fbb1eb8ac903c78b5a6dfbbd2a2555d5df1d1ec39aec0be79c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V79__apply_qualification_items.sql",
+      "sha256": "fffe62dc9f395eaf1fb38aa580096957b98b6d716aa6ac3c559ef1c11e124ca6"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V7__store_delivery_rule.sql",
+      "sha256": "47218e356cbe3a97ff182e02ede3a5ec95ac74fe474d4e6a3f789aea433988d9"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V80__qualification_function_point.sql",
+      "sha256": "c916c6e6f798ab2609bedf6bafad21761779c154de484f042c8b1e2dbb012012"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V81__funds_mode.sql",
+      "sha256": "b19b4fd4bc979db2523158479ccec2323a65b095102e37aefe9c79aad374d075"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V82__points_activate.sql",
+      "sha256": "e375994f8035eef0337a7e62ba576f7d04ced4c21c79aa56fe389cd44eb9ebb8"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V84__appeal_status_rejected.sql",
+      "sha256": "04821da1e54bce95d36f232df52f2818d57477268627a6dead620dc82d8f6973"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V86__points_overview_function_point.sql",
+      "sha256": "2116af45269f6edc63523e9f7799eea8e4f28b456bfa22e5dd98f61ce481df24"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V87__merchant_type_three_way.sql",
+      "sha256": "cd7629b1341259423309b7e726e4057bea2d0e52e212108cf700522312501b9f"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V8__sys_setting.sql",
+      "sha256": "34d8199a366de508e6bf6505d3306110f0a85a9c3c0e9d767a04378c120078ff"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V90__notify_log.sql",
+      "sha256": "c0dbcfb626bae121a0179e519cc3b1943e79a439ea88280480942b912bf76b6a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V91__shedlock.sql",
+      "sha256": "4a84cf7f7442d44850feceb5df15ac694dfa14664388f3487423963eb16256fa"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V92__notify_log_function_point.sql",
+      "sha256": "06d1b80e1ad92fd40e57d64d1834b19915fe77e00c0ab85542a7d01f47a641ce"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V93__wechat_subject_type_fix.sql",
+      "sha256": "fbabac6bc6272083c2e103e28dfd8af7f77e604854771696874a6f3e554ee460"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V94__order_invoice_request.sql",
+      "sha256": "4061dea62dc954c1a4ab22f40502b8f8d307fe5323b76b5e689602710859c9ea"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V95__job_run.sql",
+      "sha256": "21650a52c34336258ca3e088d6f7b944e9164af30a6c2eca210d658f656aeae4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V96__msg_subscribe_quota.sql",
+      "sha256": "92eb561c3daf000b5eb522973c08607faaf8038c44dbfc5bbd8d76d5a4545ffa"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V97__msg_receiver.sql",
+      "sha256": "fb884dff9360eeac7c65356ba7664748033a404e0427691c849f82776257c9e7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V98__violation_store_no.sql",
+      "sha256": "cddaef3d767a75d495925ae5ca9834d9dd7f4c6918e9e6eeab99eaeb3b610e9a"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V99__store_directory_function_point.sql",
+      "sha256": "6c3211438ecd95966fedb5f2326b6b0ea2d4287ecf7780d86720bf48500494da"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V9__mch_violation.sql",
+      "sha256": "641a67a0901deddc28bf5131dc00e419ced9d393eab369da671133829e016f0f"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V10__outbox_delivery.sql",
+      "sha256": "3c0db4b39448364d3e38f76da6cdd11193d7f7af78ee10c15c4b84df63889a81"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V11__stock_count_operation.sql",
+      "sha256": "c2d44eaf6ce017e765f4a2b8cb209b8b9c3b06f273e8094816b1a7f653b70f40"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V12__paid_allocation_and_fulfillment_issue.sql",
+      "sha256": "b6be4f7de36a8a18c262e6074d758ba8bd40b8613cab78e357187ce45f7651e8"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V13__return_receipt.sql",
+      "sha256": "1ccb5d4adcde174723e809eb04dd4c9a8b78df3b5847b247b582063aced0a87a"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V14__original_stock_disposition.sql",
+      "sha256": "0a84cc624f3dbd7a58eb38067eefa74778a79cc47d34d4127ba751fd3f4c8095"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V1__inventory_baseline.sql",
+      "sha256": "5ede2c9df01d935ced0f2d2b22f5109be499fe3989e6d1992c201c9b226bfebb"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql",
+      "sha256": "54f5af7903e1bc304150d24408e66ba7e1460b63a6693a2638e7bc59f330447a"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V3__supplier.sql",
+      "sha256": "6f6edfe942ad08642f3564c8acfbff699a370144d372c435ddf8f378dedbc41b"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V4__transfer_shipping.sql",
+      "sha256": "0265538706fde0fd0516874c4c8b634f4714dffeaad2ddfde86c3da15555d552"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V5__item_on_sale.sql",
+      "sha256": "b943ef5f6f8c6eb079baa4327d405f28b12927d32fa9cb2d09958a1eeb476e39"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V6__outbound_target.sql",
+      "sha256": "fbf9bbc99c434cfe67a0ed79a63f8a76b054d0645ccdda0043c62cb877f8dd69"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V7__item_retired.sql",
+      "sha256": "bb3f1ca84dd8bbf3858e8c306fdef4ea449e91da1ce02a6c7bee2aa8fdfadd13"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V8__offline_sale.sql",
+      "sha256": "bc1d7075223afd97e8612393f04c6aedf724075444d2246d25353cc5ca3ffa89"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/resources/db/inventory/V9__refund_restore_claim.sql",
+      "sha256": "6d20fc817cd6cb2184a481b59318062c17e399dedacad147f3068c3e593c04eb"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V1__beauty_p1_tables.sql",
+      "sha256": "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V2__beauty_appointment_resource_fence.sql",
+      "sha256": "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V3__beauty_appointment_business.sql",
+      "sha256": "c8d54df07cabc5b0903e0dd4fba73e2b7fc4aa75539a148837cc5837deaa8da7"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V4__beauty_appointment_resource_decision.sql",
+      "sha256": "7df4e8d2e3aeeb57bf1e704004957d996912a17021c5f58842ac91152e7a003a"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V5__beauty_reception_work_order.sql",
+      "sha256": "8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V6__beauty_reception_identity_guard.sql",
+      "sha256": "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql",
+      "sha256": "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V8__beauty_source_observation.sql",
+      "sha256": "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql",
+      "sha256": "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7"
+    }
+  ],
+  "newCandidate": "platformV543only",
+  "executionAllowed": false
+}

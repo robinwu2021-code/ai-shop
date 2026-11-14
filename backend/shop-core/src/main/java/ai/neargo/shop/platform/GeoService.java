@@ -45,8 +45,18 @@ public interface GeoService {
     /** 给端上的逆地理：自动把 wgs84 归一成 gcj02 再查；不可用抛 GEO_UNAVAILABLE */
     ReverseVO reverse(double lat, double lng, String coordSys);
 
-    /** recommend 是带楼盘/门牌的人话版，address 是标准地址；端上填 recommend */
+    /**
+     * recommend 是带楼盘/门牌的人话版，address 是标准地址；端上填 recommend。
+     *
+     * @param coordSys latE6/lngE6 的坐标系：高德 gcj02，Google wgs84（TDD-双地图提供方与门店选点 AC3）；
+     *                 null = 没有结果（按地区查而该地区地图不可用）
+     */
     record ReverseVO(String recommend, String address, String adcode, String township,
-                     int latE6, int lngE6) {
+                     int latE6, int lngE6, String coordSys) {
+
+        /** 高德这一路：坐标已归一成 gcj02 */
+        public ReverseVO(String recommend, String address, String adcode, String township, int latE6, int lngE6) {
+            this(recommend, address, adcode, township, latE6, lngE6, GeoPort.GCJ02);
+        }
     }
 }

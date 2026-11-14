@@ -1,0 +1,128 @@
+✓ 界面清单是最新的（304 个界面）
+✓ 原型总览与登记表一致（45 份）
+✓ 进销存界面清单是最新的（14 屏）
+✓ 运营端功能清单是最新的
+✅ V2 文档守卫通过（70 份文档：断链 · 表名集合 · 自称数字 · 能力码 · 设计⇄真实 schema）
+后端路由 1303 ｜ ops-web 调用 404 条 ｜ 后端有 396 ｜ 缺 8（已知欠账 8）
+
+✓ 没有新增的空接口
+c-app + b-app 契约端点 586 条 · 后端没有 2 条 （基线内 2，基线外 0）
+**对得上的 584 条本身就是对照量** —— 扫描器要是整体失效，会是全部报缺。
+    [已登记] c-app  myCards                  GET   /mp/card/mine
+    [已登记] b-app  mFulfillmentImpact       GET   /biz/stores/*/fulfillment/*/impact
+✓ 没有基线之外的契约缺口
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.542s
+
+OK
+明确分阶段交付、前端待接入：71 条（真实Handler及公开契约已核验，不计入历史欠账）
+后端做了没入口：27 条（已知欠账 27）
+      b-app GET /biz/inventory/export
+      b-app GET /biz/settle/bills/*
+      b-app GET /biz/store/*/stock-reconcile/*
+      b-app POST /biz/geo/geocode
+      b-app POST /biz/quote/*/revise
+      b-app POST /biz/store/*/stock-reconcile
+      c-app GET /mp/after-sale/*
+      c-app GET /mp/category/tree
+      c-app GET /mp/goods/*/sku-price
+      c-app GET /mp/group-request/*/price-history
+      c-app GET /mp/group-request/*/quotes
+      c-app GET /mp/help/faq
+      c-app GET /mp/merchant/*/score
+      c-app GET /mp/pickup/*
+      c-app GET /mp/search/hot
+      c-app GET /mp/search/suggest
+      c-app GET /mp/stores/*/appointment-slots
+      c-app GET /mp/ticket
+      c-app GET /mp/ticket/*
+      c-app GET /mp/topics
+      c-app GET /mp/topics/*/goods
+      c-app POST /mp/attribution/report
+      c-app POST /mp/group-buy/*/join
+      c-app POST /mp/risk/appeal
+      c-app POST /mp/store/*/rebuy
+      c-app POST /mp/ticket
+      c-app POST /mp/user/token/refresh
+✓ 未超过基线
+✓ 结算单状态文案：11 个状态 × 3 种语言，齐
+两端页面 154｜有入口 153｜没有门 1（已知欠账 1）
+         b-app pages/schedule/index
+
+从入口点得到｜被提到却走不到 0（已知欠账 0）
+✔ explicit staged Ops API requires a real published contract and handler (1.574917ms)
+✔ a connected or deleted API must leave the staged manifest (0.074708ms)
+✔ duplicate paths, wrong realm and missing delivery rationale remain hard failures (0.095458ms)
+✔ pricing configuration staging uses its own contract without weakening the entitlement default (1.75975ms)
+✔ multiple explicit contracts preserve handler and stale-entry enforcement (4.639167ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.517208
+/ops 端点 508｜运营端有出口 476｜后端先行待接入 22｜未分类无出口 10（已知欠账 10）
+         GET /ops/channel-messages/{messageNo}
+         POST /ops/communities/import-estates
+         POST /ops/groups/{groupNo}/abort
+         GET /ops/notify-channels/merchant
+         POST /ops/notify-channels/merchant
+         GET /ops/order
+         GET /ops/rule-texts/history
+         POST /ops/spec-values/merge
+         POST /ops/staffs/{staffNo}/role
+         POST /ops/staffs/me/password
+词条对账：用了但没有 0｜有了但没人用 56（已知欠账 56）
+.vue 样式里写死左右的 0 处（已知欠账 0）　扫描：229 个组件/页面
+控制器 260｜装了不止一个资源的 8（已知欠账 8）
+         12 个资源  MpUserController               active-address address community deregister login logout otp password phone profile switch-to-merchant token
+         11 个资源  BizGoodsController             category goods my-spec-dims pickable-props spec-dims spec-override spec-props spec-templates spec-values spu-std store-spec-dims
+          9 个资源  MpCatalogController            category community goods location merchant pickup place regions search
+          6 个资源  OpsPlatformController          audit-log auth industries merchant service-scopes staffs
+          5 个资源  BizMemberController            member-reach member-segments member-settings member-tags members
+          4 个资源  BizDashboardController         customers dashboard delivery store
+          4 个资源  OpsNotifyLogController         captcha inapp-messages notify-channels notify-logs
+          4 个资源  OpsPlatformConfigController    appearance feature-flags markets rule-texts
+SQL 方言扫描｜命中 162 处 / 51 个文件（已知欠账 54 条）
+
+✓ 没有新增的方言依赖
+✓ 25 个生成器的产物都是最新的
+  packages/shared：589 条断言 / 4 红（基线 4 条）
+  ops-web：876 条断言 / 0 红（基线 0 条）
+自造件 4 处（已知欠账 4）　扫描范围：b-app 135 页 + c-app 63 页
+         b-app/goods-edit sysmodal    系统弹框 → 用 sh-sheet
+         b-app/store-scope-polygon sysmodal 系统弹框 → 用 sh-sheet
+         c-app/after-sale sysmodal    系统弹框 → 用 sh-sheet
+         c-app/me/profile uploader    图片上传格 → 用 sh-uploader
+
+ RUN  v4.1.11 /private/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/tmp.khtfyC90jc/head-gates/c-app
+
+
+ Test Files  105 passed (105)
+      Tests  635 passed (635)
+   Start at  16:01:46
+   Duration  8.66s (transform 7.97s, setup 24.47s, import 7.25s, tests 7.57s, environment 20.53s)
+
+
+ RUN  v4.1.11 /private/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/tmp.khtfyC90jc/head-gates/b-app
+
+
+ Test Files  65 passed (65)
+      Tests  358 passed (358)
+   Start at  16:01:55
+   Duration  4.01s (transform 7.81s, setup 0ms, import 15.30s, tests 2.60s, environment 5.68s)
+
+→ 从 HEAD（f012e043103f99be062d6258e956b49ab343240c）拉一份干净副本：/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T//head-compiles.pxsUwh
+Preparing worktree (detached HEAD f012e0431)
+Updating files:  67% (6869/10104)Updating files:  68% (6871/10104)Updating files:  69% (6972/10104)Updating files:  70% (7073/10104)Updating files:  71% (7174/10104)Updating files:  72% (7275/10104)Updating files:  73% (7376/10104)Updating files:  74% (7477/10104)Updating files:  75% (7578/10104)Updating files:  76% (7680/10104)Updating files:  77% (7781/10104)Updating files:  78% (7882/10104)Updating files:  79% (7983/10104)Updating files:  80% (8084/10104)Updating files:  81% (8185/10104)Updating files:  82% (8286/10104)Updating files:  83% (8387/10104)Updating files:  84% (8488/10104)Updating files:  85% (8589/10104)Updating files:  86% (8690/10104)Updating files:  87% (8791/10104)Updating files:  88% (8892/10104)Updating files:  89% (8993/10104)Updating files:  90% (9094/10104)Updating files:  91% (9195/10104)Updating files:  92% (9296/10104)Updating files:  93% (9397/10104)Updating files:  94% (9498/10104)Updating files:  95% (9599/10104)Updating files:  96% (9700/10104)Updating files:  97% (9801/10104)Updating files:  98% (9902/10104)Updating files:  99% (10003/10104)Updating files: 100% (10104/10104)Updating files: 100% (10104/10104), done.
+→ mvn test-compile（含测试源码）
+✓ HEAD 从干净副本可以编译
+→ mvn test（全量，约 3 分钟）
+  用时 1548 秒
+  全量 6499 跑（32 个模块）/ 0 红（基线 0 条）
+✓ 没有新增失败（基线 0 条一条没多）
+To https://github.com/robinwu2021-code/ai-shop.git
+   42fdd9895..f012e0431  HEAD -> codex/ai-shop-codex

@@ -1,5 +1,9 @@
 package ai.neargo.shop.spi.user;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
+
 import java.util.List;
 
 /**
@@ -30,6 +34,9 @@ public interface MerchantAdminPort {
      * @return merchantNo
      */
     String activate(ActivateCommand cmd);
+
+    /** Platform-owned provisioning, called only by the operator self-operated workflow. */
+    default String activateSelfOperated(ActivateCommand cmd) { return activate(cmd); }
 
     /**
      * 无证照快速开店：<b>不经审核</b>，当场建出一个「待补证照」的主体与它的默认门店。
@@ -63,12 +70,59 @@ public interface MerchantAdminPort {
      */
     java.util.Optional<String> pendingLicenseEntityOf(String userNo);
 
+    /** Resolve the B-side application target inside the application transaction. Only an
+     * unselected legacy applicant may start without a shell. */
+    java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo);
+
     /**
      * @param ownerUserNo 发起人（当前登录账号）
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
-    record QuickStartCommand(String ownerUserNo, String storeName, String address) {
+    /**
+     * @param market          经营市场（已由调用方按账号地区校验）；null = 不写，沿用库默认（旧 CN 行为）
+     * @param industryText    行业选「其他」时老板自填的文字（已校验、已去空白）；null = 不是「其他」
+     * @param subIndustryText 子业态选「其他」时自填的文字；同上
+     * @param addressDetail   楼层门牌，可空
+     * @param latE6           地图选点坐标 ×1e6（已校验，两者同有同无）；null = 不写
+     * @param lngE6           同上
+     * @param coordSys        坐标的坐标系 {@code gcj02} / {@code wgs84}；没有坐标时为 null
+     */
+    /**
+     * @param industryCode    建店选的行业码（TDD-子行业与能力端验收 B4）；只在行业表登记过时才有，否则为空
+     * @param subIndustryCode 建店选的子行业码；同上，子行业选「其他」时为空
+     */
+    record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                             String market, String industryText, String subIndustryText, String addressDetail,
+                             Integer latE6, Integer lngE6, String coordSys, String industryCode,
+                             String subIndustryCode) {
+        /** 子行业之前（双地图）的形状：没有行业码 */
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail,
+                                 Integer latE6, Integer lngE6, String coordSys) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                    addressDetail, latE6, lngE6, coordSys, null, null);
+        }
+
+        /** 双地图之前（三步建店）的形状：没有坐标 */
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                    addressDetail, null, null, null);
+        }
+
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, null, null, null, null, null, null);
+        }
+
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
+            this(ownerUserNo, storeName, address, businessTypeCode, null, null, null, null, null, null, null);
+        }
+
+        public QuickStartCommand(String ownerUserNo, String storeName, String address) {
+            this(ownerUserNo, storeName, address, null, null, null, null, null, null, null, null);
+        }
     }
 
     /**
@@ -124,10 +178,26 @@ public interface MerchantAdminPort {
      *                          名称/行业/法律形态被覆盖，两家店变一家，
      *                          <b>全程没有任何报错</b>，商家只看到「审核通过了」。
      */
+    record InitialStore(
+            @NotBlank @Size(max=64) String name,
+            @NotBlank @Size(max=255) String address,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,48}") String industryCode,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,48}") String subIndustryCode,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,32}") String businessTypeCode) {}
+
+    /** Validate current industry selection when recording a new application. */
+    default void validateInitialStore(InitialStore store) { throw new UnsupportedOperationException(); }
+
     record ActivateCommand(String ownerUserNo, String name, String subject,
                            String serviceScope, List<String> communityNos,
                            String settleAccountType, String industry, String description,
-                           String activatedEntityNo) {
+                           String activatedEntityNo, String marketCode, InitialStore store) {
+        public ActivateCommand(String ownerUserNo, String name, String subject, String serviceScope,
+                List<String> communityNos, String settleAccountType, String industry, String description,
+                String activatedEntityNo) {
+            this(ownerUserNo,name,subject,serviceScope,communityNos,settleAccountType,industry,description,
+                    activatedEntityNo,null,null);
+        }
     }
 
     /**
@@ -174,6 +244,11 @@ public interface MerchantAdminPort {
      * 调用方不传 —— 传进来的话，补发的历史回调会把用量记进当前周期。
      *
      * <p>没有收款记录时静默跳过：进件还没走完的商家没有额度可记。
+     *
+     * <p><b>按支付渠道记</b>（F02 · Review R02）：额度是收款号的属性，记到哪个号与结算取号同一条规则
+     * （{@link MerchantQueryPort#payMerchantNoOf}）。此前不带渠道、主体级 {@code LIMIT 1} 取行，支付宝的钱可能记到微信号上。
+     *
+     * @param channel 订单的实际支付渠道（{@code ord_order.pay_channel}）
      */
-    void accruePayQuota(String merchantNo, String storeNo, long amountMinor);
+    void accruePayQuota(String merchantNo, String storeNo, String channel, long amountMinor);
 }

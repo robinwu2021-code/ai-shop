@@ -93,8 +93,8 @@ class PostingServiceTest {
         // Presence of the production bean is checked before any fixture SQL, so missing implementation is a test failure.
         assertThat(context.containsBean("pointsPostingService")).as("real posting service is required").isTrue();
         String type = "PT" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
-        jdbc().update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
-                + " VALUES(?,'CN','CNY',1,1,'ACTIVE')", type);
+        jdbc().update("INSERT INTO pts_point_type(type_code,name,market,currency,rate_points,rate_minor,status)"
+                + " VALUES(?,?,'CN','CNY',1,1,'ACTIVE')", type, type);
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
         jdbc().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified) VALUES(?,'CNY',100,1)",
                 "E:" + type);

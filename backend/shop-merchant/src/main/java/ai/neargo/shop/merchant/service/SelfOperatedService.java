@@ -44,12 +44,16 @@ public interface SelfOperatedService {
      * @param description  店铺简介，可空；C 端门店页读的就是它
      */
     record CreateCommand(String phone, String name, String serviceScope,
-                         List<String> communityNos, String industry, String description) {
+                         List<String> communityNos, String industry, String description, String ownerEmail) {
+
+        public CreateCommand(String phone,String name,String serviceScope,List<String> communityNos,String industry,String description) {
+            this(phone,name,serviceScope,communityNos,industry,description,null);
+        }
 
         /** 老形状：不传范围 = 按社区。留着是因为已有调用点只建社区档 */
         public CreateCommand(String phone, String name, List<String> communityNos,
                              String industry, String description) {
-            this(phone, name, null, communityNos, industry, description);
+            this(phone, name, null, communityNos, industry, description,null);
         }
     }
 

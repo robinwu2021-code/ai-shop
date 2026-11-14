@@ -1,5 +1,17 @@
-import type { InventoryTraceStatus, InventoryOutboxMode } from "@shared/types/inventory";
+import type { InventorySyncEventState, InventoryOutboxMode } from "@shared/types";
+import type {SvActivity,SvSubmission,SvApproval} from "./stored-value-governance";
+import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
+// 商家端支付（S8）的响应类型住在 ./pay.ts；这里转出一次，OpenAPI 生成器只读本文件
+export type {
+  PayServiceStatus, PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant,
+  OfflineRecord, OfflineRecordHistory, OfflineRecordPage, OfflineRecordSummary,
+} from "./pay";
+// 平台商城（向平台采购，线下银行转账）的响应类型住在 ./mall.ts；同样转出一次
+export type {
+  MallStorefront, MallQuote, MallOrder, MallOrderSummary, MallOrderDetail, MallOfflineInstructions,
+  MallEvidenceTicket, MallEvidenceUploaded, MallOfflineClaim,
+} from "./mall";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
 
@@ -68,7 +80,7 @@ export interface MerchantInventoryTrace {
     /** System that requested or handled the synchronization. */
     source: string;
     /** Delivery state of the synchronization event. */
-    status: InventoryTraceStatus;
+    status: InventorySyncEventState;
     /** Outbox implementation that persisted the event. */
     outboxMode: InventoryOutboxMode;
   }>;
@@ -151,3 +163,173 @@ export interface MerchantInventoryTrace {
     }>;
   }>;
 }
+
+// P1 organization management response contracts.
+export type {ManagementContext,ManagementSpace,ManagementGrant,ManagementResource,Brand,BrandImpact,BrandChange,OperatingContext,PaymentMerchant,ManagementAudit,ManagementRecipient} from './management-types';
+import type {ManagementPage,ManagementGrant,ManagementResource,Brand,ManagementAudit,ManagementRecipient} from './management-types';
+export type ManagementGrantPage=ManagementPage<ManagementGrant>;
+export type ManagementResourcePage=ManagementPage<ManagementResource>;
+export type ManagementBrandPage=ManagementPage<Brand>;
+export type ManagementAuditPage=ManagementPage<ManagementAudit>;
+
+// Existing single-store stored-value contracts, now visible to the API generator.
+export type {SvContext,SvPlan,SvAccount,SvRecord,SvProgress,SvSelectedCustomer,SvCandidate} from './stored-value-types';
+import type {SvPage,SvPlan,SvAccount,SvRecord,SvProgress} from './stored-value-types';
+export type SvPlanPage=SvPage<SvPlan>;
+export type SvAccountPage=SvPage<SvAccount>;
+export type SvRecordPage=SvPage<SvRecord>;
+export interface SvRechargeResolve {
+  /** Whether the original idempotent recharge creation command has been resolved. */
+  found:boolean;
+  /** Original recharge result; null while no durable creation result exists. */
+  recharge:SvProgress|null}
+
+export type ManagementRecipientPage=ManagementPage<ManagementRecipient>;
+
+export type {ScopeCandidatePage,ScopeSelectedCustomer,ScopeMemberSummary} from './stored-value-types';
+
+export type {IssuerView,IssuerImpact,StoreIssuerOptions,IssuerRoute} from './stored-value-issuers';
+import type {IssuerView,StoreIssuerOptions} from './stored-value-issuers';
+export interface SvIssuerLookup {
+  /** Current issuer configuration; null when none has been configured. */
+  issuer:IssuerView|null}
+export interface SvIssuerEntity {
+  /** Operating entity identifier; authorization remains server-derived. */
+  entityNo:string;
+  /** Human-readable name displayed for this business resource. */
+  name:string;
+  /** Whether the operating entity has accepted this issuer arrangement. */
+  accepted:boolean;
+  /** Whether the current operator may accept this issuer arrangement. */
+  canAccept:boolean}
+export interface SvIssuerRechargeOptions {
+  /** Issuer choices and their current recharge/redemption availability. */
+  issuerOptions:StoreIssuerOptions;
+  /** Recharge plans available for the selected store and customer. */
+  plans:SvPlanPage}
+
+export type {IssuerAccessAck} from './stored-value-issuers';
+
+export type {SvPolicy,SvEffectivePolicy,SvActivity,SvSubmission,SvApproval,SvActivityCheck} from './stored-value-governance';
+export interface SvGovernanceCapability {
+  /** Capability protocol version supported by the current server. */
+  protocol:number;
+  /** Whether this feature or preset is enabled in the current deployment. */
+  enabled:boolean}
+export interface SvGovernancePrepared {
+  /** Whether the requested permission preparation has completed. */
+  prepared:boolean}
+export interface SvGovernanceDetail {
+  /** Stored-value activity and its current versioned definition. */
+  activity:SvActivity;
+  /** Durable activity submission state; null before any submission. */
+  submission:SvSubmission|null}
+export interface SvGovernanceActivitiesPage {
+  /** Business records returned by the current query. */
+  records:SvActivity[];
+  /** Total number of records matching the current query. */
+  total:number;
+  /** One-based page index for the returned or requested result. */
+  page:number;
+  /** Maximum records per page requested or returned by the server. */
+  size:number}
+export interface SvGovernanceApprovalsPage {
+  /** Business records returned by the current query. */
+  records:SvApproval[];
+  /** Opaque cursor for the next page; null when the result is exhausted. */
+  nextCursor:string|null;
+  /** Whether a further page is available using nextCursor. */
+  hasMore:boolean}
+export interface SvGovernancePreset {
+  /** Activity preset code identifying the supported definition template. */
+  templateCode:string;
+  /** Version of the selected activity preset. */
+  templateVersion:number;
+  /** Human-readable name displayed for this business resource. */
+  name:string;
+  /** Whether this feature or preset is enabled in the current deployment. */
+  enabled:boolean;
+  /** Whether this capability or preset is available in the current deployment. */
+  available:boolean;
+  /** Deployment capabilities missing for this preset to be usable. */
+  missingCapabilities:string[]}
+export interface SvGovernancePresetsPage {
+  /** Business records returned by the current query. */
+  records:SvGovernancePreset[];
+  /** Total number of records matching the current query. */
+  total:number;
+  /** One-based page index for the returned or requested result. */
+  page:number;
+  /** Maximum records per page requested or returned by the server. */
+  size:number}
+export interface SvGovernanceSchedule {
+  /** Start of the configured activity window as a server timestamp. */
+  startAt:string;
+  /** End of the configured activity window as a server timestamp. */
+  endAt:string;
+  /** IANA time zone used to interpret the activity schedule. */
+  zone:string;
+  /** ISO currency code determining the interpretation of monetary amounts. */
+  currency:CurrencyCode;
+  /** Number of decimal places in the currency's major unit. */
+  currencyScale:number}
+
+export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-governance';
+
+export type {SvFinanceCapability,SvFinanceResource,SvSummary,SvSettlementBill,SvBillActions,SvSettlementPayment,SvGenerated,SvPaymentResolution} from "./stored-value-finance";
+import type {SvSummary,SvStoreAttribution,SvActivityAttribution,SvSettlementBill,SvSettlementItem,SvSettlementEvent,SvSettlementPayment} from "./stored-value-finance";
+export interface SvFinanceSummaryPage {
+  /** Authorized financial summary records returned on this page. */
+  records:SvSummary[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceStorePage {
+  /** Authorized store attribution records returned on this page. */
+  records:SvStoreAttribution[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceActivityPage {
+  /** Authorized activity attribution records returned on this page. */
+  records:SvActivityAttribution[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceBillPage {
+  /** Authorized settlement bill records returned on this page. */
+  records:SvSettlementBill[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceItemPage {
+  /** Authorized settlement clearing item records returned on this page. */
+  records:SvSettlementItem[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceEventPage {
+  /** Authorized settlement audit event records returned on this page. */
+  records:SvSettlementEvent[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinancePaymentPage {
+  /** Authorized registered settlement payment records returned on this page. */
+  records:SvSettlementPayment[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+
+export type {SvFinancialBrandChange} from "./stored-value-finance";
+
+export type {SvFinancialPermissionResult} from "./stored-value-finance";
+
+export type {SvFinancialBrandOriginal} from "./stored-value-finance";

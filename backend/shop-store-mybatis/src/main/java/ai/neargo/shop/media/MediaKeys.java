@@ -72,6 +72,15 @@ public final class MediaKeys {
     private MediaKeys() {
     }
 
+    /** 已有两段商品图兼容；新 key 仅商品、用户头像和晒单公开。 */
+    public static boolean isPublicKey(String key) {
+        String[] segments = key.split("/");
+        return segments.length <= 2
+                || SysMediaAsset.GOODS.equalsIgnoreCase(segments[2])
+                || SysMediaAsset.AVATAR.equalsIgnoreCase(segments[2])
+                || SysMediaAsset.EVIDENCE.equalsIgnoreCase(segments[2]);
+    }
+
     /** 抠出全部 key（与 {@code sys_media_asset.asset_key} 同形，不带任何前缀）。 */
     public static Set<String> extract(String text) {
         Set<String> keys = new LinkedHashSet<>();

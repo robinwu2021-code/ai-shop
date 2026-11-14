@@ -1,0 +1,224 @@
+[
+  {
+    "entry": "BOOT-INF/classes/ai/neargo/shop/commercebridge/ShopMallOfflineCollectionAdapter.class",
+    "file": "class-0",
+    "before": "9a3f1f8716a366711caa2cc7542d0ebcf5e3c60ff4874bb261e3311702e6a23f",
+    "after": "8710dd8c3e4ddd826cb5ff468a5d99ac929774bd7269db5f9927a94e2be6ad17"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$ActionView.class",
+    "file": "class-1",
+    "before": "156d1f4348882ff5fe68aa202cae9bca3eb0438b14c641b4dd16c828fadba65b",
+    "after": "7f8a594e2cc5e0a40ddfb37c4563b58a193bb56d64a8ac1ba977f04b5bc9469c"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$DocumentationView.class",
+    "file": "class-2",
+    "before": null,
+    "after": "57e4e6268ba7e06cf6d7c3e9b407e97f6630649d6702e2eb66dfc3fb485f79ae"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$InstructionsView.class",
+    "file": "class-3",
+    "before": "dd41afeee5e9c019823498ff05b70ef00bd1e269e4edad45be1f52aa641128c0",
+    "after": "79273a7591d48318b886828f60a3f9aee672548885b76432a4f6aef61a305633"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$PendingClaim.class",
+    "file": "class-4",
+    "before": "50d677303346b31573263b8c53b14f25df9eb55c41a70fb95b09e56d375108bd",
+    "after": "24eb7b77d5333aa43a1cc1debf94c7f80f4e5bd94b697f726ad1f6ebde57202b"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$ProfileCommand.class",
+    "file": "class-5",
+    "before": "ec54e322432e1c57dde327c8493a894fe3b5d236ca3037a15c8973a9d75a0c07",
+    "after": "76b4de3caa119b163e86be2e633aaee0eda5944b32ee9ba17edd2118e3d5a228"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$ReceiptDocumentation.class",
+    "file": "class-6",
+    "before": null,
+    "after": "97e1301da0d53aef2b52047854b7e0ad89deaf555eff5eb3e6bc68e9789bad8e"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$RefundPayoutCommand.class",
+    "file": "class-7",
+    "before": "a5f7e3cb95fd5e206471b40f0cffba834306181578d95a21eee285bce4ca3bda",
+    "after": "b4394d655a5fc298414721a1237b2f9834b461da13ffd8f85a4ab4a4030261fd"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$ReviewCommand.class",
+    "file": "class-8",
+    "before": "312b80ae5460238fb9d3a2e750327b959b50b2374f79759c55cd0f66740486ce",
+    "after": "7d8875411c15f65beea2e41fd4695f0f07d829a8843de6e20449020fa1cb25f4"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$SupplementCommand.class",
+    "file": "class-9",
+    "before": null,
+    "after": "5bf764d990b6c80e5bf6cc245a17d4f6726d71fef8d41156646bdac4807ad5da"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$SupplementView.class",
+    "file": "class-10",
+    "before": null,
+    "after": "9cab3204933e69124543fae3621fa23e2844010db66d1e811bedbc84d206094d"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$Sweep.class",
+    "file": "class-11",
+    "before": "eec5cff55693f56adf8724d306106ca8edcf90f14a7420e474c6263c1060f4ee",
+    "after": "b1e883026d4ec326311b14a3bd3f247e274d7b6b437880f35fe66acaa942c9f5"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade$VoidCommand.class",
+    "file": "class-12",
+    "before": "53c33ff5e852cd639a3741c780e2b0fa8b205370ad4a89883f1c53deabf9955d",
+    "after": "d9591827e3a24384c063c3ca8e57ab2940b1ff9fdeb1d2f27c52b147962f7e77"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/offline/OfflinePurchaseFacade.class",
+    "file": "class-13",
+    "before": "edb580027e01b1d4ecad4baa7031f24b3476d47b4950aceee38434de289ff510",
+    "after": "ee28d0dd2adf42e58e2a719aa0b7a72dedb9bc948575751c520cea09b17c31d6"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$CashReceipt.class",
+    "file": "class-14",
+    "before": "90bb2db0afea531c8a80b5077c76b7a4aa0de6d2202794cd54b3a142c6c666a4",
+    "after": "d3381a7db8e90a768a2d5579b24bacbc4bce7ee9318db10feb18db96018daada"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$Collector.class",
+    "file": "class-15",
+    "before": "85b0f1f6b86be1d37ea57138259ff14783bcccfd51ef82b7137571630ac5e573",
+    "after": "5c2bf171f5c533ef7cd3ff0a5177a9712fa56c550b6c5fcf84bead853eb38bea"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$ManualPayment.class",
+    "file": "class-16",
+    "before": "ab0c474d31f7beaa85ddf33a099c726a12bea3f1b80873e96b76be55194a9755",
+    "after": "919ef72a045e8778886aa10c3ab2cdf92c4704f3a8b05ceb871e2569fb87123e"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$ManualResult.class",
+    "file": "class-17",
+    "before": "0ddeae04469a7141b4da3bd2a4f27c2c3dc112ba62daa57f7399482be796197b",
+    "after": "34901013d3b61c6d4e4564a4235027f214c888f6f628bf638c1a1bdf1445b3a9"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$Reconciliation.class",
+    "file": "class-18",
+    "before": "d8540ce4627a758a6480b843f6c69e61d558a969ace519a9772d30f31931fba9",
+    "after": "b96a7e57afe3e8a2c504659a636c0adc735ec8e9135f116962e8bf4fbfca698b"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort$RefundPayout.class",
+    "file": "class-19",
+    "before": "2556234cadec4210d4f8830e0bc31f7c40d9d030a7215d4b2cef250c2a5ff11c",
+    "after": "2d7e10ef8106b08f9bb2b94a471b91e599db31111621705afc786d29a258d69c"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-api-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/api/port/OfflineCollectionPort.class",
+    "file": "class-20",
+    "before": "36a505e53837ee23e7a74e667e7c93d6d85eaa1ac3075279cd2d9994f4e26ad9",
+    "after": "450e4d377a2638295978dd188e235ed5b20b350bcb44b0132e2700d8663be7d5"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-core-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/core/offline/DefaultOfflinePurchaseFacade.class",
+    "file": "class-21",
+    "before": "51419af5553ed58465b8e4ce882b6836b35b374529e8d7ff89e3369728f8c141",
+    "after": "f3f056da47c000efca41de78030c9c236bce4a81154efbbb202800107a33cd07"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-core-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/core/offline/OfflineRepository$Action.class",
+    "file": "class-22",
+    "before": "b1c85367bf8c0c629e69b2ba8ed7d516ff972088359ea7f78255920337792a87",
+    "after": "94fa7736130347f237c5646fed151237685a12c84ad626864972cd9fb44e3ef9"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-core-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/core/offline/OfflineRepository.class",
+    "file": "class-23",
+    "before": "449bf7ffe2225e474f69eb34bddcf017bd81b6cab552cf7ccd6a2a434be177ac",
+    "after": "9be670f3cc4dd8dca58b9ab24048f338a9da9b427645033b69ccf3b9fd9a5664"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-persistence-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/persistence/JdbcOfflineRepository.class",
+    "file": "class-24",
+    "before": "f77cace2f909d3c9d5aa034bf7853259783b95e8fe1ab6ea439737b915a61930",
+    "after": "ad4e08e19fa875108c279c0b4be38cce2c7942d3925a3bb5458e7b80b1bb2b00"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/CommerceOfflineAutoConfiguration.class",
+    "file": "class-25",
+    "before": "da2709be32b22e9f1fed268476a82fc14c4aacc8ed889e4db5e9218ece5436bf",
+    "after": "7bdc7a50ad6544aa72cb34b9bacfb2a5a2949842fe4a8fe09e9907bd9fb01958"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$ConfirmRequest.class",
+    "file": "class-26",
+    "before": "6e62355cedfe6372e47cace2715395b7d83f1b27e10e03c113a886c113e1f609",
+    "after": "b6c54466f41d7587ffdd4f0eef98a1785e786edb99dae4aaa0012caf80bfff16"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$DeclineRequest.class",
+    "file": "class-27",
+    "before": "65415fbe950104426abf48d32bad9bed225c5a2ea3c9e349a76d6292e3c4feac",
+    "after": "99c2fe3e2a660f3da3ee53cbc66ad9255efe8b44aa162ae41dd3da1f1fd55196"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$EvidenceRequest.class",
+    "file": "class-28",
+    "before": "833b88f237edc7af04d0cdfbf9bae75b0c26f820fc6fb80c7ad273d54a79a859",
+    "after": "6fbf797f65be50701dc9a191fd6bb1dd31d34d6894f22ceb46e9bf52b42000a9"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$PayoutRequest.class",
+    "file": "class-29",
+    "before": "e98fb40902457deb367d6164be8c8df4a8d2615060eccb2e8706359f99bd0fcb",
+    "after": "9817c4126845c75ac115e9ab6b5bcb5f275fbc4e2e865aa519349328f79a69c0"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$SupplementRequest.class",
+    "file": "class-30",
+    "before": null,
+    "after": "26720d71a40a278c2daa81ec200e8456f8f65153f6fe47eb5f7147177ccba209"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController$VoidRequest.class",
+    "file": "class-31",
+    "before": "a6983d39b0d58daed39731aaf7d7db8f4bb8a05506c2d5c477a93050d1dd7a7a",
+    "after": "ed4a6a78b7a213c6ed1c37cda98a419efe4634b93bb1a211a03b4e1e557beb04"
+  },
+  {
+    "entry": "BOOT-INF/lib/commerce-spring-boot-starter-0.1.0-SNAPSHOT.jar!/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.class",
+    "file": "class-32",
+    "before": "65d55bfc61770f4a1a8e43fde9824d9004fb7fc1f8879c08c4747eeb10cbc16e",
+    "after": "33b648b1a21681ac7a76f53c8c13e5d5a08b5816e0fd479e5c0aa8e14d7a888d"
+  },
+  {
+    "entry": "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/pay/service/impl/PlatformOfflineLedger$RefundAuthority.class",
+    "file": "class-33",
+    "before": "07491a072e9ed4280e7e6f22e66c0f43d84a7b133e5c3d8a89bd7f9aed447c9d",
+    "after": "dbfd49ca07b74b31ddcb14516977220c724087c8a949de86596e5521eedf69f1"
+  },
+  {
+    "entry": "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/pay/service/impl/PlatformOfflineLedger.class",
+    "file": "class-34",
+    "before": "81e35cf200f689124a496f614be6f53d527141d5acaf95f0d1196ec5ecc44d57",
+    "after": "fc0d0f70bbd0d636096e78c04f3a54522d59118f6b7af102d2eaf376bf5bd97d"
+  },
+  {
+    "entry": "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/pay/service/impl/PlatformRefundServiceImpl.class",
+    "file": "class-35",
+    "before": "a5fbcb667c84b7a47952d88ceece020d42b08c41563af43bc867d140a8bf48d1",
+    "after": "7db05644a298224a5f6cb1896e80d885c53c9192869b48286e3a8be0036556d8"
+  },
+  {
+    "entry": "BOOT-INF/lib/shop-merchant-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/merchant/paysync/StoreSyncPublisher.class",
+    "file": "class-36",
+    "before": "5d4503d6f28b892d62a0f4a14812ca7c5f3ede4f9dd69112a8835b4ba6c1f093",
+    "after": "1d3bfd82b9c1e17eb4c6de9b087ef4bfd6b6314b9e53f261d0d53d0aee4565ba"
+  }
+]

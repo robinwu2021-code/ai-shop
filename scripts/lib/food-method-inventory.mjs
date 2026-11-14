@@ -1,5 +1,5 @@
 const root='ai.neargo.shop.food';
-const short=s=>s.replaceAll(root+'.dto.','').replaceAll(root+'.entity.','').replaceAll('ai.neargo.shop.common.','').replaceAll('ai.neargo.shop.print.dto.','').replaceAll('ai.neargo.shop.print.entity.','').replaceAll('java.util.','').replaceAll('java.time.','').replaceAll('java.math.','');
+const short=s=>s.replaceAll(root+'.dto.','').replaceAll(root+'.entity.','').replaceAll('ai.neargo.shop.common.','').replaceAll('ai.neargo.shop.printing.dto.','').replaceAll('ai.neargo.shop.printing.entity.','').replaceAll('java.util.','').replaceAll('java.time.','').replaceAll('java.math.','');
 const param=(type,name,source='SERVICE_DERIVED')=>({type,name,source});
 const must=(ok,why)=>{if(!ok)throw new Error(why);};
 const camel=s=>s.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
@@ -119,7 +119,7 @@ export function buildFoodMethodInventory(s,code,plan,codePlan){
   if(f.controllerParameters)httpArgs.splice(0,httpArgs.length,...f.controllerParameters);
   must(new Set(serviceArgs.map(p=>p.name)).size===serviceArgs.length,'Duplicate service parameter '+e.apiId);
   const controllerSignature=e.returnType+' '+e.method+'('+httpArgs.map(p=>(p.annotation||'')+' '+p.type+' '+p.name).join(', ')+')';
-  return {apiId:e.apiId,moduleId:e.primaryModuleId,httpMethod:e.httpMethod,path:e.path,controllerClass:e.controllerClass,serviceClass:e.serviceClass,implClass:e.serviceImplClass,serviceMethod:e.serviceMethod,controllerParameters:httpArgs,controllerSignature,serviceParameters:serviceArgs,serviceSignature:signature(e.returnType,e.serviceMethod,serviceArgs),returnType:e.returnType,mapperCalls:[...reads,...custom,...writes],portCalls:f.portConcepts,transaction:f.transaction,note:f.note,
+  return {apiId:e.apiId,moduleId:e.primaryModuleId,httpMethod:e.httpMethod,path:e.path,controllerClass:e.controllerClass,serviceClass:e.serviceClass,implClass:e.serviceImplClass,serviceMethod:e.serviceMethod,controllerParameters:httpArgs,controllerSignature,serviceParameters:serviceArgs,serviceSignature:signature(e.returnType,e.serviceMethod,serviceArgs),returnType:e.returnType,mapperCalls:[...reads,...custom,...writes],portCalls:f.portConcepts,transaction:f.transaction,note:[f.note,e.targetPublicRouteStatus?'共享B端目标路径NOT_REGISTERED；以下目标方法/Req/VO为PLANNED_TRANSPORT_CONTRACT，不声称存在对应Java；实际FOOD打印Controller/DTO及delegate见actualImplementations。':null].filter(Boolean).join(' '),targetPublicRouteStatus:e.targetPublicRouteStatus,targetDtoStatus:e.targetDtoStatus,actualImplementations:e.actualImplementations,
    transactionRule:f.transaction==='ORCHESTRATED'?'外部校验/调用在本地事务外；短事务保存意图及outbox、绑定结果；UNKNOWN查原键恢复，不把HTTP放进长数据库事务。':f.transaction==='LOCAL_ATOMIC'?'本域短事务；先锁已存在仲裁行，CAS及数量条件更新与事实/outbox同事务。':f.transaction==='READ_ONLY'||f.transaction==='NO_LOCAL_WRITE'?'只读本域；GET不补写业务数据；报价等外部调用遵守原幂等键。':'共享任务持有导出/投影写入，本域只调用合同和保存明确的运行引用。',implementationStatus:f.implementationStatus||'TARGET_NOT_IMPLEMENTED'};
  });
  const controllers=[...new Set(endpoints.map(e=>e.controllerClass))].map(className=>({className,methods:endpoints.filter(e=>e.controllerClass===className).map(e=>({apiId:e.apiId,signature:e.controllerSignature,delegate:e.serviceClass+'.'+e.serviceMethod}))}));
@@ -151,7 +151,7 @@ export function renderFoodMethodInventory(v,code){
    md+=`\n#### ${e.apiId} · ${e.httpMethod} ${e.path}\n\nController：\`${e.controllerClass}\`\n\n\`\`\`java\n${short(e.controllerSignature)};\n\`\`\`\n\nService / Impl：\`${e.serviceClass}\` / \`${e.implClass}\`\n\n\`\`\`java\n${short(e.serviceSignature)};\n\`\`\`\n\n持久化：${e.mapperCalls.map(c=>'`'+c.mapperClass.split('.').slice(-2).join('.')+'.'+c.method+'`（'+c.access+'）').join('；')||'无餐饮本地表写入/查询'}。\n\n跨域：${e.portCalls.map(p=>'`'+p+'`').join('、')||'无新增跨域调用'}。\n\n事务：**${e.transaction}**。${e.transactionRule}${e.note?' '+e.note:''}\n`;
   }
  }
- md+='\n## 三、逐Mapper / DAO的方法签名\n\n共享prn_/rpt_为待建设能力的目标方法，不能在food-core创建其副本。下列原子写方法返回int时必须处理0行冲突；不能把核心金额/库存/资金守卫伪装成餐饮表单条SQL。\n';
+ md+='\n## 三、逐Mapper / DAO的方法签名\n\n本节保留原目标方法；共享打印真实实现见前置源码清单，rpt_继续由原共享owner负责，不能在food-core创建副本。下列原子写方法返回int时必须处理0行冲突；不能把核心金额/库存/资金守卫伪装成餐饮表单条SQL。\n';
  for(const m of v.mappers){
   md+=`\n### ${m.table}\n\n\`${m.className}\`；文件：\`${m.sourceFile}\`。\n\n\`\`\`java\n${m.methods.map(f=>(f.inherited?'// inherited BaseMapper\n':'')+short(f.signature)+';').join('\n')}\n\`\`\`\n\n${m.methods.filter(f=>!f.inherited).map(f=>'- `'+f.name+'`：'+f.guard).join('\n')}\n`;
  }

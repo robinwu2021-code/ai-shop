@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.invbridge.InventoryMirrorConsumer;
-import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.shop.marketing.attribution.FissionInviteService;
 import ai.neargo.shop.marketing.attribution.FissionOutboxConsumer;
 import tools.jackson.databind.ObjectMapper;

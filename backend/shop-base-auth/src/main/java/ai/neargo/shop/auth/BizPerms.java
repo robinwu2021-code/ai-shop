@@ -1,4 +1,5 @@
 package ai.neargo.shop.auth;
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,17 @@ import java.util.Set;
  */
 public final class BizPerms {
 
+    /** 查看当前授权商家的有效税配置。 */
+    public static final String PRICING_TAX_READ = "biz:pricing:tax:read";
+    /** 修改全主体所有门店的税配置，仅主体属主，不可按门店委派。 */
+    public static final String PRICING_TAX_UPDATE = "biz:pricing:tax:update";
+
+    /** Shared pricing configuration: read, draft edit and publication are independent grants. */
+    public static final String PRICING_CONFIG_READ = "biz:pricing:config:read";
+    public static final String PRICING_CONFIG_UPDATE = "biz:pricing:config:update";
+    public static final String PRICING_CONFIG_PUBLISH = "biz:pricing:config:publish";
+
+
     // ---------------------------------------------------------------- 履约（按「面对谁」分三档）
 
     /** 到货登记、分拣单、短少上报。只对货，不对人 —— 分拣单本就不含金额与买家 */
@@ -47,8 +59,18 @@ public final class BizPerms {
 
     /** 订单列表与详情、工作台待办。<b>含金额</b> */
     public static final String ORDER_VIEW = "biz:order:view";
+
+    /** 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替。 */
+    public static final String CASH_RECEIVE = "pay:cash:receive";
+
+    /** 准备报价不授权购买，必须单独显式授予。 */
+    public static final String CHECKOUT_PREPARE = "trade:checkout:prepare";
+
+    /** Merchant declaration approval is separate from existing cash-account authorization. */
+    public static final String MANUAL_CONFIRM = "trade:manual-service:confirm";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
     public static final String STOCK = "biz:stock";
+    public static final String REPORT_EXPORT = "biz:report:export";
     /** 建/改商品、上下架、规格模板、识图。<b>含价格</b> */
     public static final String GOODS = "biz:goods";
     /** 营销活动、开团、报价。让利与报价都是对钱的承诺 */
@@ -77,6 +99,8 @@ public final class BizPerms {
     public static final String FINANCE = "biz:finance";
 
     /** 查看主体级权益目录，不授予变更能力。 */
+    public static final String SV_PLAN_READ = "pay:sv:plan:read";
+    public static final String SV_PLAN_MANAGE = "pay:sv:plan:manage";
     public static final String SV_RECHARGE_CREATE = "pay:sv:recharge:create";
     public static final String SV_RECHARGE_RECEIVE = "pay:sv:recharge:receive";
     public static final String SV_RECHARGE_READ = "pay:sv:recharge:read";
@@ -92,6 +116,26 @@ public final class BizPerms {
     public static final String ENT_TEMPLATE_PUBLISH = "pay:ent:template:publish";
     /** 调整发行容量，不直接发放实例。 */
     public static final String ENT_ISSUE_MANAGE = "pay:ent:issue:manage";
+
+    /** Cross-industry appointment reading; grants no management capability. Seeded: MANAGER, CLERK. */
+    public static final String BOOKING_VIEW = "biz:booking:view";
+    /** Explicit appointment management, independently assignable from fulfillment permissions. Seeded: MANAGER. */
+    public static final String BOOKING_MANAGE = "biz:booking:manage";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_SELF = "biz:service:task:self";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_VIEW = "biz:service:task:view";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_COORDINATE = "biz:service:task:coordinate";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_APPROVE = "biz:service:task:approve";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_CLOSE = "biz:service:task:close";
 
     // ---------------------------------------------------------------- 角色
 
@@ -117,6 +161,32 @@ public final class BizPerms {
      *   <li><b>理货员没有 ORDER_VIEW。</b> 分拣单本身够他用且不含金额，给了是多给。</li>
      * </ul>
      */
+    /*
+     * 商家端支付（TDD-支付服务-I5接入层 S8，接口清单 §5）。默认只有主体属主（OWNER 的 *）有：
+     * 店长也碰不了钱 —— 老板要让谁收款、退款，给他建一个勾了这些码的角色。
+     */
+    /**
+     * 门店收银台：生成、再次分享、作废付款链接（TDD-门店收银台与付款链接 L7）。店长默认有；店员不默认，由店主在角色里勾选。
+     */
+    public static final String PAY_COLLECT = "mch:pay:collect";
+    public static final String PAY_REFUND = "mch:pay:refund";
+    public static final String PAY_STATEMENT = "mch:pay:statement";
+    public static final String PAY_APP_GRANT = "mch:pay:app-grant";
+    public static final String PAY_QR = "mch:pay:qr";
+    /**
+     * 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）。只读、不含汇总与手续费：
+     * 店员要能对着顾客手机查「这笔付了没」，所以店长、店员默认都有；汇总仍是 {@link #PAY_STATEMENT}，退款仍是 {@link #PAY_REFUND}。
+     */
+    public static final String PAY_ORDER_VIEW = "mch:pay:order:view";
+    /**
+     * 记一笔 App 外收款（TDD-商户App外部记账）：现金、外部刷卡机、银行转账在 App 里留痕。
+     * 平台不经手、不进拨款、不能退款，所以与 {@link #PAY_COLLECT}、{@link #CASH_RECEIVE} 分开 ——
+     * 后两者会出码收钱或把订单推成已付，给店员范围太大；店员模板默认有本码。读列表复用 {@link #PAY_ORDER_VIEW}。
+     */
+    public static final String PAY_OFFLINE_RECORD = "mch:pay:offline:record";
+    /** 更正与作废 App 外收款记录（原因必填、留痕）。店长默认有，店员没有 —— 改账的人与记账的人分开。 */
+    public static final String PAY_OFFLINE_MANAGE = "mch:pay:offline:manage";
+
     public static final String PRINT_READ = "biz:print:read";
     public static final String PRINT_SUBMIT = "biz:print:submit";
     public static final String PRINT_REPRINT = "biz:print:reprint";
@@ -130,8 +200,14 @@ public final class BizPerms {
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
-                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG, PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
-            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
+                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW, PAY_COLLECT,
+                    PAY_OFFLINE_RECORD, PAY_OFFLINE_MANAGE,
+                    // 预约：店长看与管、店员只看（TDD-B端门店功能矩阵与方案准入 §4-1，V640）
+                    BOOKING_VIEW, BOOKING_MANAGE,
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
+                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
+            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, PAY_OFFLINE_RECORD, BOOKING_VIEW,
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
             // 只对着顾客说话：回评价、处理售后、看得到那张单。不碰货、不碰钱
@@ -147,7 +223,6 @@ public final class BizPerms {
      * 抄一份的下场今天演过：文档里的角色表抄了三份，三处不一致。
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
-
     public static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry(PRINT_READ, "查看打印任务"),
             Map.entry(PRINT_SUBMIT, "提交打印"),
@@ -158,11 +233,27 @@ public final class BizPerms {
             Map.entry(PRINT_RESOLVE, "核实打印异常"),
             Map.entry(PRINT_SIMULATE, "模拟打印"),
             Map.entry(PRINT_EXPORT, "导出打印PDF"),
+            Map.entry(PRICING_TAX_READ, "查看商家税配置"),
+            Map.entry(PRICING_TAX_UPDATE, "维护商家税配置（仅主体属主）"),
+            Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),
+            Map.entry(PRICING_CONFIG_UPDATE, "编辑门店结账规则草稿"),
+            Map.entry(PRICING_CONFIG_PUBLISH, "发布门店结账规则"),
+            Map.entry(SERVICE_TASK_SELF, "操作本人服务任务"),
+            Map.entry(SERVICE_TASK_VIEW, "查看门店服务任务"),
+            Map.entry(SERVICE_TASK_COORDINATE, "协调服务任务"),
+            Map.entry(SERVICE_TASK_APPROVE, "审核服务调整"),
+            Map.entry(SERVICE_TASK_CLOSE, "关闭已结清服务工单"),
+            Map.entry(BOOKING_VIEW, "查看预约"),
+            Map.entry(BOOKING_MANAGE, "创建、调整及取消预约"),
             Map.entry(RECEIVE, "到货登记与分拣"),
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
+            Map.entry(CASH_RECEIVE, "确认线下实收"),
+            Map.entry(CHECKOUT_PREPARE, "准备服务购买报价"),
+            Map.entry(MANUAL_CONFIRM, "人工确认服务收款"),
             Map.entry(STOCK, "看商品、改库存"),
+            Map.entry(REPORT_EXPORT, "导出经营报表"),
             Map.entry(GOODS, "建商品、改价、上下架"),
             Map.entry(CAMPAIGN, "营销活动与报价"),
             Map.entry(REVIEW, "回评价、差评申诉"),
@@ -170,6 +261,8 @@ public final class BizPerms {
             Map.entry(CUSTOMER, "顾客列表与经营数据"),
             Map.entry(STORE, "店铺装修与配送规则"),
             Map.entry(STORE_ADMIN, "建店、停用、挂收款号、管员工"),
+            Map.entry(SV_PLAN_READ, "查看门店储值方案"),
+            Map.entry(SV_PLAN_MANAGE, "管理门店储值方案"),
             Map.entry(SV_RECHARGE_CREATE, "办理与取消未实收储值"),
             Map.entry(SV_RECHARGE_RECEIVE, "核验储值实收"),
             Map.entry(SV_RECHARGE_READ, "查看储值办理进度"),
@@ -182,6 +275,14 @@ public final class BizPerms {
             Map.entry(ENT_TEMPLATE_WRITE, "编辑权益模板"),
             Map.entry(ENT_TEMPLATE_PUBLISH, "发布与停用权益模板"),
             Map.entry(ENT_ISSUE_MANAGE, "管理权益发行规则"),
+            Map.entry(PAY_COLLECT, "代客收款（出动态收款码）"),
+            Map.entry(PAY_REFUND, "发起原路退款"),
+            Map.entry(PAY_STATEMENT, "看本店收款流水"),
+            Map.entry(PAY_APP_GRANT, "授权第三方代本店收款或退款"),
+            Map.entry(PAY_QR, "生成与停用本店收款码"),
+            Map.entry(PAY_ORDER_VIEW, "查看本店收款记录（列表与详情）"),
+            Map.entry(PAY_OFFLINE_RECORD, "记录 App 外收款"),
+            Map.entry(PAY_OFFLINE_MANAGE, "更正与作废 App 外收款"),
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**
@@ -196,7 +297,7 @@ public final class BizPerms {
     }
 
     /**
-     * 商家<b>自定义</b>角色可以勾的权限码 —— 少了 {@link #STORE_ADMIN}。
+     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构及跨店税配置写权限。
      *
      * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、
      * 能给自己加任何角色，<b>一次授权就绕开了整个模型</b>。
@@ -205,8 +306,8 @@ public final class BizPerms {
      */
     public static Set<String> assignableCodes() {
         return LABELS.keySet().stream()
-                .filter(c -> !STORE_ADMIN.equals(c))
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private BizPerms() {
@@ -266,6 +367,6 @@ public final class BizPerms {
         }
         return roles.stream()
                 .flatMap(r -> ROLE_PERMS.getOrDefault(r, List.of()).stream())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableSet());
     }
 }

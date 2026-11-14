@@ -1,5 +1,7 @@
 package ai.neargo.shop.print.channel;
 
+import ai.neargo.shop.spi.printing.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.event.*;
@@ -9,17 +11,22 @@ import ai.neargo.shop.print.api.dto.PrintConfigDtos.*;
 import ai.neargo.shop.print.api.dto.PrintDeviceDtos.*;
 import ai.neargo.shop.print.api.dto.PrintJobDtos.*;
 import ai.neargo.shop.print.api.dto.PrintProtocolDtos.*;
-import ai.neargo.shop.print.dispatch.*;
-import ai.neargo.shop.print.export.*;
-import ai.neargo.shop.print.operation.*;
-import ai.neargo.shop.print.persistence.entity.*;
-import ai.neargo.shop.print.persistence.mapper.PrintMappers;
-import ai.neargo.shop.print.persistence.mapper.PrintMappers.*;
-import ai.neargo.shop.print.simulation.*;
-import ai.neargo.shop.print.support.*;
-import ai.neargo.shop.print.template.PrintSceneRegistry;
+import ai.neargo.shop.printing.center.dispatch.*;
+import ai.neargo.shop.printing.center.export.*;
+import ai.neargo.shop.printing.center.operation.*;
+import ai.neargo.shop.printing.entity.PrnJob;
+import ai.neargo.shop.printing.entity.PrnAttempt;
+import ai.neargo.shop.printing.center.persistence.entity.*;
+import ai.neargo.shop.printing.center.persistence.mapper.PrintMappers;
+import ai.neargo.shop.printing.mapper.PrintMappers.JobMapper;
+import ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper;
+import ai.neargo.shop.printing.center.persistence.mapper.PrintMappers.*;
+import ai.neargo.shop.printing.center.simulation.*;
+import ai.neargo.shop.printing.center.support.*;
+import ai.neargo.shop.printing.center.template.PrintSceneRegistry;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -40,32 +47,41 @@ import java.time.*;
 import java.util.*;
 
 import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class PrintDatabaseAcceptanceTest {
     static AnnotationConfigApplicationContext context;
+    private static final Map<String, String> previousProperties = new HashMap<>();
 
     @Configuration
     @EnableTransactionManagement
     @MapperScan(
-            basePackageClasses = {PrintMappers.class, SysOutboxMapper.class},
+            basePackageClasses = {PrintMappers.class, ai.neargo.shop.printing.mapper.PrintMappers.class,
+                    SysOutboxMapper.class},
             markerInterface = BaseMapper.class)
     @ComponentScan(
             basePackages = {
-                "ai.neargo.shop.print.service",
-                "ai.neargo.shop.print.operation",
-                "ai.neargo.shop.print.audit",
-                "ai.neargo.shop.print.support",
-                "ai.neargo.shop.print.template",
-                "ai.neargo.shop.print.source",
-                "ai.neargo.shop.print.layout",
-                "ai.neargo.shop.print.dispatch",
-                "ai.neargo.shop.print.export",
-                "ai.neargo.shop.print.simulation",
-                "ai.neargo.shop.print.monitor",
-                "ai.neargo.shop.print.port",
+                "ai.neargo.shop.printing.center.service",
+                "ai.neargo.shop.printing.center.operation",
+                "ai.neargo.shop.printing.center.audit",
+                "ai.neargo.shop.printing.center.support",
+                "ai.neargo.shop.printing.center.template",
+                "ai.neargo.shop.printing.center.source",
+                "ai.neargo.shop.printing.center.layout",
+                "ai.neargo.shop.printing.center.dispatch",
+                "ai.neargo.shop.printing.center.export",
+                "ai.neargo.shop.printing.center.simulation",
+                "ai.neargo.shop.printing.center.monitor",
+                "ai.neargo.shop.printing.center.port",
                 "ai.neargo.shop.print.channel"
             })
     static class Config {
+        @Bean
+        ai.neargo.shop.printing.service.PrintDeviceGate deviceGate(
+                ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper devices, JobMapper jobs) {
+            return new ai.neargo.shop.printing.service.PrintDeviceGate(devices, jobs);
+        }
+
         @Bean
         FakeSource fakeSource() {
             return new FakeSource();
@@ -103,6 +119,9 @@ class PrintDatabaseAcceptanceTest {
             f.setDataSource(d);
             var c = new com.baomidou.mybatisplus.core.MybatisConfiguration();
             c.setMapUnderscoreToCamelCase(true);
+            var plugins = new com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor();
+            plugins.addInnerInterceptor(new com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor());
+            c.addInterceptor(plugins);
             f.setConfiguration(c);
             return f.getObject();
         }
@@ -115,6 +134,10 @@ class PrintDatabaseAcceptanceTest {
 
     @BeforeAll
     static void start() throws Exception {
+        for (String key : List.of("shop.print.credentials.key", "shop.print.artifacts.root",
+                "shop.print.artifacts.signing-key", "shop.print.agent.lease-key")) {
+            previousProperties.put(key, System.getProperty(key));
+        }
         System.setProperty(
                 "shop.print.credentials.key", Base64.getEncoder().encodeToString(new byte[32]));
         System.setProperty(
@@ -130,7 +153,15 @@ class PrintDatabaseAcceptanceTest {
 
     @AfterAll
     static void stop() {
-        if (context != null) context.close();
+        try {
+            if (context != null) context.close();
+        } finally {
+            previousProperties.forEach((key, value) -> {
+                if (value == null) System.clearProperty(key);
+                else System.setProperty(key, value);
+            });
+            previousProperties.clear();
+        }
     }
 
     PrintActor actor(String key) {
@@ -228,7 +259,7 @@ class PrintDatabaseAcceptanceTest {
                 "E2",
                 "S2",
                 "MERCHANT",
-                "U2",
+                "U".repeat(64),
                 key,
                 Set.of(
                         "SOURCE_ORDER_READ",
@@ -238,6 +269,78 @@ class PrintDatabaseAcceptanceTest {
                         "biz:print:extra",
                         "biz:print:resolve",
                         "biz:print:export"));
+    }
+
+    private ai.neargo.shop.printing.service.PrintService legacyOwner() {
+        var canonical=context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper.class);
+        return new ai.neargo.shop.printing.service.impl.PrintServiceImpl(canonical,
+                context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper.class),
+                context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper.class),
+                context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.JobMapper.class),
+                context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper.class),
+                JsonMapper.builder().build(),Clock.systemUTC(),
+                org.mockito.Mockito.mock(ai.neargo.shop.event.outbox.OutboxPublisher.class),
+                context.getBean(PlatformTransactionManager.class));
+    }
+
+    @Test
+    void alwaysOnOwnerRecoveryReleasesBothCanonicalAndRichRuntimeGates() {
+        var device=context.getBean(PrintDeviceService.class);var cloud=context.getBean(FakeCloud.class);
+        var actor=new PrintActor("MAIN","EREC","SREC","MERCHANT","ADMIN","recovery-create",Set.of("biz:print:device","biz:print:resolve"));
+        var printer=device.createPrinter(new CreatePrinterReq("SREC","recoverable",58,new Connection(
+                "CLOUD",cloud.adapterCode(),"testuser","RECOVERY-SN",null,Map.of(),null,Map.of("user","testuser","ukey","testkey"))),actor).targetNo();
+        device.changeStatus(printer,new ChangeStatusReq(0L,"ACTIVE","prepare recovery test"),
+                new PrintActor("MAIN","EREC","SREC","MERCHANT","ADMIN","recovery-active",actor.dataScopes()));
+        var details=device.getPrinter(printer,actor);
+        var factory=context.getBean(ai.neargo.shop.printing.center.service.PrintTestJobFactory.class);
+        factory.create(printer,details.printer().revision(),"STANDARD",actor);
+        var scope=new PrintScope("MAIN","EREC","SREC");
+        var leases=context.getBean(ai.neargo.shop.printing.center.dispatch.PrinterLeaseService.class);
+        var first=leases.prepare(scope,printer,"WORKER");assertNotNull(first);
+        var owner=legacyOwner();var oldScope=new ai.neargo.shop.spi.printing.PrintPort.Scope("EREC","SREC","ADMIN");
+        var state=owner.deviceRecovery(oldScope,printer);
+        owner.resolveDeviceUncertainty(oldScope,new ai.neargo.shop.printing.service.PrintService.DeviceResolution(
+                printer,state.version(),first.dispatch().attemptNo(),"queue inspected and terminated","EVIDENCE-REC",true,"RECOVERY-RESOLVE"));
+        var runtime=context.getBean(PrnPrinterRuntimeMapper.class).selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ai.neargo.shop.printing.center.persistence.entity.PrnPrinterRuntime>()
+                .eq("tenant_no","MAIN").eq("printer_no",printer));
+        assertNull(runtime.getActiveAttemptNo());
+        assertNull(context.getBean(ai.neargo.shop.printing.service.PrintDeviceGate.class).lock(scope,printer).getActiveAttemptNo());
+        assertEquals("UNKNOWN",context.getBean(JobMapper.class).selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ai.neargo.shop.printing.entity.PrnJob>()
+                .eq("job_no",first.dispatch().jobNo())).getStatus());
+        factory.create(printer,details.printer().revision(),"STANDARD",new PrintActor(
+                "MAIN","EREC","SREC","MERCHANT","ADMIN","recovery-second",actor.dataScopes()));
+        var next=leases.prepare(scope,printer,"WORKER");assertNotNull(next);
+        assertNotEquals(first.dispatch().attemptNo(),next.dispatch().attemptNo());
+        assertTrue(next.dispatch().fenceEpoch()>first.dispatch().fenceEpoch());
+    }
+
+    @Test
+    void legacyUnknownCannotBeBypassedByAnUnlinkedCenterPrinterIdentity() {
+        var canonical=context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper.class);
+        var old=legacyOwner();
+        var scope=new ai.neargo.shop.spi.printing.PrintPort.Scope("ELEG","SLEG","BRIDGE");
+        old.bindDevice(scope,new ai.neargo.shop.spi.printing.PrintPort.DeviceReq("LEGACY","GENERIC","LAN","VAULT","BRIDGE","{}",true));
+        old.publishTemplate(scope,new ai.neargo.shop.spi.printing.PrintPort.TemplateReq("TPLLEG","ORDER",1,"ORDER","{{document}}"));
+        old.putRoute(scope,new ai.neargo.shop.spi.printing.PrintPort.RouteReq("RTLEG","ORDER",null,"LEGACY","TPLLEG",1));
+        old.enqueue(scope,new ai.neargo.shop.spi.printing.PrintPort.Enqueue("EVLEG",null,"PART",new ai.neargo.shop.spi.printing.PrintPort.Document(
+                1,"ORDER","SOURCE","Legacy",null,List.of(new ai.neargo.shop.spi.printing.PrintPort.Line("Item","1",null,null)),"Notice")));
+        old.heartbeat(scope,"LEGACY",true);var claimed=old.claim(scope,"LEGACY");
+        old.acknowledge(scope,"LEGACY",new ai.neargo.shop.spi.printing.PrintPort.Acknowledge(claimed.attemptNo(),claimed.leaseToken(),"FAILED",null,"NETWORK_TIMEOUT"));
+        var center=context.getBean(PrintDeviceService.class);var cloud=context.getBean(FakeCloud.class);
+        var actor=new PrintActor("MAIN","ELEG","SLEG","MERCHANT","ADMIN","unlinked-create",Set.of("biz:print:device","biz:print:resolve"));
+        var connection=new Connection("CLOUD",cloud.adapterCode(),"testuser","LEGACY-SN",null,Map.of(),null,Map.of("user","testuser","ukey","testkey"));
+        assertThrows(PrintFailure.class,()->center.createPrinter(new CreatePrinterReq("SLEG","same physical printer",58,connection),actor));
+        var adopted=new PrintActor("MAIN","ELEG","SLEG","MERCHANT","ADMIN","linked-create",actor.dataScopes());
+        var linked=new Connection("CLOUD",cloud.adapterCode(),"testuser","LEGACY-SN",null,Map.of("canonicalDeviceNo","LEGACY"),null,Map.of("user","testuser","ukey","testkey"));
+        assertEquals("LEGACY",center.createPrinter(new CreatePrinterReq("SLEG","adopted",58,linked),adopted).targetNo());
+        var detail=center.getPrinter("LEGACY",adopted);
+        center.changeStatus("LEGACY",new ChangeStatusReq(detail.printer().revision(),"ACTIVE","identity linked"),
+                new PrintActor("MAIN","ELEG","SLEG","MERCHANT","ADMIN","linked-active",actor.dataScopes()));
+        var gate=context.getBean(ai.neargo.shop.printing.service.PrintDeviceGate.class);
+        assertEquals(claimed.attemptNo(),gate.lock(new PrintScope("MAIN","ELEG","SLEG"),"LEGACY").getActiveAttemptNo());
+        assertNull(context.getBean(ai.neargo.shop.printing.center.dispatch.PrinterLeaseService.class).prepare(new PrintScope("MAIN","ELEG","SLEG"),"LEGACY","WORKER"));
+        assertEquals(1L,canonical.selectCount(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ai.neargo.shop.printing.entity.PrnDevice>().eq("tenant_no","MAIN").eq("store_no","SLEG")));
+        assertThrows(RuntimeException.class,()->old.bindDevice(scope,new ai.neargo.shop.spi.printing.PrintPort.DeviceReq("ALIAS","GENERIC","LAN","VAULT","BRIDGE","{}",true)));
     }
 
     @Test
@@ -361,13 +464,21 @@ class PrintDatabaseAcceptanceTest {
                 facade.submit(
                         new PrintIntent(ref, PrintMode.EXISTING_FACT, null), flowActor("submit"));
         assertEquals(1, first.jobNos().size());
+        var actorJdbc = new JdbcTemplate(context.getBean(DataSource.class));
+        assertEquals("U".repeat(64), actorJdbc.queryForObject(
+                "SELECT created_by FROM prn_batch WHERE request_no=?", String.class, first.requestNo()));
+        assertEquals("U".repeat(64), actorJdbc.queryForObject(
+                "SELECT actor_no FROM prn_operation WHERE idempotency_key='device-create' AND entity_no='E2'", String.class));
+        assertTrue(actorJdbc.queryForObject(
+                "SELECT COUNT(*) FROM prn_action_log WHERE actor_no=? AND entity_no='E2'", Long.class, "U".repeat(64)) > 0);
+
         assertEquals(
                 first.requestNo(),
                 facade.submit(
                                 new PrintIntent(ref, PrintMode.EXISTING_FACT, null),
                                 flowActor("submit-again"))
                         .requestNo());
-        var jobs = context.getBean(PrnJobMapper.class);
+        var jobs = context.getBean(JobMapper.class);
         var receipt = context.getBean(PrintReceiptService.class);
         var dispatch = context.getBean(PrintDispatchService.class);
         var budget = new PrintWorkerBudget(100, Duration.ofSeconds(20), "acceptance");
@@ -381,7 +492,7 @@ class PrintDatabaseAcceptanceTest {
         assertNull(job.getConfirmedAt());
         assertEquals(priorSubmissions + 1, cloud.submissions);
         var at =
-                context.getBean(PrnAttemptMapper.class)
+                context.getBean(AttemptMapper.class)
                         .selectOne(
                                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
                                                 PrnAttempt>()
@@ -515,8 +626,9 @@ class PrintDatabaseAcceptanceTest {
     @Test
     void sampleSimulationAndPdfExportNeverCreateProductionJobs() {
         var simulator = context.getBean(PrintSimulationFacade.class);
-        var jobs = context.getBean(PrnJobMapper.class);
+        var jobs = context.getBean(JobMapper.class);
         long before = jobs.selectCount(null);
+        var simulationNos = new ArrayList<String>();
         for (var fixture : SimulationFixtureCode.values()) {
             var result =
                     simulator.create(
@@ -534,36 +646,50 @@ class PrintDatabaseAcceptanceTest {
                                     new PrintOutputOptions(true, PdfOutputProfile.ORIGINAL_ROLL)),
                             actor("sim-" + fixture));
             assertNotNull(result.targetNo());
+            simulationNos.add(result.targetNo());
         }
-        var report =
-                context.getBean(SimulationRunner.class)
-                        .runNext(new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance"));
-        assertEquals(0, report.failed());
-        assertEquals(SimulationFixtureCode.values().length, report.succeeded());
-        int generated = 0;
-        for (int tick = 0;
-                tick < SimulationFixtureCode.values().length
-                        && generated < SimulationFixtureCode.values().length;
-                tick++) {
-            var exported =
-                    context.getBean(PrintExportWorker.class)
-                            .generateNext(
-                                    new PrintWorkerBudget(
-                                            100, Duration.ofSeconds(30), "acceptance"));
-            assertEquals(0, exported.failed());
-            generated += exported.succeeded();
-        }
-        assertEquals(SimulationFixtureCode.values().length, generated);
+        var runner = context.getBean(SimulationRunner.class);
+        var exporter = context.getBean(PrintExportWorker.class);
+        var budget = new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance");
+        assertEquals(0, runner.runNext(budget).failed());
+        assertEquals(0, exporter.generateNext(budget).failed());
+
+        // Creation now starts artifact work directly after commit. Recovery reports count only
+        // work left for that scan; the durable outcomes must still cover all nine fixtures.
+        var simulations = context.getBean(PrnSimulationRunMapper.class);
+        var simulationQuery = new QueryWrapper<PrnSimulationRun>()
+                .eq("tenant_no", "T1").in("simulation_no", simulationNos);
+        var completed = simulations.selectList(simulationQuery);
+        assertEquals(SimulationFixtureCode.values().length, completed.size());
+        completed.forEach(row -> assertEquals("PASSED", row.getStatus()));
+
+        var exports = context.getBean(PrnExportTaskMapper.class);
+        var exportQuery = new QueryWrapper<PrnExportTask>()
+                .eq("tenant_no", "T1").eq("source_type", "SIMULATION")
+                .in("source_no", simulationNos);
+        var generated = exports.selectList(exportQuery);
+        assertEquals(SimulationFixtureCode.values().length, generated.size());
+        assertEquals(new HashSet<>(simulationNos),
+                new HashSet<>(generated.stream().map(PrnExportTask::getSourceNo).toList()));
+        generated.forEach(row -> assertEquals("READY", row.getStatus()));
+
+        assertEquals(new PrintWorkReport(0, 0, 0, false), runner.runNext(budget));
+        assertEquals(new PrintWorkReport(0, 0, 0, false), exporter.generateNext(budget));
+        completed.forEach(row -> {
+            var unchanged = simulations.selectById(row.getId());
+            assertEquals("PASSED", unchanged.getStatus());
+            assertEquals(row.getRevision(), unchanged.getRevision());
+            assertEquals(row.getActualResults(), unchanged.getActualResults());
+        });
+        generated.forEach(row -> {
+            var unchanged = exports.selectById(row.getId());
+            assertEquals("READY", unchanged.getStatus());
+            assertEquals(row.getRevision(), unchanged.getRevision());
+            assertEquals(row.getContentHash(), unchanged.getContentHash());
+        });
+        assertEquals((long) SimulationFixtureCode.values().length, simulations.selectCount(simulationQuery));
+        assertEquals((long) SimulationFixtureCode.values().length, exports.selectCount(exportQuery));
         assertEquals(before, jobs.selectCount(null));
-        assertTrue(
-                context
-                        .getBean(PrnExportTaskMapper.class)
-                        .selectList(
-                                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
-                                                PrnExportTask>()
-                                        .eq("tenant_no", "T1"))
-                        .stream()
-                        .allMatch(e -> "READY".equals(e.getStatus())));
     }
 
     @Test
@@ -602,7 +728,7 @@ class PrintDatabaseAcceptanceTest {
         context.getBean(PrintDispatchService.class)
                 .dispatchCloud(new PrintWorkerBudget(25, Duration.ofSeconds(20), "fairness"));
         assertTrue(
-                context.getBean(PrnAttemptMapper.class)
+                context.getBean(AttemptMapper.class)
                                 .selectCount(
                                         new com.baomidou.mybatisplus.core.conditions.query
                                                                 .QueryWrapper<
@@ -776,7 +902,7 @@ class PrintDatabaseAcceptanceTest {
         assertTrue(accepted.accepted());
         assertNotEquals(
                 "COMPLETED",
-                context.getBean(PrnJobMapper.class)
+                context.getBean(JobMapper.class)
                         .selectOne(
                                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
                                                 PrnJob>()

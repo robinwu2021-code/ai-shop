@@ -5,8 +5,8 @@ import {buildFoodMethodInventory} from '../lib/food-method-inventory.mjs';
 const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/'+n,import.meta.url)));
 const s=read('food-system-design.json'),code=read('food-module-code-inventory.json'),plan=read('food-method-plan.json'),codePlan=read('food-code-plan.json');
 const build=p=>buildFoodMethodInventory(s,code,p||plan,codePlan);
-test('all156API have controller,service,mapper/port call chains',()=>{
- const v=build();assert.equal(v.endpoints.length,156);assert.equal(v.controllers.length,55);assert.equal(v.services.length,37);
+test('all165API have controller,service,mapper/port call chains',()=>{
+ const v=build();assert.equal(v.endpoints.length,165);assert.equal(v.controllers.length,56);assert.equal(v.services.length,38);
  assert(v.endpoints.every(e=>e.controllerSignature&&e.serviceSignature&&e.transaction));
  assert(v.endpoints.every(e=>e.mapperCalls.length||e.portCalls.length));
 });

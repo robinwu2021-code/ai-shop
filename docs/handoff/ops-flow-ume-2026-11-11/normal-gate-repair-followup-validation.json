@@ -1,0 +1,94 @@
+{
+  "purpose": "NORMAL_GATE_REPAIR_FOLLOWUP_INCREMENTAL",
+  "date": "2026-11-11",
+  "baseCommit": "446d47ac63e3683c3967ea95556f868edfa4a304",
+  "contractCommit": "5a1f33c4c",
+  "gatePatchSha256": "569ee774f7267dc0e1ca4bc35ffcf49fd8c052f1c9c024b1985d412ef92c73b9",
+  "runs": [
+    {
+      "log": "gate-validation-scoped.log",
+      "sha256": "78824625b2164c20ca0890fde29cec40aa614d573c229bcfffd3323a10b2e6d8",
+      "classReports": 107,
+      "counts": {
+        "tests": 887,
+        "failures": 23,
+        "errors": 1,
+        "skipped": 1
+      },
+      "buildSuccess": false
+    },
+    {
+      "log": "gate-validation-residual-goods.log",
+      "sha256": "9aca6a8d7c0e45350a9d1b19ab002bfc4bfb35d3a3dab03321de99b442fc97ff",
+      "classReports": 9,
+      "counts": {
+        "tests": 113,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true
+    },
+    {
+      "log": "gate-validation-residual-ui.log",
+      "sha256": "ce1546da6926c5bb66e4bdc034261b50b11a63ac6426a9184669234850c7f748",
+      "classReports": 5,
+      "counts": {
+        "tests": 33,
+        "failures": 1,
+        "errors": 1,
+        "skipped": 0
+      },
+      "buildSuccess": false
+    },
+    {
+      "log": "gate-validation-residual-final.log",
+      "sha256": "79643af925acf768acdce84b104e748f5a297620b3dc3384d4e3e96fba57d277",
+      "classReports": 3,
+      "counts": {
+        "tests": 16,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": false
+    },
+    {
+      "log": "gate-validation-journey-golden.log",
+      "sha256": "64f00ef32a3f6d70b2a0685c3f143c1a7651966fd168aa0684222fff77228836",
+      "classReports": 1,
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true
+    },
+    {
+      "log": "resource-c2-shared-maven.log",
+      "sha256": "e11a10f4abf5d1b8a9b7ad0cc47ad137c0ef76dfd0f3b233b89242fcac51e1c2",
+      "classReports": 2,
+      "counts": {
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true
+    }
+  ],
+  "latestObservedClassReports": 111,
+  "latestObservedCounts": {
+    "tests": 911,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "scopeNotes": [
+    "Completed gate repairs verified in isolated snapshot; initial failures retained above as diagnostic evidence.",
+    "Final journey rerun selected the previously failing method; six other cases passed in the preceding class run.",
+    "No claim of normal full gate, C2 business implementation, native C2 acceptance, remote push or deployment success.",
+    "C2 shared two classes / fourteen tests are included; C2 owner implementations remain in progress."
+  ]
+}

@@ -1,15 +1,16 @@
+import { pointsCurrency } from "@/lib/points-currency";
 import type { FinanceApi } from "../contracts/finance";
 import type { PointsTypeConfig, PointsFallback, PointsSwitchView, PointsTerms, PointsChangeResult } from "@/lib/types";
 import { fail } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
 // Synthetic configuration only. No store signature, source fact or bank receipt is fabricated.
-const types: PointsTypeConfig[] = [{ typeCode: "POINTS_DEMO", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 2, minorUnit: 1 }, deductRatioBp: 2000, idleDays: 365, status: "ACTIVE" }];
+const types: PointsTypeConfig[] = [{ typeCode: "POINTS_DEMO", name: "演示积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE" }];
 const rules = new Map<string, PointsFallback>();
 const terms = new Map<string, PointsTerms>();
 const switches: PointsSwitchView[] = [];
 const receipts = new Map<string, { body: string; result: PointsChangeResult }>();
-function command(action: string, v: { requestId: string; typeCode: string; reason: string }, work: () => void) {
+function command(action: string, v: { requestId: string; typeCode: string; reason?: string }, work: () => void) {
   const key = `${action}:${v.requestId}`;
   const body = JSON.stringify(v);
   const prior = receipts.get(key);
@@ -17,7 +18,7 @@ function command(action: string, v: { requestId: string; typeCode: string; reaso
     if (prior.body !== body) fail("请求号已用于其他操作内容", "Request ID conflicts with the original command");
     return wait(structuredClone(prior.result));
   }
-  if (!v.requestId || !v.reason.trim()) fail("请填写操作原因", "An operation reason is required");
+  if (!v.requestId || (!["RENAME", "STATE"].includes(action) && !v.reason?.trim())) fail("请填写操作原因", "An operation reason is required");
   work();
   const result = { requestId: v.requestId, action, typeCode: v.typeCode, at: Date.now() };
   receipts.set(key, { body, result });
@@ -29,20 +30,38 @@ function type(code: string) {
   return t;
 }
 export const pointsConfigurationMock: Pick<FinanceApi,
-  "pointsTypes" | "createPointsType" | "transitionPointsType" | "pointsFallback" | "savePointsFallback" |
+  "pointsTypes" | "renamePointsType" | "createPointsType" | "transitionPointsType" | "pointsFallback" | "savePointsFallback" |
   "pointsSwitches" | "changePointsSwitch" | "pointsTerms" | "publishPointsTerms" | "pointsAgreements"> = {
   pointsTypes: () => wait(structuredClone(types)),
   createPointsType: (v) => command("CREATE", { ...v, typeCode: v.command.typeCode }, () => {
-    if (types.some((t) => t.typeCode === v.command.typeCode)) fail("类型已存在", "Type already exists");
-    if (v.command.market !== "CN") fail("演示仅配置 CN", "Only CN is configured in this demo");
-    types.push({ ...v.command, currency: "CNY", scale: 2, status: "DRAFT" });
+    if (types.some((t) => t.typeCode.toLocaleLowerCase() === v.command.typeCode.trim().toLocaleLowerCase() || t.name.trim().toLocaleLowerCase() === v.command.name.trim().toLocaleLowerCase())) fail("积分代码或名称已存在，请修改后重试。", "This points code or name already exists. Change it and try again.");
+    const currency = pointsCurrency(v.command.currency ?? "CNY");
+    if (!currency) fail("货币类型无效", "Invalid currency");
+    const rate = v.command.rate ?? { pointsUnit: 1, minorUnit: 1 };
+    if (![rate.pointsUnit, rate.minorUnit].every((n) => Number.isSafeInteger(n) && n > 0)) fail("兑换比例无效", "Invalid conversion rate");
+    let a = rate.pointsUnit, b = rate.minorUnit;
+    while (b) { const rest = a % b; a = b; b = rest; }
+    types.push({ ...v.command, typeCode: v.command.typeCode.trim(), name: v.command.name.trim(), market: "CN", currency: currency.code, scale: currency.scale, rate: { pointsUnit: rate.pointsUnit / a, minorUnit: rate.minorUnit / a }, deductRatioBp: 3000, idleDays: 365, status: "DRAFT" });
+  }),
+  renamePointsType: (v) => command("RENAME", v, () => {
+    const current = type(v.typeCode);
+    if (current.name !== v.expectedName) fail("名称已被修改，请刷新后重试", "Name changed; reload before saving");
+    const name = v.name.trim();
+    if (!name || name.length > 80) fail("积分名称需为 1 至 80 个字符", "Points name must contain 1 to 80 characters");
+    if (types.some((t) => t.typeCode !== current.typeCode && t.name.toLocaleLowerCase() === name.toLocaleLowerCase())) fail("积分代码或名称已存在，请修改后重试。", "This points code or name already exists. Change it and try again.");
+    current.name = name;
   }),
   transitionPointsType: (v) => command("STATE", v, () => {
     const t = type(v.typeCode);
     const target = { ACTIVATE: "ACTIVE", DRAIN: "DRAINING", RETIRE: "RETIRED" } as const;
     if ((v.action === "ACTIVATE" && t.status !== "DRAFT") || (v.action === "DRAIN" && t.status !== "ACTIVE") || (v.action === "RETIRE" && t.status !== "DRAINING")) fail("类型状态不允许此操作", "Type state does not allow this operation");
-    if (v.action === "ACTIVATE" && types.some((x) => x.market === t.market && x.status === "ACTIVE")) fail("该区域已有生效类型", "Market already has an active type");
-    t.status = target[v.action];
+    if (v.action === "PAUSE_EARNING" || v.action === "RESUME_EARNING" || v.action === "SET_DEFAULT") {
+      if (t.status !== "ACTIVE") fail("类型尚未生效", "Type is not active");
+      if (v.action === "SET_DEFAULT") {
+        if (t.currency !== "CNY") fail("默认积分币种必须与市场一致", "Default currency must match the market");
+        types.filter((x) => x.market === t.market).forEach((x) => { x.orderDefault = x.typeCode === t.typeCode; });
+      } else t.earningPaused = v.action === "PAUSE_EARNING";
+    } else t.status = target[v.action];
   }),
   pointsFallback: (code) => { type(code); return wait({ ...(rules.get(code) ?? { revision: 0, mode: "RATIO" as const, value: 0 }) }); },
   savePointsFallback: (v) => command("FALLBACK", v, () => {

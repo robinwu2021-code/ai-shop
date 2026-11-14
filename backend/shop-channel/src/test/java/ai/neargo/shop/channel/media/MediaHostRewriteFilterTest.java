@@ -26,6 +26,27 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @DisplayName("图片出口切换：出口换 cdn、入口换回 img")
 class MediaHostRewriteFilterTest {
+    @Test
+    void nearPayRelayBypassesRewritingAndEagerBodyReads() throws Exception {
+        var filter = new MediaHostRewriteFilter("https://img.test/", "https://cdn.test/");
+        var request = new org.springframework.mock.web.MockHttpServletRequest() {
+            @Override public jakarta.servlet.ServletInputStream getInputStream() {
+                throw new AssertionError("relay body must be read only by its bounded input");
+            }
+        };
+        request.setContextPath("/host");
+        request.setRequestURI("/host/biz/pay/v2/onboardings/ONB/draft");
+        request.setContentType("application/json");
+        var response = new org.springframework.mock.web.MockHttpServletResponse();
+        filter.doFilter(request, response, (req, res) -> {
+            assertThat(req).isSameAs(request);
+            assertThat(res).isSameAs(response);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"private\":\"https://img.test/original\"}");
+        });
+        assertThat(response.getContentAsString()).isEqualTo("{\"private\":\"https://img.test/original\"}");
+    }
+
 
     private static final String IMG = "https://img.hxmall.top";
     private static final String CDN = "https://cdn.hxmall.top";

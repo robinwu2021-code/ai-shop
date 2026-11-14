@@ -7,6 +7,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.entitlement.service.EntitlementRecords;
 import ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
@@ -33,6 +34,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Member-safe read side: visible stores require credited money, and all histories contain committed use only. */
 @Service
 public class StoredValueQueryServiceImpl implements StoredValueQueryService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
     private final SvAccountMapper accounts;
     private final SvUserStoreIndexMapper stores;
     private final EntUsageMapper usages;
@@ -50,7 +55,9 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
 
     @Override
     public BalanceView balance(EntitlementContext context, BalanceQuery query) {
-        var account = accounts.findOwner(context.tenantNo(), query.userNo(), query.entityNo(), query.currency());
+        StoredValueAccountScope.requireMigrated(accounts, context.tenantNo(), query.userNo(), query.entityNo(), query.currency());
+        var selected=issuerAccounts.lookup(context.tenantNo(),query.entityNo(),query.storeNo(),query.currency(),query.userNo(),false);
+        var account=selected.issuerScoped()?accounts.findAccount(context.tenantNo(),selected.accountNo()):accounts.findOwner(context.tenantNo(),query.userNo(),query.entityNo(),query.currency(),query.storeNo());
         if (account == null) return new BalanceView(null, query.currency(), 0, 0, 0, null);
         long balance = Math.addExact(account.getPrincipalMinor(), account.getBonusMinor());
         long held = Math.addExact(account.getHeldPrincipalMinor(), account.getHeldBonusMinor());
@@ -112,6 +119,6 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
     private UsageItem usageItem(EntUsage row) {
         return new UsageItem(row.getUsageNo(), AssetKind.STORED_VALUE, row.getTitle(), row.getAmountMinor(),
                 row.getCurrency(), row.getUnits(), row.getStoreNo(), row.getStoreName(), instant(row.getOccurredAt()),
-                row.getStatus());
+                row.getStatus(), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
 }

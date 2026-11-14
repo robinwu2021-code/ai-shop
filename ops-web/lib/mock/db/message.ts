@@ -35,6 +35,9 @@ export const tickets: Ticket[] = [
   { ticketNo: "TK9002", title: "想改配送地址", userNickname: "阿May", orderNo: "SO2026080504", status: "ASSIGNED", assignee: "cs02", proxyActions: ["cs02 代客修改收货地址：阳光里 6-2 → 阳光里 8-1"], createdAt: "2026-08-05T10:00:00Z" },
   { ticketNo: "TK9003", title: "咨询自提点营业时间", userNickname: "小满", status: "RESOLVED", assignee: "cs02", proxyActions: [], createdAt: "2026-08-04T03:00:00Z" },
   { ticketNo: "TK9004", title: "重复扣款", userNickname: "老周", orderNo: "SO2026080503", status: "CLOSED", assignee: "cs02", proxyActions: ["cs02 代客发起退款：¥18.60"], createdAt: "2026-08-02T06:00:00Z" },
+  // 商户 App 的问题回报（TDD-商户App问题回报与版本）：同一个工单池，来源不同
+  { ticketNo: "TK9005", title: "[PAYMENT] 退款一直转圈", userNickname: "台北早餐店主", status: "PENDING", proxyActions: [], createdAt: "2026-11-08T09:20:00Z",
+    source: "B_MERCHANT", category: "PAYMENT", storeNo: "ST261106T585CY14HG", storeDropped: false, clientVersion: "0.1.0", clientPlatform: "ANDROID" },
 ];
 
 export const faqs: FaqEntry[] = [

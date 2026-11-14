@@ -35,4 +35,9 @@ public interface LivePermResolver {
      * @return 这组角色当前的权限码并集；{@code null} 表示无法解析
      */
     List<String> resolve(List<String> roles);
+
+    /** Explicit strict boundary: fresh database grants only, no stale cache or built-in role fallback. */
+    default boolean supportsFreshReads() { return false; }
+
+    default List<String> resolveFresh(List<String> roles) { throw new UnsupportedOperationException("LIVE_PERMISSION_UNAVAILABLE"); }
 }

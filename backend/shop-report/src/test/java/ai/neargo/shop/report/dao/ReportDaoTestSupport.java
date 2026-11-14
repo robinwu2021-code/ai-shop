@@ -50,6 +50,8 @@ final class ReportDaoTestSupport {
                 .replaceAll("(?m)^--.*$", "")
                 // 显示宽度：H2 2.x 不认 BIGINT(20) 这种
                 .replaceAll("(?i)\\b(BIGINT|INT|TINYINT)\\(\\d+\\)", "$1")
+                // H2 uses virtual generated columns; native MySQL tests prove STORED/unique semantics.
+                .replaceAll("(?i)\\bSTORED\\b", "")
                 // 列注释与表尾的 ENGINE/CHARSET/COMMENT
                 .replaceAll("(?i)\\s+COMMENT\\s+'(?:[^']|'')*'", "")
                 .replaceAll("(?i)\\)\\s*ENGINE=\\w+[^;]*;", ");");

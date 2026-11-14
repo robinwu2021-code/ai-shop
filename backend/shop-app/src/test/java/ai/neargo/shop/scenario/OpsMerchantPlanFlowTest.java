@@ -83,7 +83,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 授予 PRO 后额度立即生效 —— 当场就能建第二家店，不用等重新登录")
     void grantTakesEffectImmediately() throws Exception {
-        String biz = merchant("12601100001", "套餐·当场生效");
+        String biz = merchant("18601100001", "套餐·当场生效");
         String merchantNo = merchantNoOf(biz);
 
         // FREE：默认店已占 1/3（V221 起 FREE 给 3 家），开到第四家才被拒
@@ -108,7 +108,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 只补缴不延长不刷新快照；改档位定义不影响已订阅的人")
     void snapshotRulesProtectExistingSubscribers() throws Exception {
-        String biz = merchant("12601100010", "套餐·老用户保护");
+        String biz = merchant("18601100010", "套餐·老用户保护");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 12, "首次订阅");
 
@@ -148,7 +148,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 延长从原到期日接着算 —— 提前续费不该吃掉他已付未用的那几天")
     void extensionStacksOnRemainingDays() throws Exception {
-        String biz = merchant("12601100020", "套餐·提前续费");
+        String biz = merchant("18601100020", "套餐·提前续费");
         String merchantNo = merchantNoOf(biz);
 
         long first = grant(merchantNo, "PRO", 1, "先买一个月").get("expireAt").asLong();
@@ -164,7 +164,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 额度覆盖优先于档位快照；清空覆盖回到快照而不是回到 0")
     void overrideBeatsSnapshot() throws Exception {
-        String biz = merchant("12601100030", "套餐·单独谈的额度");
+        String biz = merchant("18601100030", "套餐·单独谈的额度");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 12, "标准 PRO");
 
@@ -192,7 +192,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 宽限期能力全保留 —— 到期不等于降级，7 天内一个门店都不该被压")
     void gracePeriodKeepsEverything() throws Exception {
-        String biz = merchant("12601100040", "套餐·宽限期");
+        String biz = merchant("18601100040", "套餐·宽限期");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 1, "买一个月");
         assertThat(createStore(biz, "第二家")).isZero();
@@ -216,7 +216,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 降级只压该压的那几家：默认店留着，其余压只读且标明是平台压的")
     void downgradePressesOnlyWhatItShould() throws Exception {
-        String biz = merchant("12601100050", "套餐·降级选店");
+        String biz = merchant("18601100050", "套餐·降级选店");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 1, "买一个月");
         assertThat(createStore(biz, "第二家")).isZero();
@@ -264,7 +264,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 补缴只恢复平台压的那批 —— 商家自己停用的店不动")
     void restoreOnlyLiftsPlatformPressedStores() throws Exception {
-        String biz = merchant("12601100060", "套餐·补缴恢复");
+        String biz = merchant("18601100060", "套餐·补缴恢复");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 1, "买一个月");
         assertThat(createStore(biz, "第二家")).isZero();
@@ -306,7 +306,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 降级不动任何已有订单 —— 被压成只读的店，未完成的单照常发货")
     void downgradeDoesNotTouchExistingOrders() throws Exception {
-        String biz = merchant("12601100070", "套餐·降级不动单");
+        String biz = merchant("18601100070", "套餐·降级不动单");
         String merchantNo = merchantNoOf(biz);
         grant(merchantNo, "PRO", 1, "买一个月");
 
@@ -341,8 +341,8 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("到期看板三个筛选各自只装该装的人；升档信号按 owner 聚合")
     void dashboardFiltersAndSignals() throws Exception {
-        String soon = merchantNoOf(merchant("12601100080", "套餐·快到期"));
-        String grace = merchantNoOf(merchant("12601100081", "套餐·宽限中"));
+        String soon = merchantNoOf(merchant("18601100080", "套餐·快到期"));
+        String grace = merchantNoOf(merchant("18601100081", "套餐·宽限中"));
         grant(soon, "PRO", 1, "快到期的");
         grant(grace, "PRO", 1, "要掉进宽限期的");
 
@@ -369,7 +369,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("★ 权限：授予与改档位定义各自归各自的码，客服两个都做不了")
     void permissionsAreSeparated() throws Exception {
-        String merchantNo = merchantNoOf(merchant("12601100090", "套餐·权限"));
+        String merchantNo = merchantNoOf(merchant("18601100090", "套餐·权限"));
         String support = TestLogin.operator(mvc(), json, "support", "support123");
 
         /*
@@ -403,7 +403,7 @@ class OpsMerchantPlanFlowTest {
     @Test
     @DisplayName("授予的理由必填；停售的档位不能新授")
     void grantValidations() throws Exception {
-        String merchantNo = merchantNoOf(merchant("12601100100", "套餐·校验"));
+        String merchantNo = merchantNoOf(merchant("18601100100", "套餐·校验"));
 
         // 没有理由的授予在复盘时说不清 —— 它决定这家商家能开几家店
         assertThat(codeOf(post("/ops/merchant-plans/" + merchantNo + "/grant")

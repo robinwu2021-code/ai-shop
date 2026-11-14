@@ -94,8 +94,11 @@ export function validateFoodDesign(s) {
     must(composed.size===1 && composed.has('fnb_menu_item_option_group'), 'Invalid menu V6 scope');
     const adjusted=new Set(e.migrationV5Tables||[]);
     must(adjusted.size===1 && adjusted.has('fnb_recipe_adjustment'), 'Invalid recipe V5 scope');
+    const production=new Set(e.migrationV9Tables||[]);
+    must(production.size===2 && production.has('fnb_production_consumption')
+      && production.has('fnb_production_consumption_line'), 'Invalid production V9 scope');
     for (const name of e.plannedTables)
-      must(tables.get(name)?.deployment === (migrated.has(name)?'MIGRATION_V4':adjusted.has(name)?'MIGRATION_V5':composed.has(name)?'MIGRATION_V6':channels.has(name)?'MIGRATION_V7':'PLANNED'), `Unverified deployment ${name}`);
+      must(tables.get(name)?.deployment === (migrated.has(name)?'MIGRATION_V4':adjusted.has(name)?'MIGRATION_V5':composed.has(name)?'MIGRATION_V6':channels.has(name)?'MIGRATION_V7':production.has(name)?'MIGRATION_V9':'PLANNED'), `Unverified deployment ${name}`);
     must(s.tables.filter(t => t.name.startsWith('fnb_')).length === e.targetBusinessTableCount, 'Stale target table count');
     for (const name of ['fnb_recipe_line', 'fnb_recipe_adjustment'])
       must(tables.get(name)?.fields.some(f => f.name === 'qty' && f.type === 'decimal(18,6)'), 'Recipe quantity precision differs');

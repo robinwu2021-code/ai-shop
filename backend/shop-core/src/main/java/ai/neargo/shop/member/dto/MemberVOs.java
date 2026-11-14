@@ -26,7 +26,22 @@ public final class MemberVOs {
                               String phone, java.util.List<String> tagNos,
                               Long lastOrderBefore, Long lastOrderAfter,
                               Long spentMin, Long spentMax, long page, long size,
-                              String reachTaskNo, String reachOutcome) {
+                              String reachTaskNo, String reachOutcome, Integer idleDays) {
+
+        public MemberQuery {
+            if (idleDays != null && idleDays < 0) {
+                throw new IllegalArgumentException("idleDays must be nonnegative");
+            }
+        }
+
+        /** Existing absolute-date and reach callers remain source/binary compatible. */
+        public MemberQuery(String storeNo, String level, String source, String status,
+                           String phone, java.util.List<String> tagNos,
+                           Long lastOrderBefore, Long lastOrderAfter, Long spentMin, Long spentMax,
+                           long page, long size, String reachTaskNo, String reachOutcome) {
+            this(storeNo, level, source, status, phone, tagNos, lastOrderBefore, lastOrderAfter,
+                    spentMin, spentMax, page, size, reachTaskNo, reachOutcome, null);
+        }
 
         /** 某次触达里：下了单的 */
         public static final String REACH_ORDERED = "ORDERED";
@@ -68,15 +83,16 @@ public final class MemberVOs {
                 @com.fasterxml.jackson.annotation.JsonProperty("page") Long page,
                 @com.fasterxml.jackson.annotation.JsonProperty("size") Long size,
                 @com.fasterxml.jackson.annotation.JsonProperty("reachTaskNo") String reachTaskNo,
-                @com.fasterxml.jackson.annotation.JsonProperty("reachOutcome") String reachOutcome) {
+                @com.fasterxml.jackson.annotation.JsonProperty("reachOutcome") String reachOutcome,
+                @com.fasterxml.jackson.annotation.JsonProperty("idleDays") Integer idleDays) {
             return new MemberQuery(storeNo, level, source, status, phone, tagNos, lastOrderBefore, lastOrderAfter,
-                    spentMin, spentMax, page == null ? 1 : page, size == null ? 0 : size, reachTaskNo, reachOutcome);
+                    spentMin, spentMax, page == null ? 1 : page, size == null ? 0 : size, reachTaskNo, reachOutcome, idleDays);
         }
 
         /** 人群条件里不带分页 —— 试算与解析都是全量 */
         public MemberQuery unpaged() {
             return new MemberQuery(storeNo, level, source, status, phone, tagNos,
-                    lastOrderBefore, lastOrderAfter, spentMin, spentMax, 1, 0, reachTaskNo, reachOutcome);
+                    lastOrderBefore, lastOrderAfter, spentMin, spentMax, 1, 0, reachTaskNo, reachOutcome, idleDays);
         }
     }
 

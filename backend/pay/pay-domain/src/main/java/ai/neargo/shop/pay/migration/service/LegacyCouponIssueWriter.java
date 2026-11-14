@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.migration.service;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.pay.entitlement.dto.*;
 import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.*;
@@ -21,6 +23,8 @@ import tools.jackson.databind.ObjectMapper;
 /** One pay capacity transaction creates only the original native batch; finalization never grants again. */
 @Component
 public class LegacyCouponIssueWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     public static final String OPERATION="LEGACY_COUPON_ISSUE";
     private final EntLegacyCouponIssueMapper issues;
     private final EntTemplateMapper templates;
@@ -78,7 +82,7 @@ public class LegacyCouponIssueWriter {
             var row=new EntLegacyCouponIssue();EntitlementRecords.audit(row,ctx);row.setIssueNo(no);row.setBatchNo("LB"+EntitlementRecords.digest(no).substring(0,62));
             row.setEntityNo(scope.entityNo());row.setSourceSystem(ref.source().sourceSystem().name());row.setSourceTemplateNo(ref.source().sourceNo());
             row.setTargetTemplateNo(ref.targetNo());row.setTemplateVersionNo(version.versionNo());row.setActorNo(scope.actorNo());row.setMode(command.mode());
-            row.setFrozenSnapshot(json.writeValueAsString(frozen));row.setStatus("PREPARED");issues.insert(row);
+            row.setFrozenSnapshot(json.writeValueAsString(frozen));row.setStatus("PREPARED");issues.insert(row); documents.bind(DocumentType.LEGACY_COUPON_ISSUE, scope.tenantNo(), row.getIssueNo());
             var nativeBatch=batches.create(scope,new CreateBatch(version.versionNo(),no),EntitlementRecords.digest(no+":BATCH"),row.getBatchNo(),frozen.batch());
             return view(row,frozen,nativeBatch,false);
         });
@@ -132,6 +136,7 @@ public class LegacyCouponIssueWriter {
                 skips,Math.multiplyExact((long)nativeBatch.issuedCount(),unitCost(frozen.batch().definition())),frozen.batch().createdAt(),results).withTargetDesc(frozen.command().targetDesc()));
     }
     private View effects(View view) {
+        view = view.withDocumentNo(documents.find(DocumentType.LEGACY_COUPON_ISSUE, "MAIN", view.issueNo()));
         var ids=view.results().stream().filter(i->"ISSUED".equals(i.status())).map(LegacyCouponIssueViews.Item::grantNo).distinct().toList();
         if(ids.isEmpty()) return view.withUsage(0,0);
         var effect=stats.usage("MAIN",view.entityNo(),ids);return view.withUsage(effect.usedCount(),effect.usedAmountMinor());

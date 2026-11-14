@@ -45,11 +45,22 @@ class PhaseOnePointsCampaignTest {
     @MockitoSpyBean private PointsPort points;
     private final List<String> made = new ArrayList<>();
 
+    /*
+     * 活动保存/发布还会写版本、商品、人群、预算等关联表。只删主表与规则的话，版本快照里那条
+     * 「减 100」继续参与结算，而主表已没了 —— 后面的类（如 PointsDeductFlowTest）的订单凭空少 100、
+     * 优惠依据却是空的。按活动号把所有关联表一起删。
+     */
+    private static final List<String> ACTIVITY_TABLES = List.of(
+            "pmt_activity_rule", "pmt_activity_version", "pmt_activity_goods", "pmt_activity_audience",
+            "pmt_activity_budget", "pmt_activity_participant", "pmt_activity_reservation", "pmt_period",
+            "pmt_enrollment", "pmt_effect_projection", "pmt_coupon_issue", "pmt_activity");
+
     @AfterEach
     void cleanup() {
         for (String no : made) {
-            jdbc.update("delete from pmt_activity_rule where activity_no=?", no);
-            jdbc.update("delete from pmt_activity where activity_no=?", no);
+            for (String table : ACTIVITY_TABLES) {
+                jdbc.update("delete from " + table + " where activity_no=?", no);
+            }
         }
     }
 

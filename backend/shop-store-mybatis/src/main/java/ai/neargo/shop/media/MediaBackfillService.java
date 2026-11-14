@@ -46,7 +46,7 @@ public class MediaBackfillService {
     private final Path root;
 
     public MediaBackfillService(SysMediaAssetMapper assetMapper,
-                                @Value("${shop.upload.dir:./data/uploads}") String dir) {
+                                @Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir) {
         this.assetMapper = assetMapper;
         this.root = Path.of(dir).toAbsolutePath().normalize();
     }

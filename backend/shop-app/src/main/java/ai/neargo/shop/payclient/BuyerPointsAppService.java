@@ -10,6 +10,7 @@ public interface BuyerPointsAppService {
 
     record Account(
             String typeCode,
+            String name,
             String market,
             String currency,
             String status,
@@ -21,9 +22,21 @@ public interface BuyerPointsAppService {
             int deductRatioBp,
             int idleDays,
             boolean frozen,
-            Long expireAt) {}
+            Long expireAt,
+            boolean earningPaused) {
+        public Account(String typeCode, String name, String market, String currency, String status,
+                long balance, long pendingBalance, long heldBalance, long ratePoints, long rateMinor,
+                int deductRatioBp, int idleDays, boolean frozen, Long expireAt) {
+            this(typeCode, name, market, currency, status, balance, pendingBalance, heldBalance,
+                    ratePoints, rateMinor, deductRatioBp, idleDays, frozen, expireAt, false);
+        }
+    }
 
-    record Entry(String entryNo, String bucket, long points, long balanceAfter, long at) {}
+    record Entry(String entryNo, String bucket, long points, long balanceAfter, long at, String voucherNo, String voucherDocumentNo, String direction, String businessRef, String orderNo) {
+        public Entry(String entryNo, String bucket, long points, long balanceAfter, long at) {
+            this(entryNo, bucket, points, balanceAfter, at, null, null, null, null, null);
+        }
+    }
 
     record EntryPage(List<Entry> rows, long next, boolean hasMore) {
         public EntryPage {

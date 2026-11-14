@@ -1,5 +1,7 @@
 /**
- * 快递公司 —— **存的、发的都是微信的 `delivery_id`**。
+ * 快递公司 —— **按门店所属主体的经营市场分表**（TDD-商户App快递公司）。
+ * 大陆那份**存的、发的都是微信的 `delivery_id`**；台湾那份是我方自定义的码，**不是微信码**，
+ * 台湾单永远不会上报微信。码全局唯一（台湾不复用大陆的 `SF`），订单上只存一个码。
  *
  * ## 这不是 `Carrier`
  *
@@ -16,8 +18,8 @@
  *
  * ## 与后端那份的关系
  *
- * 后端 `ExpressCompanies.java` 是校验方（`ship()` 认不得的码直接拒）。
- * 两份必须逐项一致 —— 端上能选而后端拒，商家会看到一个莫名其妙的「参数错误」。
+ * 后端 `ExpressCompanies.java` 是校验方（`ship()` 按订单所属门店的市场校验，认不得的码直接拒）。
+ * 两份必须按市场逐项一致 —— 端上能选而后端拒，商家会看到一个莫名其妙的「参数错误」。
  * `express-companies.test.ts` 对账，少一条、多一条、名字不同都会红。
  *
  * ## 每个码都核验过
@@ -27,14 +29,14 @@
  * 顺丰要 `SF`（速运）不是 `NSF`（新顺丰）；百世快递是 `HTKY`，`BTWL` 是百世快运。
  */
 export interface ExpressCompany {
-  /** 微信 delivery_id，原样上报 */
+  /** 大陆：微信 delivery_id，原样上报；台湾：我方自定义码 */
   readonly code: string;
   /** 展示名，与微信的 delivery_name 一致 —— 不一致的话商家选的和微信显示的对不上 */
   readonly name: string;
 }
 
 /** 顺序就是发货界面的显示顺序：按国内件实际用量从高到低 */
-export const EXPRESS_COMPANIES: readonly ExpressCompany[] = [
+const CN: readonly ExpressCompany[] = [
   { code: "SF", name: "顺丰速运" },
   { code: "ZTO", name: "中通快递" },
   { code: "YTO", name: "圆通速递" },
@@ -50,3 +52,33 @@ export const EXPRESS_COMPANIES: readonly ExpressCompany[] = [
   { code: "UC", name: "优速快递" },
   { code: "ZJS", name: "宅急送" },
 ] as const;
+
+/** 台湾首批（已拍板 X1）：名称用官方繁体名，黑貓第一（App 默认选第一项） */
+const TW: readonly ExpressCompany[] = [
+  { code: "TCAT", name: "黑貓宅急便" },
+  { code: "HCT", name: "新竹物流" },
+  { code: "TWPOST", name: "中華郵政" },
+  { code: "KERRYTJ", name: "嘉里大榮物流" },
+  { code: "PELICAN", name: "宅配通" },
+] as const;
+
+/** 与后端 `ExpressCompanies.BY_MARKET` 逐项一致（`express-companies.test.ts` 按市场对账） */
+export const EXPRESS_COMPANIES_BY_MARKET: Readonly<Record<string, readonly ExpressCompany[]>> = { CN, TW };
+
+/** 大陆那份。b-app / c-app 存量引用不动（它们只服务大陆单） */
+export const EXPRESS_COMPANIES: readonly ExpressCompany[] = CN;
+
+/** 本市场能选的；**不认得的市场给空表，不回落大陆** —— 回落的话选了能发货、买家查不到件 */
+export function expressCompaniesOf(market: string | null | undefined): readonly ExpressCompany[] {
+  return EXPRESS_COMPANIES_BY_MARKET[(market ?? "").toUpperCase()] ?? [];
+}
+
+/** 跨市场按码查展示名；认不得的码返回 `undefined`（调用方自己决定显示原码） */
+export function expressCompanyName(code: string | null | undefined): string | undefined {
+  if (!code) return undefined;
+  for (const list of Object.values(EXPRESS_COMPANIES_BY_MARKET)) {
+    const hit = list.find((c) => c.code === code);
+    if (hit) return hit.name;
+  }
+  return undefined;
+}

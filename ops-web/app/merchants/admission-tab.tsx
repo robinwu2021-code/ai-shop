@@ -29,7 +29,7 @@ import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { useCan } from "@/lib/use-can";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -307,7 +307,7 @@ export function AdmissionTab({ c }: { c: Copy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="warning">{c.adNotice}</Notice>
+      <HelpNote>{c.adNotice}</HelpNote>
 
       <div>
         <div className="mb-2 txt-strong">{c.adPolicyTitle}</div>

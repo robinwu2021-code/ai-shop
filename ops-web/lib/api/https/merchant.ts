@@ -3,6 +3,27 @@ import { client } from "../http-client";
 import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
+  onBehalfStoreIndustries: () => client.get("/ops/merchants/store-industries"),
+  entityCashReceipts: (entity,order) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-receipts`),
+  entityCashRefunds: (entity,order) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds`),
+  requestEntityCashRefund: (entity,order,v) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds`,v),
+  payoutEntityCashRefund: (entity,order,refund,v) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds/${encodeURIComponent(refund)}/payout`,v),
+  recoverEntityCashRefund: (entity,order,refund) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds/${encodeURIComponent(refund)}/recover`,{}),
+  entityPlanAssistanceContext: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/assistance-context`),
+  assistedEntityPlanPurchase: (e,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/assisted`,c),
+
+  entityPlanOffers: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`),
+  saveEntityPlanOffer: (e,c) => client.put(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`,c),
+  entityPlanPurchases: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`),
+  entityPlanPurchase: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}`),
+  confirmEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/confirm`,c),
+  declineEntityPlanPurchase: (e,o,claimNo,reason) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/decline`,{claimNo,reason}),
+  recoverEntityPlanPurchase: (e,o) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/recover`),
+  cancelEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/cancel`,c),
+  reserveEntityPlanEvidence: (e,o,purpose="PLATFORM_RECEIPT") => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence`,{},{purpose}),
+  uploadEntityPlanEvidence: (e,o,key,file) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence/content`,file,{assetKey:key}),
+  entityPlanEvidenceUrl: (e,o,key) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence/url`,{assetKey:key}),
+
   storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
   merchantFulfillment: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/fulfillment`),
   lockChannel: (storeNo, channel, reason) =>
@@ -12,7 +33,10 @@ export const merchantHttp: MerchantApi = {
   modeRisk: () => client.get("/ops/merchants/mode-risk"),
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
+  selfOperatedContext: () => client.get("/ops/merchants/self-operated/context"),
   createSelfOperated: (v) => client.post("/ops/merchants/self-operated", v),
+  onBehalfContext: () => client.get("/ops/merchants/apply-on-behalf/context"),
+  listOnBehalfApplies: (q) => client.get("/ops/merchants/apply-on-behalf/search", q),
   applyOnBehalf: (v) => client.post("/ops/merchants/apply-on-behalf", v),
   addSelfOperatedStore: ({ merchantNo, ...body }) =>
     client.post(`/ops/merchants/${merchantNo}/stores`, body),
@@ -53,12 +77,15 @@ export const merchantHttp: MerchantApi = {
   getMerchant: (merchantNo) => client.get(`/ops/merchants/${merchantNo}`),
 
   // 进件看板（WS-C）：只读 + 人工回查。不碰通道 —— 回查转调后端已有的 refresh。
+  nearPayOnboardingBoard: (q) => client.get("/ops/payment-onboardings", q),
   onboardingBoard: (q) => client.get("/ops/onboarding", q),
   refreshOnboarding: (v) => client.post("/ops/onboarding/refresh", v),
   setMerchantStatus: (merchantNo, status, remark, communityNos) =>
     client.post(`/ops/merchants/${merchantNo}/status`, { status, remark, communityNos }),
   setMerchantVerified: (merchantNo, verified) =>
     client.post(`/ops/merchants/${merchantNo}/verified`, { verified }),
+  applyPayService: (merchantNo, form) => client.post(`/ops/merchant/${encodeURIComponent(merchantNo)}/pay-service/apply`, form),
+  payServiceStatus: (merchantNo) => client.get(`/ops/merchant/${encodeURIComponent(merchantNo)}/pay-service`),
   archiveMerchant: (merchantNo) => client.post(`/ops/merchants/${merchantNo}/archive`),
   unarchiveMerchant: (merchantNo) => client.post(`/ops/merchants/${merchantNo}/unarchive`),
   listAuthCodes: () => client.get("/ops/merchants/auth-codes"),

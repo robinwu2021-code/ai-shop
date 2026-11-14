@@ -16,6 +16,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_activity")
 public class PmtActivity extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 无条件（发券型活动） */
     public static final String TRIGGER_NONE = "NONE";
@@ -190,6 +193,24 @@ public class PmtActivity extends BaseEntity {
     /** 还有没有量。限量为空 = 不限 */
     public boolean hasQuotaLeft() {
         return quota == null || nz(quotaUsed) < quota;
+    }
+
+    /**
+     * 预算还剩多少（分）。<b>没设预算（空或 0）= 不限</b>，给 {@link Long#MAX_VALUE}。
+     *
+     * <p>与限量同一个口径：保存时「长期活动要么限量、要么预算」，那么预算就必须真的能把活动停下来 ——
+     * 此前算价只看限量，只设了预算的长期活动花多少都照减。
+     */
+    public long budgetLeft() {
+        if (budgetMinor == null || budgetMinor <= 0) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, budgetMinor - (budgetUsedMinor == null ? 0L : budgetUsedMinor));
+    }
+
+    /** 还有没有预算。没设预算 = 不限 */
+    public boolean hasBudgetLeft() {
+        return budgetLeft() > 0;
     }
 
     private static int nz(Integer v) {

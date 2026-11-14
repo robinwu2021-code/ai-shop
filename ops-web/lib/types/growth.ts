@@ -79,6 +79,8 @@ export interface AttributionTrace {
 export type RewardType = "COUPON";
 
 export interface FissionCampaign {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 活动单号 */
   fissionNo: string;
   /** 活动名 */

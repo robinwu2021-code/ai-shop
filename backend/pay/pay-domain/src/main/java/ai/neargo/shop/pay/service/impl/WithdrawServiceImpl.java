@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -25,6 +27,8 @@ import tools.jackson.databind.ObjectMapper;
 /** {@link WithdrawService} 实现。见接口注释：**只审批留痕，不打款**。 */
 @Service
 public class WithdrawServiceImpl implements WithdrawService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private static final Logger log = LoggerFactory.getLogger(WithdrawServiceImpl.class);
 
@@ -105,6 +109,7 @@ public class WithdrawServiceImpl implements WithdrawService {
         w.setStatus(StlWithdraw.PENDING);
         w.setAppliedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> withdrawMapper.insert(w));
+        documents.bind(DocumentType.WITHDRAWAL, "MAIN", w.getWithdrawNo());
         log.info("[withdraw] {} 申请提现 {} 分（可提 {}）", entityNo, amountMinor, can);
         return toVO(w);
     }
@@ -143,7 +148,7 @@ public class WithdrawServiceImpl implements WithdrawService {
         var w = Wrappers.<StlWithdraw>lambdaQuery()
                 .eq(status != null && !status.isBlank(), StlWithdraw::getStatus, status);
         if (keyword != null && !keyword.isBlank()) {
-            String k = keyword.trim();
+            String k = documents.internal(DocumentType.WITHDRAWAL, "MAIN", keyword.trim());
             w.and(q -> q.like(StlWithdraw::getWithdrawNo, k)
                     .or().like(StlWithdraw::getEntityNo, k)
                     .or().like(StlWithdraw::getMerchantName, k));
@@ -156,7 +161,7 @@ public class WithdrawServiceImpl implements WithdrawService {
          * 而下一步就是审批打款。stl_withdraw 已登记 MERCHANT → entity_no。
          */
         var pg = withdrawMapper.selectPage(new Page<>(p, s), w);
-        return PageData.of(pg.getRecords().stream().map(WithdrawServiceImpl::toVO).toList(),
+        return PageData.of(documents.project(DocumentType.WITHDRAWAL, pg.getRecords(), row -> "MAIN", StlWithdraw::getWithdrawNo, this::toVO),
                 pg.getTotal(), p, s);
     }
 
@@ -249,11 +254,11 @@ public class WithdrawServiceImpl implements WithdrawService {
         return saved;
     }
 
-    private static WithdrawVO toVO(StlWithdraw w) {
+    private WithdrawVO toVO(StlWithdraw w) {
         return new WithdrawVO(w.getWithdrawNo(), w.getEntityNo(), w.getMerchantName(),
                 nz(w.getAmountMinor()), nz(w.getAvailableBalanceMinor()),
                 w.getBankAccountMasked(), w.getStatus(),
-                iso(w.getAppliedAt()), iso(w.getDecidedAt()), w.getDecidedBy(), w.getRemark());
+                iso(w.getAppliedAt()), iso(w.getDecidedAt()), w.getDecidedBy(), w.getRemark()).withDocumentNo(documents.find(DocumentType.WITHDRAWAL, "MAIN", w.getWithdrawNo()));
     }
 
     /** 见 {@code FinanceVOs} 的类注释：这几个类型的时间字段在契约里是 ISO 串。 */

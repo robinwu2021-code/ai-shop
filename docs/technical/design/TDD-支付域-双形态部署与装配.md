@@ -3,7 +3,7 @@
 > 状态：**方案待评审** · 创建 2026-08-31
 > 上游：[TDD-基础包分层与支付双形态](./TDD-基础包分层与支付双形态.md)（§三给了骨架，本文展开到可实施）
 > 决策：[ADR-021](../ADR/ADR-021-支付域独立为服务与独立库.md)
-> 参照实现：[进销存独立数据源](../../../backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/config/InventoryDataSourceConfig.java)（三个坑已经踩过并写在注释里）·
+> 参照实现：[进销存独立数据源](../../../backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/config/InventoryDataSourceConfig.java)（三个坑已经踩过并写在注释里）·
 > [定时任务独立模块](./定时任务独立模块-实现方案与交付计划.md)
 > 图：[两种形态的装配差异](../diagrams/pay-two-shapes-wiring.svg)
 

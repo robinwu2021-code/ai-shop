@@ -16,7 +16,10 @@ public final class MigrationStageViews {
     public record StageView(String stageNo,String sourceSystem,String sourceTemplateNo,String entityNo,
                             String migrationBatchNo,String status,int sourceSchemaVersion,long frozenRevision,
                             int payloadBytes,long instanceCount,long historyCount,String sourceStateAtCapture,
-                            boolean importReady,LocalDateTime createdAt,long revision) {
+                            boolean importReady,LocalDateTime createdAt,long revision, String documentNo) {
+        public StageView(String stageNo, String sourceSystem, String sourceTemplateNo, String entityNo, String migrationBatchNo, String status, int sourceSchemaVersion, long frozenRevision, int payloadBytes, long instanceCount, long historyCount, String sourceStateAtCapture, boolean importReady, LocalDateTime createdAt, long revision) { this(stageNo, sourceSystem, sourceTemplateNo, entityNo, migrationBatchNo, status, sourceSchemaVersion, frozenRevision, payloadBytes, instanceCount, historyCount, sourceStateAtCapture, importReady, createdAt, revision, null); }
+        public StageView withDocumentNo(String documentNo) { return new StageView(stageNo, sourceSystem, sourceTemplateNo, entityNo, migrationBatchNo, status, sourceSchemaVersion, frozenRevision, payloadBytes, instanceCount, historyCount, sourceStateAtCapture, importReady, createdAt, revision, documentNo); }
+
         public StageView {
             ContractChecks.id(stageNo); ContractChecks.id(entityNo); ContractChecks.id(sourceTemplateNo);
             ContractChecks.id(migrationBatchNo);

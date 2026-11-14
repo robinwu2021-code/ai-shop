@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "商户 Flutter 原生验证码及认证接线已在独立 ai-shop-bapp 仓库实现；本仓 legacy Vue b-app 尚未接入这两个端点。此清单只登记 Vue 的分阶段交付，不声明 Vue 已具备原生入口，也不豁免服务端验证码校验。",
+  "plan": "docs/technical/B端滑块验证码-Flutter与legacy-Vue交付跟踪-2026-11-13.md",
+  "contract": "docs/api/biz-auth-captcha.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/captcha/challenge"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/captcha/verify"
+    }
+  ]
+}

@@ -104,7 +104,7 @@ onShow(() => {
     <view v-if="batch" class="sh-card sh-mb-sm">
       <view class="sh-row sh-row--between">
         <text class="txt-strong">{{ $t(batch.status === "PREVIEW" ? "stockAlign.previewTitle" : "stockAlign.resultTitle") }}</text>
-        <text class="txt-caption sh-muted">{{ batch.batchNo }}</text>
+        <text v-if="batch.documentNo" class="txt-caption sh-muted">{{ batch.documentNo }}</text>
       </view>
       <text class="txt-caption sh-muted">{{ $t(batch.mode === "MALL" ? "stockAlign.modeMall" : "stockAlign.modeCount") }} · {{ $t("stockAlign.batchSummary", { completed: batch.completed, blocked: batch.blocked, waiting: batch.waiting }) }}</text>
       <view v-for="line in batch.rows" :key="line.skuNo" class="batch-line">

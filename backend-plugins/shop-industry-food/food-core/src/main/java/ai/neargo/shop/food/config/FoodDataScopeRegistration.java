@@ -9,6 +9,43 @@ import java.util.Map;
 public final class FoodDataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
+        registry.register("fnb_return_stock_disposition", Map.of(ScopeDim.MERCHANT,"entity_no"));
+        registry.register("fnb_stock_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_reservation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_reservation_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_command", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_movement", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_config", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_mapping", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_item_state", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_delivery", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_reconciliation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_sync_difference", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_stock_balance", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_queue_ticket",Map.of(ScopeDim.MERCHANT,"entity_no"));
+        registry.register("fnb_course", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_kitchen_ticket", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_kitchen_task", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_service_event", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_business_day", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_close_run", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_close_balance", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_close_exception", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_close_adjustment", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_production_consumption", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_production_consumption_line", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_sales_quota_claim", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_settlement", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_settlement_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_charge_intent", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_return", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_return_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_batch", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_core_order_binding", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_line", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_core_line_allocation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_component", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_order_modifier", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_check_cart", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_check_cart_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_station", Map.of(ScopeDim.MERCHANT, "entity_no"));
@@ -44,6 +81,8 @@ public final class FoodDataScopeRegistration implements DataScopeRegistrar {
         registry.register("fnb_seat", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_table_operation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_reservation", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_reservation_table", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_business_share_plan", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_table", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_table_area", Map.of(ScopeDim.MERCHANT, "entity_no"));
     }

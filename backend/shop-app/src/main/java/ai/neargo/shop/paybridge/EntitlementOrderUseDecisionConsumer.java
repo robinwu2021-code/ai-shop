@@ -13,6 +13,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Outbox retry only replays the original source operation; it never replaces an unknown hold. */
 @Component
 public class EntitlementOrderUseDecisionConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-order-use-decision"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final EntitlementOrderCoordinator coordinator;
     private final ObjectMapper json;
     public EntitlementOrderUseDecisionConsumer(EntitlementOrderCoordinator coordinator, ObjectMapper json) {

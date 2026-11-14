@@ -1,0 +1,4096 @@
+# 美业系统 Controller、Service 与 Mapper 方法清单
+
+> 状态：方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。
+> 由 `python3 scripts/gen-beauty-java-method-design.py` 生成，勿手改；真源：[Java方法设计JSON](./schema/beauty-java-method-design.json)。
+> 依据：[统一Java规范§七](../../../.claude/skills/ai-shop-dev-standards/references/java.md) · [独立项目结构](../TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./美业系统-API清单.md) · [数据库结构](./美业系统-数据库结构设计.md)。
+
+## 一、方法及持久化规则
+
+本清单逐项覆盖95条美业候选HTTP、11条共用候选HTTP，并保留54项共用CONTRACT对照。Mapper共25个，新增47个必要自定义锁/CAS/查询方法；其余使用继承CRUD。类总表、完整Service与Impl签名、DTO和辅助类见[Java类与方法清单](./美业系统-Java类与方法清单.md)。
+
+- Controller仅绑定路径/Body/Query/协议头、鉴权与调用Service，返回业务VO/PageData；沿平台ApiResponseWrapper，不再包ApiResult。声明省略import、类级条件、Mapping和权限注解，HTTP方法/路径在标题；实施必须补齐其对应注解及“为什么”的公开API Javadoc。
+- Service接口归beauty-api/service，Impl归beauty-core/service/impl且同名后缀Impl；Service方法无HTTP注解，Impl直接注入本域Mapper。禁止新增Repository、等义Application/DomainService或一个巨型BeautyManager。
+- 经营主体用entityNo；BizContext.requireMerchantNo()是现有兼容来源，在Web接入处映射为该语义。currentStoreNo/actorNo来自可信上下文，actorNo是账号/用户/运营操作身份，实际执行人员由共用账号关联及任职核验取得，不能把无登录人员伪装成操作者。
+- Service签名显式接收可信范围；租户沿平台当前MAIN及数据域规则，不另启租户体系。详情按对象解析归属后与获准范围相交，SQL仍限entity/门店/受控父链。技师本人范围由可信数据域/共用任职授权解析，不采信query.personnelNo；非受权跨店请求拒绝。
+- 消费者本人方法接userNo，由SecurityUtils.requireUser()解析；publicStore/publicService/publicAvailability只由真实门店/目录确定主体，允许公开查询，不要求伪造商家身份。本人方法每次验证资源属主，不接收客户端自报userNo/entityNo/actorNo。
+- ops的entityNo与authorizedStoreNos是平台授权目标，不是客户端任意主体；actorNo是当前运营身份，不代商家。技术恢复仍执行同一业务校验，不代顾客同意或代技师完工。跨店报表只读authorizedStoreNos与查询条件交集。
+- Req/Query按统一Validation校验必填、长度、枚举、正数/精度与时间窗口；普通page>=1、size默认20且最大50，日历资源页/窗口沿工作台合同。错误沿统一ErrorCode/BizException及三语词条，不另造BeautyError体系。Req/Query只包含业务字段，VO不含物理id。body/query字段沿API输入合同，必须剔除路径字段及仅属身份的可信参数；预览编号绑定原操作者/主体/门店/窗口/版本，不能换人拿号提交。
+- 版本请求expectedRevision映射到聚合BaseEntity.version；scopeRevision/bindingRevision/appointmentRevision/planRevision分别是范围、来源、安排、计划版本，不能混用。步骤/参与子行CAS版本取锁内真实行，根版本仍按用户期望检查。
+- 业务写命令带Idempotency-Key，同键同载荷取原号、异参拒绝；预览与查询POST无业务副作用，不强制业务幂等头。长流程操作号/请求指纹由共用幂等编排与本域ServiceSubmission持久记录，不因超时换键。
+- Mapper继承BaseMapper，常用CRUD不重写空壳；只对稳定行锁、CAS、数量上限等新增自定义方法。BaseMapper虽暴露删除/按id等方法，本域事实业务不使用delete/archive覆盖历史，也不把业务号传selectById。
+- 普通分页以用例的真实业务根/组合投影分页，返回IPage后用MybatisPages.of转换PageData；数据量大的列表不用PageData.ofAll。CalendarSnapshotVO/CalendarPageVO是快照协议，不套普通分页，不将未加载/延迟当空闲。批量获取任务/来源/资源，禁止每卡片循环跨域N+1。
+- API用带偏移时间并按门店IANA时区显示；本域Entity/自定义SQL采用与BaseEntity一致的LocalDateTime，边界明确转换成UTC本地值。区间[from,to)，数量BigDecimal，金额整数最小单位+币种；不引入浮点金额或全局时区重构。
+- LOCAL_ATOMIC仅指本域短事务；ORCHESTRATED先保存意图再外部调用、后短事务确认/补偿。调用清单是候选分支，不是一次必须全执行的线性脚本；HTTP不在长锁事务中等待，UNKNOWN按原号恢复。
+- 多行业同名短类通过受控扫描/必要Bean命名策略避免冲突；新增类正常import、构造器注入，不复制零售存量全限定注解/通配import等历史欠账。规范以统一Java文档为准，餐饮只参考模块隔离/薄适配和方法追溯。
+
+固定锁顺序：先workOrder范围根（适用时），再按稳定业务号排序的task/appointment根，再子行。资源桶锁由共用资源所有者自己仲裁，不能在美业长事务中调远程持锁。首版/空行靠业务唯一键与持久化意图竞争，不能用空SELECT FOR UPDATE或MAX+1冒充互斥。
+
+## 二、按模块直接输出Controller与Service方法
+
+### A 门店与营业配置
+
+#### BAPI-001 · GET /biz/x/beauty/store-policies
+
+目的：查询营业与预约规则；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizStorePolicyController`
+
+```java
+StorePolicyVO getPolicy(@Valid @ModelAttribute StorePolicyQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.StorePolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.StorePolicyServiceImpl`
+
+```java
+StorePolicyVO getPolicy(String entityNo, String currentStoreNo, String actorNo, StorePolicyQuery query);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：门店能力查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-002 · POST /biz/x/beauty/store-policies/versions
+
+目的：提交营业/预约窗口与先付规则版本；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizStorePolicyController`
+
+```java
+PolicyVersionVO publishPolicyVersion(@Valid @RequestBody PublishStorePolicyVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.StorePolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.StorePolicyServiceImpl`
+
+```java
+PolicyVersionVO publishPolicyVersion(String entityNo, String currentStoreNo, String actorNo, PublishStorePolicyVersionReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`。
+
+本域写入候选：`BeautyMappers.StorePolicyMapper.insert / 受控update分支`；`BeautyMappers.StorePolicyVersionMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.StorePolicyMapper.switchCurrentVersion`；`BeautyMappers.StorePolicyMapper.selectScopedForUpdate`。
+
+跨域/基础设施：门店能力查询。
+
+守卫：不可变版本追加，current指针按version切换。
+
+#### BAPI-004 · POST /biz/x/beauty/capability-applications
+
+目的：申请高级经营能力；阶段：P4；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCapabilityApplicationController`
+
+```java
+CapabilityApplicationVO applyCapability(@Valid @RequestBody ApplyCapabilityReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CapabilityService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CapabilityServiceImpl`
+
+```java
+CapabilityApplicationVO applyCapability(String entityNo, String currentStoreNo, String actorNo, ApplyCapabilityReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用准入/审批登记。
+
+守卫：不在美业新建准入审批账，申请不直接启用能力。
+
+#### BAPI-144 · GET /mp/x/beauty/stores/{storeNo}
+
+目的：读取公开门店营业与预约须知；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpStoreController`
+
+```java
+PublicStoreVO getPublicStore(@PathVariable("storeNo") String storeNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCatalogQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCatalogQueryServiceImpl`
+
+```java
+PublicStoreVO getPublicStore(String storeNo);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：StoreDirectoryPort；GoodsQueryPort；共用目录展示。
+
+守卫：公开字段白名单；主体由真实门店解析，不要求伪造商家上下文。
+
+### B 项目与目录
+
+#### BAPI-007 · GET /biz/x/beauty/service-definitions
+
+目的：查项目作业定义；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController`
+
+```java
+PageData<ServiceDefinitionVO> listDefinitions(@Valid @ModelAttribute ServiceDefinitionQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceDefinitionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl`
+
+```java
+PageData<ServiceDefinitionVO> listDefinitions(String entityNo, String currentStoreNo, String actorNo, ServiceDefinitionQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectPage`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-008 · POST /biz/x/beauty/service-definitions/versions
+
+目的：提交项目时长缓冲资格资源要求；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController`
+
+```java
+ServiceDefinitionVersionVO publishDefinitionVersion(@Valid @RequestBody PublishServiceDefinitionVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceDefinitionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl`
+
+```java
+ServiceDefinitionVersionVO publishDefinitionVersion(String entityNo, String currentStoreNo, String actorNo, PublishServiceDefinitionVersionReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceDefinitionMapper.insert / 受控update分支`；`BeautyMappers.ServiceDefinitionVersionMapper.insert`；`BeautyMappers.ServiceRequirementMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.ServiceDefinitionMapper.selectScopedForUpdate`；`BeautyMappers.ServiceDefinitionMapper.switchCurrentVersion`。
+
+跨域/基础设施：GoodsQueryPort。
+
+守卫：定义版本与要求一同追加，校验商品时不自算售价。
+
+#### BAPI-009 · GET /biz/x/beauty/services/{skuNo}
+
+目的：查项目展示及适用须知；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceController`
+
+```java
+ServiceDetailVO getService(@PathVariable("skuNo") String skuNo, @Valid @ModelAttribute ServiceDetailQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCatalogQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCatalogQueryServiceImpl`
+
+```java
+ServiceDetailVO getService(String entityNo, String currentStoreNo, String actorNo, String skuNo, ServiceDetailQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：GoodsQueryPort；共用目录展示。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-010 · POST /biz/x/beauty/availability/queries
+
+目的：查询项目可约组合；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAvailabilityController`
+
+```java
+AvailabilityVO queryAvailability(@Valid @RequestBody AvailabilityQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentAvailabilityService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl`
+
+```java
+AvailabilityVO queryAvailability(String entityNo, String currentStoreNo, String actorNo, AvailabilityQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用人员任职/有效技能查询；共用排班及资源可约查询。
+
+守卫：候选结果不占位，完整组合提交仍重验。
+
+#### BAPI-145 · GET /mp/x/beauty/services/{skuNo}
+
+目的：读取公开服务详情；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpServiceController`
+
+```java
+PublicServiceVO getPublicService(@PathVariable("skuNo") String skuNo, @Valid @ModelAttribute ServiceDetailQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCatalogQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCatalogQueryServiceImpl`
+
+```java
+PublicServiceVO getPublicService(String skuNo, ServiceDetailQuery query);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：StoreDirectoryPort；GoodsQueryPort；共用目录展示。
+
+守卫：公开字段白名单；主体由真实门店解析，不要求伪造商家上下文。
+
+#### BAPI-146 · POST /mp/x/beauty/availability/queries
+
+目的：查询公开可约时段及可选技师；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAvailabilityController`
+
+```java
+PublicAvailabilityVO queryPublicAvailability(@Valid @RequestBody PublicAvailabilityQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentAvailabilityService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl`
+
+```java
+PublicAvailabilityVO queryPublicAvailability(PublicAvailabilityQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用人员任职/有效技能查询；共用排班及资源可约查询。
+
+守卫：候选结果不占位，完整组合提交仍重验。
+
+### C 共用人员与权限
+
+本模块为共用能力接入，不生成美业同义Controller/Service/Mapper；共用入口见§三及§五。
+
+### D 资源与排班
+
+#### BAPI-025 · GET /biz/x/beauty/workbench/calendar
+
+目的：查询日历统一快照；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController`
+
+```java
+CalendarSnapshotVO getCalendarSnapshot(@Valid @ModelAttribute CalendarQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentWorkbenchQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentWorkbenchQueryServiceImpl`
+
+```java
+CalendarSnapshotVO getCalendarSnapshot(String entityNo, String currentStoreNo, String actorNo, CalendarQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用资源规范占用查询；共用人员/班表查询；共用异常投影。
+
+守卫：不写容量桶；各域水位独立；按权限过滤并冻结短期快照。
+
+#### BAPI-026 · GET /biz/x/beauty/workbench/calendar/pages
+
+目的：续取同一快照资源泳道；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController`
+
+```java
+CalendarPageVO getCalendarPage(@Valid @ModelAttribute CalendarPageQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentWorkbenchQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentWorkbenchQueryServiceImpl`
+
+```java
+CalendarPageVO getCalendarPage(String entityNo, String currentStoreNo, String actorNo, CalendarPageQuery query);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：已鉴权不可变快照缓存。
+
+守卫：仅续取同一snapshot，不重新查询当前库拼页；过期重载。
+
+#### BAPI-027 · POST /biz/x/beauty/resource-changes/previews
+
+目的：预览资源替换或超时延长；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizResourceChangeController`
+
+```java
+ResourceChangePreviewVO previewResourceChange(@Valid @RequestBody PreviewResourceChangeReq req);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ResourceChangeService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ResourceChangeServiceImpl`
+
+```java
+ResourceChangePreviewVO previewResourceChange(String entityNo, String currentStoreNo, String actorNo, PreviewResourceChangeReq req);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用资源替换预览；共用人员任职/有效技能查询。
+
+守卫：不持有资源，不写安排或实际参与。
+
+#### BAPI-028 · POST /biz/x/beauty/resource-changes
+
+目的：原子提交完整资源替换/延长；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizResourceChangeController`
+
+```java
+ResourceChangeResultVO changeResources(@Valid @RequestBody ChangeResourcesReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ResourceChangeService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ResourceChangeServiceImpl`
+
+```java
+ResourceChangeResultVO changeResources(String entityNo, String currentStoreNo, String actorNo, ChangeResourcesReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：共用资源原子替换；共用人员/班表资格校验。
+
+守卫：按预约/实际任务变更分支，先意图后仲裁，成功才追加安排/交接；不先释放旧组合。
+
+#### BAPI-029 · POST /biz/x/beauty/group-scheduling/previews
+
+目的：团体并行及路途缓冲规划；阶段：P4；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizGroupSchedulingController`
+
+```java
+GroupSchedulePreviewVO previewGroupSchedule(@Valid @RequestBody GroupScheduleQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.GroupSchedulingService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.GroupSchedulingServiceImpl`
+
+```java
+GroupSchedulePreviewVO previewGroupSchedule(String entityNo, String currentStoreNo, String actorNo, GroupScheduleQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用人员任职/有效技能查询；共用排班及资源可约查询。
+
+守卫：候选结果不占位，完整组合提交仍重验。
+
+### E 顾客与护理
+
+#### BAPI-031 · POST /biz/x/beauty/guest-registrations
+
+目的：登记临客及后续本人认领；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`
+
+```java
+GuestRegistrationVO registerGuest(@Valid @RequestBody RegisterGuestReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.GuestRegistrationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl`
+
+```java
+GuestRegistrationVO registerGuest(String entityNo, String currentStoreNo, String actorNo, RegisterGuestReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客临客登记/认领。
+
+守卫：使用共享身份提供方，不另造美业顾客表或虚假买家。
+
+#### BAPI-032 · POST /biz/x/beauty/guest-registrations/{guestNo}/claims
+
+目的：本人认领临客预约/服务；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`
+
+```java
+GuestClaimVO claimGuest(@PathVariable("guestNo") String guestNo, @Valid @RequestBody ClaimGuestReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.GuestRegistrationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl`
+
+```java
+GuestClaimVO claimGuest(String entityNo, String currentStoreNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客临客登记/认领。
+
+守卫：使用共享身份提供方，不另造美业顾客表或虚假买家。
+
+#### BAPI-034 · GET /biz/x/beauty/care-profiles/{customerNo}
+
+目的：读取最少必要护理提醒；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCareProfileController`
+
+```java
+CareProfileVO getCareProfile(@PathVariable("customerNo") String customerNo, @Valid @ModelAttribute CareProfileQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CareProfileService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CareProfileServiceImpl`
+
+```java
+CareProfileVO getCareProfile(String entityNo, String currentStoreNo, String actorNo, String customerNo, CareProfileQuery query);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.CareNoteMapper.selectList`；`BeautyMappers.CareMediaMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：隐私目的与授权核验；私有媒体读取授权。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-035 · POST /biz/x/beauty/care-profiles/{customerNo}/notes
+
+目的：追加护理事实及更正引用；阶段：P3；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCareProfileController`
+
+```java
+CareNoteVO appendCareNote(@PathVariable("customerNo") String customerNo, @Valid @RequestBody AppendCareNoteReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CareProfileService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CareProfileServiceImpl`
+
+```java
+CareNoteVO appendCareNote(String entityNo, String currentStoreNo, String actorNo, String customerNo, AppendCareNoteReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.CareProfileMapper.insert / 受控update分支`；`BeautyMappers.CareNoteMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.CareProfileMapper.selectScopedForUpdate`。
+
+跨域/基础设施：隐私目的与授权核验。
+
+守卫：锁档案版本，追加加密事实；更正保留supersedes引用。
+
+#### BAPI-036 · POST /biz/x/beauty/care-profiles/{customerNo}/media-authorizations
+
+目的：申请私有护理媒体上传/读取；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCareProfileController`
+
+```java
+MediaAuthorizationVO authorizeCareMedia(@PathVariable("customerNo") String customerNo, @Valid @RequestBody AuthorizeCareMediaReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CareProfileService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CareProfileServiceImpl`
+
+```java
+MediaAuthorizationVO authorizeCareMedia(String entityNo, String currentStoreNo, String actorNo, String customerNo, AuthorizeCareMediaReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.CareNoteMapper.selectList`；`BeautyMappers.CareMediaMapper.selectList`。
+
+本域写入候选：`BeautyMappers.CareMediaMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：私有媒体服务；隐私目的与授权核验。
+
+守卫：只登记私有媒体引用，不把照片放普通日志。
+
+#### BAPI-037 · POST /biz/x/beauty/care-profiles/{customerNo}/privacy-requests
+
+目的：申请撤权留存或合法删除；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCareProfileController`
+
+```java
+PrivacyRequestVO requestCarePrivacy(@PathVariable("customerNo") String customerNo, @Valid @RequestBody CarePrivacyReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CareProfileService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CareProfileServiceImpl`
+
+```java
+PrivacyRequestVO requestCarePrivacy(String entityNo, String currentStoreNo, String actorNo, String customerNo, CarePrivacyReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.CareNoteMapper.selectList`；`BeautyMappers.CareMediaMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用隐私请求/留存治理。
+
+守卫：共用隐私流程受理，不直接全表删档案。
+
+### F 预约与改约
+
+#### BAPI-038 · POST /biz/x/beauty/appointments/previews
+
+目的：校验预约要求并预览资源组合；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+AppointmentPreviewVO previewAppointment(@Valid @RequestBody PreviewAppointmentReq req, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentPreviewVO previewAppointment(String entityNo, String currentStoreNo, String actorNo, PreviewAppointmentReq req);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客核验；共用资源组合可约/资格校验；合法来源/改价影响查询。
+
+守卫：只产生有期限预览，不建单、不占位、不扣次。
+
+#### BAPI-039 · POST /biz/x/beauty/appointments
+
+目的：占齐完整资源并创建无交易或有来源预约；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+AppointmentVO createAppointment(@Valid @RequestBody CreateAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentVO createAppointment(String entityNo, String currentStoreNo, String actorNo, CreateAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentItemMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：共用资源原子占齐并确认；共用顾客核验。
+
+守卫：未确认全部资源前只返回PENDING；补偿/重试按原号。
+
+#### BAPI-040 · GET /biz/x/beauty/appointments
+
+目的：查预约列表；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+PageData<AppointmentSummaryVO> listAppointments(@Valid @ModelAttribute AppointmentQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+PageData<AppointmentSummaryVO> listAppointments(String entityNo, String currentStoreNo, String actorNo, AppointmentQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectPage`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：先按预约根分页，再按当页appointmentNos批查项目/安排；顾客userNo解析为可信客户归属范围，不接受Query扩大身份。
+
+#### BAPI-041 · GET /biz/x/beauty/appointments/{appointmentNo}
+
+目的：查预约任务资源时间线详情；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+AppointmentDetailVO getAppointment(@PathVariable("appointmentNo") String appointmentNo, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentDetailVO getAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+关键自定义调用：`BeautyMappers.AppointmentAssignmentMapper.selectByAppointmentRevision`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-042 · POST /biz/x/beauty/appointments/{appointmentNo}/changes/previews
+
+目的：改时段/项目/指定人员预览；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+AppointmentChangePreviewVO previewAppointmentChange(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody PreviewAppointmentChangeReq req, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentChangePreviewVO previewAppointmentChange(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, PreviewAppointmentChangeReq req);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客核验；共用资源组合可约/资格校验；合法来源/改价影响查询。
+
+守卫：只产生有期限预览，不建单、不占位、不扣次。
+
+#### BAPI-043 · POST /biz/x/beauty/appointments/{appointmentNo}/changes
+
+目的：原子改约及资源替换；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+AppointmentVO changeAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentVO changeAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, ChangeAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentItemMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.changeSchedule`；`BeautyMappers.AppointmentAssignmentMapper.selectByAppointmentRevision`。
+
+跨域/基础设施：共用资源原子替换；共用人员资格；正式报价/来源就绪查询。
+
+守卫：旧安排版本保留，失败不丢原位；已开工禁止覆盖实际执行历史。
+
+#### BAPI-044 · POST /biz/x/beauty/appointments/{appointmentNo}/cancellations
+
+目的：取消预约释放资源并协调来源；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+CancellationVO cancelAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+CancellationVO cancelAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, CancelAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.changeStatus`。
+
+跨域/基础设施：共用资源释放；原来源取消合同；通知事实触发。
+
+守卫：爽约只记事实，不自动扣款/扣次；取消与退款分开。
+
+#### BAPI-045 · POST /biz/x/beauty/appointments/{appointmentNo}/no-shows
+
+目的：记录爽约事实；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+NoShowVO recordNoShow(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody RecordNoShowReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+NoShowVO recordNoShow(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, RecordNoShowReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.changeStatus`。
+
+跨域/基础设施：共用资源释放；原来源取消合同；通知事实触发。
+
+守卫：爽约只记事实，不自动扣款/扣次；取消与退款分开。
+
+#### BAPI-147 · POST /mp/x/beauty/appointments/previews
+
+目的：本人预约预览；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+AppointmentPreviewVO previewMyAppointment(@Valid @RequestBody PreviewMyAppointmentReq req);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentPreviewVO previewMyAppointment(String userNo, PreviewMyAppointmentReq req);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客核验；共用资源组合可约/资格校验；合法来源/改价影响查询。
+
+守卫：只产生有期限预览，不建单、不占位、不扣次。
+
+#### BAPI-148 · POST /mp/x/beauty/appointments
+
+目的：本人提交预约并占齐资源；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+MyAppointmentVO createMyAppointment(@Valid @RequestBody CreateMyAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+MyAppointmentVO createMyAppointment(String userNo, CreateMyAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentItemMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：共用资源原子占齐并确认；共用顾客核验。
+
+守卫：未确认全部资源前只返回PENDING；补偿/重试按原号。
+
+#### BAPI-149 · GET /mp/x/beauty/appointments
+
+目的：我的预约列表；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+PageData<MyAppointmentVO> listMyAppointments(@Valid @ModelAttribute MyAppointmentQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+PageData<MyAppointmentVO> listMyAppointments(String userNo, MyAppointmentQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectPage`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：先按预约根分页，再按当页appointmentNos批查项目/安排；顾客userNo解析为可信客户归属范围，不接受Query扩大身份。
+
+#### BAPI-150 · GET /mp/x/beauty/appointments/{appointmentNo}
+
+目的：本人预约详情；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+MyAppointmentDetailVO getMyAppointment(@PathVariable("appointmentNo") String appointmentNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+MyAppointmentDetailVO getMyAppointment(String userNo, String appointmentNo);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+关键自定义调用：`BeautyMappers.AppointmentAssignmentMapper.selectByAppointmentRevision`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-151 · POST /mp/x/beauty/appointments/{appointmentNo}/changes/previews
+
+目的：本人改约预览；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+AppointmentChangePreviewVO previewMyAppointmentChange(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody PreviewMyAppointmentChangeReq req);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+AppointmentChangePreviewVO previewMyAppointmentChange(String userNo, String appointmentNo, PreviewMyAppointmentChangeReq req);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.StorePolicyMapper.selectList`；`BeautyMappers.StorePolicyVersionMapper.selectList`；`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceDefinitionVersionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用顾客核验；共用资源组合可约/资格校验；合法来源/改价影响查询。
+
+守卫：只产生有期限预览，不建单、不占位、不扣次。
+
+#### BAPI-152 · POST /mp/x/beauty/appointments/{appointmentNo}/changes
+
+目的：本人提交改约；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+MyAppointmentVO changeMyAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody ChangeAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+MyAppointmentVO changeMyAppointment(String userNo, String appointmentNo, ChangeAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentItemMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.changeSchedule`；`BeautyMappers.AppointmentAssignmentMapper.selectByAppointmentRevision`。
+
+跨域/基础设施：共用资源原子替换；共用人员资格；正式报价/来源就绪查询。
+
+守卫：旧安排版本保留，失败不丢原位；已开工禁止覆盖实际执行历史。
+
+#### BAPI-153 · POST /mp/x/beauty/appointments/{appointmentNo}/cancellations
+
+目的：本人取消预约；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpAppointmentController`
+
+```java
+CancellationVO cancelMyAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody CancelAppointmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+CancellationVO cancelMyAppointment(String userNo, String appointmentNo, CancelAppointmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.changeStatus`。
+
+跨域/基础设施：共用资源释放；原来源取消合同；通知事实触发。
+
+守卫：爽约只记事实，不自动扣款/扣次；取消与退款分开。
+
+### G 到店与接待
+
+#### BAPI-047 · POST /biz/x/beauty/arrivals
+
+目的：核对身份并到店签到；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
+
+```java
+ArrivalVO checkIn(@Valid @RequestBody CheckInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckInReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`。
+
+本域写入候选：`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.markArrived`。
+
+跨域/基础设施：CustomerIdentityPort.resolveClaimReference/verifyConsumerProof；GuestRegistrationPort.verify；ResourceBookingPort.queryHold（当前成功arrangement绑定）；共用Outbox（BeautyReceptionStateChanged）。
+
+守卫：Task55B已实现Service 047/154；真实身份/权限/hold锁外；根→fence→current→operation短事务CAS，checkedInAt服务端UTC；当前成功arrangement取证；不改hold/计划、不创建工单/tasks。HTTP归59。
+
+#### BAPI-048 · POST /biz/x/beauty/walk-ins
+
+目的：直客接待并安排即时资源；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
+
+```java
+WalkInVO receiveWalkIn(@Valid @RequestBody ReceiveWalkInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+WalkInVO receiveWalkIn(String entityNo, String currentStoreNo, String actorNo, ReceiveWalkInReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.ServiceDefinitionMapper.selectList`；`BeautyMappers.ServiceRequirementMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.AppointmentItemMapper.insert / 受控update分支`；`BeautyMappers.AppointmentAssignmentMapper.insert`；`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：共用资源即时完整组合；共用顾客核验。
+
+守卫：先占资源确认，再幂等开工单；无来源任务不能开工。
+
+#### BAPI-049 · GET /biz/x/beauty/waiting-tickets
+
+目的：查询等候队列；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWaitingTicketController`
+
+```java
+PageData<WaitingTicketVO> listWaitingTickets(@Valid @ModelAttribute WaitingTicketQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+PageData<WaitingTicketVO> listWaitingTickets(String entityNo, String currentStoreNo, String actorNo, WaitingTicketQuery query);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用等候队列查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-050 · POST /biz/x/beauty/waiting-tickets
+
+目的：取号加入等候；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWaitingTicketController`
+
+```java
+WaitingTicketVO joinWaitingQueue(@Valid @RequestBody JoinWaitingQueueReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+WaitingTicketVO joinWaitingQueue(String entityNo, String currentStoreNo, String actorNo, JoinWaitingQueueReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用等候号与队列动作。
+
+守卫：不创建美业同义等候表。
+
+#### BAPI-051 · POST /biz/x/beauty/waiting-tickets/{ticketNo}/actions
+
+目的：叫号过号取消等候；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWaitingTicketController`
+
+```java
+WaitingTicketVO actOnWaitingTicket(@PathVariable("ticketNo") String ticketNo, @Valid @RequestBody WaitingTicketActionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+WaitingTicketVO actOnWaitingTicket(String entityNo, String currentStoreNo, String actorNo, String ticketNo, WaitingTicketActionReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用等候号与队列动作。
+
+守卫：不创建美业同义等候表。
+
+#### BAPI-052 · POST /biz/x/beauty/appointments/{appointmentNo}/work-orders
+
+目的：预约转工单并确认接待安排；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentController`
+
+```java
+WorkOrderVO openWorkOrderFromAppointment(@PathVariable("appointmentNo") String appointmentNo, @Valid @RequestBody OpenAppointmentWorkOrderReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl`
+
+```java
+WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`。
+
+本域写入候选：`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.ServiceSubmissionMapper.selectByRequestKey`。
+
+跨域/基础设施：共用顾客核验；资源安排确认。
+
+守卫：预约转工单幂等；工单范围与创建任务结果明确，不伪称已付。
+
+#### BAPI-053 · POST /biz/x/beauty/reception-exceptions
+
+目的：迟到早到及无法服务协调；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReceptionController`
+
+```java
+ReceptionExceptionVO coordinateReceptionException(@Valid @RequestBody ReceptionExceptionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+ReceptionExceptionVO coordinateReceptionException(String entityNo, String currentStoreNo, String actorNo, ReceptionExceptionReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：共用Outbox（BeautyReceptionStateChanged安全投影，已实现）。
+
+守卫：根→fence→operation；expectedRevision；ActionLog/requestNo+operation/result+Outbox同事务。reason仅本域，原键返回原请求号/实际受影响task，不自动取消/释放/开工/资金。
+
+#### BAPI-154 · POST /mp/x/beauty/arrivals
+
+目的：本人到店签到；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpReceptionController`
+
+```java
+MyArrivalVO checkInMyAppointment(@Valid @RequestBody MyCheckInReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ReceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ReceptionServiceImpl`
+
+```java
+MyArrivalVO checkInMyAppointment(String userNo, MyCheckInReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`。
+
+本域写入候选：`BeautyMappers.AppointmentMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.AppointmentMapper.selectScopedForUpdate`；`BeautyMappers.AppointmentMapper.markArrived`。
+
+跨域/基础设施：CustomerIdentityPort.resolveClaimReference/verifyConsumerProof；GuestRegistrationPort.verify；ResourceBookingPort.queryHold（当前成功arrangement绑定）；共用Outbox（BeautyReceptionStateChanged）。
+
+守卫：Task55B已实现Service 047/154；真实身份/权限/hold锁外；根→fence→current→operation短事务CAS，checkedInAt服务端UTC；当前成功arrangement取证；不改hold/计划、不创建工单/tasks。HTTP归59。
+
+### H 工单与任务执行
+
+#### BAPI-054 · POST /biz/x/beauty/work-orders
+
+目的：建立工单项目行及来源提交意图；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+WorkOrderVO openWorkOrder(@Valid @RequestBody OpenWorkOrderReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+WorkOrderVO openWorkOrder(String entityNo, String currentStoreNo, String actorNo, OpenWorkOrderReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentItemMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`。
+
+本域写入候选：`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.ServiceSubmissionMapper.selectByRequestKey`。
+
+跨域/基础设施：共用顾客核验；资源安排确认。
+
+守卫：预约转工单幂等；工单范围与创建任务结果明确，不伪称已付。
+
+#### BAPI-055 · GET /biz/x/beauty/work-orders/{workOrderNo}
+
+目的：查工单任务来源与进度；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+WorkOrderDetailVO getWorkOrder(@PathVariable("workOrderNo") String workOrderNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+WorkOrderDetailVO getWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-056 · POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions
+
+目的：提交新项目/加项及可信来源绑定流程；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+ServiceSubmissionVO submitServices(@PathVariable("workOrderNo") String workOrderNo, @Valid @RequestBody SubmitServicesReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+ServiceSubmissionVO submitServices(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.SourceAllocationGuardMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.TradeBindingMapper.insert`；`BeautyMappers.SourceAllocationGuardMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.WorkOrderMapper.advanceScope`；`BeautyMappers.ServiceSubmissionMapper.selectByRequestKey`；`BeautyMappers.SourceAllocationGuardMapper.selectSourceForUpdate`；`BeautyMappers.SourceAllocationGuardMapper.allocateQuantity`；`BeautyMappers.ServiceTaskMapper.switchBindingRevision`。
+
+跨域/基础设施：正式报价/成交或服务消费来源；本人确认与来源状态查询。
+
+守卫：来源写者仍在Core/Pay；先保存意图和范围版本，再绑定原来源。
+
+#### BAPI-057 · GET /biz/x/beauty/tasks
+
+目的：查询我的或受权任务；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+PageData<ServiceTaskVO> listTasks(@Valid @ModelAttribute ServiceTaskQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+PageData<ServiceTaskVO> listTasks(String entityNo, String currentStoreNo, String actorNo, ServiceTaskQuery query);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectPage`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：先按service_task业务根做数据库分页，再用当页workOrderNos批查工单；技师本人范围由可信权限解析，不采信任意personnelNo过滤值。
+
+#### BAPI-058 · POST /biz/x/beauty/tasks/{taskNo}/acceptances
+
+目的：接单；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskActionResultVO acceptTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody AcceptTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskActionResultVO acceptTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, AcceptTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.changeStatus`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：接单/暂停/恢复/提前结束按动作分支；暂停不默认释放资源；接单不新建实际参与段，实际开始后才登记startedAt；早退只记录事实，实际完成数量经completion协议。
+
+#### BAPI-059 · POST /biz/x/beauty/tasks/{taskNo}/starts
+
+目的：复核来源资格资源后开始服务；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskActionResultVO startTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody StartTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskActionResultVO startTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, StartTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.changeStatus`。
+
+跨域/基础设施：来源权威开工许可/授权确认（含绑定修订）；共用人员/资格/排班/资源开工复核。
+
+守卫：绑定修订与资格/资源在开工再次校验，不用客户端自报已付；必须与并发撤销/退款有权威许可或写围栏合同，单次查询已付不能保证开工竞态安全，缺合同拒绝开通。
+
+#### BAPI-060 · POST /biz/x/beauty/tasks/{taskNo}/steps/{stepNo}/completions
+
+目的：提交步骤进度；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+ServiceStepVO completeStep(@PathVariable("taskNo") String taskNo, @PathVariable("stepNo") String stepNo, @Valid @RequestBody CompleteServiceStepReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+ServiceStepVO completeStep(String entityNo, String currentStoreNo, String actorNo, String taskNo, String stepNo, CompleteServiceStepReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceStepMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceStepMapper.completeStep`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：锁任务并CAS步骤，不能绕过任务版本/顺序与状态；task根版本仍需CAS推进或同事务动作版本记录，以拒绝同一旧根版本的重复动作。
+
+#### BAPI-061 · POST /biz/x/beauty/tasks/{taskNo}/handovers/previews
+
+目的：预览换人交接与资格资源影响；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskHandoverPreviewVO previewHandover(@PathVariable("taskNo") String taskNo, @Valid @RequestBody PreviewTaskHandoverReq req);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskHandoverPreviewVO previewHandover(String entityNo, String currentStoreNo, String actorNo, String taskNo, PreviewTaskHandoverReq req);
+```
+
+本域读取：`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：人员资格/资源交接预览。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-062 · POST /biz/x/beauty/tasks/{taskNo}/handovers
+
+目的：提交交接并追加实际参与区间；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskHandoverVO handoverTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody HandoverTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskHandoverVO handoverTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, HandoverTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceParticipationMapper.endParticipation`。
+
+跨域/基础设施：共用人员资格/排班；资源原子交接。
+
+守卫：旧参与段收口，新参与段追加；保存实际人而非只覆盖安排人。
+
+#### BAPI-063 · POST /biz/x/beauty/tasks/{taskNo}/interruptions
+
+目的：暂停/恢复/提前结束及事实记录；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskActionResultVO interruptTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody InterruptTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskActionResultVO interruptTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, InterruptTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.changeStatus`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：接单/暂停/恢复/提前结束按动作分支；暂停不默认释放资源；接单不新建实际参与段，实际开始后才登记startedAt；早退只记录事实，实际完成数量经completion协议。
+
+#### BAPI-064 · POST /biz/x/beauty/tasks/{taskNo}/completions
+
+目的：提交真实完成数量与核心履约申请；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskCompletionVO completeTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody CompleteTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskCompletionVO completeTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, CompleteTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.SourceAllocationGuardMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceParticipationMapper.insert / 受控update分支`；`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.recordCompletion`；`BeautyMappers.ServiceParticipationMapper.endParticipation`。
+
+跨域/基础设施：可信来源完成数量/履约确认；共用资源结束/清洁缓冲。
+
+守卫：真实服务结束与核心履约结果分开；完成量上限由锁/CAS保证。
+
+#### BAPI-065 · POST /biz/x/beauty/work-orders/{workOrderNo}/closure-previews
+
+目的：检查真实任务/来源版本和未结项；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+ClosurePreviewVO previewClosure(@PathVariable("workOrderNo") String workOrderNo, @Valid @RequestBody PreviewWorkOrderClosureReq req);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+ClosurePreviewVO previewClosure(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, PreviewWorkOrderClosureReq req);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-066 · POST /biz/x/beauty/work-orders/{workOrderNo}/closures
+
+目的：冻结范围后关闭并释放占用；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+WorkOrderClosureVO closeWorkOrder(@PathVariable("workOrderNo") String workOrderNo, @Valid @RequestBody CloseWorkOrderReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+WorkOrderClosureVO closeWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, CloseWorkOrderReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.WorkOrderMapper.freezeScope`；`BeautyMappers.WorkOrderMapper.closeFrozenScope`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`。
+
+跨域/基础设施：权威来源最终查询；剩余资源释放。
+
+守卫：先冻结scopeRevision，重读全部任务/来源绑定版本，未知不关单；按任务号排序锁相关任务，冻结只禁止范围增删，已开始任务收尾仍受检查版本约束。
+
+#### BAPI-067 · POST /biz/x/beauty/work-orders/{workOrderNo}/stage-plans
+
+目的：跨日多阶段并行与上门作业计划；阶段：P4；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+StagePlanVO planStages(@PathVariable("workOrderNo") String workOrderNo, @Valid @RequestBody PlanWorkOrderStagesReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+StagePlanVO planStages(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, PlanWorkOrderStagesReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：资源阶段规划。
+
+守卫：P4开放后按范围版本规划，不提前承诺团体/并行资源。
+
+#### BAPI-155 · GET /mp/x/beauty/work-orders/{workOrderNo}
+
+目的：本人服务任务及完成进度；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpWorkOrderController`
+
+```java
+MyWorkOrderVO getMyWorkOrder(@PathVariable("workOrderNo") String workOrderNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-159 · GET /biz/x/beauty/tasks/{taskNo}
+
+目的：查询具体任务步骤与安排/实际参与摘要；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+ServiceTaskDetailVO getTask(@PathVariable("taskNo") String taskNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+ServiceTaskDetailVO getTask(String entityNo, String currentStoreNo, String actorNo, String taskNo);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceStepMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+### I 共用交易与收银
+
+#### BAPI-071 · GET /biz/x/beauty/work-orders/{workOrderNo}/bill
+
+目的：汇总逐来源应收实收与未结；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizWorkOrderController`
+
+```java
+WorkOrderBillVO getBill(@PathVariable("workOrderNo") String workOrderNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl`
+
+```java
+WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：逐类型来源应收实收/未结查询。
+
+守卫：只汇总权威金额，不在本域造混合收款单。
+
+#### BAPI-072 · GET /biz/x/beauty/service-submissions/{submissionNo}
+
+目的：查提交意图与来源绑定进度；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`
+
+```java
+ServiceSubmissionVO getSubmission(@PathVariable("submissionNo") String submissionNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceSubmissionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl`
+
+```java
+ServiceSubmissionVO getSubmission(String entityNo, String currentStoreNo, String actorNo, String submissionNo);
+```
+
+本域读取：`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-073 · POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests
+
+目的：申请原号恢复查单及绑定；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`
+
+```java
+RecoveryRequestVO requestSubmissionRecovery(@PathVariable("submissionNo") String submissionNo, @Valid @RequestBody RecoverSubmissionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceSubmissionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl`
+
+```java
+RecoveryRequestVO requestSubmissionRecovery(String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.SourceAllocationGuardMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.TradeBindingMapper.insert`；`BeautyMappers.SourceAllocationGuardMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`；`BeautyMappers.ServiceSubmissionMapper.selectScopedForUpdate`；`BeautyMappers.ServiceSubmissionMapper.advanceProgress`；`BeautyMappers.SourceAllocationGuardMapper.selectSourceForUpdate`；`BeautyMappers.ServiceSubmissionMapper.selectDueForUpdate`；`BeautyMappers.ServiceTaskMapper.switchBindingRevision`。
+
+跨域/基础设施：原来源/资源操作号权威查单。
+
+守卫：只按原键查询/幂等恢复，不新号支付或重复分配；涉及任务绑定才按workOrder→task→提交/guard锁序确认，冻结/绑定修订变化时拒绝旧结果覆盖；纯预约资源恢复分支不伪造任务。
+
+### J 储值
+
+本模块为共用能力接入，不生成美业同义Controller/Service/Mapper；共用入口见§三及§五。
+
+### K 疗程与权益
+
+#### BAPI-086 · GET /biz/x/beauty/treatment-plans
+
+目的：查疗程计划与每次服务履历；阶段：P4；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizTreatmentPlanController`
+
+```java
+PageData<TreatmentPlanVO> listTreatmentPlans(@Valid @ModelAttribute TreatmentPlanQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.TreatmentPlanService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.TreatmentPlanServiceImpl`
+
+```java
+PageData<TreatmentPlanVO> listTreatmentPlans(String entityNo, String currentStoreNo, String actorNo, TreatmentPlanQuery query);
+```
+
+本域读取：`BeautyMappers.TreatmentPlanMapper.selectPage`；`BeautyMappers.TreatmentSessionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-087 · POST /biz/x/beauty/treatment-plans
+
+目的：创建分次服务计划；阶段：P4；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizTreatmentPlanController`
+
+```java
+TreatmentPlanVO createTreatmentPlan(@Valid @RequestBody CreateTreatmentPlanReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.TreatmentPlanService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.TreatmentPlanServiceImpl`
+
+```java
+TreatmentPlanVO createTreatmentPlan(String entityNo, String currentStoreNo, String actorNo, CreateTreatmentPlanReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.TreatmentPlanMapper.selectList`。
+
+本域写入候选：`BeautyMappers.TreatmentPlanMapper.insert / 受控update分支`；`BeautyMappers.TreatmentSessionMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：既有合格权益适用性查询。
+
+守卫：只建服务计划，不提前扣未来次数。
+
+#### BAPI-156 · GET /mp/x/beauty/treatment-plans
+
+目的：本人疗程计划与每次履历；阶段：P4；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpTreatmentPlanController`
+
+```java
+PageData<MyTreatmentPlanVO> listMyTreatmentPlans(@Valid @ModelAttribute MyTreatmentPlanQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.TreatmentPlanService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.TreatmentPlanServiceImpl`
+
+```java
+PageData<MyTreatmentPlanVO> listMyTreatmentPlans(String userNo, MyTreatmentPlanQuery query);
+```
+
+本域读取：`BeautyMappers.TreatmentPlanMapper.selectPage`；`BeautyMappers.TreatmentSessionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+### L 营销
+
+本模块为共用能力接入，不生成美业同义Controller/Service/Mapper；共用入口见§三及§五。
+
+### M 实物库存与耗材
+
+本模块为共用能力接入，不生成美业同义Controller/Service/Mapper；共用入口见§三及§五。
+
+### N 售后与争议
+
+#### BAPI-100 · POST /biz/x/beauty/tasks/{taskNo}/cancellations
+
+目的：未开始任务撤销及资源来源协调；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+TaskCancellationVO cancelTask(@PathVariable("taskNo") String taskNo, @Valid @RequestBody CancelTaskReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+TaskCancellationVO cancelTask(String entityNo, String currentStoreNo, String actorNo, String taskNo, CancelTaskReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.WorkOrderMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.WorkOrderMapper.selectScopedForUpdate`；`BeautyMappers.ServiceTaskMapper.selectScopedForUpdate`。
+
+跨域/基础设施：共用资源释放；原来源合法取消。
+
+守卫：只撤未开始/允许撤销数量；已做事实不能归零。
+
+#### BAPI-101 · POST /biz/x/beauty/tasks/{taskNo}/service-evidence
+
+目的：追加完成数量提前结束质量事实；阶段：P1；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+ServiceEvidenceVO appendServiceEvidence(@PathVariable("taskNo") String taskNo, @Valid @RequestBody AppendServiceEvidenceReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+ServiceEvidenceVO appendServiceEvidence(String entityNo, String currentStoreNo, String actorNo, String taskNo, AppendServiceEvidenceReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ActionLogMapper.insert`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：数量/质量证据先作追加安全引用；实际doneQty只经任务完成协议变更。
+
+#### BAPI-102 · POST /biz/x/beauty/service-remedy-cases
+
+目的：申请返工补做部分退款赔付方案；阶段：P4；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceRemedyCaseController`
+
+```java
+RemedyCaseVO requestServiceRemedy(@Valid @RequestBody RequestServiceRemedyReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCaseCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCaseCoordinationServiceImpl`
+
+```java
+RemedyCaseVO requestServiceRemedy(String entityNo, String currentStoreNo, String actorNo, RequestServiceRemedyReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用争议/补做/售后案件与审批。
+
+守卫：案件登记不等于资产冲回；受权提供事实，不复制案件数据库。
+
+#### BAPI-103 · POST /biz/x/beauty/asset-disputes
+
+目的：登记储值次数争议形成财务待办；阶段：P2；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAssetDisputeController`
+
+```java
+AssetDisputeVO registerAssetDispute(@Valid @RequestBody RegisterAssetDisputeReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCaseCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCaseCoordinationServiceImpl`
+
+```java
+AssetDisputeVO registerAssetDispute(String entityNo, String currentStoreNo, String actorNo, RegisterAssetDisputeReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用争议/补做/售后案件与审批。
+
+守卫：案件登记不等于资产冲回；受权提供事实，不复制案件数据库。
+
+#### BAPI-157 · POST /mp/x/beauty/service-disputes
+
+目的：本人提交服务数量质量争议；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpServiceDisputeController`
+
+```java
+ServiceDisputeVO raiseMyServiceDispute(@Valid @RequestBody RaiseMyServiceDisputeReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceCaseCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceCaseCoordinationServiceImpl`
+
+```java
+ServiceDisputeVO raiseMyServiceDispute(String userNo, RaiseMyServiceDisputeReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用争议/补做/售后案件与审批。
+
+守卫：案件登记不等于资产冲回；受权提供事实，不复制案件数据库。
+
+### O 业绩与提成
+
+#### BAPI-105 · GET /biz/x/beauty/tasks/{taskNo}/participations
+
+目的：查询实际参与与产出事实；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceTaskController`
+
+```java
+ParticipationVO listParticipations(@PathVariable("taskNo") String taskNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceTaskService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceTaskServiceImpl`
+
+```java
+ParticipationVO listParticipations(String entityNo, String currentStoreNo, String actorNo, String taskNo);
+```
+
+本域读取：`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-106 · GET /biz/x/beauty/commission-policies
+
+目的：查规则版本及基数口径；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCommissionPolicyController`
+
+```java
+PageData<CommissionPolicyVO> listCommissionPolicies(@Valid @ModelAttribute CommissionPolicyQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CommissionPolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CommissionPolicyServiceImpl`
+
+```java
+PageData<CommissionPolicyVO> listCommissionPolicies(String entityNo, String currentStoreNo, String actorNo, CommissionPolicyQuery query);
+```
+
+本域读取：`BeautyMappers.CommissionPolicyMapper.selectPage`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-107 · POST /biz/x/beauty/commission-policy-versions
+
+目的：维护业绩分配与提成版本；阶段：P3；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCommissionPolicyController`
+
+```java
+CommissionPolicyVersionVO publishCommissionPolicy(@Valid @RequestBody PublishCommissionPolicyReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CommissionPolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CommissionPolicyServiceImpl`
+
+```java
+CommissionPolicyVersionVO publishCommissionPolicy(String entityNo, String currentStoreNo, String actorNo, PublishCommissionPolicyReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CommissionPolicyMapper.selectList`。
+
+本域写入候选：`BeautyMappers.CommissionPolicyMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.CommissionPolicyMapper.lockRuleGroupAnchor`。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按稳定ruleGroup仲裁，新增版本，不覆盖历史计提规则。
+
+#### BAPI-108 · GET /biz/x/beauty/commission-entries
+
+目的：查本人或受权提成明细；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCommissionEntryController`
+
+```java
+PageData<CommissionEntryVO> listCommissionEntries(@Valid @ModelAttribute CommissionEntryQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CommissionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CommissionServiceImpl`
+
+```java
+PageData<CommissionEntryVO> listCommissionEntries(String entityNo, String currentStoreNo, String actorNo, CommissionEntryQuery query);
+```
+
+本域读取：`BeautyMappers.CommissionEntryMapper.selectPage`；`BeautyMappers.PerformanceShareMapper.selectList`；`BeautyMappers.PerformanceAllocationMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：无新增跨域副作用。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-109 · POST /biz/x/beauty/performance-adjustment-cases
+
+目的：提交异议换人/退款后更正；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizPerformanceAdjustmentCaseController`
+
+```java
+AdjustmentCaseVO requestPerformanceAdjustment(@Valid @RequestBody PerformanceAdjustmentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.PerformanceService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.PerformanceServiceImpl`
+
+```java
+AdjustmentCaseVO requestPerformanceAdjustment(String entityNo, String currentStoreNo, String actorNo, PerformanceAdjustmentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.PerformanceAllocationMapper.selectList`；`BeautyMappers.PerformanceShareMapper.selectList`；`BeautyMappers.CommissionEntryMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用业绩异议审批。
+
+守卫：审批后才由内部分配/追加冲回动作写业绩，不以申请直接改账。
+
+#### BAPI-110 · POST /biz/x/beauty/commission-settlement-records
+
+目的：登记提成结算审核与已发放凭证；阶段：P3；模式：**LOCAL_ATOMIC**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCommissionSettlementRecordController`
+
+```java
+SettlementRecordVO recordCommissionSettlement(@Valid @RequestBody RecordCommissionSettlementReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CommissionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CommissionServiceImpl`
+
+```java
+SettlementRecordVO recordCommissionSettlement(String entityNo, String currentStoreNo, String actorNo, RecordCommissionSettlementReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CommissionEntryMapper.selectList`。
+
+本域写入候选：`BeautyMappers.CommissionEntryMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.CommissionEntryMapper.recordPaymentProof`。
+
+跨域/基础设施：共用审批/实际发放凭证核验。
+
+守卫：只按版本追加凭证/状态，不发起银行代付。
+
+### P 班次财务
+
+本模块为共用能力接入，不生成美业同义Controller/Service/Mapper；共用入口见§三及§五。
+
+### Q 查询与报表
+
+#### BAPI-116 · GET /biz/x/beauty/customer-timelines/{customerNo}
+
+目的：本人或受权顾客预约服务来源时间线；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCustomerTimelineController`
+
+```java
+PageData<CustomerTimelineVO> listCustomerTimeline(@PathVariable("customerNo") String customerNo, @Valid @ModelAttribute CustomerTimelineQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CustomerTimelineQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CustomerTimelineQueryServiceImpl`
+
+```java
+PageData<CustomerTimelineVO> listCustomerTimeline(String entityNo, String currentStoreNo, String actorNo, String customerNo, CustomerTimelineQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TreatmentPlanMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用订单/消费历史受权查询。
+
+守卫：数据库分页，不先全表读出再ofAll；先在预约/工单生命周期读投影形成按occurredAt+kind+businessNo稳定排序的受权业务记录，再由该投影提供总数/分页，来源历史只经正式合同合并或装饰；禁止分别分页后拼接伪造total。
+
+#### BAPI-117 · GET /biz/x/beauty/workbench/summary
+
+目的：今日接待待服务未结异常概览；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController`
+
+```java
+WorkbenchSummaryVO getWorkbenchSummary(@Valid @ModelAttribute WorkbenchSummaryQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentWorkbenchQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentWorkbenchQueryServiceImpl`
+
+```java
+WorkbenchSummaryVO getWorkbenchSummary(String entityNo, String currentStoreNo, String actorNo, WorkbenchSummaryQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用异常统计。
+
+守卫：各业务号去重，和日历独立asOf。
+
+#### BAPI-119 · GET /biz/x/beauty/reports/scheduling
+
+目的：预约转化爽约资源利用率；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceReportController`
+
+```java
+SchedulingReportVO getSchedulingReport(@Valid @ModelAttribute SchedulingReportQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceReportQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceReportQueryServiceImpl`
+
+```java
+SchedulingReportVO getSchedulingReport(String entityNo, String currentStoreNo, String actorNo, Set<String> authorizedStoreNos, SchedulingReportQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.PerformanceAllocationMapper.selectList`；`BeautyMappers.PerformanceShareMapper.selectList`；`BeautyMappers.CommissionEntryMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用分析/库存成本事实。
+
+守卫：读投影口径，不能当实时容量/资金事实。
+
+#### BAPI-120 · GET /biz/x/beauty/reports/services
+
+目的：项目服务产出成本复购业绩查询；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceReportController`
+
+```java
+ServiceReportVO getServiceReport(@Valid @ModelAttribute ServiceReportQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceReportQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceReportQueryServiceImpl`
+
+```java
+ServiceReportVO getServiceReport(String entityNo, String currentStoreNo, String actorNo, Set<String> authorizedStoreNos, ServiceReportQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.AppointmentAssignmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceParticipationMapper.selectList`；`BeautyMappers.PerformanceAllocationMapper.selectList`；`BeautyMappers.PerformanceShareMapper.selectList`；`BeautyMappers.CommissionEntryMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用分析/库存成本事实。
+
+守卫：读投影口径，不能当实时容量/资金事实。
+
+#### BAPI-121 · POST /biz/x/beauty/report-exports
+
+目的：创建受权跨店导出任务；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReportExportController`
+
+```java
+ReportExportVO requestReportExport(@Valid @RequestBody RequestReportExportReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceReportQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceReportQueryServiceImpl`
+
+```java
+ReportExportVO requestReportExport(String entityNo, String currentStoreNo, String actorNo, Set<String> authorizedStoreNos, RequestReportExportReq req, String idempotencyKey);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用导出任务受理。
+
+守卫：记录受权范围与水位，不在本域再建一套下载任务表。
+
+#### BAPI-122 · GET /biz/x/beauty/report-exports/{exportNo}
+
+目的：查导出结果及更正水位；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizReportExportController`
+
+```java
+ReportExportVO getReportExport(@PathVariable("exportNo") String exportNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceReportQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceReportQueryServiceImpl`
+
+```java
+ReportExportVO getReportExport(String entityNo, String currentStoreNo, String actorNo, String exportNo);
+```
+
+本域读取：无直接本域表读取（使用共享提供方/快照缓存）。
+
+本域写入候选：无。
+
+跨域/基础设施：共用导出查询/二次下载鉴权。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-158 · GET /mp/x/beauty/timeline
+
+目的：本人预约服务及来源历史；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.mp.MpCustomerTimelineController`
+
+```java
+PageData<MyTimelineVO> listMyTimeline(@Valid @ModelAttribute MyTimelineQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CustomerTimelineQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CustomerTimelineQueryServiceImpl`
+
+```java
+PageData<MyTimelineVO> listMyTimeline(String userNo, MyTimelineQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TreatmentPlanMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用订单/消费历史受权查询。
+
+守卫：数据库分页，不先全表读出再ofAll；先在预约/工单生命周期读投影形成按occurredAt+kind+businessNo稳定排序的受权业务记录，再由该投影提供总数/分页，来源历史只经正式合同合并或装饰；禁止分别分页后拼接伪造total。
+
+### R 消息待办回访
+
+#### BAPI-124 · GET /biz/x/beauty/workbench/exceptions
+
+目的：查询派工超时冲突来源异常待办；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController`
+
+```java
+PageData<ExceptionWorkitemVO> listWorkbenchExceptions(@Valid @ModelAttribute WorkbenchExceptionQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.AppointmentWorkbenchQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.AppointmentWorkbenchQueryServiceImpl`
+
+```java
+PageData<ExceptionWorkitemVO> listWorkbenchExceptions(String entityNo, String currentStoreNo, String actorNo, WorkbenchExceptionQuery query);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用待办投影。
+
+守卫：使用统一待办投影分页与总数，本域表仅补充业务事实，不在第一张预约表分页代替待办列表。
+
+#### BAPI-125 · POST /biz/x/beauty/exception-workitems/{workitemNo}/resolutions
+
+目的：认领/协调/解决业务异常；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizExceptionWorkitemController`
+
+```java
+ExceptionResolutionVO resolveException(@PathVariable("workitemNo") String workitemNo, @Valid @RequestBody ResolveServiceExceptionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceExceptionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceExceptionServiceImpl`
+
+```java
+ExceptionResolutionVO resolveException(String entityNo, String currentStoreNo, String actorNo, String workitemNo, ResolveServiceExceptionReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用待办认领/解决；回到原聚合执行受权业务动作。
+
+守卫：解决待办不能绕过原命令资格/来源/资源校验。
+
+#### BAPI-126 · GET /biz/x/beauty/follow-up-tasks
+
+目的：查询护理回访任务；阶段：P3；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController`
+
+```java
+PageData<FollowUpTaskVO> listFollowUps(@Valid @ModelAttribute FollowUpQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.FollowUpCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.FollowUpCoordinationServiceImpl`
+
+```java
+PageData<FollowUpTaskVO> listFollowUps(String entityNo, String currentStoreNo, String actorNo, FollowUpQuery query);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用回访任务查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-127 · POST /biz/x/beauty/follow-up-tasks
+
+目的：建回访计划及分配；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController`
+
+```java
+FollowUpTaskVO planFollowUp(@Valid @RequestBody PlanFollowUpReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.FollowUpCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.FollowUpCoordinationServiceImpl`
+
+```java
+FollowUpTaskVO planFollowUp(String entityNo, String currentStoreNo, String actorNo, PlanFollowUpReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用回访计划/记录/本人回复。
+
+守卫：护理内容仍经护理接口授权，共用域管理回访任务状态。
+
+#### BAPI-128 · POST /biz/x/beauty/follow-up-tasks/{followUpNo}/entries
+
+目的：追加跟进和顾客回复；阶段：P3；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController`
+
+```java
+FollowUpEntryVO appendFollowUpEntry(@PathVariable("followUpNo") String followUpNo, @Valid @RequestBody AppendFollowUpEntryReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.FollowUpCoordinationService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.FollowUpCoordinationServiceImpl`
+
+```java
+FollowUpEntryVO appendFollowUpEntry(String entityNo, String currentStoreNo, String actorNo, String followUpNo, AppendFollowUpEntryReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.CareProfileMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用回访计划/记录/本人回复。
+
+守卫：护理内容仍经护理接口授权，共用域管理回访任务状态。
+
+### S 打印与设备
+
+#### BAPI-130 · POST /biz/x/beauty/print-documents
+
+目的：按真实来源生成脱敏文档快照；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServicePrintDocumentController`
+
+```java
+PrintDocumentVO createPrintDocument(@Valid @RequestBody CreateServicePrintDocumentReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServicePrintDocumentService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServicePrintDocumentServiceImpl`
+
+```java
+PrintDocumentVO createPrintDocument(String entityNo, String currentStoreNo, String actorNo, CreateServicePrintDocumentReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用文档快照/打印模板。
+
+守卫：公共单不含护理正文照片及余额，打印任务/补打归共用。
+
+### T 治理与恢复
+
+#### BAPI-135 · GET /biz/x/beauty/capability-status
+
+目的：查询门店接线兼容和验收能力；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizCapabilityController`
+
+```java
+CapabilityStatusVO getCapabilityStatus(@Valid @ModelAttribute CapabilityStatusQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.CapabilityService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.CapabilityServiceImpl`
+
+```java
+CapabilityStatusVO getCapabilityStatus(String entityNo, String currentStoreNo, String actorNo, CapabilityStatusQuery query);
+```
+
+本域读取：`BeautyMappers.StorePolicyMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：门店能力与协议兼容查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-137 · GET /biz/x/beauty/traces/{businessNo}
+
+目的：关联预约工单任务来源资金状态；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizBusinessTraceController`
+
+```java
+BusinessTraceVO getTrace(@PathVariable("businessNo") String businessNo);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.WorkOrderBillService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImpl`
+
+```java
+BusinessTraceVO getTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);
+```
+
+本域读取：`BeautyMappers.AppointmentMapper.selectList`；`BeautyMappers.WorkOrderMapper.selectList`；`BeautyMappers.ServiceTaskMapper.selectList`；`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`；`BeautyMappers.ActionLogMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：原来源状态关联查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-138 · GET /ops/x/beauty/recovery-workitems
+
+目的：平台查已付未绑定资源事件积压；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.ops.OpsServiceRecoveryController`
+
+```java
+PageData<RecoveryWorkitemVO> listRecoveryWorkitems(@Valid @ModelAttribute RecoveryWorkitemQuery query);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceRecoveryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceRecoveryServiceImpl`
+
+```java
+PageData<RecoveryWorkitemVO> listRecoveryWorkitems(String entityNo, Set<String> authorizedStoreNos, String actorNo, RecoveryWorkitemQuery query);
+```
+
+本域读取：`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.ActionLogMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用积压/恢复待办受控查询。
+
+守卫：按可信范围读取/校验，依能力和对象版本判断可用动作；写入仍须幂等和合法前态。
+
+#### BAPI-139 · POST /ops/x/beauty/recovery-requests
+
+目的：申请原号技术恢复；阶段：P1；模式：**ORCHESTRATED**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.ops.OpsServiceRecoveryController`
+
+```java
+RecoveryRequestVO requestRecovery(@Valid @RequestBody RequestServiceRecoveryReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceRecoveryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceRecoveryServiceImpl`
+
+```java
+RecoveryRequestVO requestRecovery(String entityNo, Set<String> authorizedStoreNos, String actorNo, RequestServiceRecoveryReq req, String idempotencyKey);
+```
+
+本域读取：`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.TradeBindingMapper.selectList`。
+
+本域写入候选：`BeautyMappers.ServiceSubmissionMapper.insert / 受控update分支`；`BeautyMappers.TradeBindingMapper.insert`；`BeautyMappers.SourceAllocationGuardMapper.insert / 受控update分支`；`BeautyMappers.ServiceTaskMapper.insert / 受控update分支`；`BeautyMappers.ActionLogMapper.insert`。
+
+关键自定义调用：`BeautyMappers.ServiceSubmissionMapper.selectScopedForUpdate`；`BeautyMappers.ServiceSubmissionMapper.advanceProgress`。
+
+跨域/基础设施：受控恢复审批；原来源/资源号查询。
+
+守卫：技术恢复不能代授权或代完工，必须走相同Service不直接改表。
+
+#### BAPI-160 · GET /biz/x/beauty/operations/{operationNo}
+
+目的：查询异步命令的原号进度和阻断原因；阶段：P1；模式：**READ_MODEL**。
+
+Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceOperationController`
+
+```java
+OperationVO getOperation(@PathVariable("operationNo") String operationNo, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceOperationQueryService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl`
+
+```java
+OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);
+```
+
+本域读取：`BeautyMappers.ServiceSubmissionMapper.selectList`；`BeautyMappers.ActionLogMapper.selectList`。
+
+本域写入候选：无。
+
+跨域/基础设施：共用异步操作目录/受权目标映射。
+
+守卫：仅美业操作原号；资金原号仍由其所有者查询。
+
+## 三、11条共用HTTP目标与实施对照
+
+以下为人员/资源所有者的目标及部分已实施签名；逐项状态见API清单与主TDD。人员、物理资源、周班表读写已编码，P3例外审批等仍待实施；这些类不在beauty-web/api/core中生成。归shop-merchant自身既有包边界，Service接口/Impl按原规范分包；Controller不得转而依赖人员Mapper。具体共享实现要同步共享契约评审与独立架构扫描。
+
+### BAPI-012 · GET /biz/personnel
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelQuery`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PageData<PersonnelVO> listPersonnel(@Valid @ModelAttribute PersonnelQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PageData<PersonnelVO> listPersonnel(String entityNo, String currentStoreNo, String actorNo, PersonnelQuery query);
+```
+
+### BAPI-013 · POST /biz/personnel
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.CreatePersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PersonnelVO createPersonnel(@Valid @RequestBody CreatePersonnelReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PersonnelVO createPersonnel(String entityNo, String currentStoreNo, String actorNo, CreatePersonnelReq request, String idempotencyKey);
+```
+
+### BAPI-014 · POST /biz/personnel/{personnelNo}/status-changes
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PersonnelChangeVO changePersonnelStatus(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody ChangePersonnelStatusReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PersonnelChangeVO changePersonnelStatus(String entityNo, String currentStoreNo, String actorNo, String personnelNo, ChangePersonnelStatusReq request, String idempotencyKey);
+```
+
+### BAPI-015 · POST /biz/personnel/{personnelNo}/account-links
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PersonnelAccountLinkVO linkPersonnelAccount(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody LinkPersonnelAccountReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PersonnelAccountLinkVO linkPersonnelAccount(String entityNo, String currentStoreNo, String actorNo, String personnelNo, LinkPersonnelAccountReq request, String idempotencyKey);
+```
+
+### BAPI-016 · POST /biz/personnel/{personnelNo}/assignments
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelController`；输入类型：`ai.neargo.shop.merchant.dto.AssignPersonnelReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PersonnelAssignmentVO assignPersonnel(@PathVariable("personnelNo") String personnelNo, @Valid @RequestBody AssignPersonnelReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PersonnelAssignmentVO assignPersonnel(String entityNo, String currentStoreNo, String actorNo, String personnelNo, AssignPersonnelReq request, String idempotencyKey);
+```
+
+### BAPI-018 · POST /biz/personnel-cooperations
+
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizPersonnelCooperationController`；输入类型：`ai.neargo.shop.merchant.dto.SetPersonnelCooperationReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PersonnelCooperationVO setCooperation(@Valid @RequestBody SetPersonnelCooperationReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelServiceImpl`。
+
+```java
+PersonnelCooperationVO setCooperation(String entityNo, String currentStoreNo, String actorNo, SetPersonnelCooperationReq req, String idempotencyKey);
+```
+
+### BAPI-020 · GET /biz/resources
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.ResourceQuery`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+PageData<ResourceVO> listResources(@Valid @ModelAttribute ResourceQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
+
+```java
+PageData<ResourceVO> listResources(String entityNo, String currentStoreNo, String actorNo, ResourceQuery query);
+```
+
+### BAPI-021 · POST /biz/resources
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizResourceController`；输入类型：`ai.neargo.shop.merchant.dto.SaveResourceReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ResourceVO saveResource(@Valid @RequestBody SaveResourceReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.ResourceService`；Impl：`ai.neargo.shop.merchant.service.impl.ResourceServiceImpl`。
+
+```java
+ResourceVO saveResource(String entityNo, String currentStoreNo, String actorNo, SaveResourceReq request, String idempotencyKey);
+```
+
+### BAPI-022 · GET /biz/schedules
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；输入类型：`ai.neargo.shop.merchant.dto.PersonnelScheduleQuery`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ScheduleVO getSchedules(@Valid @ModelAttribute PersonnelScheduleQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+
+```java
+ScheduleVO getSchedules(String entityNo, String currentStoreNo, String actorNo, PersonnelScheduleQuery query);
+```
+
+### BAPI-023 · POST /biz/schedule-changes/previews
+
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；输入类型：`ai.neargo.shop.merchant.dto.PreviewScheduleChangeReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ScheduleImpactVO previewScheduleChange(@Valid @RequestBody PreviewScheduleChangeReq req);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+
+```java
+ScheduleImpactVO previewScheduleChange(String entityNo, String currentStoreNo, String actorNo, PreviewScheduleChangeReq req);
+```
+
+### BAPI-024 · POST /biz/schedule-changes
+
+状态：CANDIDATE_SHARED_OWNER_NOT_EXISTING_API。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleChangeController`；输入类型：`ai.neargo.shop.merchant.dto.ChangeScheduleReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ScheduleChangeVO changeSchedule(@Valid @RequestBody ChangeScheduleReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+```
+
+Service：`ai.neargo.shop.merchant.service.PersonnelScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.PersonnelScheduleServiceImpl`。
+
+```java
+ScheduleChangeVO changeSchedule(String entityNo, String currentStoreNo, String actorNo, ChangeScheduleReq req, String idempotencyKey);
+```
+
+### BAPI-022补充 · POST /biz/schedule-rules
+
+状态：IMPLEMENTED_BM02_ISOLATED_DEPLOYMENT_PASSED。
+
+Controller：`ai.neargo.shop.merchant.api.biz.BizScheduleController`；输入类型：`ai.neargo.shop.merchant.dto.SaveScheduleRuleReq`。返回VO沿同域merchant.dto；非美业DTO。
+
+```java
+ScheduleRuleVO saveScheduleRule(@Valid @RequestBody SaveScheduleRuleReq request, @RequestHeader("Idempotency-Key") String key, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
+```
+
+Service：`ai.neargo.shop.merchant.service.ScheduleService`；Impl：`ai.neargo.shop.merchant.service.impl.ScheduleServiceImpl`。
+
+```java
+ScheduleRuleVO saveScheduleRule(String entityNo, String currentStoreNo, String actorNo, SaveScheduleRuleReq request, String idempotencyKey);
+```
+
+### 本批已冻结的共用维护DTO
+
+| 类（shop-merchant） | 字段合同 |
+|---|---|
+| `ai.neargo.shop.merchant.dto.PersonnelQuery` | Integer page,size; String status,keyword,storeNo,skill（有效资格goodsNo） |
+| `ai.neargo.shop.merchant.dto.CreatePersonnelReq` | String displayName,avatarRef; AssignPersonnelReq assignment（expectedRevision=0且assignmentNo=null） |
+| `ai.neargo.shop.merchant.dto.AssignPersonnelReq` | Long expectedRevision; String assignmentNo,storeNo; OffsetDateTime validFrom,validTo; Boolean publicVisible; String levelCode; Integer sortOrder; List<String> positions; List<Skill> skills；Skill(goodsNo,skuNo,levelCode) |
+| `ai.neargo.shop.merchant.dto.LinkPersonnelAccountReq` | Long expectedRevision; String accountNo（null为解绑） |
+| `ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq` | Long expectedRevision; String status,reason（1..500字符；完整审计，不广播到事件） |
+| `ai.neargo.shop.merchant.dto.PersonnelVO` | personnelNo,displayName,avatarRef,status,revision,resourceNo,List<Assignment>,List<Qualification>；当前/未来有效配置，无账号/联系资料/物理id；历史存储保留 |
+| `ai.neargo.shop.merchant.dto.PersonnelAssignmentVO` | personnelNo,revision,assignmentNo |
+| `ai.neargo.shop.merchant.dto.PersonnelAccountLinkVO` | personnelNo,revision,accountNo |
+| `ai.neargo.shop.merchant.dto.PersonnelChangeVO` | personnelNo,revision,status,accountDisabled（仅实际账号停用已回查后true） |
+| `ai.neargo.shop.merchant.dto.ResourceQuery` | Integer page,size; String storeNo,type,status,keyword；默认1/20，上限100，storeNo仅当前店确认 |
+| `ai.neargo.shop.merchant.dto.SaveResourceReq` | String resourceNo?,type,personnelNo=null,storeNo?,name,status; Integer capacity; Long expectedRevision；物理类型/归属不可变，STAFF由人员维护 |
+| `ai.neargo.shop.merchant.dto.ResourceVO` | String resourceNo,type,storeNo,personnelNo,name,status; int capacity; long revision; boolean openOccupied；无物理id/占用凭证/剩余容量 |
+| `ai.neargo.shop.merchant.dto.ScheduleQuery` | Set<String> resourceNos; OffsetDateTime from,to；1..50号、最多31日 |
+| `ai.neargo.shop.merchant.dto.SaveScheduleRuleReq` | String ruleNo?,resourceNo,timezone,status,reason; Long expectedRevision（资源根）; Integer weekdayMask,startMinute,endMinute,endDayOffset; LocalDate validFrom,validTo（必填，最多366开始日） |
+| `ai.neargo.shop.merchant.dto.ScheduleVO` | OffsetDateTime from,to; Map<String,Long> resourceRevisions; List<Rule> rules; List<ScheduleWindowsPort.Window> windows；非容量余量 |
+| `ai.neargo.shop.merchant.dto.ScheduleRuleVO` | String ruleNo,resourceNo,status; long resourceRevision；替换新号，停用旧号 |
+
+实际字段校验和修订语义以同域源码及主TDD§2.12（人员）、§2.13（资源）、§2.14（周班表）为准；不加入美业私有DTO/表统计。
+
+共用MerchantMappers与mch表的具体增量不在美业BeautyMappers中生成；人员同主体稳定号、账号可选关联、跨店统一STAFF资源、任职资格有效期及完整资源原子仲裁，沿数据库/工作台方案验证。
+
+## 四、25个美业Mapper直接方法
+
+完整外层：`ai.neargo.shop.beauty.mapper.BeautyMappers`，源码归beauty-core。下列CRUD是继承方法的常用调用形状，**不需要重新声明/实现**；新增自定义方法才写SQL。Wrapper由Service构造，强制主体/门店或bty受控父链、合法状态/版本。返回Entity只在core内使用，不返Controller。
+
+自定义SQL必须显式tenant/entity/业务键（子行经受权父链）范围；当前tenant沿MAIN，不新增客户端租户字段。CAS携带expectedVersion，成功version+1，并明确updatedBy/updatedAt；采用标量入参时不能假设MetaObjectHandler自动填审计。自定义int返回0必须转为明确冲突/越权/状态错误，不能静默成功。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.StorePolicyMapper
+
+表：`bty_store_policy`；Entity：`ai.neargo.shop.beauty.entity.BtyStorePolicy`。
+
+继承调用形状：
+
+```java
+int insert(BtyStorePolicy row);
+BtyStorePolicy selectOne(Wrapper<BtyStorePolicy> queryWrapper);
+List<BtyStorePolicy> selectList(Wrapper<BtyStorePolicy> queryWrapper);
+<P extends IPage<BtyStorePolicy>> P selectPage(P page, Wrapper<BtyStorePolicy> queryWrapper);
+int update(BtyStorePolicy row, Wrapper<BtyStorePolicy> updateWrapper);
+```
+
+```java
+BtyStorePolicy selectScopedForUpdate(String entityNo, String storeNo, String policyNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int switchCurrentVersion(String entityNo, String storeNo, String policyNo, long expectedVersion, String policyVersionNo, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：不可变政策版本已插入后切指针；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.StorePolicyVersionMapper
+
+表：`bty_store_policy_version`；Entity：`ai.neargo.shop.beauty.entity.BtyStorePolicyVersion`。
+
+继承调用形状：
+
+```java
+int insert(BtyStorePolicyVersion row);
+BtyStorePolicyVersion selectOne(Wrapper<BtyStorePolicyVersion> queryWrapper);
+List<BtyStorePolicyVersion> selectList(Wrapper<BtyStorePolicyVersion> queryWrapper);
+<P extends IPage<BtyStorePolicyVersion>> P selectPage(P page, Wrapper<BtyStorePolicyVersion> queryWrapper);
+int update(BtyStorePolicyVersion row, Wrapper<BtyStorePolicyVersion> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionMapper
+
+表：`bty_service_definition`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceDefinition`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceDefinition row);
+BtyServiceDefinition selectOne(Wrapper<BtyServiceDefinition> queryWrapper);
+List<BtyServiceDefinition> selectList(Wrapper<BtyServiceDefinition> queryWrapper);
+<P extends IPage<BtyServiceDefinition>> P selectPage(P page, Wrapper<BtyServiceDefinition> queryWrapper);
+int update(BtyServiceDefinition row, Wrapper<BtyServiceDefinition> updateWrapper);
+```
+
+```java
+BtyServiceDefinition selectScopedForUpdate(String entityNo, String storeNo, String definitionNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int switchCurrentVersion(String entityNo, String storeNo, String definitionNo, long expectedVersion, String definitionVersionNo, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：定义版本/要求已完整插入后切指针；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceDefinitionVersionMapper
+
+表：`bty_service_definition_version`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceDefinitionVersion row);
+BtyServiceDefinitionVersion selectOne(Wrapper<BtyServiceDefinitionVersion> queryWrapper);
+List<BtyServiceDefinitionVersion> selectList(Wrapper<BtyServiceDefinitionVersion> queryWrapper);
+<P extends IPage<BtyServiceDefinitionVersion>> P selectPage(P page, Wrapper<BtyServiceDefinitionVersion> queryWrapper);
+int update(BtyServiceDefinitionVersion row, Wrapper<BtyServiceDefinitionVersion> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceRequirementMapper
+
+表：`bty_service_requirement`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceRequirement`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceRequirement row);
+BtyServiceRequirement selectOne(Wrapper<BtyServiceRequirement> queryWrapper);
+List<BtyServiceRequirement> selectList(Wrapper<BtyServiceRequirement> queryWrapper);
+<P extends IPage<BtyServiceRequirement>> P selectPage(P page, Wrapper<BtyServiceRequirement> queryWrapper);
+int update(BtyServiceRequirement row, Wrapper<BtyServiceRequirement> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentMapper
+
+表：`bty_appointment`；Entity：`ai.neargo.shop.beauty.entity.BtyAppointment`。
+
+继承调用形状：
+
+```java
+int insert(BtyAppointment row);
+BtyAppointment selectOne(Wrapper<BtyAppointment> queryWrapper);
+List<BtyAppointment> selectList(Wrapper<BtyAppointment> queryWrapper);
+<P extends IPage<BtyAppointment>> P selectPage(P page, Wrapper<BtyAppointment> queryWrapper);
+int update(BtyAppointment row, Wrapper<BtyAppointment> updateWrapper);
+```
+
+```java
+BtyAppointment selectScopedForUpdate(String entityNo, String storeNo, String appointmentNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int changeSchedule(String entityNo, String storeNo, String appointmentNo, long expectedVersion, String expectedStatus, LocalDateTime startAt, LocalDateTime endAt, String holdNo, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：资源新组合权威确认后变更时间与hold引用，历史assignment只追加；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int changeStatus(String entityNo, String storeNo, String appointmentNo, long expectedVersion, String expectedStatus, String targetStatus, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：取消/爽约/确认等分支由服务器状态机给目标态，不采信客户端随意目标；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int markArrived(String entityNo, String storeNo, String appointmentNo, long expectedVersion, String expectedStatus, LocalDateTime checkedInAt, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：幂等签到不代替订单履约；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+long countWorkOrders(String entityNo, String storeNo, String appointmentNo);
+```
+
+READ守卫：接待重排与到店要求不存在同范围工单或关联实际task；孤立task保守阻断，不能以空工单查询允许重复执行。
+
+```java
+List<String> affectedTaskNos(String entityNo, String storeNo, String appointmentNo);
+```
+
+READ守卫：异常协调只返回同实体同门店预约下未删除工单的实际未删除task引用，不生成任务或待办。
+
+```java
+int markWorkOrderOpened(String entityNo, String storeNo, String appointmentNo, long expectedVersion, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：CHECKED_IN+checkedInAt非空+空current/fence+无历史工单条件CAS，仅version+1，实际执行未开始；同TX检查影响行1。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentItemMapper
+
+表：`bty_appointment_item`；Entity：`ai.neargo.shop.beauty.entity.BtyAppointmentItem`。
+
+继承调用形状：
+
+```java
+int insert(BtyAppointmentItem row);
+BtyAppointmentItem selectOne(Wrapper<BtyAppointmentItem> queryWrapper);
+List<BtyAppointmentItem> selectList(Wrapper<BtyAppointmentItem> queryWrapper);
+<P extends IPage<BtyAppointmentItem>> P selectPage(P page, Wrapper<BtyAppointmentItem> queryWrapper);
+int update(BtyAppointmentItem row, Wrapper<BtyAppointmentItem> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.AppointmentAssignmentMapper
+
+表：`bty_appointment_assignment`；Entity：`ai.neargo.shop.beauty.entity.BtyAppointmentAssignment`。
+
+继承调用形状：
+
+```java
+int insert(BtyAppointmentAssignment row);
+BtyAppointmentAssignment selectOne(Wrapper<BtyAppointmentAssignment> queryWrapper);
+List<BtyAppointmentAssignment> selectList(Wrapper<BtyAppointmentAssignment> queryWrapper);
+<P extends IPage<BtyAppointmentAssignment>> P selectPage(P page, Wrapper<BtyAppointmentAssignment> queryWrapper);
+int update(BtyAppointmentAssignment row, Wrapper<BtyAppointmentAssignment> updateWrapper);
+```
+
+```java
+List<BtyAppointmentAssignment> selectByAppointmentRevision(String entityNo, String storeNo, String appointmentNo, long appointmentRevision);
+```
+
+READ守卫：经appointment_item→appointment受权父链过滤；历史安排不按当前人物反推。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper
+
+表：`bty_work_order`；Entity：`ai.neargo.shop.beauty.entity.BtyWorkOrder`。
+
+继承调用形状：
+
+```java
+int insert(BtyWorkOrder row);
+BtyWorkOrder selectOne(Wrapper<BtyWorkOrder> queryWrapper);
+List<BtyWorkOrder> selectList(Wrapper<BtyWorkOrder> queryWrapper);
+<P extends IPage<BtyWorkOrder>> P selectPage(P page, Wrapper<BtyWorkOrder> queryWrapper);
+int update(BtyWorkOrder row, Wrapper<BtyWorkOrder> updateWrapper);
+```
+
+```java
+BtyWorkOrder selectScopedForUpdate(String entityNo, String storeNo, String workOrderNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int freezeScope(String entityNo, String storeNo, String workOrderNo, long expectedVersion, long expectedScopeRevision, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：锁范围后冻结并形成关闭检查点；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int advanceScope(String entityNo, String storeNo, String workOrderNo, long expectedVersion, long expectedScopeRevision, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：仅未冻结范围可加项/撤项，revision单调增加；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int closeFrozenScope(String entityNo, String storeNo, String workOrderNo, long expectedVersion, long expectedScopeRevision, LocalDateTime closedAt, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：真实任务/绑定版本已重验且全部满足时关闭；不能只查陈旧完成计数；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+BtyWorkOrder selectScoped(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：MAIN/entity/store活跃根；context须完整同scope且USER:/GUEST:编码相等；真正无context仅B legacy只读。
+
+```java
+BtyWorkOrder selectOwned(String userNo, String workOrderNo);
+```
+
+READ守卫：单条SQL先INNER JOIN完整同scope活跃context及canonical root编码，再USER本人或同scope不可变guest claim receipt；无context拒绝。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceTaskMapper
+
+表：`bty_service_task`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceTask`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceTask row);
+BtyServiceTask selectOne(Wrapper<BtyServiceTask> queryWrapper);
+List<BtyServiceTask> selectList(Wrapper<BtyServiceTask> queryWrapper);
+<P extends IPage<BtyServiceTask>> P selectPage(P page, Wrapper<BtyServiceTask> queryWrapper);
+int update(BtyServiceTask row, Wrapper<BtyServiceTask> updateWrapper);
+```
+
+```java
+BtyServiceTask selectScopedForUpdate(String entityNo, String storeNo, String taskNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int changeStatus(String entityNo, String storeNo, String taskNo, long expectedVersion, long expectedBindingRevision, String expectedStatus, String targetStatus, LocalDateTime occurredAt, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：动作合法且来源许可已确认；按动作设置相应时间；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int recordCompletion(String entityNo, String storeNo, String taskNo, long expectedVersion, long expectedBindingRevision, BigDecimal incrementQty, LocalDateTime finishedAt, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：incrementQty>0且done_qty+incrementQty<=qty-voided_qty；全部事实/提交检查点同一短事务；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+int switchBindingRevision(String entityNo, String storeNo, String taskNo, long expectedVersion, long expectedBindingRevision, long newBindingRevision, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：新绑定和source guard已提交；新revision>旧revision，不覆盖旧绑定行；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+List<BtyServiceTask> selectForWorkOrder(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：活跃root父链/同tenant/entity/store，0<task.scopeRevision≤root；引用预约item时同原预约且item活跃。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceStepMapper
+
+表：`bty_service_step`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceStep`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceStep row);
+BtyServiceStep selectOne(Wrapper<BtyServiceStep> queryWrapper);
+List<BtyServiceStep> selectList(Wrapper<BtyServiceStep> queryWrapper);
+<P extends IPage<BtyServiceStep>> P selectPage(P page, Wrapper<BtyServiceStep> queryWrapper);
+int update(BtyServiceStep row, Wrapper<BtyServiceStep> updateWrapper);
+```
+
+```java
+int completeStep(String entityNo, String storeNo, String stepNo, String taskNo, long expectedVersion, LocalDateTime finishedAt, String resultSnapshot, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：先按固定顺序锁workOrder/task，再校验step状态与顺序，完成只追加合法结果；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+List<BtyServiceStep> selectForTask(String entityNo, String storeNo, String workOrderNo, String taskNo);
+```
+
+READ守卫：按指定root/task完整SQL父链及活跃行读取；跨entity同taskNo、软删task/item、错工单不返回。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceParticipationMapper
+
+表：`bty_service_participation`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceParticipation`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceParticipation row);
+BtyServiceParticipation selectOne(Wrapper<BtyServiceParticipation> queryWrapper);
+List<BtyServiceParticipation> selectList(Wrapper<BtyServiceParticipation> queryWrapper);
+<P extends IPage<BtyServiceParticipation>> P selectPage(P page, Wrapper<BtyServiceParticipation> queryWrapper);
+int update(BtyServiceParticipation row, Wrapper<BtyServiceParticipation> updateWrapper);
+```
+
+```java
+int endParticipation(String entityNo, String storeNo, String participationNo, long expectedVersion, LocalDateTime endedAt, String reason, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只收口尚未结束区间；新参与段另insert，开始前后不得倒置；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+```java
+List<BtyServiceParticipation> selectForTask(String entityNo, String storeNo, String workOrderNo, String taskNo);
+```
+
+READ守卫：按指定root/task完整SQL父链及活跃行读取；跨entity同taskNo、软删task/item、错工单不返回。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper
+
+表：`bty_service_submission`；Entity：`ai.neargo.shop.beauty.entity.BtyServiceSubmission`。
+
+继承调用形状：
+
+```java
+int insert(BtyServiceSubmission row);
+BtyServiceSubmission selectOne(Wrapper<BtyServiceSubmission> queryWrapper);
+List<BtyServiceSubmission> selectList(Wrapper<BtyServiceSubmission> queryWrapper);
+<P extends IPage<BtyServiceSubmission>> P selectPage(P page, Wrapper<BtyServiceSubmission> queryWrapper);
+int update(BtyServiceSubmission row, Wrapper<BtyServiceSubmission> updateWrapper);
+```
+
+```java
+BtyServiceSubmission selectByRequestKey(String entityNo, String storeNo, String requestKeyHash);
+```
+
+READ守卫：请求唯一键冲突后比对payloadHash，异参拒绝；同参返回原意图。 原签名不含action，未来Service将action纳入规范键摘要；若库内跨action同摘要多行，单行读取拒绝歧义，禁止LIMIT1任取。
+
+```java
+BtyServiceSubmission selectScopedForUpdate(String entityNo, String storeNo, String submissionNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+List<BtyServiceSubmission> selectDueForUpdate(String entityNo, String storeNo, LocalDateTime now, int limit);
+```
+
+LOCK守卫：短事务有界FOR UPDATE SKIP LOCKED，取走时同事务推进nextRetryAt/version；外部调用不持锁，幂等原号抗重入。 limit只接受1..100，空retry不视为到期。
+
+```java
+int advanceProgress(String entityNo, String storeNo, String submissionNo, long expectedVersion, String expectedStatus, String targetStatus, LocalDateTime nextRetryAt, String failureCode, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：按固定状态迁移推进；未知不能写成失败后另起来源；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 活动态租约按DATETIME(3)持久化精度严格晚于updatedAt；终态清空retry，REJECTED需安全错误码。
+
+```java
+BtyServiceSubmission selectOpenForWorkOrder(String entityNo, String storeNo, String workOrderNo);
+```
+
+READ守卫：JOIN活跃root，完整MAIN/entity/store/workOrder，action=OPEN且submission活跃。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.TradeBindingMapper
+
+表：`bty_trade_binding`；Entity：`ai.neargo.shop.beauty.entity.BtyTradeBinding`。
+
+继承调用形状：
+
+```java
+int insert(BtyTradeBinding row);
+BtyTradeBinding selectOne(Wrapper<BtyTradeBinding> queryWrapper);
+List<BtyTradeBinding> selectList(Wrapper<BtyTradeBinding> queryWrapper);
+<P extends IPage<BtyTradeBinding>> P selectPage(P page, Wrapper<BtyTradeBinding> queryWrapper);
+int update(BtyTradeBinding row, Wrapper<BtyTradeBinding> updateWrapper);
+```
+
+```java
+List<BtyTradeBinding> selectByTaskRevisions(String entityNo, String storeNo, List<String> taskNos, long bindingRevision);
+```
+
+READ守卫：从已鉴权任务父链读当前指定版本；不同任务版本按版本分组批查，避免逐卡片N+1。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.ActionLogMapper
+
+表：`bty_action_log`；Entity：`ai.neargo.shop.beauty.entity.BtyActionLog`。
+
+继承调用形状：
+
+```java
+int insert(BtyActionLog row);
+BtyActionLog selectOne(Wrapper<BtyActionLog> queryWrapper);
+List<BtyActionLog> selectList(Wrapper<BtyActionLog> queryWrapper);
+<P extends IPage<BtyActionLog>> P selectPage(P page, Wrapper<BtyActionLog> queryWrapper);
+int update(BtyActionLog row, Wrapper<BtyActionLog> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.CareProfileMapper
+
+表：`bty_care_profile`；Entity：`ai.neargo.shop.beauty.entity.BtyCareProfile`。
+
+继承调用形状：
+
+```java
+int insert(BtyCareProfile row);
+BtyCareProfile selectOne(Wrapper<BtyCareProfile> queryWrapper);
+List<BtyCareProfile> selectList(Wrapper<BtyCareProfile> queryWrapper);
+<P extends IPage<BtyCareProfile>> P selectPage(P page, Wrapper<BtyCareProfile> queryWrapper);
+int update(BtyCareProfile row, Wrapper<BtyCareProfile> updateWrapper);
+```
+
+```java
+BtyCareProfile selectScopedForUpdate(String entityNo, String storeNo, String profileNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int changeAccessStatus(String entityNo, String storeNo, String profileNo, long expectedVersion, String targetStatus, String accessPolicyRef, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只执行共用隐私流程已批准的受控状态动作，不物理抹除历史事实；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.CareNoteMapper
+
+表：`bty_care_note`；Entity：`ai.neargo.shop.beauty.entity.BtyCareNote`。
+
+继承调用形状：
+
+```java
+int insert(BtyCareNote row);
+BtyCareNote selectOne(Wrapper<BtyCareNote> queryWrapper);
+List<BtyCareNote> selectList(Wrapper<BtyCareNote> queryWrapper);
+<P extends IPage<BtyCareNote>> P selectPage(P page, Wrapper<BtyCareNote> queryWrapper);
+int update(BtyCareNote row, Wrapper<BtyCareNote> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.CareMediaMapper
+
+表：`bty_care_media`；Entity：`ai.neargo.shop.beauty.entity.BtyCareMedia`。
+
+继承调用形状：
+
+```java
+int insert(BtyCareMedia row);
+BtyCareMedia selectOne(Wrapper<BtyCareMedia> queryWrapper);
+List<BtyCareMedia> selectList(Wrapper<BtyCareMedia> queryWrapper);
+<P extends IPage<BtyCareMedia>> P selectPage(P page, Wrapper<BtyCareMedia> queryWrapper);
+int update(BtyCareMedia row, Wrapper<BtyCareMedia> updateWrapper);
+```
+
+```java
+int changeMediaStatus(String entityNo, String storeNo, String careMediaNo, long expectedVersion, String targetStatus, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：私有媒体撤权与本域引用状态分别确认，旧授权不因状态修改继续有效；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.TreatmentPlanMapper
+
+表：`bty_treatment_plan`；Entity：`ai.neargo.shop.beauty.entity.BtyTreatmentPlan`。
+
+继承调用形状：
+
+```java
+int insert(BtyTreatmentPlan row);
+BtyTreatmentPlan selectOne(Wrapper<BtyTreatmentPlan> queryWrapper);
+List<BtyTreatmentPlan> selectList(Wrapper<BtyTreatmentPlan> queryWrapper);
+<P extends IPage<BtyTreatmentPlan>> P selectPage(P page, Wrapper<BtyTreatmentPlan> queryWrapper);
+int update(BtyTreatmentPlan row, Wrapper<BtyTreatmentPlan> updateWrapper);
+```
+
+```java
+BtyTreatmentPlan selectScopedForUpdate(String entityNo, String storeNo, String planNo);
+```
+
+LOCK守卫：只锁已存在根；未查到不等于建立互斥锁。创建靠业务唯一键＋幂等意图，禁止空查询充当锁。
+
+```java
+int advancePlanRevision(String entityNo, String storeNo, String planNo, long expectedVersion, long expectedPlanRevision, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只调整计划版本，不修改权益账户余次；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.TreatmentSessionMapper
+
+表：`bty_treatment_session`；Entity：`ai.neargo.shop.beauty.entity.BtyTreatmentSession`。
+
+继承调用形状：
+
+```java
+int insert(BtyTreatmentSession row);
+BtyTreatmentSession selectOne(Wrapper<BtyTreatmentSession> queryWrapper);
+List<BtyTreatmentSession> selectList(Wrapper<BtyTreatmentSession> queryWrapper);
+<P extends IPage<BtyTreatmentSession>> P selectPage(P page, Wrapper<BtyTreatmentSession> queryWrapper);
+int update(BtyTreatmentSession row, Wrapper<BtyTreatmentSession> updateWrapper);
+```
+
+```java
+int bindServiceReferences(String entityNo, String storeNo, String sessionNo, long expectedVersion, String appointmentNo, String taskNo, String assetUseRef, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：预约/任务均已确认归同顾客门店，实际assetUseRef只取共用使用结果；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.PerformanceAllocationMapper
+
+表：`bty_performance_allocation`；Entity：`ai.neargo.shop.beauty.entity.BtyPerformanceAllocation`。
+
+继承调用形状：
+
+```java
+int insert(BtyPerformanceAllocation row);
+BtyPerformanceAllocation selectOne(Wrapper<BtyPerformanceAllocation> queryWrapper);
+List<BtyPerformanceAllocation> selectList(Wrapper<BtyPerformanceAllocation> queryWrapper);
+<P extends IPage<BtyPerformanceAllocation>> P selectPage(P page, Wrapper<BtyPerformanceAllocation> queryWrapper);
+int update(BtyPerformanceAllocation row, Wrapper<BtyPerformanceAllocation> updateWrapper);
+```
+
+```java
+BtyPerformanceAllocation lockAllocationAnchor(String entityNo, String storeNo, String sourceKind, String sourceNo, String basisCode);
+```
+
+LOCK守卫：锁同来源/basisCode的revision_index=1既存锚点；首版创建靠唯一键仲裁，未存在不空锁，后续版本/更正追加。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.PerformanceShareMapper
+
+表：`bty_performance_share`；Entity：`ai.neargo.shop.beauty.entity.BtyPerformanceShare`。
+
+继承调用形状：
+
+```java
+int insert(BtyPerformanceShare row);
+BtyPerformanceShare selectOne(Wrapper<BtyPerformanceShare> queryWrapper);
+List<BtyPerformanceShare> selectList(Wrapper<BtyPerformanceShare> queryWrapper);
+<P extends IPage<BtyPerformanceShare>> P selectPage(P page, Wrapper<BtyPerformanceShare> queryWrapper);
+int update(BtyPerformanceShare row, Wrapper<BtyPerformanceShare> updateWrapper);
+```
+
+无新增自定义方法。不可变事实只调用insert及受控读；有状态子行的更新须由根锁/CAS协议保护。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.CommissionPolicyMapper
+
+表：`bty_commission_policy`；Entity：`ai.neargo.shop.beauty.entity.BtyCommissionPolicy`。
+
+继承调用形状：
+
+```java
+int insert(BtyCommissionPolicy row);
+BtyCommissionPolicy selectOne(Wrapper<BtyCommissionPolicy> queryWrapper);
+List<BtyCommissionPolicy> selectList(Wrapper<BtyCommissionPolicy> queryWrapper);
+<P extends IPage<BtyCommissionPolicy>> P selectPage(P page, Wrapper<BtyCommissionPolicy> queryWrapper);
+int update(BtyCommissionPolicy row, Wrapper<BtyCommissionPolicy> updateWrapper);
+```
+
+```java
+BtyCommissionPolicy lockRuleGroupAnchor(String entityNo, String storeNo, String ruleGroupNo);
+```
+
+LOCK守卫：锁ruleGroupNo的revision_index=1稳定首版；首次并发插入靠唯一键拒重复，后续版本追加不覆盖历史。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.CommissionEntryMapper
+
+表：`bty_commission_entry`；Entity：`ai.neargo.shop.beauty.entity.BtyCommissionEntry`。
+
+继承调用形状：
+
+```java
+int insert(BtyCommissionEntry row);
+BtyCommissionEntry selectOne(Wrapper<BtyCommissionEntry> queryWrapper);
+List<BtyCommissionEntry> selectList(Wrapper<BtyCommissionEntry> queryWrapper);
+<P extends IPage<BtyCommissionEntry>> P selectPage(P page, Wrapper<BtyCommissionEntry> queryWrapper);
+int update(BtyCommissionEntry row, Wrapper<BtyCommissionEntry> updateWrapper);
+```
+
+```java
+BtyCommissionEntry selectByBusinessKey(String entityNo, String storeNo, String businessKey);
+```
+
+READ守卫：同一计提/冲回业务键唯一；冲回必须引用originalEntryNo，不更新原金额。
+
+```java
+int recordPaymentProof(String entityNo, String storeNo, String entryNo, long expectedVersion, String expectedStatus, String paymentProofRef, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只对获准待发状态记录已核验凭证及目标状态，不改amount_minor；WHERE限定可信范围、业务号、expectedVersion及合法前态，影响行必须为1。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。
+
+### ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper
+
+表：`bty_source_allocation_guard`；Entity：`ai.neargo.shop.beauty.entity.BtySourceAllocationGuard`。
+
+继承调用形状：
+
+```java
+int insert(BtySourceAllocationGuard row);
+BtySourceAllocationGuard selectOne(Wrapper<BtySourceAllocationGuard> queryWrapper);
+List<BtySourceAllocationGuard> selectList(Wrapper<BtySourceAllocationGuard> queryWrapper);
+<P extends IPage<BtySourceAllocationGuard>> P selectPage(P page, Wrapper<BtySourceAllocationGuard> queryWrapper);
+int update(BtySourceAllocationGuard row, Wrapper<BtySourceAllocationGuard> updateWrapper);
+```
+
+```java
+BtySourceAllocationGuard selectSourceForUpdate(String entityNo, String sourceKind, String sourceNo, String sourceLineRef);
+```
+
+LOCK守卫：主体内规范来源行共用一把锁，不按store/version复制guard；store从可信来源核验，首次创建靠唯一键。
+
+```java
+int allocateQuantity(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, BigDecimal incrementQty, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：incrementQty>0且allocated_qty+incrementQty<=source_qty；唯一来源行、版本和可信快照匹配；受权来源/门店在Service验证。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 数量须能以六位小数精确表示，不允许舍入成零仍报告成功。
+
+```java
+int releaseUnconsumedQuantity(String entityNo, String guardNo, long expectedVersion, BigDecimal releaseQty, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只释放已确认未消费且不被在途提交引用的分配；0<releaseQty<=allocated_qty，不回退已履约数量。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 现有签名无目标binding/消费水位，数据层保守要求全部历史绑定（含软删）均有合法双父链、从未开始且全量VOIDED任务和BOUND/REJECTED提交；否则整guard拒绝释放。局部空闲量释放及未形成绑定的在途引用由后续正式Service/合同解决。
+
+```java
+int refreshSourceSnapshot(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, long newSourceRevision, BigDecimal newSourceQty, String sourceHash, String actorNo, LocalDateTime updatedAt);
+```
+
+CAS守卫：只接受权威新来源修订，newSourceQty>=allocated_qty且修订单调；未知状态不替换来源。 自定义SQL显式version+1并写updated_by/updated_at；不假定审计填充器替标量参数完成审计。 newSourceQty最多六位小数，sourceHash为64位摘要。
+
+## 五、54个共用CONTRACT及既有方法证据
+
+CONTRACT是一个能力接入点，可能覆盖多个既有接口，不能从名称机械生成一个Java Service方法。下表全部有归属说明；其真实签名以原源码为准，资源仲裁/高级收银等缺少完整合同的能力先在原域完成评审，不能临时写BeautyPayService/BeautyResourceMapper来凑数。
+
+| API编号 | 共用合同 | 接入要求 |
+|---|---|---|
+| BAPI-003 | `merchant.store-context` | 列出并切换受权门店/岗位；P1；当前账号,目标门店/岗位 → StoreContextVO与服务端重建权限；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-005 | `product.catalog-and-store-offer` | 共用商品SKU/媒体/上架与门店价维护；P1；productNo,skuNo,storeNo,version → ProductVO/StoreOfferVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-006 | `catalog.sales-calendar` | 维护分组排序与销售时段；P1；StoreSalesCatalogPort.PublishReq(expectedRevision,validFrom,timezone,groups,entries)；当前范围/actor由可信上下文取得 → StoreSalesCatalogPort.Snapshot；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-011 | `quote.configured-options` | 复杂选配与补差报价；P4；正规SKU与选配版本,买家 → QuoteVO须正式合同开放；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-017 | `merchant.roles-and-permissions` | 维护账号门店角色及操作范围；P1；accountNo,storeNo,roleCode,permissionScope → RoleGrantVO不改变业务岗位；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-019 | `identity.session-revoke` | 撤销离职人员关联账号会话；P1；accountNo,reason → SessionRevocationVO与审计；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-030 | `member.identification` | 共用会员码识别/身份核验；P2；memberToken,purpose,storeNo → CustomerIdentityVO非资产扣款授权；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-033 | `member.profile-and-history` | 顾客档案会员关系和受权历史；P1；customerNo,purpose,storeNo → CustomerProfileVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-046 | `booking.deposit-and-penalty-policy` | 定金尾款与违约合同；P4；policyVersion,sourceRef,customerConsent → 合同待定默认关闭；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-068 | `trade.quote-and-create` | 核心报价建单及买家接管；P1；storeNo,buyerRef,skuLines,quoteVersion → OrderVO美业仅记来源引用；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-069 | `payment.initiate-and-query` | 顾客付款和原支付号查结果；P1；orderNo,payMethod,customerConsent → PaymentVO由资金域判定结果；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-070 | `payment.offline-receipt` | 正式合同允许的线下实收确认；P1；orderNo,method,amount,evidence,operator → ReceiptVO禁止代消费者线上确认；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-074 | `cashier.advanced-contracts` | 混合/跨单/后付/定金/免单/改价；P4；已批准政策及原来源,本人授权 → 待正式合同不设执行路由；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-075 | `stored-value.plans` | 共用独立充值方案版本启停；P2；storeNo,planNo,version,scope → RechargePlanVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-076 | `stored-value.recharges` | 创建提交实收确认充值及查原号；P2；customerNo,storeNo,planVersion,receipt → RechargeVO仅正式渠道；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-077 | `stored-value.accounts` | 本店账户目录及余额冻结；P2；storeNo,customerNo,page,size → PageData<StoredValueAccountVO>；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-078 | `stored-value.consumptions` | 本次服务来源全额消费预览/本人确认；P2；sourceRef,storeNo,memberAuthorization → ConsumptionVO不混合补现金；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-079 | `stored-value.history` | 本人门店消费记录及商家统一收支；P2；storeNo,customerNo,from,to,page,size → PageData<StoredValueRecordVO>；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-080 | `stored-value.recovery` | 已收未入账/冻结/扣款未知原号恢复；P2；rechargeNo/consumptionNo,reason → RecoveryVO不手调余额；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-081 | `entitlement.rules` | 共用次数规则适用范围有效期；P4；ruleNo,version,skuScope,quantity,validity → EntitlementRuleVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-082 | `product.treatment-card-offers` | 疗程销售SKU及门店价格；P4；ruleVersion,skuNo,storeNo → StoreOfferVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-083 | `entitlement.sale-and-issuance` | 正式售卡来源及幂等发行进度；P4；salesSourceRef,ruleVersion,customerNo → IssuanceVO发行和收款分别显示；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-084 | `entitlement.eligible-assets` | 本人已持有合格权益和余次；P2；customerNo,storeNo,skuNo → EligibleEntitlementVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-085 | `entitlement.service-consumption` | 本次权益使用预览授权预占核销和恢复；P2；sourceRef,entitlementNo,quantity,customerConsent → EntitlementConsumptionVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-088 | `entitlement.policy-cases` | 有效期次数申诉退转卡延期跨店政策；P4；assetRef,caseType,evidence,approvedPolicy → CaseVO未定政策只登记不执行；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-089 | `promotion.eligible-and-quote` | 查询选择合格券并核心报价核验；P1；buyerRef,skuLines,storeNo → EligiblePromotionVO/QuoteVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-090 | `promotion.campaign-versions` | 活动草稿发布资格预算；P3；campaignNo,version,scope,budget → CampaignVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-091 | `member.tags-and-audiences` | 标签人群及受控经营名单；P3；customerScope,purpose,tagChanges → AudienceVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-092 | `entitlement.grant` | 受权赠券赠次发行查结果；P3；grantSourceNo,ruleVersion,recipients → GrantVO不等同付费售卡；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-093 | `analytics.campaign-conversion` | 活动预约回访转化统计；P3；storeNo,period,campaignNo → CampaignReportVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-094 | `trade.goods-inventory-delivery` | 实物报价库存承诺交付和售后；P1；skuNo,storeNo,quantity,sourceRef → OrderVO/FulfillmentVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-095 | `inventory.stock-operations` | 库存收货调拨盘点；P3；storeNo,skuLines,operation,expectedRevision → StockDocumentVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-096 | `inventory.service-material-use` | 按任务领料和实际耗用；P3；taskNo,skuLines,operator,sourceNo → MaterialUsageVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-097 | `inventory.return-and-scrap` | 退回报损质量处置；P3；originalDocumentNo,lines,quality,reason → InventoryDispositionVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-098 | `inventory.bom-and-cost` | 项目耗材BOM版本及成本差异；P4；serviceSkuNo,bomVersion,period → BomVO/CostReportVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-099 | `aftersale.standard` | 普通交易售后材料审核进度；P1；orderNo,lineNos,reason,evidence → AfterSaleVO不适用于任意资产退款；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-104 | `asset.reversal-contract` | 经正式合同执行资产逆向；P4；originalUseNo,approvedCaseNo,policyVersion → ReversalVO默认关闭；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-111 | `finance.receipt-history` | 读取普通订单/充值/资产消费凭条；P1；sourceRef,customerNo,storeNo → ReceiptVO按阶段开放；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-112 | `cashier.shifts` | 开关班钱箱实盘交接；P3；storeNo,shiftNo,cashCount,expectedRevision → ShiftVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-113 | `finance.business-day-close` | 营业日范围水位日结签核；P3；storeNo,businessDate,watermark,approval → DayCloseVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-114 | `finance.channel-reconciliation` | 逐口径渠道对账；P3；storeNo,businessDate,channel → ReconciliationVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-115 | `finance.settlements-and-cases` | 结算票据费用差异与原号恢复；P3；settlementNo,caseNo,authorizedAction → SettlementVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-118 | `analytics.money-separate-measures` | 现金充值资产消耗余额分口径报表；P3；storeNo,period,currency → MoneyReportVO不可叠加为营收；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-123 | `notification.delivery-and-preferences` | 预约付款通知规则订阅与送达查询；P1；eventRef,templateVersion,recipientScope → DeliveryVO失败不回滚交易；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-129 | `notification.marketing-consent` | 营销订阅频控受众退订；P3；customerNo,channel,purpose,consent → NotificationPreferenceVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-131 | `device.print-routes-and-templates` | 设备路由模板版本与自检；P1；storeNo,deviceNo,templateVersion → PrintConfigVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-132 | `printing.jobs` | 提交打印查询原任务和受控补打；P1；documentNo,deviceNo,originalJobNo?,reason → PrintJobVO未知先查原号；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-133 | `device.terminals` | 终端绑定撤销心跳最小权限；P3；deviceNo,storeNo,accountScope,action → TerminalVO；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-134 | `device.edge-service` | 签到机上门边缘设备协作；P4；deviceSession,identityProof,authorizedIntent → EdgeActionVO不能离线扣资产；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-136 | `audit.scoped-events` | 受控操作审计及代客身份追踪；P1；subjectRef,storeScope,from,to,page,size → PageData<AuditEventVO>不含护理正文；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-140 | `observability.health-and-alerts` | 健康慢请求错误率设备存活与告警；P1；serviceScope,timeRange,traceNo → HealthVO/AlertVO接已有观测设施；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-141 | `governance.privacy-config-backup` | 隐私配置发布备份恢复受控流程；P3；scope,changeNo,purpose,approvalRef → GovernanceJobVO不提供任意表写入；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-142 | `integration.external-booking` | 第三方预约来源映射签名去重冲突；P4；provider,externalNo,revision,signedPayload → ExternalBindingVO需独立合同；按原所有者正式合同，不新增美业同义Java类 |
+| BAPI-143 | `offline.claim-and-sync` | 断网事实认领去重同步；P4；deviceNo,localIntentNo,evidence → SyncClaimVO未验收不开放营业；按原所有者正式合同，不新增美业同义Java类 |
+
+以下方法已逐条与当前源码比对，仅作为复用证据，不表示所有接入合同都已满足：
+
+### ai.neargo.shop.spi.product.GoodsQueryPort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsQueryPort.java)；商品快照复用，最终报价/落单不是此方法。
+
+```java
+Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity);
+```
+
+### ai.neargo.shop.spi.user.StoreDirectoryPort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreDirectoryPort.java)；公开门店解析，不能据此提升账号门店权限。
+
+```java
+Optional<StoreCard> resolve(String no);
+```
+
+### ai.neargo.shop.spi.member.CustomerIdentityPort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/member/CustomerIdentityPort.java)；识别不是消费者扣款同意。
+
+```java
+ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query);
+```
+
+### ai.neargo.shop.spi.storedvalue.StoredValuePort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValuePort.java)；资产持有者合同；美业经正式充值编排，不直接越过实收/授权。
+
+```java
+RechargeView createRecharge(EntitlementContext context, CreateRecharge command);
+```
+
+### ai.neargo.shop.spi.storedvalue.StoredValuePort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValuePort.java)；未知按原号查单；不手调余额。
+
+```java
+RechargeView queryRecharge(EntitlementContext context, String entityNo, String rechargeNo);
+```
+
+### ai.neargo.shop.spi.product.ServiceProductFactsPort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/product/ServiceProductFactsPort.java)；已实现MAIN/CN本店SERVICE商品事实；定价仍在GoodsQueryPort；基础时长来源prd_goods.duration_min；独立服务走公共内部HTTP合同。
+
+```java
+Fact get(String entityNo, String storeNo, String skuNo);
+```
+
+## 六、事务与验收重点
+
+- 首次业务号/请求键、来源guard、业绩/提成首版：依唯一键创建，重复只复用同键同载荷；后续版本锁稳定首版或本域根。并发不以进程内synchronized/分布式缓存锁替代数据库约束。
+- 开工许可：权威来源必须与并发撤销/退款建立许可/围栏；纯“查询已付后写任务开始”存在竞态，缺少正式合同就阻断能力。资源开工/交接也必须有权威结果及原号恢复。
+- 关闭范围：freezeScope后复查任务/绑定版本并锁定对应完成事实；不能只靠工单缓存计数。所有范围变更和任务动作须遵守同一锁序与冻结规则。
+- SourceAllocationGuard唯一键不含sourceRevision，当前门店经来源归属验证；CAS累计分配不超过sourceQty，未知来源不可替换，已消费数量不任意回退。
+- 方法清单检查只证明接口/归属/表列引用一致，不证明SQL锁、HTTP鉴权、审计填充或并发正确。实施需架构扫描覆盖整个美业reactor、Bean/路由测试、隔离库事务并发和跨域故障恢复验证；不得把文档生成通过称为Java编译通过。
+
+## BM03-a1增量实施清单（2026-10-21）
+
+原目标JSON/49任务保持基线；本节是私有V2的内部存储增量，未注册来源provider、Service或预约Controller。完整状态见[主TDD§2.15/§26](../TDD-美业系统-后端开发计划.md)。
+
+| 类 | 实际职责 |
+|---|---|
+| beauty.entity.BtyAppointmentResourceIntent | 原始计划LONGTEXT、命令/来源修订/摘要、决定与对账阶段；继承BaseEntity |
+| beauty.entity.BtyAppointmentResourceFence | 预约永久根、单一活动意图指针及版本；继承BaseEntity |
+| BeautyMappers.AppointmentResourceIntentMapper | scoped command锁读、authorize/reconcile CAS；调用参数不能证明权限或终态真实性 |
+| BeautyMappers.AppointmentResourceFenceMapper | scoped root锁读、acquire/releaseReconciled CAS；不按许可TTL释放 |
+| BeautyMappers.AppointmentMapper | changeSchedule/changeStatus/markArrived统一检查活动fence，含确认/取消 |
+
+以下方法均在原beauty-core包；每个写事务先锁预约根→永久fence→intent，Mapper仅持久化。
+
+```java
+BtyAppointmentResourceFence selectScopedForUpdate(String entityNo, String storeNo, String appointmentNo);
+int acquire(String entityNo, String storeNo, String appointmentNo, String intentNo,
+        long expectedFenceVersion, String actorNo, LocalDateTime updatedAt);
+int releaseReconciled(String entityNo, String storeNo, String appointmentNo, String intentNo,
+        long expectedFenceVersion, String actorNo, LocalDateTime updatedAt);
+BtyAppointmentResourceIntent selectByCommandForUpdate(String entityNo, String storeNo, String commandNo);
+int authorize(String entityNo, String storeNo, String intentNo, long expectedVersion, String decisionNo,
+        LocalDateTime issuedAt, LocalDateTime validUntil, String actorNo, LocalDateTime updatedAt);
+int reconcile(String entityNo, String storeNo, String intentNo, long expectedVersion,
+        int terminalCode, String terminalHash, String actorNo, LocalDateTime updatedAt);
+```
+
+a2仍须实现正式权限、持久预约生成计划、同Binding幂等及可信资源终态核实；本批不增加可调用预约HTTP。
+
+## BM03-a2-1共用核验增量（2026-10-21）
+
+本节为已编码的所有者只读前置，不改变原49任务或160编号；不是完整美业来源授权、预约或终态解冻。
+
+| 模块 / 完整类 | 职责与实际方法 |
+|---|---|
+| shop-base / ai.neargo.shop.spi.user.MerchantOperatorAccessPort | boolean allowed(Query query)；显式租户/主体/店/操作者realm+subjectKind/权限 |
+| shop-base / ai.neargo.shop.spi.resource.ResourceCommandFactsPort | Lookup lookup(ResourceSourceAuthorityPort.Request request)；完整Binding，原命令状态/结果/摘要；不以当前持有头替代历史结果 |
+| shop-base / ai.neargo.shop.spi.resource.ResourceRecoveryInternalApi | Boolean operatorAccess(Query query)；Lookup command(Request request)；PLATFORM内部协议 |
+| shop-merchant / ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl | 实际有效成员、店授权、角色权限精确或裸*匹配；MCH/USR隔离，歧义拒绝，无静态角色兜底 |
+| shop-merchant / ai.neargo.shop.merchant.port.ResourceCommandFactsPortImpl | 实际原command/owner父链，完整Binding比对，REJECTED/SUCCEEDED摘要及ACCEPTED非终态 |
+| shop-merchant / ai.neargo.shop.merchant.mapper.MerchantMappers.OperatorAccessMapper | List<OperatorAccessRow> selectAccess(Query query)；最多2行用于拒绝歧义 |
+| shop-merchant / ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceCommandMapper | ResourceCommandFactRow selectOriginalFact(ResourceCommandScopeRow scope, String commandNo)；只读投影 |
+| shop-app / ai.neargo.shop.portal.internal.InternalResourceRecoveryController | ResponseEntity<?> operatorAccess(Query query,String given) / command(Request request,String given)；先机器令牌、保留错误HTTP状态 |
+| beauty-channel / ai.neargo.shop.beauty.port.RemoteMerchantOperatorAccessPort | boolean allowed(Query query)；真实PLATFORM链路，不把失败当false |
+| beauty-channel / ai.neargo.shop.beauty.port.RemoteResourceCommandFactsPort | Lookup lookup(Request request)；完整返回Binding比对，不把失败当缺失 |
+| beauty-channel / ai.neargo.shop.beauty.config.BeautyMerchantClientConfiguration | 条件缺失时接远程两个Port，embedded仍使用本地owner |
+
+内部Lookup必须显式command字段，允许显式null；缺字段/200错误信封拒绝，未知owner运行异常503；只读OperatorAccessMapper显式@Mapper由宿主实际注解扫描注册。
+
+接口、owner及远程适配均在事务外读取；事实只说明读取时状态，不是来源许可。未新增可授权provider/预约Controller，待a2-2基于真实持久业务计划与来源根锁继续实现。
+
+
+## Task52 BM03端点与独立双向机器协议增量（2026-10-21）
+
+以下仅为已编码/协议测试的增量；原160项设计编号保留。Task53负责实际JAR/进程部署验收，BM04/06未打开。
+
+| API / 方法 | Controller / 实际Service | 状态 |
+|---|---|---|
+| BAPI-010 / `queryAvailability` | ai.neargo.shop.beauty.api.biz.BizAvailabilityController<br>ai.neargo.shop.beauty.service.AppointmentAvailabilityService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-146 / `queryPublicAvailability` | ai.neargo.shop.beauty.api.mp.MpAvailabilityController<br>ai.neargo.shop.beauty.service.AppointmentAvailabilityService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-038 / `previewAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-039 / `createAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-040 / `listAppointments` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-041 / `getAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-042 / `previewAppointmentChange` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-043 / `changeAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-044 / `cancelAppointment` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-045 / `recordNoShow` | ai.neargo.shop.beauty.api.biz.BizAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-147 / `previewMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-148 / `createMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-149 / `listMyAppointments` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-150 / `getMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-151 / `previewMyAppointmentChange` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-152 / `changeMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| BAPI-153 / `cancelMyAppointment` | ai.neargo.shop.beauty.api.mp.MpAppointmentController<br>ai.neargo.shop.beauty.service.AppointmentService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+| `POST /biz/x/beauty/operations/{operationNo}/recoveries`<br>`OperationVO recoverOperation(String entityNo,String currentStoreNo,String actorNo,String operationNo)` | ai.neargo.shop.beauty.api.biz.BizServiceOperationController<br>ai.neargo.shop.beauty.service.ServiceOperationRecoveryService | IMPLEMENTED_TASK52_PROTOCOL_TESTED_DEPLOYMENT_PENDING |
+
+| 内部方法 / 路径 | 所有者 | 请求 | 返回 |
+|---|---|---|---|
+| `POST /internal/beauty/booking/queryAvailability` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.QueryAvailability | AvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/queryPublicAvailability` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.QueryPublicAvailability | PublicAvailabilityVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CreateAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listAppointments` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ListAppointments | PageData<AppointmentSummaryVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetAppointment | AppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewAppointmentChange` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ChangeAppointment | AppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CancelAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recordNoShow` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.RecordNoShow | NoShowVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewMyAppointment | AppointmentPreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/createMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CreateMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/listMyAppointments` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ListMyAppointments | PageData<MyAppointmentVO>；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetMyAppointment | MyAppointmentDetailVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/previewMyAppointmentChange` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.PreviewMyAppointmentChange | AppointmentChangePreviewVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/changeMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.ChangeMyAppointment | MyAppointmentVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/cancelMyAppointment` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.CancelMyAppointment | CancellationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/getOperation` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.GetOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/booking/recoverOperation` | beauty-server / InternalBeautyBookingController | BeautyBookingInternalApi.RecoverOperation | OperationVO；403/409/422/503显式失败；字段及返回对象号校验 |
+| `POST /internal/beauty/appointment-source/freeze` | beauty-server / 实际AppointmentSourceAuthorityPortImpl | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/beauty/appointment-source/query` | beauty-server / 实际AppointmentSourceAuthorityPortImpl | BeautySourceInternalApi.Delegation(identity,request) | Decision；UNKNOWN非许可；完整Binding比对 |
+| `POST /internal/resource-booking/accept` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Acceptance | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/query` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Command | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/execute` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Command | Receipt；错误不作为空事实 |
+| `POST /internal/resource-booking/hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | HoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | Binding | Lookup(Boolean found,Receipt)；错误不作为空事实 |
+| `POST /internal/resource-booking/reconcile-hold` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | BoundHoldQuery | BoundHold；错误不作为空事实 |
+| `POST /internal/resource-booking/candidates` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.Query | List<ResourceFact>；错误不作为空事实 |
+| `POST /internal/resource-booking/capacity` | PLATFORM / InternalResourceBookingController → 共用真实resource owner | ResourceCandidatesPort.CapacityQuery（独立factAt、Replacement完整Binding+Target） | List<Capacity>；错误不作为空事实 |
+| `POST /internal/customer-identity/resolve-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.Request(identity,context,query) | Resolution含完整身份/上下文/query与ResolvedCustomer；远端比对并验证userNo |
+| `POST /internal/guest-registration/register` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Register(scope,RegisterCommand(contact?,displayName?,consent,idempotencyKey)) | Registered(request,Registration(guestNo,claimToken,state,revision))；完整请求回显；服务端随机原凭证，加密持久原键重放 |
+| `POST /internal/guest-registration/get` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Get(scope,guestNo) | Found(request,GuestFact(guestNo,state,userNo?,revision))；完整请求回显，无contact/密文 |
+| `POST /internal/guest-registration/verify` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.Verify(scope,guestNo,claimToken) | Verified(request,GuestFact)；完整请求回显，不提供支付授权 |
+| `POST /internal/guest-registration/claim` | PLATFORM / InternalGuestRegistrationController → MemberGuestRegistrationPortImpl (shop-core/member) | GuestRegistrationInternalApi.ClaimRequest(scope,guestNo,ClaimCommand(verifiedIdentity,claimToken,idempotencyKey)) | Claimed(request,Claim(guestNo,userNo,revision))；完整请求回显，不改绑或创建账号/订单 |
+| `POST /internal/customer-identity/verify-consumer-proof` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.ProofRequest(identity,EntitlementContext,memberCode) | ProofResolution(request,ResolvedCustomer)；完整身份/上下文/原memberCode请求回显，必须解析为当前用户；过期/伪造mc1为400 |
+| `POST /internal/customer-identity/resolve-claim-reference` | PLATFORM / InternalCustomerIdentityController → MemberCustomerIdentityPortImpl | CustomerIdentityInternalApi.ClaimReferenceRequest(identity,EntitlementContext,ReferenceQuery) | ClaimReferenceResolution(request,ResolvedCustomer)；全请求回显核对，不是资金授权 |
+| `POST /internal/beauty/reception/registerGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService | InternalCall<BeautyReceptionInternalApi.RegisterGuest> | InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/claimGuest` | beauty-server / InternalBeautyGuestController → GuestRegistrationService | InternalCall<BeautyReceptionInternalApi.ClaimGuest> | InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CheckIn> | InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/receiveWalkIn` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn> | InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/coordinateReceptionException` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CoordinateException> | InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/issueArrivalChallenge` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge> | InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrderFromAppointment` | beauty-server / InternalBeautyWorkOrderController → AppointmentService | InternalCall<BeautyReceptionInternalApi.OpenAppointment> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/openWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.OpenWorkOrder> | InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getMyWorkOrder` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/checkInMyAppointment` | beauty-server / InternalBeautyReceptionController → ReceptionService | InternalCall<BeautyReceptionInternalApi.CheckInMine> | InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/submitServices` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.SubmitServices> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getBill` | beauty-server / InternalBeautyWorkOrderController → WorkOrderService | InternalCall<BeautyReceptionInternalApi.WorkOrderRef> | InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getSubmission` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/requestSubmissionRecovery` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery> | InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverPending` | beauty-server / InternalBeautySubmissionController → ServiceSubmissionService | InternalCall<BeautyReceptionInternalApi.SubmissionRef> | InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getTrace` | beauty-server / InternalBeautyTraceController → WorkOrderBillService | InternalCall<BeautyReceptionInternalApi.BusinessRef> | InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/getOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationQueryService | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/beauty/reception/recoverOperation` | beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService | InternalCall<BeautyReceptionInternalApi.OperationRef> | InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| `POST /internal/trade/checkout/bound/prepare` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundPrepare> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/readQuote` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/findOperation` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundOperation> | InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result |
+| `POST /internal/trade/checkout/bound/source` | HOST / InternalCheckoutController → actual CheckoutPortImpl | InternalCall<CheckoutInternalApi.BoundSource> | InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result |
+
+| 部署形态 | 唯一来源provider | owner / 装配 |
+|---|---|---|
+| embedded HOST | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | 本地ResourceBookingPortImpl/ResourceCandidatesPortImpl/MemberCustomerIdentityPortImpl/MemberGuestRegistrationPortImpl<br>唯一local source；channel自动配置因core class存在不注册remote source |
+| standalone HOST | beauty-channel / ai.neargo.shop.beauty.port.RemoteAppointmentSourceAuthorityPort | 平台本地真实共用owner；无beauty-core<br>BeautyChannelAutoConfiguration；真实反向BEAUTY目标；四个typed Remote*Service |
+| standalone SERVER | beauty-core / ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl | BeautyMerchantClientConfiguration / RemoteResourceBookingPort,RemoteResourceCandidatesPort,RemoteCustomerIdentityPort,RemoteGuestRegistrationPort<br>core存在；HOST remote source不注册；api默认profile使恢复Job接线 |
+| disabled / ops / no API | disabled无新增source provider | 不改变共用owner<br>public controllers仅api+enabled；恢复Job仅api；独立SERVER默认api且没有beauty-web |
+
+机器身份为shop-base的DelegatedIdentity与shop-base-auth的DelegatedIdentityContext；只在令牌校验后以consumer/merchantByUser/merchant恢复精确命名空间，finally恢复先前上下文。无存储用户名伪造身份。
+BOOKING VIEW或MANAGE可读、MANAGE写；C私有入口显式CONSUMER/USR；公开availability匿名。search incomplete独立ErrorCode80104（三语），内部422保留语义，availability返回complete=false。
+所有远程请求在事务外；Lookup显式found，失败不作为absence；source完整Binding和owner完整返回身份校验，capacity透传独立factAt及完整Replacement。CustomerIdentity只读真实成员所有者，不增加金融许可。
+
+
+## Task55A身份/认领/到店码增量
+
+Task55A+B+C+D local services; D independent review pending. Original 160 identifiers unchanged. HTTP/remote wiring, execution, trade/payment/source submission and deployment remain Tasks56-60.
+
+```java
+GuestRegistrationVO GuestRegistrationService.registerGuest(String entityNo, String storeNo, String actorNo, RegisterGuestReq req, String idempotencyKey)
+GuestClaimVO GuestRegistrationService.claimGuest(String entityNo, String storeNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey)
+ArrivalChallengeVO ReceptionService.issueArrivalChallenge(String entityNo, String storeNo, String actorNo, String idempotencyKey)
+GuestClaimVO GuestRegistrationServiceImpl.recoverClaim(String entityNo, String storeNo, String actorNo, String operationNo) [internal]
+ArrivalVO ReceptionService.checkIn(String entityNo,String currentStoreNo,String actorNo,CheckInReq req,String idempotencyKey)
+MyArrivalVO ReceptionService.checkInMyAppointment(String userNo,MyCheckInReq req,String idempotencyKey)
+ReceptionExceptionVO ReceptionService.coordinateReceptionException(String entityNo,String currentStoreNo,String actorNo,ReceptionExceptionReq req,String idempotencyKey)
+BtyAppointmentOperation ReceptionCoordinator.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key) [internal; null means verified unchanged arrangement]
+HoldEvidence AppointmentCoordinator.currentArrangementEvidence(BtyAppointment root) [internal]
+PreparedWorkOrderScope WorkOrderPreparation.fromAppointment(BtyAppointment root); void verifyLocked(PreparedWorkOrderScope scope) [internal]
+Matched AppointmentMatching.matchFrozen(Scope scope,FrozenAppointmentScope frozen,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,Replacement replacement) [internal]
+WorkOrderVO AppointmentService.openWorkOrderFromAppointment(String entityNo,String currentStoreNo,String actorNo,String appointmentNo,OpenAppointmentWorkOrderReq req,String idempotencyKey) [local override; remote fail-closed default until Task59]
+WorkOrderVO WorkOrderService.openWorkOrder(String entityNo,String currentStoreNo,String actorNo,OpenWorkOrderReq req,String idempotencyKey)
+WorkOrderDetailVO WorkOrderService.getWorkOrder(String entityNo,String currentStoreNo,String actorNo,String workOrderNo)
+MyWorkOrderVO WorkOrderService.getMyWorkOrder(String userNo,String workOrderNo)
+WorkOrderDetailVO WorkOrderQuery.detail(BtyWorkOrder authorizedRoot) [ServiceImpl current access then direct WorkOrderMapper SQL root authorization; projection only]
+PreparedWorkOrderScope WorkOrderPreparation.unassigned(String entity,String store,VerifiedIdentity identity,List<AppointmentItemReq> items) [real directory/P1 definition, no hold]
+BtyAppointmentOperation ReceptionReassignment.reassign(String entity,String store,String actor,String appointment,long revision,List<AppointmentAssignmentReq> assignments,OffsetDateTime startAt,String key,String receptionOperationNo) [single replacement implementation; old overload/delegate retained]
+BtyAppointmentOperation AppointmentPreparation.prepareReception(BtyAppointmentPreparation preview,BtyAppointment target,long expected,String key,String hash,PreparedWorkOrderScope scope,WorkOrderPreparation frozen,String requestEvidence,String receptionOperationNo) [links original outer operation in existing root/fence/current short TX]
+BtyWorkOrderContext WorkOrderContextMapper.selectScoped(String entityNo,String storeNo,String workOrderNo) [MAIN+active+complete scope]
+BtyReceptionOperation ReceptionOperationMapper.selectScopedForUpdate(String entityNo,String storeNo,String operationNo) [permanent original reception row lock]
+BtyReceptionOperation ReceptionOperationMapper.selectOpenedForWorkOrder(String entityNo,String storeNo,String workOrderNo,String operationNo) [SQL exact original context/root/canonical identity + OPEN_WORK_ORDER+BAPI-052/054 or RECEIVE_WALK_IN+BAPI-048, SUCCEEDED; no guessed success]
+WorkOrderVO WorkOrderCoordinator.completedOrThrow(String entity,String store,String actor,String endpoint,String key,String hash,BtyReceptionOperation original,BizException stale) [private; CONFLICT only, exact original namespace/hash/operation SUCCEEDED]
+boolean WorkOrderCoordinator.sameOperation(BtyReceptionOperation expected,BtyReceptionOperation actual) [private; full tenant/entity/store/actor realm-kind/endpoint/key/hash/operation binding]
+PreparedWorkOrderScope WorkOrderCoordinator.preparedForIdentity(BtyAppointment root,PreparedWorkOrderScope prepared,VerifiedIdentity canonical) [private; no historical appointment rewrite, USER bridge only same-scope immutable receipt]
+WalkInVO ReceptionService.receiveWalkIn(String entityNo,String currentStoreNo,String actorNo,ReceiveWalkInReq req,String idempotencyKey)
+WalkInVO ReceptionCoordinator.recoverWalkIn(String entity,String store,String actor,String operationNo) [original verified identity and namespace; current employee]
+Matched AppointmentMatching.matchWalkIn(Scope scope,List<AppointmentItemReq> items,List<AppointmentAssignmentReq> assignments,OffsetDateTime requestedStartAt,Instant observedNow)
+BtyAppointmentOperation AppointmentPreparation.prepareReception(String entity,String store,String actor,String receptionOperationNo) [atomic CREATE preview/root/fence/current/operation/outer link]
+WorkOrderVO WorkOrderCoordinator.openReception(String entity,String store,String actor,String receptionOperationNo) [single C writer, typed WalkInVO result in same transaction]
+WorkOrderVO WorkOrderCoordinator.recover(String entity,String store,String actor,String receptionOperationNo)
+ResourceBookingPort.Hold AppointmentCoordinator.releasedHold(BtyAppointmentOperation release,String expectedHoldNo) [original release receipt/intent/current hold evidence]
+void WorkOrderPreparation.verifyCreateLocked(AppointmentMatching.Matched match) [active local heads must still select original frozen versions before CREATE command commits]
+int ReceptionRecovery.scan() [due qualified RESOURCE_PENDING only, LIMIT50; fresh per-item lease30s and completion retry30s/failure60s; reconcile only]
+List<BtyReceptionOperation> ReceptionOperationMapper.selectResourceRecoverable(LocalDateTime now); int claimResource(String entityNo,String storeNo,String operationNo,long version,LocalDateTime now,LocalDateTime until)
+JobResult ReceptionRecoveryJob.run(JobInvocation invocation) [existing JobHandler, api profile only]
+```
+
+ArrivalChallengeVO(challengeNo,storeNo,code,issuedAt,expiresAt)：SecureRandom32字节43字符；UTC毫秒；固定90秒原键不续期，禁止进入日志/operation/outbox。
+ReceptionAccess/Identity/Preparation/CustomerOwnership：当前CUSTOMER核验、真实GuestRegistrationPort/CustomerIdentityPort、immutable guest/USER intent、同tenant/entity/store receipt归属；sql先过滤再page/count。
+BeautyMappers新增ReceptionOperationMapper.selectScopedForUpdate(entityNo,storeNo,operationNo)及WorkOrderContextMapper/GuestClaimReceiptMapper/ArrivalChallengeMapper继承BaseMapper；entity继承BaseEntity。
+REGISTER直接owner派生完整namespace key；本域无登记operation或低熵联系资料摘要。CLAIM本域成功时receipt+operation+ActionLog+BeautyReceptionStateChanged/outbox同事务。
+ResultUnknown只表示通信结果未知；Remote明确HTTP403/503及NOT_CONFIGURED保持失败；合法owner CLAIMED仅在先存规范USER匹配后允许当前员工补receipt，不冒充原actor。
+真实member/mc1/cr1消费bridge位于shop-app；core owner/resource边界用controlled fixture，非真实资源网络验收。
+Task55B：currentArrangementEvidence按current.arrangementRevision+成功operation.previewNo取原CONFIRM/REPLACE，后续失败receipt不可覆盖；sourceRevision与根revision独立。
+047/154：CONFIRMED→CHECKED_IN；EARLY/ON_TIME/LATE；end到期明确BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE。全namespace幂等，成功重放仍核当前权限；无hold释放/订单核销/工单或任务。
+内部RECEPTION_CHANGE仅CHECKED_IN且无工单/关联task；原不可变定义/requirements/policy/hash/缓冲/数量核验，当前资格/排班/容量；同一个Slot/allocate/occupied有界算法；完整展开itemIndex，新itemNo与old→new日志映射；新时段未来5分钟网格且before buffer未来。
+永久fence acquire/intent authorize SQL仅在current指向PENDING RECEPTION_CHANGE、REPLACE且无工单/task时允许CHECKED_IN。普通CHANGE不扩状态。UNKNOWN原号/current/fence保留，拒绝保旧，成功保留checkedInAt/CHECKED_IN。
+ReceptionPreparation泛化完整endpoint/actor命名空间find/begin，typed ArrivalPayload/ExceptionPayload，无原proof持久化；A claim路径不变。
+053仅append-only ActionLog+原requestNo+实际受影响task及共用安全Outbox，同事务原键重放，无公共审批owner假成功。
+V1–V6冻结不变；55B修复追加V7将assignment资源组合唯一索引改同列普通索引，保留每unit安排号唯一键。就绪/严格manifest为7；其余Mapper守卫SQL、Service/DTO/Bean DAG、host真实member消费及controlled资源fixture边界不变。
+C范围：CHECKED_IN预约原冻结项目或真实未安排SERVICE/P1定义；工单OPEN/scope1，task逐项目PENDING/donevoid0/binding0/UNBOUND/canStartfalse/actualStartnull；无模板伪step/participation。
+C原键：当前BOOKING_MANAGE+CUSTOMER→完整endpoint请求hash→成功原结果；旧revision/过期cr1成功重放，变参冲突；异key同预约输家CONFLICT。REPLACE UNKNOWN持久原outer/derived/appointment operation，不创建范围。
+C最终单TX：root→fence→current→原接待op→稳定去重heads→workOrder/context/tasks/OPEN RECEIVED草稿/log/safeOutbox/op成功；任一失败全回滚。无owner IO/嵌套REQUIRES_NEW。
+CscopeHash显式schema/scope/规范身份/scopeRev/原item或展开index/SKU/原定义hash及typed规则/qtyCOUNT/原policy规则/全部资源份额与时间；不含最终随机业务号、ObservedHeads或临时hold观测revision。context保留完整typed冻结证据与真实task映射；草稿同hash/真实taskRefs，无proof/外部下单指令/nextRetryAt。
+C读取ServiceImpl先当前权限/consumer本人并直接SQL授权root/context编码，再WorkOrderQuery.detail投影真实子行；C guest仅同scope不可变receipt可见。无context仅B legacy UNKNOWN只读，C拒；子行完整活跃父链。
+C修复I1/I2：begin返回SUCCEEDED立即回原result；stale scope CONFLICT只同完整namespace/key/hash及同outer成功重读，当前权限/身份owner错误不吞。新建intent显式tenantNo与DB一致，不放宽namespace比较。REPLACE短TX锁内先SUCCEEDED不改payload/phase/result；完整原绑定RESOURCE_PENDING→OPEN_PENDING，已OPEN_PENDING同binding/openingRevision幂等恢复。
+C修复I3/I4：新052/省略身份054锁外真实guest.get，REGISTERED/revision1/user空；CLAIMED/revision2/user非空须同scope不可变receipt。只规范新prepared，原预约GUEST保留；已有pending取原outer canonical/hash不重生成。最终根/fence/current/outer锁内复用countWorkOrders阻断已有工单或实际task，保留软删历史CAS/唯一键。
+D048 persists RECEIVED canonical identity and stable derived key before matching; atomically links original CREATE preparation before resource RPC; no identity tickets or contact in frozen payload.
+Default start is earliest strictly future five-minute service grid accounting for every raw offset/before-buffer. Selected start, complete plan and command bytes never change during recovery. Expired commands may reconcile, but no new acceptance/arrival/opening; PENDING ARRIVAL_REQUIRES_RESCHEDULE.
+RESOURCE_PENDING -> ARRIVAL_PENDING -> OPEN_PENDING -> SUCCEEDED; sole C writer stores complete WalkInVO plus OPEN/UNBOUND order, PENDING tasks and local OPEN draft in one TX. Unknown resources create no order/task.
+Original-number SQL reads reception first in trusted tenant/entity/store; GET is pure read; action/endpoint pairs determine projection. Current BOOKING_MANAGE+CUSTOMER authorizes recovery by another employee without changing original namespace/canonical bytes.
+Only proven original RESERVE rejection without hold, or confirmed explicit CANCEL/RELEASE of the original hold, closes REJECTED. CONFIRM rejection stays PENDING RESOURCE_RELEASE_REQUIRED until that proof.
+Background qualification before LIMIT50 requires receipt + complete original scope/source/plan/command intent binding. Only existing coordinator.recover; no new accept, guest get, staff identity, check-in or opening. Lease30s, retry30s/failure60s, ORDER BY next_retry_at,id.
+D fix R1: final 048 writer rechecks every original interval after lock acquisition, persisting reschedule-PENDING without scope on expiry; ordinary 052 retains its before-end rule. New CREATE locks active local heads and checks original selected versions without rematching; after all preparation writes, immediately before commit it rechecks every frozen interval against the existing reception Clock, rolling preparation back on expiry and preserving original reschedule-PENDING. Explicit authorization/capability and all nonzero remote HTTP errors propagate; unavailable or unproven release evidence stays PENDING.
+D adds no migration: V1-V7 unchanged, ready7 and 27 private tables. HTTP and remote acceptance remain Task59; deployment debt Task60.
+
+
+## Task58 actual local source submission, binding and bill
+
+Task58 local source kernels accepted; Task59 public/typed Remote code and protocol tests implemented; real-owner deployment deferred. BM05 remains closed.
+
+| Module / owner | Actual signature |
+|---|---|
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO submitForWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO getSubmission(String entityNo, String currentStoreNo, String actorNo, String submissionNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `RecoveryRequestVO requestSubmissionRecovery(String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.ServiceSubmissionService | `ServiceSubmissionVO recoverPending(String entityNo, String currentStoreNo, String actorNo, String submissionNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService | `WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderBillService | `BusinessTraceVO getTrace(String entityNo, String currentStoreNo, String actorNo, String businessNo);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderService | `ServiceSubmissionVO submitServices(String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` |
+| beauty-api / ai.neargo.shop.beauty.service.WorkOrderService | `WorkOrderBillVO getBill(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` |
+
+| DTO record | Actual fields |
+|---|---|
+| `SubmitServicesReq` | `long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source` |
+| `RecoverSubmissionReq` | `long expectedRevision, String reason` |
+| `ServiceSubmissionVO` | `String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote` |
+| `SubmissionTaskVO` | `String taskNo, String skuNo, String definitionVersionNo, BigDecimal qty, String uom, long taskRevision, long bindingRevision, String sourceLineNo, String sourceState` |
+| `SourceObservationVO` | `String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash` |
+| `RecoveryRequestVO` | `String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction` |
+| `WorkOrderBillVO` | `String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons` |
+| `SourceBillVO` | `String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor` |
+| `CurrencyBillVO` | `String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification` |
+| `ReceiptSummaryVO` | `String paymentOperationNo, String paymentNo, String outTradeNo, String receiptNo, String channel, String status, long amountMinor, String currency` |
+| `BusinessTraceVO` | `String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons` |
+| `ManualReceiptSummaryVO` | `String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification` |
+
+| Concrete helper / Bean | Contract |
+|---|---|
+| beauty-core / ServiceSubmissionServiceImpl | Durable endpoint SOURCE_SUBMITTED receipt + immutable intent; original actor/request recovery, leased original operation, no confirm/place/pay. |
+| beauty-core / ServiceSubmissionAccess + ServiceSubmissionQuery | Current MERCHANT MCH/USR grants, original complete parent chain, USER or same-store immutable guest claim receipt; proof never persisted. |
+| beauty-core / ServiceSourceObservation | V8 canonical caller/operation/suborder domain; claim epoch UNKNOWN before unlocked source IO; monotonic highest/verified pairs including superseded higher and trusted UNKNOWN invalidation. |
+| beauty-core / ServiceSourceBinding | Local TX only: observation -> sorted guards -> workOrder -> sorted tasks -> submission; net refundable ceiling vs held local quantity; first binding only, no release. |
+| beauty-core / WorkOrderBillServiceImpl + ServiceSourceFacts | RR keyset manifest then unlocked owner reads, bounded one retry, per-currency exact arithmetic and canonical receipt dedup; no private money ledger. |
+| beauty-core / BeautySourceConfiguration | ConditionalOnBeautyEnabled concrete one-way Bean graph; ObjectProvider CheckoutPort is optional/fail closed, no production owner stub; disabled installs no source beans. |
+
+BAPI-056 namespace: MAIN/entity/store/realm/kind/actor/endpoint/rawKeyHash, excludes derived action/target. Payload includes workOrder and all request fields. BTSK truncated actionNo is compared with full256 namespace/payload. Same TX stores scope/tasks/submission/receipt; duplicate transaction rolls back before original receipt read.
+
+BAPI-073 immutable acceptance and original ServiceOperationRecoveryService dispatch preserve the same submission/checkout number. Another actor cannot claim definitive prepare absence or replay the original short proof.
+
+GET submission/bill may update observation projection and temporarily make READY UNKNOWN; it never binds, confirms, creates an order or initiates payment. Current auth errors propagate; known dependency failure remains incomplete/pending.
+
+Highest revision belongs to one canonical checkout operation, not a cross-operation integer order. Unknown never lowers highest. Superseded trusted UNKNOWN invalidates in-flight tickets even without pair. Complete same highest pair or higher is required for READY.
+
+verified_lines persists only identity/quantity (sourceLine/clientRef/goods/sku/ordered/refundable/uom); dueMinor and receipt amounts remain ephemeral owner facts.
+
+READY is observed local bind eligibility only. Shared owner quantity is historical/net-refund observation, not shared atomic consumption. Binding preserves all historical held quantities. canStart=false; no BM05 execution.
+
+Whole-source money remains visible for trustworthy complete BLOCKED/closed historical owner facts, but partial allocation never becomes work-order attributable money. UNKNOWN due0 projects null. Currency overflow/receipt conflicts/owner partial failure force affected totals incomplete.
+
+Actual embedded HOST CheckoutPort and member owners are exercised by true C HTTP read/confirmation/order/payment and current B cash receipt HTTP. Refund bill test changes controlled owner ledger facts, not a complete reverse API.
+
+Standalone missing checkout provider returns explicit SOURCE_UNAVAILABLE; Task59 must supply real transport wiring. No new Remote or Controller is claimed.
+
+Only actual BEAUTY_SOURCE_CUSTOMER_REQUIRED exception80106 is registered with three languages. Proposed quantity/revision/scope/dependency exception placeholders remain durable safe phases instead.
+
+
+## Task59 BM04 actual public and typed owner protocol
+
+IMPLEMENTED_TASK59_CODE_PROTOCOL_TESTED_DEPLOYMENT_DEFERRED
+
+| API / HTTP | Actual controller / Service signature | Authority |
+|---|---|---|
+| BAPI-031 / `POST /biz/x/beauty/guest-registrations` | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`<br>`GuestRegistrationVO registerGuest(String entityNo, String currentStoreNo, String actorNo, RegisterGuestReq req, String idempotencyKey);` | U |
+| BAPI-032 / `POST /biz/x/beauty/guest-registrations/{guestNo}/claims` | `ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController`<br>`GuestClaimVO claimGuest(String entityNo, String currentStoreNo, String actorNo, String guestNo, ClaimGuestReq req, String idempotencyKey);` | U |
+| BAPI-047 / `POST /biz/x/beauty/arrivals` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`ArrivalVO checkIn(String entityNo, String currentStoreNo, String actorNo, CheckInReq req, String idempotencyKey);` | W + U |
+| BAPI-048 / `POST /biz/x/beauty/walk-ins` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`WalkInVO receiveWalkIn(String entityNo, String currentStoreNo, String actorNo, ReceiveWalkInReq req, String idempotencyKey);` | W + U |
+| BAPI-053 / `POST /biz/x/beauty/reception-exceptions` | `ai.neargo.shop.beauty.api.biz.BizReceptionController`<br>`ReceptionExceptionVO coordinateReceptionException(String entityNo, String currentStoreNo, String actorNo, ReceptionExceptionReq req, String idempotencyKey);` | W |
+| BM04-ARRIVAL-CHALLENGE / `POST /biz/x/beauty/arrival-challenges` | `ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController`<br>`ArrivalChallengeVO issueArrivalChallenge(String entityNo, String currentStoreNo, String actorNo, String idempotencyKey);` | W |
+| BAPI-052 / `POST /biz/x/beauty/appointments/{appointmentNo}/work-orders` | `ai.neargo.shop.beauty.api.biz.BizAppointmentController`<br>`WorkOrderVO openWorkOrderFromAppointment(String entityNo, String currentStoreNo, String actorNo, String appointmentNo, OpenAppointmentWorkOrderReq req, String idempotencyKey);` | W + U |
+| BAPI-054 / `POST /biz/x/beauty/work-orders` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderVO openWorkOrder(String entityNo, String currentStoreNo, String actorNo, OpenWorkOrderReq req, String idempotencyKey);` | W + U |
+| BAPI-055 / `GET /biz/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderDetailVO getWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` | R |
+| BAPI-155 / `GET /mp/x/beauty/work-orders/{workOrderNo}` | `ai.neargo.shop.beauty.api.mp.MpWorkOrderController`<br>`MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo);` | current C + active owner |
+| BAPI-154 / `POST /mp/x/beauty/arrivals` | `ai.neargo.shop.beauty.api.mp.MpReceptionController`<br>`MyArrivalVO checkInMyAppointment(String userNo, MyCheckInReq req, String idempotencyKey);` | current C + own appointment + memberCode + store challenge |
+| BAPI-056 / `POST /biz/x/beauty/work-orders/{workOrderNo}/service-submissions` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`ServiceSubmissionVO submitServices( String entityNo, String currentStoreNo, String actorNo, String workOrderNo, SubmitServicesReq req, String idempotencyKey);` | W + U + O; PREPARE also P |
+| BAPI-071 / `GET /biz/x/beauty/work-orders/{workOrderNo}/bill` | `ai.neargo.shop.beauty.api.biz.BizWorkOrderController`<br>`WorkOrderBillVO getBill( String entityNo, String currentStoreNo, String actorNo, String workOrderNo);` | R + U + O |
+| BAPI-072 / `GET /biz/x/beauty/service-submissions/{submissionNo}` | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`<br>`ServiceSubmissionVO getSubmission( String entityNo, String currentStoreNo, String actorNo, String submissionNo);` | R + U + O |
+| BAPI-073 / `POST /biz/x/beauty/service-submissions/{submissionNo}/recovery-requests` | `ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController`<br>`RecoveryRequestVO requestSubmissionRecovery( String entityNo, String currentStoreNo, String actorNo, String submissionNo, RecoverSubmissionReq req, String idempotencyKey);` | W + U + O |
+| BAPI-137 / `GET /biz/x/beauty/traces/{businessNo}` | `ai.neargo.shop.beauty.api.biz.BizBusinessTraceController`<br>`BusinessTraceVO getTrace( String entityNo, String currentStoreNo, String actorNo, String businessNo);` | R + U + O |
+| BAPI-160 / `GET /biz/x/beauty/operations/{operationNo}` | `ai.neargo.shop.beauty.api.biz.BizServiceOperationController`<br>`OperationVO getOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);` | actual operation family current authorization |
+| BM03-OPERATION-RECOVERY / `POST /biz/x/beauty/operations/{operationNo}/recoveries` | `ai.neargo.shop.beauty.api.biz.BizServiceOperationController`<br>`OperationVO recoverOperation(String entityNo, String currentStoreNo, String actorNo, String operationNo);` | actual operation family current recovery authorization |
+
+| Direction / exact private route | Typed payload / result |
+|---|---|
+| beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>`POST /internal/beauty/reception/registerGuest` | `InternalCall<BeautyReceptionInternalApi.RegisterGuest>`<br>InternalReply<GuestRegistrationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyGuestController → GuestRegistrationService<br>`POST /internal/beauty/reception/claimGuest` | `InternalCall<BeautyReceptionInternalApi.ClaimGuest>`<br>InternalReply<GuestClaimVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/checkIn` | `InternalCall<BeautyReceptionInternalApi.CheckIn>`<br>InternalReply<ArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/receiveWalkIn` | `InternalCall<BeautyReceptionInternalApi.ReceiveWalkIn>`<br>InternalReply<WalkInVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/coordinateReceptionException` | `InternalCall<BeautyReceptionInternalApi.CoordinateException>`<br>InternalReply<ReceptionExceptionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/issueArrivalChallenge` | `InternalCall<BeautyReceptionInternalApi.IssueArrivalChallenge>`<br>InternalReply<ArrivalChallengeVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → AppointmentService<br>`POST /internal/beauty/reception/openWorkOrderFromAppointment` | `InternalCall<BeautyReceptionInternalApi.OpenAppointment>`<br>InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/openWorkOrder` | `InternalCall<BeautyReceptionInternalApi.OpenWorkOrder>`<br>InternalReply<WorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getWorkOrder` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<WorkOrderDetailVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getMyWorkOrder` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<MyWorkOrderVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyReceptionController → ReceptionService<br>`POST /internal/beauty/reception/checkInMyAppointment` | `InternalCall<BeautyReceptionInternalApi.CheckInMine>`<br>InternalReply<MyArrivalVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/submitServices` | `InternalCall<BeautyReceptionInternalApi.SubmitServices>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyWorkOrderController → WorkOrderService<br>`POST /internal/beauty/reception/getBill` | `InternalCall<BeautyReceptionInternalApi.WorkOrderRef>`<br>InternalReply<WorkOrderBillVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/getSubmission` | `InternalCall<BeautyReceptionInternalApi.SubmissionRef>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/requestSubmissionRecovery` | `InternalCall<BeautyReceptionInternalApi.RequestSubmissionRecovery>`<br>InternalReply<RecoveryRequestVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautySubmissionController → ServiceSubmissionService<br>`POST /internal/beauty/reception/recoverPending` | `InternalCall<BeautyReceptionInternalApi.SubmissionRef>`<br>InternalReply<ServiceSubmissionVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyTraceController → WorkOrderBillService<br>`POST /internal/beauty/reception/getTrace` | `InternalCall<BeautyReceptionInternalApi.BusinessRef>`<br>InternalReply<BusinessTraceVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyOperationController → ServiceOperationQueryService<br>`POST /internal/beauty/reception/getOperation` | `InternalCall<BeautyReceptionInternalApi.OperationRef>`<br>InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| beauty-server / InternalBeautyOperationController → ServiceOperationRecoveryService<br>`POST /internal/beauty/reception/recoverOperation` | `InternalCall<BeautyReceptionInternalApi.OperationRef>`<br>InternalReply<OperationVO>; binding + HMAC-SHA256 typed complete request digest + result; strict presence/nullability |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/prepare` | `InternalCall<CheckoutInternalApi.BoundPrepare>`<br>InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/readQuote` | `InternalCall<CheckoutInternalApi.BoundOperation>`<br>InternalReply<CheckoutPort.CheckoutQuote>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/findOperation` | `InternalCall<CheckoutInternalApi.BoundOperation>`<br>InternalReply<CheckoutPort.CheckoutResult>; full binding digest and strict typed result |
+| HOST / InternalCheckoutController → actual CheckoutPortImpl<br>`POST /internal/trade/checkout/bound/source` | `InternalCall<CheckoutInternalApi.BoundSource>`<br>InternalReply<CheckoutPort.CheckoutSourceFacts>; full binding digest and strict typed result |
+
+Public api-only + enabled; embedded actual core, no-core HOST Remote, private SERVER real core with production reverse owners; disabled/ops no new public routes.
+
+Existing static X-Internal-Token and delegated MAIN MERCHANT MCH/USR or CONSUMER USR; no nonce/session transport added. Current HOST token-store authentication and owner live authorization remain authoritative.
+
+InternalCall strict recursive required keys including nullable fields; canonical HMAC independent of ObjectMapper escaping; result includes binding + digest, not incoming contact/proof/raw key. No proof or C token in durable intent/log.
+
+GuestRegistrationVO.claimToken and ArrivalChallengeVO.code remain authorized issuance/replay exceptions. Original past expiry is not rejected by transport.
+
+Opt-in non2xx headers X-Internal-Error-Code and X-Internal-Request-Digest; blank/wrong token401 before digest/authority; bound owner404 differs from transport404; unbound/200error/null/mismatch → dependency unavailable.
+
+Appointment OPEN052/054 canonical052 schema2 stores only original endpoint/fullhash/canonicalhash; schema1 original054/recovery supported; full054 first→minimal052 replay,052 first→nonminimal054409; dual legacy conflict.
+
+Default BizEndpointPermTest scans backend only and excludes this external plugin reactor. No false single-code annotation or PUBLIC grant is introduced; composite permissions are enforced by actual Service policy and owner scopes.
+
+Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptance, which is DEFERRED by the user until unified P1–P4 deployment verification. No Task60 packaged JAR claim.
+
+
+## Task62 BM05 shared current-personnel contract
+
+IMPLEMENTED_TASK62_S0_CODE_TESTED_DEPLOYMENT_DEFERRED_NOT_START_AUTHORITY
+
+| Owner / class | Method |
+|---|---|
+| `ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort` | `Observation current(Query query);` |
+| `ai.neargo.shop.spi.personnel.PersonnelOperatorInternalApi` | `InternalReply<Observation> current(InternalCall<Query> request);` |
+| `ai.neargo.shop.merchant.port.PersonnelOperatorFactsPortImpl` | `Observation current(Query query);` |
+| `ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelAccountMapper` | `List<OperatorPersonnelFactRow> selectCurrentOperatorPersonnel(String tenantNo, String entityNo, String storeNo, String accountNo, LocalDateTime at);` |
+| `ai.neargo.shop.portal.internal.InternalPersonnelOperatorController` | `ResponseEntity<?> current(InternalCall<Query> request, String given);` |
+| `ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPort` | `Observation current(Query query);` |
+
+InternalReply<PersonnelOperatorFactsPort.Observation>; LINKED/UNLINKED, observedAt, nullable personnel; personnelNo, assignmentNo, personnelRevision, assignmentRevision, linkRevision, validFrom, nullable validTo
+
+S0 code and isolated owner/HTTP tests accepted. Canonical current-permission account resolution stays at the personnel owner; accountNo never leaves that owner. No new schema, role seed grant or public API.
+
+Only biz:service:task:self/view/coordinate/approve/close exact purposes. Business-person link, effective assignment and action permission are separate. Authorized absence is UNLINKED; denial or dependency failure is never absence.
+
+Effective assignment: validFrom <= observedAt AND (validTo IS NULL OR observedAt < validTo). NULL validTo means indefinite; JSON key remains required and explicitly nullable. No manufactured future date.
+
+Bound v1 endpoint PERSONNEL_OPERATOR_CURRENT/action CURRENT/target operatorNo; exact MERCHANT realm MCH/USR identity, tenant/entity/store and complete request digest; current authorization outside caller transaction.
+
+Owner uses an RR observation with canonical account consistency checks before/inside/after; not durable service permission. Remote transport is five seconds, bad/absent binding and malformed success fail closed as 80107; opaque owner failures remain503.
+
+No ServiceTask start/fulfillment enablement or canStart change. Final current five suites33/0F/0E/0skip, label17, runner5 and affected current retail/food compilation passed; expiry ablation/restoration is explicitly versioned. Focused bean-registration tests do not prove deployed profiles. Formal deployment remains deferred.
+
+
+## 现金线下核心：共用人工订单准入（Task64 M1）
+
+IMPLEMENTED_TASK64_M1_CODE_TESTED_REVIEWED_NOT_DEPLOYED
+
+主TDD§0.3/2.41/2.42；ADR050；Task63现金线下核心设计§1–4/8–10；不改变原160目标API编号
+
+| Owner / class | Method |
+|---|---|
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request);` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `ManualAdmissionView confirm(CheckoutScope scope, ConfirmManualReceipt request);` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `ManualAdmissionView query(CheckoutScope scope, ManualLookup request);` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `ManualSourceFacts source(CheckoutScope scope, SourceLookup request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `int recoverPending(int limit);` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `Disposition confirmOriginal(Confirmation command);` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `Disposition observeOriginal(Lookup query);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualAdmissionView confirmForOrder(CheckoutScope scope, String orderNo, ConfirmManualReceipt request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualAdmissionView queryForOrder(CheckoutScope scope, String orderNo, ManualLookup request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualSourceFacts sourceForOrder(CheckoutScope scope, String orderNo, SourceLookup request);` |
+| `ai.neargo.shop.trade.mapper.ManualAdmissionMapper` | `int afterSaleConflicts(String sub);` |
+| `ai.neargo.shop.auth.BoundActionContext` | `boolean present();` |
+| `ai.neargo.shop.auth.BoundActionContext` | `void require(InternalCall<?> expected);` |
+| `ai.neargo.shop.product.service.StockDispositionService` | `Disposition confirmOriginal(Confirmation command);` |
+| `ai.neargo.shop.product.service.StockDispositionService` | `Disposition observeOriginal(Lookup query);` |
+| `ai.neargo.shop.inventory.service.ReservationDispositionService` | `Disposition confirmOriginal(Confirmation command);` |
+| `ai.neargo.shop.inventory.service.ReservationDispositionService` | `Disposition observeOriginal(Lookup query);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualAdmissionView confirm(CheckoutScope scope, ConfirmManualReceipt request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualAdmissionView query(CheckoutScope scope, ManualLookup request);` |
+| `ai.neargo.shop.trade.service.ManualServiceAdmissionService` | `ManualSourceFacts source(CheckoutScope scope, SourceLookup request);` |
+| `ai.neargo.shop.trade.order.refund.service.RefundExecutionStore` | `OrdRefundExecution currentSource(String no);` |
+| `ai.neargo.shop.trade.order.refund.service.RefundExecutionStore` | `static OrdRefundExecution requireFunded(OrdRefundExecution row);` |
+| `ai.neargo.shop.trade.order.mapper.RefundExecutionMapper` | `int fundedSource(String order, String sub, String afterSale, String tenant, String entity);` |
+
+精确类/DTO/Mapper/SQL/AC清单：主TDD§2.42及Task63设计§9；原160目标编号不变。
+
+M1仅已识别真实顾客、普通正价单店SERVICE/STORE_VERIFY/COUNT；C购买确认不等于在线支付，不冒充C，临客M2仍属本阶段必做。
+
+MANUAL_OFFLINE只由专用服务器操作持久；旧在线/资产/正式资金来源不能改标签降级。商品/价格/门店/业务资格仍复用，支付渠道配置/资金查询/点数协调不作为人工模式前置。
+
+受权现金经办人+CASH_RECEIVE+trade:manual-service:confirm；原额/CNY/时间/作用域及原键幂等校验，真实声明可推进人工PAID；不调用旧markPaid或发布普通金融已付事件。
+
+原库存命令已接受或void调用成功不等于成功结果；必须读取冻结原权威、生命周期及完整行数量的一致终态；未知保留原号和实收声明，不能ADMITTED。
+
+人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。原订单详情仅业务状态，专用B查询/source提供人工声明；M2前台账单/展示整合必须显式区分人工登记与Pay核验，开放完整现金闭环前完成，M1不声称页面/全部资金看板已实现。
+
+PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。退款编排的实际派发/查询/成功回调核验和现金、点数两类独立资源恢复都须在外部效果前，以短事务按子单优先锁序核对当前来源及原执行/任务身份；导入矛盾原记录持久保留冲突，不得访问Pay、释放/恢复库存或记成功。扫描排除冲突不能替代直接入口门禁；跨所有者IO不持Core根/执行/任务锁，保留普通资金所有者本地事务。
+
+Task64 M1已完成代码、分版本定向验证和独立审查；正式部署未执行，M2～M7完整核心尚未完成。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。
+
+远程人工CONFIRM仅在机器凭证和精确路由通过后安装的BoundActionContext中接受：绑定完整原请求digest/作用域/操作，随后查当前CASH_RECEIVE+MANUAL_CONFIRM同一真实账号；上下文finally恢复，不转发HOST或C令牌。HOST入口及原正式现金接口仍要求真实当前会话；通用delegation不能替代现金授权。
+
+绑定返回还须对应完整原操作：所有operation相等，quote/source门店和实体相等，指定subOrder/declaration相等，CONFIRM返回的原method/amount/currency/receivedAt必须相等（不豁免AWAITING_RECEIPT）；结构合法但对应错误仍为依赖不可用。
+
+本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。
+
+
+## 柜台购买与人工来源增量（M2分阶段实施状态）
+
+M2B_M2C_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
+
+主TDD§0.4/§2.45–§2.47。Task67及Task68A/B1/B2/C均已编码、编译或语法检查并独立静态复审；C的45Node/53Java用例、golden及旧意图材料生产均未运行。三行业编译通过，统一测试部署后置，canStart=false，Pay后置。
+
+| Owner / class | Planned method |
+|---|---|
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort` | `CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request)` |
+| `ai.neargo.shop.spi.member.CustomerIdentityPort` | `ResolvedCustomer resolveCounterReference(EntitlementContext context, CounterReferenceQuery query)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `CurrentClaim currentClaim(ConsumerScope scope, GuestRef guest)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `List<CurrentClaim> currentClaims(ConsumerScope scope)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReservationView reserveOriginal(Reservation command)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReservationView observeReservation(ReservationLookup query)` |
+| `ai.neargo.shop.spi.product.StoreSalesCatalogPort` | `Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at)` |
+| `ai.neargo.shop.spi.product.GoodsQueryPort` | `Map<String,SkuSnapshot> snapshotForCounter(CustomerParty party, List<String> skus, Map<String,String> stores)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `CounterQuoteSnapshot quoteManualFor(CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `CounterOrderPlan stageCounterConfirmedFor(CustomerParty party, CreateOrderCommand command, String key, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.service.CheckoutOrderWriter` | `OrderVO createCounterConfirmedFor(CustomerParty party, CounterOrderPlan plan, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `CheckoutPricingScope counterContext(CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `void requireCounterMatches(CounterPurchaseAuthorization authorization, CheckoutEconomicSnapshot economic)` |
+| `ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard` | `void completeCounter(CounterPurchaseAuthorization authorization, String orderNo, String subOrderNo)` |
+| `ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService` | `CheckoutResult place(CheckoutScope scope, PlaceCounterReq request)` |
+| `ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService` | `int recoverPending(int limit)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `CounterOrderPlan registerCounter(CounterOrderPlan plan, CounterPurchaseAuthorization authorization)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `void recordCounterReservation(String orderNo, long intentRevision, ReservationView reservation)` |
+| `ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService` | `OrdCreateIntent findCounter(String operationNo)` |
+| `ai.neargo.shop.trade.order.service.query.OrderCustomerAccess` | `CustomerReadScope currentReadScope()` |
+| `ai.neargo.shop.trade.order.service.query.OrderCustomerAccess` | `void requireReadable(OrdOrder order, CustomerReadScope scope)` |
+| `ai.neargo.shop.trade.order.service.query.StoreOrderReadStore` | `StoreOrderMaterial findReadable(String orderNo, CustomerReadScope scope)` |
+| `ai.neargo.shop.trade.order.service.query.StoreOrderReadStore` | `PageData<StoreOrderMaterial> pageReadable(CustomerReadScope scope, StoreOrderQuery query, long page, long size)` |
+| `ai.neargo.shop.beauty.policy.ServiceSubmissionAccess` | `CustomerParty manualParty(BtyWorkOrderContext context, CounterCheckoutQuote quote)` |
+| `ai.neargo.shop.beauty.policy.ServiceSubmissionAccess` | `CustomerParty manualParty(BtyWorkOrderContext context, ManualSourceFacts facts)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `ManualObserved observeManual(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation manualHistory(ManualCanonical source)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation invalidateManual(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `PlaceholderTicket claimManualPlaceholder(ManualCanonical source, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation adoptManualPlaceholder(ManualCanonical source, ManualSourceFacts facts, PlaceholderTicket ticket, String actorNo)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceBinding` | `Result bindManual(BtyServiceSubmission submission, Command command, ManualObserved observed, String actor)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int adoptManualPlaceholder(BtySourceObservation row, long expectedVersion, long epoch)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int completeManualObservation(BtySourceObservation row, long expectedVersion)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int allocateManualObservedQuantity(String entityNo, String storeNo, String guardNo, long expectedVersion, long sourceRevision, String sourceHash, long epoch, BigDecimal incrementQty, BigDecimal netQuantity, String actorNo, LocalDateTime updatedAt)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> amounts)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `void requireCounterSelection(CustomerParty party, Discount discount)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `Map<String,Long> counterFlashPrices(CustomerParty party, Collection<String> skus)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `Map<String,GiftRule> counterGiftRules(CustomerParty party, Collection<String> skus)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `void commitCounter(CustomerParty party, String orderNo, Discount discount)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterChoices(List<MerchantAmount> amounts, Map<String,String> choices)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `ClaimedCustomer resolveClaimedCustomer(Scope scope, String guestNo, String claimToken)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReleaseView releaseOriginal(ReservationLookup request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerResolver` | `CounterCustomerResolution resolveBound(CheckoutScope scope, PrepareCounterReq request)` |
+| `ai.neargo.shop.beauty.policy.ReceptionIdentity` | `String customerMember(String entity, String store, String memberNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | `BtyWorkOrder selectClaimedCandidate(String userNo, String workOrderNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | `BtyWorkOrder selectClaimed(String entityNo, String storeNo, String guestNo, String workOrderNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int refreshManualSnapshot(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, long newSourceRevision, BigDecimal newSourceQty, String sourceHash, String actorNo, LocalDateTime updatedAt)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `boolean hasAllocations(String entityNo, String sourceNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int claimManualObservation(BtySourceObservation row, long expectedVersion)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation.SourceDomainConflict` | `String reasonCode()` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `CounterCandidates counterCandidates(CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices)` |
+| `ai.neargo.shop.spi.marketing.CampaignPort` | `void requireCounterSelection(CustomerParty party, List<MerchantAmount> originalGroups, Map<String,String> originalChoices, CounterActivitySeal originalSeal, Discount originalSelected)` |
+| `ai.neargo.shop.marketing.port.CampaignPortImpl` | `CounterCandidates evaluateCounter(CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices, long ownerNowMillis)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterChoices(List<MerchantAmount> groups, Map<String,String> choices, long ownerNowMillis)` |
+| `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterPriceEffects(List<MerchantAmount> groups, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignFence` | `void lock(String tenant, List<String> entityNos)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignFence` | `void validateSchema()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `Long lockShared(String tenant, String kind, String no)` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `int ensure(String tenant, String kind, String no)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `CounterQuoteSnapshot readQuoteSnapshot(String pricingJson)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `CheckoutEconomicSnapshot readQuote(String pricingJson)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `CounterOrderPlan readPlan(String counterPlanJson)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `String writeQuote(CounterQuoteSnapshot quote)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `String writePlan(CounterOrderPlan plan)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `String planHash(CounterOrderPlan plan)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `boolean legacyZero(CheckoutEconomicSnapshot economics, CreateOrderCommand command)` |
+| `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec` | `void requireQuoteHash(CustomerParty party, List<CheckoutLineReq> originalLines, CheckoutEconomicSnapshot economics, String persistedQuoteHash)` |
+| `ai.neargo.shop.trade.service.impl.ManualServiceAdmissionServiceImpl` | `private void requireAdmissionEconomics(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child, OrdCheckoutQuote quote, CheckoutEconomicSnapshot economics, List<OrdCheckoutLine> sourceLines, List<OrdItem> originalItems)` |
+| `ai.neargo.shop.trade.service.impl.ManualServiceAdmissionServiceImpl` | `private void requireDeclarationEconomics(OrdManualServiceAdmission declaration, Facts facts)` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<Map<String,Object>> columns()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<Map<String,Object>> table()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<Map<String,Object>> ownerIdentityBindings()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<String> primaryKey()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<Map<String,Object>> checks()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `long hasCheckEnforcementColumn()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<String> checkEnforcement()` |
+| `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper` | `List<Map<String,Object>> triggers()` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignFence` | `void afterSingletonsInstantiated()` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static List<MerchantAmount> canonicalGroups(List<MerchantAmount> groups)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static Map<String,String> normalizeChoices(List<MerchantAmount> groups, Map<String,String> choices)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static List<CounterChoice> resolveChoices(List<MerchantAmount> groups, Map<String,String> choices)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static CounterActivitySeal seal(ObjectMapper json, CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices, List<CounterRule> selectedRules)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static String sealDigest(ObjectMapper json, CounterActivitySeal seal)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static void requireSeal(ObjectMapper json, CounterActivitySeal seal)` |
+| `ai.neargo.shop.spi.marketing.CounterCampaignContract` | `static void requireSelection(ObjectMapper json, CounterActivitySeal seal, CustomerParty originalParty, List<MerchantAmount> originalGroups, Map<String,String> originalChoices, Discount originalSelected)` |
+| `ai.neargo.shop.marketing.port.CampaignPortImpl` | `void lockCounter(List<MerchantAmount> groups)` |
+| `ai.neargo.shop.marketing.port.CampaignPortImpl` | `void requireCounterEvidence(CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices, CounterActivitySeal seal, Discount selected)` |
+| `ai.neargo.shop.marketing.port.CampaignPortImpl` | `void requireSameCounter(CounterActivitySeal original, CounterCandidates current)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static List<String> goodsNos(ObjectMapper json, String raw)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static boolean active(MktCampaign row, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static boolean supportedEligible(MktCampaign row, List<String> goodsNos, MerchantAmount group, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static boolean scopedFullCutEffect(MktCampaign row, List<String> goodsNos, MerchantAmount group, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static boolean mandatoryPriceOrGiftEffect(MktCampaign row, List<String> goodsNos, MerchantAmount group, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static CounterRule selectedRule(MktCampaign row, List<String> goodsNos, MerchantAmount group, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static AppliedActivity candidate(MktCampaign row, List<String> goodsNos, MerchantAmount group, long ownerNowMillis)` |
+| `ai.neargo.shop.marketing.campaign.CounterCampaignRules` | `static CounterActivitySeal seal(ObjectMapper json, CustomerParty party, List<MerchantAmount> groups, Map<String, String> choices, List<CounterRule> selectedRules)` |
+
+实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。
+
+有效报价固定prepare时的真实顾客身份；报价后认领不重写历史GUEST，新的报价查询会员当前事实。USER无真实所有者版本时counter identityRevision允许空，GUEST必须真实revision；旧C/M1哈希保持。
+
+共用原报价/确认/订单/明细/来源行/creation intent/库存，不新增会员购买见证或美业金额账。STOCK_RESERVE_V1与STOCK_CONFIRM_V1区分，丢响应只查/恢复原号；CREATED重试不反向锁既有parent。
+
+人工观察使用独立manual epoch/hash/verified pair。既有空UNKNOWN占位仅在权威来源核验、无金融证据/绑定/占用后同一行一次性adopt；V9条件SQL和旧写防护不抹除真实funded证据。
+
+MANUAL_EXISTING使用ManualSourceFacts身份重载，支持M1 USER/C及counter USER/GUEST，不伪造CounterCheckoutQuote；保留旧V2提交，升级用例必须保留其active门禁场景。
+
+账单明确MANUAL_DECLARATION/NOT_APPLICABLE_MANUAL，人工金额单列，既有金融核验不被改成READY。MP155与C订单认领读取由会员当前所有权核验，历史party不改。
+
+初期优惠仅既有mkt_campaign FULL_CUT，复用原分摊及最终经济封印；账户/积分/卡券/pmt/FLASH/GIFT不支持时明确拒绝，不静默丢弃，不允许零价。
+
+所有具体DTO/Controller/Service/Mapper、候选字段、旧写兼容、AC→方法和有限验证见[冻结实施设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)。服务接口独立声明，不能extends SPI Port。M3许可/M4占用/M5作业/M6履约/M7日历后续，Pay链条暂缓。
+
+Task66源码修正（待代码审查，非Task65追认）：Guest.claim不创建门店会员，显式CLAIMED_GUEST selector经现有会员核验原token/CLAIMED/当前active user后解析为USER，无C会话、不自动建membership/person、不把guest号放member号；既有GUEST报价不改。完整约束与真实无会员用例见[Task66 brief](../../../.superpowers/sdd/beauty-backend/task-66-brief.md)末尾。
+
+Task66源码补充（待代码审查，非Task65追认）：原号补偿新增StockDispositionPort.releaseOriginal(ReservationLookup):ReleaseView，按冻结authority调用原所有者；仅完整真实RELEASED/EXPIRED证明可终结。既有intent status/版本化JSON保存COMPENSATING/RELEASED及原证据，无新DDL；DUAL原预留/释放须复用既有shadow outbox生产。完整合同见Task66 brief末尾。
+
+Task66实际嵌套调用修正（待代码审查）：HOST CounterCustomerOwnerBridge先验证完整COUNTER_PREPARE，再经实际会员Controller的既有token-first绑定生命周期调用不同会员目的，逐字核对原请求/返回并恢复外层证明。Core仅在真实bound USER/CLAIMED_GUEST场景消费该resolver，缺桥关闭；不修改generic auth、造会话或放宽目的，不新增HTTP/secret/角色。
+
+Task66收银交接修正（待代码审查）：已确认原订单的place幂等键使用经核对的原operation/confirmation authority namespace；当前收银员仍独立通过全部现时权限/账号/门店及IO后复核。允许A待恢复→授权B继续原订单及双方重试，不改原接受人、顾客或凭据，不允许更换requestKey/payload；真实回归先取得业务断言RED。
+
+Task66实际映射修正（代码已验收）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
+
+Task66实际库存诊断修正（代码已验收）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
+
+Task66独立审查I1修复：readCounterQuote在共用所有者边界必须验证完整COUNTER_READ/InternalCall<Scoped<OperationRef>>（当前身份、endpoint/action/target、完整scope/body），无bound时必须真实MERCHANT token/session校验；继续仅要求CHECKOUT_PREPARE和ORDER_VIEW及当前账号/门店，不追加CASH_RECEIVE/MANUAL_CONFIRM，不改变授权新收银员读取原订单的能力。读取前拒绝原始delegation、错误purpose/body/operation/scope。复用既有策略的完整绑定/真实token逻辑，保持其他购买/收款权限与既有哈希。
+
+Task67 M2b准备增补：工单OpenWorkOrderReq追加可选memberNo，仅未指定预约开单；沿真实共用会员所有者识别USER，不造C凭证。旧构造、空字段序列化/指纹及预约身份语义不变。V9同步四个schema启动校验所有者；嵌入仍平台主数据源，第三schema仅隔离V8→V9测试。人工来源V3与MP155当前认领证明已实现并分批验证，仍待有效消融与独立审查；SOURCE_DOMAIN_CONFLICT为内部安全诊断，HTTP冲突结构不变，拒绝时不改资金来源行；canStart=false。
+
+Task67实际Mapper签名对账：人工分配沿既有COUNT原子算法保留增量、当前净可用数量和actor/time审计参数（11参数），不是新数量账本；补录claim/refresh/hasAllocations及当前认领候选/精确读取方法，内部SOURCE_DOMAIN_CONFLICT原因不扩展HTTP字段。
+
+Task67当前DTO：ServiceSubmissionVO(String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceObservationVO(String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceBillVO(String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：CurrencyBillVO(String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。
+
+Task68/C02补充方案：[选择、封存、候选展示、最终仲裁与收款核验](../../../.superpowers/sdd/beauty-backend/task-68-design-addendum.md)。原Task65冻结设计保留，冲突以本补充和主TDD§0.4为准；新增内部方法为待编码清单，不能视为已经实现。
+
+choices只接受真实entity/store键，冲突别名BAD_REQUEST，foreign含NONE不可用；省略AUTO、NONE显式退出、指定合格非最优FULL_CUT均可。仅空goodsNos商家FULL_CUT；完整合格候选及最终NONE映射既有promotions，无新HTTP/DTO字段；其他机制依适用性明确拒绝。
+
+CounterActivitySeal(schema=1,policy=LEGACY_FULL_CUT_V1,party,groups,requestedChoices,resolvedChoices,selectedRules,digest)保留真实version/值/范围/时效；CheckoutEconomicSnapshot仅追加属性级NON_NULL可空seal，精确保留旧18参数构造及旧hash。CounterQuoteSnapshot(schema,economic,promotions)封存在原pricing_json，展示不进经济hash/计划hash；读和原键重放不重新查询候选。
+
+最终共用marketing平台S→排序entity S fence，READ_COMMITTED同主库；相关旧SQL/新增/版本/明细/平台报名由数据库触发器X协调。新V543及descriptor缺失或漂移则本能力不可用，普通零售/M1不随之失效；不使用选中行FOR UPDATE代替空集合防护。
+
+旧schema0报价/待恢复计划只从原持久化操作与确认导出FROZEN_M2A_ZERO，保留旧零优惠/基价/hash/原库存；新促销不能重定价旧意图，当前基价/权限变化仍拒绝。golden必须来自真实旧序列化器，现仅固定旧源码/类，生成与对比后置统一B。
+
+收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。
+
+迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。
+
+Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_no及三项head/enrollment entity_no的有效列collation一致，结构校验逐列证明；scope_kind及不可变键仍字节精确。数据库默认不等于有效历史列，任一不一致关闭新能力。原binary tenant/scope设计由主TDD§2.47限定裁决覆盖，旧迁移不改、既有大小写/重音变体不静默忽略。
+
+Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。
+
+Task68B限定设计复审PASS/APPROVED：共享纯SPI CounterCampaignContract统一groups/choices/seal形状与摘要，promotion/trade只依赖SPI，marketing不引用trade哈希，禁止新增私有跨域依赖或known-*豁免。真实SQL范围查询建立旧表身份变体→唯一规范group的归属；冻结原始rule事实及规范applied/share，消费后核验冻结映射，不再查询当前营销。B1精确9源码先实现协议/codec兼容基础，B2精确14源码完成owner报价与现金准入，C补有限runner；均只编码编译，运行统一B。
+
+Task68B1精确9源码已编码编译和静态复审，18项测试仅编写/编译。R0 I1兼容夹具丢失原选择已限定修复；schema1计划保留原typed party/choices，旧baseline构造不变。真实writer/reader/owner/cash在B2接入，6份golden仍待B真实生成；本片不开放优惠业务或执行许可。
+
+源码方法对账补充：共用方法增量登记100项，补齐实际owner组合的lockCounter/requireCounterEvidence/requireSameCounter及本域CounterCampaignRules八个纯静态方法。evaluateCounter先由既有HOST Router或legacy入口取得owner fence，单次时间贯穿组合；这些是现有拥有方内部方法，不新增HTTP或跨域私有依赖。规范groups/choices/seal摘要仍唯一由SPI提供，guard从codec+原/实际经济比较取得组/数量/总价证明，不再造重复counterGroups。
+
+Task68B2精确14源码已编码编译与静态复审：候选/封存/原计划/现金准入串联真实共用拥有方；普通零售/M1读取及来源hash保持。R0三项测试问题经R3关闭，17项场景仅编写编译，非运行成功。别名实际SQL等价、双行总额不变分摊负例已补齐；prd_sku库存断言只对应PLATFORM，不能推导INVENTORY/DUAL已验证。真正旧Task66生产器四份产物与六份旧序列化golden仍由C整理/B执行，不能用假记录替代。
+
+
+## 服务执行数量授权（M3，合同、已编码与计划状态分别列示）
+
+M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED
+
+主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。
+
+| Owner / class | Planned signature | Slice / state |
+|---|---|---|
+| `ServiceExecutionPort` | `Grant prepare(PrepareExecution command)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionPort` | `Grant query(ExecutionLookup lookup)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionPort` | `Grant queryOriginal(ExecutionLookup lookup)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent freeze(FreezeStart command)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent inspect(StartIntentLookup lookup)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent inspectOriginal(StartIntentLookup lookup)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionContract` | `String bindingHash(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceTaskExecutionService` | `ExecutionPreparation prepareTask(FreezeStart command)` | A2 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceTaskExecutionService` | `ExecutionPreparation queryTask(StartIntentLookup lookup)` | A2 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceExecutionService` | `int requestSuspendLocked(ExecutionCoordinates coordinates, String reason)` | A3 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceExecutionService` | `int recoverPending(int limit)` | A5 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceTaskExecutionService` | `int recoverPending(int limit)` | A5 / PLANNED_NOT_IMPLEMENTED |
+| `Beauty.ServiceExecutionFenceCoordinator` | `void onManualCompletionLocked(BtySourceObservation row, long appliedEpoch, String actor)` | A2 / PLANNED_NOT_IMPLEMENTED |
+| `Core.ServiceExecutionServiceImpl` | `boolean applySourceSuspensionLocked(ExecutionBinding binding, SourceSuspension proof)` | A3 / PLANNED_NOT_IMPLEMENTED |
+| `Core.ServiceExecutionSchemaVerifier` | `void requireAvailable()` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `Beauty.ServiceExecutionSchemaVerifier` | `Installation installation()` | A2 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceExecutionContract` | `String payloadHash(ExecutionBinding binding, OperatorPersonnelFact personnel, String operatorNamespaceHash, String resourceCommandNo, String resourceCommandHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String intentHash(StartIntent intent)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String bindingJson(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String suspensionJson(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String actionHash(ExecutionBinding binding, String kind, String actionNo, long expectedGrantRevision, String actorNamespaceHash, StartIntentLookup proof, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String suspensionHash(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `void requireSuspensionBinding(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `void requireTaskQuantity(BigDecimal quantity, String uom)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String canonical(Object value)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdCheckoutLine lockLine(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution find(ExecutionScope scope, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution lockExecution(ExecutionScope scope, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `List<OrdServiceExecution> lockSourceExecutions(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution findKey(ExecutionScope scope, String keyHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int insertPrepared(OrdServiceExecution row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int requestSuspend(ExecutionBinding binding, String bindingHash, long expectedVersion, String reason, LocalDateTime retryAt)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int claimObservation(ExecutionScope scope, String executionNo, long expectedVersion, long expectedEpoch, LocalDateTime now, LocalDateTime leaseUntil)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int applyObservation(ExecutionScope scope, String executionNo, String bindingHash, long expectedVersion, long expectedEpoch, String actionNo, String actionHash, String reason, LocalDateTime retryAt)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `List<OrdServiceExecution> pending(LocalDateTime now, LocalDateTime afterRetryAt, long afterId, int limit)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `List<OrdServiceExecutionUnit> lockLineUnits(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `OrdServiceExecutionUnit findTask(ExecutionScope scope, String taskNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `int insertBound(OrdServiceExecutionUnit row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `int reserve(ExecutionBinding binding, long expectedVersion)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `QuantityFacts quantity(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `OrdServiceExecutionAction findKey(ExecutionScope scope, String executionNo, String kind, String keyHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `int insertPending(OrdServiceExecutionAction row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `int finalizeResult(ExecutionScope scope, String executionNo, String actionNo, String actionHash, long expectedVersion, long expectedEpoch, String state, long resultRevision)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `Core.ServiceExecutionSchemaVerifier` | `Installation installation()` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `String digest(Call<?> call)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void require(Call<?> call, Reply<?> reply)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void requireRoute(Call<?> call, String endpoint, String action, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void requireCoordinates(Call<?> call, String tenant, String entity, String store)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `<T> Reply<T> reply(Call<?> call, T result)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+
+共用Core拥有订单行Q及永久(sourceLineNo,unitOrdinal)→task关联，美业不复制订单或数量账；任务仅支持精确COUNT1，1.000000合法，聚合及小数历史不猜测拆分。
+
+永久单位与尝试分离，换键/取消重建/新绑定不得复用他人单位；reserved+performed+voided<=ordered，UNKNOWN保留单位与原号，M3仅attempt1/PREPARED/query/suspend。
+
+START意图在美业本地提交后才调用Core；当前SELF/真实人员任职必须重验，原号机器查询不保存或重放人工身份。
+
+实际completeManual证据异常在同一事务持久挂起；三处pre-owner刷新只产生PENDING，未变化有效结果恢复连续性，不能抹除真正的既有挂起。
+
+Core锁父单→排序子单→来源行/单位/授权→操作/声明明细，真正失效写入同根协调；旧sourceHash/schema0/seal与柜台经济结果字节不改。
+
+V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。
+
+Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。
+
+M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。
+
+5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。

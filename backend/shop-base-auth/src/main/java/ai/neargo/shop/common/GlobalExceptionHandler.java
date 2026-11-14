@@ -1,6 +1,8 @@
 package ai.neargo.shop.common;
 
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
+import ai.neargo.shop.common.captcha.CaptchaRequiredException;
+import java.util.Map;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -43,6 +46,12 @@ public class GlobalExceptionHandler {
             ErrorCode.TOKEN_EXPIRED.code(),       // 10402 登录过期
             ErrorCode.FORBIDDEN.code(),           // 10403 没权限 / 不在数据域里
             ErrorCode.BIZ_ROLE_FORBIDDEN.code()); // 70006 B 端角色不够
+
+    @ExceptionHandler(CaptchaRequiredException.class)
+    public ApiResult<Map<String, Object>> onCaptcha(CaptchaRequiredException e) {
+        return new ApiResult<>(e.errorCode().code(), Messages.get(e.errorCode().msgKey()),
+                e.details());
+    }
 
     @ExceptionHandler(BizException.class)
     public ApiResult<Void> onBiz(BizException e) {
@@ -107,6 +116,13 @@ public class GlobalExceptionHandler {
          */
         log.warn("入参被拒 {} {} · {}", req.getMethod(), req.getRequestURI(), rejectedFields(e));
         return ApiResult.error(ErrorCode.BAD_REQUEST.code(), firstMessage(e));
+    }
+
+    /** MVC方法参数校验沿用统一入参错误；返回值校验失败仍是服务端缺陷。 */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ApiResult<Void> onMethodValidation(HandlerMethodValidationException e,
+            jakarta.servlet.http.HttpServletRequest req) throws Exception {
+        return e.isForReturnValue() ? onAny(e) : onInvalid(e, req);
     }
 
     /**

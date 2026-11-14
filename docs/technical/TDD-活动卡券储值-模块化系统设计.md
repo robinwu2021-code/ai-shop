@@ -599,7 +599,7 @@ JB-011按验收完成。最终干净HEAD f116a02ab1cb68dd0148a8270c3cfbdf918edb5
 
 ### 第一阶段设计与实现对账（2026-10-19）
 
-本批按既有两阶段方案实现A1–A6的core活动子集；完整权益/储值阶段仍未完成。模块、API、正式迁移与能力限制同步到[交付报告](./活动第一阶段-交付与验收.md)、API契约、数据库设计和类清单。Service接口/Impl、核心SqlSessionFactory、Port只在共享SPI、源事实owner读取均沿既有架构。
+本批按既有两阶段方案实现A1–A6的core活动子集；完整权益/储值阶段仍未完成。模块、API、正式迁移与能力限制同步到[交付报告](./archive/records/活动第一阶段-交付与验收.md)、API契约、数据库设计和类清单。Service接口/Impl、核心SqlSessionFactory、Port只在共享SPI、源事实owner读取均沿既有架构。
 
 | 阶段验收条件 | 具体验证落点 |
 |---|---|
@@ -628,7 +628,7 @@ Create：pay entitlement/entity/EntIssuePolicy、EntIssueRecipient，mapper/enti
 发行计数按templateNo跨版本/途径累计；policy+recipient条件更新同事务。新增预留要求真实ACTIVE模板、开启策略与发行门禁；确认/释放既有占用不依赖新发行开关。发行控制revision使用CAS，下调全局或个人上限不得小于已有held+issued。服务端scope核实owner及平台出资权限。对应EntitlementIssuePolicyFlowTest和隔离原生MySQL验证，批次验收前不记DONE。
 
 
-B1实际验收：JB-015/016/017的实体Mapper/Service/本地SPI、V433–V435、真实core受众适配已完成，57个不同Java定向用例及隔离MySQL1项通过；RR当前读取修复后策略3项重跑通过，敞口消融RED→GREEN通过。对应[交付报告](./第二阶段B1-发行批次验收.md)和最新独立任务表；非全量/非公共HTTP全量交付。源码提交`e78d7fc3a`，55文件2230新增/37删除。
+B1实际验收：JB-015/016/017的实体Mapper/Service/本地SPI、V433–V435、真实core受众适配已完成，57个不同Java定向用例及隔离MySQL1项通过；RR当前读取修复后策略3项重跑通过，敞口消融RED→GREEN通过。对应[交付报告](./archive/records/第二阶段B1-发行批次验收.md)和最新独立任务表；非全量/非公共HTTP全量交付。源码提交`e78d7fc3a`，55文件2230新增/37删除。
 
 
 ### JB-025及041目录/策略承载（开工）

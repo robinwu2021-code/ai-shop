@@ -50,7 +50,7 @@ for (const m of roleBlock.matchAll(/(\w+),\s*List\.of\(([^)]*)\)/g)) {
 
 // 端点 → 权限
 const req = new Map();
-for (const m of testSrc.matchAll(/put\("([^"]+)",\s*BizPerms\.([A-Z_]+)\)/g)) req.set(m[1], m[2]);
+for (const m of testSrc.matchAll(/put\(\s*"([^"]+)"\s*,\s*BizPerms\.([A-Z_]+)\s*\)/g)) req.set(m[1], m[2]);
 const countOf = (p) => [...req.values()].filter((x) => x === p).length;
 const has = (role, p) => roles.get(role) === "*" || (roles.get(role) || []).includes(p);
 

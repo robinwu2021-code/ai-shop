@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,6 +30,10 @@ public class OrdItem extends BaseEntity {
     /** 成交单价（分）——快照，不随商品调价变动。 */
     private Long price;
     private Integer qty;
+    /** Exact source quantity for measured industry lines; qty remains compatible billing-unit count. */
+    private BigDecimal saleQuantity;
+    private String quantityUnit;
+    private String sourceComponentRef;
     private Long amount;
 
     private String categoryType;
@@ -53,6 +58,13 @@ public class OrdItem extends BaseEntity {
 
     /** 赠品行：价格为 0、不参与计价。认不出来的话，按行退款会把赠品也退钱。 */
     private Boolean isGift;
+
+    /** Selected new-model activity, retained independently of later rule edits. */
+    private String activityNo;
+    /** PRICE for paid-line price reductions; GIFT for actual zero-priced gift lines. */
+    private String activityBenefitType;
+    /** Actual benefit of this entire line; already reflected in price/amount, never deducted twice. */
+    private Long activityBenefitMinor;
 
 
     /**

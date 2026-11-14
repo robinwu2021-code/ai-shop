@@ -11,6 +11,7 @@ import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,14 +74,16 @@ class CampaignDiscountFlowTest {
     private CouponMapper couponMapper;
 
     /**
-     * 清掉本测试自己造的活动。
+     * 每条用例开始前和结束后清掉本测试自己造的活动。
      *
      * <p>不清的话测试之间会互相污染：同一个 H2 库里，前一条用例建的 RUNNING 满减
      * 对后一条仍然生效 —— 「未开始/已结束的活动不生效」那条因此会拿到上一条的 800。
-     * 按 name 精确删而不是清空整张表：别的用例（以及 DevSeeder）可能也有活动，
+     * 结束后也必须清理：仅在开始前清理会让最后一条用例的活动泄漏到下一个测试类。
+     * 按本类前缀（兼容旧名字）精确删而不是清空整张表：别的用例（以及 DevSeeder）可能也有活动，
      * 清空会把它们一起带走，那种失败最难查。
      */
     @org.junit.jupiter.api.BeforeEach
+    @AfterEach
     void clearOwnCampaigns() {
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
@@ -314,7 +317,7 @@ class CampaignDiscountFlowTest {
     @Test
     @DisplayName("★ 建多规格商品的限时特价被拒，且给的是**专用错误码** —— 通用的「参数有误」会让商家反复改价格")
     void creatingFlashOnMultiSkuGoodsIsRejected() throws Exception {
-        String bizToken = merchant("12600160901", "特价·多规格");
+        String bizToken = merchant("18600160901", "特价·多规格");
         long now = System.currentTimeMillis();
         mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -331,7 +334,7 @@ class CampaignDiscountFlowTest {
     @Test
     @DisplayName("★ 商家建的店铺券活动 → 领券中心真的能领到")
     void merchantCouponCampaignBecomesReceivableCoupon() throws Exception {
-        String bizToken = merchant("12600150901", "券桥接·可领");
+        String bizToken = merchant("18600150901", "券桥接·可领");
         String campaignNo = saveCouponCampaign(bizToken, "店庆券 满50减5", 5000L, 500L);
         toggleCampaign(bizToken, campaignNo, true);
 
@@ -361,7 +364,7 @@ class CampaignDiscountFlowTest {
     @Test
     @DisplayName("重复保存同一个活动只对应一张券 —— 不能存一次多发一张")
     void savingTwiceDoesNotDuplicateCoupon() throws Exception {
-        String bizToken = merchant("12600150902", "券桥接·不重复");
+        String bizToken = merchant("18600150902", "券桥接·不重复");
         String campaignNo = saveCouponCampaign(bizToken, "只发一张", 5000L, 300L);
         toggleCampaign(bizToken, campaignNo, true);
         // 改个名再存一次
@@ -378,7 +381,7 @@ class CampaignDiscountFlowTest {
     @Test
     @DisplayName("暂停活动，券停止发放 —— 但已领的不受影响")
     void pausingCampaignStopsIssuing() throws Exception {
-        String bizToken = merchant("12600150903", "券桥接·暂停");
+        String bizToken = merchant("18600150903", "券桥接·暂停");
         String campaignNo = saveCouponCampaign(bizToken, "会被暂停的券", 5000L, 400L);
         toggleCampaign(bizToken, campaignNo, true);
 

@@ -1,10 +1,38 @@
 package ai.neargo.shop.food.mapper;
+import ai.neargo.shop.food.dto.ProductionContracts.ListQuery;
+import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
+import ai.neargo.shop.food.entity.FnbProductionConsumption;
+import ai.neargo.shop.food.entity.FnbBusinessDay;
+import ai.neargo.shop.food.entity.FnbCloseBalance;
+import ai.neargo.shop.food.entity.FnbCloseRun;
+import ai.neargo.shop.food.entity.FnbCloseException;
+import ai.neargo.shop.food.entity.FnbCloseAdjustment;
+import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenTicket;
+import ai.neargo.shop.food.entity.FnbKitchenTask;
+import ai.neargo.shop.food.entity.FnbCourse;
 
+import ai.neargo.shop.food.entity.FnbOrderBatch;
+import ai.neargo.shop.food.entity.FnbQueueTicket;
+import ai.neargo.shop.food.entity.FnbSettlement;
+import ai.neargo.shop.food.entity.FnbSettlementItem;
+import ai.neargo.shop.food.entity.FnbChargeIntent;
+import ai.neargo.shop.food.entity.FnbCoreOrderBinding;
+import ai.neargo.shop.food.entity.FnbOrderLine;
+import ai.neargo.shop.food.entity.FnbCoreLineAllocation;
+import ai.neargo.shop.food.entity.FnbOrderComponent;
+import ai.neargo.shop.food.entity.FnbOrderModifier;
 import ai.neargo.shop.food.entity.FnbStation;
+import ai.neargo.shop.food.entity.FnbStockBalance;
+import ai.neargo.shop.food.entity.FnbStockSyncDelivery;
+import java.time.LocalDateTime;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
 import ai.neargo.shop.food.entity.FnbSalesRestriction;
+import ai.neargo.shop.food.entity.FnbSalesQuotaClaim;
+import ai.neargo.shop.food.entity.FnbReturn;
+import ai.neargo.shop.food.entity.FnbReturnItem;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbMenu;
 import ai.neargo.shop.food.entity.FnbMenuItemOptionGroup;
@@ -41,7 +69,6 @@ import ai.neargo.shop.food.entity.FnbTableOccupancy;
 import ai.neargo.shop.food.entity.FnbTableOperation;
 import ai.neargo.shop.food.entity.FnbTableToken;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Delete;
@@ -55,7 +82,44 @@ public final class FoodMappers {
     private FoodMappers() {
     }
 
-    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> { }
+    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> {
+        @Select("SELECT COUNT(*) FROM fnb_order_batch WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND cart_no=#{cart} AND deleted=0 AND status IN "
+                + "('PREPARED','PLACING','UNKNOWN','BOUND','ACCEPTED','CANCEL_PENDING')")
+        long activePlacementCount(@Param("entity") String entity, @Param("cart") String cart);
+        @Select("SELECT COUNT(*) FROM fnb_order_batch b JOIN fnb_core_order_binding o "
+                + "ON o.tenant_no=b.tenant_no AND o.entity_no=b.entity_no AND o.batch_no=b.batch_no "
+                + "WHERE b.tenant_no='MAIN' AND b.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND b.cart_no=#{cart} AND b.buyer_no=#{buyer} AND b.deleted=0 AND o.deleted=0 "
+                + "AND b.status IN ('BOUND','ACCEPTED') AND o.status='BOUND'")
+        long submittedBuyerBindingCount(@Param("entity") String entity, @Param("store") String store,
+                @Param("cart") String cart, @Param("buyer") String buyer);
+    }
+
+    public interface SettlementMapper extends BaseMapper<FnbSettlement> {
+        @Select("SELECT COUNT(*) FROM fnb_return WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND batch_no=#{batch} AND deleted=0 AND status NOT IN ('REJECTED','CANCELLED') "
+                + "AND (status<>'CLOSED' OR financial_status IS NULL OR financial_status<>'NONE')")
+        long localReturnCount(@Param("entity") String entity, @Param("batch") String batch);
+    }
+    public interface SettlementItemMapper extends BaseMapper<FnbSettlementItem> {
+        @Select("SELECT COUNT(*) FROM fnb_settlement_item i JOIN fnb_settlement s ON s.tenant_no=i.tenant_no "
+                + "AND s.entity_no=i.entity_no AND s.settlement_no=i.settlement_no WHERE i.tenant_no='MAIN' "
+                + "AND i.entity_no=#{entity} AND s.store_no=#{store} AND i.payment_root_no=#{root} "
+                + "AND i.scope_key=#{scope} AND i.deleted=0 AND s.deleted=0 "
+                + "AND s.status IN ('FROZEN','COLLECTING','SETTLED')")
+        long activeFullScopeCount(@Param("entity") String entity, @Param("store") String store,
+                @Param("root") String root, @Param("scope") String scope);
+    }
+    public interface ChargeIntentMapper extends BaseMapper<FnbChargeIntent> { }
+
+    public interface OrderBatchMapper extends BaseMapper<FnbOrderBatch> { }
+    public interface CoreOrderBindingMapper extends BaseMapper<FnbCoreOrderBinding> { }
+    public interface OrderLineMapper extends BaseMapper<FnbOrderLine> { }
+    public interface CoreLineAllocationMapper extends BaseMapper<FnbCoreLineAllocation> { }
+    public interface OrderComponentMapper extends BaseMapper<FnbOrderComponent> { }
+    public interface OrderModifierMapper extends BaseMapper<FnbOrderModifier> { }
+
     public interface CheckCartItemMapper extends BaseMapper<FnbCheckCartItem> {
         @Select("SELECT * FROM fnb_check_cart_item WHERE entity_no=#{entity} AND cart_no=#{cart} "
                 + "AND source_line_ref=#{source} FOR UPDATE")
@@ -291,5 +355,152 @@ public final class FoodMappers {
                 @Param("station") String station);
     }
 
+    /** Explicit owner predicates are retained even for internal calls without a request data scope. */
+    public interface StockSyncConfigMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncConfig> { }
+    public interface StockSyncMappingMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncMapping> { }
+    public interface StockSyncItemStateMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncItemState> { }
+    public interface StockSyncDeliveryMapper extends BaseMapper<FnbStockSyncDelivery> {
+        @Select("""
+            SELECT d.* FROM fnb_stock_sync_delivery d
+            WHERE d.tenant_no='MAIN' AND d.deleted=0
+              AND d.status IN ('PENDING','RETRYABLE','PROCESSING')
+              AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=#{now})
+              AND (#{entity} IS NULL OR d.entity_no=#{entity})
+              AND (#{store} IS NULL OR d.store_no=#{store})
+              AND NOT EXISTS (SELECT 1 FROM fnb_stock_sync_delivery earlier
+                WHERE earlier.tenant_no=d.tenant_no AND earlier.entity_no=d.entity_no
+                  AND earlier.store_no=d.store_no AND earlier.deleted=0 AND earlier.id<d.id
+                  AND earlier.status IN ('PENDING','RETRYABLE','PROCESSING'))
+            ORDER BY d.id LIMIT 1 FOR UPDATE SKIP LOCKED
+            """)
+        FnbStockSyncDelivery nextDelivery(
+                @Param("entity") String entity,
+                @Param("store") String store,
+                @Param("now") LocalDateTime now);
+    }
+    public interface StockSyncReconciliationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncReconciliation> { }
+    public interface StockSyncDifferenceMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDifference> { }
+    public interface StockItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockItem> { }
+    public interface StockReservationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservation> { }
+    public interface StockReservationItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservationItem> { }
+    public interface StockCommandMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockCommand> { }
+    public interface StockMovementMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockMovement> { }
+
+    public interface StockBalanceMapper extends BaseMapper<FnbStockBalance> {
+        @Select("SELECT * FROM fnb_stock_balance WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND store_no=#{store} AND item_no=#{item} AND deleted=0 FOR UPDATE")
+        FnbStockBalance lockBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item);
+
+        @Update("UPDATE fnb_stock_balance SET on_hand=#{onHand},reserved_qty=#{reserved},version=version+1, "
+                + "updated_at=CURRENT_TIMESTAMP(3),updated_by=#{actor} WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND item_no=#{item} "
+                + "AND version=#{version} AND deleted=0")
+        int replaceLockedBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item, @Param("version") long version,
+                @Param("onHand") BigDecimal onHand, @Param("reserved") BigDecimal reserved,
+                @Param("actor") String actor);
+    }
+
     public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }
+    public interface SalesQuotaClaimMapper extends BaseMapper<FnbSalesQuotaClaim> { }
+    public interface ReturnMapper extends BaseMapper<FnbReturn> { }
+    public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> { }
+
+    public interface CourseMapper extends BaseMapper<FnbCourse> { }
+    public interface KitchenTaskMapper extends BaseMapper<FnbKitchenTask> {
+        @Select("<script>SELECT b.batch_no FROM fnb_kitchen_task t "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
+                + "WHERE t.tenant_no='MAIN' AND t.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 AND b.status='ACCEPTED' "
+                + "AND k.status&lt;&gt;'CLOSED' AND t.status NOT IN ('SERVED','VOIDED') "
+                + "<if test='station != null'>AND t.station_no=#{station} </if>"
+                + "GROUP BY b.batch_no,b.accepted_at ORDER BY b.accepted_at,b.batch_no</script>")
+        List<String> activeBatchNos(@Param("entity") String entity,@Param("store") String store,
+                @Param("station") String station);
+    }
+    public interface KitchenTicketMapper extends BaseMapper<FnbKitchenTicket> {
+        @Select("SELECT COALESCE(SUM(i.qty),0) FROM fnb_return_item i JOIN fnb_return r "
+                + "ON r.entity_no=i.entity_no AND r.return_no=i.return_no AND r.tenant_no=i.tenant_no "
+                + "WHERE i.tenant_no='MAIN' AND i.entity_no=#{entity} AND i.food_line_no=#{line} "
+                + "AND i.component_no IS NULL AND i.kitchen_disposition='CANCEL' "
+                + "AND r.kitchen_status='HANDLED' AND i.deleted=0 AND r.deleted=0")
+        BigDecimal cancelledMainQty(@Param("entity") String entity,@Param("line") String line);
+
+        @Select("SELECT * FROM fnb_config_revision r WHERE r.tenant_no='MAIN' AND r.entity_no=#{entity} "
+                + "AND r.config_kind='STATION' AND r.deleted=0 AND r.effective_at<=CURRENT_TIMESTAMP(3) "
+                + "AND r.status<>'CANCELLED' ORDER BY r.config_no,r.effective_at DESC,r.revision DESC")
+        List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
+    }
+    public interface ServiceEventMapper extends BaseMapper<FnbServiceEvent> {
+        record ProductionSource(String entityNo, String storeNo, String eventNo) {}
+
+        @Select("SELECT e.id AS source_id,e.event_no AS source_event_no,e.task_no,e.action,"
+                + "COALESCE(h.status,'NOT_STARTED') AS status FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
+                + "LEFT JOIN fnb_production_consumption h ON h.tenant_no=e.tenant_no AND h.entity_no=e.entity_no "
+                + "AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0 "
+                + "WHERE e.tenant_no='MAIN' AND e.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
+                + "AND t.task_role='MAKE' AND (h.id IS NOT NULL OR b.status='ACCEPTED') "
+                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
+                + "AND (h.id IS NULL OR h.status IN ('PREPARED','SUBMITTED','UNKNOWN','REVERSAL_PENDING','BLOCKED','FAILED')) "
+                + "AND e.id>#{afterId} ORDER BY e.id LIMIT #{limit}")
+        List<ai.neargo.shop.food.dto.ProductionContracts.PendingVO> pending(
+                @Param("entity") String entity, @Param("store") String store,
+                @Param("afterId") long afterId, @Param("limit") int limit);
+
+
+        @Select("SELECT e.entity_no,b.store_no,e.event_no FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
+                + "WHERE e.tenant_no='MAIN' AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
+                + "AND t.task_role='MAKE' AND b.status='ACCEPTED' "
+                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
+                + "AND NOT EXISTS (SELECT 1 FROM fnb_production_consumption h WHERE h.tenant_no=e.tenant_no "
+                + "AND h.entity_no=e.entity_no AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0) "
+                + "ORDER BY e.id LIMIT #{limit}")
+        List<ProductionSource> unconsumed(@Param("limit") int limit);
+    }
+
+    public interface BusinessDayMapper extends BaseMapper<FnbBusinessDay> { }
+    public interface CloseRunMapper extends BaseMapper<FnbCloseRun> { }
+    public interface CloseBalanceMapper extends BaseMapper<FnbCloseBalance> { }
+    public interface CloseExceptionMapper extends BaseMapper<FnbCloseException> { }
+    public interface CloseAdjustmentMapper extends BaseMapper<FnbCloseAdjustment> { }
+
+    public interface ProductionConsumptionMapper extends BaseMapper<FnbProductionConsumption> {
+        // Both SQL statements share this exact predicate; EXISTS keeps multi-material rows from inflating total.
+        String LIST_FILTER = " FROM fnb_production_consumption h WHERE h.tenant_no='MAIN' AND h.entity_no=#{entity} "
+                + "AND h.store_no=#{store} AND h.deleted=0 AND h.business_date &gt;= #{query.from} "
+                + "AND h.business_date &lt; #{query.to} "
+                + "<if test='query.status != null'>AND h.status=#{query.status} </if>"
+                + "<if test='query.itemRef != null'>AND EXISTS (SELECT 1 FROM fnb_production_consumption_line p "
+                + "WHERE p.tenant_no=h.tenant_no AND p.entity_no=h.entity_no AND p.consumption_no=h.consumption_no "
+                + "AND p.deleted=0 AND p.item_ref=#{query.itemRef}) </if>"
+                + "<if test='query.skuNo != null'>AND EXISTS (SELECT 1 FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no "
+                + "AND t.task_no=e.task_no AND t.deleted=0 "
+                + "JOIN fnb_order_line l ON l.tenant_no=t.tenant_no AND l.entity_no=t.entity_no "
+                + "AND l.food_line_no=t.food_line_no AND l.deleted=0 "
+                + "JOIN fnb_order_batch b ON b.tenant_no=l.tenant_no AND b.entity_no=l.entity_no "
+                + "AND b.batch_no=l.batch_no AND b.deleted=0 AND b.store_no=h.store_no "
+                + "WHERE e.tenant_no=h.tenant_no AND e.entity_no=h.entity_no AND e.event_no=h.source_event_no "
+                + "AND e.deleted=0 AND l.sku_no=#{query.skuNo}) </if>";
+        @Select("<script>SELECT COUNT(*)" + LIST_FILTER + "</script>")
+        long countFiltered(@Param("entity") String entity,@Param("store") String store,
+                @Param("query") ListQuery query);
+        @Select("<script>SELECT h.*" + LIST_FILTER
+                + " ORDER BY h.occurred_at DESC,h.id DESC LIMIT #{size} OFFSET #{offset}</script>")
+        List<FnbProductionConsumption> pageFiltered(@Param("entity") String entity,@Param("store") String store,
+                @Param("query") ListQuery query,
+                @Param("offset") long offset,@Param("size") int size);
+    }
+    public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }
+    public interface QueueTicketMapper extends BaseMapper<FnbQueueTicket> { }
+    public interface ReturnStockDispositionMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbReturnStockDisposition> {}
 }

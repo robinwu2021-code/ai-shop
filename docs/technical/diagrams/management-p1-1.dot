@@ -1,0 +1,29 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="经营管理资源关系", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+"MCH_MANAGEMENT_SPACE" [label="MCH_MANAGEMENT_SPACE",shape=box];
+"MCH_BRAND" [label="MCH_BRAND",shape=box];
+"MCH_MANAGEMENT_GRANT" [label="MCH_MANAGEMENT_GRANT",shape=box];
+"MCH_BRAND_STORE_BINDING" [label="MCH_BRAND_STORE_BINDING",shape=box];
+"MCH_STORE" [label="MCH_STORE",shape=box];
+"MCH_ENTITY" [label="MCH_ENTITY",shape=box];
+"MCH_PAYMENT_MERCHANT" [label="MCH_PAYMENT_MERCHANT",shape=box];
+"MCH_BRAND_CHANGE" [label="MCH_BRAND_CHANGE",shape=box];
+"MCH_MANAGEMENT_SPACE" -> "MCH_BRAND" [label="1 → 0..n · manages"];
+"MCH_MANAGEMENT_SPACE" -> "MCH_MANAGEMENT_GRANT" [label="1 → 0..n · grants"];
+"MCH_BRAND" -> "MCH_BRAND_STORE_BINDING" [label="1 → 0..n · history"];
+"MCH_STORE" -> "MCH_BRAND_STORE_BINDING" [label="1 → 0..n · history"];
+"MCH_ENTITY" -> "MCH_STORE" [label="1 → 0..n · operates"];
+"MCH_ENTITY" -> "MCH_PAYMENT_MERCHANT" [label="1 → 0..n · payment_channels"];
+"MCH_STORE" -> "MCH_BRAND_CHANGE" [label="1 → 0..n · changes"];
+}
+// Original diagram source, retained for provenance:
+// erDiagram
+//     MCH_MANAGEMENT_SPACE ||--o{ MCH_BRAND : manages
+//     MCH_MANAGEMENT_SPACE ||--o{ MCH_MANAGEMENT_GRANT : grants
+//     MCH_BRAND ||--o{ MCH_BRAND_STORE_BINDING : history
+//     MCH_STORE ||--o{ MCH_BRAND_STORE_BINDING : history
+//     MCH_ENTITY ||--o{ MCH_STORE : operates
+//     MCH_ENTITY ||--o{ MCH_PAYMENT_MERCHANT : payment_channels
+//     MCH_STORE ||--o{ MCH_BRAND_CHANGE : changes

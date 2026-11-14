@@ -1,0 +1,144 @@
+{
+  "name": "166基础能力-仅本地填值勿提交凭据",
+  "values": [
+    {
+      "key": "hostOrigin",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "principal",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "credential",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "ticket",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "identityNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "storeNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "entityNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "targetEntityNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "payMerchantNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "managementNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "legalName",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "ownerName",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "ownerPhone",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "industryCode",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "channelMerchantId",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "createRequestNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "uploadRequestNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "submitRequestNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "expectedVersion",
+      "value": "0",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "claimNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "fileNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "storeClaimRequestNo",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

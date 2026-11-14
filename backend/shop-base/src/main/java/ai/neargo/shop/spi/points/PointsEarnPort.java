@@ -39,7 +39,11 @@ public interface PointsEarnPort {
             List<EarnLine> lines,
             String merchantNo,
             String clientType,
-            PointsRefundPort.PaymentSnapshot payment) {
+            PointsRefundPort.PaymentSnapshot payment,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String operationKey) {
+        public GrantCommand(String eventNo,String subOrderNo,String userNo,String typeCode,String storeNo,String payChannel,String payScene,long sourceVersion,List<EarnLine> lines,String merchantNo,String clientType,PointsRefundPort.PaymentSnapshot payment) {
+            this(eventNo,subOrderNo,userNo,typeCode,storeNo,payChannel,payScene,sourceVersion,lines,merchantNo,clientType,payment,null);
+        }
         public GrantCommand {
             lines = List.copyOf(lines);
         }

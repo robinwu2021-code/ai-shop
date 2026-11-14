@@ -3,6 +3,8 @@
 > 由 `npm run gen:api-detail` 从 OpenAPI 生成，**请勿手改**。
 > 契约源：[`openapi-b.yaml`](openapi-b.yaml)　总表：[API 清单](API清单.md)
 
+> 商家注册登录、建店、进件和门店商业只读接口的后端实现与响应示例见 [B 端基础链路对接文档](B端基础链路-对接文档.md)。付费购买、升级、续费仍为后续范围。
+
 ## 通用约定
 
 | 项 | 约定 |
@@ -268,6 +270,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -329,6 +332,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -405,6 +409,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -472,6 +477,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -533,6 +539,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -594,6 +601,33 @@
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+### app
+
+#### GET `/common/app/version`
+
+版本检查（最新版 / 最低支持版 / 更新说明）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `platform` | query | `string` | 是 | — |
+| `build` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`AppVersionInfo`](#appversioninfo)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
 
 
 ### appointment-slots
@@ -747,6 +781,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -788,6 +823,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -922,6 +958,7 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+| `actorNo` | `string` | 否 | 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。 |
 
 
 ### coupon-issues
@@ -1009,6 +1046,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
@@ -1049,6 +1087,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
@@ -1089,6 +1128,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
@@ -1130,6 +1170,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
@@ -1359,6 +1400,60 @@ _无字段_
 |---|---|:---:|---|
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
+
+
+### express
+
+#### GET `/biz/express/companies`
+
+本店可选快递公司　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ExpressCompanyList`](#expresscompanylist)
+
+
+### feedback
+
+#### POST `/biz/feedback`
+
+提交问题回报（回报号即工单号）　🔒
+
+**入参**
+
+请求体：[`SubmitFeedbackReq`](#submitfeedbackreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
+
+**出参**（`data`）
+
+类型：[`FeedbackReceipt`](#feedbackreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+
+#### GET `/biz/feedback/mine`
+
+我的回报（最近 50 条，带客服回复）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantFeedback`](#merchantfeedback)\[\]
 
 
 ### freight-template
@@ -3471,6 +3566,2256 @@ _无字段_
 类型：`any`
 
 
+### management
+
+#### GET `/biz/management/brand-changes/{c}`
+
+查询品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `c` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
+| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
+| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
+| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+
+
+#### POST `/biz/management/brand-changes/{c}/decisions`
+
+决定品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `c` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandDecisionReq`](#managementbranddecisionreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `REJECT` | 是 | Approval or return decision submitted for the current revision. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
+| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
+| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
+| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+
+
+#### GET `/biz/management/brands`
+
+品牌列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `managementNo` | query | `string` | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+
+**出参**（`data`）
+
+类型：[`ManagementBrandPage`](#managementbrandpage)
+
+_无字段_
+
+
+#### POST `/biz/management/brands`
+
+创建品牌　🔒
+
+**入参**
+
+请求体：[`ManagementBrandCreateReq`](#managementbrandcreatereq)
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
+| `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
+| `createdAt` | `string` | 否 | Resource creation time returned by the server. |
+| `updatedAt` | `string` | 否 | Time the resource was last updated; null when it has never changed. |
+| `createdByLabel` | `string` | 否 | Display label of the operator who created the resource. |
+| `updatedByLabel` | `string` | 否 | Display label of the operator who last updated the resource. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+
+
+#### GET `/biz/management/brands/{b}`
+
+品牌详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
+| `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
+| `createdAt` | `string` | 否 | Resource creation time returned by the server. |
+| `updatedAt` | `string` | 否 | Time the resource was last updated; null when it has never changed. |
+| `createdByLabel` | `string` | 否 | Display label of the operator who created the resource. |
+| `updatedByLabel` | `string` | 否 | Display label of the operator who last updated the resource. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+
+
+#### PUT `/biz/management/brands/{b}`
+
+修改品牌　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandEditReq`](#managementbrandeditreq)
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
+| `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
+| `createdAt` | `string` | 否 | Resource creation time returned by the server. |
+| `updatedAt` | `string` | 否 | Time the resource was last updated; null when it has never changed. |
+| `createdByLabel` | `string` | 否 | Display label of the operator who created the resource. |
+| `updatedByLabel` | `string` | 否 | Display label of the operator who last updated the resource. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+
+
+#### GET `/biz/management/brands/{b}/audit-events`
+
+品牌操作记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementAuditPage`](#managementauditpage)
+
+_无字段_
+
+
+#### POST `/biz/management/brands/{b}/status-changes`
+
+品牌启停　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandStatusReq`](#managementbrandstatusreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `targetStatus` | `ACTIVE` \| `INACTIVE` | 是 | Requested lifecycle state; server checks permitted transitions. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+**出参**（`data`）
+
+类型：[`Brand`](#brand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
+| `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
+| `createdAt` | `string` | 否 | Resource creation time returned by the server. |
+| `updatedAt` | `string` | 否 | Time the resource was last updated; null when it has never changed. |
+| `createdByLabel` | `string` | 否 | Display label of the operator who created the resource. |
+| `updatedByLabel` | `string` | 否 | Display label of the operator who last updated the resource. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+
+
+#### GET `/biz/management/brands/{b}/stores`
+
+品牌门店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `b` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### POST `/biz/management/brands/{brandNo}/stored-value/issuer/activation`
+
+Activate original brand snapshot　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `brandNo` | path | `string` | 是 | — |
+
+请求体：[`SvBrandActivationRequest`](#svbrandactivationrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which this action is authorized. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvBrandActivation`](#svbrandactivation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activationNo` | `string` | 是 | Identifier of the original brand financial activation operation. |
+| `state` | `string` | 是 | Current server-owned state of the brand financial activation. |
+
+
+#### GET `/biz/management/brands/{no}/stored-value/issuer`
+
+品牌储值发行设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerLookup`](#svissuerlookup)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | Current issuer configuration; null when none has been configured. |
+
+
+#### POST `/biz/management/brands/{no}/stored-value/issuer`
+
+保存品牌发行草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | Versioned issuer configuration to validate or apply. |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `issuerVersionNo` | `string` | 是 | Immutable issuer-configuration version used by subsequent operations. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/brands/{no}/stored-value/store-breakdown`
+
+mSvBrandStoreBreakdown　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceStorePage`](#svfinancestorepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Authorized store attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/brands/{no}/stored-value/summary`
+
+mSvBrandSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvSummary`](#svsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
+
+
+#### GET `/biz/management/brands/{store}/stored-value/activities`
+
+门店储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceActivitiesPage`](#svgovernanceactivitiespage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivity`](#svactivity)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+
+#### POST `/biz/management/brands/{store}/stored-value/activities`
+
+保存储值活动草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`SvGovernanceDraft`](#svgovernancedraft)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `expectedRevision` | `number` | 否 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### GET `/biz/management/brands/{store}/stored-value/activities/{no}`
+
+储值活动详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceDetail`](#svgovernancedetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activity` | [`SvActivity`](#svactivity) | 是 | Stored-value activity and its current versioned definition. |
+| `submission` | [`SvSubmission`](#svsubmission) \| `null` | 是 | Durable activity submission state; null before any submission. |
+
+
+#### POST `/biz/management/brands/{store}/stored-value/activities/{no}/checks`
+
+检查储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivityCheck`](#svactivitycheck)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policy` | [`SvEffectivePolicy`](#sveffectivepolicy) | 是 | Resolved effective governance policy used by the activity validation. |
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+
+
+#### POST `/biz/management/brands/{store}/stored-value/activities/{no}/copies`
+
+复制储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### PUT `/biz/management/brands/{store}/stored-value/activities/{no}/draft`
+
+修订储值活动草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceDraft`](#svgovernancedraft)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `expectedRevision` | `number` | 否 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### POST `/biz/management/brands/{store}/stored-value/activities/{no}/stop-issuance`
+
+停止新发行　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvSubmission`](#svsubmission)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `state` | `string` | 是 | Current processing projection for the submitted business operation. |
+| `releaseNo` | `string,null` | 是 | Durable publication-release identifier; null before preparation. |
+| `releaseHash` | `string,null` | 是 | Hash of the published release; null before release preparation completes. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+
+#### POST `/biz/management/brands/{store}/stored-value/activities/{no}/submissions`
+
+提交储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvSubmission`](#svsubmission)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `state` | `string` | 是 | Current processing projection for the submitted business operation. |
+| `releaseNo` | `string,null` | 是 | Durable publication-release identifier; null before preparation. |
+| `releaseHash` | `string,null` | 是 | Hash of the published release; null before release preparation completes. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+
+#### GET `/biz/management/brands/{store}/stored-value/activity-context`
+
+储值活动门店市场上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `intent` | query | `READ` \| `MANAGE` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceContext`](#svgovernancecontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+| `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
+| `canManage` | `boolean` | 是 | Whether the current operator may change this governance resource. |
+| `canPublish` | `boolean` | 是 | Whether the operator may publish activities under this effective policy. |
+
+
+#### GET `/biz/management/brands/{store}/stored-value/activity-presets`
+
+可用储值活动类型　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvGovernancePresetsPage`](#svgovernancepresetspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvGovernancePreset`](#svgovernancepreset)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+
+#### GET `/biz/management/brands/{store}/stored-value/activity-schedules`
+
+按门店时区换算活动日期　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceSchedule`](#svgovernanceschedule)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `startAt` | `string` | 是 | Start of the configured activity window as a server timestamp. |
+| `endAt` | `string` | 是 | End of the configured activity window as a server timestamp. |
+| `zone` | `string` | 是 | IANA time zone used to interpret the activity schedule. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+
+
+#### GET `/biz/management/context`
+
+管理空间上下文　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ManagementContext`](#managementcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorKey` | `string` | 是 | Authenticated operator identity recorded by the server. |
+| `spaces` | [`ManagementSpace`](#managementspace)\[\] | 是 | Management spaces accessible to the authenticated operator. |
+| `canBootstrap` | `boolean` | 是 | Whether the operator may create a management space from an available authority source. |
+| `bootstrapSources` | `object`（见下）\[\] | 是 | Accounts the operator may use to establish a management space. |
+
+`bootstrapSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | Account identifier used as the management-space authority source. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `entityName` | `string` | 否 | Display name of the operating entity providing the authority source. |
+| `stores` | `object`（见下）\[\] | 是 | Stores accessible through this management authority source. |
+| `paymentMerchants` | `object`（见下）\[\] | 是 | Payment merchants available under the authority-source account. |
+
+`bootstrapSources[].stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+
+`bootstrapSources[].paymentMerchants[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | Payment merchant identifier under the operating entity. |
+
+
+#### GET `/biz/management/entities/{e}/payment-merchants`
+
+支付商户候选　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `payChannel` | query | `string` | 否 | — |
+| `payScene` | query | `string` | 否 | — |
+| `storeNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`PaymentMerchant`](#paymentmerchant)\[\]
+
+
+#### POST `/biz/management/entities/{entity}/stored-value/financial-permissions`
+
+准备所有人结算权限　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+
+请求体：[`SvFinanceManagementQuery`](#svfinancemanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+
+**出参**（`data`）
+
+类型：[`SvFinancialPermissionResult`](#svfinancialpermissionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | Whether the server successfully prepared the requested financial permission setup. |
+| `entityNo` | `string` | 是 | Operating entity whose financial permissions were prepared. |
+| `permissions` | `string`\[\] | 是 | Financial permission codes returned by the server for the prepared entity. |
+
+
+#### POST `/biz/management/spaces`
+
+创建管理空间　🔒
+
+**入参**
+
+请求体：[`ManagementSpaceCreateReq`](#managementspacecreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `sourceAccountNo` | `string` | 是 | Authority-source account used to bootstrap the management space. |
+
+**出参**（`data`）
+
+类型：[`ManagementSpace`](#managementspace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 否 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 否 | Current revision of the resource's management-scope bindings. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `actions` | `string`\[\] | 是 | Actions currently permitted by the server for this resource. |
+
+
+#### GET `/biz/management/spaces/{m}/entities`
+
+管理主体列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### POST `/biz/management/spaces/{m}/grants`
+
+授予资源能力　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+
+请求体：[`ManagementGrantReq`](#managementgrantreq)
+
+**出参**（`data`）
+
+类型：[`ManagementGrant`](#managementgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | Display label of the operator or grant recipient. |
+| `resourceName` | `string` | 否 | Display name of the business resource covered by the grant. |
+| `grantNo` | `string` | 是 | Resource-capability grant identifier. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `actorNo` | `string` | 是 | Identity receiving the resource grant. |
+| `resourceType` | `string` | 是 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 是 | Business identifier of the resource covered by the capability grant. |
+| `permissionCode` | `string` | 是 | Capability code granted for the specified business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `delegatable` | `boolean,number` | 是 | Whether the recipient may delegate this granted capability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### DELETE `/biz/management/spaces/{m}/grants/{g}`
+
+撤销资源授权　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `g` | path | `string` | 是 | — |
+| `expectedRevision` | query | `number` | 是 | — |
+| `reason` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ManagementGrant`](#managementgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | Display label of the operator or grant recipient. |
+| `resourceName` | `string` | 否 | Display name of the business resource covered by the grant. |
+| `grantNo` | `string` | 是 | Resource-capability grant identifier. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `actorNo` | `string` | 是 | Identity receiving the resource grant. |
+| `resourceType` | `string` | 是 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 是 | Business identifier of the resource covered by the capability grant. |
+| `permissionCode` | `string` | 是 | Capability code granted for the specified business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `delegatable` | `boolean,number` | 是 | Whether the recipient may delegate this granted capability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/spaces/{m}/recipients`
+
+管理空间可授权人员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `resourceType` | query | `string` | 否 | — |
+| `view` | query | `EFFECTIVE` \| `GRANTS` | 否 | — |
+| `actorNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementRecipientPage`](#managementrecipientpage)
+
+_无字段_
+
+
+#### GET `/biz/management/spaces/{m}/resources`
+
+资源与授权列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `resourceType` | query | `string` | 否 | — |
+| `view` | query | `EFFECTIVE` \| `GRANTS` | 否 | — |
+| `actorNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ManagementGrantPage`](#managementgrantpage)
+
+_无字段_
+
+
+#### GET `/biz/management/spaces/{m}/stores`
+
+管理门店列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `m` | path | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `brandNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`ManagementResourcePage`](#managementresourcepage)
+
+_无字段_
+
+
+#### GET `/biz/management/stored-value/activities/{no}/summary`
+
+mSvActivitySummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `issuerNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinanceActivityPage`](#svfinanceactivitypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Authorized activity attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/stored-value/activity-approvals`
+
+储值活动审批列表　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceApprovalsPage`](#svgovernanceapprovalspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvApproval`](#svapproval)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+
+#### GET `/biz/management/stored-value/activity-approvals/{no}`
+
+储值活动审批详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvApproval`](#svapproval)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `approvalNo` | `string` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `storeNo` | `string,null` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `scopeType` | `STORE` \| `BRAND` | 否 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `scopeNo` | `string` | 否 | Business identifier of the store or brand selected by scopeType. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `submittedBy` | `string` | 是 | Authenticated operator who submitted the approval request. |
+| `decidedBy` | `string,null` | 是 | Server-recorded decision operator; null while awaiting a decision. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+
+
+#### POST `/biz/management/stored-value/activity-approvals/{no}/decisions`
+
+审批储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceDecision`](#svgovernancedecision)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `decision` | `object`（见下） | 是 | Approval or return decision submitted for the current revision. |
+
+`decision` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `RETURN` | 是 | Approval or return decision submitted for the current revision. |
+| `reason` | `string` | 是 | Machine-readable eligibility or rejection reason for the quote. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvApproval`](#svapproval)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `approvalNo` | `string` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `storeNo` | `string,null` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `scopeType` | `STORE` \| `BRAND` | 否 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `scopeNo` | `string` | 否 | Business identifier of the store or brand selected by scopeType. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `submittedBy` | `string` | 是 | Authenticated operator who submitted the approval request. |
+| `decidedBy` | `string,null` | 是 | Server-recorded decision operator; null while awaiting a decision. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+
+
+#### GET `/biz/management/stored-value/financial-brand-changes/{no}`
+
+金融品牌变更原单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
+
+
+#### POST `/biz/management/stored-value/financial-brand-changes/{no}/resumptions`
+
+恢复金融品牌变更原单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvFinanceManagementQuery`](#svfinancemanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
+
+
+#### GET `/biz/management/stored-value/financial-capability`
+
+mSvFinanceCapability　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvFinanceCapability`](#svfinancecapability)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Server capability protocol version for the stored-value finance integration. |
+| `reportsReady` | `boolean` | 是 | Whether the server can provide stored-value financial reports. |
+| `settlementReady` | `boolean` | 是 | Whether settlement generation and settlement commands are available. |
+| `crossEntityReady` | `boolean` | 是 | Whether settlement between different operating entities is available. |
+| `receiptAttachmentsSupported` | `boolean` | 是 | Whether this deployment accepts receipt evidence attachments. |
+| `blockers` | `string`\[\] | 是 | Server capability blocker codes explaining unavailable financial features. |
+
+
+#### GET `/biz/management/stored-value/financial-resources`
+
+mSvFinanceResources　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinanceResource`](#svfinanceresource)\[\]
+
+
+#### GET `/biz/management/stored-value/issuers/{no}/collection-routes`
+
+已配置收款路由　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `payChannel` | query | `string` | 否 | — |
+| `payScene` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`IssuerRoute`](#issuerroute)\[\]
+
+
+#### POST `/biz/management/stored-value/issuers/{no}/configuration-checks`
+
+检查发行配置影响　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | Versioned issuer configuration to validate or apply. |
+
+**出参**（`data`）
+
+类型：[`IssuerImpact`](#issuerimpact)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `affectedAccountCount` | `number` | 是 | Number of existing accounts affected by the proposed issuer change. |
+| `hasPending` | `boolean` | 是 | Whether pending operations prevent applying this issuer change. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+
+
+#### POST `/biz/management/stored-value/issuers/{no}/configuration-versions`
+
+保存发行配置版本　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | Versioned issuer configuration to validate or apply. |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `issuerVersionNo` | `string` | 是 | Immutable issuer-configuration version used by subsequent operations. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/stored-value/policies`
+
+发行策略目录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `targetType` | query | [`SvPolicyTarget`](#svpolicytarget) | 否 | — |
+| `targetNo` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`SvPolicy`](#svpolicy)\[\]
+
+
+#### POST `/biz/management/stored-value/policies`
+
+创建发行策略　🔒
+
+**入参**
+
+请求体：[`SvGovernancePolicyCreate`](#svgovernancepolicycreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+
+**出参**（`data`）
+
+类型：[`SvPolicy`](#svpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policyNo` | `string` | 是 | Stored-value governance policy identifier. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `parentVersionRefs` | `string`\[\] | 是 | Immutable parent-policy versions inherited by this policy revision. |
+| `contentHash` | `string` | 是 | Hash of the immutable policy contents used to detect stale submissions. |
+
+
+#### PUT `/biz/management/stored-value/policies/{no}`
+
+修订发行策略　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernancePolicyEdit`](#svgovernancepolicyedit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `edit` | `object`（见下） | 是 | Proposed policy revision and its optimistic concurrency check. |
+
+`edit` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvPolicy`](#svpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policyNo` | `string` | 是 | Stored-value governance policy identifier. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `parentVersionRefs` | `string`\[\] | 是 | Immutable parent-policy versions inherited by this policy revision. |
+| `contentHash` | `string` | 是 | Hash of the immutable policy contents used to detect stale submissions. |
+
+
+#### POST `/biz/management/stored-value/policy-permissions/prepare`
+
+准备已有管控权限的授权项　🔒
+
+**入参**
+
+请求体：[`SvGovernanceManagement`](#svgovernancemanagement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+
+**出参**（`data`）
+
+类型：[`SvGovernancePrepared`](#svgovernanceprepared)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | Whether the requested permission preparation has completed. |
+
+
+#### GET `/biz/management/stored-value/policy-targets`
+
+Authorized stored-value policy targets　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvPolicyTargetOption`](#svpolicytargetoption)\[\]
+
+
+#### GET `/biz/management/stored-value/settlement-bills`
+
+mSvSettlementBills　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 否 | — |
+| `issuerNo` | query | `string` | 否 | — |
+| `currency` | query | `string` | 否 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `periodFrom` | query | `string` | 否 | — |
+| `periodTo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceBillPage`](#svfinancebillpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Authorized settlement bill records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}`
+
+mSvSettlementBill　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/actions`
+
+mSvSettlementActions　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvBillActions`](#svbillactions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payerActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payer side. |
+| `payeeActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payee side. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/adjustments`
+
+mSvSettlementAdjust　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvAdjustmentRequest`](#svadjustmentrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `payableDeltaMinor` | `number` | 是 | Nonzero signed change to the clearing entry’s payable amount, in minor currency units. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions`
+
+mSvSettlementResolveDispute　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvResolutionRequest`](#svresolutionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `disputeNo` | `string` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | Dispute resolution decision: ACCEPT or REJECT. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/disputes`
+
+mSvSettlementDispute　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvDecisionRequest`](#svdecisionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/events`
+
+mSvSettlementEvents　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceEventPage`](#svfinanceeventpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Authorized settlement audit event records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/items`
+
+mSvSettlementItems　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceItemPage`](#svfinanceitempage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Authorized settlement clearing item records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/payment-resolutions`
+
+mSvSettlementPaymentResolution　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `commandKey` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvPaymentResolution`](#svpaymentresolution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the server found the original payment command for the supplied idempotency key. |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | Original registered payment when found; null when the command has no recorded result. |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/payments`
+
+mSvSettlementPayments　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinancePaymentPage`](#svfinancepaymentpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Authorized registered settlement payment records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/payments`
+
+mSvSettlementRegister　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvPaymentRequest`](#svpaymentrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `amountMinor` | `number` | 是 | Positive payment amount to register, in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `receiptReference` | `string` | 是 | Payer’s receipt or transfer reference; required and limited to 160 characters. |
+| `evidenceRefs` | —\[\] | 是 | Receipt attachment references; this client currently sends an empty list. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations`
+
+mSvSettlementReconcile　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvDecisionRequest`](#svdecisionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/generations`
+
+mSvSettlementGenerate　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvGenerationRequest`](#svgenerationrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `periodFrom` | `string` | 是 | Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `periodTo` | `string` | 是 | Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+
+**出参**（`data`）
+
+类型：[`SvGenerated`](#svgenerated)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Settlement bills created or returned idempotently for the generation request. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+
+
+#### GET `/biz/management/stored-value/settlement-entity-candidates`
+
+有授权的结算主体　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 是 | — |
+| `scopeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerEntity`](#svissuerentity)\[\]
+
+
+#### POST `/biz/management/stored-value/settlement-payments/{no}/receipt-confirmations`
+
+mSvSettlementReceipt　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvReceiptRequest`](#svreceiptrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `receivedAt` | `string` | 是 | ISO instant at which the payee confirms receipt of the payment. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+
+
+#### POST `/biz/management/stored-value/settlement-payments/{no}/voids`
+
+mSvSettlementVoid　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvVoidRequest`](#svvoidrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+
+
+#### GET `/biz/management/stored-value/store-issuer-summary`
+
+mSvLocalIssuerSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceSummaryPage`](#svfinancesummarypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Authorized financial summary records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+
+#### GET `/biz/management/stores/{no}/stored-value/issuer`
+
+门店发行设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvIssuerLookup`](#svissuerlookup)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | Current issuer configuration; null when none has been configured. |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer`
+
+保存门店发行配置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`IssuerConfigureRequest`](#issuerconfigurerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | Versioned issuer configuration to validate or apply. |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `issuerVersionNo` | `string` | 是 | Immutable issuer-configuration version used by subsequent operations. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer/access-refresh`
+
+同步原门店准入修订　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvIssuerManagementQuery`](#svissuermanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+
+**出参**（`data`）
+
+类型：[`IssuerAccessAck`](#issueraccessack)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `sourceRevision` | `number` | 是 | Store/issuer source revision acknowledged by the access refresh. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+
+
+#### POST `/biz/management/stores/{no}/stored-value/issuer/prepare`
+
+准备门店发行元数据　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvIssuerManagementQuery`](#svissuermanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+
+**出参**（`data`）
+
+类型：[`IssuerView`](#issuerview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `issuerVersionNo` | `string` | 是 | Immutable issuer-configuration version used by subsequent operations. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/stores/{store}/stored-value/financial-brand-change-original`
+
+核对金融品牌变更原请求　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `commandKey` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandOriginal`](#svfinancialbrandoriginal)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Original financial brand-binding command result; null when the command is not recorded. |
+
+
+#### POST `/biz/management/stores/{store}/stored-value/financial-brand-changes`
+
+金融品牌门店变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvFinancialBrandRequest`](#svfinancialbrandrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null requests removal of the store’s brand binding. |
+| `expectedStoreRevision` | `number` | 是 | Previously read store revision used to reject a stale financial brand-binding change. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
+
+
 ### marketing
 
 #### GET `/biz/marketing/summary`
@@ -3524,7 +5869,14 @@ _无字段_
 
 识别统一会员码　🔒
 
-**入参**：无
+**入参**
+
+请求体：[`ResolveMemberCodeReq`](#resolvemembercodereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 扫描获得的统一会员码凭证。 |
+| `storeNo` | `string` | 是 | 当前选定的门店编号。 |
 
 **出参**（`data`）
 
@@ -4137,6 +6489,25 @@ _无字段_
 类型：[`PaymentApplyment`](#paymentapplyment)\[\]
 
 
+#### GET `/biz/merchant/pay-service`
+
+支付服务资料审核状态（属主）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayServiceStatus`](#payservicestatus)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status |
+| `merchantRef` | `string,null` | 是 | 支付平台商户引用，尚未建立时为空 |
+| `linkStatus` | `string,null` | 是 | 来源关联状态，尚未建立时为空 |
+| `profileStatus` | `string,null` | 是 | 商户资料状态，尚无资料时为空 |
+| `reviewReason` | `string,null` | 是 | 补充资料或驳回原因，支付平台未提供时为空 |
+
+
 #### GET `/biz/merchant/payment`
 
 收款进件状态　🔒
@@ -4516,6 +6887,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4573,6 +6946,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4630,6 +7005,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4808,7 +7185,7 @@ _无字段_
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | [`InventoryTraceStatus`](#inventorytracestatus) | 是 | Delivery state of the synchronization event. |
+| `status` | [`InventorySyncEventState`](#inventorysynceventstate) | 是 | Delivery state of the synchronization event. |
 | `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
@@ -4883,6 +7260,21 @@ _无字段_
 类型：[`LogisticsUpdateRecord`](#logisticsupdaterecord)\[\]
 
 
+#### GET `/biz/order/{orderNo}/points-earning`
+
+订单赠送积分进度　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`OrderPointsEarning`](#orderpointsearning)\[\]
+
+
 #### POST `/biz/order/{orderNo}/prepare`
 
 开始备货　🔒
@@ -4899,6 +7291,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -4964,6 +7358,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5074,6 +7470,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5131,6 +7529,261 @@ _无字段_
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+### payment
+
+#### GET `/biz/payment/app-grant`
+
+已授权的第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)\[\]
+
+
+#### POST `/biz/payment/app-grant`
+
+授权第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 授权记录 id（撤销时用） |
+| `appNo` | `string` | 是 | 第三方接入方 AppId |
+| `appName` | `string,null` | 是 | 第三方名称 |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | 授权的动作 |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | 已授权 / 已撤销 |
+| `grantedAt` | `number,null` | 是 | 授权时间（UTC 毫秒） |
+
+
+#### DELETE `/biz/payment/app-grant/{id}`
+
+撤销第三方授权　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/payment/collection`
+
+代客收款（动态码）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayCollectResult`](#paycollectresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | 这笔代客收款建出的支付单号（PYO…）；到账后在收款流水里按它对得上 |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+
+#### POST `/biz/payment/offline-records`
+
+记一笔 App 外收款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`OfflineRecordCreateReq`](#offlinerecordcreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecord`](#offlinerecord)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+
+#### GET `/biz/payment/offline-records`
+
+App 外收款记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+| `method` | query | [`OfflineRecordMethod`](#offlinerecordmethod)\[\] | 否 | — |
+| `status` | query | [`OfflineRecordStatus`](#offlinerecordstatus)\[\] | 否 | 状态筛选，取值见对应枚举 |
+| `q` | query | `string` | 否 | — |
+| `orderNo` | query | `string` | 否 | 订单单号（按商家拆单后的子订单） |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordPage`](#offlinerecordpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+
+#### GET `/biz/payment/offline-records/summary`
+
+App 外收款合计　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordSummary`](#offlinerecordsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
+
+
+#### GET `/biz/payment/qr-code`
+
+本店收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)\[\]
+
+
+#### POST `/biz/payment/qr-code`
+
+生成收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | 码值（随机、不可枚举），也是停用时的标识 |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | 门店码或桌台码 |
+| `tableRef` | `string,null` | 是 | 桌号（桌台码才有） |
+| `currency` | `string` | 是 | 币种（按门店市场） |
+| `singleLimitMinor` | `number` | 是 | 单笔上限（最小单位） |
+| `dailyLimitMinor` | `number` | 是 | 单码每日累计上限（最小单位） |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | 使用中 / 已停用（停用不可恢复） |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+
+#### PUT `/biz/payment/qr-code/{qrCode}/disabled`
+
+停用收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/payment/refund`
+
+本店最近退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)\[\]
+
+
+#### POST `/biz/payment/refund`
+
+发起原路退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | 退款单号（PYR…） |
+| `payOrderId` | `number` | 是 | 原支付单的内部 id（只用于同一页内去重，不展示） |
+| `amountMinor` | `number` | 是 | 退款金额（最小单位） |
+| `currency` | `string` | 是 | 币种，与原支付单一致 |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | 商家填的退款原因；平台复核时唯一能看到的「为什么」 |
+| `requestedBy` | `string,null` | 是 | 发起的商家账号 |
+| `createdAt` | `number,null` | 是 | 发起时间（UTC 毫秒） |
+| `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
+
+
+#### GET `/biz/payment/statement`
+
+本店收款日流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayDailyStatement`](#paydailystatement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | 本店市场的收款币种 |
+| `paidCount` | `number` | 是 | 当日成功收款笔数 |
+| `paidMinor` | `number` | 是 | 当日成功收款合计（最小单位） |
+| `refundCount` | `number` | 是 | 当日退成笔数 |
+| `refundMinor` | `number` | 是 | 当日退成合计（最小单位） |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
 
 
 ### payout-account
@@ -5310,6 +7963,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5429,6 +8084,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -5575,6 +8232,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 #### POST `/biz/plan/trial`
@@ -5604,6 +8263,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 ### platform-activity
@@ -5635,6 +8296,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `activityNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -5879,6 +8541,10 @@ _无字段_
 | `id` | `number` | 是 | 持久记录主键 |
 | `entryNo` | `string` | 是 | 不可变积分分录编号 |
 | `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `voucherDocumentNo` | `string,null` | 否 | — |
+| `direction` | `string,null` | 否 | — |
+| `businessRef` | `string,null` | 否 | — |
+| `orderNo` | `string,null` | 否 | — |
 | `holderType` | `string` | 是 | 账本持有人类型 |
 | `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
 | `bucket` | `string` | 是 | 积分账本或资金池分桶 |
@@ -6997,7 +9663,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 **出参**（`data`）
@@ -7053,8 +9719,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store`
@@ -7087,8 +9758,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### GET `/biz/store/{storeNo}/categories`
@@ -7137,6 +9813,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7267,6 +9952,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7309,6 +10003,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7425,6 +10128,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7464,6 +10176,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7513,12 +10234,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchState`](#stockalignmentbatchstate) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7558,12 +10280,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchState`](#stockalignmentbatchstate) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7617,12 +10340,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchState`](#stockalignmentbatchstate) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7664,8 +10388,8 @@ _无字段_
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Physical inventory deduction point; the current service deducts on payment. |
+| `inventoryState` | [`InventoryOnboardingState`](#inventoryonboardingstate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Current accounting policy; the server only supports payment-time deduction. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -7791,8 +10515,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/announcement/recent/remove`
@@ -7821,8 +10550,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/create`
@@ -7846,6 +10580,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -7960,7 +10703,1198 @@ _无字段_
 类型：[`StoreCategorySpecs`](#storecategoryspecs)\[\]
 
 
+### stored-value
+
+#### GET `/biz/stored-value/account-directory`
+
+门店储值顾客　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvAccountPage`](#svaccountpage)
+
+_无字段_
+
+
+#### GET `/biz/stored-value/accounts/{accountRef}`
+
+门店储值账户　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvAccount`](#svaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountRef` | `string` | 是 | Opaque stored-value account reference used for authorized queries. |
+| `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
+| `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `balanceMinor` | `number` | 是 | Account balance including held funds, in minor currency units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `availableMinor` | `number` | 是 | Stored-value amount currently spendable, excluding held funds, in minor units. |
+| `lastOccurredAt` | `string,null` | 是 | Time of the most recent account record; null when there are no records. |
+| `lastRechargeAt` | `string,null` | 否 | Time of the most recent completed recharge; null when none exists. |
+
+
+#### GET `/biz/stored-value/brand-capability`
+
+Brand readiness　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvBrandCapability`](#svbrandcapability)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Stored-value capability protocol version supported by the deployment. |
+| `ready` | `boolean` | 是 | Whether all prerequisites for brand stored-value execution are satisfied. |
+| `blockers` | `string`\[\] | 是 | Machine-readable reasons that prevent brand execution readiness. |
+
+
+#### POST `/biz/stored-value/consumptions`
+
+Consume using existing consumer confirmation　🔒
+
+**入参**
+
+请求体：[`SvConsumptionSubmit`](#svconsumptionsubmit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Original service order identifier; retries keep this same order. |
+| `orderRevision` | `number` | 是 | Previously confirmed service order revision; stale submissions are rejected. |
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference authorizing this operation. |
+| `authorizationRef` | `null` | 是 | Reserved customer authorization reference; merchant submission currently requires null. |
+
+**出参**（`data`）
+
+类型：[`SvOperation`](#svoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `usageNo` | `string,null` | 是 | Ledger usage identifier; null until consumption has produced a usage. |
+
+
+#### GET `/biz/stored-value/consumptions/orders/{orderNo}`
+
+Merchant original service status　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvServiceView`](#svserviceview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `serviceOrderNo` | `string` | 是 | Identifier of the original stored-value consumption service order. |
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `storeName` | `string` | 是 | Store display name attached to the service or record. |
+| `serviceStaffName` | `string,null` | 是 | Service staff display name; null when no staff member is assigned. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `serviceAt` | `string,null` | 是 | Service completion timestamp; null before completion. |
+| `confirmation` | `object`（见下） \| `null` | 是 | Immutable customer confirmation terms; null when confirmation is not available. |
+| `payment` | `object`（见下） \| `null` | 是 | Stored-value payment snapshot; null before payment terms are available. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | Identifier of this service order line. |
+| `title` | `string` | 是 | Human-readable service item title. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+
+#### POST `/biz/stored-value/consumptions/orders/{orderNo}/cancel`
+
+Cancel original service without refund　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+请求体：[`SvConsumptionStoreQuery`](#svconsumptionstorequery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+
+**出参**（`data`）
+
+类型：[`SvOperation`](#svoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `usageNo` | `string,null` | 是 | Ledger usage identifier; null until consumption has produced a usage. |
+
+
+#### POST `/biz/stored-value/consumptions/preview`
+
+Selected wallet service preview　🔒
+
+**入参**
+
+请求体：[`SvConsumptionCreate`](#svconsumptioncreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference authorizing this operation. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `accountRef` | `string` | 是 | Opaque account selection reference bound to the selected customer and issuer. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | Sellable service SKU identifier selected for consumption. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+**出参**（`data`）
+
+类型：[`SvConsumptionPreview`](#svconsumptionpreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `service` | [`SvServiceView`](#svserviceview) | 是 | Original stored-value service view; null when the operation has not produced a service. |
+| `quote` | `object`（见下） | 是 | Immutable quote for the selected wallet and service items. |
+
+`quote` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | Total service or payment amount in minor currency units. |
+| `applicableMinor` | `number` | 是 | Stored-value amount applicable to this quoted service, in minor currency units. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining monetary minor-unit interpretation. |
+| `redeemable` | `boolean` | 是 | Whether the selected wallet is eligible to pay for this service. |
+| `reason` | `string` | 是 | Machine-readable eligibility or rejection reason for the quote. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `issuerName` | `string,null` | 是 | Issuer display name; null when no issuer is selected. |
+| `expiresAt` | `string` | 是 | Server expiry timestamp after which the reference or confirmation must be refreshed. |
+
+
+#### POST `/biz/stored-value/consumptions/resolve`
+
+Resolve exact original preview without expired references　🔒
+
+**入参**
+
+请求体：[`SvConsumptionCreate`](#svconsumptioncreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference authorizing this operation. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `accountRef` | `string` | 是 | Opaque account selection reference bound to the selected customer and issuer. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | Sellable service SKU identifier selected for consumption. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+**出参**（`data`）
+
+类型：[`SvConsumptionResolution`](#svconsumptionresolution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the original idempotent consumption preview has been found. |
+| `service` | [`SvServiceView`](#svserviceview) \| `null` | 是 | Original stored-value service view; null when the operation has not produced a service. |
+
+
+#### GET `/biz/stored-value/context`
+
+储值上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvContext`](#svcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+| `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
+
+
+#### GET `/biz/stored-value/customer-candidates`
+
+查找可办理储值的会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `phone` | query | `string` | 否 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvCandidate`](#svcandidate)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/biz/stored-value/customer-selections`
+
+选用储值顾客　🔒
+
+**入参**
+
+请求体：[`SvSelectCustomerReq`](#svselectcustomerreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `source` | [`SvSelectionSource`](#svselectionsource) | 是 | Member or existing-account selection source to resolve into a temporary customer reference. |
+
+**出参**（`data`）
+
+类型：[`SvSelectedCustomer`](#svselectedcustomer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference; expires and must be reselected when stale. |
+| `expiresAt` | `string` | 是 | Expiry time of the server-issued selection or preview. |
+| `pendingScope` | `string` | 否 | Membership scope that still requires confirmation before recharge. |
+| `sourceStoreNo` | `string,null` | 否 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string,null` | 否 | Display name of the store from which the customer relationship originated. |
+| `memberNo` | `string,null` | 否 | Member identifier; null when the candidate only has an existing account. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `account` | `object`（见下） \| `null` | 是 | Selected stored-value account summary; null when no account exists. |
+
+
+#### GET `/biz/stored-value/governance-capability`
+
+储值管控能力　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvGovernanceCapability`](#svgovernancecapability)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Capability protocol version supported by the current server. |
+| `enabled` | `boolean` | 是 | Whether this feature or preset is enabled in the current deployment. |
+
+
+#### POST `/biz/stored-value/plan-recharges`
+
+按方案办理储值　🔒
+
+**入参**
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### GET `/biz/stored-value/plan-recharges/{rechargeNo}`
+
+独立储值进度　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/cancel`
+
+取消未收款储值　🔒
+
+**入参**
+
+请求体：[`SvCancelReq`](#svcancelreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/receive`
+
+确认储值收款　🔒
+
+**入参**
+
+请求体：[`SvReceive`](#svreceive)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `receiptNo` | `string` | 是 | Operator-provided collection evidence reference used to confirm the same receipt. |
+| `confirmationNote` | `string` | 是 | Operator's evidence note for the offline collection confirmation. |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stored-value/plan-recharges/{rechargeNo}/submit`
+
+提交储值实收　🔒
+
+**入参**
+
+请求体：[`SvReceipt`](#svreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `actualAmountMinor` | `number` | 是 | Amount actually collected, in the currency's smallest unit. |
+| `collectionMethod` | `CASH` \| `TRANSFER` | 是 | Offline collection method: cash or bank transfer. |
+| `receiptNo` | `string` | 是 | Operator-provided collection evidence reference used to confirm the same receipt. |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### GET `/biz/stored-value/plans`
+
+门店储值方案　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvPlanPage`](#svplanpage)
+
+_无字段_
+
+
+#### POST `/biz/stored-value/plans`
+
+创建门店储值方案　🔒
+
+**入参**
+
+请求体：[`SvPlanCreate`](#svplancreate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+| `totalAmountMinor` | `number` | 是 | Total recharge credit, equal to principal plus bonus, in minor currency units. |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | Current server-owned lifecycle state of this resource. |
+| `createdAt` | `string` | 是 | Resource creation time returned by the server. |
+| `updatedAt` | `string,null` | 是 | Time the resource was last updated; null when it has never changed. |
+
+
+#### GET `/biz/stored-value/plans/{planNo}`
+
+储值方案详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+| `totalAmountMinor` | `number` | 是 | Total recharge credit, equal to principal plus bonus, in minor currency units. |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | Current server-owned lifecycle state of this resource. |
+| `createdAt` | `string` | 是 | Resource creation time returned by the server. |
+| `updatedAt` | `string,null` | 是 | Time the resource was last updated; null when it has never changed. |
+
+
+#### PUT `/biz/stored-value/plans/{planNo}/status`
+
+启停门店储值方案　🔒
+
+**入参**
+
+请求体：[`SvPlanStatusReq`](#svplanstatusreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvPlan`](#svplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+| `totalAmountMinor` | `number` | 是 | Total recharge credit, equal to principal plus bonus, in minor currency units. |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | Current server-owned lifecycle state of this resource. |
+| `createdAt` | `string` | 是 | Resource creation time returned by the server. |
+| `updatedAt` | `string,null` | 是 | Time the resource was last updated; null when it has never changed. |
+
+
 ### stores
+
+#### GET `/biz/stores/{no}/stored-value/store-summary`
+
+mSvStoreSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvSummary`](#svsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
+
+
+#### POST `/biz/stores/{s}/brand-changes`
+
+提交品牌变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandChangeSubmitReq`](#managementbrandchangesubmitreq)
+
+**出参**（`data`）
+
+类型：[`BrandChange`](#brandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
+| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
+| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
+| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+
+
+#### POST `/biz/stores/{s}/brand-changes/check`
+
+品牌变更影响检查　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+
+请求体：[`ManagementBrandCheckReq`](#managementbrandcheckreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null removes the store's brand binding. |
+
+**出参**（`data`）
+
+类型：[`BrandImpact`](#brandimpact)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `canDecide` | `boolean` | 否 | Whether the operator may approve or reject this checked change. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+| `checkToken` | `string` | 是 | Server-issued token binding submission to the validated change preview. |
+| `storeVersion` | `number` | 是 | Store revision validated by the impact check. |
+| `bindingRevision` | `number` | 是 | Expected revision of the existing brand/store binding. |
+| `fromRevision` | `number,null` | 是 | Revision of the source brand validated by the impact check. |
+| `toRevision` | `number,null` | 是 | Destination-brand revision validated by the impact check. |
+
+
+#### GET `/biz/stores/{s}/operating-context`
+
+门店组织上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `s` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`OperatingContext`](#operatingcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `brand` | `object`（见下） \| `null` | 是 | Current effective brand binding; null for an unbranded store. |
+| `actions` | `string`\[\] | 是 | Actions currently permitted by the server for this resource. |
+| `pendingChange` | `object`（见下） \| `null` | 否 | Unfinished store/brand binding change; null when none exists. |
+
+
+#### POST `/biz/stores/{store}/members`
+
+在当前品牌或门店录入会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`ScopeMemberCreateReq`](#scopemembercreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | Customer phone number submitted for server-authorized member lookup. |
+| `remark` | `string` | 否 | Operator-supplied audit note explaining the submitted operation. |
+| `tagNos` | `string`\[\] | 否 | Member tag identifiers applied when recording the selected customer. |
+
+**出参**（`data`）
+
+类型：[`ScopeMemberSummary`](#scopemembersummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeMemberNo` | `string` | 是 | Membership identifier within the authorized operating scope. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `sourceStoreNo` | `string` | 是 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string` | 是 | Display name of the store from which the customer relationship originated. |
+| `remark` | `string,null` | 是 | Operator-supplied audit note explaining the submitted operation. |
+
+
+#### GET `/biz/stores/{store}/stored-value/activities`
+
+门店储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceActivitiesPage`](#svgovernanceactivitiespage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivity`](#svactivity)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+
+#### POST `/biz/stores/{store}/stored-value/activities`
+
+保存储值活动草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`SvGovernanceDraft`](#svgovernancedraft)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `expectedRevision` | `number` | 否 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### GET `/biz/stores/{store}/stored-value/activities/{no}`
+
+储值活动详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceDetail`](#svgovernancedetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activity` | [`SvActivity`](#svactivity) | 是 | Stored-value activity and its current versioned definition. |
+| `submission` | [`SvSubmission`](#svsubmission) \| `null` | 是 | Durable activity submission state; null before any submission. |
+
+
+#### POST `/biz/stores/{store}/stored-value/activities/{no}/checks`
+
+检查储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivityCheck`](#svactivitycheck)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policy` | [`SvEffectivePolicy`](#sveffectivepolicy) | 是 | Resolved effective governance policy used by the activity validation. |
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+
+
+#### POST `/biz/stores/{store}/stored-value/activities/{no}/copies`
+
+复制储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### PUT `/biz/stores/{store}/stored-value/activities/{no}/draft`
+
+修订储值活动草稿　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceDraft`](#svgovernancedraft)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `expectedRevision` | `number` | 否 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvActivity`](#svactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+
+#### POST `/biz/stores/{store}/stored-value/activities/{no}/stop-issuance`
+
+停止新发行　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvSubmission`](#svsubmission)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `state` | `string` | 是 | Current processing projection for the submitted business operation. |
+| `releaseNo` | `string,null` | 是 | Durable publication-release identifier; null before preparation. |
+| `releaseHash` | `string,null` | 是 | Hash of the published release; null before release preparation completes. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+
+#### POST `/biz/stores/{store}/stored-value/activities/{no}/submissions`
+
+提交储值活动　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvGovernanceCommand`](#svgovernancecommand)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+**出参**（`data`）
+
+类型：[`SvSubmission`](#svsubmission)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `state` | `string` | 是 | Current processing projection for the submitted business operation. |
+| `releaseNo` | `string,null` | 是 | Durable publication-release identifier; null before preparation. |
+| `releaseHash` | `string,null` | 是 | Hash of the published release; null before release preparation completes. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+
+#### GET `/biz/stores/{store}/stored-value/activity-context`
+
+储值活动门店市场上下文　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `intent` | query | `READ` \| `MANAGE` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceContext`](#svgovernancecontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+| `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
+| `canManage` | `boolean` | 是 | Whether the current operator may change this governance resource. |
+| `canPublish` | `boolean` | 是 | Whether the operator may publish activities under this effective policy. |
+
+
+#### GET `/biz/stores/{store}/stored-value/activity-presets`
+
+可用储值活动类型　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvGovernancePresetsPage`](#svgovernancepresetspage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvGovernancePreset`](#svgovernancepreset)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+
+#### GET `/biz/stores/{store}/stored-value/activity-schedules`
+
+按门店时区换算活动日期　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGovernanceSchedule`](#svgovernanceschedule)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `startAt` | `string` | 是 | Start of the configured activity window as a server timestamp. |
+| `endAt` | `string` | 是 | End of the configured activity window as a server timestamp. |
+| `zone` | `string` | 是 | IANA time zone used to interpret the activity schedule. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+
+
+#### GET `/biz/stores/{store}/stored-value/customer-candidates`
+
+品牌或单店会员候选　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`ScopeCandidatePage`](#scopecandidatepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ScopeMemberCandidate`](#scopemembercandidate)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `identityConflictCount` | `number` | 是 | Number of candidate identities that require manual conflict resolution. |
+
+
+#### POST `/biz/stores/{store}/stored-value/customer-selections`
+
+识别当前运营范围会员　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+
+请求体：[`ScopeSelectCustomerReq`](#scopeselectcustomerreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ScopeSelectionSource`](#scopeselectionsource) | 是 | Member or existing-account selection source to resolve into a temporary customer reference. |
+
+**出参**（`data`）
+
+类型：[`ScopeSelectedCustomer`](#scopeselectedcustomer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `selection` | [`SvSelectedCustomer`](#svselectedcustomer) | 是 | Server-issued selected-customer data and its expiry. |
+| `sourceStoreNo` | `string,null` | 是 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string,null` | 是 | Display name of the store from which the customer relationship originated. |
+
+
+#### GET `/biz/stores/{store}/stored-value/effective-policy`
+
+门店有效策略　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvEffectivePolicy`](#sveffectivepolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `object`（见下） | 是 | Tenant, management space, store, brand and currency used to resolve this effective policy. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `sources` | [`SvPolicyVersion`](#svpolicyversion)\[\] | 是 | Policy versions contributing to the resolved effective policy. |
+| `hash` | `string` | 是 | Hash of the resolved effective policy and its authority sources. |
+| `configured` | `boolean` | 是 | Whether an explicit effective policy has been configured. |
+
+`scope` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 是 | Tenant namespace attached by the server to this policy snapshot. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `brandNo` | `string,null` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `storeRevision` | `number` | 是 | Store revision included in the effective-policy snapshot. |
+
 
 #### GET `/biz/stores/{storeNo}/appointment-slots`
 
@@ -8057,6 +11991,524 @@ _无字段_
 **出参**（`data`）
 
 类型：[`FulfillmentImpactItem`](#fulfillmentimpactitem)\[\]
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims`
+
+平台商城：申报已转账　🔒
+
+**入参**
+
+请求体：[`MallOfflineClaimRequest`](#mallofflineclaimrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号（端上生成，同号重放幂等；被拒后用新号重报） |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额，取指引里的应转账金额 |
+| `declaredPaidAt` | `string` | 是 | 转账时间（ISO） |
+| `bankReference` | `string` | 是 | 转账备注 / 流水号 / 账号末几位 —— 运营对账用 |
+| `evidenceKeys` | `string`\[\] | 是 | 1–10 张已上传凭证的 assetKey |
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaim`](#mallofflineclaim)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
+| `submittedAt` | `string` | 是 | 提交时间（ISO） |
+| `bankReference` | `string` | 是 | 申报时填的转账备注 |
+| `evidenceKeys` | `string`\[\] | 是 | 申报时附的凭证 assetKey |
+
+
+#### GET `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims`
+
+平台商城：本单的付款申报　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaim`](#mallofflineclaim)\[\]
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence`
+
+平台商城：预留一个转账凭证位　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallEvidenceTicket`](#mallevidenceticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键；随后按它上传字节、在申报里引用 |
+| `purpose` | `string` | 是 | 用途（商家侧固定 BUYER_RECEIPT） |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content`
+
+平台商城：上传转账凭证图片　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallEvidenceUploaded`](#mallevidenceuploaded)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions`
+
+平台商城：发出付款指引（幂等）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructions`](#mallofflineinstructions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+
+#### GET `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions`
+
+平台商城：查看付款指引　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructions`](#mallofflineinstructions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/quotes`
+
+平台商城：线下转账报价　🔒
+
+**入参**
+
+请求体：[`MallQuoteRequest`](#mallquoterequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lines` | [`MallQuoteLine`](#mallquoteline)\[\] | 是 | 报价行；首期一单一个 SKU |
+| `currency` | `string` | 是 | 币种，取本店结算币种 |
+
+**出参**（`data`）
+
+类型：[`MallQuote`](#mallquote)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号；下单时带上 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 商品总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付现金 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `expiresAt` | `string` | 否 | 过期时间（ISO） |
+
+
+#### POST `/biz/stores/{storeNo}/mall/orders`
+
+平台商城：按报价下单　🔒
+
+**入参**
+
+请求体：[`MallPlaceRequest`](#mallplacerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价号 |
+| `idempotencyKey` | `string` | 是 | 幂等键；同一次确认重复提交只下一单 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 是 | 收货地址；纯数字订单为 null |
+
+**出参**（`data`）
+
+类型：[`MallOrder`](#mallorder)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 下单时间（ISO） |
+
+
+#### GET `/biz/stores/{storeNo}/mall/orders`
+
+平台商城：本店的商城订单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOrderSummary`](#mallordersummary)\[\]
+
+
+#### GET `/biz/stores/{storeNo}/mall/orders/{orderNo}`
+
+平台商城：订单详情　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOrderDetail`](#mallorderdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+
+#### GET `/biz/stores/{storeNo}/mall/products`
+
+平台商城：本店可买的商品　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallStorefront`](#mallstorefront)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `businessTypeCode` | `string` | 否 | 门店经营类型 |
+| `currency` | `string` | 否 | 本店结算币种；报价按它 |
+| `catalogVersion` | `number` | 否 | 目录版本 |
+| `canProcure` | `boolean` | 否 | 当前账号能不能为本店采购 |
+| `products` | [`MallStorefrontProduct`](#mallstorefrontproduct)\[\] | 否 | 商品 |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
+
+Separate local and brand wallets　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `customerRef` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvWallet`](#svwallet)\[\]
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records`
+
+Current store records of selected wallet　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `customerRef` | path | `string` | 是 | — |
+| `issuerRef` | query | `string` | 是 | — |
+| `accountRef` | query | `string` | 是 | — |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 是 | 类型筛选，取值见对应枚举 |
+| `startDate` | query | `string` | 否 | — |
+| `endDate` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvRecordPage`](#svrecordpage)
+
+_无字段_
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}`
+
+查询本店原储值进度　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `rechargeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel`
+
+取消本店未收款储值　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `rechargeNo` | path | `string` | 是 | — |
+
+请求体：[`SvCancelReq`](#svcancelreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create`
+
+取消未明确创建的原充值命令　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline`
+
+确认商家线下储值　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SvProgress`](#svprogress)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+
+#### POST `/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve`
+
+查询原充值创建结果　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SvRechargeCreate`](#svrechargecreate)
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SvRechargeResolve`](#svrechargeresolve)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the original idempotent recharge creation command has been resolved. |
+| `recharge` | [`SvProgress`](#svprogress) \| `null` | 是 | Original recharge result; null while no durable creation result exists. |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-records`
+
+门店储值收支　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `storeNo` | query | `string` | 是 | — |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 是 | 类型筛选，取值见对应枚举 |
+| `startDate` | query | `string` | 否 | — |
+| `endDate` | query | `string` | 否 | — |
+| `accountRef` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvRecordPage`](#svrecordpage)
+
+_无字段_
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}`
+
+储值收支详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `storeNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvRecord`](#svrecord)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `voucherDocumentNo` | `string,null` | 否 | Human-facing accounting voucher number; absent for historical unmapped vouchers. |
+| `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
+| `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
+| `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
+| `type` | `RECHARGE` \| `REDEMPTION` | 是 | Record, target or calculation classification used to interpret this object. |
+| `title` | `string` | 是 | Human-readable title of the stored-value business record. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `storeName` | `string` | 是 | Store display name captured for the record or selection. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `signedAmountMinor` | `number` | 是 | Signed change in stored-value balance, in minor currency units. |
+| `balanceAfterMinor` | `number` | 是 | Account balance after this record, in minor currency units. |
+| `occurredAt` | `string` | 是 | Time the server recorded the business operation. |
+| `businessNo` | `string` | 是 | Business operation identifier associated with this stored-value record. |
+| `planNo` | `string,null` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string,null` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number,null` | 是 | Gifted stored-value amount, in minor currency units. |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/issuers`
+
+门店可用发行方　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreIssuerOptions`](#storeissueroptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `legacyMode` | `boolean` | 是 | Whether this store still uses the compatibility issuer arrangement. |
+| `issuers` | [`StoreIssuerOption`](#storeissueroption)\[\] | 是 | Issuer options applicable to the current store. |
+
+
+#### GET `/biz/stores/{storeNo}/stored-value/recharge-options`
+
+会员可用储值方案　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `customerRef` | query | `string` | 是 | — |
+| `scopeType` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvIssuerRechargeOptions`](#svissuerrechargeoptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerOptions` | [`StoreIssuerOptions`](#storeissueroptions) | 是 | Issuer choices and their current recharge/redemption availability. |
+| `plans` | [`SvPlanPage`](#svplanpage) | 是 | Recharge plans available for the selected store and customer. |
 
 
 #### GET `/biz/stores/mine`
@@ -8163,6 +12615,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
 | `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
@@ -8229,6 +12682,28 @@ _无字段_
 
 - `REFUND_ONLY`
 - `RETURN_REFUND`
+
+### AppPlatform
+
+App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致
+
+枚举取值：
+
+- `ANDROID`
+- `IOS`
+
+### AppVersionInfo
+
+版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
 
 ### AppealReviewReq
 
@@ -8438,6 +12913,7 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+| `actorNo` | `string` | 否 | 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。 |
 
 ### BookExpressReq
 
@@ -8447,6 +12923,62 @@ _无字段_
 |---|---|:---:|---|
 | `carrier` | `string` | 是 | 微信 delivery_id |
 | `weightKg` | `number` | 是 | 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 |
+
+### Brand
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
+| `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
+| `createdAt` | `string` | 否 | Resource creation time returned by the server. |
+| `updatedAt` | `string` | 否 | Time the resource was last updated; null when it has never changed. |
+| `createdByLabel` | `string` | 否 | Display label of the operator who created the resource. |
+| `updatedByLabel` | `string` | 否 | Display label of the operator who last updated the resource. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+
+### BrandChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
+| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
+| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
+| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
+| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
+| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### BrandImpact
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `canDecide` | `boolean` | 否 | Whether the operator may approve or reject this checked change. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+| `checkToken` | `string` | 是 | Server-issued token binding submission to the validated change preview. |
+| `storeVersion` | `number` | 是 | Store revision validated by the impact check. |
+| `bindingRevision` | `number` | 是 | Expected revision of the existing brand/store binding. |
+| `fromRevision` | `number,null` | 是 | Revision of the source brand validated by the impact check. |
+| `toRevision` | `number,null` | 是 | Destination-brand revision validated by the impact check. |
 
 ### BusinessMode
 
@@ -8633,6 +13165,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
@@ -8921,6 +13454,46 @@ _无字段_
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
+### FeedbackCategory
+
+回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。
+
+枚举取值：
+
+- `BUG`
+- `PAYMENT`
+- `IDEA`
+- `OTHER`
+
+### FeedbackDiagnostic
+
+回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string,null` | 是 | 请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null |
+| `method` | `string` | 是 | HTTP 方法 |
+| `path` | `string` | 是 | 请求路径（已脱敏） |
+| `outcome` | `string` | 是 | 结果摘要，如 `ok`、`error 70006` |
+
+### FeedbackReceipt
+
+提交回报的回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+### FeedbackStatus
+
+回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」
+
+枚举取值：
+
+- `OPEN`
+- `REPLIED`
+- `CLOSED`
+
 ### FulfillStage
 
 履约进度五档（与后端 FulfillStage 同名同义）
@@ -9173,7 +13746,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 ### GrantType
@@ -9380,22 +13953,13 @@ _无字段_
 
 ### InventoryAccountingMode
 
-Physical inventory is currently deducted on payment (InventoryOverviewQuery.render).
+Current backend accounting policy: inventory is deducted when payment completes.
 
 类型：`string`
 
-### InventoryOutboxMode
+### InventoryOnboardingState
 
-Inventory wire value domain.
-
-枚举取值：
-
-- `UNIFIED`
-- `LEGACY`
-
-### InventoryState
-
-Inventory wire value domain.
+Inventory onboarding progression; MAPPED means a physical inventory mapping exists.
 
 枚举取值：
 
@@ -9403,9 +13967,18 @@ Inventory wire value domain.
 - `INITIALIZING`
 - `MAPPED`
 
-### InventoryTraceStatus
+### InventoryOutboxMode
 
-Inventory wire value domain.
+Outbox mechanism which persisted the synchronization event.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
+
+### InventorySyncEventState
+
+Delivery state of an inventory/order synchronization event.
 
 枚举取值：
 
@@ -9415,6 +13988,74 @@ Inventory wire value domain.
 - `WARNING`
 - `SKIPPED`
 - `ARCHIVED`
+
+### IssuerAccessAck
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `sourceRevision` | `number` | 是 | Store/issuer source revision acknowledged by the access refresh. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+
+### IssuerConfiguration
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### IssuerConfigureRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `configuration` | [`IssuerConfiguration`](#issuerconfiguration) | 是 | Versioned issuer configuration to validate or apply. |
+
+### IssuerImpact
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `affectedAccountCount` | `number` | 是 | Number of existing accounts affected by the proposed issuer change. |
+| `hasPending` | `boolean` | 是 | Whether pending operations prevent applying this issuer change. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+
+### IssuerRoute
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentMerchantNo` | `string,null` | 是 | Payment merchant assigned to this collection route; null until configured. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string,null` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `channel` | `string` | 是 | Delivery or collection channel used by this capability or route. |
+| `scene` | `string` | 是 | Business scene in which the route or activity is applicable. |
+
+### IssuerView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `settlementEntityNo` | `string` | 是 | Operating entity responsible for settling the issuer's liabilities. |
+| `collectionMode` | `string` | 是 | Whether issuer collection is centralized or performed by individual stores. |
+| `clearingMode` | `string` | 是 | Clearing policy used for liabilities under this issuer configuration. |
+| `debitAllocationMode` | `string` | 是 | Policy for allocating redemption debits across funded balance components. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `marketZone` | `string` | 是 | IANA time zone used for this issuer's market and business dates. |
+| `routes` | [`IssuerRoute`](#issuerroute)\[\] | 是 | Collection routes assigned to this issuer configuration. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `issuerVersionNo` | `string` | 是 | Immutable issuer-configuration version used by subsequent operations. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
 
 ### LimitReason
 
@@ -9440,6 +14081,517 @@ Inventory wire value domain.
 | `detail` | `string,null` | 是 | 查询结果或最近节点摘要；不含收件人手机号。 |
 | `occurredAt` | `number` | 是 | 更新时间，UTC 毫秒时间戳。 |
 
+### MallComponentKind
+
+组件种类：套餐 / 业务端包 / 硬件
+
+枚举取值：
+
+- `PLAN`
+- `END_PACKAGE`
+- `HARDWARE`
+
+### MallEvidenceTicket
+
+凭证预留回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键；随后按它上传字节、在申报里引用 |
+| `purpose` | `string` | 是 | 用途（商家侧固定 BUYER_RECEIPT） |
+
+### MallEvidenceUploaded
+
+凭证上传回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+### MallMoney
+
+金额：币种 + 最小单位整数字符串
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string` | 是 | ISO 4217 三位大写币种（TWD / CNY …） |
+| `minor` | `string` | 是 | 最小货币单位的十进制整数文本（TWD 699000 = NT$6,990.00）；不是 number，避免超过 2^53 失真 |
+
+### MallOfflineClaim
+
+商家的付款申报
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
+| `submittedAt` | `string` | 是 | 提交时间（ISO） |
+| `bankReference` | `string` | 是 | 申报时填的转账备注 |
+| `evidenceKeys` | `string`\[\] | 是 | 申报时附的凭证 assetKey |
+
+### MallOfflineClaimRequest
+
+付款申报请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号（端上生成，同号重放幂等；被拒后用新号重报） |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额，取指引里的应转账金额 |
+| `declaredPaidAt` | `string` | 是 | 转账时间（ISO） |
+| `bankReference` | `string` | 是 | 转账备注 / 流水号 / 账号末几位 —— 运营对账用 |
+| `evidenceKeys` | `string`\[\] | 是 | 1–10 张已上传凭证的 assetKey |
+
+### MallOfflineClaimStatus
+
+申报状态。**申报不是到账**：CONFIRMED 才表示运营已核到款
+
+枚举取值：
+
+- `SUBMITTED`
+- `REVIEWING`
+- `CONFIRMED`
+- `MISMATCHED`
+- `DECLINED`
+
+### MallOfflineInstructions
+
+已发出的付款指引（收款账户按发出时的档案版本冻结）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+### MallOrder
+
+订单
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 下单时间（ISO） |
+
+### MallOrderDetail
+
+订单详情
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+### MallOrderStatus
+
+订单总状态（概览用；付款以资金轴 paymentStatus 为准）
+
+枚举取值：
+
+- `PENDING_INVENTORY`
+- `AWAITING_PAYMENT`
+- `PAYMENT_UNKNOWN`
+- `PAID`
+- `FULFILLING`
+- `COMPLETED`
+- `CANCEL_PENDING`
+- `CLOSED`
+- `REFUNDING`
+- `PARTIALLY_REFUNDED`
+- `REFUNDED`
+
+### MallOrderSummary
+
+订单概览：总状态 + 资金 / 交付 / 退款三个独立维度
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`MallOrder`](#mallorder) | 否 | 订单 |
+| `paymentStatus` | `string` | 否 | 资金维度：UNPAID / PAYING / PAYMENT_UNKNOWN / CANCEL_PENDING / PAID / CLOSED |
+| `fulfillmentStatus` | `string` | 否 | 权益 / 交付维度 |
+| `refundStatus` | `string` | 否 | 退款维度 |
+
+### MallPlaceRequest
+
+下单请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价号 |
+| `idempotencyKey` | `string` | 是 | 幂等键；同一次确认重复提交只下一单 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 是 | 收货地址；纯数字订单为 null |
+
+### MallProductInfo
+
+商品基本信息
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 商品号 |
+| `kind` | [`MallProductKind`](#mallproductkind) | 否 | 商品种类 |
+| `name` | `string` | 否 | 名称 |
+| `description` | `string,null` | 否 | 描述 |
+| `categoryCode` | `string` | 否 | 类目编码 |
+
+### MallProductKind
+
+商品种类：套餐 / 业务端 / 硬件 / 组合套装
+
+枚举取值：
+
+- `PLAN`
+- `END_ACCESS`
+- `HARDWARE`
+- `BUNDLE`
+
+### MallQuote
+
+报价（服务器冻结，默认 15 分钟有效）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号；下单时带上 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 商品总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付现金 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `expiresAt` | `string` | 否 | 过期时间（ISO） |
+
+### MallQuoteComponent
+
+报价 / 订单里冻结的组件与金额
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string` | 否 | 组件号 |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类 |
+| `listAmount` | [`MallMoney`](#mallmoney) | 否 | 原价 |
+| `dealAmount` | [`MallMoney`](#mallmoney) | 否 | 成交价 |
+| `creditAmount` | [`MallMoney`](#mallmoney) | 否 | 抵扣部分 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金部分 |
+| `cycleDays` | `number` | 否 | 周期天数 |
+| `quantity` | `number` | 否 | 数量 |
+
+### MallQuoteLine
+
+报价行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuVersionNo` | `string` | 是 | SKU 版本号 |
+| `quantity` | `number` | 是 | 数量 |
+
+### MallQuoteRequest
+
+报价请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lines` | [`MallQuoteLine`](#mallquoteline)\[\] | 是 | 报价行；首期一单一个 SKU |
+| `currency` | `string` | 是 | 币种，取本店结算币种 |
+
+### MallReadiness
+
+在线支付口径的可购买判断（线下转账另有判断，以报价结果为准）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `available` | `boolean` | 否 | 在线支付是否可买 |
+| `reasons` | `string`\[\] | 否 | 不可买的原因码 |
+
+### MallShipment
+
+硬件发货
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 否 | 操作号 |
+| `orderComponentNo` | `string` | 否 | 订单组件号 |
+| `carrierCode` | `string` | 否 | 承运商 |
+| `trackingNo` | `string` | 否 | 运单号 |
+| `quantity` | `number` | 否 | 数量 |
+| `status` | `string` | 否 | 状态 |
+
+### MallShippingAddress
+
+收货地址（含硬件时必填）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recipient` | `string` | 否 | 收件人 |
+| `phone` | `string` | 否 | 电话 |
+| `countryCode` | `string` | 否 | 国家 / 地区码（TW / CN / AE） |
+| `region` | `string,null` | 否 | 省 / 州 |
+| `city` | `string,null` | 否 | 城市 |
+| `addressLine` | `string` | 否 | 详细地址 |
+| `postalCode` | `string,null` | 否 | 邮编 |
+
+### MallSku
+
+可售 SKU 的已发布版本
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 所属商品号 |
+| `skuNo` | `string` | 否 | SKU 号 |
+| `skuVersionNo` | `string` | 否 | SKU 版本号；报价按这个版本冻结 |
+| `title` | `string` | 否 | 标题 |
+| `listPrice` | [`MallMoney`](#mallmoney) | 否 | 划线原价 |
+| `price` | [`MallMoney`](#mallmoney) | 否 | 售价 |
+| `refundPolicySnapshot` | `string` | 否 | 退款政策快照（发布时冻结） |
+| `components` | [`MallSkuComponent`](#mallskucomponent)\[\] | 否 | 交付组件 |
+| `maxPerOrder` | `number` | 否 | 每单最多买几件 |
+
+### MallSkuComponent
+
+SKU 组件：一件 SKU 交付哪些东西
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string,null` | 否 | 组件号 |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类；有 HARDWARE 的单要收货地址 |
+| `planVersionNo` | `string,null` | 否 | PLAN 组件引用的 Plan 版本 |
+| `entitlementCode` | `string,null` | 否 | END_PACKAGE 组件的业务端权益编码 |
+| `hardwareSkuNo` | `string,null` | 否 | HARDWARE 组件的硬件 SKU 号 |
+| `periodDays` | `number,null` | 否 | 数字组件的周期天数；硬件为空 |
+| `unitCount` | `number` | 否 | 数量 |
+| `gift` | `boolean` | 否 | 赠送组件（不参与金额分摊） |
+
+### MallStoreRef
+
+门店引用；租户与门店都由后端按登录态与路径决定，页面只读
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 否 | 租户号（固定 MAIN） |
+| `storeNo` | `string` | 否 | 门店号 |
+
+### MallStorefront
+
+本店能买的商品（按门店经营类型过滤）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `businessTypeCode` | `string` | 否 | 门店经营类型 |
+| `currency` | `string` | 否 | 本店结算币种；报价按它 |
+| `catalogVersion` | `number` | 否 | 目录版本 |
+| `canProcure` | `boolean` | 否 | 当前账号能不能为本店采购 |
+| `products` | [`MallStorefrontProduct`](#mallstorefrontproduct)\[\] | 否 | 商品 |
+
+### MallStorefrontProduct
+
+列表里的一件商品及其可售 SKU
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `product` | [`MallProductInfo`](#mallproductinfo) | 否 | 商品信息 |
+| `skus` | [`MallStorefrontSku`](#mallstorefrontsku)\[\] | 否 | 可售 SKU |
+
+### MallStorefrontSku
+
+列表里的一个可售 SKU
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sku` | [`MallSku`](#mallsku) | 否 | SKU 版本内容 |
+| `readiness` | [`MallReadiness`](#mallreadiness) | 否 | 在线支付口径的可购买判断 |
+
+### ManagementAudit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `action` | `string` | 是 | Operation recorded for this command or audit entry. |
+| `actorKey` | `string` | 是 | Authenticated operator identity recorded by the server. |
+| `occurredAt` | `string` | 是 | Time the server recorded the business operation. |
+
+### ManagementAuditPage
+
+类型：`ManagementPage_ManagementAudit`
+
+### ManagementBrandCheckReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null removes the store's brand binding. |
+
+### ManagementBrandDecisionReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `REJECT` | 是 | Approval or return decision submitted for the current revision. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### ManagementBrandPage
+
+类型：`ManagementPage_Brand`
+
+### ManagementBrandStatusReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `targetStatus` | `ACTIVE` \| `INACTIVE` | 是 | Requested lifecycle state; server checks permitted transitions. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### ManagementContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorKey` | `string` | 是 | Authenticated operator identity recorded by the server. |
+| `spaces` | [`ManagementSpace`](#managementspace)\[\] | 是 | Management spaces accessible to the authenticated operator. |
+| `canBootstrap` | `boolean` | 是 | Whether the operator may create a management space from an available authority source. |
+| `bootstrapSources` | `object`（见下）\[\] | 是 | Accounts the operator may use to establish a management space. |
+
+`bootstrapSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | Account identifier used as the management-space authority source. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `entityName` | `string` | 否 | Display name of the operating entity providing the authority source. |
+| `stores` | `object`（见下）\[\] | 是 | Stores accessible through this management authority source. |
+| `paymentMerchants` | `object`（见下）\[\] | 是 | Payment merchants available under the authority-source account. |
+
+`bootstrapSources[].stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+
+`bootstrapSources[].paymentMerchants[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | Payment merchant identifier under the operating entity. |
+
+### ManagementGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorLabel` | `string` | 否 | Display label of the operator or grant recipient. |
+| `resourceName` | `string` | 否 | Display name of the business resource covered by the grant. |
+| `grantNo` | `string` | 是 | Resource-capability grant identifier. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `actorNo` | `string` | 是 | Identity receiving the resource grant. |
+| `resourceType` | `string` | 是 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 是 | Business identifier of the resource covered by the capability grant. |
+| `permissionCode` | `string` | 是 | Capability code granted for the specified business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `delegatable` | `boolean,number` | 是 | Whether the recipient may delegate this granted capability. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+### ManagementGrantPage
+
+类型：`ManagementPage_ManagementGrant`
+
+### ManagementPage_Brand
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`Brand`](#brand)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+
+### ManagementPage_ManagementAudit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementAudit`](#managementaudit)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+
+### ManagementPage_ManagementGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementGrant`](#managementgrant)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+
+### ManagementPage_ManagementRecipient
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementRecipient`](#managementrecipient)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+
+### ManagementPage_ManagementResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ManagementResource`](#managementresource)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+
+### ManagementRecipient
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actorNo` | `string` | 是 | Identity receiving the resource grant. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+
+### ManagementRecipientPage
+
+类型：`ManagementPage_ManagementRecipient`
+
+### ManagementResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 否 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 否 | Current revision of the resource's management-scope bindings. |
+
+### ManagementResourcePage
+
+类型：`ManagementPage_ManagementResource`
+
+### ManagementSpace
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
+| `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
+| `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
+| `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
+| `resourceNo` | `string` | 否 | Business identifier of the resource covered by the capability grant. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `brandNo` | `string` | 否 | Brand identifier; null when the scope has no brand binding. |
+| `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
+| `scopeRevision` | `number` | 否 | Current revision of the resource's management-scope bindings. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `actions` | `string`\[\] | 是 | Actions currently permitted by the server for this resource. |
+
+### ManagementSpaceCreateReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `sourceAccountNo` | `string` | 是 | Authority-source account used to bootstrap the management space. |
+
 ### MarkArrivedReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -9451,6 +14603,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `campaignNo` | `string` | 是 | 活动单号 |
 | `merchantNo` | `string` | 是 | 所属商家。活动是店铺级的，不跨店 |
 | `type` | [`CampaignType`](#campaigntype) | 是 | 活动类型，决定下面哪几个可选字段有意义 |
@@ -9777,6 +14930,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
@@ -9816,6 +14970,21 @@ Inventory wire value domain.
 | `daysSinceLast` | `number` | 是 | 距上次下单天数 |
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
+
+### MerchantFeedback
+
+「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类 |
+| `description` | `string` | 是 | 描述原文 |
+| `status` | [`FeedbackStatus`](#feedbackstatus) | 是 | 处理状态 |
+| `reply` | `string,null` | 是 | 客服回复；没回复为 null |
+| `storeNo` | `string,null` | 是 | 提交时所在门店（核对属于本账号才存） |
+| `createdAt` | `string` | 是 | 提交时间（ISO-8601 UTC） |
+| `repliedAt` | `string,null` | 是 | 回复时间（ISO-8601 UTC）；没回复为 null |
 
 ### MerchantFulfillmentChange
 
@@ -9864,7 +15033,7 @@ Inventory wire value domain.
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | [`InventoryTraceStatus`](#inventorytracestatus) | 是 | Delivery state of the synchronization event. |
+| `status` | [`InventorySyncEventState`](#inventorysynceventstate) | 是 | Delivery state of the synchronization event. |
 | `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
@@ -9999,6 +15168,8 @@ Inventory wire value domain.
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 ### MerchantProfile
 
@@ -10219,6 +15390,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不合批** |
 | `settleCycle` | `string` | 是 | 本批采用的账期规则，如 T+1 / WEEKLY |
@@ -10232,6 +15404,107 @@ Inventory wire value domain.
 | `payoutStatus` | `PENDING` \| `EXPORTED` \| `PAID` \| `MATCHED` \| `FAILED` \| `null` | 否 | 本批最近一笔放款到哪一步了（V391）。空 = 还没放款。 批次状态 RELEASED 只说「放了」，没说钱到哪一步 —— 商家问客服的正是后者： PENDING / EXPORTED 财务还没打；PAID 已登记凭证；MATCHED 银行流水勾上；FAILED 退回了。 |
 | `paymentRef` | `string,null` | 否 | 凭证号（网银流水号）。商家拿它对自己的银行到账记录 |
 | `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒）。空 = 还没登记 |
+
+### OfflineRecord
+
+外部收款记录（四个接口共用）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+### OfflineRecordAction
+
+留痕动作
+
+枚举取值：
+
+- `CREATE`
+- `CORRECT`
+- `VOID`
+
+### OfflineRecordCreateReq
+
+记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+### OfflineRecordHistory
+
+一步留痕；端上按 action 与前后值自己拼文字
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string` | 是 | 发生时刻，ISO 8601 带门店市场偏移 |
+| `by` | `string` | 是 | 操作人号 |
+| `byName` | `string,null` | 是 | 操作人名字；取不到为 null，端上退回显示 by |
+| `action` | [`OfflineRecordAction`](#offlinerecordaction) | 是 | 这一步做了什么 |
+| `reason` | `string,null` | 是 | 更正 / 作废的原因；CREATE 为 null |
+| `fromAmountMinor` | `number,null` | 是 | 改前金额（最小单位）；CREATE / VOID 为 null |
+| `toAmountMinor` | `number,null` | 是 | 改后金额（最小单位）；VOID 为 null |
+| `fromMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改前方式；CREATE / VOID 为 null |
+| `toMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改后方式；VOID 为 null |
+| `fromReceivedAt` | `string,null` | 是 | 改前实收时间；更正改了实收时间时才有 |
+| `toReceivedAt` | `string,null` | 是 | 改后实收时间；更正改了实收时间时才有 |
+
+### OfflineRecordMethod
+
+收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款
+
+枚举取值：
+
+- `CASH`
+- `BANK_TRANSFER`
+- `EXTERNAL_POS`
+- `OTHER`
+
+### OfflineRecordPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+### OfflineRecordStatus
+
+已记 / 已作废（作废是终态，行不删）
+
+枚举取值：
+
+- `RECORDED`
+- `VOIDED`
+
+### OfflineRecordSummary
+
+区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
 
 ### OfflineSaleItem
 
@@ -10254,10 +15527,26 @@ Inventory wire value domain.
 | `revoked` | `boolean` | 是 | 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 |
 | `items` | [`OfflineSaleItem`](#offlinesaleitem)\[\] | 是 | 这一笔卖了哪几件货 |
 
+### OperatingContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `brand` | `object`（见下） \| `null` | 是 | Current effective brand binding; null for an unbranded store. |
+| `actions` | `string`\[\] | 是 | Actions currently permitted by the server for this resource. |
+| `pendingChange` | `object`（见下） \| `null` | 否 | Unfinished store/brand binding change; null when none exists. |
+
 ### Order
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human order number (OD/OS); historical unmapped rows leave it empty. |
+| `payDocumentNo` | `string,null` | 否 | Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. |
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
 | `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
@@ -10334,6 +15623,70 @@ Inventory wire value domain.
 | `limitPerUser` | `number,null` | 否 | 每人限购（只在设了限购且平台开关开着时给） |
 | `boughtQty` | `number,null` | 否 | 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 |
 
+### OrderPointsEarning
+
+Server-projected earning for an authorized order; accepted work is not an account credit.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Parent order identifier for the reward inspection. |
+| `typeCode` | `string` | 是 | Unique points-type code; separate points types never share balances or rules. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `state` | [`OrderPointsEarningState`](#orderpointsearningstate) | 是 | Current processing projection for the submitted business operation. |
+| `redemptionState` | [`OrderPointsRedemptionState`](#orderpointsredemptionstate) | 是 | Processing state of the order's points hold, consumption and subsequent returns. |
+| `usedPoints` | `number` | 是 | Points actually consumed by this order's completed redemption. |
+| `refundState` | [`OrderPointsRefundState`](#orderpointsrefundstate) | 是 | Processing state of points returned for this order's refund. |
+| `returnedPoints` | `number` | 是 | Points actually returned to the account by completed refund operations. |
+| `expectedPoints` | `number` | 是 | Original expected reward points frozen when the order was accepted. |
+| `grantedPoints` | `number` | 是 | Reward points actually posted to the account ledger. |
+| `pendingPoints` | `number` | 是 | Granted points still awaiting conversion to an available balance. |
+| `availablePoints` | `number` | 是 | Granted points that have become available for use. |
+| `reclaimedPoints` | `number` | 是 | Previously granted points subsequently recovered by refunds or reversals. |
+| `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### OrderPointsEarningState
+
+Order reward processing projection; accepted work is not a posted account credit.
+
+枚举取值：
+
+- `NONE`
+- `EXPECTED`
+- `PROCESSING`
+- `PENDING`
+- `AVAILABLE`
+- `RETRYABLE`
+- `MANUAL`
+- `SKIPPED`
+- `RECLAIMED`
+
+### OrderPointsRedemptionState
+
+Lifecycle of the order points hold and its subsequent returns.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `HELD`
+- `RELEASED`
+- `CONSUMED`
+- `REFUND_PROCESSING`
+- `RETURNED`
+- `PARTIALLY_RETURNED`
+
+### OrderPointsRefundState
+
+Processing state of the order points refund projection.
+
+枚举取值：
+
+- `NONE`
+- `PROCESSING`
+- `MANUAL`
+- `COMPLETED`
+
 ### OrderReceiver
 
 收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
@@ -10400,6 +15753,132 @@ Inventory wire value domain.
 | `AE` | `number` | 否 | — |
 | `US` | `number` | 否 | — |
 
+### PayAppGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 授权记录 id（撤销时用） |
+| `appNo` | `string` | 是 | 第三方接入方 AppId |
+| `appName` | `string,null` | 是 | 第三方名称 |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | 授权的动作 |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | 已授权 / 已撤销 |
+| `grantedAt` | `number,null` | 是 | 授权时间（UTC 毫秒） |
+
+### PayCollectResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | 这笔代客收款建出的支付单号（PYO…）；到账后在收款流水里按它对得上 |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+### PayDailyStatement
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | 本店市场的收款币种 |
+| `paidCount` | `number` | 是 | 当日成功收款笔数 |
+| `paidMinor` | `number` | 是 | 当日成功收款合计（最小单位） |
+| `refundCount` | `number` | 是 | 当日退成笔数 |
+| `refundMinor` | `number` | 是 | 当日退成合计（最小单位） |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
+
+### PayGrantAction
+
+授权第三方的动作：代收款 / 代退款 / 查单
+
+枚举取值：
+
+- `COLLECT`
+- `REFUND`
+- `READ`
+
+### PayGrantStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `REVOKED`
+
+### PayQrCode
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | 码值（随机、不可枚举），也是停用时的标识 |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | 门店码或桌台码 |
+| `tableRef` | `string,null` | 是 | 桌号（桌台码才有） |
+| `currency` | `string` | 是 | 币种（按门店市场） |
+| `singleLimitMinor` | `number` | 是 | 单笔上限（最小单位） |
+| `dailyLimitMinor` | `number` | 是 | 单码每日累计上限（最小单位） |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | 使用中 / 已停用（停用不可恢复） |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+### PayQrKind
+
+收款码：门店码 / 桌台码
+
+枚举取值：
+
+- `STORE`
+- `TABLE`
+
+### PayQrStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `DISABLED`
+
+### PayRefundItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | 退款单号（PYR…） |
+| `payOrderId` | `number` | 是 | 原支付单的内部 id（只用于同一页内去重，不展示） |
+| `amountMinor` | `number` | 是 | 退款金额（最小单位） |
+| `currency` | `string` | 是 | 币种，与原支付单一致 |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | 商家填的退款原因；平台复核时唯一能看到的「为什么」 |
+| `requestedBy` | `string,null` | 是 | 发起的商家账号 |
+| `createdAt` | `number,null` | 是 | 发起时间（UTC 毫秒） |
+| `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
+
+### PayServiceStatus
+
+near-pay 来源主体的资料审核结果；不代表门店可收款。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status |
+| `merchantRef` | `string,null` | 是 | 支付平台商户引用，尚未建立时为空 |
+| `linkStatus` | `string,null` | 是 | 来源关联状态，尚未建立时为空 |
+| `profileStatus` | `string,null` | 是 | 商户资料状态，尚无资料时为空 |
+| `reviewReason` | `string,null` | 是 | 补充资料或驳回原因，支付平台未提供时为空 |
+
+### PayStatementItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | [`PayStatementKind`](#paystatementkind) | 是 | 收款或退款 |
+| `no` | `string` | 是 | 单号：收款行是支付单号，退款行是退款单号 |
+| `payOrderNo` | `string,null` | 是 | 关联的支付单号（退款行据此找回原收款） |
+| `amountMinor` | `number` | 是 | 金额（最小单位，恒为正；退款行由页面加负号） |
+| `payChannel` | `string,null` | 是 | 渠道码（WECHAT / ALIPAY / TEST …） |
+| `payMethod` | `string,null` | 是 | 支付方式码（WECHAT_PAY / ALIPAY / TEST_PAY …），页面译成名字 |
+| `status` | `string` | 是 | 支付单或退款单状态 |
+| `at` | `number,null` | 是 | 成功时间（UTC 毫秒） |
+
+### PayStatementKind
+
+流水行：收款 / 退款
+
+枚举取值：
+
+- `PAYMENT`
+- `REFUND`
+
 ### PaymentApplyStatus
 
 支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
@@ -10432,6 +15911,17 @@ Inventory wire value domain.
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+
+### PaymentMerchant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payMerchantNo` | `string` | 是 | Payment merchant identifier under the operating entity. |
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `payChannel` | `string` | 是 | Payment channel used by this payment-merchant capability. |
+| `applyStatus` | `string` | 是 | Payment merchant's onboarding application status. |
+| `payMethods` | `string`\[\] | 是 | Payment methods supported by the selected payment merchant. |
 
 ### PaymentResolution
 
@@ -10616,6 +16106,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; absent for historical rows without a mapping. |
 | `activityNo` | `string` | 是 | 活动单号 |
 | `name` | `string` | 是 | 名称 |
 | `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
@@ -11030,6 +16521,15 @@ Inventory wire value domain.
 | `qty` | `number` | 是 | 缺/坏了几件。此前端上不收集这个数，后端落库恒为 1，分拣汇总的短缺数字从设计上就是错的 |
 | `note` | `string` | 是 | 情况说明。承接方填，供货方与平台据此定责 |
 
+### ResolveMemberCodeReq
+
+仅提交扫描凭证与选定门店；租户、主体及操作人身份由后端会话确定。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 扫描获得的统一会员码凭证。 |
+| `storeNo` | `string` | 是 | 当前选定的门店编号。 |
+
 ### Review
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -11207,6 +16707,49 @@ Inventory wire value domain.
 
 类型：`StoreProfile`
 
+### ScopeCandidatePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`ScopeMemberCandidate`](#scopemembercandidate)\[\] | 是 | Records returned for the current continuation-cursor page. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `identityConflictCount` | `number` | 是 | Number of candidate identities that require manual conflict resolution. |
+
+### ScopeMemberCandidate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `memberStatus` | `string` | 是 | Current member lifecycle state used when checking recharge eligibility. |
+| `canRecharge` | `boolean` | 是 | Whether the account and selected issuer currently permit recharging. |
+| `unavailableReason` | `string,null` | 是 | Server-provided explanation of why this account or issuer cannot be used. |
+| `account` | `object`（见下） \| `null` | 是 | Selected stored-value account summary; null when no account exists. |
+| `memberNo` | `string,null` | 是 | Member identifier; null when the candidate only has an existing account. |
+| `sourceStoreNo` | `string,null` | 是 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string,null` | 是 | Display name of the store from which the customer relationship originated. |
+| `lastRechargeAt` | `string,null` | 否 | Time of the most recent completed recharge; null when none exists. |
+
+### ScopeMemberCreateReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phone` | `string` | 是 | Customer phone number submitted for server-authorized member lookup. |
+| `remark` | `string` | 否 | Operator-supplied audit note explaining the submitted operation. |
+| `tagNos` | `string`\[\] | 否 | Member tag identifiers applied when recording the selected customer. |
+
+### ScopeMemberSummary
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeMemberNo` | `string` | 是 | Membership identifier within the authorized operating scope. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `sourceStoreNo` | `string` | 是 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string` | 是 | Display name of the store from which the customer relationship originated. |
+| `remark` | `string,null` | 是 | Operator-supplied audit note explaining the submitted operation. |
+
 ### ScopeParseCandidate
 
 同名多处时的一个候选
@@ -11261,6 +16804,24 @@ Inventory wire value domain.
 | `nextCommunities` | `number` | 是 | 改成这一组之后覆盖几个聚落 |
 | `nextBuyers` | `number` | 是 | 改成这一组之后有几个能定位的买家 |
 
+### ScopeSelectCustomerReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ScopeSelectionSource`](#scopeselectionsource) | 是 | Member or existing-account selection source to resolve into a temporary customer reference. |
+
+### ScopeSelectedCustomer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `selection` | [`SvSelectedCustomer`](#svselectedcustomer) | 是 | Server-issued selected-customer data and its expiry. |
+| `sourceStoreNo` | `string,null` | 是 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string,null` | 是 | Display name of the store from which the customer relationship originated. |
+
+### ScopeSelectionSource
+
+类型：`object`（见下） \| `object`（见下） \| `object`（见下）
+
 ### SellRule
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -11305,7 +16866,7 @@ Inventory wire value domain.
 | `areaNo` | `string` | 否 | 业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有 |
 | `mode` | [`AreaMode`](#areamode) | 否 | 覆盖方向：`INCLUDE` 纳入（默认，不传即此）/ `EXCLUDE` 排除。 它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**， 但给一个显式的出口：勾了整个小区、单独排除 3 幢。 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除 （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。 |
 | `status` | [`AreaStatus`](#areastatus) | 否 | `ACTIVE` 已生效 / `PENDING` 待运营审核。 勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。 |
-| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 |
+| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 **请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。 |
 
 ### ServiceScope
 
@@ -11367,6 +16928,8 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `batchDocumentNo` | `string,null` | 否 | Human-facing settlement batch number; absent for historical unmapped batches. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
 | `subOrderNo` | `string` | 是 | 对应的子订单号 —— 分账以它为单位 |
 | `orderNo` | `string` | 是 | 所属主单号 |
@@ -11759,12 +17322,13 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | Identifier of this inventory alignment batch. |
 | `storeNo` | `string` | 是 | Store whose opening inventory is being aligned. |
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchState`](#stockalignmentbatchstate) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -11786,9 +17350,9 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
 
-### StockAlignmentBatchStatus
+### StockAlignmentBatchState
 
-Inventory wire value domain.
+Preview and execution state of a stock alignment batch.
 
 枚举取值：
 
@@ -11987,8 +17551,8 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Physical inventory deduction point; the current service deducts on payment. |
+| `inventoryState` | [`InventoryOnboardingState`](#inventoryonboardingstate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Current accounting policy; the server only supports payment-time deduction. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -12039,16 +17603,17 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `operationNo` | `string` | 是 | Identifier of this stock synchronization operation. |
 | `skuNo` | `string` | 是 | SKU whose stock was synchronized. |
 | `reason` | `string` | 是 | Business reason recorded for the synchronization. |
-| `status` | [`StockSyncOperationStatus`](#stocksyncoperationstatus) | 是 | Current processing state of the operation. |
+| `status` | [`StockSyncOperationState`](#stocksyncoperationstate) | 是 | Current processing state of the operation. |
 | `result` | `object`（见下） \| `null` | 是 | Applied quantity change or skip details; null before processing finishes. |
 | `updatedAt` | `string` | 是 | Time when this operation was last updated. |
 
-### StockSyncOperationStatus
+### StockSyncOperationState
 
-Inventory wire value domain.
+Processing state of a persisted stock synchronization command.
 
 枚举取值：
 
@@ -12111,6 +17676,15 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -12229,6 +17803,30 @@ Inventory wire value domain.
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+| `inherited` | `boolean` | 否 | 这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体 `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。 |
+
+### StoreIssuerOption
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer scope is a store or a brand. |
+| `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | `string` | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `writeMode` | `string` | 是 | Issuer writing mode describing which stored-value commands are currently supported. |
+| `canRecharge` | `boolean` | 是 | Whether the account and selected issuer currently permit recharging. |
+| `canRedeem` | `boolean` | 是 | Whether the selected issuer currently permits stored-value redemption. |
+| `unavailableReason` | `string,null` | 是 | Server-provided explanation of why this account or issuer cannot be used. |
+
+### StoreIssuerOptions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `legacyMode` | `boolean` | 是 | Whether this store still uses the compatibility issuer arrangement. |
+| `issuers` | [`StoreIssuerOption`](#storeissueroption)\[\] | 是 | Issuer options applicable to the current store. |
 
 ### StorePointAccount
 
@@ -12295,6 +17893,10 @@ StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
 | `id` | `number` | 是 | 持久记录主键 |
 | `entryNo` | `string` | 是 | 不可变积分分录编号 |
 | `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `voucherDocumentNo` | `string,null` | 否 | — |
+| `direction` | `string,null` | 否 | — |
+| `businessRef` | `string,null` | 否 | — |
+| `orderNo` | `string,null` | 否 | — |
 | `holderType` | `string` | 是 | 账本持有人类型 |
 | `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
 | `bucket` | `string` | 是 | 积分账本或资金池分桶 |
@@ -12400,6 +18002,9 @@ Pay ledger views are scoped to the authenticated current store and one points ty
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `earningPaused` | `boolean` | 否 | Whether new earning is paused; existing accounting obligations still complete. |
+| `orderDefault` | `boolean` | 否 | Whether this type is the server-selected default for order rewards. |
+| `name` | `string` | 是 | 积分名称 |
 | `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
 | `idleDays` | `number` | 是 | 无活动失效天数 |
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
@@ -12453,8 +18058,13 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 ### StoreQrcode
 
@@ -12475,16 +18085,32 @@ StorePointType 的 status 取值域，按服务端契约校验。
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 哪家店 |
 | `storeName` | `string` | 是 | 门店名快照，列表直接显示，省一次查询 |
-| `role` | [`StaffRole`](#staffrole) | 是 | MANAGER 店长 / CLERK 店员 |
+| `role` | [`StaffRole`](#staffrole) | 是 | 角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码 |
 
 ### StoreStatus
 
-门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。
 
 枚举取值：
 
 - `ACTIVE`
 - `READONLY`
+- `SUSPENDED`
+
+### SubmitFeedbackReq
+
+提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400； 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
 
 ### SubmitPaymentReq
 
@@ -12515,6 +18141,1054 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `remark` | `string,null` | 否 | 备注。**引用平台档案时这一列仍归商家写** —— 那是他自己的话 |
 | `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
 | `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
+
+### SuspendedStore
+
+被方案降级压成只读的一家店。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `openOrders` | `number` | 是 | 还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约 |
+
+### SvAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountRef` | `string` | 是 | Opaque stored-value account reference used for authorized queries. |
+| `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
+| `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `balanceMinor` | `number` | 是 | Account balance including held funds, in minor currency units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `availableMinor` | `number` | 是 | Stored-value amount currently spendable, excluding held funds, in minor units. |
+| `lastOccurredAt` | `string,null` | 是 | Time of the most recent account record; null when there are no records. |
+| `lastRechargeAt` | `string,null` | 否 | Time of the most recent completed recharge; null when none exists. |
+
+### SvAccountPage
+
+类型：`SvPage_SvAccount`
+
+### SvActivity
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `currentVersionNo` | `string,null` | 是 | Current published activity version; null before first publication. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+
+### SvActivityAttribution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | Optional stored-value activity identifier restricting the report to that activity. |
+| `releaseNo` | `string` | 是 | Immutable published activity release to which these ledger amounts are attributed. |
+| `sourceKind` | `string` | 是 | Stored-value activity source classification used to interpret activityNo and releaseNo. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedPrincipalMinor` | `number` | 是 | Recharge principal consumed from this activity’s credits, in minor currency units. |
+| `consumedBonusMinor` | `number` | 是 | Recharge bonus consumed from this activity’s credits, in minor currency units. |
+| `remainingMinor` | `number` | 是 | Unused stored-value balance attributed to this activity, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+
+### SvActivityCheck
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policy` | [`SvEffectivePolicy`](#sveffectivepolicy) | 是 | Resolved effective governance policy used by the activity validation. |
+| `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
+
+### SvActivityDefinition
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `scene` | `string` | 是 | Business scene in which the route or activity is applicable. |
+| `templateCode` | `string` | 是 | Activity preset code identifying the supported definition template. |
+| `templateVersion` | `number` | 是 | Version of the selected activity preset. |
+| `storeParticipationScope` | `object`（见下） | 是 | Stores allowed to offer this recharge activity. |
+| `audienceRef` | `string,null` | 是 | Audience selection reference; null when no restricted audience is configured. |
+| `schedule` | `object`（见下） | 是 | Activity calendar including zone, date window and recurring local-time intervals. |
+| `rule` | `object`（见下） | 是 | Immutable calculation rule or versioned activity rule definition. |
+| `quotaLimit` | `number,null` | 是 | Maximum successful activity participations; null for no configured cap. |
+| `budgetLimitMinor` | `number,null` | 是 | Total activity budget limit in minor currency units; null for no configured cap. |
+| `perUserLimit` | `number` | 是 | Maximum number of successful participations per customer. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+
+`storeParticipationScope` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | `ALL` \| `STORES` | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `refs` | `string`\[\] | 是 | Business identifiers selected by the associated scope mode. |
+
+`schedule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | Record, target or calculation classification used to interpret this object. |
+| `startAt` | `string` | 是 | Start of the configured activity window as a server timestamp. |
+| `endAt` | `string` | 是 | End of the configured activity window as a server timestamp. |
+| `zone` | `string` | 是 | IANA time zone used to interpret the activity schedule. |
+| `weekdays` | `number`\[\] | 是 | Allowed weekdays for recurring participation in the activity's business zone. |
+| `from` | `string,null` | 是 | Start of the recurring local-time interval; null when the interval is not restricted. |
+| `to` | `string,null` | 是 | End of the recurring local-time interval; null when the interval is not restricted. |
+
+`rule` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `schemaVersion` | `number` | 是 | Version of the immutable rule or order snapshot format. |
+| `trigger` | `object`（见下） | 是 | Eligibility condition applied before the activity's recharge benefit tiers. |
+| `benefits` | `any`\[\] | 是 | Additional benefit definitions; currently empty for tiered recharge activities. |
+| `tiers` | `object`（见下）\[\] | 是 | Recharge principal/bonus tiers offered by this activity. |
+
+`rule.trigger` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | Record, target or calculation classification used to interpret this object. |
+| `amountMinor` | `null` | 是 | Trigger amount in the currency's smallest unit; null when not applicable. |
+| `quantity` | `null` | 是 | Product quantity used by the snapshot or trigger; null when not applicable. |
+
+`rule.tiers[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tierNo` | `string` | 是 | Stable identifier of this recharge tier within the activity definition. |
+| `payAmountMinor` | `number` | 是 | Required paid principal for this recharge tier, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+| `redemptionScope` | `object`（见下） | 是 | Stores in which the gifted recharge component may later be redeemed. |
+
+`rule.tiers[].redemptionScope` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | `ALL` \| `STORES` | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
+| `refs` | `string`\[\] | 是 | Business identifiers selected by the associated scope mode. |
+
+### SvAdjustmentRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `payableDeltaMinor` | `number` | 是 | Nonzero signed change to the clearing entry’s payable amount, in minor currency units. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+### SvApproval
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `approvalNo` | `string` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `storeNo` | `string,null` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `scopeType` | `STORE` \| `BRAND` | 否 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `scopeNo` | `string` | 否 | Business identifier of the store or brand selected by scopeType. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `submittedBy` | `string` | 是 | Authenticated operator who submitted the approval request. |
+| `decidedBy` | `string,null` | 是 | Server-recorded decision operator; null while awaiting a decision. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+
+### SvBillActions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payerActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payer side. |
+| `payeeActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payee side. |
+
+### SvBrandActivation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activationNo` | `string` | 是 | Identifier of the original brand financial activation operation. |
+| `state` | `string` | 是 | Current server-owned state of the brand financial activation. |
+
+### SvBrandActivationRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which this action is authorized. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### SvBrandCapability
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Stored-value capability protocol version supported by the deployment. |
+| `ready` | `boolean` | 是 | Whether all prerequisites for brand stored-value execution are satisfied. |
+| `blockers` | `string`\[\] | 是 | Machine-readable reasons that prevent brand execution readiness. |
+
+### SvCancelReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
+
+### SvCandidate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberNo` | `string` | 是 | Member identifier; null when the candidate only has an existing account. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `memberStatus` | `string` | 是 | Current member lifecycle state used when checking recharge eligibility. |
+| `canRecharge` | `boolean` | 是 | Whether the account and selected issuer currently permit recharging. |
+| `unavailableReason` | `string,null` | 是 | Server-provided explanation of why this account or issuer cannot be used. |
+| `account` | `object`（见下） \| `null` | 是 | Selected stored-value account summary; null when no account exists. |
+
+### SvConsumptionCreate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference authorizing this operation. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `accountRef` | `string` | 是 | Opaque account selection reference bound to the selected customer and issuer. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | Sellable service SKU identifier selected for consumption. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+### SvConsumptionPreview
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `service` | [`SvServiceView`](#svserviceview) | 是 | Original stored-value service view; null when the operation has not produced a service. |
+| `quote` | `object`（见下） | 是 | Immutable quote for the selected wallet and service items. |
+
+`quote` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | Total service or payment amount in minor currency units. |
+| `applicableMinor` | `number` | 是 | Stored-value amount applicable to this quoted service, in minor currency units. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining monetary minor-unit interpretation. |
+| `redeemable` | `boolean` | 是 | Whether the selected wallet is eligible to pay for this service. |
+| `reason` | `string` | 是 | Machine-readable eligibility or rejection reason for the quote. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `issuerName` | `string,null` | 是 | Issuer display name; null when no issuer is selected. |
+| `expiresAt` | `string` | 是 | Server expiry timestamp after which the reference or confirmation must be refreshed. |
+
+### SvConsumptionResolution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the original idempotent consumption preview has been found. |
+| `service` | [`SvServiceView`](#svserviceview) \| `null` | 是 | Original stored-value service view; null when the operation has not produced a service. |
+
+### SvConsumptionStoreQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+
+### SvConsumptionSubmit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | Original service order identifier; retries keep this same order. |
+| `orderRevision` | `number` | 是 | Previously confirmed service order revision; stale submissions are rejected. |
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference authorizing this operation. |
+| `authorizationRef` | `null` | 是 | Reserved customer authorization reference; merchant submission currently requires null. |
+
+### SvContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+| `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
+
+### SvDecisionRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
+
+### SvEffectivePolicy
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | `object`（见下） | 是 | Tenant, management space, store, brand and currency used to resolve this effective policy. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `sources` | [`SvPolicyVersion`](#svpolicyversion)\[\] | 是 | Policy versions contributing to the resolved effective policy. |
+| `hash` | `string` | 是 | Hash of the resolved effective policy and its authority sources. |
+| `configured` | `boolean` | 是 | Whether an explicit effective policy has been configured. |
+
+`scope` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 是 | Tenant namespace attached by the server to this policy snapshot. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `brandNo` | `string,null` | 是 | Brand identifier; null when the scope has no brand binding. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `storeRevision` | `number` | 是 | Store revision included in the effective-policy snapshot. |
+
+### SvFinanceActivityPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Authorized activity attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceBillPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Authorized settlement bill records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceCapability
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Server capability protocol version for the stored-value finance integration. |
+| `reportsReady` | `boolean` | 是 | Whether the server can provide stored-value financial reports. |
+| `settlementReady` | `boolean` | 是 | Whether settlement generation and settlement commands are available. |
+| `crossEntityReady` | `boolean` | 是 | Whether settlement between different operating entities is available. |
+| `receiptAttachmentsSupported` | `boolean` | 是 | Whether this deployment accepts receipt evidence attachments. |
+| `blockers` | `string`\[\] | 是 | Server capability blocker codes explaining unavailable financial features. |
+
+### SvFinanceEventPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Authorized settlement audit event records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceItemPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Authorized settlement clearing item records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceManagementQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+
+### SvFinancePaymentPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Authorized registered settlement payment records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the stored-value issuer belongs to a store or a brand. |
+| `scopeNo` | `string` | 是 | Store or brand identifier selected by scopeType. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `businessTimeZone` | `string` | 是 | IANA business time zone used to interpret report date boundaries. |
+| `canGenerate` | `boolean` | 是 | Current server-verified generate permission for this issuer; absent values fail closed. |
+
+### SvFinanceStorePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Authorized store attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinanceSummaryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Authorized financial summary records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
+
+### SvFinancialBrandChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
+
+### SvFinancialBrandOriginal
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Original financial brand-binding command result; null when the command is not recorded. |
+
+### SvFinancialBrandRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null requests removal of the store’s brand binding. |
+| `expectedStoreRevision` | `number` | 是 | Previously read store revision used to reject a stale financial brand-binding change. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+### SvFinancialPermissionResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | Whether the server successfully prepared the requested financial permission setup. |
+| `entityNo` | `string` | 是 | Operating entity whose financial permissions were prepared. |
+| `permissions` | `string`\[\] | 是 | Financial permission codes returned by the server for the prepared entity. |
+
+### SvGenerated
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Settlement bills created or returned idempotently for the generation request. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+
+### SvGenerationRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `periodFrom` | `string` | 是 | Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `periodTo` | `string` | 是 | Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+
+### SvGovernanceActivitiesPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivity`](#svactivity)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+### SvGovernanceApprovalsPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvApproval`](#svapproval)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+### SvGovernanceCapability
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | Capability protocol version supported by the current server. |
+| `enabled` | `boolean` | 是 | Whether this feature or preset is enabled in the current deployment. |
+
+### SvGovernanceCommand
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### SvGovernanceContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+| `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
+| `canManage` | `boolean` | 是 | Whether the current operator may change this governance resource. |
+| `canPublish` | `boolean` | 是 | Whether the operator may publish activities under this effective policy. |
+
+### SvGovernanceDecision
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `decision` | `object`（见下） | 是 | Approval or return decision submitted for the current revision. |
+
+`decision` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `decision` | `APPROVE` \| `RETURN` | 是 | Approval or return decision submitted for the current revision. |
+| `reason` | `string` | 是 | Machine-readable eligibility or rejection reason for the quote. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### SvGovernanceDetail
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activity` | [`SvActivity`](#svactivity) | 是 | Stored-value activity and its current versioned definition. |
+| `submission` | [`SvSubmission`](#svsubmission) \| `null` | 是 | Durable activity submission state; null before any submission. |
+
+### SvGovernanceDraft
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+| `expectedRevision` | `number` | 否 | Previously observed resource revision; stale writes are rejected. |
+
+### SvGovernanceManagement
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+
+### SvGovernancePolicyCreate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+
+### SvGovernancePolicyEdit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `edit` | `object`（见下） | 是 | Proposed policy revision and its optimistic concurrency check. |
+
+`edit` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### SvGovernancePrepared
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | Whether the requested permission preparation has completed. |
+
+### SvGovernancePreset
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `templateCode` | `string` | 是 | Activity preset code identifying the supported definition template. |
+| `templateVersion` | `number` | 是 | Version of the selected activity preset. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `enabled` | `boolean` | 是 | Whether this feature or preset is enabled in the current deployment. |
+| `available` | `boolean` | 是 | Whether this capability or preset is available in the current deployment. |
+| `missingCapabilities` | `string`\[\] | 是 | Deployment capabilities missing for this preset to be usable. |
+
+### SvGovernancePresetsPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvGovernancePreset`](#svgovernancepreset)\[\] | 是 | Business records returned by the current query. |
+| `total` | `number` | 是 | Total number of records matching the current query. |
+| `page` | `number` | 是 | One-based page index for the returned or requested result. |
+| `size` | `number` | 是 | Maximum records per page requested or returned by the server. |
+
+### SvGovernanceSchedule
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `startAt` | `string` | 是 | Start of the configured activity window as a server timestamp. |
+| `endAt` | `string` | 是 | End of the configured activity window as a server timestamp. |
+| `zone` | `string` | 是 | IANA time zone used to interpret the activity schedule. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
+
+### SvIssuerEntity
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | Operating entity identifier; authorization remains server-derived. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `accepted` | `boolean` | 是 | Whether the operating entity has accepted this issuer arrangement. |
+| `canAccept` | `boolean` | 是 | Whether the current operator may accept this issuer arrangement. |
+
+### SvIssuerLookup
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuer` | [`IssuerView`](#issuerview) \| `null` | 是 | Current issuer configuration; null when none has been configured. |
+
+### SvIssuerManagementQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+
+### SvIssuerRechargeOptions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerOptions` | [`StoreIssuerOptions`](#storeissueroptions) | 是 | Issuer choices and their current recharge/redemption availability. |
+| `plans` | [`SvPlanPage`](#svplanpage) | 是 | Recharge plans available for the selected store and customer. |
+
+### SvOperation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `usageNo` | `string,null` | 是 | Ledger usage identifier; null until consumption has produced a usage. |
+
+### SvPage_SvAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvAccount`](#svaccount)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+### SvPage_SvPlan
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvPlan`](#svplan)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+### SvPage_SvRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvRecord`](#svrecord)\[\] | 是 | Business records returned by the current query. |
+| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
+| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+
+### SvPaymentRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `amountMinor` | `number` | 是 | Positive payment amount to register, in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `receiptReference` | `string` | 是 | Payer’s receipt or transfer reference; required and limited to 160 characters. |
+| `evidenceRefs` | —\[\] | 是 | Receipt attachment references; this client currently sends an empty list. |
+
+### SvPaymentResolution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the server found the original payment command for the supplied idempotency key. |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | Original registered payment when found; null when the command has no recorded result. |
+
+### SvPlan
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+| `totalAmountMinor` | `number` | 是 | Total recharge credit, equal to principal plus bonus, in minor currency units. |
+| `status` | `ACTIVE` \| `INACTIVE` | 是 | Current server-owned lifecycle state of this resource. |
+| `createdAt` | `string` | 是 | Resource creation time returned by the server. |
+| `updatedAt` | `string,null` | 是 | Time the resource was last updated; null when it has never changed. |
+
+### SvPlanCreate
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number` | 是 | Gifted stored-value amount, in minor currency units. |
+
+### SvPlanPage
+
+类型：`SvPage_SvPlan`
+
+### SvPlanStatusReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+
+### SvPolicy
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `policyNo` | `string` | 是 | Stored-value governance policy identifier. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+| `parentVersionRefs` | `string`\[\] | 是 | Immutable parent-policy versions inherited by this policy revision. |
+| `contentHash` | `string` | 是 | Hash of the immutable policy contents used to detect stale submissions. |
+
+### SvPolicyRules
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `allowIssue` | `boolean` | 是 | Whether the policy permits new stored-value issuance. |
+| `requireApproval` | `boolean` | 是 | Whether new activities under this policy require approval before publication. |
+| `maxBonusBps` | `number` | 是 | Maximum bonus-to-paid ratio in basis points; 10000 means 100 percent. |
+| `maxPaidMinor` | `number` | 是 | Maximum permitted recharge principal, in minor currency units. |
+| `maxBonusMinor` | `number` | 是 | Maximum gifted amount per activity tier, in minor currency units. |
+| `maxActiveDays` | `number` | 是 | Maximum permitted activity duration in days. |
+| `maxOutstandingMinor` | `number` | 是 | Maximum permitted outstanding stored-value liability, in minor currency units. |
+
+### SvPolicyTarget
+
+枚举取值：
+
+- `SPACE`
+- `BRAND_STORES`
+- `STORE`
+
+### SvPolicyTargetOption
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Record, target or calculation classification used to interpret this object. |
+| `no` | `string` | 是 | Business identifier of the selected policy target. |
+| `name` | `string` | 是 | Human-readable name displayed for this business resource. |
+| `canManage` | `boolean` | 是 | Whether the current operator may change this governance resource. |
+
+### SvPolicyVersion
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 是 | Tenant namespace attached by the server to this policy snapshot. |
+| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `policyNo` | `string` | 是 | Stored-value governance policy identifier. |
+| `versionNo` | `string` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `targetType` | [`SvPolicyTarget`](#svpolicytarget) | 是 | Whether the governance policy applies to a space, brand stores or a single store. |
+| `targetNo` | `string` | 是 | Business identifier selected by the policy's targetType. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `rules` | [`SvPolicyRules`](#svpolicyrules) | 是 | Effective stored-value issuance limits and approval requirements. |
+
+### SvProgress
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rechargeNo` | `string` | 是 | Recharge operation identifier used for status queries and recovery. |
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `creditedTotalMinor` | `number,null` | 是 | Total principal and bonus actually credited, in minor currency units. |
+| `creditedAt` | `string,null` | 是 | Time the recharge was credited; null before posting. |
+| `receivedAt` | `string,null` | 是 | Time offline collection was confirmed; null before confirmation. |
+
+### SvReceipt
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `actualAmountMinor` | `number` | 是 | Amount actually collected, in the currency's smallest unit. |
+| `collectionMethod` | `CASH` \| `TRANSFER` | 是 | Offline collection method: cash or bank transfer. |
+| `receiptNo` | `string` | 是 | Operator-provided collection evidence reference used to confirm the same receipt. |
+
+### SvReceiptRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `receivedAt` | `string` | 是 | ISO instant at which the payee confirms receipt of the payment. |
+
+### SvReceive
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
+| `receiptNo` | `string` | 是 | Operator-provided collection evidence reference used to confirm the same receipt. |
+| `confirmationNote` | `string` | 是 | Operator's evidence note for the offline collection confirmation. |
+
+### SvRechargeCreate
+
+类型：`object`（见下） \| `object`（见下）
+
+### SvRechargeResolve
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | Whether the original idempotent recharge creation command has been resolved. |
+| `recharge` | [`SvProgress`](#svprogress) \| `null` | 是 | Original recharge result; null while no durable creation result exists. |
+
+### SvRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
+| `voucherDocumentNo` | `string,null` | 否 | Human-facing accounting voucher number; absent for historical unmapped vouchers. |
+| `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
+| `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
+| `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
+| `type` | `RECHARGE` \| `REDEMPTION` | 是 | Record, target or calculation classification used to interpret this object. |
+| `title` | `string` | 是 | Human-readable title of the stored-value business record. |
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `storeName` | `string` | 是 | Store display name captured for the record or selection. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
+| `signedAmountMinor` | `number` | 是 | Signed change in stored-value balance, in minor currency units. |
+| `balanceAfterMinor` | `number` | 是 | Account balance after this record, in minor currency units. |
+| `occurredAt` | `string` | 是 | Time the server recorded the business operation. |
+| `businessNo` | `string` | 是 | Business operation identifier associated with this stored-value record. |
+| `planNo` | `string,null` | 是 | Recharge plan identifier; null for operations without a recharge plan. |
+| `versionNo` | `string,null` | 是 | Immutable version identifier frozen for the referenced plan or policy. |
+| `paidAmountMinor` | `number,null` | 是 | Recharge principal paid by the customer, in minor currency units. |
+| `bonusAmountMinor` | `number,null` | 是 | Gifted stored-value amount, in minor currency units. |
+
+### SvRecordPage
+
+类型：`SvPage_SvRecord`
+
+### SvResolutionRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `disputeNo` | `string` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | Dispute resolution decision: ACCEPT or REJECT. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+### SvSelectCustomerReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
+| `source` | [`SvSelectionSource`](#svselectionsource) | 是 | Member or existing-account selection source to resolve into a temporary customer reference. |
+
+### SvSelectedCustomer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `customerRef` | `string` | 是 | Server-issued selected-customer reference; expires and must be reselected when stale. |
+| `expiresAt` | `string` | 是 | Expiry time of the server-issued selection or preview. |
+| `pendingScope` | `string` | 否 | Membership scope that still requires confirmation before recharge. |
+| `sourceStoreNo` | `string,null` | 否 | Store identifier from which the customer relationship originated. |
+| `sourceStoreName` | `string,null` | 否 | Display name of the store from which the customer relationship originated. |
+| `memberNo` | `string,null` | 否 | Member identifier; null when the candidate only has an existing account. |
+| `displayName` | `string` | 是 | Display name of the selected customer or grant recipient. |
+| `phoneMasked` | `string` | 是 | Masked customer phone number for display and identity confirmation. |
+| `account` | `object`（见下） \| `null` | 是 | Selected stored-value account summary; null when no account exists. |
+
+### SvSelectionSource
+
+类型：`object`（见下） \| `object`（见下）
+
+### SvServiceView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `serviceOrderNo` | `string` | 是 | Identifier of the original stored-value consumption service order. |
+| `operationNo` | `string` | 是 | Stable operation identifier used to recover the original execution. |
+| `status` | `string` | 是 | Current server-owned lifecycle state of this operation or service. |
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+| `storeName` | `string` | 是 | Store display name attached to the service or record. |
+| `serviceStaffName` | `string,null` | 是 | Service staff display name; null when no staff member is assigned. |
+| `items` | `object`（见下）\[\] | 是 | Service order lines and their positive purchased quantities. |
+| `serviceAt` | `string,null` | 是 | Service completion timestamp; null before completion. |
+| `confirmation` | `object`（见下） \| `null` | 是 | Immutable customer confirmation terms; null when confirmation is not available. |
+| `payment` | `object`（见下） \| `null` | 是 | Stored-value payment snapshot; null before payment terms are available. |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | Identifier of this service order line. |
+| `title` | `string` | 是 | Human-readable service item title. |
+| `quantity` | `number` | 是 | Positive quantity of the selected service item. |
+
+### SvSettlementBill
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
+
+### SvSettlementEvent
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `eventNo` | `string` | 是 | Immutable settlement audit event identifier. |
+| `type` | `string` | 是 | Settlement audit event type used to interpret the recorded action. |
+| `billRevision` | `number` | 是 | Settlement bill revision to which this audit event applies. |
+| `actorNo` | `string` | 是 | Actor identifier recorded for the settlement event. |
+| `reason` | `string,null` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+| `occurredAt` | `string` | 是 | ISO instant when this settlement audit event occurred. |
+
+### SvSettlementItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | Settlement line identifier within the bill detail. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `amountMinor` | `number` | 是 | Monetary amount in the settlement bill’s minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `rechargeStoreNo` | `string` | 是 | Store where the stored-value credit was recharged. |
+| `redemptionStoreNo` | `string` | 是 | Store where the credited stored value was redeemed. |
+| `occurredAt` | `string` | 是 | ISO instant when the source business operation occurred. |
+| `postedAt` | `string` | 是 | ISO instant when the source clearing entry was posted to the ledger. |
+| `carriedForward` | `boolean` | 是 | Whether the source entry was carried into this bill from an earlier settlement period. |
+| `entryType` | `string` | 是 | Source clearing classification, such as USE or a reversal. |
+| `originalClearingNo` | `string,null` | 是 | Original clearing entry referenced by a reversal; null for an original entry. |
+
+### SvSettlementPayment
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+
+### SvStoreAttribution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier used to attribute this report row. |
+| `storeName` | `string` | 是 | Display name of the store represented by this attribution row. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+
+### SvSubmission
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `linkNo` | `string` | 是 | Durable link between a draft, its approval and eventual publication. |
+| `activityNo` | `string` | 是 | Stored-value activity identifier. |
+| `draftRevisionNo` | `string` | 是 | Immutable draft revision identifier linked to the submission. |
+| `draftHash` | `string` | 是 | Hash of the exact activity draft submitted for validation or approval. |
+| `state` | `string` | 是 | Current processing projection for the submitted business operation. |
+| `releaseNo` | `string,null` | 是 | Durable publication-release identifier; null before preparation. |
+| `releaseHash` | `string,null` | 是 | Hash of the published release; null before release preparation completes. |
+| `policyHash` | `string` | 是 | Hash of the effective policy frozen when the draft was submitted. |
+| `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
+| `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
+| `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+### SvSummary
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
+
+### SvVoidRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+
+### SvWallet
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the selected stored-value resource belongs to one store or a brand. |
+| `issuerRef` | `string` | 是 | Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. |
+| `name` | `string` | 是 | Display name of the selected stored-value issuer or wallet. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining monetary minor-unit interpretation. |
+| `accountRef` | `string,null` | 是 | Opaque account selection reference bound to the selected customer and issuer. |
+| `account` | `object`（见下） \| `null` | 是 | Balance snapshot for this wallet; null when the customer has no account. |
+| `canRecharge` | `boolean` | 是 | Whether this selected wallet currently permits new recharge operations. |
+| `canRedeem` | `boolean` | 是 | Whether this selected wallet currently permits redemption. |
+| `unavailableReason` | `string,null` | 是 | Machine-readable reason this wallet is unavailable; null when available. |
 
 ### ToggleCampaignReq
 

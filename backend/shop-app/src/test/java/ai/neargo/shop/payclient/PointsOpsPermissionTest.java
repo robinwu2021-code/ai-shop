@@ -126,7 +126,14 @@ class PointsOpsPermissionTest {
                                 ? Perms.FINANCE_SETTLE_READ
                                 : Perms.FINANCE_SETTLE_EXECUTE;
                 authenticate(required);
-                method.invoke(controller, args);
+                if (method.getName().equals("saveFallback")) {
+                    // This legacy endpoint is intentionally retired; authorization still runs first.
+                    assertThatThrownBy(() -> method.invoke(controller, args))
+                            .isInstanceOf(InvocationTargetException.class).cause()
+                            .isInstanceOf(ai.neargo.shop.common.BizException.class);
+                } else {
+                    method.invoke(controller, args);
+                }
                 if (method.isAnnotationPresent(PostMapping.class)) {
                     authenticate(Perms.FINANCE_SETTLE_READ);
                     assertThatThrownBy(() -> method.invoke(controller, args))

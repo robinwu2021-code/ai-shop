@@ -1,0 +1,78 @@
+{
+  "testedAtUtc": "2026-11-13T08:28:33.025796+00:00",
+  "device": {
+    "serial": "emulator-5558",
+    "avd": "hxmall_b",
+    "mode": "isolated read-only clone, no snapshots",
+    "os": "Android14",
+    "api": 34,
+    "abi": "arm64-v8a",
+    "physicalSize": "1080x2400",
+    "density": 420
+  },
+  "backend": {
+    "verifiedAtUtc": "2026-11-13T08:26:10.102201Z",
+    "target": "UME166",
+    "sourceCommit": "d3342239ac68a0ad50c4cc92adb56633938d90fd",
+    "apiHealth": "UP",
+    "opsHealth": "UP",
+    "captchaEnabled": true,
+    "artifactSha256": "70c8181b92893618a0e3b4c045aaae03eeb3b924ca0d1a62ac02c0cb2df7c82e"
+  },
+  "apk": {
+    "path": "artifacts/android/nearboss-slider-captcha-debug.apk",
+    "sha256": "3e8b022b669e8b74790a254e04755c3f61f2ea497bddb9e29f208001018f4b78",
+    "installedSha256": "3e8b022b669e8b74790a254e04755c3f61f2ea497bddb9e29f208001018f4b78",
+    "applicationId": "ai.neargo.merchant_app",
+    "flavor": "nearboss",
+    "entry": "lib/main_onboarding_live.dart",
+    "apiBaseUrl": "https://nearshop.umeshop.ai/shop-api",
+    "mode": "debug",
+    "command": [
+      "../../tooling/flutterw",
+      "build",
+      "apk",
+      "--no-pub",
+      "--debug",
+      "--flavor",
+      "nearboss",
+      "--target",
+      "lib/main_onboarding_live.dart",
+      "--dart-define=APP_BRAND=nearboss",
+      "--dart-define=MERCHANT_API_BASE_URL=https://nearshop.umeshop.ai/shop-api",
+      "--dart-define=MERCHANT_DATA_SOURCE=server",
+      "--dart-define=MERCHANT_DEFAULT_LOCALE=zh_Hant",
+      "--dart-define=NEARGO_MARKET=TW",
+      "--dart-define=USER_AGREEMENT_URL=https://www.hxmall.top/terms/",
+      "--dart-define=PRIVACY_POLICY_URL=https://www.hxmall.top/privacy/"
+    ],
+    "workingTreeIncludesUncommitted": true
+  },
+  "checks": {
+    "nativeChallengeRendering": "PASS: real HTTPS PNG, not a fixture",
+    "wrongDrag": "PASS: rejected and refreshed",
+    "refresh": "PASS: new image",
+    "cancelAndReopen": "PASS: cancelled auth released; existing login clears password, re-entry allows new challenge",
+    "correctDrag": "PASS: actual Android swipe aligned by screenshot; popup closed and original password operation continued",
+    "passwordFailureAfterProof": "PASS: fictional nonexistent .invalid principal; existing password error returned",
+    "emailSendGate": "PASS: captcha before delivery",
+    "androidBackCancel": "PASS: cancelled email-send challenge; no delivery"
+  },
+  "input": {
+    "correctDrag": "adb shell input swipe 183 1505 561 1505 1200",
+    "answerSource": "visual alignment of the displayed piece and hole; no server answer lookup"
+  },
+  "fix": {
+    "file": "apps/merchant_app/lib/dev/standard_onboarding_live.dart",
+    "change": "permit POST /biz/auth/captcha/challenge and /biz/auth/captcha/verify in existing live-dev whitelist",
+    "regressionBefore": "POST challenge incorrectly denied; regression failed",
+    "regressionAfter": "11 affected tests passed (4 live policy +7 auth API), scoped Dart analyze clean"
+  },
+  "limits": {
+    "realAccountLogin": false,
+    "realSmsOrEmailSent": false,
+    "appStoreRelease": false,
+    "backendRedeployedThisRound": false,
+    "existingOtherEmulatorsModified": false
+  }
+}

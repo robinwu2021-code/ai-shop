@@ -8,6 +8,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Durable core decision drives pay restoration and a separate core acknowledgement. */
 @Component
 public class LegacyCouponHistoricalReturnConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "legacy-coupon-historical-return"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final LegacyCouponHistoricalReturnCoordinator coordinator;
     private final ObjectMapper json;
     public LegacyCouponHistoricalReturnConsumer(LegacyCouponHistoricalReturnCoordinator coordinator,ObjectMapper json) {

@@ -39,6 +39,12 @@ public class SysOpsStaff extends BaseEntity {
     private Boolean mustChangePassword;
 
     /**
+     * 免二次验证（白名单）。第二因子整体开着时，勾了的账号只凭密码登录、不发邮件验证码。
+     * 由有员工管理权限的人在员工账号页逐个勾选，不能给自己勾；变更与每次免验证登录都进审计。
+     */
+    private Boolean secondFactorExempt;
+
+    /**
      * 数据域：<b>空 = 不限定（全量）</b>，不是「还没配」。
      *
      * <p>⚠️ <b>当前只存不用</b> —— 各域的查询还没有按它裁剪。

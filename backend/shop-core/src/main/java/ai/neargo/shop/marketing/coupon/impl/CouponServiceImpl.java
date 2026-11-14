@@ -1,10 +1,14 @@
 package ai.neargo.shop.marketing.coupon.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.shop.marketing.coupon.CouponService;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -21,7 +25,6 @@ import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.UserCouponMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +32,18 @@ import java.util.Map;
 
 @Service
 public class CouponServiceImpl implements CouponService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private final LegacyCouponWriteFencePort sourceFence;
     private final CouponMapper couponMapper;
@@ -64,10 +79,10 @@ public class CouponServiceImpl implements CouponService {
     public List<CouponVO> center() {
         long now = System.currentTimeMillis();
         List<MktCoupon> coupons = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                         .eq(MktCoupon::getStatus, "ACTIVE")
                         .le(MktCoupon::getStartAt, now)
-                        .ge(MktCoupon::getEndAt, now)));
+                        .ge(MktCoupon::getEndAt, now)), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
 
         String userNo = SecurityUtils.currentUserNoOrNull();
         List<String> received = userNo == null ? List.of() : myCoupons(userNo).stream()
@@ -77,7 +92,6 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    @Transactional
     public UserCouponVO receive(String couponNo) {
         return grantTo(SecurityUtils.currentUserNo(), couponNo);
     }
@@ -92,9 +106,13 @@ public class CouponServiceImpl implements CouponService {
      * <p>复制一份库存逻辑到调用方是这里唯一真正危险的做法：超发是查不回来的钱。
      */
     @Override
-    @Transactional
     public UserCouponVO grantTo(String userNo, String couponNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_USER_COUPON, 1), () -> grantToNumbered(userNo, couponNo));
+    }
+
+    private UserCouponVO grantToNumbered(String userNo, String couponNo) {
         MktCoupon coupon = template(couponNo);
+        if (coupon.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", coupon.getEntityNo());
         sourceFence.requireWritable(coupon.getTenantNo(), SourceSystem.MKT_LEGACY, coupon.getCouponNo(), false);
 
         long now = System.currentTimeMillis();
@@ -103,8 +121,12 @@ public class CouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
 
-        long mine = myCoupons(userNo).stream()
-                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        /*
+         * **限领按 (人, 券) 串行判**：先锁券行，再用当前读数他手上几张 —— 先数后插、两边都数到 0 就都插了。
+         * 可重复读下普通读是事务第一次读时的快照，锁等到了数的还是旧数，所以数也要加锁读。
+         */
+        lockTemplate(couponNo);
+        long mine = heldLocked(userNo, couponNo);
         if (mine >= Math.max(nzi(coupon.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
@@ -121,10 +143,10 @@ public class CouponServiceImpl implements CouponService {
         uc.setUserNo(userNo);
         uc.setStatus(MktUserCoupon.UNUSED);
         uc.setReceivedAt(now);
-        DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+        DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.MARKETING_USER_COUPON, "MKT_LEGACY", "mkt_user_coupon", uc, uc.getUserCouponNo(), userCouponMapper::insert, MktUserCoupon::setDocumentNo));
 
         return new UserCouponVO(uc.getUserCouponNo(), toVO(coupon, true),
-                uc.getStatus(), true, now, null);
+                uc.getStatus(), true, now, null).withDocumentNo(uc.getDocumentNo());
     }
 
     @Override
@@ -226,23 +248,39 @@ public class CouponServiceImpl implements CouponService {
 
     private List<MktUserCoupon> myCoupons(String userNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                userCouponMapper.selectList(Wrappers.<MktUserCoupon>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_USER_COUPON, "MKT_LEGACY", "mkt_user_coupon", userCouponMapper.selectList(Wrappers.<MktUserCoupon>lambdaQuery()
                         .eq(MktUserCoupon::getUserNo, userNo)
-                        .orderByDesc(MktUserCoupon::getId)));
+                        .orderByDesc(MktUserCoupon::getId)), MktUserCoupon::getUserCouponNo, MktUserCoupon::setDocumentNo));
     }
 
     private Map<String, MktCoupon> templatesOf(List<MktUserCoupon> rows) {
         List<String> nos = rows.stream().map(MktUserCoupon::getCouponNo).distinct().toList();
         return DataScopeContext.executeWithoutScope(() ->
-                        couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
-                                .in(MktCoupon::getCouponNo, nos))).stream()
+                        documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                                .in(MktCoupon::getCouponNo, nos)), MktCoupon::getCouponNo, MktCoupon::setDocumentNo)).stream()
                 .collect(java.util.stream.Collectors.toMap(MktCoupon::getCouponNo, c -> c, (a, b) -> a));
+    }
+
+    /** 锁券模板这一行（当前读）。同一张券的领取 / 发放在它上面排队 */
+    private void lockTemplate(String couponNo) {
+        DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                .eq(MktCoupon::getCouponNo, couponNo).last("limit 1 FOR UPDATE")));
+    }
+
+    /** 他手上这张券有几张 —— 加锁读，只在已锁券行的写路径上用 */
+    private long heldLocked(String userNo, String couponNo) {
+        return DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectList(
+                Wrappers.<MktUserCoupon>lambdaQuery()
+                        .select(MktUserCoupon::getId)
+                        .eq(MktUserCoupon::getUserNo, userNo)
+                        .eq(MktUserCoupon::getCouponNo, couponNo)
+                        .last("FOR UPDATE"))).size();
     }
 
     private MktCoupon template(String couponNo) {
         MktCoupon c = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -257,7 +295,7 @@ public class CouponServiceImpl implements CouponService {
                 c.getFunder(), c.getEntityNo(), nz(c.getStartAt()), nz(c.getEndAt()),
                 Math.max(remain, 0), received,
                 c.getStatus() == null ? MktCoupon.ACTIVE : c.getStatus(),
-                scopeDescOf(c));
+                scopeDescOf(c)).withDocumentNo(c.getDocumentNo());
     }
 
     /**
@@ -276,7 +314,7 @@ public class CouponServiceImpl implements CouponService {
     private UserCouponVO toVO(MktUserCoupon uc, MktCoupon c, boolean usableNow) {
         return new UserCouponVO(uc.getUserCouponNo(), c == null ? null : toVO(c, true),
                 uc.getStatus(), usableNow && MktUserCoupon.UNUSED.equals(uc.getStatus()),
-                nz(uc.getReceivedAt()), uc.getUsedAt());
+                nz(uc.getReceivedAt()), uc.getUsedAt()).withDocumentNo(uc.getDocumentNo());
     }
 
     private static long nz(Long v) {
@@ -302,26 +340,33 @@ public class CouponServiceImpl implements CouponService {
          * 换句话说，那句注释描述的是一个**不成立的担心**，而它的结论
          * 恰好挡住了真正该做的事 —— 没配数据域的运营照旧看全平台（空 = 不限定）。
          */
-        return couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+        return documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
                         // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
                         .isNull(!showArchived, MktCoupon::getArchivedAt)
-                        .orderByDesc(MktCoupon::getId)).stream()
+                        .orderByDesc(MktCoupon::getId)), MktCoupon::getCouponNo, MktCoupon::setDocumentNo).stream()
                 .map(this::toOpsVO).toList();
     }
 
     @Override
-    @Transactional
     public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO saveCoupon(
+            ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> saveCouponNumbered(cmd, operatorNo));
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO saveCouponNumbered(
             ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd, String operatorNo) {
         boolean isNew = cmd.couponNo() == null || cmd.couponNo().isBlank();
         MktCoupon c = isNew ? new MktCoupon() : DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                        .eq(MktCoupon::getCouponNo, cmd.couponNo()).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, cmd.couponNo()).last("limit 1")), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
         if (!isNew && c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        if (!isNew) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
+        if (!isNew) {
+            if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
+            sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
+        }
         if (cmd.title() == null || cmd.title().isBlank()
                 || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
                 || cmd.endAt() <= cmd.startAt()) {
@@ -389,7 +434,7 @@ public class CouponServiceImpl implements CouponService {
 
         DataScopeContext.executeWithoutScope(() -> {
             if (isNew) {
-                couponMapper.insert(c);
+                documentNumbers.bind(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", c, c.getCouponNo(), couponMapper::insert, MktCoupon::setDocumentNo);
             } else {
                 couponMapper.updateById(c);
             }
@@ -407,11 +452,12 @@ public class CouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MktCoupon c = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **不能改到低于已发放金额**：那等于人为造出一个「已经超支」的状态，
@@ -429,19 +475,25 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    @Transactional
     public ai.neargo.shop.marketing.coupon.dto.CouponIssueVO issue(String couponNo, String target,
+                                                                    String targetDesc, String userKey,
+                                                                    int count, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_ISSUE, 1, DocumentType.MARKETING_USER_COUPON, Math.max(0, count)), () -> issueNumbered(couponNo, target, targetDesc, userKey, count, operatorNo));
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.CouponIssueVO issueNumbered(String couponNo, String target,
                                                                     String targetDesc, String userKey,
                                                                     int count, String operatorNo) {
         if (count <= 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MktCoupon c = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **只有 SINGLE_USER 能真发**。不是后端偷懒 —— 另外三种的收件人
@@ -466,8 +518,9 @@ public class CouponServiceImpl implements CouponService {
          * **限领规则不能被主动发放绕开**：客服连发五张「限领一张」的券，
          * 与用户自己领五张是同一件事，只是路径不同。
          */
-        long mine = myCoupons(userKey).stream()
-                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        // 与 grantTo 同一口径：锁券行后当前读，限领不能被并发的领取绕开
+        lockTemplate(couponNo);
+        long mine = heldLocked(userKey, couponNo);
         if (mine + count > Math.max(nzi(c.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
@@ -499,7 +552,7 @@ public class CouponServiceImpl implements CouponService {
             uc.setUserNo(userKey);
             uc.setStatus(MktUserCoupon.UNUSED);
             uc.setReceivedAt(now);
-            DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+            DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.MARKETING_USER_COUPON, "MKT_LEGACY", "mkt_user_coupon", uc, uc.getUserCouponNo(), userCouponMapper::insert, MktUserCoupon::setDocumentNo));
         }
 
         MktCouponIssue rec = new MktCouponIssue();
@@ -512,17 +565,17 @@ public class CouponServiceImpl implements CouponService {
         rec.setIssuedCount(count);
         rec.setAmountMinor(amount);
         rec.setOperatorNo(operatorNo);
-        DataScopeContext.executeWithoutScope(() -> issueMapper.insert(rec));
+        DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.MARKETING_COUPON_ISSUE, "MKT_LEGACY", "mkt_coupon_issue", rec, rec.getIssueNo(), issueMapper::insert, MktCouponIssue::setDocumentNo));
         return toIssueVO(rec);
     }
 
     @Override
     public java.util.List<ai.neargo.shop.marketing.coupon.dto.CouponIssueVO> issues(String couponNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                issueMapper.selectList(Wrappers.<MktCouponIssue>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_COUPON_ISSUE, "MKT_LEGACY", "mkt_coupon_issue", issueMapper.selectList(Wrappers.<MktCouponIssue>lambdaQuery()
                         .eq(couponNo != null && !couponNo.isBlank(),
                                 MktCouponIssue::getCouponNo, couponNo)
-                        .orderByDesc(MktCouponIssue::getId))).stream()
+                        .orderByDesc(MktCouponIssue::getId)), MktCouponIssue::getIssueNo, MktCouponIssue::setDocumentNo)).stream()
                 .map(this::toIssueVO).toList();
     }
 
@@ -533,7 +586,7 @@ public class CouponServiceImpl implements CouponService {
                 r.getOperatorNo(),
                 r.getCreatedAt() == null ? 0
                         : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
-                                .toInstant().toEpochMilli());
+                                .toInstant().toEpochMilli()).withDocumentNo(r.getDocumentNo());
     }
 
     private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO toOpsVO(MktCoupon c) {
@@ -559,7 +612,7 @@ public class CouponServiceImpl implements CouponService {
                 c.getArchivedAt() == null ? null
                         : c.getArchivedAt().atZone(java.time.ZoneId.systemDefault())
                                 .toInstant().toEpochMilli(),
-                nzi(c.getTotalCount()), nzi(c.getPerUserLimit()), nz(c.getMaxDiscountMinor()));
+                nzi(c.getTotalCount()), nzi(c.getPerUserLimit()), nz(c.getMaxDiscountMinor())).withDocumentNo(c.getDocumentNo());
     }
 
     @Override
@@ -573,11 +626,12 @@ public class CouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MktCoupon c = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
-                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")), MktCoupon::getCouponNo, MktCoupon::setDocumentNo));
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         if (MktCoupon.ENDED.equals(c.getStatus())) {
             // 已结束不可恢复：把它改回 ACTIVE 等于让一批过期券重新可领，

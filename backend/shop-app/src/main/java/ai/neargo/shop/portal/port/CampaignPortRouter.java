@@ -1,9 +1,12 @@
 package ai.neargo.shop.portal.port;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.port.CampaignPortImpl;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -37,10 +40,59 @@ public class CampaignPortRouter implements CampaignPort {
         this.promo = promo;
     }
 
-    /**
-     * 「这一单当时减了什么」只有新模型记着（`pmt_apply`）——
-     * 老模型那边没有这张账，所以不必合并，直接转发。
-     */
+    /** 「这一单当时减了什么」只有新模型记着（`pmt_apply`）—— 老模型那边没有这张账，所以不必合并，直接转发。 */
+    @Override
+    public List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> groups) {
+        return counterCandidates(party, groups, Map.of()).candidates();
+    }
+
+    @Override
+    public CounterCandidates counterCandidates(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices) {
+        legacy.lockCounter(groups);
+        long now = System.currentTimeMillis();
+        promo.rejectUnsupportedCounterChoices(groups, choices, now);
+        return legacy.evaluateCounter(party, groups, choices, now);
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices, CounterActivitySeal seal, Discount selected) {
+        legacy.requireCounterEvidence(party, groups, choices, seal, selected);
+        try {
+            legacy.requireSameCounter(seal, counterCandidates(party, groups, choices));
+        } catch (BizException failure) {
+            if (failure.errorCode() == ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION
+                    || failure.errorCode() == ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE) {
+                throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+            }
+            throw failure;
+        }
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, Discount selected) {
+        legacy.requireCounterSelection(party, selected);
+    }
+
+    @Override
+    public Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        promo.rejectUnsupportedCounterPriceEffects(goodsNos);
+        return legacy.counterFlashPrices(party, goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        promo.rejectUnsupportedCounterPriceEffects(goodsNos);
+        return legacy.counterGiftRules(party, goodsNos);
+    }
+
+    @Override
+    public void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        legacy.commitCounter(party, orderNo, discount);
+    }
+
     @Override
     public List<AppliedDiscount> appliedOf(String orderNo) {
         return promo.appliedOf(orderNo);
@@ -64,8 +116,31 @@ public class CampaignPortRouter implements CampaignPort {
      */
     @Override
     public List<AppliedActivity> candidates(List<MerchantAmount> groups) {
-        List<AppliedActivity> all = new ArrayList<>(legacy.candidates(groups));
-        all.addAll(promo.candidates(SecurityUtils.currentUserNoOrNull(), groups));
+        return candidatesOf(SecurityUtils.currentUserNoOrNull(), groups);
+    }
+
+    @Override
+    public List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        // Preserve promised effects long enough for the owner to reject unsupported rewards.
+        // The ordinary retail API above retains its original capability filtering.
+        var complete =
+                groups.stream()
+                        .map(
+                                g ->
+                                        new MerchantAmount(
+                                                g.merchantNo(),
+                                                g.goodsAmount(),
+                                                g.goodsQty(),
+                                                g.storeNo(),
+                                                g.lines(),
+                                                true))
+                        .toList();
+        return candidatesOf(buyerNo, complete);
+    }
+
+    private List<AppliedActivity> candidatesOf(String buyerNo, List<MerchantAmount> groups) {
+        List<AppliedActivity> all = new ArrayList<>(legacy.candidatesFor(buyerNo, groups));
+        all.addAll(promo.candidates(buyerNo, groups));
         return all;
     }
 
@@ -83,6 +158,23 @@ public class CampaignPortRouter implements CampaignPort {
     }
 
     @Override
+    public void requireOrdinarySelection(String buyerNo, Discount selected) {
+        var old = new ArrayList<AppliedActivity>();
+        var current = new ArrayList<AppliedActivity>();
+        for (var row : selected.applied()) {
+            if (promo.ownsActivity(row.activityNo())) {
+                current.add(row);
+            } else {
+                old.add(row);
+            }
+        }
+        legacy.requireOrdinarySelection(
+                buyerNo, new Discount(selected.total(), selected.shares(), old));
+        promo.requireOrdinarySelection(
+                buyerNo, new Discount(selected.total(), selected.shares(), current));
+    }
+
+    @Override
     public void commit(String userNo, String orderNo, Discount discount) {
         legacy.commit(userNo, orderNo, discount);
         /*
@@ -94,6 +186,26 @@ public class CampaignPortRouter implements CampaignPort {
         promo.commit(userNo, orderNo, new Discount(discount.total(), discount.shares(), mine));
     }
 
+    /**
+     * 特价 / 买赠的份数只有新模型有。<b>只扣真的胜出了的那个</b>：老模型的特价更低（或送得更多）时，
+     * 这件货成交用的是老模型的活动，新模型那个活动的份数不该被扣。一单一个活动扣一份，按活动号排序加锁。
+     */
+    @Override
+    public void commitItemBenefits(String userNo, String orderNo, List<ItemBenefitUse> uses) {
+        if (uses == null || uses.isEmpty()) {
+            return;
+        }
+        java.util.TreeMap<String, ItemBenefitUse> byActivity = new java.util.TreeMap<>();
+        for (ItemBenefitUse use : uses) {
+            if (use.activityNo() == null) continue;
+            byActivity.merge(use.activityNo(), use, (first, next) -> new ItemBenefitUse(
+                    first.goodsNo(), first.merchantNo(), first.gift(), first.activityNo(),
+                    Math.addExact(first.amountMinor(), next.amountMinor())));
+        }
+        byActivity.forEach((act, use) -> promo.commitItemUsage(
+                userNo, orderNo, act, use.merchantNo(), 1, use.amountMinor()));
+    }
+
     @Override
     public long bonusPoints(String orderNo, String merchantNo) {
         return promo.bonusPoints(orderNo, merchantNo);
@@ -101,17 +213,46 @@ public class CampaignPortRouter implements CampaignPort {
 
     @Override
     public Map<String, Long> flashPrices(Collection<String> goodsNos) {
-        Map<String, Long> out = new HashMap<>(legacy.flashPrices(goodsNos));
-        // 取更低的那个价 —— 与满减取最优同一侧
-        promo.flashPrices(SecurityUtils.currentUserNoOrNull(), goodsNos)
-                .forEach((k, v) -> out.merge(k, v, Math::min));
+        Map<String, Long> out = new HashMap<>();
+        flashOffers(goodsNos).forEach((goods, offer) -> out.put(goods, offer.priceMinor()));
+        return out;
+    }
+
+    @Override
+    public Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        Map<String, Long> out = new HashMap<>();
+        flashOffersFor(buyerNo, goodsNos).forEach((goods, offer) -> out.put(goods, offer.priceMinor()));
+        return out;
+    }
+
+    @Override
+    public Map<String, PriceOffer> flashOffers(Collection<String> goodsNos) {
+        return priceOffers(SecurityUtils.currentUserNoOrNull(), goodsNos, false);
+    }
+
+    @Override
+    public Map<String, PriceOffer> flashOffersFor(String buyerNo, Collection<String> goodsNos) {
+        return priceOffers(buyerNo, goodsNos, true);
+    }
+
+    private Map<String, PriceOffer> priceOffers(String buyerNo, Collection<String> goodsNos, boolean ordinary) {
+        Map<String, Long> old = legacy.flashPrices(goodsNos);
+        Map<String, PriceOffer> out = new HashMap<>();
+        old.forEach((goods, price) -> out.put(goods, new PriceOffer(null, price)));
+        promo.flashOffers(buyerNo, goodsNos, old, ordinary).forEach((goods, offer) ->
+                out.merge(goods, offer, (first, next) -> next.priceMinor() <= first.priceMinor() ? next : first));
         return out;
     }
 
     @Override
     public Map<String, GiftRule> giftRules(Collection<String> goodsNos) {
+        return giftRulesFor(SecurityUtils.currentUserNoOrNull(), goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
         Map<String, GiftRule> out = new HashMap<>(legacy.giftRules(goodsNos));
-        promo.giftRules(SecurityUtils.currentUserNoOrNull(), goodsNos)
+        promo.giftRules(buyerNo, goodsNos)
                 .forEach((k, v) -> out.merge(k, v, (x, y) -> y.giftM() > x.giftM() ? y : x));
         return out;
     }

@@ -108,10 +108,10 @@ class Kuaidi100TraceProviderTest {
     }
 
     @Test
-    @DisplayName("★★ 承运商映射覆盖 ExpressCompanies 的每一家 —— 发货界面能选的，轨迹都查得到")
+    @DisplayName("★★ 承运商映射覆盖 ExpressCompanies 大陆表的每一家 —— 大陆发货界面能选的，轨迹都查得到（台湾首期不查，已拍板 X3）")
     void coversEveryKnownCarrier() {
         var p = new Kuaidi100TraceProvider("k", "c", null);
-        for (var c : ExpressCompanies.all()) {
+        for (var c : ExpressCompanies.forMarket("CN")) {
             assertThat(p.covers(c.code())).as("承运商 %s 没有快递100 公司码", c.code()).isTrue();
         }
         assertThat(p.covers("NOPE")).isFalse();

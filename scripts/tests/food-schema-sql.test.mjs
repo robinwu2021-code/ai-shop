@@ -7,9 +7,9 @@ import os from 'node:os';
 import {spawnSync} from 'node:child_process';
 import {renderFoodSchema,renderFoodV1,assertFrozenFoodV1,writeFrozenMigration} from '../lib/food-schema-sql.mjs';
 const s=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/food-system-design.json',import.meta.url)));
-test('target design contains 82 food-owned tables while frozen V1 remains 73',()=>{
+test('target design contains 113 target food-owned tables while frozen V1 remains 73',()=>{
  const sql=renderFoodSchema(s);const names=[...sql.matchAll(/CREATE TABLE `([^`]+)`/g)].map(m=>m[1]);
- assert.equal(names.length,82);assert.equal([...renderFoodV1(s).matchAll(/CREATE TABLE `/g)].length,73);assert(names.every(n=>n.startsWith('fnb_')));
+ assert.equal(names.length,113);assert.equal([...renderFoodV1(s).matchAll(/CREATE TABLE `/g)].length,73);assert(names.every(n=>n.startsWith('fnb_')));
  assert(!/\b(?:ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|CREATE DATABASE)\b/i.test(sql.replace(/--[^\n]*|'(?:[^']|'')*'/g,'')));
  assert(!/CREATE TABLE.*(?:prd_|ord_|pay_|prn_|rpt_)/.test(sql));
 });
@@ -90,13 +90,32 @@ test('V3 preserves spec64 without changing frozen V1 or V2',()=>{
  assert.match(renderFoodV1(s),/`spec_value_no` VARCHAR\(32\)/);
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V3__option_spec_value_identity_width.sql',import.meta.url);
  assert.match(fs.readFileSync(file,'utf8'),/MODIFY COLUMN `spec_value_no` VARCHAR\(64\)/);
- assert.equal(s.databaseInitialization.targetSchemaVersion,7);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,25);
 });
 
 test('V6 composes menu options and recipe variants without changing frozen migrations',async()=>{
  const {renderMenuCompositionV6}=await import('../lib/food-schema-sql.mjs');
  const file=new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V6__menu_composition.sql',import.meta.url);
  assert.equal(fs.readFileSync(file,'utf8'),renderMenuCompositionV6(s));
- assert.match(renderFoodSchema(s),/history: fnb_flyway_history; version: 7/);
+ assert.match(renderFoodSchema(s),/history: fnb_flyway_history; version: 25/);
  assertFrozenFoodV1(renderFoodV1(s));
+});
+
+
+test('V8 freezes original source request identity and recovery without altering pinned V1',()=>{
+ const sql=fs.readFileSync(new URL('../../backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V8__checkout_request_identity.sql',import.meta.url),'utf8');
+ for(const name of ['fnb_return','fnb_settlement','fnb_order_batch']){
+  assert.match(sql,new RegExp('ALTER TABLE '+name+'[\\s\\S]*?next_recovery_at'));
+  const table=s.tables.find(t=>t.name===name);
+  assert.equal(table.fields.find(f=>f.name==='next_recovery_at')?.introducedIn,'V8');
+ }
+ for(const name of ['fnb_return','fnb_settlement']){
+  const table=s.tables.find(t=>t.name===name);
+  assert(table.unique.some(k=>k.join(',')==='entity_no,store_no,request_key'));
+  for(const field of ['request_key','request_hash','request_snapshot'])assert.equal(table.fields.find(f=>f.name===field)?.introducedIn,'V8');
+ }
+ assertFrozenFoodV1(renderFoodV1(s));
+ assert(!renderFoodV1(s).includes('next_recovery_at'));
+ assert(!renderFoodV1(s).includes('source_component_ref'));
+ assert.match(renderFoodSchema(s),/`source_component_ref` CHAR\(64\)/);
 });

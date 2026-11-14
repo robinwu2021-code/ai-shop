@@ -1,6 +1,7 @@
 package ai.neargo.shop.media;
 
 import java.io.InputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 
@@ -30,6 +31,11 @@ public interface MediaStore {
      * @param key 相对路径，形如 {@code E0001/S0003/goods/202608/9f2c….jpg}
      */
     void put(String key, InputStream in, long size, String contentType);
+
+    /** Server-side private stream. Caller owns authorization and must close it; no public URL is produced. */
+    default InputStream openPrivate(String key) throws IOException {
+        throw new UnsupportedOperationException("PRIVATE_STREAM_NOT_SUPPORTED");
+    }
 
     /**
      * 删字节。<b>幂等</b>：已不存在的 key 直接跳过，不抛异常 ——

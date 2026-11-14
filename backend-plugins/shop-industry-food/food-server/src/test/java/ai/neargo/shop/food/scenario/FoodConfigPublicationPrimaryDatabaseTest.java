@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateModifierReq;
 import ai.neargo.shop.food.dto.ModifierComponentInput;
 import ai.neargo.shop.food.dto.UpdateModifierReq;
@@ -48,8 +46,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,7 +53,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 /** Actual frozen migration, primary JSON, service-token ingress and original typed HTTP response shapes. */
@@ -92,14 +87,17 @@ class FoodConfigPublicationPrimaryDatabaseTest {
             Flyway.configure().dataSource(source).locations("classpath:db/industry/food").table("fnb_flyway_history")
                     .baselineOnMigrate(true).baselineVersion("0").load().migrate();
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class, Route.class)
-                    .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                            "spring.datasource.password=", "shop.services.internal-token=wire",
+                    .withUserConfiguration(FoodApplication.class)
+                    .withPropertyValues("shop.outbox.sources.platform.mode=unified",
+                            "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
+                            "spring.datasource.url=" + url, "spring.datasource.username=root",
+                            "spring.datasource.password=", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort(),
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")
                     .run(c -> {
+                        FoodServerProducerAssertions.verify(c);
                         assertThat(c).hasNotFailed().hasSingleBean(ConfigRevisionService.class);
                         var mvc = MockMvcBuilders.webAppContextSetup(c)
                                 .addFilters(c.getBean(FilterChainProxy.class)).build();
@@ -107,7 +105,7 @@ class FoodConfigPublicationPrimaryDatabaseTest {
                                 ConfigRevisionInternalApi.LIST_PATH, ConfigRevisionInternalApi.GET_PATH, ConfigRevisionInternalApi.RESOLVE_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
-                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
+                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                     .contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isBadRequest());
                         }
@@ -115,7 +113,7 @@ class FoodConfigPublicationPrimaryDatabaseTest {
                             try {
                                 var result = mvc.perform(post(ex.getRequestURI().getPath())
                                         .header(InternalHttp.TOKEN_HEADER,
-                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER))
+                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                                 .content(ex.getRequestBody().readAllBytes()))
                                         .andReturn().getResponse();
@@ -189,14 +187,4 @@ class FoodConfigPublicationPrimaryDatabaseTest {
         }
     }
 
-    @Configuration(proxyBeanMethods=false)
-    static class Route {
-        @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_MODIFIER_CHANGED",
-                    "PLATFORM:FOOD_OPTION_GROUP_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
-            return facade;
-        }
-    }
 }

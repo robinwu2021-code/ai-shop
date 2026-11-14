@@ -1,9 +1,11 @@
 package ai.neargo.shop.print;
 
+import ai.neargo.shop.spi.printing.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.layout.LayoutProfileRegistry;
+import ai.neargo.shop.printing.center.layout.LayoutProfileRegistry;
 
 import org.junit.jupiter.api.Test;
 

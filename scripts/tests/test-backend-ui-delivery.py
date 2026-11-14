@@ -1,3 +1,4 @@
+import json
 import importlib.util
 from pathlib import Path
 import unittest
@@ -32,5 +33,25 @@ class DeferredBackendDeliveryTest(unittest.TestCase):
         with self.assertRaises(ValueError): self.validate(data=data)
         data = self.manifest(); data['entries'][0]['app'] = 'b-app'
         with self.assertRaises(ValueError): self.validate(data=data)
+
+    def test_pricing_staging_has_real_handlers_in_its_own_contract(self):
+        self.assertTrue(hasattr(module, 'read_deferred_delivery'))
+        file = 'docs/api/pricing-config-biz-ui-delivery.json'
+        data = json.loads((module.ROOT / file).read_text())
+        missing = {f"{row['app']} {row['method']} {module.norm(row['path'])}" for row in data['entries']}
+        self.assertEqual(module.read_deferred_delivery(file, 'docs/api/pricing-config.openapi.json', missing), missing)
+
+    def test_food_support_staging_requires_actual_handlers_and_contract(self):
+        file = 'docs/api/food-business-support-ui-delivery.json'
+        data = json.loads((module.ROOT / file).read_text())
+        missing = {f"{row['app']} {row['method']} {module.norm(row['path'])}" for row in data['entries']}
+        self.assertEqual(len(missing), 6)
+        self.assertEqual(module.read_deferred_delivery(file, 'docs/api/food-business-support.openapi.json', missing), missing)
+
+    def test_extra_manifest_contract_must_be_a_docs_api_file(self):
+        with self.assertRaises(ValueError): module.published_paths('../secrets.json')
+        with self.assertRaises(ValueError): module.published_paths('docs/api/missing.json')
+        self.assertIn(('POST', module.norm('/biz/stores/{storeNo}/mall/offline/quotes')),
+                      module.published_paths('docs/api/commerce-mall-openapi.json'))
 
 if __name__ == '__main__': unittest.main()

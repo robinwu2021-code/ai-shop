@@ -167,15 +167,8 @@ public class MpStoreController {
 
     /** 取值是 web 层的事（领域服务不碰 web 运行时，ArchitectureTest 拦这条）。 */
     private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            int comma = xff.indexOf(',');
-            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
-        }
-        return request.getRemoteAddr();
+        // 可信 IP 只有一处来源（安全规范 §4.5）：不再自己读转发头
+        return request == null ? null : ai.neargo.shop.auth.ClientMeta.clientIp(request);
     }
 
     /** 只留摘要：UA 原文可用于指纹，属个人信息，没有留存的理由。 */

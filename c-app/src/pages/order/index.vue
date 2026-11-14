@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ShPointsEarning from "@ai-shop/ui/components/sh-points-earning.vue";
+import type { OrderPointsEarning } from "@shared/types";
 import { useRecipientName } from "@/shared/recipient-name";
 const recipientName = useRecipientName();
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
@@ -17,7 +19,7 @@ import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
 import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import { refundProgressKey, canWithdrawAfterSale } from "@shared/strategies/order-phase1";
-import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
+import { expressCompanyName as carrierNameOf } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
 /**
@@ -182,10 +184,25 @@ const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
   if (!code) return "";
-  return EXPRESS_COMPANIES.find((c) => c.code === code)?.name ?? code;
+  // 跨市场查名：台湾单的承运商码（TCAT 等）也要显示名称，不是原码
+  return carrierNameOf(code) ?? code;
 });
 
 const order = ref<Order | null>(null);
+const earningRows = ref<OrderPointsEarning[]>([]);
+const earningFailed = ref(false);
+let earningEpoch = 0;
+async function loadEarning() {
+  const no = order.value?.orderNo;
+  const token = ++earningEpoch;
+  earningRows.value = []; earningFailed.value = false;
+  if (!no) return;
+  try {
+    const rows = await api.orderPointsEarning(no);
+    if (token === earningEpoch && order.value?.orderNo === no) earningRows.value = rows;
+  } catch { if (token === earningEpoch && order.value?.orderNo === no) earningFailed.value = true; }
+}
+
 /**
  * 这一单参加的团（原型 p08）。团单在订单里多一张进度卡：还差几人、还剩多久、邀请。
  * 此前订单详情看不出这是团单，用户只能回商品页去找那个团。取不到就不画，不拖垮订单页。
@@ -221,7 +238,7 @@ const nextStepText = computed(() => {
 
 /** 复制订单号。找客服要念这一串，照着屏幕抄最容易抄错 */
 function copyOrderNo() {
-  const no = order.value?.orderNo;
+  const no = order.value?.documentNo;
   if (!no) return;
   uni.setClipboardData({ data: no });
 }
@@ -436,7 +453,9 @@ async function load() {
   failed.value = false;
   failReason.value = "";
   try {
-    let o = await api.orderDetail(orderNo.value);
+    let o = await api.orderDetail(orderNo.value, paymentReference.value);
+    orderNo.value = o.orderNo;
+    paymentReference.value = false;
     /*
      * **主单号打开、只有一家店 → 切到那张订单的视角**。收银台「查看订单」、微信购物订单都用主单号跳进来；
      * 支付视角不挂售后、码与轨迹，售后入口拿主单号提交必然「数据不存在」。单店时两个视角是同一笔单，
@@ -448,6 +467,7 @@ async function load() {
       o = await api.orderDetail(only);
     }
     order.value = o;
+    void loadEarning();
     // 开票按主单号查，要等详情回来才知道主单号
     await loadInvoice();
     grp.value = o.groupNo ? await api.groupBuyDetail(o.groupNo).catch(() => null) : null;
@@ -571,12 +591,13 @@ function buyAgain() {
   if (first) uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${first.goodsNo}` });
 }
 
-/*
- * 从微信「小程序购物订单」点进来时，参数是**支付单号**（可能带 -2 / -3 后缀），
- * 不是订单号 —— 要先还原，否则重试付成功的那些单点开是一片空。见 orderNoOf。
- */
+// New external payment links use ?paymentReference=<channel reference>.
+// Unknown legacy orderNo links are resolved exactly by the backend before payment fallback.
+const paymentReference = ref(false);
 onLoad((q) => {
-  orderNo.value = orderNoOf((q?.orderNo as string) || "");
+  const payment = (q?.paymentReference as string) || "";
+  paymentReference.value = Boolean(payment);
+  orderNo.value = orderNoOf(payment || (q?.orderNo as string) || "");
 });
 
 // 用 onShow 而非 onLoad 加载：从售后页返回时状态会变，必须重新拉
@@ -606,6 +627,7 @@ onPullDownRefresh(async () => {
     </sh-empty>
 
     <template v-if="order">
+      <ShPointsEarning :rows="earningRows" :failed="earningFailed" @retry="loadEarning" />
     <!--
       订单详情重排（原型 prototypes/c-order-detail.html，2026-10-10）。
       恒定骨架：状态头 → 收货/自提 → 店铺+商品 → 金额 → 订单信息 → 附属卡 → 吸底操作条。
@@ -780,11 +802,11 @@ onPullDownRefresh(async () => {
       占掉大半屏——这里压成每节点一行，信息不丢、版面短一半。
     -->
     <view class="sh-card block">
-      <view class="fact sh-row sh-row--between sh-row--top">
+      <view v-if="order.documentNo" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
         <text class="txt-caption fact__v sh-num" @tap="copyOrderNo">
-          {{ order.orderNo }} <text class="txt-primary">{{ $t("order.copy") }}</text>
+          {{ order.documentNo }} <text class="txt-primary">{{ $t("order.copy") }}</text>
         </text>
       </view>
       <view class="fact sh-row sh-row--between sh-row--top">

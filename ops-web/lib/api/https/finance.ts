@@ -1,18 +1,16 @@
+import { useLocaleStore } from "@/lib/stores/locale";
+import { requirePointsNames } from "../../../../packages/shared/src/utils/points-name";
 // 覆盖范围：分账结算（P-12.1）。
 import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
 import type {
-  PurchaseInvoice,
+  PurchaseInvoice, PointsTypeConfig,
   BuyerInvoiceRequest, Settlement,
   Page, PayoutAccount, PayoutList, SettleStatRow,
   BankFlowImportResult,
 } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
-  pointsAccounts: (q) => client.get("/ops/points/accounts", q),
-  pointsTransactions: (q) => client.get("/ops/points/transactions", q),
-  pointsTransaction: (typeCode, voucherNo) => client.get(`/ops/points/transactions/${encodeURIComponent(voucherNo)}`, { typeCode }),
-  pointsPeriodStats: (q) => client.get("/ops/points/stats-period", q),
   pointsAdjustments: (q) => client.get("/ops/points/adjustments", q),
   submitPointsAdjustment: (v) => client.post("/ops/points/adjustments", v),
   reviewPointsAdjustment: (v) => client.post("/ops/points/adjustment-review", v),
@@ -25,9 +23,16 @@ export const financeHttp: FinanceApi = {
   retryOrderPointsRefund: (afterSaleNo, reason) => client.post(`/ops/points/order-integration/refunds/${encodeURIComponent(afterSaleNo)}/retry`, { reason }),
   pointsOverview: (market, typeCode) => client.get("/ops/points/overview", { market: market ?? "CN", typeCode }),
   pointsReceivables: (q) => client.get("/ops/points/receivables", q),
-  pointsTypes: () => client.get("/ops/points/types"),
+  pointsOrderEarning: (subOrderNo) => client.get("/ops/points/order-earning", {subOrderNo}),
+  pointsEarningContext: () => client.get("/ops/points/earning-context"),
+  pointsEarningRules: (q) => client.get("/ops/points/earning-rules", q),
+  pointsEarningHistory: (scope, typeCode) => client.get("/ops/points/earning-rule-history", {scope,typeCode}),
+  changePointsEarningRule: (v) => client.post("/ops/points/earning-rules", v),
+  previewPointsEarning: (v) => client.post("/ops/points/earning-preview", v),
+  pointsTypes: () => client.get<PointsTypeConfig[]>("/ops/points/types").then(rows => requirePointsNames(rows, useLocaleStore.getState().locale === "en" ? "Points names failed to load. Please retry." : "积分名称加载失败，请重试。")),
   createPointsType: (v) => client.post("/ops/points/types", v),
   transitionPointsType: (v) => client.post("/ops/points/type-state", v),
+  renamePointsType: (v) => client.post("/ops/points/type-name", v),
   pointsFallback: (typeCode) => client.get("/ops/points/fallback-rule", { typeCode }),
   savePointsFallback: (v) => client.post("/ops/points/fallback-rule", v),
   pointsSwitches: (q) => client.get("/ops/points/switches", q),
@@ -55,6 +60,10 @@ export const financeHttp: FinanceApi = {
   pointsEvents: (q) => client.get("/ops/points/events", q),
   retryPointsEvent: (v) => client.post("/ops/points/event-retry", v),
   pointsAccount: (q) => client.get("/ops/points/account", q),
+  pointsAccounts: (q) => client.get("/ops/points/accounts", q),
+  pointsTransactions: (q) => client.get("/ops/points/transactions", q),
+  pointsTransaction: (typeCode, voucherNo) => client.get(`/ops/points/transactions/${encodeURIComponent(voucherNo)}`, { typeCode }),
+  pointsPeriodStats: (q) => client.get("/ops/points/stats-period", q),
   freezePointsAccount: (v) => client.post("/ops/points/account-freeze", v),
   pointsVouchers: (q) => client.get("/ops/points/vouchers", q),
   pointsEntries: (q) => client.get("/ops/points/entries", q),

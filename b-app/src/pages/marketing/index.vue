@@ -47,7 +47,7 @@ onShow(async () => {
 </script>
 
 <template>
-  <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
+  <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')&&!merchant.can('pay:sv:plan:read')&&!merchant.can('pay:sv:plan:manage')&&!merchant.can('pay:sv:account:read')&&!merchant.can('pay:sv:recharge:create')" :failed="failed" @retry="load">
     <!-- 与工作台「今日」同一块读数（sh-stat panel） -->
     <view v-if="sum" class="sh-card">
       <sh-stat panel :items="[
@@ -56,7 +56,11 @@ onShow(async () => {
       ]"></sh-stat>
     </view>
 
-    <view class="sh-cells">
+    <view v-if="merchant.can('pay:sv:plan:read')||merchant.can('pay:sv:plan:manage')||merchant.can('pay:sv:account:read')||merchant.can('pay:sv:recharge:create')" class="sh-card sh-row sh-row--between" @tap="go(ROUTES.storedValue)">
+        <text class="txt-body">{{$t('storedValue.title')}}</text><sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"/>
+      </view>
+    <view v-if="merchant.can('biz:campaign')" class="sh-cells">
+
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.activities)">
         <text class="txt-body">{{ $t("marketing.activities") }}</text>
         <view class="sh-row">

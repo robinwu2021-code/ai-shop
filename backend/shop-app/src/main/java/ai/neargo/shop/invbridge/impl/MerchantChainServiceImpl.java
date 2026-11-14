@@ -2,16 +2,18 @@ package ai.neargo.shop.invbridge.impl;
 
 import ai.neargo.shop.invbridge.MerchantChainService;
 
-import ai.neargo.shop.inventory.entity.InvItemRef;
-import ai.neargo.shop.inventory.entity.InvLedger;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.entity.InvItemRef;
+import ai.neargo.inventory.domain.entity.InvLedger;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.support.InvEnums;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
+import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -147,6 +149,8 @@ public class MerchantChainServiceImpl implements MerchantChainService {
     private Map<String, String> ownerIds(Set<String> entityNos) {
         Map<String, String> out = new HashMap<>();
         for (InvOwner o : ownerMapper.selectList(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                 .in(InvOwner::getExternalRef, entityNos))) {
             out.put(o.getExternalRef(), o.getOwnerId());
         }

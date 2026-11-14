@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.service;
 
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort.Attempt;
 
 /**
  * 收款流水（{@code stl_payment}）—— <b>「这笔钱进没进来」的权威记录</b>。
@@ -30,6 +31,11 @@ import ai.neargo.shop.spi.settle.SettlePort;
  * （覆盖了的话对账查到的成功时刻会一直往后跳）。
  */
 public interface PaymentLedgerService {
+    /**
+     * Bounded proven-unsent close; requires the caller's existing pay transaction and canonical
+     * ticket.
+     */
+    void closeUnsent(String outTradeNo, String canonicalOperationNo);
 
     /**
      * 发起支付，落一行 PENDING。
@@ -42,7 +48,22 @@ public interface PaymentLedgerService {
      * @return 实际使用的 {@code out_trade_no}：复用时是已有那笔的，新建时是新生成的。
      *         <b>调用方要拿它去向通道下单</b>，而不是用自己传进来的那个
      */
+    default String paymentBusiness(String paymentNoOrOutTradeNo) { return "CONSUMER"; }
+
     String open(SettlePort.PaymentOpen cmd);
+
+    /** Full ordinary PAY coordinates, without synthesizing historical money or ownership. */
+    Attempt ordinaryPayment(String outTradeNo);
+
+    Attempt successfulOrdinaryPayment(String orderNo);
+
+    /**
+     * 商户单号（收款的 out_trade_no 或退款的 out_refund_no）对应的流水号。out_trade_no 全表唯一（db/pay V1）。
+     * 回调落报文时用它补上 payment_no（F13 · Review R15）。
+     */
+    default java.util.Optional<String> paymentNoOf(String outTradeNo) {
+        return java.util.Optional.empty();
+    }
 
     /** 原支付指令快照；缺失时不从当前商家配置合成。 */
     default java.util.Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
@@ -230,6 +251,9 @@ public interface PaymentLedgerService {
      *                非微信通道没有这个概念，传 null，那时只记 payerId
      */
     void recordPayer(String outTradeNo, String payerId, String appId);
+
+    /** Freeze the exact payer before sending; conflicting retries cannot change or close the intent. */
+    void freezePayer(String outTradeNo, String userNo, String payerId, String appId);
 
     /**
      * 按<b>退款商户单号</b>确认到账。{@link #markRefundSettled} 的另一个入口 ——

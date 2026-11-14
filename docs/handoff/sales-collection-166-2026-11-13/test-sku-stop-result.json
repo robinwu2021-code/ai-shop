@@ -1,0 +1,102 @@
+{
+  "realFundsConfirmed": false,
+  "ordersCreated": false,
+  "checks": [
+    {
+      "method": "POST",
+      "path": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/skus/test-plan-retail-pro-m/off-sale",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/skus/test-plan-retail-pro-y/off-sale",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/skus/test-plan-retail-chain-m/off-sale",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/skus/test-plan-retail-chain-y/off-sale",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200,
+      "code": 0,
+      "message": null
+    }
+  ],
+  "status": "PASS",
+  "stopped": [
+    "test-plan-retail-pro-m",
+    "test-plan-retail-pro-y",
+    "test-plan-retail-chain-m",
+    "test-plan-retail-chain-y"
+  ],
+  "formalOnSale": [
+    "tw-retail-pro-m",
+    "tw-retail-pro-y",
+    "tw-retail-chain-m",
+    "tw-retail-chain-y"
+  ],
+  "actions": [
+    {
+      "skuNo": "test-plan-retail-pro-m",
+      "result": {
+        "entityNo": "test-plan-retail-pro-m",
+        "draftVersionNo": null,
+        "version": 2
+      }
+    },
+    {
+      "skuNo": "test-plan-retail-pro-y",
+      "result": {
+        "entityNo": "test-plan-retail-pro-y",
+        "draftVersionNo": null,
+        "version": 2
+      }
+    },
+    {
+      "skuNo": "test-plan-retail-chain-m",
+      "result": {
+        "entityNo": "test-plan-retail-chain-m",
+        "draftVersionNo": null,
+        "version": 2
+      }
+    },
+    {
+      "skuNo": "test-plan-retail-chain-y",
+      "result": {
+        "entityNo": "test-plan-retail-chain-y",
+        "draftVersionNo": null,
+        "version": 2
+      }
+    }
+  ]
+}

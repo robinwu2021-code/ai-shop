@@ -61,7 +61,8 @@ describe("契约与 HTTP 端点一致", () => {
       const re = /client\.(?:get|post|put)\(\s*[`"]([^`"]+)/g;
       let m;
       while ((m = re.exec(src))) {
-        if (!m[1].startsWith("/ops/")) bad.push(`${f}: ${m[1]}`);
+        // 支付运营端是独立入口 /pay-ops/v1（ADR-044 OPS 面，与 /ops 同一套运营会话），不是第三种前缀
+        if (!m[1].startsWith("/ops/") && !m[1].startsWith("/pay-ops/v1/")) bad.push(`${f}: ${m[1]}`);
       }
     }
     expect(bad, `路径必须以 /ops/ 开头：\n${bad.join("\n")}`).toEqual([]);

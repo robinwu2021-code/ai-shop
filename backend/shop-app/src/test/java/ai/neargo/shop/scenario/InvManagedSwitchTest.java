@@ -2,9 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.inventory.entity.InvItem;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.entity.InvItem;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.support.TestLogin;
@@ -215,7 +215,7 @@ class InvManagedSwitchTest {
 
     private String shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String token = merchant("1260934%04d".formatted(seq), "记库存开关测试店-" + seq);
+        String token = merchant("1860934%04d".formatted(seq), "记库存开关测试店-" + seq);
         TestStoreCategory.open(mvc(), json, token, FRUIT);
         return token;
     }

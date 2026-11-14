@@ -6,10 +6,15 @@ import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Query;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
+import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
+
 import jakarta.validation.Valid;
+
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -18,20 +23,39 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Internal modifier adapters use the original service token and one authoritative ConfigRevisionService. */
+/**
+ * Internal modifier adapters use the original service token and one authoritative
+ * ConfigRevisionService.
+ */
 @RestController
 @Validated
 @ConditionalOnFoodEnabled
 @Conditional(PersistenceEnabled.class)
 public class InternalConfigRevisionController {
     private final ConfigRevisionService service;
-    public InternalConfigRevisionController(ConfigRevisionService service) { this.service = service; }
+
+    public InternalConfigRevisionController(ConfigRevisionService service) {
+        this.service = service;
+    }
+
+    @PostMapping(ConfigRevisionInternalApi.MENU_SOURCE_PATH)
+    public Proof verifyMenuResource(@Valid @RequestBody Query query) {
+        MenuSourcePolicy.validateQuery(query);
+        return service.verifyMenuResource(query);
+    }
 
     @PostMapping(ConfigRevisionInternalApi.REPUBLISH_PATH)
-    public PublishConfigResultVO republishRevision(@Valid @RequestBody ConfigRevisionInternalApi.RepublishCommand c) {
-        return service.republishRevision(c.entityNo(), c.storeNo(), c.revisionNo(), c.actorNo(),
-                c.publication(), c.idempotencyKey());
+    public PublishConfigResultVO republishRevision(
+            @Valid @RequestBody ConfigRevisionInternalApi.RepublishCommand c) {
+        return service.republishRevision(
+                c.entityNo(),
+                c.storeNo(),
+                c.revisionNo(),
+                c.actorNo(),
+                c.publication(),
+                c.idempotencyKey());
     }
+
     @PostMapping(ConfigRevisionInternalApi.MENU_PATH)
     public PublishConfigResultVO publishMenu(@Valid @RequestBody ConfigRevisionInternalApi.Command c) {
         return service.publishMenu(c.entityNo(), c.storeNo(), c.configNo(), c.actorNo(),

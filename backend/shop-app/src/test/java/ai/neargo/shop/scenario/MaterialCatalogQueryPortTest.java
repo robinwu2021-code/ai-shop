@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.inventory.config.InventoryDataSourceConfig;
+import ai.neargo.inventory.domain.config.InventoryDataSourceConfig;
 import ai.neargo.shop.inventory.port.MaterialCatalogQueryPortImpl;
-import ai.neargo.shop.inventory.service.impl.InventoryAclServiceImpl;
-import ai.neargo.shop.inventory.service.impl.LocationServiceImpl;
+import ai.neargo.inventory.domain.service.impl.InventoryAclServiceImpl;
+import ai.neargo.inventory.domain.service.impl.LocationServiceImpl;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import java.sql.SQLException;
 import java.util.List;
@@ -58,6 +58,11 @@ class MaterialCatalogQueryPortTest {
                             "shop.inventory.datasource.username=" + (mysql ? "root" : "sa"),
                             "shop.inventory.datasource.password=", "shop.inventory.flyway-locations=classpath:db/"
                                     +(mysql ? "inventory" : "inventory-h2"))
+                    // 领域包读 inventory.*（ADR-046）；整机由 application.yml 桥接，这里不加载它，要直接给
+                    .withPropertyValues("inventory.enabled=true", "inventory.datasource.url=" + url,
+                            "inventory.datasource.username=" + (mysql ? "root" : "sa"),
+                            "inventory.datasource.password=", "inventory.flyway-locations=classpath:db/"
+                                    + (mysql ? "inventory" : "inventory-h2"))
                     .run(c -> {
                         assertThat(c).hasNotFailed();
                         var source = c.getBean("invDataSource", DataSource.class);

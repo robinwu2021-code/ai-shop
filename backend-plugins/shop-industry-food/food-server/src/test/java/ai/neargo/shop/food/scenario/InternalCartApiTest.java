@@ -27,7 +27,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 class InternalCartApiTest {
     final WebApplicationContextRunner runner = new WebApplicationContextRunner().withUserConfiguration(Host.class)
-            .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire");
+            .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
 
     @Test void serviceTokenPrecedesStrictParsingAndReceiptIsUnwrapped() {
         runner.run(c -> {
@@ -35,14 +35,14 @@ class InternalCartApiTest {
             String body = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"cartNo\":\"C\"}";
             mvc.perform(post(CartInternalApi.GET_PATH).contentType(MediaType.APPLICATION_JSON).content("{"))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(post(CartInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+            mvc.perform(post(CartInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.cart.cartNo").value("C"))
                     .andExpect(jsonPath("$.code").doesNotExist());
             for (String invalid : List.of(body.replace("\"C\"", "12"),
                     body.replace("\"C\"", "{\"value\":\"C\"}"),
                     body.replace("\"C\"", "\"C\",\"buyerNo\":\"forged\""))) {
-                mvc.perform(post(CartInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+                mvc.perform(post(CartInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                         .contentType(MediaType.APPLICATION_JSON).content(invalid)).andExpect(status().isBadRequest());
             }
             assertThat(c.getBean(AtomicInteger.class)).hasValue(1);

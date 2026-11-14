@@ -67,40 +67,79 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
-  // Printing and stock workflow domains: bind client unions where clients expose one.
-  {"concept":"inv_return_receipt · quality（数据库取值域）","field":"inv_return_receipt.quality","backend":{"ddl":["inv_return_receipt","quality"]},"clients":[]},
-  {"concept":"ord_print_fact · printability（数据库取值域）","field":"ord_print_fact.printability","backend":{"ddl":["ord_print_fact","printability"]},"clients":[]},
-  {"concept":"prd_stock_alignment_batch · status（数据库取值域）","field":"prd_stock_alignment_batch.status","backend":{"ddl":["prd_stock_alignment_batch","status"]},"clients":[{"file":"packages/shared/src/types/inventory.ts","type":"StockAlignmentBatchStatus"}]},
-  {"concept":"prd_stock_alignment_line · status（数据库取值域）","field":"prd_stock_alignment_line.status","backend":{"ddl":["prd_stock_alignment_line","status"]},"clients":[]},
-  {"concept":"prd_stock_sync_operation · status（数据库取值域）","field":"prd_stock_sync_operation.status","backend":{"ddl":["prd_stock_sync_operation","status"]},"clients":[{"file":"packages/shared/src/types/inventory.ts","type":"StockSyncOperationStatus"}]},
-  {"concept":"prn_agent · platform（数据库取值域）","field":"prn_agent.platform","backend":{"ddl":["prn_agent","platform"]},"clients":[]},
-  {"concept":"prn_agent · status（数据库取值域）","field":"prn_agent.status","backend":{"ddl":["prn_agent","status"]},"clients":[]},
-  {"concept":"prn_attempt · status（数据库取值域）","field":"prn_attempt.status","backend":{"ddl":["prn_attempt","status"]},"clients":[]},
-  {"concept":"prn_batch · batch_kind（数据库取值域）","field":"prn_batch.batch_kind","backend":{"ddl":["prn_batch","batch_kind"]},"clients":[]},
-  {"concept":"prn_batch · resolved_status（数据库取值域）","field":"prn_batch.resolved_status","backend":{"ddl":["prn_batch","resolved_status"]},"clients":[]},
-  {"concept":"prn_batch · status（数据库取值域）","field":"prn_batch.status","backend":{"ddl":["prn_batch","status"]},"clients":[]},
-  {"concept":"prn_credential_version · status（数据库取值域）","field":"prn_credential_version.status","backend":{"ddl":["prn_credential_version","status"]},"clients":[]},
-  {"concept":"prn_export_task · artifact_kind（数据库取值域）","field":"prn_export_task.artifact_kind","backend":{"ddl":["prn_export_task","artifact_kind"]},"clients":[]},
-  {"concept":"prn_export_task · output_profile（数据库取值域）","field":"prn_export_task.output_profile","backend":{"ddl":["prn_export_task","output_profile"]},"clients":[]},
-  {"concept":"prn_export_task · source_type（数据库取值域）","field":"prn_export_task.source_type","backend":{"ddl":["prn_export_task","source_type"]},"clients":[]},
-  {"concept":"prn_export_task · status（数据库取值域）","field":"prn_export_task.status","backend":{"ddl":["prn_export_task","status"]},"clients":[]},
-  {"concept":"prn_incident · status（数据库取值域）","field":"prn_incident.status","backend":{"ddl":["prn_incident","status"]},"clients":[]},
-  {"concept":"prn_job · job_kind（数据库取值域）","field":"prn_job.job_kind","backend":{"ddl":["prn_job","job_kind"]},"clients":[]},
-  {"concept":"prn_job · result_evidence（数据库取值域）","field":"prn_job.result_evidence","backend":{"ddl":["prn_job","result_evidence"]},"clients":[]},
-  {"concept":"prn_operation · status（数据库取值域）","field":"prn_operation.status","backend":{"ddl":["prn_operation","status"]},"clients":[]},
-  {"concept":"prn_printer · connection_type（数据库取值域）","field":"prn_printer.connection_type","backend":{"ddl":["prn_printer","connection_type"]},"clients":[]},
-  {"concept":"prn_printer · status（数据库取值域）","field":"prn_printer.status","backend":{"ddl":["prn_printer","status"]},"clients":[]},
-  {"concept":"prn_receipt · source_type（数据库取值域）","field":"prn_receipt.source_type","backend":{"ddl":["prn_receipt","source_type"]},"clients":[]},
-  {"concept":"prn_receipt · status（数据库取值域）","field":"prn_receipt.status","backend":{"ddl":["prn_receipt","status"]},"clients":[]},
-  {"concept":"prn_request · status（数据库取值域）","field":"prn_request.status","backend":{"ddl":["prn_request","status"]},"clients":[]},
-  {"concept":"prn_route · status（数据库取值域）","field":"prn_route.status","backend":{"ddl":["prn_route","status"]},"clients":[]},
-  {"concept":"prn_route_version · status（数据库取值域）","field":"prn_route_version.status","backend":{"ddl":["prn_route_version","status"]},"clients":[]},
-  {"concept":"prn_simulation_run · source_type（数据库取值域）","field":"prn_simulation_run.source_type","backend":{"ddl":["prn_simulation_run","source_type"]},"clients":[]},
-  {"concept":"prn_simulation_run · status（数据库取值域）","field":"prn_simulation_run.status","backend":{"ddl":["prn_simulation_run","status"]},"clients":[]},
-  {"concept":"prn_template · scope_key（数据库取值域）","field":"prn_template.scope_key","backend":{"ddl":["prn_template","scope_key"]},"clients":[]},
-  {"concept":"prn_template · status（数据库取值域）","field":"prn_template.status","backend":{"ddl":["prn_template","status"]},"clients":[]},
-  {"concept":"prn_template · variant_code（数据库取值域）","field":"prn_template.variant_code","backend":{"ddl":["prn_template","variant_code"]},"clients":[]},
-  {"concept":"prn_template_version · status（数据库取值域）","field":"prn_template_version.status","backend":{"ddl":["prn_template_version","status"]},"clients":[]},
+  // NULL preserves legacy fulfillment ownership; SERVICE_EXECUTION selects the managed execution owner.
+  // This internal routing fact is not exposed as a finite client field.
+  { concept: "ord_sub_order.fulfillment_authority（履约权属）", field: "ord_sub_order.fulfillment_authority",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java", only: ["SERVICE_EXECUTION"] }, clients: [] },
+  { concept: "ord_offline_record.status（外部记账状态）", field: "ord_offline_record.status",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOfflineRecord.java" },
+    clients: [{ file: "b-app/src/api/pay.ts", type: "OfflineRecordStatus" }] },
+  { concept: "ord_offline_record_event.action（外部记账动作）", field: "ord_offline_record_event.action",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOfflineRecordEvent.java" },
+    clients: [{ file: "b-app/src/api/pay.ts", type: "OfflineRecordAction" }] },
+  // 商户问题回报与 App 版本（TDD-商户App问题回报与版本，V638）
+  { concept: "notify_ticket.category（回报分类）", field: "notify_ticket.category", backend: { ddl: ["notify_ticket", "category"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "FeedbackCategory" }] },
+  { concept: "notify_ticket.source（工单来源）", field: "notify_ticket.source", backend: { ddl: ["notify_ticket", "source"] }, clients: [{ file: "ops-web/lib/types/message.ts", type: "TicketSource" }] },
+  { concept: "notify_ticket.client_platform（回报平台）", field: "notify_ticket.client_platform", backend: { ddl: ["notify_ticket", "client_platform"] }, clients: [] },
+  { concept: "sys_app_version.platform（版本策略平台）", field: "sys_app_version.platform", backend: { ddl: ["sys_app_version", "platform"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "AppPlatform" }, { file: "ops-web/lib/types/system.ts", type: "AppVersionPlatform" }] },
+  // Business owner attachments expose the same closed printability domain as paid-order facts.
+  { concept: "biz_print_fact.printability（打印取值域）", field: "biz_print_fact.printability", backend: { ddl: ["biz_print_fact", "printability"] }, clients: [] },
+  // Print API status fields are open strings except PrintOperation.status; keep each DDL domain explicit.
+  { concept: "ord_print_fact.printability（打印取值域）", field: "ord_print_fact.printability", backend: { ddl: ["ord_print_fact", "printability"] }, clients: [] },
+  { concept: "prn_agent.platform（打印取值域）", field: "prn_agent.platform", backend: { ddl: ["prn_agent", "platform"] }, clients: [] },
+  { concept: "prn_agent.status（打印取值域）", field: "prn_agent.status", backend: { ddl: ["prn_agent", "status"] }, clients: [] },
+  { concept: "prn_batch.batch_kind（打印取值域）", field: "prn_batch.batch_kind", backend: { ddl: ["prn_batch", "batch_kind"] }, clients: [] },
+  { concept: "prn_batch.resolved_status（打印取值域）", field: "prn_batch.resolved_status", backend: { ddl: ["prn_batch", "resolved_status"] }, clients: [] },
+  { concept: "prn_batch.status（打印取值域）", field: "prn_batch.status", backend: { ddl: ["prn_batch", "status"] }, clients: [] },
+  { concept: "prn_credential_version.status（打印取值域）", field: "prn_credential_version.status", backend: { ddl: ["prn_credential_version", "status"] }, clients: [] },
+  { concept: "prn_export_task.artifact_kind（打印取值域）", field: "prn_export_task.artifact_kind", backend: { ddl: ["prn_export_task", "artifact_kind"] }, clients: [] },
+  { concept: "prn_export_task.output_profile（打印取值域）", field: "prn_export_task.output_profile", backend: { ddl: ["prn_export_task", "output_profile"] }, clients: [] },
+  { concept: "prn_export_task.source_type（打印取值域）", field: "prn_export_task.source_type", backend: { ddl: ["prn_export_task", "source_type"] }, clients: [] },
+  { concept: "prn_export_task.status（打印取值域）", field: "prn_export_task.status", backend: { ddl: ["prn_export_task", "status"] }, clients: [] },
+  { concept: "prn_incident.status（打印取值域）", field: "prn_incident.status", backend: { ddl: ["prn_incident", "status"] }, clients: [] },
+  { concept: "prn_job.job_kind（打印取值域）", field: "prn_job.job_kind", backend: { ddl: ["prn_job", "job_kind"] }, clients: [] },
+  { concept: "prn_job.result_evidence（打印取值域）", field: "prn_job.result_evidence", backend: { ddl: ["prn_job", "result_evidence"] }, clients: [] },
+  { concept: "prn_operation.status（打印取值域）", field: "prn_operation.status", backend: { ddl: ["prn_operation", "status"] }, clients: [{ file: "b-app/src/api/print.ts", type: "PrintOperation", property: "status" }] },
+  { concept: "prn_printer.connection_type（打印取值域）", field: "prn_printer.connection_type", backend: { ddl: ["prn_printer", "connection_type"] }, clients: [] },
+  { concept: "prn_printer.status（打印取值域）", field: "prn_printer.status", backend: { ddl: ["prn_printer", "status"] }, clients: [] },
+  { concept: "prn_receipt.source_type（打印取值域）", field: "prn_receipt.source_type", backend: { ddl: ["prn_receipt", "source_type"] }, clients: [] },
+  { concept: "prn_receipt.status（打印取值域）", field: "prn_receipt.status", backend: { ddl: ["prn_receipt", "status"] }, clients: [] },
+  { concept: "prn_request.status（打印取值域）", field: "prn_request.status", backend: { ddl: ["prn_request", "status"] }, clients: [] },
+  { concept: "prn_route_catalog.status（打印取值域）", field: "prn_route_catalog.status", backend: { ddl: ["prn_route_catalog", "status"] }, clients: [] },
+  { concept: "prn_route_version.status（打印取值域）", field: "prn_route_version.status", backend: { ddl: ["prn_route_version", "status"] }, clients: [] },
+  { concept: "prn_simulation_run.source_type（打印取值域）", field: "prn_simulation_run.source_type", backend: { ddl: ["prn_simulation_run", "source_type"] }, clients: [] },
+  { concept: "prn_simulation_run.status（打印取值域）", field: "prn_simulation_run.status", backend: { ddl: ["prn_simulation_run", "status"] }, clients: [] },
+  { concept: "prn_template_catalog.scope_key（打印取值域）", field: "prn_template_catalog.scope_key", backend: { ddl: ["prn_template_catalog", "scope_key"] }, clients: [] },
+  { concept: "prn_template_catalog.status（打印取值域）", field: "prn_template_catalog.status", backend: { ddl: ["prn_template_catalog", "status"] }, clients: [] },
+  { concept: "prn_template_catalog.variant_code（打印取值域）", field: "prn_template_catalog.variant_code", backend: { ddl: ["prn_template_catalog", "variant_code"] }, clients: [] },
+  { concept: "prn_template_version.status（打印取值域）", field: "prn_template_version.status", backend: { ddl: ["prn_template_version", "status"] }, clients: [] },
+  // JDBC-backed business domains; current client DTOs use open strings, so no finite client parity is claimed.
+  {"concept": "inv_return_receipt.quality（数据库取值域）", "field": "inv_return_receipt.quality", "backend": {"ddl": ["inv_return_receipt", "quality"]}, "clients": []},
+  {"concept": "mbr_scope_legacy_link.status（数据库取值域）", "field": "mbr_scope_legacy_link.status", "backend": {"ddl": ["mbr_scope_legacy_link", "status"]}, "clients": []},
+  {"concept": "mbr_scope_member.scope_type（数据库取值域）", "field": "mbr_scope_member.scope_type", "backend": {"ddl": ["mbr_scope_member", "scope_type"]}, "clients": []},
+  {"concept": "mbr_scope_member.status（数据库取值域）", "field": "mbr_scope_member.status", "backend": {"ddl": ["mbr_scope_member", "status"]}, "clients": []},
+  {"concept": "mch_brand.status（数据库取值域）", "field": "mch_brand.status", "backend": {"ddl": ["mch_brand", "status"]}, "clients": []},
+  {"concept": "mch_brand_change.decision（数据库取值域）", "field": "mch_brand_change.decision", "backend": {"ddl": ["mch_brand_change", "decision"]}, "clients": []},
+  {"concept": "mch_brand_change.status（数据库取值域）", "field": "mch_brand_change.status", "backend": {"ddl": ["mch_brand_change", "status"]}, "clients": []},
+  {"concept": "mch_brand_store_binding.status（数据库取值域）", "field": "mch_brand_store_binding.status", "backend": {"ddl": ["mch_brand_store_binding", "status"]}, "clients": []},
+  {"concept": "mch_management_grant.authority_source_type（数据库取值域）", "field": "mch_management_grant.authority_source_type", "backend": {"ddl": ["mch_management_grant", "authority_source_type"]}, "clients": []},
+  {"concept": "mch_management_grant.resource_type（数据库取值域）", "field": "mch_management_grant.resource_type", "backend": {"ddl": ["mch_management_grant", "resource_type"]}, "clients": []},
+  {"concept": "mch_management_grant.status（数据库取值域）", "field": "mch_management_grant.status", "backend": {"ddl": ["mch_management_grant", "status"]}, "clients": []},
+  {"concept": "mch_management_space.status（数据库取值域）", "field": "mch_management_space.status", "backend": {"ddl": ["mch_management_space", "status"]}, "clients": []},
+  {"concept": "prd_stock_alignment_batch.status（数据库取值域）", "field": "prd_stock_alignment_batch.status", "backend": {"ddl": ["prd_stock_alignment_batch", "status"]}, "clients": [{"file": "packages/shared/src/types/inventory.ts", "type": "StockAlignmentBatchState"}]},
+  {"concept": "prd_stock_alignment_line.status（数据库取值域）", "field": "prd_stock_alignment_line.status", "backend": {"ddl": ["prd_stock_alignment_line", "status"]}, "clients": []},
+  {"concept": "prd_stock_sync_operation.status（数据库取值域）", "field": "prd_stock_sync_operation.status", "backend": {"ddl": ["prd_stock_sync_operation", "status"]}, "clients": [{"file": "packages/shared/src/types/inventory.ts", "type": "StockSyncOperationState"}]},
+  {"concept": "sv_issue_quota_reservation.status（数据库取值域）", "field": "sv_issue_quota_reservation.status", "backend": {"ddl": ["sv_issue_quota_reservation", "status"]}, "clients": []},
+  {"concept": "sv_issuer.scope_type（数据库取值域）", "field": "sv_issuer.scope_type", "backend": {"ddl": ["sv_issuer", "scope_type"]}, "clients": []},
+  {"concept": "sv_issuer.status（数据库取值域）", "field": "sv_issuer.status", "backend": {"ddl": ["sv_issuer", "status"]}, "clients": []},
+  {"concept": "sv_issuer_store_access.status（数据库取值域）", "field": "sv_issuer_store_access.status", "backend": {"ddl": ["sv_issuer_store_access", "status"]}, "clients": []},
+  {"concept": "sv_issuer_version.clearing_mode（数据库取值域）", "field": "sv_issuer_version.clearing_mode", "backend": {"ddl": ["sv_issuer_version", "clearing_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.collection_mode（数据库取值域）", "field": "sv_issuer_version.collection_mode", "backend": {"ddl": ["sv_issuer_version", "collection_mode"]}, "clients": []},
+  {"concept": "sv_issuer_version.debit_allocation_mode（数据库取值域）", "field": "sv_issuer_version.debit_allocation_mode", "backend": {"ddl": ["sv_issuer_version", "debit_allocation_mode"]}, "clients": []},
+  {"concept": "sv_recharge.source_kind（数据库取值域）", "field": "sv_recharge.source_kind", "backend": {"ddl": ["sv_recharge", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.redemption_scope_mode（数据库取值域）", "field": "sv_release.redemption_scope_mode", "backend": {"ddl": ["sv_release", "redemption_scope_mode"]}, "clients": []},
+  {"concept": "sv_release.source_kind（数据库取值域）", "field": "sv_release.source_kind", "backend": {"ddl": ["sv_release", "source_kind"]}, "clients": []},
+  {"concept": "sv_release.state（数据库取值域）", "field": "sv_release.state", "backend": {"ddl": ["sv_release", "state"]}, "clients": []},
   // 活动/权益后端已判定字段。新版端上页面后置；生成DTO仍保留Java实际string/enum形状。
   // clients为空表示尚无独立页面枚举，不是驳回取值域；接入页面时须在此绑定其声明。
   {"concept": "ent_code_token · status（数据库取值域）", "field": "ent_code_token.status", "backend": {"ddl": ["ent_code_token", "status"]}, "clients": []},
@@ -405,7 +444,8 @@ export const FIELDS = [
   {
     concept: "商家经营状态",
     field: "mch_entity.status",
-    backend: { ddl: ["mch_entity", "status"] },
+    // Frozen DDL documents ACTIVE/SUSPENDED/FROZEN; MchEntity.PENDING_LICENSE adds the live pre-license state.
+    backend: { literal: ["PENDING_LICENSE", "ACTIVE", "SUSPENDED", "FROZEN"] },
     clients: [{ file: "ops-web/lib/types/merchant.ts", type: "MerchantStatus" }],
     // shared 的 MerchantStatus 是 B 端的**合并视图**（经营 × 审核 两张表合成一个
     // 「我现在能不能做生意」），不是这个字段的镜像 —— 见 skip 注释
@@ -451,7 +491,7 @@ export const FIELDS = [
     concept: "调拨单状态",
     field: "inv_transfer_order.status",
     backend: {
-      javaConst: "shop-inventory/src/main/java/ai/neargo/shop/inventory/support/InvEnums.java",
+      javaConst: "inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/support/InvEnums.java",
       // InvEnums 是一个装了十几个取值域的壳（ReservationStatus / MasterStatus / …），
       // 不按名字排掉的话会把整个文件的常量都当成这一列的取值域
       only: ["DRAFT", "SHIPPED", "RECEIVED", "VOIDED"],
@@ -814,6 +854,13 @@ function unionValues(src, name) {
   return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
 }
 
+/** Closed union declared on a DTO field, including the print operation response. */
+function interfaceUnionValues(src, type, property) {
+  const body = src.match(new RegExp(`export\\s+interface\\s+${type}\\s*\\{([\\s\\S]*?)\\}`))?.[1];
+  const value = body?.match(new RegExp(`\\b${property}\\s*:\\s*((?:["'][^"']+["']\\s*\\|?\\s*)+)(?:;|$)`))?.[1];
+  return value ? [...value.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]) : null;
+}
+
 /** 端上：常量对象 `export const X = { A: "a" } as const;` */
 function constValues(src, name) {
   const m = src.match(new RegExp(`export const ${name} = \\{([^}]*)\\} as const;`));
@@ -845,6 +892,28 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  // 测试身份白名单（TDD-测试身份白名单登录）：只在运营端「测试号」页签维护，端上类型 ops-web TestIdentityType 已登记
+  { key: "usr_test_identity.identity_type", why: "测试白名单身份类型（PHONE / EMAIL），只有运营端一页使用，具名类型 TestIdentityType 已进枚举登记表" },
+  // 进销存独立服务平台层（V16，TDD-进销存独立服务与多业态 §2.4）：服务间内部取值，没有任何端上类型
+  { key: "inv_client_system.status", why: "进销存独立服务的调用系统登记状态（ACTIVE / DISABLED），只给服务自己判是否放行，端上不展示" },
+  { key: "inv_client_system.system_code", why: "调用系统码（SHOP / SHAREHUB / CHARGING）是开放集合，靠登记表管理而不是枚举；端上不展示" },
+  // V17：独立服务接口返回这些值给宿主后端（ShareHub / 充电桩），宿主自己展示；ai-shop 三端都不消费。
+  // 宿主前端接入后由宿主的契约对账，不在本仓库的端上类型里
+  { key: "inv_item.tracking_mode", why: "进销存独立服务的物料跟踪方式（QUANTITY / SERIAL），只经 /api/inventory/v1 给宿主后端，ai-shop 三端不展示" },
+  { key: "inv_item.gate_policy", why: "入库放行策略（NONE / REF_REQUIRED），同上，只给宿主后端" },
+  { key: "inv_stock_hold.reason", why: "冻结原因（COUNT / RETURN_PENDING / MANUAL），独立服务内部与宿主后端用，ai-shop 三端不展示" },
+  { key: "inv_stock_hold.status", why: "冻结状态（ACTIVE / RELEASED），同上" },
+  { key: "inv_document_serial.doc_kind", why: "单据方向（IN / OUT），与 inv_ledger.doc_kind 同一取值，独立服务内部关联用，端上不展示" },
+  { key: "inv_stock_episode.status", why: "在库周期状态（OPEN / CLOSED），只在独立服务内判「在不在仓」，宿主看到的是在仓 SN 列表，端上不展示" },
+  // V19 出库池：经 /api/inventory/v1/dispatch-pool 回给宿主后端（ShareHub 的出库池页由宿主自己展示），ai-shop 三端不消费
+  { key: "inv_dispatch_item.status", why: "出库池状态（AVAILABLE / CLAIMED / REVOKED / RETURNED），只给宿主后端，ai-shop 三端不展示" },
+  { key: "inv_dispatch_claim.status", why: "领取状态（ACTIVE / RELEASED / CLOSED），独立服务内部，生成列唯一索引靠它" },
+  { key: "inv_dispatch_adjust.action", why: "出库池调整动作（REDIRECT / REVOKE），只追加的审计快照，端上不展示" },
+  { key: "inv_count_scan.verdict", why: "盘点扫码判定（IN_SCOPE / OUT_OF_SCOPE / NOT_IN_STOCK / UNKNOWN），经独立服务接口给宿主后端，ai-shop 三端不展示" },
+  { key: "inv_target_ref.status", why: "外部目标状态（ACTIVE / DISABLED），由宿主同步来、回给宿主，ai-shop 三端不展示" },
+  { key: "inv_owner.write_authority", why: "一本账的写入方（EMBEDDED / SVC），商城切流按业主翻转用的内部开关，只在服务入口判定，端上不展示" },
+  { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
+  { key: "sv_release.draft_revision_no", why: "活动草稿修订业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
   { key: "pmt_preset_template.template_code", why: "AP/EP是活动/付费产品编号前缀，实际AP001等为业务键，不是二值枚举。" },
   {
     key: "ord_shipment.status",
@@ -1049,7 +1118,9 @@ export function audit() {
         ? readdirSync(path).filter((f) => f.endsWith(".ts"))
           .map((f) => readFileSync(join(path, f), "utf8")).join("\n")
         : readFileSync(path, "utf8");
-      const declared = c.type ? unionValues(src, c.type) : constValues(src, c.const);
+      const declared = c.property
+        ? interfaceUnionValues(src, c.type, c.property)
+        : c.type ? unionValues(src, c.type) : constValues(src, c.const);
       if (!declared) {
         problems.push({
           concept: f.concept, field: f.field, client: key,

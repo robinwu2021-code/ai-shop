@@ -1,0 +1,67 @@
+{
+  "log": "/tmp/print-v585-owner-width-focused.log",
+  "tests": 47,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.printing.UnifiedPrintDeviceGateTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintDeliveryTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintDocumentPolicyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.channel.PrintDatabaseAcceptanceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.arch.FunctionPointPermAlignmentTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.PrintOrderSoftwareFlowTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "build": "SUCCESS",
+  "migration": "V585__print_owner_identity_width.sql",
+  "oldMigrationBytesUnchanged": true,
+  "scope": "Complete 64-character canonical merchant/store/order identities; printing-generated keys retain 32-character contract",
+  "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -B -f /tmp/print-unified-reactor-pom.xml -P '!food-embedded' -pl :shop-app -am -Dtest=EntitlementOrderCoordinatorFlowTest,EntitlementCheckoutHttpFlowTest,FunctionPointPermAlignmentTest,PrintOrderSoftwareFlowTest,PrintDeliveryTest,UnifiedPrintDeviceGateTest,PrintDocumentPolicyTest,PrintDatabaseAcceptanceTest -Dsurefire.failIfNoSpecifiedTests=false test"
+}

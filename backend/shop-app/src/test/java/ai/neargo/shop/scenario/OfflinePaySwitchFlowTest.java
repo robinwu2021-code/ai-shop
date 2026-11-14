@@ -68,6 +68,9 @@ class OfflinePaySwitchFlowTest {
         // M0001 在种子里是不是自营、有没有证都不该影响本组结论：补一张有效营业执照
         jdbc.update("insert into mch_qualification(qual_no, entity_no, qual_type, qual_name, status, created_at, updated_at)"
                 + " values (?, ?, 'BUSINESS_LICENSE', '营业执照', 'VALID', now(), now())", LICENSE_NO, ENTITY);
+        // 另一家真实存在的商户：写入会先锁主体（StoreOwnershipWritePort），只有门店没有主体的商户不成立
+        jdbc.update("insert into mch_entity(entity_no, name, status, tenant_no, created_at, updated_at) values (?, '无证测试商户', 'ACTIVE', 'MAIN', now(), now())",
+                BARE_ENTITY);
         jdbc.update("insert into mch_store(entity_no, store_no, name, created_at, updated_at) values (?, ?, '无证测试店', now(), now())",
                 BARE_ENTITY, BARE_STORE);
     }
@@ -79,6 +82,7 @@ class OfflinePaySwitchFlowTest {
         jdbc.update("update prd_goods set pay_modes=? where goods_no=?", payModesBefore, goods);
         jdbc.update("delete from mch_qualification where qual_no=?", LICENSE_NO);
         jdbc.update("delete from mch_store where store_no=?", BARE_STORE);
+        jdbc.update("delete from mch_entity where entity_no=?", BARE_ENTITY);
     }
 
     /** 与 /biz 请求里令牌过滤器设的是同一个域 */

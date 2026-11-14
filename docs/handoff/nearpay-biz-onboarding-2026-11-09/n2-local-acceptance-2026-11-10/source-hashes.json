@@ -1,0 +1,52 @@
+{
+  "capturedAt": "2026-11-10",
+  "scope": "N2 key implementation and local acceptance sources in dirty workspaces",
+  "repositories": {
+    "ai-shop": {
+      "head": "a85eb3056f262c261433de5a10505c19922cec75",
+      "files": {
+        "backend/shop-app/src/main/java/ai/neargo/shop/config/PayChannelAccountClaimConfiguration.java": "176b97898c03fb4f0755e7bf6defbad6793a128da7525f27ffc02fbc6d8a45e9",
+        "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayChannelAccountClaimForwarder.java": "90a6862f70f1fedf6c28e7e519d6c226d2e09902f047e52d7460d17b9831023c",
+        "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizChannelAccountClaimController.java": "d8619f74251919f10feff154ceab5b993e07276774cc314018fdb33344ecef6f",
+        "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/ChannelAccountClaimHostLocalLauncher.java": "0b676354050b15b0aba894b2c238c0dead189a1ab72c9e47f080c663fe65d8b6",
+        "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/PayChannelAccountClaimHostMysqlTest.java": "ba6d25e8941504a12123dd066b4a765af201211f43c1b4f831c0589e00f20726",
+        "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PayChannelAccountClaimForwarderTest.java": "f92fbc5ffdd0be9bdd1d0950818d957b11a21dea55000f7c19fb4073d95e77a3",
+        "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PayChannelAccountClaimRelayTest.java": "7a2451445d060f839ae64057304438e43308f73643a0d1f1bce48b3acc290cb9",
+        "backend/shop-app/src/test/resources/channel-account-claim-host-local-launcher.md": "2159b47076a2fcf576137f1bcbc8c660d6b42041e9c6c0feee95da7c709f5568",
+        "scripts/verify-channel-account-claim-local.py": "593b0e1e763efad63e8766338d0448da3682084b4ab4c01daf88763fe423e274"
+      }
+    },
+    "near-pay": {
+      "head": "54303402078ae166e4e568eca3b0ddf61e1d6f27",
+      "files": {
+        "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimFiles.java": "6d9e876f1ef6afcb2364a6b181e1269ed6057a8b2ab0900dd0a751f6508872e8",
+        "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java": "978ca5784c9c5e3eac61e2521bbbbfa07a3b4dca47c8402fd07d52f835cb2d84",
+        "backend/pay/pay-domain/src/main/resources/db/pay/V79__channel_account_claim.sql": "5deddf842477e87750c101c8f6a2604b53f829e5969d50214b89dc371d730706",
+        "backend/pay/pay-guard/src/test/java/ai/neargo/shop/pay/api/guard/core/ChannelAccountClaimGuardTest.java": "8d8e042b0ec60a4e57e555d32c5bdd29075f898394f41895f50ae82666cae38a",
+        "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/biz/v2/BizChannelAccountClaimController.java": "9d2519c0d87f7345470433ffa2a48fbc4e81f3d59704b42d423ccdffd6e9b609",
+        "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsChannelAccountClaimController.java": "480e81f7890e455f51b05c95c4050ab3a6c0b79d05c71a1ca42e7e1eb7f56602",
+        "backend/pay/pay-portal/src/test/java/ai/neargo/shop/pay/api/ops/v2/ChannelAccountClaimControllersTest.java": "007a8148f9797f024e3567c28cbdf71e5c6deeb83ee0c6d1a76124d225e62dd2",
+        "backend/pay/pay-svc/src/test/java/ai/neargo/shop/pay/svc/ChannelAccountClaimAiShopLocalLauncher.java": "8431d3bc32785721799904b609df23452a32b35f3645c0abffa863ab6f89721f",
+        "backend/pay/pay-svc/src/test/java/ai/neargo/shop/pay/svc/ChannelAccountClaimIntegrationTest.java": "b8b353b820ce469696b2a724052d8ec235d767063fa98a542d582b22b2ec397b",
+        "backend/pay/pay-svc/src/test/resources/channel-account-claim-local-launcher.md": "4b319a743bd990561dd1c12ab823ca2d0d5da30e79f68e88cb5dffba8c8b785c",
+        "ops-web/features/channel-accounts/channel-account-claims.tsx": "c0c4a579d08833eb15989cc883ec0d622486864421b96c8c49444eed6d5c7251",
+        "ops-web/lib/channel-account-claim/http.ts": "34ad06d1815203229e543b5e65f2efb21610d60de56ebc550eee9b45d9c67f69",
+        "ops-web/lib/channel-account-claim/recovery.ts": "66e082e2960c8fdaa4290ace6a5bf7e8bfae775c5631f03b0b7b425f214ce356",
+        "ops-web/lib/channel-account-claim/types.ts": "47e280258a510dd6b7155410da0b0dce29ca87a5bc9dc8f5527ee97b5d105334",
+        "ops-web/tests/channel-account-claim.test.ts": "6e1fae2f9891d1736b976b4aaa7065ed484370b93e59322646ac5de3ccbe415f",
+        "ops-web/tests/integration/channel-account-claim-runtime.test.ts": "4546cf526ded80e4aa1ce445317980530b597a3fba4c96dddffc1bc72fd44432"
+      }
+    },
+    "ai-shop-bapp": {
+      "head": "f4581fa9cea8b9cbd776470056c82d5eff4801f9",
+      "files": {
+        "apps/merchant_app/lib/features/merchant/channel_claims/channel_claim_client.dart": "48274bf4fa997da3a03bb26053465c1e367a57c31bcb444e3bb82e5a68f07408",
+        "apps/merchant_app/lib/features/merchant/channel_claims/channel_claim_coordinator.dart": "348289ac2ec0f28ec74d7e14d1d8d300d35a96aa8f0367dd81bdc4ce11c72594",
+        "apps/merchant_app/lib/features/merchant/channel_claims/channel_claim_journal.dart": "0a9c13ead0f27cff4dac2a47c7c9175cbd9577043d5bd401a62a199b4992c6b8",
+        "apps/merchant_app/lib/features/merchant/channel_claims/channel_claim_models.dart": "73185c1c8d02e195c42f0964c232fb2bf6f66e434a871d55a7c58d0022a0441d",
+        "apps/merchant_app/lib/features/merchant/channel_claims/channel_claim_pages.dart": "ba7d2bf2c922553b54c8c5370ee1be5c7acde8b7365341b61dcd844ceef7af98",
+        "apps/merchant_app/test/integration/channel_claim_aishop_runtime_test.dart": "abfdcd6249362636bc0dfd8eea9e90634020e1af300632756b35b9d5ad1677bc"
+      }
+    }
+  }
+}

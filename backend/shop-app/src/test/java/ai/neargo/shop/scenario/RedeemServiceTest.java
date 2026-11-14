@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -334,6 +335,8 @@ class RedeemServiceTest {
                 new PointTypeService.CreateType(type, "CN", new RedeemRate(1, 1), 10000, 365),
                 "ops");
         types.activate(type, "ops");
+        // This fixture models a historical type with 100% redemption, independent of the new 30% creation default.
+        db("payDataSource").update("UPDATE pts_point_type SET deduct_ratio_bp=10000 WHERE type_code=?", type);
         fund(type, "U", PoolRequest.Action.TOPUP_U);
         if (reserve) {
             fund(type, "B", PoolRequest.Action.TOPUP_B);
@@ -408,7 +411,7 @@ class RedeemServiceTest {
                         hash,
                         "PER_ORDER",
                         new PointsFundsGateway.FundsContext(
-                                PointsFundsGateway.FundsPath.DIRECT,
+                                FundsPath.DIRECT,
                                 "TEST",
                                 "M" + type,
                                 "ST" + type,

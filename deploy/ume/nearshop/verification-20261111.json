@@ -1,0 +1,401 @@
+[
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/login/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/common/master-data",
+    "method": "GET",
+    "status": 200,
+    "businessCode": 0,
+    "check": "public-api",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/ops/auth/me",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/biz/context",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms-api/auth/me",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/common/auth/automation",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/pay-ops/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/api/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/common/auth/automation",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/media/DOMAINPROBE/DOMAINPROBE/mallpay/202611/DOMAINPROBE.jpg",
+    "method": "GET",
+    "status": 404,
+    "businessCode": 10500,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/biz/auth/identities",
+    "method": "OPTIONS",
+    "status": 200,
+    "businessCode": null,
+    "check": "cors",
+    "passed": true,
+    "allowedOrigin": "https://twpay.umeshop.ai"
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/ops/auth/login",
+    "method": "OPTIONS",
+    "status": 200,
+    "businessCode": null,
+    "check": "cors",
+    "passed": true,
+    "allowedOrigin": "https://twpay.umeshop.ai"
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/biz/auth/identities",
+    "method": "OPTIONS",
+    "status": 403,
+    "businessCode": null,
+    "check": "cors-deny",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/login/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms/",
+    "method": "GET",
+    "status": 200,
+    "businessCode": null,
+    "check": "page",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/common/master-data",
+    "method": "GET",
+    "status": 200,
+    "businessCode": 0,
+    "check": "public-api",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/ops/auth/me",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/biz/context",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms-api/auth/me",
+    "method": "GET",
+    "status": 401,
+    "businessCode": 10401,
+    "check": "auth",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/common/auth/automation",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/pay-ops/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/api/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/internal/",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/common/auth/automation",
+    "method": "GET",
+    "status": 404,
+    "businessCode": null,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/media/DOMAINPROBE/DOMAINPROBE/mallpay/202611/DOMAINPROBE.jpg",
+    "method": "GET",
+    "status": 404,
+    "businessCode": 10500,
+    "check": "blocked",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/biz/auth/identities",
+    "method": "OPTIONS",
+    "status": 200,
+    "businessCode": null,
+    "check": "cors",
+    "passed": true,
+    "allowedOrigin": "https://nearshop.umeshop.ai"
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/ops/auth/login",
+    "method": "OPTIONS",
+    "status": 200,
+    "businessCode": null,
+    "check": "cors",
+    "passed": true,
+    "allowedOrigin": "https://nearshop.umeshop.ai"
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/biz/auth/identities",
+    "method": "OPTIONS",
+    "status": 403,
+    "businessCode": null,
+    "check": "cors-deny",
+    "passed": true
+  },
+  {
+    "path": "/ops-shop/_next/static/chunks/0if-vqkhyn-zc.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "34c29ad6438bf544b8c9e4865d00a95f0851ebb5efba09a4306f4e722683307e",
+    "passed": true
+  },
+  {
+    "path": "/ops-shop/_next/static/chunks/1pq-tbmkfqa45.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "c6aaec42a15e8ecbd296495f0adf258b683f29e17929e98021259a4ddf3fb503",
+    "passed": true
+  },
+  {
+    "path": "/ops-shop/_next/static/chunks/0if-vqkhyn-zc.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "34c29ad6438bf544b8c9e4865d00a95f0851ebb5efba09a4306f4e722683307e",
+    "passed": true
+  },
+  {
+    "path": "/ops-shop/_next/static/chunks/1pq-tbmkfqa45.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "c6aaec42a15e8ecbd296495f0adf258b683f29e17929e98021259a4ddf3fb503",
+    "passed": true
+  },
+  {
+    "path": "/oms/_next/static/chunks/4bd1b696-92152b0f5947070d.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "8dc2c1d71557b434c654ec58acb1441bc0fb200c520ff548f606d88e689ee643",
+    "passed": true
+  },
+  {
+    "path": "/oms/_next/static/chunks/794-c550c81da1cd7a39.js",
+    "check": "same-static-asset",
+    "status": 200,
+    "sha256": "7c780c094c48ef108d42860fc98da7744677a207ff26f1156cdd094a51b7f239",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/",
+    "status": 302,
+    "location": "/ops-shop/",
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/h5/q/DOMAINPROBE?domainProbe=1",
+    "status": 307,
+    "location": "https://twpay.umeshop.ai/h5/q/DOMAINPROBE?domainProbe=1",
+    "check": "payment-h5-stays-old-origin",
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/h5/q/DOMAINPROBE?domainProbe=1",
+    "status": 200,
+    "check": "old-payment-h5-preserved",
+    "passed": true
+  },
+  {
+    "origin": "http://nearshop.umeshop.ai",
+    "path": "/ops-shop/",
+    "status": 301,
+    "location": "https://nearshop.umeshop.ai/ops-shop/",
+    "passed": true
+  }
+]

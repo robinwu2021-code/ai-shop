@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.spi.printing.*;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.merchant.entity.MchAccount;

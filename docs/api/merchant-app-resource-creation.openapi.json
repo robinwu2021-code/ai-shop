@@ -1,0 +1,959 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "App merchant resource creation and profile submissions",
+    "version": "2026-11-10",
+    "description": "本批实际实现的创建及查询子集。MERCHANT会话，无需选店/商户头；独立经营实体与证照/管理空间分开。经营市场继承账号；证照可为空但引用须已审核且有所有权。支付创建仅USER身份，near-pay以原凭据回查本人ENABLED经营实体；PM档案/typed管理员/创建回执同事务。原键同内容回放、异内容冲突；查询按当前成员授权读取，不恢复已撤权授权。无渠道开通、进件送审、门店绑定或收款资格承诺。新PM可提交FIAT资料进入原运营审批，批准后供既有渠道正式送审读取。待审保留旧批准；BIZ不批准资料或送渠道。新增提交永久回执与审核命令独立，查询按当前typed账号和商户范围。 Payment creation must match the existing SourceMarketPolicy market; the App closes creation for a different account market."
+  },
+  "paths": {
+    "/biz/app/operating-entities/context": {
+      "get": {
+        "operationId": "operatingEntityCreationContext",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "market": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canCreate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "market",
+                        "canCreate"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/app/operating-entities": {
+      "get": {
+        "operationId": "listOperatingEntities",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OperatingEntity"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOperatingEntity",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOperatingEntity"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/biz/app/operating-entities/{id}": {
+      "get": {
+        "operationId": "operatingEntityDetail",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/biz/app/operating-entities/create-results/{key}": {
+      "get": {
+        "operationId": "operatingEntityCreationResult",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperatingEntity"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/biz/app/legal-subjects": {
+      "get": {
+        "operationId": "ownedVerifiedLegalSubjects",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LegalSubject"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/merchant-creations/context": {
+      "get": {
+        "operationId": "paymentMerchantCreationContext",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "canCreate": {
+                          "type": "boolean"
+                        },
+                        "market": {
+                          "type": "string",
+                          "description": "SourceMarketPolicy bound market for the authenticated AI_SHOP membership source"
+                        }
+                      },
+                      "required": [
+                        "canCreate",
+                        "market"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/merchant-creations": {
+      "post": {
+        "operationId": "createIndependentPaymentMerchant",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PaymentMerchantCreation"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentMerchant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/merchant-creations/by-request/{requestNo}": {
+      "get": {
+        "operationId": "paymentMerchantCreationResult",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "检查 envelope.code；0 为成功，10400/10403/10404/10409 等为业务拒绝。HTTP 非2xx同样不能读取成功 data。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PaymentMerchantCreation"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "requestNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/biz/pay/v2/merchant-profile-revisions": {
+      "get": {
+        "operationId": "merchantProfileOverview",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Merchant-No",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Current Guard-verified membership owns this scope; body cannot override it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read envelope code; only code=0 is success. Validation/permission/not-found/conflict errors follow the existing PortalResponse contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MerchantProfileOverview"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitMerchantProfile",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Merchant-No",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Current Guard-verified membership owns this scope; body cannot override it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read envelope code; only code=0 is success. Validation/permission/not-found/conflict errors follow the existing PortalResponse contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MerchantProfileRevision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MerchantProfileSubmission"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/pay/v2/merchant-profile-revisions/by-request/{requestNo}": {
+      "get": {
+        "operationId": "merchantProfileSubmissionResult",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Merchant-No",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Current Guard-verified membership owns this scope; body cannot override it."
+          },
+          {
+            "in": "path",
+            "name": "requestNo",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read envelope code; only code=0 is success. Validation/permission/not-found/conflict errors follow the existing PortalResponse contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MerchantProfileRevision"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CreateOperatingEntity": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "legalSubjectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "name",
+          "market"
+        ]
+      },
+      "OperatingEntity": {
+        "type": "object",
+        "properties": {
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ENABLED",
+              "DISABLED"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "legalSubjectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "operatingEntity.read"
+              ]
+            }
+          }
+        },
+        "required": [
+          "operatingEntityId",
+          "name",
+          "market",
+          "status",
+          "version",
+          "legalSubjectId",
+          "allowedActions"
+        ]
+      },
+      "LegalSubject": {
+        "type": "object",
+        "properties": {
+          "legalSubjectId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE"
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "legalSubjectId",
+          "name",
+          "market",
+          "version",
+          "status",
+          "verified"
+        ]
+      },
+      "CreatePaymentMerchant": {
+        "type": "object",
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "requestNo",
+          "operatingEntityId",
+          "name"
+        ]
+      },
+      "PaymentMerchantCreation": {
+        "type": "object",
+        "properties": {
+          "merchantNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "operatingEntityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "CN",
+              "TW",
+              "AE"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "membershipNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "role": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "merchantNo",
+          "operatingEntityId",
+          "name",
+          "market",
+          "status",
+          "membershipNo",
+          "role",
+          "actions"
+        ]
+      },
+      "MerchantProfileSubmission": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "expectedRevision",
+          "legalName"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "legalName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "registrationNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "registeredAddress": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "representativeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "description": "Independent PM only. Server fixes purpose=FIAT. No material references, actor, tenant or merchant in the body. Optional sensitive values are masked before persistence."
+      },
+      "MerchantProfileRevision": {
+        "type": "object",
+        "required": [
+          "revisionNo",
+          "revision",
+          "purpose",
+          "reviewStatus",
+          "profile",
+          "version"
+        ],
+        "properties": {
+          "revisionNo": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "APPROVED",
+              "REJECTED",
+              "NEED_MORE",
+              "SUPERSEDED"
+            ]
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "legalName": {
+                "type": "string"
+              },
+              "registrationNoMasked": {
+                "type": "string"
+              },
+              "registeredAddress": {
+                "type": "string"
+              },
+              "representativeMasked": {
+                "type": "string"
+              },
+              "contactMasked": {
+                "type": "string"
+              },
+              "industry": {
+                "type": "string"
+              }
+            }
+          },
+          "reviewReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "MerchantProfileOverview": {
+        "type": "object",
+        "required": [
+          "revision",
+          "canSubmit",
+          "approvedRevisionNo",
+          "items"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer"
+          },
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "approvedRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MerchantProfileRevision"
+            }
+          }
+        }
+      }
+    }
+  }
+}

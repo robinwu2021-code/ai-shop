@@ -41,11 +41,15 @@ class PointsOrderSourceOutboxTest {
                 .execute(data);
     }
 
+    /** Full contexts register the generated store under merchant "M" (real ownership lock); narrow ones need nothing. */
+    java.util.function.Consumer<String> storeOwners = store -> {};
+
     PointsOrderEvent draft(String suffix) {
         var fixture = new PointsOrderBindingTest();
         fixture.bindings = bindings;
         fixture.policies = policies;
         var store = fixture.activate();
+        storeOwners.accept(store);
         var b = bindings.admit(fixture.admission(store, "S:" + suffix));
         var a = b.admission();
         var at = Instant.parse("2026-10-18T00:00:00Z");

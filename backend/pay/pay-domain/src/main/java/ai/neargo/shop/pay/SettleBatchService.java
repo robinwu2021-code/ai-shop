@@ -158,6 +158,9 @@ public interface SettleBatchService {
                     * 商家在账期页上要看到的是「哪笔打了、凭证号、哪天」—— 批次状态 RELEASED 只说「放了」，
                     * 没说钱到哪一步；放款记录才说。
                     */
-                   String payoutStatus, String paymentRef, Long paidAt) {
+                   String payoutStatus, String paymentRef, Long paidAt, String documentNo) {
+        public BatchVO(String batchNo, String entityNo, String payChannel, String settleCycle, long periodFrom, long dueAt, Long releasedAt, Long freezeExpireAt, String status, int billCount, long grossMinor, long netMinor, String reconScope, String blockedReason, Long blockedAt, Long blockExpireAt, String decidedBy, String decideRemark, String payoutStatus, String paymentRef, Long paidAt) { this(batchNo, entityNo, payChannel, settleCycle, periodFrom, dueAt, releasedAt, freezeExpireAt, status, billCount, grossMinor, netMinor, reconScope, blockedReason, blockedAt, blockExpireAt, decidedBy, decideRemark, payoutStatus, paymentRef, paidAt, null); }
+        public BatchVO withDocumentNo(String documentNo) { return new BatchVO(batchNo, entityNo, payChannel, settleCycle, periodFrom, dueAt, releasedAt, freezeExpireAt, status, billCount, grossMinor, netMinor, reconScope, blockedReason, blockedAt, blockExpireAt, decidedBy, decideRemark, payoutStatus, paymentRef, paidAt, documentNo); }
+
     }
 }

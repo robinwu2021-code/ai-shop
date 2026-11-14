@@ -4,6 +4,8 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Query;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
 import ai.neargo.shop.food.dto.RepublishConfigReq;
@@ -13,6 +15,11 @@ import java.time.OffsetDateTime;
 
 /** Resolves store/time-scoped immutable definitions instead of trusting a mutable shared-head pointer. */
 public interface ConfigRevisionService {
+    /** Older providers cannot accidentally grant newly introduced resource membership evidence. */
+    default Proof verifyMenuResource(Query query) {
+        throw BizException.of(ErrorCode.NOT_FOUND);
+    }
+
     default PublishConfigResultVO republishRevision(String entity, String store, String revision, String actor,
             RepublishConfigReq req, String key) { throw BizException.of(ErrorCode.NOT_FOUND); }
     /** Older standalone providers reject newly introduced kinds explicitly. */

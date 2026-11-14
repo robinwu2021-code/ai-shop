@@ -1,8 +1,10 @@
 package ai.neargo.shop.pay.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -44,6 +46,11 @@ public class StlPayment extends BaseEntity {
 
     /** 本方流水号，**幂等键** —— 重试用同一个号，通道按它去重。 */
     private String paymentNo;
+
+    /** Canonical dispatch owner and immutable real receipt identity. */
+    private String initiatingOperationNo;
+
+    private String receiptNo;
 
     private String direction;
 
@@ -92,6 +99,36 @@ public class StlPayment extends BaseEntity {
 
     /** 通道交易号（微信 transaction_id / 支付宝 trade_no）。**对账单上是这个**。 */
     private String tradeNo;
+
+    /** 收款时下单用的子商户号（DIRECT 路径；AGGREGATED 为空）。退款按它找原交易（F08 · Review R08，db/pay V2） */
+    private String subMerchantId;
+
+    /** 收款商户号业务键（DIRECT 路径） */
+    private String payMerchantNo;
+
+    /** 所属支付单 pay_order.id（db/pay V8 · I3；回填后对新数据必填） */
+    private Long payOrderId;
+
+    /** REFUND 方向：所属退款单 pay_refund.id */
+    private Long payRefundId;
+
+    /** 冻结的收款商户 pay_merchant.id（I4 之前为空） */
+    private Long payMerchantId;
+
+    /** 冻结的资金路径 DIRECT / AGGREGATED */
+    private String fundsPath;
+
+    /** 市场 */
+    private String market;
+
+    /** 冻结的密钥版本号 */
+    private Integer secKeyVersion;
+
+    /** 通道回执金额；<b>不覆盖 {@link #amountMinor}</b>（修 R20：应付与实收是两件事，覆盖之后金额不符就再也看不出来） */
+    private Long channelAmountMinor;
+
+    /** 通道回执币种 */
+    private String channelCurrency;
 
     /**
      * 付款人 openid。**按 {@link #wxAppid} 隔离** —— 同一个人在不同小程序下是不同的 openid。
@@ -155,4 +192,49 @@ public class StlPayment extends BaseEntity {
 
     /** 对账批次（通道账单日期 YYYYMMDD）。 */
     private String reconcileBatch;
+
+    /*
+     * ── 平台商城收款列（V624/V626），**只读映射** ──
+     *
+     * 这些列只由 PlatformCollectionServiceImpl / PlatformRefundServiceImpl / PlatformOfflineLedger
+     * 在自己的事务里用 JDBC 读写（带行锁与唯一约束）。映射进实体只为让读取方看得到；
+     * insert/update 一律 NEVER —— 否则旧路径读出一行再 updateById，会把并发写入的
+     * platform_handoff_state 之类改回旧值。
+     */
+
+    /** 平台收款意图发出时间（毫秒）；发出前的迟到 create 由它挡住。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private Long platformDispatchAt;
+
+    /** 平台关单/作废栅栏；有值即不再接受正常认款。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformCloseFence;
+
+    /** 供应商已验证的收款证明（JSON）。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformReceiptJson;
+
+    /** 受限的支付参数（JSON），仅 PENDING 时下发。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformCheckoutJson;
+
+    /** 现金与商城交接状态：PENDING 待交接。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformHandoffState;
+
+    /** 线下实收/出款的银行流水唯一键（摘要）。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformBankRefKey;
+
+    /** V665: namespaced sales receipt identity; bank references retain their original key. */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformCollectionRefKey;
+
+    /** 运营录入的线下实收或出款证明（JSON）。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformManualProof;
+
+    /** 线下对账作废证明（JSON）。 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformReconciliationProof;
 }

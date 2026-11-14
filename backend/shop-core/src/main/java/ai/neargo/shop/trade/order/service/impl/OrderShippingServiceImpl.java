@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.StoreMarkets;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShippingUploadPort;
@@ -34,14 +35,16 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     private final ShipHandler handler;
     private final OutboxEventBus events;
     private final ObjectProvider<ShippingUploadPort> uploads;
+    private final StoreMarkets markets;
 
     public OrderShippingServiceImpl(MybatisShipmentReadStore read, MybatisShipmentWriteStore write,
                                     TradeStatusWriter statuses, OutboxEventBus events,
-                                    ObjectProvider<ShippingUploadPort> uploads) {
+                                    ObjectProvider<ShippingUploadPort> uploads, StoreMarkets markets) {
         this.read = read;
         this.handler = new ShipHandler(read, write, new OrderTransitions(statuses), () -> BizKey.next(BizKey.SHIPMENT));
         this.events = events;
         this.uploads = uploads;
+        this.markets = markets;
     }
 
     @Override
@@ -51,7 +54,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         if (order == null || actor == null || !actor.owns(order)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        requireEligible(order, command);
+        command = requireEligible(order, command);
         List<OrdShipment> previous = read.activeOf(subOrderNo);
         String shipmentNo = handler.ship(subOrderNo, command.carrier(), command.waybillNo(), command.itemIds(),
                 Operator.merchant(actor.operatorNo()));
@@ -76,7 +79,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         if (order == null || operatorNo == null || operatorNo.isBlank() || reason == null || reason.isBlank()) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
-        requireEligible(order, command);
+        command = requireEligible(order, command);
         List<OrdShipment> live = read.activeOf(subOrderNo);
         if (!OrdSubOrder.FULFILLING.equals(order.getStatus()) || live.size() != 1
                 || !live.getFirst().getShipmentNo().equals(expectedShipmentNo)) {
@@ -92,10 +95,16 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         return new ShipResult(subOrderNo, no, OrdSubOrder.FULFILLING);
     }
 
-    private void requireEligible(OrdSubOrder order, ShipCommand command) {
-        if (command == null || !ExpressCompanies.isValid(command.carrier())) {
+    /**
+     * @return 承运商归一成码之后的命令。市场取<b>订单自己的门店</b>（TDD-商户App快递公司 §2）：
+     *         叫快递取件回填运单时调用方的门店号是空的，按调用方取会取不到
+     */
+    private ShipCommand requireEligible(OrdSubOrder order, ShipCommand command) {
+        if (command == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        String carrier = ExpressCompanies.resolve(markets.of(order.getStoreNo()), command.carrier())
+                .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
         if (!OrdSubOrder.EXPRESS.equals(order.getFulfillment()) || !read.parentPaid(order.getOrderNo())
                 || (!OrdSubOrder.WAIT_FULFILL.equals(order.getStatus())
                 && !OrdSubOrder.FULFILLING.equals(order.getStatus()))) {
@@ -104,5 +113,6 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         if (read.openAfterSale(order)) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+        return new ShipCommand(command.itemIds(), carrier, command.waybillNo());
     }
 }

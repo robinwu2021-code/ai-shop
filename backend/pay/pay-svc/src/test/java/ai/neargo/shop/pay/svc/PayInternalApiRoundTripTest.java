@@ -5,7 +5,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.spi.pay.PayQueryPort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
+import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
+import ai.neargo.shop.pay.service.RefundExecutionService;
+import ai.neargo.shop.spi.settle.OrdinaryRefundPort;
+import ai.neargo.shop.spi.settle.RefundRequest;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.pay.client.PayStoredValueConsumerRequests;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueConsumerQueryService;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
+import java.time.Instant;
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayInternalApi.IssueReq;
 import ai.neargo.shop.pay.client.PayInternalApi.RejectReq;
@@ -15,6 +31,7 @@ import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.pay.service.SettleInvoiceService;
 import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.pay.client.PayInternalPaths;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
@@ -84,16 +101,37 @@ class PayInternalApiRoundTripTest {
     }
 
     @Test
-    @DisplayName("★★ 发票列表：null 的筛选条件不带，其它参数按名字到达")
+    @DisplayName("★★ 发票列表：null 的筛选条件不带，其它参数按名字到达；主体范围解码成集合")
     void settleInvoicesParams() {
-        when(invoiceService.list(null, "某", 2, 10))
+        when(invoiceService.list(null, "某", 2, 10, java.util.Set.of("M1", "M2")))
                 .thenReturn(new PageData<>(List.of(invoice("INV1", "PENDING")), 1, 2, 10));
 
-        PageData<SettleInvoiceVO> page = api("tk").settleInvoices(null, "某", 2, 10);
+        PageData<SettleInvoiceVO> page = api("tk").settleInvoices(null, "某", 2, 10, "M1,M2");
 
         assertThat(page.total()).isEqualTo(1);
         assertThat(page.records()).extracting(SettleInvoiceVO::invoiceNo).containsExactly("INV1");
-        verify(invoiceService).list(null, "某", 2, 10);
+        verify(invoiceService).list(null, "某", 2, 10, java.util.Set.of("M1", "M2"));
+    }
+
+    @Test
+    @DisplayName("★★★ F10 不带主体范围的发票列表被拒 —— 这个进程没有数据域拦截器，缺了就是全部商家")
+    void settleInvoicesWithoutScopeIsRejected() {
+        var status = org.springframework.web.client.RestClient.create("http://localhost:" + port)
+                .get().uri(PayInternalPaths.SETTLE_INVOICES + "?page=1&size=10")
+                .header(InternalHttp.TOKEN_HEADER, "tk")
+                .exchange((req, res) -> res.getStatusCode().value());
+        assertThat(status).isEqualTo(400);
+        org.mockito.Mockito.verifyNoInteractions(invoiceService);
+    }
+
+    @Test
+    @DisplayName("★★ F10 「不限」与「一个都没有」编码不同 —— 两者都成空串的话，越权就藏在这里")
+    void merchantScopeEncodingKeepsAllAndNoneApart() {
+        assertThat(PayInternalApi.encodeMerchantScope(null)).isEqualTo("*");
+        assertThat(PayInternalApi.encodeMerchantScope(java.util.Set.of())).isEmpty();
+        assertThat(PayInternalApi.decodeMerchantScope("*")).isNull();
+        assertThat(PayInternalApi.decodeMerchantScope("")).isEmpty();
+        assertThat(PayInternalApi.decodeMerchantScope("M2,M1")).containsExactlyInAnyOrder("M1", "M2");
     }
 
     @Test
@@ -117,4 +155,107 @@ class PayInternalApiRoundTripTest {
                     assertThat(e.statusCode()).isEqualTo(401);
                 });
     }
+    @MockitoBean
+    private StoredValueConsumerQueryService consumerReads;
+
+    @Test
+    void consumerRecordsAndCommittedNotificationFactsRoundTripWithoutEnvelope() {
+        var ctx=new EntitlementContext("TENANT_A","USER_A","query","a".repeat(64));
+        var at=Instant.parse("2026-10-21T01:00:00Z");
+        var row=new StoredValueConsumerViews.Record("REDEMPTION","护理","CNY",-12800,at,"EU20261021000001");
+        var expected=new CursorPage<>(List.of(row),null);
+        when(consumerReads.records(ctx,"STORE_A","ALL",at,null,"EU20261021000001",null,20))
+                .thenReturn(expected);
+        var request=new PayStoredValueConsumerRequests.Records(ctx,"STORE_A","ALL",at,null,
+                "EU20261021000001",null,20);
+        assertThat(api("tk").svConsumerRecords(request)).isEqualTo(expected);
+        var fact=new StoredValueConsumerViews.NotificationFact("USE_A","USER_A","STORE_A","门店","护理",
+                "CNY",12800,at,"EU20261021000001");
+        when(consumerReads.notificationFact(ctx,"USE_A")).thenReturn(fact);
+        assertThat(api("tk").svNotificationFact(new PayStoredValueConsumerRequests.Fact(ctx,"USE_A"))).isEqualTo(fact);
+        verify(consumerReads).records(ctx,"STORE_A","ALL",at,null,"EU20261021000001",null,20);
+        assertThatThrownBy(()->ServiceCalls.call(ServiceName.PAY,()->api("wrong").svConsumerRecords(request)))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(401));
+    }
+
+
+    @MockitoBean
+    private PaymentLedgerService paymentLedger;
+
+    @MockitoBean
+    private PayQueryPort paymentQueries;
+
+    @Test
+    void ordinaryLedgerContractKeepsExactRetryReferenceOwnershipAndChannelUncertainty() {
+        var reference = new OrdinaryPaymentPort.Reference("O1", "U1", "O1-2");
+        var attempt = new OrdinaryPaymentPort.Attempt(
+                "P1", "O1-2", "O1", "U1", "E1", "WECHAT", null, 123L, "USD", "PENDING", "D1");
+        var command = new SettlePort.PaymentOpen(
+                "O1", "U1", "E1", "WECHAT", 123, "items", "USD", List.of());
+        when(paymentLedger.open(command)).thenReturn("O1-2");
+        when(paymentLedger.ordinaryPayment("O1-2")).thenReturn(attempt);
+        assertThat(api("tk").ordinaryPaymentOpen(command)).isEqualTo(attempt);
+        assertThat(api("tk").ordinaryPaymentQuery(reference).payment()).isEqualTo(attempt);
+        when(paymentLedger.successfulOrdinaryPayment("O1")).thenReturn(null);
+        assertThat(api("tk").ordinaryPaymentSuccess(
+                new OrdinaryPaymentPort.OrderReference("O1", "U1")).found()).isFalse();
+        when(paymentQueries.query("WECHAT", "O1-2"))
+                .thenReturn(new PayQueryPort.Result(false, false, false, 0, null, null));
+        var outcome = api("tk").ordinaryPaymentChannelQuery(reference);
+        assertThat(outcome.status()).isEqualTo(OrdinaryPaymentPort.ChannelStatus.UNKNOWN);
+        assertThat(outcome.amountMinor()).isNull();
+        assertThat(outcome.currency()).isNull();
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("wrong").ordinaryPaymentQuery(reference)))
+                .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(401));
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("tk").ordinaryPaymentQuery(
+                        new OrdinaryPaymentPort.Reference("OTHER", "U1", "O1-2"))))
+                .isInstanceOf(ServiceCallException.class);
+    }
+    @MockitoBean
+    private OrdinaryPaymentInitiationService ordinaryInitiation;
+
+    @Test
+    void ordinaryInitiationCarriesTrustedIdentityContextAndReturnsActualGatewayParams() {
+        var payment = new SettlePort.PaymentOpen("OI1", "UI1", "EI1", "WECHAT", 120,
+                "items", "USD", List.of());
+        var payer = new PayOrdinaryPaymentRequests.PayerIdentity(
+                "UI1", "OI1", "openid-original", "APP1",
+                PayOrdinaryPaymentRequests.hash(payment));
+        var expected = new SettlePort.PayInitResult(true, "OI1-2", "WECHAT", Map.of("package", "prepay_id=p1"), null);
+        when(ordinaryInitiation.initiate(payment, payer)).thenReturn(expected);
+        var command = new PayOrdinaryPaymentRequests.Initiate(payment, payer);
+        assertThat(api("tk").ordinaryPaymentInitiate(command)).isEqualTo(expected);
+        verify(ordinaryInitiation).initiate(payment, payer);
+    }
+
+    @MockitoBean
+    private RefundExecutionService refundExecution;
+
+    @Test
+    void ordinaryRefundRoundTripPreservesFrozenOwnerCoordinatesAndUnknownOutcome() {
+        var original = new OrdinaryPaymentPort.Attempt("P-RF", "O-RF-2", "O-RF", "U-RF", "E-RF",
+                "WECHAT", "TX-RF", 120L, "USD", "SUCCESS", "DOC-RF");
+        when(paymentLedger.ordinaryPayment("O-RF-2")).thenReturn(original);
+        var frozen = new RefundRequest("RF1", "AS1", "S1", "P-RF", 50, "USD", "return");
+        var command = new OrdinaryRefundPort.Execution("O-RF", "U-RF", "O-RF-2", frozen);
+        var outcome = new RefundDispatchResult("RF1", "REFUND-P1",
+                RefundDispatchResult.DispatchStatus.UNKNOWN,
+                "REFUND_QUERY_UNKNOWN", true, null);
+        when(refundExecution.request(frozen)).thenReturn(outcome);
+        when(refundExecution.query(frozen)).thenReturn(outcome);
+        var expected = new OrdinaryRefundPort.Receipt(command, outcome);
+        assertThat(api("tk").ordinaryRefundRequest(command)).isEqualTo(expected);
+        assertThat(api("tk").ordinaryRefundQuery(command)).isEqualTo(expected);
+        verify(refundExecution).request(frozen);
+        verify(refundExecution).query(frozen);
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY,
+                () -> api("wrong").ordinaryRefundRequest(command)))
+                .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.statusCode()).isEqualTo(401));
+        var foreign = new OrdinaryRefundPort.Execution("O-RF", "OTHER", "O-RF-2", frozen);
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY, () -> api("tk").ordinaryRefundRequest(foreign)))
+                .isInstanceOf(ServiceCallException.class);
+    }
+
 }

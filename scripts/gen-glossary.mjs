@@ -516,16 +516,29 @@ function collectMaven() {
    * 为什么拦得这么死：模块里写的版本在 shop-app 里根本不生效（根工程继承的 Boot BOM
    * 覆盖传递依赖声明的版本），它只会让模块测试与发布物跑两个版本，而 Maven 一个字不报。
    */
+  /*
+   * 独立父工程：进销存独立服务（ADR-046）的父 POM 是 neargo-build-parent，不继承 backend/pom.xml，
+   * backend/pom.xml 只聚合它。它的版本只能管在它自己的父 POM 里 —— 等价于 backend/pom.xml 之于商城。
+   * 它的子模块照旧一条版本都不许写（下面的规则对它们一样生效）。
+   */
+  const independentParents = new Set(["backend/inventory/pom.xml"]);
   const literals = [];
+  /*
+   * 商城（backend/commerce）是可移植库家族：自己的 Maven 根 commerce-parent，不继承 backend/pom.xml，
+   * 能单独构建发布。它的根 POM 就是这个家族唯一放版本的地方（等同 backend/pom.xml 的角色），
+   * 家族内部模块之间用 ${project.version}。子模块照样不许写版本。
+   */
+  const VERSION_ROOTS = new Set([parentRel, "backend/commerce/pom.xml"]);
+  const INTERNAL_GROUPS = new Set(["ai.neargo.shop", "ai.neargo.commerce"]);
   for (const m of modules) {
-    if (m.rel === parentRel) continue;
+    if (VERSION_ROOTS.has(m.rel) || independentParents.has(m.rel)) continue;
     const scan = read(join(ROOT, m.rel))
       .replace(/<parent>[\s\S]*?<\/parent>/, "")
       .replace(/<build>[\s\S]*?<\/build>/g, "");
     for (const d of scan.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
       const g = tagOf(d[1], "groupId"); const a = tagOf(d[1], "artifactId"); const v = tagOf(d[1], "version");
       if (!a || !v) continue;
-      if (g === "ai.neargo.shop" && v === "${project.version}") continue;
+      if (INTERNAL_GROUPS.has(g) && v === "${project.version}") continue;
       literals.push({ module: m.rel, ga: `${g}:${a}`, version: v });
     }
   }
@@ -890,7 +903,7 @@ function mdDeps(mvn, npm) {
     "这类漂移不报错，它表现为「本机跑得起来、换台机器行为不同」。"));
 
   L.push("\n## 一、Maven\n");
-  L.push(`父 POM \`${mvn.parentRel}\` 继承 \`ai.neargo:neargo-parent\`（Java 21 + Spring Boot 4.0.x + MyBatis-Plus BOM）。`);
+  L.push(`父 POM \`${mvn.parentRel}\` 继承 \`ai.neargo:neargo-build-parent:2.0.0-SNAPSHOT\`（Java 21 + Spring Boot 4.0.x + MyBatis-Plus BOM）。`);
   L.push("绝大多数版本由它与 Spring Boot 的 BOM 管着 —— 下面只列**本仓库自己声明版本**的那些。\n");
 
   L.push("### 1.1 父 POM 管着的版本\n");

@@ -6,6 +6,8 @@ import ai.neargo.shop.promotion.entity.PmtCouponIssue;
 import ai.neargo.shop.promotion.entity.PmtCouponScope;
 import ai.neargo.shop.promotion.entity.PmtUserCoupon;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 营销域的 Mapper 集合（嵌套接口，与 {@code MemberMappers} 同一写法）。
@@ -106,6 +108,14 @@ public final class PromotionMappers {
 
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */
     public interface ApplyMapper extends BaseMapper<PmtApply> {
+
+        /** Called only after a duplicate insert; the unique receipt exists, so no absent-row gap is locked. */
+        @Select("""
+                SELECT * FROM pmt_apply
+                WHERE tenant_no = #{tenantNo} AND apply_no = #{applyNo}
+                FOR UPDATE
+                """)
+        PmtApply itemReceipt(@Param("tenantNo") String tenantNo, @Param("applyNo") String applyNo);
 
         /**
          * 这个活动被关单退回了几份（待办设计 P4）。

@@ -38,6 +38,35 @@ export interface MarketConfig {
   enabled: boolean;
 }
 
+/** 可供建店选择的行业、子业态与经营类型映射 */
+export interface StoreIndustry {
+  /** 行业码 */
+  industryCode: string;
+  /** 子业态码，与行业码共同标识一条配置 */
+  subIndustryCode: string;
+  /** 对应的门店经营类型码 */
+  businessTypeCode: string;
+  /** 简体中文名称 */
+  nameZh: string;
+  /** 繁体中文名称 */
+  nameTw: string;
+  /** 英文名称；未配置时为空 */
+  nameEn?: string | null;
+  /** 展示顺序，数值越小越靠前 */
+  sort: number;
+  /** 是否允许建店时选择此项 */
+  enabled: boolean;
+  /** 当前配置版本，修改时带回 expectedVersion */
+  version: number;
+}
+
+export interface SaveStoreIndustry extends Omit<StoreIndustry, "version"> {
+  /** 新增时为 null；修改时为当前配置版本 */
+  expectedVersion: number | null;
+  /** 本次配置变更的审计原因 */
+  reason: string;
+}
+
 export const BASE_CURRENCY = "CNY";
 
 /** 规则文案（P-17.1.4）。这三条是 C 端要展示给用户看的，不能为空。 */
@@ -124,6 +153,33 @@ export interface OtpTestPhone {
   enabled: boolean;
   /** 这一条为什么存在。空 = 没写（不是「没有原因」） */
   remark?: string;
+}
+
+/**
+ * 测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的
+ * **统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。
+ */
+/** 测试身份类型 */
+export type TestIdentityType = "PHONE" | "EMAIL";
+
+export interface TestIdentity {
+  /** 库内自增 id，启停与删除按它定位 */
+  id: number;
+  /** 手机号或邮箱 */
+  identityType: TestIdentityType;
+  /** 规范化后的值：手机号带国码去空格，邮箱小写 */
+  identityValue: string;
+  /** 启用中；停用即时生效 */
+  enabled: boolean;
+  /** 为什么加这一条；空 = 没写 */
+  remark?: string;
+}
+
+export interface TestIdentityList {
+  /** 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 */
+  switchOn: boolean;
+  /** 名单，含停用的 */
+  items: TestIdentity[];
 }
 
 export interface AuthCodeAdmin {
@@ -313,3 +369,75 @@ export type MediaBizType = "GOODS" | "QUAL" | "AFTERSALE";
  * （多半是已经不在了），归进 DONE 会让人以为清干净了，归进失败会让人重跑一遍。
  */
 export type MediaPurgeStatus = "QUEUED" | "RUNNING" | "DONE" | "PARTIAL";
+
+/**
+ * App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。
+ *
+ * 没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。
+ * 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的
+ * `system:app-version:update`，技术运维的 `system:param:update` 改不了。
+ */
+export interface AppVersionPolicy {
+  /** 哪个 App。首期只有 MERCHANT */
+  appCode: string;
+  /** ANDROID / IOS */
+  platform: AppVersionPlatform;
+  /** 最新版；空 = 不提示更新 */
+  latest: string;
+  /** 最低支持版；空 = 不拦写 */
+  minSupported: string;
+  /** 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant */
+  notes: Partial<Record<AppVersionLang, string[]>>;
+  /** 商店地址，只收 https://apps.apple.com/… 或 https://play.google.com/… */
+  storeUrl: string | null;
+  /** 最后修改人 */
+  updatedBy: string | null;
+  /** 最后修改时间（毫秒）；没配过为 null */
+  updatedAt: number | null;
+  /** 乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409 */
+  revision: number;
+}
+
+/** 版本策略按平台分行（sys_app_version.platform） */
+export type AppVersionPlatform = "ANDROID" | "IOS";
+
+/** 更新说明的四种语言 */
+export type AppVersionLang = "zh-Hant" | "zh-Hans" | "en" | "ar";
+
+/** 保存一行策略 */
+export interface SaveAppVersionPolicy {
+  /** 最新版本号 */
+  latest: string;
+  /** 最低支持版本；低于此版本须更新 */
+  minSupported: string;
+  /** 各语言的更新说明；zh-Hant 必填，其余语言回落 zh-Hant */
+  notes: Partial<Record<AppVersionLang, string[]>>;
+  /** 应用商店或下载链接；不提供时为 null */
+  storeUrl: string | null;
+  /** 当前策略版本，保存时用于乐观锁校验 */
+  expectedRevision: number;
+}
+
+/** Region-specific contact recording. SMS can open only after the deployment declares a ready channel. */
+export interface MarketPhonePolicy {
+  /** 经营市场码 */
+  market: string;
+  /** 国际电话区号；未配置时为 null */
+  callingPrefix: string | null;
+  /** 是否只记录号码，不验证短信 */
+  recordOnly: boolean;
+  /** 是否开放短信验证码验证 */
+  smsVerificationEnabled: boolean;
+  /** 当前部署是否已配置可用短信通道，只读 */
+  smsChannelReady: boolean;
+  /** 当前经营市场是否开放，只读 */
+  marketEnabled: boolean;
+}
+export interface SaveMarketPhonePolicy {
+  /** 是否只记录号码，不验证短信 */
+  recordOnly: boolean;
+  /** 是否开放短信验证码验证；开启前须具备可用短信通道 */
+  smsVerificationEnabled: boolean;
+  /** 本次策略变更的审计原因 */
+  reason: string;
+}

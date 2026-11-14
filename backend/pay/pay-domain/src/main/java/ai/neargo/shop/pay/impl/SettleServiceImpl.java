@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
 import ai.neargo.shop.pay.settle.SplitPreparationService;
@@ -58,6 +60,8 @@ import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
  */
 @Service
 public class SettleServiceImpl implements SettleService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity;
 
 
@@ -105,7 +109,7 @@ public class SettleServiceImpl implements SettleService {
      * （微信直连 {@code /v3/refund/domestic/refunds}）。
      * 两者都叫「网关」，但一个动的是商家账户里的钱，一个动的是退给买家的钱。
      */
-    private final ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter;
+    private final ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge channels;
 
     /** 分账指令的发送与留痕（幂等在它那一层） */
     private final ai.neargo.shop.pay.settle.SplitInstructionSender splitSender;
@@ -128,7 +132,7 @@ public class SettleServiceImpl implements SettleService {
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
-                             ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
+                             ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge channels,
                              ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
                              RefundBasisStore refundBases, SplitPreparationService splitPreparation,
                              SplitResultService splitResults, PointsPayoutExecutionService pointsExecution,
@@ -142,7 +146,7 @@ public class SettleServiceImpl implements SettleService {
         this.pointsExecution = pointsExecution;
         this.splitGateway = splitGateway;
         this.splitSender = splitSender;
-        this.gatewayRouter = gatewayRouter;
+        this.channels = channels;
         this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
@@ -427,6 +431,7 @@ public class SettleServiceImpl implements SettleService {
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
+            documents.bind(DocumentType.SETTLEMENT_BILL, "MAIN", bill.getSettleNo());
             refundBases.recordCreated(bill, src.payAmount() - src.freightIncomeMinor());
 
             created++;
@@ -587,11 +592,6 @@ public class SettleServiceImpl implements SettleService {
         return true;
     }
 
-    @Override
-    public String refund(String subOrderNo, long amountMinor, String reason) {
-        return refund(subOrderNo, afterSaleNoOf(subOrderNo), amountMinor, reason);
-    }
-
     /** 幂等键 = 售后单号（5.2）：一张售后单一笔；旧签名固定用 {@code AS-子单号}，一张子单只能退一次。 */
     @Override
     public String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
@@ -668,7 +668,7 @@ public class SettleServiceImpl implements SettleService {
         var ticket = coordinates.get();
         ai.neargo.shop.spi.pay.RefundQueryResult result;
         try {
-            result = gatewayRouter.of(ticket.payChannel()).queryRefundOutcome(ticket.outRefundNo());
+            result = channels.queryRefundOutcome(ticket.payChannel(), ticket.outRefundNo());
         } catch (RuntimeException uncertain) {
             log.warn("[settle] 退款回查未知 paymentNo={} exception={}", paymentNo,
                     uncertain.getClass().getSimpleName());
@@ -717,10 +717,7 @@ public class SettleServiceImpl implements SettleService {
             return;
         }
         var t = ticket.get();
-        ai.neargo.shop.pay.channel.PayGateway channel;
-        try {
-            channel = gatewayRouter.of(t.payChannel());
-        } catch (RuntimeException e) {
+        if (!channels.supports(t.payChannel())) {
             // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
             paymentLedger.markRefundRejected(refundNo,
                     "支付通道未接入：" + t.payChannel());
@@ -733,7 +730,7 @@ public class SettleServiceImpl implements SettleService {
         var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
                 null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
         try {
-            var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
+            var r = channels.refund(t.payChannel(), ctx, t.amountMinor(), t.outRefundNo(), t.reason());
             if (!r.success() && r.definitiveRejection())
                 paymentLedger.markRefundRejected(refundNo, r.message());
             else paymentLedger.markRefundSent(refundNo, r.success(), !r.success(), r.providerNo(), r.message());
@@ -741,16 +738,6 @@ public class SettleServiceImpl implements SettleService {
             paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
             log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());
         }
-    }
-
-    /**
-     * 这个子单当前的售后单号 —— 退款流水的幂等键。
-     *
-     * <p>取不到时用子单号兜底：<b>幂等键宁可粗一点，也不能没有</b>。
-     * 没有键的话重试会一笔一笔地落，而对账把它们当成多退。
-     */
-    private String afterSaleNoOf(String subOrderNo) {
-        return "AS-" + subOrderNo;
     }
 
     // ---------------------------------------------------------------- 查询
@@ -808,9 +795,9 @@ public class SettleServiceImpl implements SettleService {
         List<StlBill> bills = billsFor(merchantNo, storeNos, day);
         // 批次一次查齐再拼：逐单查的话，一屏 20 单就是 20 次往返
         var batches = batchesOf(bills);
-        return bills.stream()
-                .map(b -> toVO(b, batches.get(b.getBatchNo())))
-                .toList();
+        var batchDocumentNos = documents.findAll(DocumentType.SETTLEMENT_BATCH, "MAIN", batches.keySet());
+        return documents.project(DocumentType.SETTLEMENT_BILL, bills, row -> "MAIN", StlBill::getSettleNo,
+                b -> toVO(b, batches.get(b.getBatchNo())).withBatchDocumentNo(batchDocumentNos.get(b.getBatchNo())));
     }
 
     /**
@@ -914,16 +901,18 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public SettleBillVO merchantBill(String merchantNo, String settleNo) {
+        String sourceNo = documents.internal(DocumentType.SETTLEMENT_BILL, "MAIN", settleNo);
         StlBill bill = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectOne(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getSettleNo, settleNo)
+                        .eq(StlBill::getSettleNo, sourceNo)
                         .eq(StlBill::getEntityNo, merchantNo)
                         .last("limit 1")));
         if (bill == null) {
             // 属主校验写进查询条件：settleNo 可猜，不能先查出来再比对
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return toVO(bill, batchesOf(List.of(bill)).get(bill.getBatchNo()));
+        return toVO(bill, batchesOf(List.of(bill)).get(bill.getBatchNo()))
+                .withBatchDocumentNo(documents.find(DocumentType.SETTLEMENT_BATCH, "MAIN", bill.getBatchNo()));
     }
 
     @Override
@@ -1106,13 +1095,13 @@ public class SettleServiceImpl implements SettleService {
          * entityNo 是用户给的筛选条件，与数据域是两件事：传一个域外的主体号，
          * 筛选成立而数据域拒绝 → 空列表，正确。
          */
-        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+        var rows = billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
                         // 只看自营：第三方的钱走分账，不存在「应付账款」这件事
                         .eq(StlBill::getBusinessMode, MerchantQueryPort.MODE_SELF_OPERATED)
                         .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
                         .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
-                        .orderByDesc(StlBill::getId))
-                .stream().map(this::toVO).toList();
+                        .orderByDesc(StlBill::getId));
+        return documents.project(DocumentType.SETTLEMENT_BILL, rows, row -> "MAIN", StlBill::getSettleNo, this::toVO);
     }
 
     @Override
@@ -1123,13 +1112,13 @@ public class SettleServiceImpl implements SettleService {
          * 一家同时有自营店和第三方店的商家，运营得在两个页面之间对照才拼得出全貌。
          */
         // ★ 接数据域（批④），理由同 opsPayables
-        return billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+        var rows = billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
                         .eq(status != null && !status.isBlank(), StlBill::getStatus, status)
                         .eq(entityNo != null && !entityNo.isBlank(), StlBill::getEntityNo, entityNo)
                         .eq(businessMode != null && !businessMode.isBlank(),
                                 StlBill::getBusinessMode, businessMode)
-                        .orderByDesc(StlBill::getId))
-                .stream().map(this::toVO).toList();
+                        .orderByDesc(StlBill::getId));
+        return documents.project(DocumentType.SETTLEMENT_BILL, rows, row -> "MAIN", StlBill::getSettleNo, this::toVO);
     }
 
     @Override
@@ -1138,20 +1127,22 @@ public class SettleServiceImpl implements SettleService {
          * 失败的指令**也要给**：出问题时要看的恰恰是它们。
          * 只给成功的等于把「为什么这单没分成」这个问题的答案藏起来。
          */
-        return DataScopeContext.executeWithoutScope(() ->
+        String sourceNo = documents.internal(DocumentType.SETTLEMENT_BILL, "MAIN", settleNo);
+        var rows = DataScopeContext.executeWithoutScope(() ->
                         splitLogMapper.selectList(Wrappers.<StlSplitLog>lambdaQuery()
                                 .eq(settleNo != null && !settleNo.isBlank(),
-                                        StlSplitLog::getSettleNo, settleNo)
+                                        StlSplitLog::getSettleNo, sourceNo)
                                 .eq(action != null && !action.isBlank(),
                                         StlSplitLog::getSplitAction, action)
-                                .orderByDesc(StlSplitLog::getId)))
-                .stream()
+                                .orderByDesc(StlSplitLog::getId)));
+        var documentNos = documents.findAll(DocumentType.SETTLEMENT_BILL, "MAIN", rows.stream().map(StlSplitLog::getSettleNo).toList());
+        return rows.stream()
                 .map(l -> new SplitLogVO(l.getSettleNo(), l.getSubOrderNo(), l.getSplitAction(),
                         nz(l.getAmountMinor()), l.getResult(), l.getRequestNo(),
                         l.getProviderNo(), l.getMessage(),
                         l.getCreatedAt() == null ? 0L
                                 : l.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
-                                        .toInstant().toEpochMilli()))
+                                        .toInstant().toEpochMilli()).withDocumentNo(documentNos.get(l.getSettleNo())))
                 .toList();
     }
 
@@ -1283,6 +1274,7 @@ public class SettleServiceImpl implements SettleService {
         inv.setImageUrl(cmd.imageUrl());
         inv.setStatus(StlPurchaseInvoice.SUBMITTED);
         DataScopeContext.executeWithoutScope(() -> purchaseInvoiceMapper.insert(inv));
+        documents.bind(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", inv.getInvoiceNo());
 
         for (StlBill b : bills) {
             b.setPurchaseInvoiceNo(inv.getInvoiceNo());
@@ -1294,11 +1286,11 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public List<PurchaseInvoiceVO> myInvoices(String merchantNo) {
-        return DataScopeContext.executeWithoutScope(() ->
+        var rows = DataScopeContext.executeWithoutScope(() ->
                         purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
                                 .eq(StlPurchaseInvoice::getEntityNo, merchantNo)
-                                .orderByDesc(StlPurchaseInvoice::getId)))
-                .stream().map(this::toVO).toList();
+                                .orderByDesc(StlPurchaseInvoice::getId)));
+        return invoiceViews(rows);
     }
 
     @Override
@@ -1309,11 +1301,11 @@ public class SettleServiceImpl implements SettleService {
          * 跑在 B 端会话（SELF 维度）里，不绕就 fail-closed 变空白，所以它保留绕过。
          * 两条读同一张表，绕不绕的判据是**归属由谁保证**，不是「哪个更方便」。
          */
-        return purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
+        var rows = purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
                         .eq(status != null && !status.isBlank(),
                                 StlPurchaseInvoice::getStatus, status)
-                        .orderByDesc(StlPurchaseInvoice::getId))
-                .stream().map(this::toVO).toList();
+                        .orderByDesc(StlPurchaseInvoice::getId));
+        return invoiceViews(rows);
     }
 
     @Override
@@ -1417,17 +1409,27 @@ public class SettleServiceImpl implements SettleService {
         return inv;
     }
 
-    private PurchaseInvoiceVO toVO(StlPurchaseInvoice i) {
-        List<String> settleNos = DataScopeContext.executeWithoutScope(() ->
-                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                .eq(StlBill::getPurchaseInvoiceNo, i.getInvoiceNo())))
-                .stream().map(StlBill::getSettleNo).toList();
+    private PurchaseInvoiceVO toVO(StlPurchaseInvoice i) { return invoiceViews(List.of(i)).getFirst(); }
+
+    private List<PurchaseInvoiceVO> invoiceViews(List<StlPurchaseInvoice> invoices) {
+        if (invoices.isEmpty()) return List.of();
+        var ids = invoices.stream().map(StlPurchaseInvoice::getInvoiceNo).toList();
+        var bills = DataScopeContext.executeWithoutScope(() -> billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                .in(StlBill::getPurchaseInvoiceNo, ids)));
+        var grouped = bills.stream().collect(java.util.stream.Collectors.groupingBy(StlBill::getPurchaseInvoiceNo,
+                java.util.stream.Collectors.mapping(StlBill::getSettleNo, java.util.stream.Collectors.toList())));
+        var settlementNumbers = documents.findAll(DocumentType.SETTLEMENT_BILL, "MAIN", bills.stream().map(StlBill::getSettleNo).toList());
+        return documents.project(DocumentType.SETTLEMENT_INVOICE_REQUEST, invoices, row -> "MAIN", StlPurchaseInvoice::getInvoiceNo,
+                invoice -> invoiceView(invoice, grouped.getOrDefault(invoice.getInvoiceNo(), List.of()), settlementNumbers));
+    }
+    private PurchaseInvoiceVO invoiceView(StlPurchaseInvoice i, List<String> settleNos, java.util.Map<String,String> settlementNumbers) {
         return new PurchaseInvoiceVO(i.getInvoiceNo(), i.getEntityNo(), i.getPeriod(),
                 i.getInvoiceCode(), i.getInvoiceNumber(), i.getInvoiceType(),
                 i.getTitleName(), i.getTitleTaxNo(), nz(i.getAmountMinor()),
                 nz(i.getTaxAmountMinor()), nzi(i.getTaxRate()), i.getInvoiceDate(),
                 i.getImageUrl(), i.getStatus(), i.getRejectReason(),
-                titleMatched(i), settleNos);
+                titleMatched(i), settleNos).withDocumentNo(documents.find(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", i.getInvoiceNo()))
+                .withSettleDocumentNos(settleNos.stream().map(settlementNumbers::get).filter(java.util.Objects::nonNull).toList());
     }
 
 
@@ -1484,6 +1486,8 @@ public class SettleServiceImpl implements SettleService {
                 .filter(b -> period == null || period.isBlank() || period.equals(periodOf(b)))
                 .toList();
 
+        var documentNos = documents.findAll(DocumentType.SETTLEMENT_BILL, "MAIN",
+                bills.stream().map(StlBill::getSettleNo).toList());
         List<StatementVO.Line> lines = new java.util.ArrayList<>();
         List<String> vouchers = new java.util.ArrayList<>();
         long gross = 0;
@@ -1503,7 +1507,7 @@ public class SettleServiceImpl implements SettleService {
                     nz(b.getFreightIncomeMinor()), nz(b.getFreightCostMinor()),
                     nz(b.getNetMinor()), nzi(b.getCommissionRate()),
                     b.getStatus(), b.getInvoiceStatus(),
-                    b.getPaidAt() != null ? b.getPaidAt() : b.getSplitAt(), voucher));
+                    b.getPaidAt() != null ? b.getPaidAt() : b.getSplitAt(), voucher).withDocumentNo(documentNos.get(b.getSettleNo())));
             gross += nz(b.getGrossMinor());
             commission += nz(b.getCommissionMinor());
             serviceFee += nz(b.getServiceFeeMinor());
@@ -1567,7 +1571,7 @@ public class SettleServiceImpl implements SettleService {
                 b.getSettleableAt(), batch == null ? null : batch.getDueAt(), b.getBatchNo(),
                 batch == null ? null : batch.getStatus(),
                 batch == null ? null : batch.getBlockedReason(),
-                b.getAccruedAt());
+                b.getAccruedAt()).withDocumentNo(documents.find(DocumentType.SETTLEMENT_BILL, "MAIN", b.getSettleNo()));
     }
 
     /** 一次把这批单涉及的批次查齐，避免列表页逐单查 */

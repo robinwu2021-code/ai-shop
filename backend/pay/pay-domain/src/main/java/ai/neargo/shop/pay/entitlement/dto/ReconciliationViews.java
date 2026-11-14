@@ -25,8 +25,14 @@ public final class ReconciliationViews {
         }
     }
     /** Snapshots stay internal; operators receive identifiers and reason codes only. */
-    public record DiffView(String diffNo,String reconNo,String entityNo,String resourceNo,String diffKind,String status) { }
+    public record DiffView(String diffNo,String reconNo,String entityNo,String resourceNo,String diffKind,String status, String documentNo) {
+        public DiffView(String diffNo, String reconNo, String entityNo, String resourceNo, String diffKind, String status) { this(diffNo, reconNo, entityNo, resourceNo, diffKind, status, null); }
+        public DiffView withDocumentNo(String documentNo) { return new DiffView(diffNo, reconNo, entityNo, resourceNo, diffKind, status, documentNo); }
+ }
     public record RunView(String reconNo,String entityNo,String axis,String status,long checkedCount,long diffCount,String nextCursor,
-                          LocalDate bizDate,String marketZone,String currency) { }
+                          LocalDate bizDate,String marketZone,String currency, String documentNo) {
+        public RunView(String reconNo, String entityNo, String axis, String status, long checkedCount, long diffCount, String nextCursor, LocalDate bizDate, String marketZone, String currency) { this(reconNo, entityNo, axis, status, checkedCount, diffCount, nextCursor, bizDate, marketZone, currency, null); }
+        public RunView withDocumentNo(String documentNo) { return new RunView(reconNo, entityNo, axis, status, checkedCount, diffCount, nextCursor, bizDate, marketZone, currency, documentNo); }
+ }
     public record Units(Long remaining,long reserved,long sequence) { }
 }

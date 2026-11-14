@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.migration.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
@@ -27,6 +29,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Nontransactional orchestration rejects ambient transactions so source reads never wait under held pay/core locks. */
 @Service
 public class EntitlementMigrationServiceImpl implements EntitlementMigrationService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntMigrationStageMapper stages;
     private final EntitlementMigrationStageWriter writer;
     private final LegacySnapshotCipher cipher;
@@ -109,7 +113,7 @@ public class EntitlementMigrationServiceImpl implements EntitlementMigrationServ
     private StageView view(EntMigrationStage row) {
         return new StageView(row.getStageNo(),row.getSourceSystem(),row.getSourceTemplateNo(),row.getEntityNo(),
                 row.getMigrationBatchNo(),row.getStatus(),row.getSourceSchemaVersion(),row.getFrozenRevision(),
-                row.getPayloadBytes(),row.getInstanceCount(),row.getHistoryCount(),"FROZEN",false,row.getCreatedAt(),row.getVersion());
+                row.getPayloadBytes(),row.getInstanceCount(),row.getHistoryCount(),"FROZEN",false,row.getCreatedAt(),row.getVersion()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_STAGE, row.getTenantNo(), row.getStageNo()));
     }
     private static void platform(CatalogScope scope) {
         if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);

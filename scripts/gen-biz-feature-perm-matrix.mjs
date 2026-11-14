@@ -73,12 +73,18 @@ for (const m of epSrc.matchAll(/(\w+):\s*\{\s*method:\s*"(\w+)",\s*\n?\s*path:\s
 }
 
 // ---------------------------------------------------------------- 五、页面 → 门禁 + 调用
+function pageSource(directory) {
+  return readdirSync(directory, {withFileTypes: true}).map(entry => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? pageSource(path) : entry.isFile() ? readFileSync(path, "utf8") : "";
+  }).join("\n");
+}
+
 const pages = [];
 for (const dir of readdirSync(PAGES)) {
   const d = join(PAGES, dir);
   if (!existsSync(d)) continue;
-  let src = "";
-  for (const f of readdirSync(d)) src += readFileSync(join(d, f), "utf8");
+  const src = pageSource(d);
   /*
    * 页面门禁。**两种写法都要认**：
    *   ① 内联   `:denied="!merchant.can('biz:order:view')"`

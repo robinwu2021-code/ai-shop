@@ -94,7 +94,6 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                         + "option_identity_hash VARCHAR(64),"
                         + "UNIQUE(recipe_no,option_item_no,target_line_no))");
             }
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED"));
             action.accept(c, f);
         });
     }
@@ -109,6 +108,34 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
     static void code(Runnable action, ErrorCode code) {
         assertThatThrownBy(action::run).isInstanceOfSatisfying(BizException.class,
                 e -> assertThat(e.errorCode()).isEqualTo(code));
+    }
+
+    @Test void foreignRecipeKeepsIndependentMaterialAuthorityWhileUsingMarketAwareSaleSku() {
+        run((c, f) -> {
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            MaterialCatalogQueryPort materials = (entity, ids) -> List.of(
+                    new MaterialCatalogQueryPort.MaterialFact("MILK", entity, "Milk", "KG", 1, "OWN",
+                            "BASE_ONLY", "INTEGER_ONLY",
+                            MaterialCatalogFacts.definitionHash("MILK", entity, "Milk", "KG", 1, "OWN")));
+            var service = new RecipeServiceImpl(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),
+                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class),
+                    c.getBean("foodOutboxPublisher", OutboxPublisher.class), c.getBean(ObjectMapper.class),
+                    c.getBean(PlatformTransactionManager.class), source.goods, materials,
+                    c.getBean(RecipeAdjustmentMapper.class), c.getBean(OptionGroupItemMapper.class),
+                    c.getBean(OptionGroupMapper.class), source.currencies);
+            var recipe = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "foreign-create")
+                    .recipe();
+            var updated = service.replaceDefinition("E", "A", recipe.recipeNo(), "actor",
+                    definition(0, line(null, "MILK", "0.125", "KG")), "foreign-edit").recipe();
+            assertThat(updated.lines()).hasSize(1);
+            assertThat(updated.lines().getFirst().materialDefinitionHash()).isEqualTo(
+                    MaterialCatalogFacts.definitionHash("MILK", "E", "Milk", "KG", 1, "OWN"));
+            source.corrupt = true;
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", recipe.recipeNo(), "actor",
+                    definition(1, line(null, "MILK", "0.25", "KG")), "corrupt"))
+                    .isInstanceOf(BizException.class);
+            assertThat(f.sql().queryForObject("SELECT version FROM fnb_recipe", Long.class)).isEqualTo(1);
+        });
     }
 
     @Test void createsAndEditsExactBaseUnitLinesWithGeneratedIdentitiesAndRepeatedMaterials() {
@@ -447,8 +474,6 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     template.getMapper(DishMapper.class), template.getMapper(DishOptionGroupMapper.class),
                     template.getMapper(ModifierMapper.class), sources, sources);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(
-                    Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_OPTION_GROUP_CHANGED"));
             var service = c.getBean(RecipeService.class);
             var json = c.getBean(ObjectMapper.class);
             var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")

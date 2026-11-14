@@ -7,6 +7,8 @@ import java.util.List;
  * complete.
  */
 public interface SourceFactsPort {
+    /** Hosts with a durable source journal override this to use their normal versioned delivery path. */
+    default boolean deliver(Fact fact) { return false; }
     Page scan(String typeCode, long afterSequence, int limit);
 
     record Fact(

@@ -1,16 +1,23 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
+  MarketPhonePolicy, SaveMarketPhonePolicy, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
-  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page,
+  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
 } from "@/lib/types";
 
-import type { PrintScope, PrintReconcile, PrintFleetHealth, PrintIncident, PrintOperation } from "../inspection-types";
 export interface SystemApi {
-  printHealth(q: PrintScope): Promise<PrintFleetHealth>;
-  printIncidents(q: PrintScope & { status?: string; page?: number; size?: number }): Promise<Page<PrintIncident>>;
-  printOperation(operationNo: string, q: PrintScope): Promise<PrintOperation>;
-  reconcilePrint(v: PrintReconcile, idempotencyKey: string): Promise<PrintOperation>;
+  marketPhonePolicies(): Promise<MarketPhonePolicy[]>;
+  saveMarketPhonePolicy(market: string, v: SaveMarketPhonePolicy): Promise<MarketPhonePolicy>;
+  // ── App 版本策略（TDD-商户App问题回报与版本 V6）—— 真后端 `/ops/app-versions/**`
+  /** 每个平台一行，没配过的也列出来（revision=0） */
+  listAppVersions(): Promise<AppVersionPolicy[]>;
+  /**
+   * 改一行。`minSupported > latest`、版本号不合法、商店地址不是两家商店的 https、zh-Hant 说明缺失 → 10400；
+   * revision 对不上（别人先改了）→ 10409。要 `system:app-version:update`。
+   */
+  saveAppVersion(appCode: string, platform: string, v: SaveAppVersionPolicy): Promise<AppVersionPolicy>;
+
   // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
   //
   // 四个方法都返回**整份列表**而不是改动的那一条：这一页的每个动作都会改变
@@ -33,6 +40,15 @@ export interface SystemApi {
    * 于是删过一次就再也录不回来。删掉之后这个号可以重新录。
    */
   removeTestPhone(id: number): Promise<OtpTestPhone[]>;
+
+  // ── 测试身份白名单（TDD-测试身份白名单登录）—— **已接真后端** `/ops/test-identities/**`
+  // 同样都回整份列表（启用上限 10 条），外加服务器总开关的状态。
+  listTestIdentities(): Promise<TestIdentityList>;
+  /** 加一条或改备注（按 类型 + 规范化后的值 认）。格式不对 10400，满 10 条 10462 */
+  saveTestIdentity(v: Pick<TestIdentity, "identityType" | "identityValue"> & { remark?: string }): Promise<TestIdentityList>;
+  setTestIdentityEnabled(id: number, enabled: boolean): Promise<TestIdentityList>;
+  /** 物理删，删掉之后可以重新加 */
+  removeTestIdentity(id: number): Promise<TestIdentityList>;
 
   // ── 授权码字典（TDD-一期主数据收敛 阶段二）—— **已接真后端** `/ops/auth-codes/**`
 
@@ -59,6 +75,11 @@ export interface SystemApi {
   setServiceScopeEnabled(scope: string, enabled: boolean, reason: string): Promise<ServiceScopeConfig[]>;
 
   // ── 行业主数据（P-17.1 / ADR-010）—— **已接真后端** `/ops/industries/**`
+
+  /** 门店行业配置全量，含停用项；与支付行业分开。 */
+  listStoreIndustries(): Promise<StoreIndustry[]>;
+  /** expectedVersion=null 新建；编辑使用当前 version，冲突不覆盖。 */
+  saveStoreIndustry(v: SaveStoreIndustry): Promise<StoreIndustry>;
 
   listIndustries(): Promise<Industry[]>;
   /**

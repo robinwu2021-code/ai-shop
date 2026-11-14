@@ -1,5 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.common.Phones;
+import ai.neargo.shop.commercebridge.MemberQueryScopeAuthority;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import org.springframework.context.annotation.Profile;
@@ -55,11 +58,17 @@ public class BizMemberController {
     private final ai.neargo.shop.member.service.MemberSegmentService segmentService;
     private final MemberReachService reachService;
     private final MemberAudienceService audienceService;
+    private final MerchantQueryPort merchantQuery;
+    private final MemberQueryScopeAuthority queryScope;
 
     public BizMemberController(MemberService memberService, MemberTagService tagService,
                                ai.neargo.shop.member.service.MemberSegmentService segmentService,
                                MemberReachService reachService,
-                               MemberAudienceService audienceService) {
+                               MemberAudienceService audienceService,
+                               MerchantQueryPort merchantQuery,
+                               MemberQueryScopeAuthority queryScope) {
+        this.queryScope = queryScope;
+        this.merchantQuery = merchantQuery;
         this.segmentService = segmentService;
         this.reachService = reachService;
         this.audienceService = audienceService;
@@ -86,12 +95,14 @@ public class BizMemberController {
                                       @RequestParam(required = false) Long lastOrderAfter,
                                       @RequestParam(required = false) Long spentMin,
                                       @RequestParam(required = false) Long spentMax,
+                                      @RequestParam(required = false) Integer idleDays,
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "20") long size) {
         return noScope(() -> {
+            queryScope.require(storeNo);
             return memberService.list(BizContext.requireMerchantNo(),
                     new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
-                            lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size));
+                            lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size, null, null, idleDays));
         });
     }
 
@@ -100,6 +111,7 @@ public class BizMemberController {
     @GetMapping("/biz/members/stats")
     public MemberStatsVO stats(@RequestParam(required = false) String storeNo) {
         return noScope(() -> {
+            queryScope.require(storeNo);
             return memberService.stats(BizContext.requireMerchantNo(), storeNo);
         });
     }
@@ -130,6 +142,8 @@ public class BizMemberController {
     public MemberVO enroll(@jakarta.validation.Valid @RequestBody EnrollReq req) {
         return noScope(() -> {
             BizContext ctx = BizContext.current();
+            String store = req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo();
+            requireMemberPhone(req.phone(), store);
             var m = memberService.enroll(BizContext.requireMerchantNo(), req.phone(), req.remark(),
                     req.tagNos(), req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo(),
                     SecurityUtils.currentUserNo());
@@ -342,6 +356,8 @@ public class BizMemberController {
     @PostMapping("/biz/members/tags/batch")
     public BatchTagVO batchTag(@RequestBody BatchTagReq req) {
         return noScope(() -> {
+            if (req.rule() != null && (req.memberNos() == null || req.memberNos().isEmpty()))
+                queryScope.require(req.scopeStoreNo());
             return audienceService.batchTag(BizContext.requireMerchantNo(), req.memberNos(), req.rule(),
                     req.scopeStoreNo(), req.tagNo(), !"REMOVE".equals(req.action()),
                     Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
@@ -419,6 +435,7 @@ public class BizMemberController {
     @PostMapping("/biz/member-segments")
     public SegmentVO saveSegment(@RequestBody SegmentReq req) {
         return noScope(() -> {
+            queryScope.require(req.scopeStoreNo());
             return segmentService.save(BizContext.requireMerchantNo(), req.segmentNo(), req.name(),
                     req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
         });
@@ -442,6 +459,7 @@ public class BizMemberController {
     @PostMapping("/biz/member-segments/preview")
     public MemberVOs.SegmentPreviewVO previewSegment(@RequestBody SegmentReq req) {
         return noScope(() -> {
+            queryScope.require(req.scopeStoreNo());
             return segmentService.preview(BizContext.requireMerchantNo(), req.scopeStoreNo(),
                     req.rule() == null ? emptyRule() : req.rule());
         });
@@ -458,10 +476,23 @@ public class BizMemberController {
     public record SegmentReq(String segmentNo, String name, String scopeStoreNo, MemberQuery rule) {
     }
 
-    public record EnrollReq(@jakarta.validation.constraints.Pattern(
-                                    regexp = ai.neargo.shop.common.Phones.CN_MOBILE,
-                                    message = ai.neargo.shop.common.Phones.MESSAGE) String phone,
-                            String remark, List<String> tagNos, String storeNo) {
+    /**
+     * 按门店市场校验会员手机号（商户App服务端能力清单 P0）：大陆仍是 11 位号段规则，
+     * 其它市场用国际宽判据。此前写在注解上只认大陆号，台湾门店建不了会员。
+     * 空号码不在这里拦 —— 与原注解一致（{@code @Pattern} 放行 null），交给服务层判。
+     */
+    private void requireMemberPhone(String phone, String storeNo) {
+        if (phone == null) {
+            return;
+        }
+        String market = storeNo == null ? null
+                : merchantQuery.storeProfileOf(storeNo).map(MerchantQueryPort.StoreProfile::market).orElse(null);
+        if (!Phones.valid(phone, market)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    public record EnrollReq(String phone, String remark, List<String> tagNos, String storeNo) {
     }
 
     public record PatchReq(String remark, String status) {

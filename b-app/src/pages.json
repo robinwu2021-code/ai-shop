@@ -596,6 +596,54 @@
       }
     },
     {
+      "path": "pages/pay-collect/index",
+      "style": {
+        "navigationBarTitleText": "代客收款"
+      }
+    },
+    {
+      "path": "pages/pay-flow/index",
+      "style": {
+        "navigationBarTitleText": "收款流水"
+      }
+    },
+    {
+      "path": "pages/pay-qrcodes/index",
+      "style": {
+        "navigationBarTitleText": "收款码"
+      }
+    },
+    {
+      "path": "pages/pay-grants/index",
+      "style": {
+        "navigationBarTitleText": "授权第三方"
+      }
+    },
+    {
+      "path": "pages/biz-mall/index",
+      "style": {
+        "navigationBarTitleText": "平台商城"
+      }
+    },
+    {
+      "path": "pages/biz-mall-checkout/index",
+      "style": {
+        "navigationBarTitleText": "确认商城订单"
+      }
+    },
+    {
+      "path": "pages/biz-mall-orders/index",
+      "style": {
+        "navigationBarTitleText": "商城订单"
+      }
+    },
+    {
+      "path": "pages/biz-mall-order/index",
+      "style": {
+        "navigationBarTitleText": "商城订单详情"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",
@@ -923,8 +971,12 @@
       "path": "pages/stock-sync-records/index",
       "style": {
         "navigationBarTitleText": "库存同步记录",
-        "app-plus": { "navigationStyle": "custom" },
-        "h5": { "navigationStyle": "custom" }
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
@@ -1058,7 +1110,182 @@
           "navigationStyle": "custom"
         }
       }
-    }
+    },
+    {
+      "path": "pages/stored-value/index",
+      "style": {
+        "navigationBarTitleText": "储值管理",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-plan-edit/index",
+      "style": {
+        "navigationBarTitleText": "新建储值方案",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-plan-detail/index",
+      "style": {
+        "navigationBarTitleText": "储值方案详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-account/index",
+      "style": {
+        "navigationBarTitleText": "账户详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-record/index",
+      "style": {
+        "navigationBarTitleText": "收支详情",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-recharge/index",
+      "style": {
+        "navigationBarTitleText": "办理储值",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/management/index",
+      "style": {
+        "navigationBarTitleText": "经营管理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-list/index",
+      "style": {
+        "navigationBarTitleText": "连锁管理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-edit/index",
+      "style": {
+        "navigationBarTitleText": "连锁资料",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-detail/index",
+      "style": {
+        "navigationBarTitleText": "连锁详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/management-resources/index",
+      "style": {
+        "navigationBarTitleText": "经营资源",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/store-brand/index",
+      "style": {
+        "navigationBarTitleText": "所属连锁",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/management-grants/index",
+      "style": {
+        "navigationBarTitleText": "资源授权",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/brand-change/index",
+      "style": {
+        "navigationBarTitleText": "连锁变更",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/stored-value-issuer/index",
+      "style": {
+        "navigationBarTitleText": "储值发行设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {"path": "pages/stored-value-summary/index", "style": {"navigationBarTitleText": "储值汇总", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-settlement/index", "style": {"navigationBarTitleText": "储值结算", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-settlement-detail/index", "style": {"navigationBarTitleText": "结算账单", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-policy/index", "style": {"navigationBarTitleText": "储值管控", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-approval/index", "style": {"navigationBarTitleText": "储值活动审批", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-activity/index", "style": {"navigationBarTitleText": "本店储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-activity-edit/index", "style": {"navigationBarTitleText": "储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}}
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

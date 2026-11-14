@@ -35,7 +35,18 @@ class PointsPolicyReachesPayTest {
   @Autowired PointTypeService types;
   @Autowired PointsReadStore read;
 
-  @BeforeAll void schema() { PointsPostingDatabaseTest.initializeSchema(data); }
+  @BeforeAll void schema() throws java.sql.SQLException {
+    PointsPostingDatabaseTest.initializeSchema(data);
+    // The configuration mapper uses the current named point-type contract.
+    try (var connection = data.getConnection();
+         var columns = connection.getMetaData().getColumns(connection.getCatalog(), null, "pts_point_type", "name")) {
+      if (!columns.next()) {
+        new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+            new org.springframework.core.io.ClassPathResource("db/migration/V537__points_type_name_unique.sql"))
+            .execute(data);
+      }
+    }
+  }
   @AfterEach void clear() { SecurityContextHolder.clearContext(); }
 
   @Test void opsChangeReachesPayDomain() {

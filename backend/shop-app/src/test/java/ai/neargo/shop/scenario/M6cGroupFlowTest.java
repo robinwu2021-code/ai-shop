@@ -59,9 +59,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("★ 选定即锁价：之后商家改价，已锁的价格不变")
     void chosenQuoteLocksPrice() throws Exception {
-        String owner = login("12900129001");
+        String owner = login("18900129001");
         String requestNo = createRequest(owner, "求团：儿童学步车");
-        String biz = loginAsOwnerOf("M0001", "12900129002");
+        String biz = loginAsOwnerOf("M0001", "18900129002");
 
         String quoteNo = quote(biz, requestNo, 19900L, 5, 7);
         choose(owner, requestNo, quoteNo);
@@ -78,9 +78,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("★★ 锁价后：`/quote` 拒、`/revise` 放 —— **两个入口口径不同是有意的**")
     void quoteAndReviseDifferAfterLock() throws Exception {
-        String owner = login("12900129021");
+        String owner = login("18900129021");
         String requestNo = createRequest(owner, "求团：折叠梯");
-        String biz = loginAsOwnerOf("M0001", "12900129022");
+        String biz = loginAsOwnerOf("M0001", "18900129022");
         String quoteNo = quote(biz, requestNo, 8800L, 3, 7);
         choose(owner, requestNo, quoteNo);
 
@@ -108,9 +108,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("★ 改价必须留痕并公示，涨价单独标记")
     void priceRevisionIsPublic() throws Exception {
-        String owner = login("12900129003");
+        String owner = login("18900129003");
         String requestNo = createRequest(owner, "求团：折叠桌");
-        String biz = loginAsOwnerOf("M0001", "12900129004");
+        String biz = loginAsOwnerOf("M0001", "18900129004");
 
         String quoteNo = quote(biz, requestNo, 10000L, 3, 7);
         revise(biz, quoteNo, 12000L);   // 涨价
@@ -134,9 +134,9 @@ class M6cGroupFlowTest {
     void breachCountIsShownOnQuote() throws Exception {
         setBreachCount("M0002", 2);
         try {
-            String owner = login("12900129005");
+            String owner = login("18900129005");
             String requestNo = createRequest(owner, "求团：米袋");
-            String biz = loginAsOwnerOf("M0002", "12900129006");
+            String biz = loginAsOwnerOf("M0002", "18900129006");
             quote(biz, requestNo, 5000L, 2, 7);
 
             JsonNode quotes = quotes(owner, requestNo);
@@ -159,11 +159,11 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("发起求团 → 多商家报价 → 报价对比")
     void createRequestAndCollectQuotes() throws Exception {
-        String owner = login("12900129010");
+        String owner = login("18900129010");
         String requestNo = createRequest(owner, "求团：加厚垃圾袋");
 
-        quote(loginAsOwnerOf("M0001", "12900129011"), requestNo, 3000L, 10, 7);
-        quote(loginAsOwnerOf("M0002", "12900129012"), requestNo, 2800L, 20, 7);
+        quote(loginAsOwnerOf("M0001", "18900129011"), requestNo, 3000L, 10, 7);
+        quote(loginAsOwnerOf("M0002", "18900129012"), requestNo, 2800L, 20, 7);
 
         JsonNode data = requestDetail(owner, requestNo);
         assertThat(data.get("status").asString()).isEqualTo("QUOTED");
@@ -185,9 +185,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("+1 是**意向不是订单**：计数变化，但不产生任何交易")
     void interestIsIntentNotOrder() throws Exception {
-        String owner = login("12900129013");
+        String owner = login("18900129013");
         String requestNo = createRequest(owner, "求团：床垫");
-        String neighbor = login("12900129014");
+        String neighbor = login("18900129014");
 
         mvc().perform(post("/mp/group-request/" + requestNo + "/interest")
                         .header("Authorization", "Bearer " + neighbor))
@@ -209,11 +209,11 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("只有发起人能选定报价（ownerId 是团实例上的字段，不是身份）")
     void onlyOwnerCanChoose() throws Exception {
-        String owner = login("12900129015");
+        String owner = login("18900129015");
         String requestNo = createRequest(owner, "求团：校服");
-        String quoteNo = quote(loginAsOwnerOf("M0001", "12900129016"), requestNo, 8000L, 5, 7);
+        String quoteNo = quote(loginAsOwnerOf("M0001", "18900129016"), requestNo, 8000L, 5, 7);
 
-        String stranger = login("12900129017");
+        String stranger = login("18900129017");
         mvc().perform(post("/mp/group-request/" + requestNo + "/choose")
                         .header("Authorization", "Bearer " + stranger)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -224,10 +224,10 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("选定后不能再改选（锁价即定局，要换得先关单重发）")
     void cannotChooseTwice() throws Exception {
-        String owner = login("12900129018");
+        String owner = login("18900129018");
         String requestNo = createRequest(owner, "求团：晾衣架");
-        String q1 = quote(loginAsOwnerOf("M0001", "12900129019"), requestNo, 5000L, 3, 7);
-        String q2 = quote(loginAsOwnerOf("M0002", "12900129020"), requestNo, 4500L, 3, 7);
+        String q1 = quote(loginAsOwnerOf("M0001", "18900129019"), requestNo, 5000L, 3, 7);
+        String q2 = quote(loginAsOwnerOf("M0002", "18900129020"), requestNo, 4500L, 3, 7);
 
         choose(owner, requestNo, q1);
         mvc().perform(post("/mp/group-request/" + requestNo + "/choose")
@@ -240,12 +240,12 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("已锁价的需求单不接受新报价")
     void lockedRequestRejectsNewQuote() throws Exception {
-        String owner = login("12900129021");
+        String owner = login("18900129021");
         String requestNo = createRequest(owner, "求团：收纳箱");
-        String quoteNo = quote(loginAsOwnerOf("M0001", "12900129022"), requestNo, 3000L, 5, 7);
+        String quoteNo = quote(loginAsOwnerOf("M0001", "18900129022"), requestNo, 3000L, 5, 7);
         choose(owner, requestNo, quoteNo);
 
-        String late = loginAsOwnerOf("M0002", "12900129023");
+        String late = loginAsOwnerOf("M0002", "18900129023");
         mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
                         .header("Authorization", "Bearer " + late)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -256,9 +256,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("同一商家对同一需求单只有一条报价（改价是改它，不是新开一条）")
     void oneQuotePerMerchantPerRequest() throws Exception {
-        String owner = login("12900129024");
+        String owner = login("18900129024");
         String requestNo = createRequest(owner, "求团：保温杯");
-        String biz = loginAsOwnerOf("M0001", "12900129025");
+        String biz = loginAsOwnerOf("M0001", "18900129025");
 
         String first = quote(biz, requestNo, 6000L, 2, 7);
         String second = quote(biz, requestNo, 5500L, 2, 7);
@@ -273,9 +273,9 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("商家能看到可报价的需求单池")
     void merchantSeesRequestPool() throws Exception {
-        String owner = login("12900129026");
+        String owner = login("18900129026");
         createRequest(owner, "求团：拖把");
-        String biz = loginAsOwnerOf("M0001", "12900129027");
+        String biz = loginAsOwnerOf("M0001", "18900129027");
 
         mvc().perform(get("/biz/group-request/pool").header("Authorization", "Bearer " + biz))
                 .andExpect(status().isOk())
@@ -285,10 +285,10 @@ class M6cGroupFlowTest {
     @Test
     @DisplayName("非商家不能报价")
     void normalUserCannotQuote() throws Exception {
-        String owner = login("12900129028");
+        String owner = login("18900129028");
         String requestNo = createRequest(owner, "求团：雨伞");
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String normal = TestLogin.merchantOwner(mvc(), json, otpStore, "12900129029");
+        String normal = TestLogin.merchantOwner(mvc(), json, otpStore, "18900129029");
 
         mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
                         .header("Authorization", "Bearer " + normal)
@@ -309,7 +309,7 @@ class M6cGroupFlowTest {
          * 旧接口若还静默落成员：没付钱的人会让「还差 N 人」变少，团到期时也没有钱可退 ——
          * 那正是这次要堵上的缺口。付款落成员的正向路径见 GroupOrderFlowTest。
          */
-        String a = login("12900129030");
+        String a = login("18900129030");
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
                 .andExpect(jsonPath("$.code").value(40033));
         mvc().perform(get("/mp/group-buy/" + groupNo))

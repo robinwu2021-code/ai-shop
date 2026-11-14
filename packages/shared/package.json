@@ -12,5 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gen:skins": "node scripts/gen-skins.mjs"
+  },
+  "dependencies": {
+    "qrcode-generator": "^2.0.4"
   }
 }

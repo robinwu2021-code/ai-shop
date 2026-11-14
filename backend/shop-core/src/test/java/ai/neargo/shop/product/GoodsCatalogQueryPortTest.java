@@ -13,6 +13,9 @@ import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.port.GoodsCatalogQueryPortImpl;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.PlatformTransactionManager;
+import ai.neargo.shop.spi.media.MediaReferenceQueryPort;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -30,7 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 class GoodsCatalogQueryPortTest {
-    private void run(java.util.function.BiConsumer<GoodsCatalogQueryPort,JdbcTemplate> action) {
+    void run(java.util.function.BiConsumer<GoodsCatalogQueryPort,JdbcTemplate> action) {
         new ApplicationContextRunner().withUserConfiguration(Fixture.class)
                 .withPropertyValues("spring.datasource.url=jdbc:h2:mem:catalog_"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1",
                         "spring.datasource.username=sa","spring.datasource.password=")
@@ -145,6 +148,10 @@ class GoodsCatalogQueryPortTest {
         @Bean MapperFactoryBean<SkuMapper> skus(SqlSessionTemplate session) {
             var m=new MapperFactoryBean<>(SkuMapper.class);m.setSqlSessionTemplate(session);return m;
         }
-        @Bean GoodsCatalogQueryPort catalog(GoodsMapper goods,SkuMapper skus) { return new GoodsCatalogQueryPortImpl(goods,skus); }
+        @Bean GoodsCatalogQueryPort catalog(GoodsMapper goods, SkuMapper skus,
+                ObjectProvider<MediaReferenceQueryPort> media,
+                PlatformTransactionManager manager) {
+            return new GoodsCatalogQueryPortImpl(goods, skus, media, manager);
+        }
     }
 }

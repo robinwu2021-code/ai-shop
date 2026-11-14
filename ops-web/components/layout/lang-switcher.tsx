@@ -8,7 +8,8 @@ import { useLocaleStore, type Locale } from "@/lib/stores/locale";
 import { cn } from "@/lib/utils";
 
 const LABEL: Record<Locale, { short: string; label: string }> = {
-  zh: { short: "中", label: "中文" },
+  zh: { short: "简", label: "简体中文" },
+  "zh-TW": { short: "繁", label: "繁體中文" },
   en: { short: "EN", label: "English" },
 };
 

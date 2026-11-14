@@ -1,0 +1,9 @@
+{
+  "commit": "741b38178f01a6f4159fc618d57a45d75a3601e0",
+  "parent": "b34e31ba4f10bc75088ccd44d1eef4ef0c5a4ac1",
+  "tree": "d25c4e58cb7b888bbb900b320c82d4a834183d47",
+  "files": 98,
+  "indexEmpty": true,
+  "pushed": false,
+  "commitSummary": "[codex/beauty-foundation 741b38178] feat(checkout): persist original payments and offline receipts"
+}

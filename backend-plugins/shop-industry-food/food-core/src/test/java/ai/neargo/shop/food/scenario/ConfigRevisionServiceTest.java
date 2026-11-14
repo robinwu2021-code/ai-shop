@@ -69,8 +69,6 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                 + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
                 + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
                 + "deleted INT DEFAULT 0,goods_no VARCHAR(32),group_no VARCHAR(32),sort_no INT)");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MODIFIER_CHANGED",
-                "PLATFORM:FOOD_OPTION_GROUP_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
         return f;
     }
     void run(java.util.function.BiConsumer<AssertableApplicationContext,Fixture> action) {
@@ -83,6 +81,25 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                 new CreateModifierReq("珍珠", "ADDON", "SKU", List.of()), key).configNo();
     }
     PublishConfigReq request(long version) { return new PublishConfigReq(version, NOW, null); }
+
+    @Test void componentModePublicationFreezesMembersAndAuthority() {
+        run((c, f) -> {
+            var leaf = addon(c, "leaf-component-gate");
+            c.getBean(ConfigRevisionService.class).publishModifier(
+                    "E", "A", leaf, "actor", request(0), "publish-leaf-component");
+            var combo = c.getBean(ModifierService.class).createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", List.of(
+                            new ModifierComponentInput(leaf, BigDecimal.ONE))), "combo-component-gate");
+            f.sql().update("UPDATE fnb_modifier SET inventory_mode='COMPONENTS' WHERE modifier_no=?",
+                    combo.configNo());
+            var published = c.getBean(ConfigRevisionService.class).publishModifier(
+                    "E", "A", combo.configNo(), "actor", request(0), "component-mode").publication();
+            assertThat(c.getBean(ConfigRevisionService.class).getRevision("E", "A", published.revisionNo())
+                    .definitionSnapshot()).contains("COMPONENTS", leaf);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class))
+                    .isEqualTo(2);
+        });
+    }
 
     @Test void publicationIsAppendOnlyAndReplayKeepsOriginalReceiptAfterDraftEdits() {
         run((c,f) -> {

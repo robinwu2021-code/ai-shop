@@ -1,0 +1,30 @@
+{
+ "checkedAt": "2026-11-11",
+ "script": "deploy/ume/nearshop/verify-public.py",
+ "verifiedChecks": 46,
+ "tlsVerification": true,
+ "liveBuilds": {
+  "nearshop.umeshop.ai": {
+   "/ops-shop": "DM-8UKVj-zfpIiCJBa5uI",
+   "/oms": "EaZI3pqANV_G9wvv3TR6M"
+  },
+  "twpay.umeshop.ai": {
+   "/ops-shop": "DM-8UKVj-zfpIiCJBa5uI",
+   "/oms": "EaZI3pqANV_G9wvv3TR6M"
+  }
+ },
+ "menuLabelsInLiveBundles": {
+  "/ops-shop": [
+   "内容客服",
+   "会员营销",
+   "服务分类",
+   "限付类目",
+   "保证金"
+  ],
+  "/oms": [
+   "进件审核",
+   "支付订单"
+  ]
+ },
+ "notCovered": "真实账号登录后的菜单/接口回读（V657 用部署工作站上的 Ed25519 测试票据完成；本次未取用该私钥）"
+}

@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.migration.service.impl;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.pay.migration.service.EntitlementMigrationPlanService;
 import ai.neargo.shop.pay.migration.service.LegacyCouponHistoricalUsageProjector;
 import ai.neargo.shop.pay.migration.service.LegacyCouponMigrationImportService;
@@ -27,6 +29,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Source proof lookup finishes before the atomic pay import. Accepted source commitments may always finish. */
 @Service("legacyCouponMigrationImportService")
 public class LegacyCouponMigrationImportServiceImpl implements LegacyCouponMigrationImportService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntitlementMigrationPlanService plans;
     private final LegacyMigrationEvidenceReader evidence;
     private final EntitlementCommandDeduplicator commands;
@@ -44,7 +48,7 @@ public class LegacyCouponMigrationImportServiceImpl implements LegacyCouponMigra
         var replay=commands.replay(scope,LegacyCouponMigrationImportWriter.OPERATION,key,command,ImportView.class);
         if(replay.isPresent()) return replay.get();
         var accepted=find(scope,no);
-        if(accepted!=null) return LegacyCouponMigrationImportWriter.view(accepted);
+        if(accepted!=null) return LegacyCouponMigrationImportWriter.view(accepted).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_IMPORT, accepted.getTenantNo(), accepted.getImportNo()));
         var row=plans.owned(scope,no);var plan=plans.decode(row);
         var stages=new ArrayList<EntMigrationStage>();
         for(var ref:plan.sources()) {
@@ -74,8 +78,12 @@ public class LegacyCouponMigrationImportServiceImpl implements LegacyCouponMigra
     }
     public ImportView get(CatalogScope scope,String no) {
         outside(scope);ContractChecks.id(no);
-        var row=find(scope,no);
-        if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);return LegacyCouponMigrationImportWriter.view(row);
+        String sourceNo = documents.internal(DocumentType.ENTITLEMENT_MIGRATION_IMPORT, scope.tenantNo(), no);
+        // The legacy endpoint accepts a planNo. A resolved MGI source identifies the import receipt.
+        var row = no.equals(sourceNo) ? find(scope, no) : imports.selectOne(Wrappers.<EntMigrationImport>lambdaQuery()
+                .eq(EntMigrationImport::getTenantNo, scope.tenantNo())
+                .eq(EntMigrationImport::getEntityNo, scope.entityNo()).eq(EntMigrationImport::getImportNo, sourceNo));
+        if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);return LegacyCouponMigrationImportWriter.view(row).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_IMPORT, row.getTenantNo(), row.getImportNo()));
     }
     private EntMigrationImport find(CatalogScope scope,String no) {
         return imports.selectOne(Wrappers.<EntMigrationImport>lambdaQuery().eq(EntMigrationImport::getTenantNo,scope.tenantNo())

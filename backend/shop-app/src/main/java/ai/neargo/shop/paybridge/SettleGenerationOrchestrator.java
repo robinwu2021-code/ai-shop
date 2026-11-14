@@ -62,8 +62,9 @@ public class SettleGenerationOrchestrator {
                 /*
                  * 收款商户号**可为空**：没进件的商家也要能出结算单，
                  * 否则那笔账就没人记了 —— 空的表现是「知道该给谁，但打不出去」。
+                 * 按订单的实际支付渠道取（F01 · R01）：支付宝的单不能快照到微信号。
                  */
-                merchants.payMerchantNoOf(src.merchantNo(), src.storeNo()).orElse(null),
+                merchants.payMerchantNoOf(src.merchantNo(), src.storeNo(), src.payChannel()).orElse(null),
                 merchants.legalFormOf(src.merchantNo()),
                 merchants.fundsModeOf(src.merchantNo()),
                 merchants.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel()),

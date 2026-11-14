@@ -2,6 +2,12 @@ package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.ReservationContracts.ArriveReq;
+import ai.neargo.shop.food.dto.ReservationContracts.ChangeReq;
+import ai.neargo.shop.food.dto.ReservationContracts.CreateReq;
+import ai.neargo.shop.food.dto.ReservationContracts.DetailVO;
+import ai.neargo.shop.food.dto.ReservationContracts.TransitionReq;
+
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.ReservationVO;
@@ -40,5 +46,29 @@ public class InternalReservationController {
             default -> 500;
         };
         return ResponseEntity.status(status).build();
+    }
+    @PostMapping(ReservationInternalApi.GET_PATH)
+    public DetailVO get(@Valid @RequestBody ReservationInternalApi.NumberLookup c) {
+        return service.get(c.entityNo(),c.storeNo(),c.reservationNo());
+    }
+    @PostMapping(ReservationInternalApi.CREATE_PATH)
+    public DetailVO create(@Valid @RequestBody ReservationInternalApi.CreateCommand c) {
+        return service.create(c.entityNo(),c.storeNo(),c.actorNo(),c.request(),c.key());
+    }
+    @PostMapping(ReservationInternalApi.CHANGE_PATH)
+    public DetailVO change(@Valid @RequestBody ReservationInternalApi.ChangeCommand c) {
+        return service.change(c.entityNo(),c.storeNo(),c.actorNo(),c.reservationNo(),c.request(),c.key());
+    }
+    @PostMapping(ReservationInternalApi.CANCEL_PATH)
+    public DetailVO cancel(@Valid @RequestBody ReservationInternalApi.TransitionCommand c) {
+        return service.cancel(c.entityNo(),c.storeNo(),c.actorNo(),c.reservationNo(),c.request(),c.key());
+    }
+    @PostMapping(ReservationInternalApi.NO_SHOW_PATH)
+    public DetailVO noShow(@Valid @RequestBody ReservationInternalApi.TransitionCommand c) {
+        return service.noShow(c.entityNo(),c.storeNo(),c.actorNo(),c.reservationNo(),c.request(),c.key());
+    }
+    @PostMapping(ReservationInternalApi.ARRIVE_PATH)
+    public DetailVO arrive(@Valid @RequestBody ReservationInternalApi.ArriveCommand c) {
+        return service.arrive(c.entityNo(),c.storeNo(),c.actorNo(),c.reservationNo(),c.request(),c.key());
     }
 }

@@ -1,9 +1,12 @@
 package ai.neargo.shop.pay.svc;
 
 import ai.neargo.shop.spi.entitlement.EntitlementSaleReservationPort;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
+import ai.neargo.shop.pay.svc.client.port.CoreBrandCouponSourcePortImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementSaleSourcePort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementGrantSourcePortImpl;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,12 +76,79 @@ class PayApplicationBootTest {
     }
 
     @Test
+    @DisplayName("★★★ 审计填充用仓库自有那份 —— 框架那份填 regionId / Instant，与实体字段对不上")
+    void auditFillIsTheRepositoryOne() {
+        /*
+         * neargo-common-data 与 security 走同一条路进来（存储层 → shop-base-auth），
+         * 它的 DataAutoConfiguration 带一个 @ConditionalOnMissingBean 的 MetaObjectHandler。
+         * shop-app 在 application.yml 里排掉了它；这个进程只扫 ai.neargo.shop.pay，
+         * 若也没排，谁来填 createdAt / createdBy / tenantNo 就取决于有没有别的 bean 先占位 ——
+         * 框架那份写的是 regionId 与 Instant，实体上一个都没有，结果是这些列被写成 null。
+         */
+        assertThat(ctx.getBeanNamesForType(ai.neargo.common.data.DataAutoConfiguration.class))
+                .as("框架的数据自动配置装上了 —— 主应用排掉了它，独立形态必须一致")
+                .isEmpty();
+        assertThat(ctx.getBeansOfType(com.baomidou.mybatisplus.core.handlers.MetaObjectHandler.class).values())
+                .as("审计填充器必须恰好一个，且是 ai.neargo.shop.common 那份")
+                .singleElement()
+                .isInstanceOf(ai.neargo.shop.common.AuditMetaObjectHandler.class);
+    }
+
+    @Test
+    @DisplayName("★★★ 这个进程的每个 HTTP 映射都在 /internal/** 或五类直连调用方的入口前缀下 —— 按运行时解析后的路径判")
+    void onlyInternalRoutes() {
+        /*
+         * TDD-支付服务-I0地基 AC5（修 R27）。端点路径全写成 PayInternalPaths 的常量，源码里找不到字面量，
+         * 旧闸门按「文件里含 /internal 字样」放行 —— 一个注释就能骗过它。这里读 Spring 实际注册的路径。
+         * 开发计划 M7.1（D1）起，pay-portal 的对外入口（开放 API、POS、渠道回调、收银台）也装进这个进程；
+         * 商家端 / 运营端的支付接口不在 —— 它们只调业务服务（pay-guard TDD §2.7）。
+         */
+        var mapping = ctx.getBean("requestMappingHandlerMapping",
+                org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.class);
+        java.util.List<String> paths = mapping.getHandlerMethods().entrySet().stream()
+                // Spring Boot 自带的 /error（BasicErrorController）不是我们写的端点
+                .filter(e -> !e.getValue().getBeanType().getName().startsWith("org.springframework.boot."))
+                .flatMap(e -> e.getKey().getPatternValues().stream())
+                .toList();
+        assertThat(paths).as("一条映射都没读到 —— 那下面的断言恒真").isNotEmpty();
+        java.util.List<String> allowed = java.util.List.of("/internal", PortalFace.OPEN.prefix(), PortalFace.TERMINAL.prefix(),
+                PortalFace.CALLBACK.prefix(), PortalFace.CHECKOUT.prefix());
+        assertThat(paths)
+                .as("pay-svc 出现了入口前缀之外的路径（商家端 / 运营端的 /biz/pay、/pay-ops 不该在这里）")
+                .allMatch(p -> allowed.stream().anyMatch(a -> p.equals(a) || p.startsWith(a + "/")));
+        assertThat(paths).as("对外入口真的装上了").anyMatch(p -> p.startsWith(PortalFace.OPEN.prefix() + "/"))
+                .anyMatch(p -> p.startsWith(PortalFace.TERMINAL.prefix() + "/"))
+                .anyMatch(p -> p.startsWith(PortalFace.CALLBACK.prefix() + "/"));
+    }
+
+    @Test
     @DisplayName("★★ 内部端点在 —— 它是这个进程唯一对外说话的方式")
     void internalEndpointPresent() {
         assertThat(ctx.getBeanNamesForType(InternalPayEndpoint.class))
                 .as("内部端点没装上，这个进程起来了也没人能和它说话")
                 .hasSize(1);
     }
+    @Test
+    @DisplayName("★★★ 装齐五个守卫（开放 API、POS、渠道回调、收银台、内部）并各自挂到前缀上；商家端 / 运营端的守卫不在")
+    void fiveGuardsAreWired() {
+        /*
+         * 开发计划 M7.1（D1）：shop.pay.guard.entries=OPEN,TERMINAL,CALLBACK,CHECKOUT,INTERNAL。
+         * 这个进程没有 Spring Security，守卫是按前缀注册的 servlet filter（PayGuardFilterConfig / InternalGuardConfig）。
+         */
+        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.EntryGuard.class).values().stream()
+                .map(ai.neargo.shop.pay.api.guard.core.EntryGuard::entry).toList())
+                .containsExactlyInAnyOrder(PortalFace.OPEN, PortalFace.TERMINAL, PortalFace.CALLBACK, PortalFace.CHECKOUT,
+                        PortalFace.INTERNAL);
+        assertThat(ctx.containsBean("internalGuardFilter")).as("内部入口的管线没挂到容器上").isTrue();
+        assertThat(java.util.List.of("openGuardFilter", "terminalGuardFilter", "callbackGuardFilter", "checkoutGuardFilter"))
+                .allMatch(ctx::containsBean);
+    }
+
+    @Test void brandCouponReverseSourceHasExactlyOneRealStandaloneClient() {
+        assertThat(ctx.getBeansOfType(BrandCouponSourcePort.class)).hasSize(1);
+        assertThat(ctx.getBean(BrandCouponSourcePort.class)).isInstanceOf(CoreBrandCouponSourcePortImpl.class);
+    }
+
     @Test void saleCapacityAndReverseSourceHaveExactlyOneStandaloneOwner() {
         assertThat(ctx.getBeansOfType(EntitlementSaleReservationPort.class)).hasSize(1);
         assertThat(ctx.getBeansOfType(EntitlementSaleSourcePort.class)).hasSize(1);

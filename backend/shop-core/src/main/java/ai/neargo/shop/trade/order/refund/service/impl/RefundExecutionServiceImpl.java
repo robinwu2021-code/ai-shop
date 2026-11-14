@@ -1,17 +1,16 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.RefundEvidence;
-import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.order.mapper.PaymentMapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
-import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
-import ai.neargo.shop.spi.points.PointsRefundPort;
+import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
 import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.model.LedgerResult;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
@@ -19,8 +18,12 @@ import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.refund.port.impl.MybatisRefundLedgerStore;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
 import ai.neargo.shop.trade.order.refund.service.RefundLedger;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
@@ -78,6 +81,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             require(as!=null && !as.isBlank() && plan!=null,"REFUND_EXECUTION_INPUT_INVALID");
             var sub=store.lockSub(plan.subOrderNo());
             require(sub!=null,"REFUND_EXECUTION_SOURCE_UNKNOWN");
+            require(!"MANUAL_OFFLINE".equals(sub.getAdmissionKind()),"MANUAL_SERVICE_FINANCIAL_CONFLICT");
             var prior=store.lockExecution(as);
             if (prior!=null) {
                 require(snapshot(prior).plan().equals(plan),"REFUND_EXECUTION_INPUT_CONFLICT");
@@ -311,7 +315,10 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     private Map<String,Object> locked(String as) {
         var initial=store.execution(as);
         require(initial!=null,"REFUND_EXECUTION_UNKNOWN");
-        store.lockSub((String)initial.get("sub_order_no"));
+        var child = store.lockSub((String) initial.get("sub_order_no"));
+        require(
+                child != null && !"MANUAL_OFFLINE".equals(child.getAdmissionKind()),
+                "MANUAL_SERVICE_FINANCIAL_CONFLICT");
         return store.lockExecution(as);
     }
     private void change(Map<String,Object> head,String next,String payment,Long net,String result) {

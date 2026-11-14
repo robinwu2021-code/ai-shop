@@ -1,0 +1,624 @@
+{
+  "task": 66,
+  "status": "CODE_ACCEPTED_FORMAL_DEPLOYMENT_PENDING",
+  "productCommit": "c4b8eb3640213b250c852135b21484f8c5f4fa95",
+  "productChangedCount": 85,
+  "reviewedCandidateTree": "1733a82d453fa3fedb422b60ebb3c09092af351f",
+  "reviewR0Sha256": "24b314954972245e422dc4104124a1eb978c7203e212a7abecf90ea674d2165a",
+  "reviewR1Sha256": "5109672ff3346343dcd77e3cc8894a633e3d5ed48a26603066a7a97184af2277",
+  "spec": "PASS",
+  "quality": "APPROVED",
+  "openCritical": 0,
+  "openImportant": 0,
+  "openMinor": 0,
+  "workerReportSha256": "6a65d63336353cf2260b219ed441d320766a49b324d660966151334eb764f933",
+  "inventorySha256": "45a052e5b27643c878e798576309f1469f441ea6df65220a4052cf73d9335915",
+  "currentNativePins": 455,
+  "nativeEvidence": "18 separate bounded snapshots; actual failures/diagnostics retained, never aggregated into a synthetic suite",
+  "currentCompile": "31 current modules including all5beauty/all5food, offline Java21, BUILD SUCCESS41.072s",
+  "architecture": {
+    "currentRoot": "18/0F0E0skip,46.875sBUILD SUCCESS",
+    "unchangedBeauty": "13/0F0E0skip retained R0",
+    "unchangedFood": "13/0F0E0skip retained R0"
+  },
+  "nativeGateClosed": true,
+  "reviewedProductFiles": [
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V542__shared_manual_order_customer_party.sql",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 15891,
+      "sha256": "91638cf01a977645284f152aede1177223bc97046153aefe48235dd408f813f0"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterOrderPlacementService.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 723,
+      "sha256": "603a6f2288a9240ef42b679f2c9978b5a51416439bb7071129e871077e0e25d2"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterOrderPlan.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 3461,
+      "sha256": "804eaf59ad03ceb623b9b0a05441a43a22db2b17aea9a0a807be1dc56842eb33"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterPurchaseAuthorization.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 1089,
+      "sha256": "e58277345eb6f8db194ea918a73b160e769ec4f9ed9a0aebdeac4677b2b0466b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 42358,
+      "sha256": "18dba60e54748f5cb7e3b2b640e6b779d9aa2bb2506b8cac18f6b3949eed6125"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/CustomerReadScope.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 670,
+      "sha256": "e96ecd867ab47c38468ba4f5cb591ce29ac7362035aa6c95e3382e35d383589d"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/OrderCustomerAccess.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 3878,
+      "sha256": "965a07354810e602add83ec74e991752121b3455d3894d54ff9b157d48c757e2"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/CounterCustomerOwnerBridge.java",
+      "category": "create",
+      "state": "CREATED",
+      "bytes": 9204,
+      "sha256": "b53910219ce2eea24b3480b3e43a3e3077cc598c69b786832b8d88d514816db3"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 5798,
+      "sha256": "ce47978e227b9455df9b1e6dfc985ab5ab5927d4b350a359ac0dd3d57f645555"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCustomerIdentityPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 5307,
+      "sha256": "f2b1e1c8d3b0143e76652d061a8a96a3604951a02480d6127e274ab5bc409721"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteGuestRegistrationPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 9598,
+      "sha256": "0e550e35335a09e1d54e6b28b651dfb647fa7f0e2f7f67cb4bfa4996ae31c108"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 11003,
+      "sha256": "88175ee7f98043607c8ef8b0a09f2b04210b7263db08fa2d3339290278f6248e"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 12089,
+      "sha256": "8069a775fd0d55b2f4f0b6c12dc17088b4e8ce93545a9e2e56aa7a616d432bca"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalCustomerIdentityController.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 7024,
+      "sha256": "f94ae52124b071a31189ed227ee13d24104e507b09cd8e61eaccff839447f426"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalGuestRegistrationController.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 9425,
+      "sha256": "9f0114b08c72bc58510052cfcaf30712cb4af7c1640bfd4b0931dc133f681c48"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalManualServiceAdmissionController.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 10984,
+      "sha256": "4134403842dfd3e88e2beef4d5425a783cf0d8aac9246e03d44a5f287fdbb6ec"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 8079,
+      "sha256": "0eef6dbdaf21e3b0cdb088a10668a6bfa5f9549aff741fc340bc9be2e7909a04"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 23514,
+      "sha256": "92d0cce6d20c04faa38220a8a7659d26a95fc3f386575aa3774bc9266f602476"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/CustomerIdentityInternalApi.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2726,
+      "sha256": "b977aaf33818a8d0eef3a14eee7962377afb3c2bd9e946325fbd0452fe1606a5"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/CustomerIdentityPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1951,
+      "sha256": "bfcb7c03bbcf5665dfd5f7ed0bc146e7b99ba51b9d5d0b2f72a7fd51ceeb6c0f"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/GuestRegistrationInternalApi.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 3675,
+      "sha256": "098b08988877fdba12f60bbe7da546b40e0abd64217d544fafe569ccdbb5b088"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/GuestRegistrationPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 4816,
+      "sha256": "7b39d8272358ee18d1eb6feedb1bfc3b878018bf4c494f850121488d6e784a84"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsQueryPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 12393,
+      "sha256": "d3f2eb8f15838c0c60960633db632e60ac5ea74ba3f2e600936b57f1e9575b9a"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockDispositionContract.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 6266,
+      "sha256": "2e0d9f1c49c713a9598c450a0c5add8733de55b38b1ce4bc6ec1b31ccf9cc7ed"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockDispositionPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 12489,
+      "sha256": "c59d4ef6b3e55f631c838baa579d945e8985fcc4cc693af8bca96d5ab7341abb"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StoreSalesCatalogPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 6317,
+      "sha256": "7896852a8490caf924bad9e538870e18c60ccc5a09aefa848a63aa0f762365e4"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionEvents.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1876,
+      "sha256": "b2f2a9adbd9c32c2428f3b677b9749e7710918b19cdd8b2313550fb1701f8412"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionInternalApi.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 3566,
+      "sha256": "9eb878067958f2cebb188d71334bb351627e6e171f6fd7439fae81048dff1122"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionPort.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 23011,
+      "sha256": "6916c0d1f5e088b42eb041b80e324a1ad074326b83478faabc7e40b0b9386a9e"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 14331,
+      "sha256": "9f6b09eea179d6e27ca0faf42159136a5cf5dce35530ce9ef8c450a5f6bd6adc"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/mapper/MemberGuestRegistrationMapper.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2019,
+      "sha256": "6ef2355a46b06ebeaf61aa7ef41fa8826c1c7c450a73d4a4067a4df4a17228bb"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/port/MemberCustomerIdentityPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 6891,
+      "sha256": "c6bf830b754db5db2b5996a72707b4e079e85d8e60e6977befd8c3b4038a56b2"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/port/MemberGuestRegistrationPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1590,
+      "sha256": "dcd723128b57af12b8d2b6771557ebd8de45733e3ab12305965f2fb0e409b179"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberCodeResolveService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1236,
+      "sha256": "5f4ca6f7b185d225146e97d1d16b99ab87e422b7c7bc5b701dd32a0bc07c3335"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberGuestRegistrationService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1603,
+      "sha256": "2164ac512aafac8a4337e1af61c3d40f97d7ff470c0ed9dca081b2668fd36112"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberCodeResolveServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 12140,
+      "sha256": "553c16c6133b84d615d05b616a770822eb653ac9163fb8f35c4ed5731b4c5a9a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberGuestRegistrationServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 22265,
+      "sha256": "a7a9c58e4b3c3d1064b4daf804be12d28e4aa10ff5a941a85efd61dd7c8b17b7"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/GoodsQueryPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 26997,
+      "sha256": "0124ba379cd909cea9865cca311b9e2aeaea64d259afeb50921f74bd2a60cfa1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/StoreSalesCatalogPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1084,
+      "sha256": "f4789a500edd70f24b6df86a3762566af5b66d5f36bb9de6465fb6d949dc3496"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/service/StockDispositionService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1242,
+      "sha256": "5901c5198e6251e70c5293757b15e655851f0715a7889799157f62ac8be0b607"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/service/StoreSalesCatalogService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 718,
+      "sha256": "10ad6a3225bb22badf5e5376cba4dee173de28e6927801b6ce14c3bff2820789"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/service/impl/StockDispositionServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 20509,
+      "sha256": "689b36d416ea2a847ef31e9a0a084f07d4b92a95fc09d209cec86d3726493a94"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/service/impl/StoreSalesCatalogServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 16337,
+      "sha256": "d9ffb2f21717e3d1caf9c70f80352e93dd29d52ccb487e77e185a178c5a51b54"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 4177,
+      "sha256": "741dd7f641a59829f0d3413a8eafe7bf3280bad17aca3f2b558d3da75655d185"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 48529,
+      "sha256": "9c4b0d95a4b59dd9d2bbec9c0aec6dd5a6618ff2c4d9df74a44cb87647592a92"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizManualServiceAdmissionController.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 7743,
+      "sha256": "05c70d279c74fc8fe9798c2fe27e2f9f030b630f0a748425d38e10c55faace48"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdCheckoutConfirmation.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1860,
+      "sha256": "b3fcc58baa5eeadfcfc4d037f82fa680f2c8783f02cda9730cd6e926ae5a566b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdCheckoutOperation.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2010,
+      "sha256": "40cd29833f0c4da377e48190f332937191631f654d8b53cd65e552cb8b58e1e2"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdManualServiceAdmission.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2111,
+      "sha256": "1d86019946ebd6887bf1e6d4e398f40577ac7b1a14b647f42f082676544abcff"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOrder.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 4463,
+      "sha256": "00eb68cd5d1a6f0e884519d72640dce851962bf8690d3dd1b4f600d7ee1218e2"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 15560,
+      "sha256": "6fb023354665c0fdd5128a38dd5030d14414c4290ceda989b008ecb3ec0c2544"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/job/ManualServiceAdmissionRecoveryJob.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2376,
+      "sha256": "897518abcd9e59a804064d5a9bed008eafb62aff7b2d3e9c09cb2372af7b192b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/entity/OrdCreateIntent.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2221,
+      "sha256": "6886050143c68982d6e430d602390328f9720e00aa0985cad658d584a28c0dcd"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/StoreOrderQueryService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1112,
+      "sha256": "84e146b4656ceb82d153ccf8be1522e88d0a006ac92f3d5758435787d931d9b9"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2706,
+      "sha256": "c913c40c672a3ad3c205171f7955fe9ece685378975ed7207180da88e6efb32b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 19790,
+      "sha256": "768d4233b8ee3ce1d0e6827a9fa626c8b44b8acbb4cf0996be9c7fc00acec7d3"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderCreationRecoveryService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 888,
+      "sha256": "658c926f60b9e309234144715b579dd0171d8e01608c10d1ffe8af04d92adae0"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 23079,
+      "sha256": "ab81f7f00668ae40f5136f08ab91854bb6fbb438c4a29e33a1a94909c2a47664"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/StoreOrderQueryServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2449,
+      "sha256": "82f6fd6c3620a680c3314c2a968810f69a23cdd833c40a4e93b2f71b5f9794b3"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/MybatisStoreOrderReadStore.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 14414,
+      "sha256": "3548a4e8fce38089438746301e2fa08cb1f0c60e5bb7c07e72ef7028b08badfa"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/StoreOrderReadStore.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 687,
+      "sha256": "600188650cae03cc181daf379f10960a5da85c1acd0a2872347a2c5f5386639f"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ManualServicePurchasePolicy.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 8848,
+      "sha256": "f42f4e1b324b4388c0659fd430a306a1528f2de47c600dd65bfd820a3739c68a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/ManualServiceAdmissionPortImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2287,
+      "sha256": "abab7f5e30cba9beae93daf4a2e5f6cc915977fe5f6c0fc52f22a2983833defa"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutOrderWriter.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1731,
+      "sha256": "c6304561ad76d903c7872008857318b58d64b68304a8fee70f3be7a0c61d98b8"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 4049,
+      "sha256": "2a5d09f7bdc856205ae0e46585f0b2774fd3e3c66f34079e15cceb0d53ed1c90"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/ManualServiceAdmissionService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 2985,
+      "sha256": "fca8520ec340c1962bd3fdf8b723f1837a7babd6184b62394da723940e292d33"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 103954,
+      "sha256": "50e7f668b1972c0475c1c3df21d2a052f4f5c22fad1985b88f7bdadfa27ba307"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 67886,
+      "sha256": "74a544334a177c395649031c81da67a728133b2c3e3b8b9a20b4a78a38db4ae1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 294734,
+      "sha256": "8ac0561c20eb1926762082332b545514d932c820cdb6d39c8391341882927a3f"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationDispositionService.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1053,
+      "sha256": "887077d6a411d90a8a6ba8785bdc0f5c34ee8b92f46cbf00f4b33f63d871557c"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationDispositionServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 27380,
+      "sha256": "e75f93be19011723f3dea4274f8fa2507f44f571e68b7fc90193f4196325e195"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/PaymentDraftFactory.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1595,
+      "sha256": "fbf83121692256b21c93b7f38a89d7c51119ef9116e86af4c1045dab9cea1915"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderDraftFactory.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 1895,
+      "sha256": "5c6ad61d2416ab3a28685d8139d306d3ede217a532003a26542619d69ca00e38"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/service/impl/CategoryServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 18546,
+      "sha256": "cdcf3fdfadc766977998225458e5fed2a3be5b6802a36027ab18b0d5175188cd"
+    },
+    {
+      "path": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationServiceImpl.java",
+      "category": "modify",
+      "state": "MODIFIED",
+      "bytes": 28738,
+      "sha256": "30d2cea6334850ef9469ddc0131d7beab733c03124e592ec945fe9dd9c01b505"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterPurchaseIT.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 57043,
+      "sha256": "4c9c56ff1f2739995ec68d057d074612025a1d3d85675d46fdaba8516472237d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterIdentityIT.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 56448,
+      "sha256": "d267f9981d51dd832e6e06a6ce3402f88da1c8430325478b8b8c96a918822c3c"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterRecoveryIT.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 61972,
+      "sha256": "ffafb02a5489a98cc0d3ac74da31683f3c56683dc2de10fb99693d626c2fc5f7"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterPrivacyIT.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 20470,
+      "sha256": "2e5d3d3941bca794d30c4c1c7a989574cdafc77ed6bf73d5cc7befa91d6da2cf"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteCounterPurchaseTest.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 19779,
+      "sha256": "d0b50efe89ee5ccfb3c8b31b46dba5ad0ef954bb80fb70a28d13dcc6e35a1e27"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteCurrentGuestClaimTest.java",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 16356,
+      "sha256": "e9e057473854592027d396d18980eb3e62d2e1ab0668273ff1bc08a15b65a830"
+    },
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 20986,
+      "sha256": "f0f0f608bca46f2643d59d12d40a4a5f6c79304533dae717b0b8443d922e6581"
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "category": "createTestAndRunner",
+      "state": "CREATED",
+      "bytes": 10569,
+      "sha256": "2d722a2ce11fee49f0c0e523c91018a47d625e31c7059a984e4822fc0a80d250"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceFinancialIsolationIT.java",
+      "category": "modifyTest",
+      "state": "MODIFIED",
+      "bytes": 82334,
+      "sha256": "b72d355f4639a6572fa2975101327d5d90e3258545c1fd6086c7c92a91819b78"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/ArchitectureTest.java",
+      "category": "modifyTest",
+      "state": "MODIFIED",
+      "bytes": 40929,
+      "sha256": "a8da5eb1832b3c695af89bd4ccdf9d51f365cd1205db52e7883ec597e5e43605"
+    }
+  ],
+  "remaining": "Task67 M2b manual source/binding/bill/MP155; M2c FULL_CUT; M3 quantity grants/M4 actual resources/M5 workflow/M6 fulfillment/M7 real calendar; formal deployment later; Pay integration deferred",
+  "documentationWhitespaceCheck": "Root documentation verification: immutable R0 review retains exactly2 CommonMark hard-line-break trailing double spaces (Spec/Quality), SHA24b314954972245e422dc4104124a1eb978c7203e212a7abecf90ea674d2165a unchanged. Exact2 syntax-only diagnostics validated; strict cached diff check on other16 documentation paths clean. No code/baseline exception or reviewer content modification."
+}

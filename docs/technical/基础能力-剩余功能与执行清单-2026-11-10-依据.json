@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-10",
+  "kind": "documentation-and-targeted-source-audit",
+  "taskCount": 20,
+  "newBusinessImplementation": false,
+  "newRuntimeVerification": false,
+  "references": [
+    {
+      "repository": "ai-shop",
+      "path": "docs/technical/TDD-P1-经营组织与品牌管理-详细设计.md",
+      "sha256": "c67234939825de8fc4486e8c71630e5fb9dadb031c20720f6ae7ce1caddee3c9"
+    },
+    {
+      "repository": "ai-shop",
+      "path": "docs/technical/TDD-美业系统-后端开发计划.md",
+      "sha256": "80e1947f86f7436df51185d6ef3002a33b4cabdd73643a5098621db41002296d"
+    },
+    {
+      "repository": "ai-shop",
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ServiceTaskPreparationVO.java",
+      "sha256": "99b7bffa49f4a228bac6e850c6175b543af66894da4c1f3ceb6ae88898b3cf0e"
+    },
+    {
+      "repository": "ai-shop",
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
+      "sha256": "c7a7fdf76e6daa6a8ff13e5dfcaa0c5cccd7d123716799b8382c14d3a581088d"
+    },
+    {
+      "repository": "ai-shop-bapp",
+      "path": "docs/implementation/服务业接口对接清单与服务端待办-2026-11-10.md",
+      "sha256": "e4c6a148625da3f6da053c128984d82914ce8415d20442cf2c6619fbbabdb7df"
+    },
+    {
+      "repository": "ai-shop-bapp",
+      "path": "docs/review/service-pages-complete-2026-11-10/verification.json",
+      "sha256": "1b4a370fd20b1090603ac7560c5e6dfeff0154d23c99efe4f10144ed29882a65"
+    }
+  ],
+  "executionIncrement": {
+    "date": "2026-11-10",
+    "newBusinessImplementation": true,
+    "newRuntimeVerification": true,
+    "evidence": "docs/handoff/foundation-166-acceptance-2026-11-10/verification.json",
+    "updatedTasks": [
+      "BF03",
+      "BF04",
+      "BF05",
+      "BF08"
+    ]
+  }
+}

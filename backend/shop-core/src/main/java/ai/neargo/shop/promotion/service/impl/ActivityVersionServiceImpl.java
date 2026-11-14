@@ -1,5 +1,7 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -52,6 +54,17 @@ import tools.jackson.databind.ObjectMapper;
 /** Published rules and participation budgets remain core facts, separate from pay issuance authorization. */
 @Service
 public class ActivityVersionServiceImpl implements ActivityVersionService {
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.governance-enabled:false}")
+    private boolean storedValueGovernance;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.promotion.service.BrandActivityOwnershipService> brandOwners;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.promotion.service.StoredValueActivityJournal> storedValueJournal;
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
     private final ActivityMapper heads;
     private final UnifiedActivityManagementMapper writes;
     private final PmtActivityVersionMapper versions;
@@ -82,12 +95,15 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     }
 
     @Override
-    @Transactional("transactionManager")
     public ActivityView saveDraft(ActivityActor actor, SaveDraft command, String requestKey) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1), () -> saveDraftNumbered(actor, command, requestKey));
+    }
+
+    private ActivityView saveDraftNumbered(ActivityActor actor, SaveDraft command, String requestKey) {
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         var replay = commands.replay(actor, "ACTIVITY_DRAFT", requestKey, command, ActivityView.class);
         if (replay.isPresent()) {
-            if (!visible(actor, replay.get().definition())) throw BizException.of(ErrorCode.NOT_FOUND);
+            owned(actor,replay.get().activityNo(),false);
             return replay.get();
         }
         var resolved = defaults(actor, command.definition());
@@ -95,14 +111,14 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         references(actor, resolved);
         String no = command.activityNo() == null ? BizKey.next(BizKey.PROMO_ACTIVITY) : command.activityNo();
         return commands.execute(actor, "ACTIVITY_DRAFT", requestKey, command, no, ActivityView.class, () -> {
-            features.requireActivity();
+            features.requireDraft(actor, resolved);
             PmtActivity row;
             if (command.activityNo() == null) {
                 if (command.expectedRevision() != null && command.expectedRevision() != 0) {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
                 row = new PmtActivity(); audit(row, actor);
-                row.setActivityNo(no); row.setEntityNo(actor.entityNo()); row.setOwner("MERCHANT");
+                row.setActivityNo(no); row.setEntityNo(actor.entityNo()); row.setOwner(actor.brandNo()==null?"MERCHANT":"BRAND");
                 row.setStatus("DRAFT"); row.setTriggerType("NONE"); row.setBenefitType("COMBO");
                 row.setQuotaUsed(0); row.setBudgetUsedMinor(0L);
             } else {
@@ -117,8 +133,9 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             row.setEndAt(d.schedule().endAt() == null ? null : d.schedule().endAt().toEpochMilli());
             row.setDraftSnapshot(json.writeValueAsString(d));
             row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
-            if (command.activityNo() == null) changed(heads.insert(row));
+            if (command.activityNo() == null) changed(documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", row, row.getActivityNo(), heads::insert, PmtActivity::setDocumentNo));
             else persist(row);
+            if(command.activityNo()==null&&actor.brandNo()!=null){var owner=brandOwners.getIfAvailable();if(owner==null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);owner.register(actor,no);}
             return view(row);
         });
     }
@@ -146,6 +163,11 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             if (!"DRAFT".equals(row.getStatus())
                     || !candidate.getDraftSnapshot().equals(row.getDraftSnapshot())) {
                 throw BizException.of(ErrorCode.CONFLICT);
+            }
+            if((storedValueGovernance||"BRAND".equals(row.getOwner()))&&"RECHARGE".equals(definition.scene())) {
+                var journal=storedValueJournal.getIfAvailable();
+                if(journal==null)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+                journal.requirePublish(actor.tenantNo(),activityNo,expectedRevision,journal.hash(definition));
             }
             var version = new PmtActivityVersion(); audit(version, actor);
             version.setVersionNo(BizKey.next(BizKey.ACTIVITY_VERSION));
@@ -190,6 +212,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         if (replay.isPresent()) return replay.get();
         var candidate = owned(actor, activityNo, false);
         boolean publishDraft = "DRAFT".equals(candidate.getStatus()) && "RUNNING".equals(status);
+        if((storedValueGovernance||"BRAND".equals(candidate.getOwner()))&&"RECHARGE".equals(candidate.getScene())&&!publishDraft)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (publishDraft) {
             // Same resource/transaction as explicit publish; the status command has its own stable reply.
             publish(actor, activityNo, expectedRevision, "PUB" + ActivityCommandDeduplicator.hash(requestKey).substring(0, 48));
@@ -226,35 +249,40 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 || (status != null && !Set.of("DRAFT", "RUNNING", "PAUSED", "ENDED").contains(status))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        var rows = DataScopeContext.executeWithoutScope(() -> heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
+        var rows = DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getTenantNo, actor.tenantNo()).eq(PmtActivity::getEntityNo, actor.entityNo())
                 .isNotNull(PmtActivity::getDraftSnapshot).isNull(PmtActivity::getArchivedAt)
                 .eq(scene != null, PmtActivity::getScene, scene).eq(status != null, PmtActivity::getStatus, status)
-                .orderByDesc(PmtActivity::getId)));
+                .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         List<ActivityView> visible = new ArrayList<>();
-        for (var row : rows) if (visible(actor, definition(row))) visible.add(view(row));
+        for (var row : rows) if (ownerVisible(actor,row)&&visible(actor,definition(row))) visible.add(view(row));
         int start = (int) Math.min((page - 1) * size, visible.size());
         int end = (int) Math.min(start + size, visible.size());
         return PageData.of(List.copyOf(visible.subList(start, end)), visible.size(), page, size);
     }
 
     private PmtActivity owned(ActivityActor actor, String no, boolean lock) {
-        var row = DataScopeContext.executeWithoutScope(() -> heads.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+        var row = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", heads.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getTenantNo, actor.tenantNo()).eq(PmtActivity::getEntityNo, actor.entityNo())
                 .eq(PmtActivity::getActivityNo, no).isNotNull(PmtActivity::getDraftSnapshot)
-                .isNull(PmtActivity::getArchivedAt).last(lock ? "FOR UPDATE" : "")));
-        if (row == null || !visible(actor, definition(row))) throw BizException.of(ErrorCode.NOT_FOUND);
+                .isNull(PmtActivity::getArchivedAt).last(lock ? "FOR UPDATE" : "")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
+        if (row == null || !ownerVisible(actor,row)||!visible(actor,definition(row))) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }
 
+    private boolean ownerVisible(ActivityActor actor,PmtActivity row){if(!"BRAND".equals(row.getOwner()))return actor.brandNo()==null;var owner=brandOwners.getIfAvailable();return owner!=null&&owner.visible(actor,row);}
     private boolean visible(ActivityActor actor, UnifiedActivityDefinition d) {
+        if(actor.brandNo()!=null){
+            if("ORDER".equals(d.scene())){var owner=brandOwners.getIfAvailable();return owner!=null&&owner.ordinaryScope(actor,d);}
+            return "RECHARGE".equals(d.scene())&&"ALL".equals(d.storeParticipationScope().mode())&&d.rule().benefits().isEmpty()&&d.rule().tiers().stream().allMatch(t->"ALL".equals(t.redemptionScope().mode()));
+        }
         return actor.allowedStores() == null || ("STORES".equals(d.storeParticipationScope().mode())
                 && actor.allowedStores().containsAll(d.storeParticipationScope().refs()));
     }
 
     private void references(ActivityActor actor, UnifiedActivityDefinition d) {
         if (!visible(actor, d)) throw BizException.of(ErrorCode.FORBIDDEN);
-        scopeValidation.validate(actor.tenantNo(), actor.entityNo(), d.storeParticipationScope());
+        if(actor.brandNo()==null || !"ORDER".equals(d.scene()))scopeValidation.validate(actor.tenantNo(), actor.entityNo(), d.storeParticipationScope());
         for (var tier : d.rule().tiers()) {
             scopeValidation.validate(actor.tenantNo(), actor.entityNo(), tier.redemptionScope());
         }
@@ -347,7 +375,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     }
     private ActivityView view(PmtActivity row) {
         return new ActivityView(row.getActivityNo(), row.getVersion(), row.getStatus(),
-                row.getCurrentVersionNo(), definition(row));
+                row.getCurrentVersionNo(), definition(row)).withDocumentNo(row.getDocumentNo());
     }
     private void persist(PmtActivity row) {
         changed(DataScopeContext.executeWithoutScope(() -> writes.update(row)));

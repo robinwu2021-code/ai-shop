@@ -3,23 +3,32 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.ReservationService;
-import ai.neargo.shop.inventory.service.ReturnReceiptService;
-import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.inventory.client.InventoryReservationClient;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.service.ReturnReceiptService;
+import ai.neargo.inventory.domain.service.StockCountService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
 import ai.neargo.shop.spi.product.StockPort.ReturnLine;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 把平台侧的库存动作<b>补记</b>到进销存。双写的第二半。
@@ -48,8 +57,8 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryMirrorConsumer.class);
 
-    /** 与 {@code DualWriteStockPort} 里的 TTL 同一个量级 —— 比它短会先把还能付款的单释放掉 */
-    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+    /** 预留时长由关单窗口推出（见 {@link ReservationHoldTtl}）—— 比关单短会先把还能付款的单释放掉 */
+    private ReservationHoldTtl holdTtl;
 
     private final StockCountService counts;
     private final ReservationService reservations;
@@ -66,6 +75,31 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
     @Autowired
     public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
+
+    @Autowired
+    public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
+
+    /** 切流（ADR-046 M8）：按单号的生命周期命令也要送到库存服务上那几家；没配客户端为空 */
+    private InventoryReservationClient service;
+
+    @Autowired
+    public void setService(ObjectProvider<InventoryReservationClient> client) {
+        this.service = client.getIfAvailable();
+    }
+
+    /**
+     * 按单号的动作在两侧各做一遍，各自只碰自己写的商家。服务这一侧失败就抛 —— 让 outbox 重投（动作按单号幂等）。
+     * 本系统一个翻到服务的商家都没有时不调服务，免得纯内嵌的订单被服务可用性牵连。
+     */
+    private void onService(java.util.function.Consumer<InventoryReservationClient> action) {
+        if (service != null && acl.anyServiceWrittenOwner()) {
+            try {
+                action.accept(service);
+            } catch (ai.neargo.inventory.api.InventoryException e) {
+                throw ai.neargo.shop.inventory.embed.InventoryErrors.toShop(e);
+            }
+        }
+    }
 
     public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
@@ -105,11 +139,26 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
         switch (event.getEventType()) {
             case InvMirrorEvent.RESERVE -> reserve(ref, p);
-            case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
-            case InvMirrorEvent.ALLOCATE -> reservations.allocatePaidByRef(ref);
-            case InvMirrorEvent.ISSUE -> reservations.issueByFulfillmentRef(ref, "MIRROR");
-            case InvMirrorEvent.RELEASE_ALLOCATED -> reservations.releaseAllocatedByFulfillmentRef(ref);
-            case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
+            case InvMirrorEvent.COMMIT -> {
+                settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
+                onService(c -> c.commitByRef("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.ALLOCATE -> {
+                reservations.allocatePaidByRef(ref);
+                onService(c -> c.allocatePaidByRef("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.ISSUE -> {
+                reservations.issueByFulfillmentRef(ref, "MIRROR");
+                onService(c -> c.issueByFulfillment("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.RELEASE_ALLOCATED -> {
+                reservations.releaseAllocatedByFulfillmentRef(ref);
+                onService(c -> c.releaseAllocatedByFulfillment("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.RELEASE -> {
+                settled(ref, () -> reservations.releaseByRef(ref));
+                onService(c -> c.releaseByRef("SYSTEM:mirror", ref));
+            }
             case InvMirrorEvent.RESTORE -> restore(ref, p);
             case InvMirrorEvent.RESTORE_ORIGINAL -> restoreOriginal(ref, p);
             case InvMirrorEvent.RETURN_RECEIPT -> receiveReturn(ref, p);
@@ -118,15 +167,24 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         }
     }
 
+    /**
+     * <b>按业主分组记</b>，与直连那条路（{@code InventoryStockPort.lock}）一致。
+     *
+     * <p>锁号是<b>父订单号</b>，一张父单可以跨几个商家。此前拿第一行的业主记全部行：
+     * B 商家的货被记进 A 的账、B 自己的账上那笔预留不存在 —— 双写对差时 A 多扣、B 少扣，
+     * 两边各自看起来都像真的。进销存按 (业主, 外部引用) 存预留，commit / release 按引用
+     * 找全部业主（{@code allByRef}），所以拆开记之后后续动作不用跟着改。
+     */
     private void reserve(String ref, JsonNode p) {
-        List<ReservationService.Line> lines = lines(p);
-        if (lines.isEmpty()) {
+        Map<String, List<ReservationService.Line>> byOwner = linesByOwner(p);
+        if (byOwner.isEmpty()) {
             return;
         }
-        String owner = requireOwner(first(p));
         int lifecycleVersion = p.path("items").isArray() && !p.path("items").isEmpty()
                 ? p.path("items").get(0).path("lifecycleVersion").asInt(1) : 1;
-        reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS, lifecycleVersion);
+        long ttlSeconds = ReservationHoldTtl.secondsOf(holdTtl);
+        // 逐个业主记：中途失败整条重投，已记的那些按 (业主, 引用) 幂等认出来
+        byOwner.forEach((owner, lines) -> reservations.reserve(owner, ref, lines, ttlSeconds, lifecycleVersion));
     }
 
     private void restoreOriginal(String purpose, JsonNode payload) {
@@ -173,13 +231,14 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
                 reason == null ? "OTHER" : reason, "GOODS_PAGE");
     }
 
+    /** Resolve the saved original order before restoring; current ownership is not return authority. */
     private void restore(String ref, JsonNode p) {
-        List<ReservationService.Line> lines = lines(p);
-        if (lines.isEmpty()) {
-            return;
+        JsonNode items = p.get("items");
+        if (items == null || !items.isArray() || items.isEmpty() || originalRestores == null) {
+            throw new IllegalStateException("STOCK_RETURN_SOURCE_UNAVAILABLE");
         }
-        String owner = requireOwner(first(p));
-        reservations.restore(owner, ref, lines, "MIRROR");
+        var original = json.readValue(json.writeValueAsString(items), new TypeReference<List<SkuQty>>() { });
+        originalRestores.restoreLegacy(ref, original);
     }
 
     /**
@@ -193,13 +252,13 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         action.run();
     }
 
-    private List<ReservationService.Line> lines(JsonNode p) {
+    /** 每一行按<b>它自己的</b> SKU 反查业主，保持出现顺序分组。 */
+    private Map<String, List<ReservationService.Line>> linesByOwner(JsonNode p) {
         JsonNode items = p.get("items");
-        if (items == null || !items.isArray() || items.isEmpty()) {
-            return List.of();
+        Map<String, List<ReservationService.Line>> out = new LinkedHashMap<>();
+        if (items == null || !items.isArray()) {
+            return out;
         }
-        String owner = requireOwner(first(p));
-        List<ReservationService.Line> out = new ArrayList<>();
         for (JsonNode it : items) {
             String skuNo = text(it, "skuNo");
             String storeNo = text(it, "storeNo");
@@ -207,9 +266,17 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             if (skuNo == null || qty <= 0) {
                 continue;
             }
+            String owner = requireOwner(skuNo);
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, storeNo));
-            out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty, text(it, "fulfillmentRef")));
+            out.computeIfAbsent(owner, k -> new ArrayList<>()).add(
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(skuNo),
+                            locationId,
+                            qty,
+                            text(it, "fulfillmentRef"),
+                            text(it, "fulfillmentRef") == null ? null : skuNo,
+                            text(it, "fulfillmentRef") == null ? null : storeNo));
         }
         return out;
     }
@@ -234,13 +301,6 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
                     + "（商家保存一次商品即会投影，或跑存量搬运）");
         }
         return owner;
-    }
-
-    /** 第一行的 skuNo —— 一张单只属于一个商家，拿它反查业主就够 */
-    private String first(JsonNode p) {
-        JsonNode items = p.get("items");
-        return items != null && items.isArray() && !items.isEmpty()
-                ? text(items.get(0), "skuNo") : null;
     }
 
     private String text(JsonNode node, String field) {

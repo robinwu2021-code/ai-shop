@@ -169,6 +169,7 @@ class InvoiceRequestFlowTest {
         OrdOrder o = new OrdOrder();
         o.setOrderNo(no);
         o.setUserNo(buyer);
+        o.setIdentityRevision(1L);
         o.setStatus(status);
         o.setPayAmount(payAmount);
         orderMapper.insert(o);

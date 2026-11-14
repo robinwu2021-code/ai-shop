@@ -90,7 +90,6 @@
     "/orders?tab=pay",
     "/orders?tab=proxy",
     "/orders?tab=repair",
-    "/print",
     "/products",
     "/products?tab=audit",
     "/products?tab=banned-word",

@@ -4,8 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -15,17 +15,20 @@ import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.order.OrderStatus;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
-import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
-import ai.neargo.shop.trade.order.refund.model.RefundClosureFacts;
-import ai.neargo.shop.trade.order.refund.policy.RefundClosurePolicy;
+import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import ai.neargo.shop.trade.order.refund.model.RefundClosureFacts;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.trade.order.refund.policy.RefundClosurePolicy;
 import ai.neargo.shop.trade.order.refund.port.impl.MybatisRefundLedgerStore;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
+import ai.neargo.shop.trade.order.refund.service.OriginalRefundEvidenceService;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundLedger;
+import ai.neargo.shop.trade.order.refund.service.RefundObligationService;
 import ai.neargo.shop.trade.order.refund.service.RefundResultService;
 import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.order.transition.TradeStatusWriter;
@@ -43,6 +46,9 @@ public class RefundResultServiceImpl implements RefundResultService {
     private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService printFacts;
     @org.springframework.beans.factory.annotation.Autowired
     public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
+    private ai.neargo.shop.trade.order.printing.BusinessPrintFactService receiptFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setReceiptFacts(ai.neargo.shop.trade.order.printing.BusinessPrintFactService facts) { this.receiptFacts=facts; }
     private final RefundExecutionStore store;
     private final StatusCasMapper locks;
     private final AfterSaleMapper afterSales;
@@ -52,13 +58,15 @@ public class RefundResultServiceImpl implements RefundResultService {
     private final RefundExecutionMapper sources;
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
     private final ObjectMapper json;
+    private final OriginalRefundEvidenceService originalEvidence;
     private final OutboxEventBus events;
 
     public RefundResultServiceImpl(RefundExecutionStore store, StatusCasMapper locks, AfterSaleMapper afterSales,
             TradeStatusWriter statuses, AfterSaleSlots slots, RefundLedgerMapper ledger, ObjectMapper json,
             OutboxEventBus events, RefundExecutionMapper sources,
-            ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations) {
+            RefundObligationService obligations, OriginalRefundEvidenceService originalEvidence) {
         this.obligations=obligations;
+        this.originalEvidence = originalEvidence;
         this.sources = sources;
         this.store = store;
         this.locks = locks;
@@ -79,6 +87,7 @@ public class RefundResultServiceImpl implements RefundResultService {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
             OrdSubOrder child = locks.lockOrder(hint.getSubOrderNo());
+            requireFundedChild(child);
             OrdRefundExecution current = store.lock(result.executionNo());
             if (OrdRefundExecution.SUCCEEDED.equals(current.getStatus())) {
                 return null;
@@ -103,6 +112,12 @@ public class RefundResultServiceImpl implements RefundResultService {
         });
     }
 
+    private static void requireFundedChild(OrdSubOrder child) {
+        if (child == null || "MANUAL_OFFLINE".equals(child.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+        }
+    }
+
     private void complete(OrdRefundExecution current, OrdSubOrder child, RefundDispatchResult result) {
         if (result.paymentNo() == null || result.succeededAt() == null
                 || !OrdRefundExecution.CASH.equals(current.getPhase())) {
@@ -117,14 +132,18 @@ public class RefundResultServiceImpl implements RefundResultService {
         }
         var originalItems = sources.items(child.getSubOrderNo());
         // This lane still accepts only the original full refund. Never infer that from a cash receipt.
-        BasicRefundPolicy.requireFull(BasicRefundPolicy.full(child, originalItems), plan);
+        BasicRefundPolicy.verify(child, originalItems, plan);
+        if (!plan.originalPortions().isEmpty() || !plan.allocationReleaseTargets().isEmpty())
+            originalEvidence.verify(child, originalItems, plan);
         if (!Objects.equals(current.getAmountMinor(), plan.totalMinor())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         var recorded = ledger.record(plan);
         long quantity = originalItems.stream().mapToLong(item -> item.getQty()).sum();
         // Legacy execution closes benefits independently; versioned obligations replace this adapter in T2.
-        var decision = new RefundClosurePolicy().decide(new RefundClosureFacts(quantity, 0, quantity,
+        long terminated = originalItems.stream().mapToLong(item -> item.getRefundedQty() == null ? 0 : item.getRefundedQty()).sum()
+                + plan.lines().stream().mapToLong(line -> line.qty()).sum();
+        var decision = new RefundClosurePolicy().decide(new RefundClosureFacts(quantity, 0, terminated,
                 child.getPayAmount(), recorded.subRefundedMinor(), true));
         current.setStatus(OrdRefundExecution.SUCCEEDED);
         current.setSucceededAt(result.succeededAt());
@@ -145,6 +164,7 @@ public class RefundResultServiceImpl implements RefundResultService {
             var hint=store.read(no);
             if(hint==null || !Integer.valueOf(2).equals(hint.getClosureVersion())) return null;
             var child=locks.lockOrder(hint.getSubOrderNo());
+            requireFundedChild(child);
             var current=store.lock(no);
             if(!OrdRefundExecution.SUCCEEDED.equals(current.getStatus()) || "DONE".equals(current.getClosureStatus())
                     || !obligations.settled(no)) return null;
@@ -153,13 +173,12 @@ public class RefundResultServiceImpl implements RefundResultService {
             long terminated=items.stream().mapToLong(it -> it.getRefundedQty()==null?0:it.getRefundedQty()).sum();
             var decision=new RefundClosurePolicy().decide(new RefundClosureFacts(ordered,0,terminated,
                     child.getPayAmount(),child.getRefundedMinor(),true));
-            if(decision.targetOrderStatus()!=ai.neargo.shop.trade.order.machine.order.OrderStatus.REFUNDED) return null;
             var as=afterSales.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                     .eq(OrdAfterSale::getAfterSaleNo,current.getAfterSaleNo()).last("FOR UPDATE"));
             if(as==null || !OrdAfterSale.REFUNDING.equals(as.getStatus())
                     || !Objects.equals(locks.openAfterSaleNo(child.getSubOrderNo()),as.getAfterSaleNo()))
                 throw BizException.of(ErrorCode.CONFLICT);
-            finish(current,child,as,true);
+            finish(current,child,as,decision.targetOrderStatus()==OrderStatus.REFUNDED);
             current.setClosureStatus("DONE");
             store.save(current);
             return null;
@@ -178,10 +197,15 @@ public class RefundResultServiceImpl implements RefundResultService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         slots.releaseIfDone(as);
-        statuses.order(child, OrderEvent.FULLY_REFUNDED, Actor.SYSTEM, null,
-                "子单现金已全额退回", OrderContext.authorizedOnly().withFullyRefunded(fullyRefunded));
+        if (fullyRefunded) {
+            statuses.order(child, OrderEvent.FULLY_REFUNDED, Actor.SYSTEM, null,
+                    "子单现金已全额退回", OrderContext.authorizedOnly().withFullyRefunded(true));
+        }
         if (printFacts != null) printFacts.recordControl(child.getOrderNo(),child.getSubOrderNo(),
                 "REFUND_CONFIRMED","REFUND:"+current.getExecutionNo(),java.time.Instant.ofEpochMilli(current.getSucceededAt()));
+        if (receiptFacts != null && Integer.valueOf(2).equals(current.getClosureVersion())
+                && child.getStoreNo()!=null && !child.getStoreNo().isBlank())
+            receiptFacts.recordRefund(as,child,current);
         events.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), current.getAmountMinor()));
     }

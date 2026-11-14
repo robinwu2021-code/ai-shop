@@ -10,6 +10,8 @@ import lombok.Setter;
 @Setter
 @TableName("sv_voucher")
 public class SvVoucher extends BaseEntity {
+    private String issuerNo;
+
     private String voucherNo;
     private String accountNo;
     private Long accountSeq;

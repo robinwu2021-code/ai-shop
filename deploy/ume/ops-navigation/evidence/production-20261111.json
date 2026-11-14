@@ -1,0 +1,40 @@
+{
+  "environment": "production",
+  "sourceVersion": "656",
+  "targetVersion": "657",
+  "checks": {
+    "sys_role": {
+      "rows": 15,
+      "sha256": "d2c1bdcf2a74e49f5daf4ebdae734b0e2b51c154e46b3f85e1eb00e628643374",
+      "unchanged": true
+    },
+    "sys_role_point": {
+      "rows": 582,
+      "sha256": "8142ebc5b7b0a606b288c64ecad16004c744b32602d0e92943671a5e272f4fc2",
+      "unchanged": true
+    },
+    "sys_role_member": {
+      "rows": 6,
+      "sha256": "f3718641f7f84f5434f2e3ce2bf6062154192c760a5179c1c7e9ec3922216dd5",
+      "unchanged": true
+    },
+    "pointIdentityPermissionsAndGates": {
+      "rows": 283,
+      "unchanged": true
+    },
+    "menuMappings": {
+      "matched": 152,
+      "legacyPaymentAliases": 8,
+      "allMatched": true
+    },
+    "previousFlywayHistoryUnchanged": true
+  },
+  "mysqlVersion": "9.7.4",
+  "flyway": {
+    "version": "657",
+    "checksum": -2073663735,
+    "success": 1
+  },
+  "functionRows": 18,
+  "menuSnapshotSha256": "3c7fa9fe47c9de11766aa7df7020ba1ec2c4792c7c76a7b35f0679be47adf537"
+}

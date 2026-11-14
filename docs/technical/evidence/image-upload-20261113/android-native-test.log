@@ -1,0 +1,10 @@
+00:00 +0: loading /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/integration_test/image_upload_acceptance_20261113_test.dart
+Running Gradle task 'assembleHxmallDebug'...                       82.8s
+✓ Built build/app/outputs/flutter-apk/app-hxmall-debug.apk
+Installing build/app/outputs/flutter-apk/app-hxmall-debug.apk...        27.9s
+00:00 +0: Android system gallery selects real PNG and both 166 origins render
+NATIVE_IMAGE_PICKER_READY
+NATIVE_IMAGE_PICKER_SELECTED
+NATIVE_IMAGE_ACCEPTANCE_PASSED
+00:22 +1: (tearDownAll)
+00:23 +1: All tests passed!

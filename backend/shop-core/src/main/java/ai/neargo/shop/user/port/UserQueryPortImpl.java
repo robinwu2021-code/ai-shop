@@ -1,5 +1,6 @@
 package ai.neargo.shop.user.port;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
@@ -177,5 +178,14 @@ public class UserQueryPortImpl implements UserQueryPort {
                                         .last("limit 1"))))
                 .map(ai.neargo.shop.user.entity.UsrAccount::getCommunityNo)
                 .filter(c -> c != null && !c.isBlank());
+    }
+
+    /** 绕数据域：限购是在买家会话里调，代客下单则是商家身份 —— 按域查会锁不到行，也就等于没锁 */
+    @Override
+    public boolean lockBuyer(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return false;
+        }
+        return DataScopeContext.executeWithoutScope(() -> userMapper.lockByUserNo(userNo)) != null;
     }
 }

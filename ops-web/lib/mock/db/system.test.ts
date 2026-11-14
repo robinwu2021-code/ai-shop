@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { systemMock } from "@/lib/api/mocks/system";
 import { C_END_THEMES, FULL_SCHEME_THEMES } from "@/lib/stores/theme";
 import { BASE_CURRENCY } from "@/lib/types";
-import { appearance, featureFlags, markets, ruleTexts } from "./system";
+import { appearance, featureFlags, markets, ruleTexts, storeIndustries } from "./system";
 
+const S0 = structuredClone(storeIndustries);
 const A0 = { ...appearance };
 const M0 = JSON.parse(JSON.stringify(markets)) as typeof markets;
 const R0 = { ...ruleTexts };
 const F0 = JSON.parse(JSON.stringify(featureFlags)) as typeof featureFlags;
 beforeEach(() => {
+  storeIndustries.splice(0, storeIndustries.length, ...structuredClone(S0));
   Object.assign(appearance, A0);
   markets.length = 0; markets.push(...(JSON.parse(JSON.stringify(M0)) as typeof markets));
   Object.assign(ruleTexts, R0);
@@ -93,5 +95,25 @@ describe("开关与灰度（P-17.1.5）", () => {
     await systemMock.saveFeatureFlag("group_demand", false, 10);
     expect((await systemMock.listFeatureFlags()).find((x) => x.key === "group_demand"))
       .toMatchObject({ enabled: false, rolloutPercent: 10 });
+  });
+});
+
+
+describe("门店行业维护", () => {
+  const command = { industryCode: "RETAIL", subIndustryCode: "CVS_NEW", businessTypeCode: "RETAIL", nameZh: "便利店", nameTw: "便利商店", nameEn: "Convenience", sort: 3, enabled: false, expectedVersion: null, reason: "维护" };
+  it("creates a child, retains disabled rows, and rejects stale edits", async () => {
+    const created = await systemMock.saveStoreIndustry(command);
+    expect(created.version).toBe(0);
+    const restored = await systemMock.saveStoreIndustry({ ...command, enabled: true, expectedVersion: 0 });
+    expect(restored.version).toBe(1);
+    await expect(systemMock.saveStoreIndustry({ ...command, expectedVersion: 0 })).rejects.toThrow(/版本冲突/);
+    expect((await systemMock.listStoreIndustries()).find((r) => r.subIndustryCode === "CVS_NEW")?.enabled).toBe(true);
+  });
+  it("rejects missing parents and unknown types", async () => {
+    await expect(systemMock.saveStoreIndustry({ ...command, industryCode: "MISSING" })).rejects.toThrow(/父行业/);
+    await expect(systemMock.saveStoreIndustry({ ...command, businessTypeCode: "MISSING" })).rejects.toThrow(/经营类型/);
+  });
+  it("preserves the canonical parent business key", async () => {
+    expect((await systemMock.saveStoreIndustry({ ...command, industryCode: "retail" })).industryCode).toBe("RETAIL");
   });
 });

@@ -324,18 +324,16 @@ public class PointsWorkbenchServiceImpl implements PointsWorkbenchService {
         page(type, after, limit);
         var rows =
                 operations.page(type, Kind.OUTBOX, after, limit).stream()
-                        .map(
-                                r ->
-                                        new EventView(
-                                                num(r, "id"),
-                                                (String) r.get("event_no"),
-                                                json.readTree((String) r.get("payload_json"))
-                                                        .path("kind")
-                                                        .asText(),
-                                                (String) r.get("state"),
-                                                num(r, "retry_count"),
-                                                num(r, "next_attempt"),
-                                                num(r, "version")))
+                        .map(r -> {
+                            var message=json.readTree((String)r.get("payload_json"));
+                            String body=message.path("payload").asText();
+                            var source=!"EARN_GRANT".equals(message.path("kind").asText())||body.isBlank()?null:json.readTree(body);
+                            String failure=operations.eventFailure(type,num(r,"id"));
+                            String reason=failure==null||failure.isBlank()?null:json.readTree(failure).path("reason").asText();
+                            return new EventView(num(r,"id"),(String)r.get("event_no"),message.path("kind").asText(),
+                                    (String)r.get("state"),num(r,"retry_count"),num(r,"next_attempt"),num(r,"version"),
+                                    source==null?null:source.path("subOrderNo").asText(null),reason);
+                        })
                         .toList();
         return new EventPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);

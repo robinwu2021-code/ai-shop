@@ -89,8 +89,16 @@ class PointsOpsConfigurationTest {
     private final List<String> created = new ArrayList<>();
 
     @BeforeAll
-    void schema() {
+    void schema() throws java.sql.SQLException {
         PointsPostingDatabaseTest.initializeSchema(data);
+        try (var connection = data.getConnection();
+                var columns = connection.getMetaData().getColumns(connection.getCatalog(), null, "pts_point_type", "name")) {
+            if (!columns.next()) {
+                new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                        new org.springframework.core.io.ClassPathResource("db/migration/V537__points_type_name_unique.sql"))
+                        .execute(data);
+            }
+        }
     }
 
     @AfterEach
@@ -273,6 +281,129 @@ class PointsOpsConfigurationTest {
                 .isEqualTo(2);
     }
 
+    @Test
+    void selected_currency_and_rate_survive_persistence_and_operator_replay() {
+        String code = "FX" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        var request = new Create("CREATE:" + code,
+                new PointTypeService.CreateType(code, "Dinar " + code, "KWD", new RedeemRate(2500, 1000)),
+                "CUSTOM_CURRENCY");
+        var first = admin.create(request, "OPS");
+        assertThat(admin.create(request, "OPS")).isEqualTo(first);
+        var saved = read.type(code).orElseThrow();
+        assertThat(saved.currency()).isEqualTo("KWD");
+        assertThat(saved.scale()).isEqualTo(3);
+        assertThat(saved.rate()).isEqualTo(new RedeemRate(5, 2));
+        assertThat(read.pool(code).currency()).isEqualTo("KWD");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_point_type WHERE type_code=?", Long.class, code)).isEqualTo(1);
+        assertThatThrownBy(() -> admin.create(new Create(request.requestId(),
+                new PointTypeService.CreateType(code, "Dinar " + code, "KWD", new RedeemRate(3, 1)),
+                request.reason()), "OPS")).hasMessage("POINTS_OPERATOR_REQUEST_CONFLICT");
+        assertThat(read.type(code).orElseThrow().rate()).isEqualTo(new RedeemRate(5, 2));
+    }
+
+    @Test
+    void temporary_pause_stops_new_grants_but_preserves_redemption_and_replay() {
+        String type = type();
+        fund(type);
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var prior = grant(type, "PRIOR", 4);
+        assertThat(earning.grant(prior).grantedPoints()).isEqualTo(4);
+        var pause = new TypeChange("PAUSE:" + type, type, TypeAction.valueOf("PAUSE_EARNING"), "Pause new earning");
+        var receipt = admin.transition(pause, "OPS");
+        assertThat(admin.transition(pause, "OPS")).isEqualTo(receipt);
+        assertThat(read.enabled(new Availability(type, "USER", "STORE", "MERCHANT", "CN", "ONLINE", "H5", Flow.EARN))).isFalse();
+        assertThat(read.enabled(new Availability(type, "USER", "STORE", "MERCHANT", "CN", "ONLINE", "H5", Flow.REDEEM))).isTrue();
+        assertThat(read.type(type).orElseThrow().status()).isEqualTo(ai.neargo.shop.pay.points.model.PointType.Status.ACTIVE);
+        assertThat(earning.grant(prior).grantedPoints()).isEqualTo(4);
+        assertThat(earning.grant(grant(type, "AFTER_PAUSE", 7)).reason()).isEqualTo("POINTS_DISABLED");
+        assertThat(read.type(type).orElseThrow().earningPaused()).isTrue();
+        assertThat(read.account(type, HolderType.USER, "USER").points(Bucket.PENDING)).isEqualTo(4);
+        admin.transition(new TypeChange("RESUME:" + type, type, TypeAction.valueOf("RESUME_EARNING"), "Resume"), "OPS");
+        assertThat(earning.grant(grant(type, "AFTER_RESUME", 7)).grantedPoints()).isEqualTo(7);
+        assertThat(read.type(type).orElseThrow().earningPaused()).isFalse();
+        assertThat(admin.switches(type, 0, 50).rows()).hasSize(1);
+    }
+
+    @Test
+    void explicit_default_switch_is_replayable_and_rejects_inactive_or_foreign_currency_types() {
+        String first = type(), second = type();
+        admin.transition(new TypeChange("ACTIVE:" + first, first, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var switchDefault = new TypeChange("DEFAULT:" + second, second, TypeAction.valueOf("SET_DEFAULT"), "Switch future orders");
+        assertThatThrownBy(() -> admin.transition(switchDefault, "OPS")).hasMessageContaining("POINTS_TYPE_NOT_ACTIVE");
+        admin.transition(new TypeChange("ACTIVE:" + second, second, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        var receipt = admin.transition(switchDefault, "OPS");
+        assertThat(admin.transition(switchDefault, "OPS")).isEqualTo(receipt);
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+        assertThat(read.type(first).orElseThrow().status()).isEqualTo(ai.neargo.shop.pay.points.model.PointType.Status.ACTIVE);
+        admin.transition(new TypeChange("PAUSE:" + second, second, TypeAction.valueOf("PAUSE_EARNING"), "Pause"), "OPS");
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+        String fx = "FX" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        admin.create(new Create("CREATE:" + fx, new PointTypeService.CreateType(fx, "Foreign " + fx, "AED", new RedeemRate(1, 1)), "FX"), "OPS");
+        admin.transition(new TypeChange("ACTIVE:" + fx, fx, TypeAction.ACTIVATE, "ACTIVATE"), "OPS");
+        assertThatThrownBy(() -> admin.transition(new TypeChange("DEFAULT:" + fx, fx, TypeAction.valueOf("SET_DEFAULT"), "FX"), "OPS"))
+                .hasMessageContaining("POINTS_DEFAULT_CURRENCY_MISMATCH");
+        assertThat(admin.orderDefault("CN").typeCode()).isEqualTo(second);
+        assertThat(read.type(second).orElseThrow().orderDefault()).isTrue();
+        assertThat(read.type(first).orElseThrow().orderDefault()).isFalse();
+    }
+
+    @Test
+    void rename_is_audited_replayable_and_preserves_financial_and_default_dimensions() {
+        String type = type();
+        fund(type);
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, "Activate"), "OPS");
+        admin.transition(new TypeChange("DEFAULT:" + type, type, TypeAction.SET_DEFAULT, "Default"), "OPS");
+        admin.transition(new TypeChange("PAUSE:" + type, type, TypeAction.PAUSE_EARNING, "Pause"), "OPS");
+        var before = read.type(type).orElseThrow();
+        var pool = read.pool(type);
+        var request = new PointsAdministrationService.TypeRename("RENAME:" + type, type, before.name(), " Renamed " + type + " ", "Rename display name");
+        var result = admin.rename(request, "OPS");
+        assertThat(admin.rename(request, "OPS")).isEqualTo(result);
+        var after = read.type(type).orElseThrow();
+        assertThat(after.name()).isEqualTo("Renamed " + type);
+        assertThat(after.typeCode()).isEqualTo(before.typeCode());
+        assertThat(after.currency()).isEqualTo(before.currency());
+        assertThat(after.rate()).isEqualTo(before.rate());
+        assertThat(after.status()).isEqualTo(before.status());
+        assertThat(after.earningPaused()).isTrue();
+        assertThat(after.orderDefault()).isTrue();
+        assertThat(read.pool(type)).isEqualTo(pool);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_inbox WHERE type_code=? AND state='CONFIG_APPLIED' AND event_no=?", Long.class, type, ai.neargo.shop.pay.points.model.PointsKeys.position("OC", "RENAME", request.requestId()))).isEqualTo(1);
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("STALE:" + type, type, before.name(), "Stale overwrite", "Stale"), "OPS"))
+                .hasMessage("POINTS_TYPE_NAME_CONFLICT");
+        assertThat(read.type(type).orElseThrow().name()).isEqualTo(after.name());
+    }
+
+    @Test
+    void rename_rejects_duplicate_and_blank_names_without_changing_either_type() {
+        String first = type(), second = type();
+        String original = read.type(first).orElseThrow().name();
+        String other = read.type(second).orElseThrow().name();
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("DUP:" + first, first, original, other, "Duplicate"), "OPS"))
+                .hasMessage("POINTS_TYPE_DUPLICATE");
+        assertThatThrownBy(() -> admin.rename(new PointsAdministrationService.TypeRename("EMPTY:" + first, first, original, "  ", "Blank"), "OPS"))
+                .hasMessage("POINTS_TYPE_INVALID");
+        assertThat(read.type(first).orElseThrow().name()).isEqualTo(original);
+        assertThat(read.type(second).orElseThrow().name()).isEqualTo(other);
+    }
+
+    @Test
+    void metadata_changes_need_no_operator_remark_and_generate_their_own_audit_description() {
+        String type = type();
+        admin.transition(new TypeChange("ACTIVE:" + type, type, TypeAction.ACTIVATE, null), "OPS");
+        var rename = new PointsAdministrationService.TypeRename("RENAME:" + type, type, type, "Name " + type, null);
+        var result = admin.rename(rename, "OPS");
+        assertThat(admin.rename(rename, "OPS")).isEqualTo(result);
+        assertThat(read.type(type).orElseThrow().name()).isEqualTo("Name " + type);
+        admin.transition(new TypeChange("PAUSE:" + type, type, TypeAction.PAUSE_EARNING, null), "OPS");
+        assertThat(admin.switches(type, 0, 10).rows().getFirst().reason()).isNotBlank();
+        assertThat(read.type(type).orElseThrow().earningPaused()).isTrue();
+    }
+
     private String type() {
         String type = "OC" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         var request =
@@ -440,7 +571,7 @@ class PointsOpsConfigurationTest {
         fund(type);
         var target =
                 new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(
-                        ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath.DIRECT,
+                        ai.neargo.shop.spi.pay.FundsPath.DIRECT,
                         "TEST",
                         "PLATFORM",
                         "PLATFORM",
@@ -630,6 +761,11 @@ class PointsOpsConfigurationTest {
         AgreementServiceImpl.class
     })
     static class Config {
+        @Bean
+        ai.neargo.shop.spi.platform.AuditLogPort auditLog() {
+            return mock(ai.neargo.shop.spi.platform.AuditLogPort.class);
+        }
+
         @Bean
         MarketService markets() {
             var markets = mock(MarketService.class);

@@ -4,16 +4,18 @@ import ai.neargo.shop.invbridge.GoodsChainService;
 import ai.neargo.shop.invbridge.MerchantChainService.Stuck;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
-import ai.neargo.shop.inventory.entity.InvItemRef;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
+import ai.neargo.inventory.domain.entity.InvItemRef;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.support.InvEnums;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -80,7 +82,9 @@ public class GoodsChainServiceImpl implements GoodsChainService {
         int available = 0;
         InvOwner owner = DataScopeContext.executeWithoutScope(() ->
                 ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
-                        .eq(InvOwner::getExternalRef, g.getEntityNo())
+                .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
+                .eq(InvOwner::getExternalRef, g.getEntityNo())
                         .last("limit 1")));
         if (owner != null && !skuNos.isEmpty()) {
             Set<String> itemIds = new HashSet<>();

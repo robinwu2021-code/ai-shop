@@ -1,0 +1,79 @@
+{
+  "ai-shop-api": {
+    "state": "running",
+    "startedAt": "2026-11-10T10:22:08.781953118Z",
+    "image": "sha256:ad14a2944a481a23c5399381bb7726f0d44cca2d573b71e561cb425df5ef596c",
+    "mountedJarSha256": "66d08708679261cdfdebdcdefe17acae25528a53ffc3f8c899e2fd5b48677187"
+  },
+  "ai-shop-ops": {
+    "state": "running",
+    "startedAt": "2026-11-09T14:18:15.891397245Z",
+    "image": "sha256:ad14a2944a481a23c5399381bb7726f0d44cca2d573b71e561cb425df5ef596c",
+    "mountedJarSha256": "114d4369997a7bdbec847848f1f227fba21cbf81d7503d9f3024c1f4247b3aeb"
+  },
+  "nearpay-prod": {
+    "state": "running",
+    "startedAt": "2026-11-10T10:22:09.122694564Z",
+    "image": "sha256:ad14a2944a481a23c5399381bb7726f0d44cca2d573b71e561cb425df5ef596c"
+  },
+  "inventory-test": {
+    "state": "running",
+    "startedAt": "2026-11-10T03:04:33.484112114Z",
+    "image": "sha256:ad14a2944a481a23c5399381bb7726f0d44cca2d573b71e561cb425df5ef596c"
+  },
+  "apiJarSha256": "66d08708679261cdfdebdcdefe17acae25528a53ffc3f8c899e2fd5b48677187",
+  "payJarSha256": "8bca867dabb75372c6368e4c4b4823d91103f66a11b2be37af8140acdf7cac0b",
+  "inventoryJarSha256": "de2c34a24eb916992596e214d50078a7d2e88707de233b7411030d12a7b2b9b7",
+  "health18082": {
+    "http": 200,
+    "data": {
+      "groups": [
+        "liveness",
+        "readiness"
+      ],
+      "status": "UP"
+    }
+  },
+  "health18081": {
+    "http": 200,
+    "data": {
+      "groups": [
+        "liveness",
+        "readiness"
+      ],
+      "status": "UP"
+    }
+  },
+  "health18086": {
+    "http": 200,
+    "data": {
+      "groups": [
+        "liveness",
+        "readiness"
+      ],
+      "status": "UP"
+    }
+  },
+  "unauthenticated": {
+    "hostSession": 401,
+    "hostClaims": 401,
+    "payMemberships": 401,
+    "payClaims": 401,
+    "inventoryOwners": 401
+  },
+  "inventoryInstance": {
+    "allowedSystems": [
+      "SHOP",
+      "SHAREHUB",
+      "CHARGING"
+    ],
+    "code": "TEST"
+  },
+  "databaseVerification": "host\t647\t0\npay\t79\t0\ninventory\t27\t0\nhostClaims\t0\npayClaims\t0",
+  "status": "PASS",
+  "temporaryMigrationUserRemoved": true,
+  "rehearsalSchemasRemoved": true,
+  "backupRetained": true,
+  "opsRestarted": false,
+  "inventoryReplaced": false
+}

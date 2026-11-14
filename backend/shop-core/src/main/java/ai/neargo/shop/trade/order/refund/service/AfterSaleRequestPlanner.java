@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.service;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundableView;
@@ -58,6 +59,16 @@ public class AfterSaleRequestPlanner {
         if (plan.isPartial(view) && !view.partialSupported()) {
             throw BizException.of(ErrorCode.AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED);
         }
+        return plan;
+    }
+
+    /** Selected quantities are priced from immutable original shares, never from caller money. */
+    public RefundPlan planOriginal(OrdSubOrder sub, List<OrdItem> original, List<RefundLine> items,
+            Long amount, String reasonCode, long now) {
+        if (!window.isOpen(sub.getCompletedAt(), reasonCode, now)) throw BizException.of(ErrorCode.AFTERSALE_WINDOW_CLOSED);
+        RefundPlan plan = BasicRefundPolicy.select(sub, original, items, amount);
+        if ((plan.totalMinor() != sub.getPayAmount() || (sub.getRefundedMinor() != null && sub.getRefundedMinor() > 0))
+                && !query.view(sub).partialSupported()) throw BizException.of(ErrorCode.AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED);
         return plan;
     }
 

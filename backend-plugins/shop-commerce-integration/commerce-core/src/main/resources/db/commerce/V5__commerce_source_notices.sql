@@ -1,0 +1,28 @@
+-- Durable future-effective source notices use the existing CommerceRecoveryJob, never a per-channel cron.
+CREATE TABLE cim_source_notice (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    notice_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_event_no VARCHAR(64) NOT NULL,
+    source_owner VARCHAR(16) NOT NULL,
+    source_ref VARCHAR(128) NULL,
+    payload_hash CHAR(64) NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    next_check_at DATETIME(3) NOT NULL,
+    scope_cursor BIGINT NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    attempts INT NOT NULL DEFAULT 0,
+    error_code VARCHAR(64) NULL,
+    UNIQUE KEY uk_cim_source_notice_no(notice_no),
+    UNIQUE KEY uk_cim_source_notice_event(tenant_no,source_system,source_event_no,source_owner),
+    KEY ix_cim_source_notice_due(tenant_no,status,next_check_at,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

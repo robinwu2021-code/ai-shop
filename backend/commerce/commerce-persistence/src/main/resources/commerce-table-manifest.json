@@ -1,0 +1,4682 @@
+{
+  "candidates": 33,
+  "physical_tables": 32,
+  "external_models": 1,
+  "dictionary_fields": 621,
+  "physical_dictionary_fields": 609,
+  "additional_fields": {
+    "commerce_outbox": [
+      {
+        "name": "schema_version",
+        "sql_type": "INT",
+        "nullable": false,
+        "mapping": "CommerceEvent.schemaVersion; wire schema version, not aggregate version"
+      },
+      {
+        "name": "occurred_at",
+        "sql_type": "BIGINT",
+        "nullable": false,
+        "mapping": "CommerceEvent.occurredAt epoch milliseconds"
+      },
+      {
+        "name": "published_at",
+        "sql_type": "BIGINT",
+        "nullable": true,
+        "mapping": "markPublished receipt time epoch milliseconds"
+      }
+    ],
+    "sys_business_end": [
+      {
+        "name": "client_id",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "BusinessEndDraft.clientId trusted deployment client reference"
+      },
+      {
+        "name": "acceptance_ref",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "BusinessEndDraft.acceptanceRef trusted acceptance record reference"
+      }
+    ],
+    "mall_sku_version": [
+      {
+        "name": "sku_name_snapshot",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "SkuDraft.title immutable version snapshot; null legacy cannot be newly sold"
+      },
+      {
+        "name": "max_per_order_snapshot",
+        "sql_type": "INT",
+        "nullable": true,
+        "mapping": "SkuDraft.maxPerOrder immutable version snapshot; null legacy cannot be newly sold"
+      }
+    ],
+    "mall_refund": [
+      {
+        "name": "command_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Frozen verified original payment binding and approved cash request; null legacy is unproven"
+      },
+      {
+        "name": "verified_fact_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Full independently verified terminal refund fact; null is not completed cash"
+      },
+      {
+        "name": "review_evidence",
+        "sql_type": "VARCHAR(1024)",
+        "nullable": true,
+        "mapping": "Independent operations approval evidence; original buyer reason remains in reason"
+      },
+      {
+        "name": "review_quotes_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Append-only independent operator review quotes bound to immutable original request"
+      },
+      {
+        "name": "approved_review_quote_no",
+        "sql_type": "VARCHAR(64)",
+        "nullable": true,
+        "mapping": "Selected immutable operator review quote; null uses original buyer preview"
+      }
+    ],
+    "mch_subscription_period": [
+      {
+        "name": "revoked_by_no",
+        "sql_type": "VARCHAR(64)",
+        "nullable": true,
+        "mapping": "Immutable zero-value source revocation operation"
+      },
+      {
+        "name": "revocation_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Original zero economics, used duration, effective cut and operator evidence"
+      }
+    ]
+  },
+  "tables": [
+    {
+      "candidate": "sys_business_type",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "enabled",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_catalog_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "remark",
+          "type": "VARCHAR(512)",
+          "nullable": true,
+          "sql_type": "VARCHAR(512)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "sys_business_end",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "scope",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "release_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sale_enabled",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "bootstrap_required",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "enabled",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "route_policy_ref",
+          "type": "VARCHAR(128)",
+          "nullable": true,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "sys_industry_plan",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tier_code",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "rank",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "current_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "sys_industry_plan_version",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "revision",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "display_name",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "summary",
+          "type": "VARCHAR(512)",
+          "nullable": true,
+          "sql_type": "VARCHAR(512)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "published_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "published_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "change_note",
+          "type": "VARCHAR(1024)",
+          "nullable": true,
+          "sql_type": "VARCHAR(1024)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "sys_plan_version_end",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "mall_product",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "product_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "category_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "product_type",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "sql_type": "TEXT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "media",
+          "type": "JSON",
+          "nullable": true,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "mall_sku",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "product_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_name",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "current_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "max_per_order",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "mall_sku_version",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "revision",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "list_price_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sale_price_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "refund_policy_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "published_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "mall_sku_component",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "component_seq",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "component_type",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "hardware_sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "period_days",
+          "type": "INT",
+          "nullable": true,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "unit_count",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allocation_weight",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "is_gift",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "activation_policy",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "IN (0,1)"
+    },
+    {
+      "candidate": "mall_sku_stock",
+      "disposition": "external HardwareInventoryPort -> inv_stock_balance (owner/item/location)",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.id; never copied into commerce"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "trusted bridge maps tenant to platform inventory owner_id; inventory has no tenant_no"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.created_at (host audit precision)"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.updated_at (host audit precision)"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.created_by"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.updated_by"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.version"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "omitted: inventory has no soft-delete field; host lifecycle owns archival"
+        },
+        {
+          "name": "hardware_sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "bridge resolves HardwareInventoryPort skuNo to inv_item.item_id under platform owner_id"
+        },
+        {
+          "name": "warehouse_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "bridge selects configured inv_location.location_id under same owner_id"
+        },
+        {
+          "name": "on_hand_qty",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.on_hand (INT; bridge validates quantity bounds)"
+        },
+        {
+          "name": "reserved_qty",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": null,
+          "mapping": "external inv_stock_balance.reserved (INT; host reservation authority)"
+        }
+      ]
+    },
+    {
+      "candidate": "mall_quote",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "buyer_user_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "intent",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "account_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_account_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pricing_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "stacking_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "request_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "line_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "conversion_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "schedule_preview_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "price_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "new_conversion_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_used_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_due_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_order",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "buyer_user_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "intent",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "gross_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "discount_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deal_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_used_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_due_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_paid_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_refunded_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pay_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "fulfillment_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "refund_status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pay_deadline",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "paid_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "closed_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "request_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_order_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "unit_price_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "gross_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "discount_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deal_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sku_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_order_component",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "component_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "target_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "unit_count",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allocated_deal_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allocated_cash_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allocated_credit_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "eligible_basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "is_gift",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "fulfillment_status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_payment_ref",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "payment_attempt_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pay_order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "receiver_account_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "payment_business_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "amount_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "provider_paid_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_fulfillment_task",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "task_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "unit_seq",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "task_type",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "attempt_count",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "result_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "last_error_code",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "lease_until",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_shipment",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "shipment_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "shipment_items",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "address_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "carrier_code",
+          "type": "VARCHAR(32)",
+          "nullable": true,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tracking_no",
+          "type": "VARCHAR(128)",
+          "nullable": true,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "shipped_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "signed_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_refund",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(1024)",
+          "nullable": false,
+          "sql_type": "VARCHAR(1024)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "policy_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "requested_cash_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "approved_cash_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "restore_credit_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pay_refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reviewed_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reviewed_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mall_refund_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "refund_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_refund_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_restore_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "rights_action",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "adjustment_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "commerce_event_inbox",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_system",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_id",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "aggregate_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "payload_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "received_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "processed_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_account",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pending_change_order_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "legacy_contract_ref",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "migration_batch_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_period",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "stream_key",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_type",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "fulfillment_task_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "standalone_entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tier_code",
+          "type": "VARCHAR(16)",
+          "nullable": true,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "delivered_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "delivery_seq",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "granted_duration_ms",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "revoked_duration_ms",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "original_start_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "original_end_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "effective_start_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "effective_end_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "eligible_basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "converted_by_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_policy_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_store_end_grant",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "grant_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "schedule_revision",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "segment_seq",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "schedule_event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "start_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "end_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "revoked_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(512)",
+          "nullable": false,
+          "sql_type": "VARCHAR(512)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_reservation",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reservation_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "subscription_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_account_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "pay_deadline",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_periods_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reserved_credit_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_conversion",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "conversion_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "effective_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "new_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "converted_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_consumed_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cash_paid_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_conversion_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "conversion_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "original_duration_ms",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "remaining_duration_ms",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "converted_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_credit_account",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "balance_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reserved_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_credit_lot",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_lot_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_type",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "source_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "issued_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "remaining_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reserved_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "parent_provenance",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_credit_ledger",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "ledger_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false,
+          "sql_type": "VARCHAR(8)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "credit_lot_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "biz_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_seq",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "amount_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "balance_delta_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reserved_delta_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reversal_of_ledger_no",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(1024)",
+          "nullable": false,
+          "sql_type": "VARCHAR(1024)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "commerce_outbox",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "aggregate_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "aggregate_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "aggregate_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "payload",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "retry_count",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_subscription_migration_map",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "migration_batch_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "legacy_entity_plan_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "legacy_contract_ref",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "new_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "allocated_basis_minor",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "evidence_ref",
+          "type": "VARCHAR(256)",
+          "nullable": true,
+          "sql_type": "VARCHAR(256)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "legacy_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "validation_status",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "cutover_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "mch_end_schedule_event",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "schedule_event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "operation_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "reason_type",
+          "type": "VARCHAR(24)",
+          "nullable": false,
+          "sql_type": "VARCHAR(24)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "effective_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "before_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "after_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "duration_check_snapshot",
+          "type": "JSON",
+          "nullable": false,
+          "sql_type": "JSON",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "stacking_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    },
+    {
+      "candidate": "commerce_expiry_notice",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "sql_type": "DATETIME(3)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false,
+          "sql_type": "TINYINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "notice_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "coverage_end_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "threshold_code",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "due_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "observed_entitlement_version",
+          "type": "BIGINT",
+          "nullable": false,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "recipient_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "sql_type": "VARCHAR(32)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "recipient_no",
+          "type": "VARCHAR(64)",
+          "nullable": false,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "channel",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "dedup_key",
+          "type": "VARCHAR(128)",
+          "nullable": false,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "sql_type": "VARCHAR(16)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "attempts",
+          "type": "INT",
+          "nullable": false,
+          "sql_type": "INT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "next_attempt_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "lease_until",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "provider_message_no",
+          "type": "VARCHAR(128)",
+          "nullable": true,
+          "sql_type": "VARCHAR(128)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "last_error_code",
+          "type": "VARCHAR(64)",
+          "nullable": true,
+          "sql_type": "VARCHAR(64)",
+          "mapping": "same-named owned column"
+        },
+        {
+          "name": "sent_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "sql_type": "BIGINT",
+          "mapping": "same-named owned column"
+        }
+      ],
+      "deleted_constraint": "= 0"
+    }
+  ]
+}

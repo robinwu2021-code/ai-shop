@@ -1,19 +1,42 @@
 package ai.neargo.shop.arch;
 
+import ai.neargo.shop.trade.mapper.CheckoutMappers.OperationMapper;
+import ai.neargo.shop.invbridge.ExecutionStockRetentionRecoveryJob;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+import tools.jackson.databind.json.JsonMapper;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import javax.tools.ToolProvider;
+import org.junit.jupiter.api.io.TempDir;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
@@ -71,7 +94,12 @@ class ArchitectureTest {
             "inventory",
             // logistics：物流（lgs_*，ADR-032）。**现在内嵌、将来可拆** —— 登记进来，
             // 订单域直接 import 运单实体这类越界当场就红，而不是等拆分那天编译不过才发现
-            "logistics"};
+            "logistics",
+            // printing owns prn_* configuration and delivery facts; guard it as a business domain.
+            "printing",
+            // food is an independently packaged industry domain, not shared infrastructure.
+            "food",
+            "beauty"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -80,11 +108,25 @@ class ArchitectureTest {
 
     private static JavaClasses classes;
 
+    @AfterAll
+    static void releaseImportedClasses() {
+        // The whole-domain graph is only needed by this class. Do not retain it while later
+        // Spring context tests populate the shared Surefire JVM; full-run memory still needs validation.
+        classes = null;
+    }
+
     @BeforeAll
     static void importClasses() {
         classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("ai.neargo.shop");
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "beauty.arch.required", matches = "true")
+    void embeddedBeautyClassesArePresentWhenRequested() {
+        assertThat(classes.stream().map(javaClass -> javaClass.getName()))
+                .contains("ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl");
     }
 
     @Test
@@ -286,12 +328,17 @@ class ArchitectureTest {
     void serviceMustBeInterface() {
         // 只约束业务域：common 里的横切服务（IdempotencyService 等）没有多实现的可能，
         // 强行拆接口只会多一层无意义的间接
-        classes().that().resideInAnyPackage(domainPackages())
+        domainServiceRule().check(classes);
+    }
+
+    private static ArchRule domainServiceRule() {
+        return classes().that().resideInAnyPackage(domainPackages())
+                .and(DescribedPredicate.describe("not a typed food remote service adapter",
+                        type -> !isFoodRemoteServiceAdapter(type)))
                 .and().haveSimpleNameEndingWith("Service").and().areNotInterfaces()
                 .should().haveSimpleNameEndingWith("ServiceImpl")
                 .allowEmptyShould(true)
-                .because("Service 统一 interface + impl（powerbank 早期具体类后来都要回填规整）")
-                .check(classes);
+                .because("Service 统一 interface + impl（powerbank 早期具体类后来都要回填规整）");
     }
 
     @Test
@@ -322,27 +369,123 @@ class ArchitectureTest {
          * CommunityServiceImpl / UserServiceImpl）**整整齐齐地绕过了这条规则**。
          * 类名是可以随便起的，实现关系不是。
          */
-        classes().that().areAssignableTo(
-                        com.tngtech.archunit.base.DescribedPredicate.describe("任一 Port 接口",
-                                (com.tngtech.archunit.core.domain.JavaClass c) ->
-                                        c.getPackageName().startsWith("ai.neargo.shop.spi")
-                                                && c.getSimpleName().endsWith("Port")))
+        portImplementationRule().check(classes);
+    }
+
+    // food-api owns this industry contract root; arbitrary domain-local spi packages remain illegal.
+    private static final String[] PORT_CONTRACT_PACKAGES = {
+            "ai.neargo.shop.spi..", "ai.neargo.shop.food.spi.."};
+
+    private static ArchRule portImplementationRule() {
+        return classes().that().areAssignableTo(
+                        DescribedPredicate.describe("registered SPI Port interface", c ->
+                                c.isInterface() && c.getSimpleName().endsWith("Port")
+                                        && (inPackageTree(c, "ai.neargo.shop.spi")
+                                            || inPackageTree(c, "ai.neargo.shop.food.spi"))))
                 .and().areNotInterfaces()
                 .should().resideInAPackage("..port..")
                 .allowEmptyShould(true)
                 .because("Port 实现集中在各域的 .port 包 —— Service 兼任会让本域逻辑的改动"
-                        + "不知不觉改掉跨域契约的行为，且两拨受众看到的能力范围不同")
-                .check(classes);
+                        + "不知不觉改掉跨域契约的行为，且两拨受众看到的能力范围不同");
+    }
+
+    private static final DescribedPredicate<JavaClass> PERSISTENCE_MAPPER =
+            new DescribedPredicate<>("a database mapper, including first-party and MyBatis adapters") {
+                @Override
+                public boolean test(JavaClass candidate) {
+                    return candidate.isAssignableTo(BaseMapper.class)
+                            || candidate.isAnnotatedWith("org.apache.ibatis.annotations.Mapper")
+                            || (candidate.getPackageName().startsWith("ai.neargo.")
+                                    && candidate.getSimpleName().endsWith("Mapper"));
+                }
+            };
+
+    @Test
+    void databaseMapperClassificationKeepsSqlProtectionAndExcludesJsonCodecs() {
+        var examples = new ClassFileImporter().importClasses(
+                ObjectMapper.class, JsonMapper.class, MchStoreMapper.class, BaseMapper.class);
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(ObjectMapper.class))).isFalse();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(JsonMapper.class))).isFalse();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(MchStoreMapper.class))).isTrue();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(BaseMapper.class))).isTrue();
     }
 
     @Test
     @DisplayName("Controller 不得直接依赖 Mapper（必须经 Service）")
     void controllersMustNotTouchMappers() {
-        noClasses().that().resideInAPackage("ai.neargo.shop.portal..")
-                .should().dependOnClassesThat().haveSimpleNameEndingWith("Mapper")
-                .allowEmptyShould(true)
-                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
+        noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.resideInAPackage("ai.neargo.shop.portal.."))
                 .check(classes);
+    }
+
+    @Test
+    void controllerMapperRuleAllowsJsonCodecButRejectsPersistenceMapper() {
+        JavaClasses fixtures =
+                new ClassFileImporter()
+                        .importClasses(
+                                JsonCodecController.class,
+                                JsonMapperController.class,
+                                PersistenceMapperController.class,
+                                ObjectMapper.class,
+                                JsonMapper.class,
+                                OperationMapper.class);
+        ArchRule jsonRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(JsonCodecController.class));
+        ArchRule persistenceRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(PersistenceMapperController.class));
+
+        assertThat(jsonRule.evaluate(fixtures).hasViolation()).isFalse();
+        assertThat(noControllerPersistenceMapperDependencies(
+                JavaClass.Predicates.type(JsonMapperController.class)).evaluate(fixtures).hasViolation()).isFalse();
+        var persistenceResult = persistenceRule.evaluate(fixtures);
+        assertThat(persistenceResult.hasViolation()).isTrue();
+        assertThat(persistenceResult.getFailureReport().getDetails())
+                .anySatisfy(
+                        detail ->
+                                assertThat(detail)
+                                        .contains(
+                                                PersistenceMapperController.class.getName(),
+                                                OperationMapper.class.getName()));
+    }
+
+    private static ArchRule noControllerPersistenceMapperDependencies(
+            DescribedPredicate<JavaClass> controllers) {
+        // Keep explicit database classification and the existing name guard; Jackson remains a codec.
+        DescribedPredicate<JavaClass> persistenceMappers = PERSISTENCE_MAPPER
+                .or(JavaClass.Predicates.simpleNameEndingWith("Mapper"))
+                .and(not(JavaClass.Predicates.assignableTo(ObjectMapper.class)));
+        return noClasses()
+                .that(controllers)
+                .should()
+                .dependOnClassesThat(persistenceMappers)
+                .allowEmptyShould(true)
+                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过");
+    }
+
+    private static final class JsonCodecController {
+        private final ObjectMapper json;
+
+        private JsonCodecController(ObjectMapper json) {
+            this.json = json;
+        }
+    }
+
+    private static final class JsonMapperController {
+        private final JsonMapper json;
+
+        private JsonMapperController(JsonMapper json) {
+            this.json = json;
+        }
+    }
+
+    private static final class PersistenceMapperController {
+        private final OperationMapper operations;
+
+        private PersistenceMapperController(OperationMapper operations) {
+            this.operations = operations;
+        }
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -370,26 +513,172 @@ class ArchitectureTest {
     @Test
     @DisplayName("领域层不得出现 Web 运行时类型（HttpServletRequest 等）")
     void domainsMustNotTouchWebRuntime() {
-        noClasses().that().resideInAnyPackage(domainPackages())
+        domainWebRuntimeRule().check(classes);
+    }
+
+    private static ArchRule domainWebRuntimeRule() {
+        return noClasses().that().resideInAnyPackage(domainPackages())
+                .and(DescribedPredicate.describe("domain logic, excluding food presentation/transport/assembly and the pay portal",
+                        type -> !isFoodWebAdapter(type) && !isPayPortal(type)))
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "jakarta.servlet..", "org.springframework.web.context..",
                         "org.springframework.web.servlet..")
                 .allowEmptyShould(true)
-                .because("领域逻辑一旦读 request，就只能在 HTTP 线程里跑——"
-                        + "定时任务（worker profile）和事件消费都调不动它。"
-                        + "S7 把 Controller 搬进业务工程后，这条是防止 web 语义渗进领域的唯一屏障")
-                .check(classes);
+                .because("领域 service/policy/entity 不得依赖 Web；独立 food-web 的 presentation、typed transport 与装配不属于领域逻辑；"
+                        + "支付接入层 pay-portal（pay.api..）是支付的 controller 与鉴权过滤器，同理（ADR-044）");
+    }
+
+    /** 支付接入层（pay-portal 模块，ADR-044 §2-2）：只豁免 {@code ai.neargo.shop.pay.api} 这一棵子树 */
+    private static boolean isPayPortal(JavaClass type) {
+        return inPackageTree(type, "ai.neargo.shop.pay.api");
+    }
+
+    private static boolean isFoodRemoteServiceAdapter(JavaClass type) {
+        if (!inPackageTree(type, "ai.neargo.shop.food.foodclient")
+                || !type.getSimpleName().startsWith("Remote") || !type.getSimpleName().endsWith("Service")) {
+            return false;
+        }
+        String contract = "ai.neargo.shop.food.service." + type.getSimpleName().substring("Remote".length());
+        return type.getAllRawInterfaces().stream().anyMatch(candidate -> candidate.getName().equals(contract))
+                && type.getDirectDependenciesFromSelf().stream().anyMatch(dependency ->
+                        inPackageTree(dependency.getTargetClass(), "ai.neargo.shop.food.spi")
+                                && dependency.getTargetClass().getSimpleName().endsWith("InternalApi"));
+    }
+
+    private static boolean isFoodWebAdapter(JavaClass type) {
+        if (inPackageTree(type, "ai.neargo.shop.food.api") || isFoodRemoteServiceAdapter(type)) {
+            return true;
+        }
+        if (!inPackageTree(type, "ai.neargo.shop.food.config")) {
+            return false;
+        }
+        // Anonymous WebMvcConfigurer implementations inherit the enclosing assembly's role.
+        for (JavaClass enclosing = type; enclosing != null;
+                enclosing = enclosing.getEnclosingClass().orElse(null)) {
+            if (enclosing.isAnnotatedWith("org.springframework.boot.autoconfigure.AutoConfiguration")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean inPackageTree(JavaClass type, String root) {
+        return type.getPackageName().equals(root) || type.getPackageName().startsWith(root + ".");
+    }
+
+    private static ArchRule portContractRule() {
+        return classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
+                .should().resideInAnyPackage(PORT_CONTRACT_PACKAGES)
+                .allowEmptyShould(true)
+                .because("跨域契约只能定义在 core SPI 或已登记的独立行业 API SPI，不能藏在域内 policy 包");
     }
 
     @Test
-    @DisplayName("Port 接口只能定义在 spi 包")
+    @DisplayName("Port 接口只能定义在已登记的独立 SPI 包")
     void portInterfacesOnlyInSpi() {
-        classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
-                .should().resideInAPackage("ai.neargo.shop.spi..")
-                .allowEmptyShould(true)
-                .because("Port 是跨域契约。定义在某个域里，等于让调用方 import 那个域——"
-                        + "本来要解耦，结果反而建立了依赖")
-                .check(classes);
+        portContractRule().check(classes);
+    }
+
+    @Test
+    void industrySpiKeepsContractAndImplementationBoundaries(@TempDir Path temporary) throws IOException {
+        // Compile isolated package examples so the regression exercises the actual ArchUnit rules,
+        // without introducing deliberately invalid contracts into the application's domain graph.
+        var examples = Map.of(
+                "ai.neargo.shop.spi.example.CorePort", "public interface CorePort {}",
+                "ai.neargo.shop.food.spi.IndustryPort", "public interface IndustryPort {}",
+                "ai.neargo.shop.food.policy.PolicyPort", "public interface PolicyPort {}",
+                "ai.neargo.shop.food.policy.spi.HiddenPort", "public interface HiddenPort {}",
+                "ai.neargo.shop.food.spiExtra.LookalikePort", "public interface LookalikePort {}",
+                "ai.neargo.shop.unregistered.spi.OtherPort", "public interface OtherPort {}",
+                "ai.neargo.shop.food.port.ValidAdapter", "public class ValidAdapter implements ai.neargo.shop.food.spi.IndustryPort {}",
+                "ai.neargo.shop.food.policy.InvalidAdapter", "public class InvalidAdapter implements ai.neargo.shop.food.spi.IndustryPort {}");
+        var imported = compileArchitectureExamples(temporary, examples);
+        var contractFailures = portContractRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(contractFailures).hasSize(4);
+        for (String invalid : List.of("food.policy.PolicyPort", "food.policy.spi.HiddenPort",
+                "food.spiExtra.LookalikePort", "unregistered.spi.OtherPort")) {
+            assertThat(contractFailures).anyMatch(detail -> detail.contains("ai.neargo.shop." + invalid + ">"));
+        }
+        var implementationFailures = portImplementationRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(implementationFailures).hasSize(1);
+        assertThat(implementationFailures.getFirst()).contains("ai.neargo.shop.food.policy.InvalidAdapter");
+    }
+
+    private static JavaClasses compileArchitectureExamples(Path temporary, Map<String, String> examples) throws IOException {
+        var arguments = new ArrayList<String>(List.of("-proc:none", "-classpath", System.getProperty("java.class.path"),
+                "-d", temporary.toString()));
+        for (var example : examples.entrySet()) {
+            int separator = example.getKey().lastIndexOf('.');
+            Path source = temporary.resolve(example.getKey().replace('.', '/') + ".java");
+            Files.createDirectories(source.getParent());
+            Files.writeString(source, "package " + example.getKey().substring(0, separator) + ";\n" + example.getValue());
+            arguments.add(source.toString());
+        }
+        assertThat(ToolProvider.getSystemJavaCompiler().run(null, null, null, arguments.toArray(String[]::new))).isZero();
+        return new ClassFileImporter().importPath(temporary);
+    }
+
+    @Test
+    @DisplayName("★★ 支付只豁免 pay.api 这一棵子树碰 Web —— 领域服务、实现、相邻包名照样拦（ADR-044）")
+    void payPortalIsTheOnlyPayWebException(@TempDir Path temporary) throws IOException {
+        String webField = "public jakarta.servlet.http.HttpServletRequest request;";
+        var imported = compileArchitectureExamples(temporary, Map.ofEntries(
+                Map.entry("ai.neargo.shop.pay.api.ops.ExampleController", "public class ExampleController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.api.auth.ExampleAuthenticator", "public class ExampleAuthenticator {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.apiExtra.FalsePortal", "public class FalsePortal {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.service.BadService", "public class BadService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.impl.BadServiceImpl", "public class BadServiceImpl {" + webField + "}")));
+        for (String valid : List.of("pay.api.ops.ExampleController", "pay.api.auth.ExampleAuthenticator")) {
+            var selection = imported.that(DescribedPredicate.describe(valid, type -> type.getName().equals("ai.neargo.shop." + valid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(valid).isFalse();
+        }
+        for (String invalid : List.of("pay.apiExtra.FalsePortal", "pay.service.BadService", "pay.impl.BadServiceImpl")) {
+            var selection = imported.that(DescribedPredicate.describe(invalid, type -> type.getName().equals("ai.neargo.shop." + invalid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(invalid).isTrue();
+        }
+    }
+
+    @Test
+    void foodWebLayersKeepBusinessLogicProtected(@TempDir Path temporary) throws IOException {
+        String webField = "public jakarta.servlet.http.HttpServletRequest request;";
+        var examples = Map.ofEntries(
+                Map.entry("ai.neargo.shop.food.api.biz.ExampleController", "public class ExampleController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.apiExtra.FalsePresentation", "public class FalsePresentation {" + webField + "}"),
+                Map.entry("ai.neargo.shop.trade.api.OtherController", "public class OtherController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.BadService", "public class BadService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.policy.BadPolicy", "public class BadPolicy {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.entity.BadEntity", "public class BadEntity {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.config.WebAssembly", "@org.springframework.boot.autoconfigure.AutoConfiguration public class WebAssembly { public static class Nested {" + webField + "} }"),
+                Map.entry("ai.neargo.shop.food.config.FalseAssembly", "public class FalseAssembly {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.CatalogService", "public interface CatalogService {}"),
+                Map.entry("ai.neargo.shop.food.spi.CatalogInternalApi", "public interface CatalogInternalApi {}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteCatalogService", "public class RemoteCatalogService implements ai.neargo.shop.food.service.CatalogService { public ai.neargo.shop.food.spi.CatalogInternalApi api; " + webField + "}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteFakeService", "public class RemoteFakeService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.BareService", "public interface BareService {}"),
+                Map.entry("ai.neargo.shop.food.foodclient.RemoteBareService", "public class RemoteBareService implements ai.neargo.shop.food.service.BareService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.food.service.RemoteCatalogService", "public class RemoteCatalogService implements CatalogService { public ai.neargo.shop.food.spi.CatalogInternalApi api; " + webField + "}"));
+        var imported = compileArchitectureExamples(temporary, examples);
+        for (String valid : List.of("food.api.biz.ExampleController", "food.config.WebAssembly$Nested",
+                "food.foodclient.RemoteCatalogService")) {
+            var selection = imported.that(DescribedPredicate.describe(valid, type -> type.getName().equals("ai.neargo.shop." + valid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(valid).isFalse();
+        }
+        for (String invalid : List.of("food.apiExtra.FalsePresentation", "trade.api.OtherController", "food.service.BadService",
+                "food.policy.BadPolicy", "food.entity.BadEntity", "food.config.FalseAssembly", "food.foodclient.RemoteFakeService",
+                "food.foodclient.RemoteBareService", "food.service.RemoteCatalogService")) {
+            var selection = imported.that(DescribedPredicate.describe(invalid, type -> type.getName().equals("ai.neargo.shop." + invalid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(invalid).isTrue();
+        }
+        var serviceFailures = domainServiceRule().evaluate(imported).getFailureReport().getDetails();
+        assertThat(serviceFailures).hasSize(4);
+        for (String invalid : List.of("food.service.BadService", "food.foodclient.RemoteFakeService",
+                "food.foodclient.RemoteBareService", "food.service.RemoteCatalogService")) {
+            assertThat(serviceFailures).anyMatch(detail -> detail.contains("ai.neargo.shop." + invalid + ">"));
+        }
     }
 
     @Test
@@ -451,6 +740,14 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // Shared document identities and reservations, independent of business eligibility.
+                "numbering",
+                // App-level adapters compose existing merchant and member domains through their contracts.
+                "merchantbridge",
+                // App-level points orchestration selects embedded/remote PAY capability; no new ledger owner.
+                "points",
+                // commercebridge：宿主装配独立 commerce 模块，并提供宿主事务内的建店身份适配。
+                "commercebridge",
                 // payclient：controller 与支付域之间的那一层（app service）。
                 // **不是业务域**：它没有自己的表，做的是「解析数据域 → 校验 → 调支付域 → 拼 VO」。
                 // 支付域拆分后 controller 只做 HTTP 的事，业务动作落在这里；
@@ -528,7 +825,9 @@ class ArchitectureTest {
                 // **不是业务域**：没有业务规则，只有一张「码查目标」的表与一个跳转控制器，
                 // 与 report / media 同构（有表，但那是工具不是业务）。谁要发条短链就用它，
                 // 它不认识任何业务概念、也不依赖任何域。见 TDD-收件人物流触达与分享裂变 §4.2。
-                "link");
+                "link",
+                "print", // print-api DTOs and channel adapters; durable state belongs to printing.
+                "printbridge");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 
@@ -548,7 +847,7 @@ class ArchitectureTest {
     }
 
     /**
-     * 每个 {@code @Scheduled} 都必须带 {@code @SchedulerLock}。
+     * 每个 {@code @Scheduled} 都必须使用声明式或程序化 ShedLock。
      *
      * <p><b>这条守的是「加第二个 worker 实例的那一天」。</b>
      * 定时任务已经被 {@code @Profile("worker")} 挡住了「api 实例也在跑」这一层，
@@ -564,22 +863,103 @@ class ArchitectureTest {
      * <p>所以这条不能靠人记得 —— 加任务的人正在想的是业务，不是部署形态。
      */
     @Test
-    @DisplayName("★★★ 每个 @Scheduled 都要有 @SchedulerLock —— 漏一个，扩容那天就重复执行")
+    @DisplayName("★★★ 每个 @Scheduled 都要有真实分布式锁 —— 漏一个，扩容那天就重复执行")
     void everyScheduledMethodMustBeLocked() {
-        List<String> unlocked = classes.stream()
+        assertThat(unlockedScheduledMethods(classes))
+                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
+                        + "  使用独立任务名的 @SchedulerLock，或同 owner 调用路径中的 LockingTaskExecutor.executeWithLock。\n"
+                        + "  lockAtMostFor 必须覆盖该任务的一次有界扫描，并为进程失效提供接管时限。")
+                .isEmpty();
+    }
+
+    private static List<String> unlockedScheduledMethods(JavaClasses candidates) {
+        return candidates.stream()
                 .flatMap(c -> c.getMethods().stream())
-                .filter(m -> m.isAnnotatedWith(org.springframework.scheduling.annotation.Scheduled.class))
-                .filter(m -> !m.isAnnotatedWith(net.javacrumbs.shedlock.spring.annotation.SchedulerLock.class))
+                .filter(m -> m.isAnnotatedWith(Scheduled.class))
+                .filter(m -> !hasDistributedSchedulerLock(m))
                 .map(m -> m.getOwner().getSimpleName() + "#" + m.getName())
                 .sorted()
                 .toList();
+    }
 
-        assertThat(unlocked)
-                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
-                        + "  加 @SchedulerLock(name=..., lockAtLeastFor=..., lockAtMostFor=...)：\n"
-                        + "  · name 每个任务独立 —— 共用一把锁会让后一个被静默跳过\n"
-                        + "  · lockAtMostFor 要小于调度间隔，否则卡死时整条链停摆")
-                .isEmpty();
+    static boolean hasDistributedSchedulerLock(JavaMethod method) {
+        return method.isAnnotatedWith(SchedulerLock.class)
+                || callsOwnerShedLock(method, method.getOwner(), new HashSet<>());
+    }
+
+    private static boolean callsOwnerShedLock(JavaMethod method, JavaClass owner, Set<JavaMethod> visited) {
+        if (!visited.add(method)) return false;
+        for (var call : method.getMethodCallsFromSelf()) {
+            var target = call.getTarget();
+            var parameters = target.getRawParameterTypes();
+            if (target.getOwner().isAssignableTo(LockingTaskExecutor.class)
+                    && target.getName().equals("executeWithLock")
+                    && parameters.size() == 2
+                    && parameters.get(1).isEquivalentTo(LockConfiguration.class)
+                    && (parameters.getFirst().isEquivalentTo(Runnable.class)
+                        || parameters.getFirst().isEquivalentTo(LockingTaskExecutor.Task.class)
+                        || parameters.getFirst().isEquivalentTo(LockingTaskExecutor.TaskWithResult.class))) {
+                return true;
+            }
+            if (target.getOwner().equals(owner)
+                    && target.resolveMember().filter(next -> callsOwnerShedLock(next, owner, visited)).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void scheduledLockRuleFollowsTypedOwnerCallPaths() {
+        var fixtures = new ClassFileImporter().importClasses(
+                ExecutionStockRetentionRecoveryJob.class, ProgrammaticallyLockedSchedule.class,
+                FakeNamedLockSchedule.class, UnlockedSchedule.class, SameNamedLockExecutor.class,
+                LockingTaskExecutor.class);
+        assertThat(unlockedScheduledMethods(fixtures)).containsExactlyInAnyOrder(
+                FakeNamedLockSchedule.class.getSimpleName() + "#scan",
+                UnlockedSchedule.class.getSimpleName() + "#scan");
+    }
+
+    private static final class ProgrammaticallyLockedSchedule {
+        private final LockingTaskExecutor locks;
+
+        private ProgrammaticallyLockedSchedule(LockingTaskExecutor locks) { this.locks = locks; }
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() { runLocked(); }
+
+        private void runLocked() {
+            locks.executeWithLock((Runnable) () -> {}, fixtureLock());
+        }
+    }
+
+    private static final class SameNamedLockExecutor {
+        void executeWithLock(Runnable task, LockConfiguration lock) { task.run(); }
+    }
+
+    private static final class FakeNamedLockSchedule {
+        private final SameNamedLockExecutor locks = new SameNamedLockExecutor();
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() { locks.executeWithLock(() -> {}, fixtureLock()); }
+    }
+
+    private static final class UnlockedSchedule {
+        private final LockingTaskExecutor locks;
+
+        private UnlockedSchedule(LockingTaskExecutor locks) { this.locks = locks; }
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() {}
+
+        // A real lock elsewhere in the owner is insufficient: scan never calls it.
+        private void unrelatedLockedMethod() {
+            locks.executeWithLock((Runnable) () -> {}, fixtureLock());
+        }
+    }
+
+    private static LockConfiguration fixtureLock() {
+        return new LockConfiguration(Instant.EPOCH, "architecture-lock-fixture", Duration.ofMinutes(2), Duration.ZERO);
     }
 
     /**

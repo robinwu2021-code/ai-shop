@@ -1,7 +1,9 @@
 package ai.neargo.shop.product.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +27,13 @@ public class PrdStockLock extends BaseEntity {
     public static final String ALLOCATED = "ALLOCATED";
 
     /** 锁定单号 = 订单号。 */
+    /** Complete original source tuple metadata; effective stock pool remains in storeNo. */
+    private String sourceManifestHash;
+
+    private String sourceStoreNo;
+    private Integer lifecycleVersion;
+    private String confirmationOperationNo;
+
     private String lockNo;
 
     private String skuNo;

@@ -1,0 +1,112 @@
+{
+  "date": "2026-11-13",
+  "sourceCommit": "4a4c8174b17c91ea1dee0e8c393aa7e1d9d8c4b6",
+  "backend": {
+    "releaseId": "ops-assisted-admission-20261113-a2aa6e7b5",
+    "databaseChanged": false,
+    "configurationChange": {
+      "SHOP_DEFAULT_MARKET": "CN -> TW"
+    },
+    "allOtherArchiveEntriesUnchanged": true,
+    "status": "DEPLOYED",
+    "sha256": "bc2adb82559214aeea2fb9be4c11f9eaa29792bf173ce10b46adc0c86523adff",
+    "apiHealth": "UP",
+    "opsHealth": "UP",
+    "otherContainerSettingsUnchanged": true,
+    "unrelatedServicesUnchanged": true,
+    "backupContainer": "ai-shop-ops-before-ops-assisted-admission-20261113-a2aa6e7b5",
+    "opsMarket": "TW",
+    "lockReleased": true
+  },
+  "frontend": {
+    "releaseId": "ops-assisted-admission-ui-20261113-4a4c8174b-r2",
+    "previousWeb": "/data/www/ai-shop-ops/releases/ops-assisted-admission-ui-20261113-a2aa6e7b5",
+    "backendChanged": false,
+    "databaseChanged": false,
+    "configChanged": false,
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/ops-assisted-admission-ui-20261113-4a4c8174b-r2",
+    "pagesVerified": 2,
+    "assetsVerified": 34,
+    "runtimesUnchanged": true,
+    "payWebUnchanged": true,
+    "backendSha256Unchanged": true,
+    "lockReleased": true
+  },
+  "checks": {
+    "fixCommit": "4a4c8174b17c91ea1dee0e8c393aa7e1d9d8c4b6",
+    "baseCommit": "203a915b48e8b97fef4b83e5403010e9a0a7d393",
+    "frontendBuild": true,
+    "productionArtifactGuard": true,
+    "backendTestsPassed": 14,
+    "frontendTestsPassed": 83,
+    "permissionMatrixTestsPassed": 37,
+    "lintPassed": true,
+    "apiContractGuardPassed": true,
+    "uiCatalogGuardPassed": true,
+    "baselineBinarySemanticsMatched": 18,
+    "backendSourceCommit": "a2aa6e7b58cbfc4fa1f7c21f9d8bc7152b9af00b",
+    "fieldAlignmentVerified": true
+  },
+  "online": {
+    "verified": true,
+    "desktop": {
+      "dialogHeight": 777.578125,
+      "dialogWidth": 880,
+      "footerVisible": true,
+      "noHorizontalOverflow": true,
+      "optionalCollapsed": true,
+      "regionSelectorAbsent": true,
+      "regionTW": true,
+      "viewport": 1280
+    },
+    "mobile": {
+      "bodyScrollable": true,
+      "dialogHeight": 730.796875,
+      "dialogLeft": 11.25,
+      "dialogRight": 363.75,
+      "dialogWidth": 352.5,
+      "documentWidth": 375,
+      "footerVisible": true,
+      "height": 812,
+      "noHorizontalOverflow": true,
+      "viewport": 375
+    },
+    "optional": {
+      "expanded": true,
+      "footerVisible": true
+    },
+    "systemRegion": "TW",
+    "regionSelectorAbsent": true,
+    "sourceFilteredRows": 6,
+    "approvedFilterRows": 3,
+    "readOnlyDetailsVerified": true,
+    "taiwanPhoneRecordOnlyVerified": true,
+    "cancelClosesDialog": true,
+    "viewportRestored": true,
+    "realApplicationsCreated": false,
+    "realChannelRequestsSent": false
+  },
+  "realApplicationsCreated": false,
+  "realChannelRequestsSent": false,
+  "fullProjectGateClaimed": false,
+  "staticPreflightDrift": {
+    "changedServices": {
+      "nearpay-prod": {
+        "before": {
+          "id": "8f0e5e99b8c620b2825382b7604d829eafded5f9f1a7d9846174c1033c2aee8b",
+          "startedAt": "2026-11-13T09:40:41.191564887Z",
+          "running": true
+        },
+        "now": {
+          "id": "8f0e5e99b8c620b2825382b7604d829eafded5f9f1a7d9846174c1033c2aee8b",
+          "startedAt": "2026-11-13T10:18:14.997593922Z",
+          "running": true
+        }
+      }
+    },
+    "shopJarUnchanged": true,
+    "shopWebUnchanged": true,
+    "payWebUnchanged": true
+  }
+}

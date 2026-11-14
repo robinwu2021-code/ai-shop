@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal;
 
+import ai.neargo.shop.spi.printing.*;
+
 import ai.neargo.shop.print.api.*;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -4,7 +4,7 @@ import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
+import ai.neargo.inventory.domain.service.InventoryOrderTraceService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

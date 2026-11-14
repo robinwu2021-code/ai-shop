@@ -1,0 +1,12 @@
+✔ network evidence cannot pass with a new retry key, new operation or missing case (2.381541ms)
+✔ negative acceptance rejects server errors, missing codes and wrong conflict keys (0.340417ms)
+✔ explicit proxy distinguishes lost request and committed lost response, and redacts secrets (31.109333ms)
+✔ constant JSON permission appends remain idempotent in the generated H2 schema (35.252334ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.117917

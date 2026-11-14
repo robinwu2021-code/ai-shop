@@ -17,6 +17,7 @@ import javax.sql.DataSource;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = {
@@ -32,6 +33,29 @@ class OutboxUnifiedFlowTest {
     @Autowired @Qualifier("transactionManager") PlatformTransactionManager platformTx;
     @Autowired @Qualifier("invTransactionManager") PlatformTransactionManager inventoryTx;
     @Autowired @Qualifier("dataSource") DataSource platform;
+
+    @Test
+    void payBridgeConsumersHaveStableRegistrationAndOwnerTransactionBoundaries() {
+        Map<String, Boolean> boundaries = Map.ofEntries(
+                Map.entry("activity-benefit-decision", true),
+                Map.entry("stored-value-recharge-recovery", true),
+                Map.entry("entitlement-batch-prepared", true),
+                Map.entry("legacy-coupon-refund-completed", true),
+                Map.entry("card-sale-recovery", true),
+                Map.entry("legacy-coupon-historical-return", true),
+                Map.entry("entitlement-notification", true),
+                Map.entry("legacy-coupon-issue-completed", true),
+                Map.entry("entitlement-marketing-effect", true),
+                Map.entry("legacy-coupon-checkout-decision", true),
+                Map.entry("entitlement-order-use-decision", true),
+                Map.entry("entitlement-exception-notification", false));
+        boundaries.forEach((id, external) -> {
+            var registered = facade.handler("PLATFORM", id);
+            assertThat(registered).as("stable consumer %s must be registered", id).isNotNull();
+            assertThat(registered.externalWorkflow()).as("owner transaction boundary for %s", id)
+                    .isEqualTo(external);
+        });
+    }
 
     @Test
     void actualPlatformPublisherJoinsBusinessRollback() {

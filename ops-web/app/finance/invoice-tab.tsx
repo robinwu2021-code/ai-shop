@@ -85,7 +85,7 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
   });
 
   const columns: Column<InvoiceRequest>[] = [
-    { header: c.colInvoiceNo, cell: (i) => i.invoiceNo, numeric: true, align: "start" },
+    { header: c.colInvoiceNo, cell: (i) => i.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colMerchant, cell: (i) => i.merchantName },
     { header: c.colPeriod, cell: (i) => i.period },
     { header: c.colTitleType, cell: (i) => (i.titleType === "COMPANY" ? c.titleCompany : c.titlePersonal) },
@@ -206,7 +206,7 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
       <Drawer
         open={!!current}
         onOpenChange={(o) => !o && setCurrent(null)}
-        title={current ? fill(c.invoiceTitle, { no: current.invoiceNo }) : ""}
+        title={current ? fill(c.invoiceTitle, { no: current.documentNo ?? "" }) : ""}
         desc={current ? statusMap[current.status].label : undefined}
         width="w-[520px]"
         footer={

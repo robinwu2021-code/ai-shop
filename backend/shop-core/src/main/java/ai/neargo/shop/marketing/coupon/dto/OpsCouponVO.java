@@ -53,5 +53,12 @@ public record OpsCouponVO(String couponNo,
                           Long archivedAt,
                           int totalCount,
                           int perUserLimit,
-                          long maxDiscountMinor) {
+                          long maxDiscountMinor, String documentNo) {
+    public OpsCouponVO(String couponNo, String name, String type, String status, long value, long threshold, String funder, String merchantNo, long validFrom, long validTo, long budget, long issuedAmount, int issued, int redeemed, long createdAt, Long archivedAt, int totalCount, int perUserLimit, long maxDiscountMinor) {
+        this(couponNo, name, type, status, value, threshold, funder, merchantNo, validFrom, validTo, budget, issuedAmount, issued, redeemed, createdAt, archivedAt, totalCount, perUserLimit, maxDiscountMinor, null);
+    }
+    public OpsCouponVO withDocumentNo(String number) {
+        return new OpsCouponVO(couponNo, name, type, status, value, threshold, funder, merchantNo, validFrom, validTo, budget, issuedAmount, issued, redeemed, createdAt, archivedAt, totalCount, perUserLimit, maxDiscountMinor, number);
+    }
+
 }

@@ -34,7 +34,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import tools.jackson.databind.json.JsonMapper;
 
 class RemoteStoreOperationServiceTest {
     @Test void sharedHttpClientUsesRealWireContractAndCredentials() throws Exception {
@@ -139,7 +141,8 @@ class RemoteStoreOperationServiceTest {
 
     @Test void standaloneGatewayAssemblesTypedServiceAndActualControllerWithoutCore() {
         new WebApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(FoodWebAutoConfiguration.class))
+                .withConfiguration(AutoConfigurations.of(
+                        JacksonAutoConfiguration.class,FoodWebAutoConfiguration.class))
                 .withUserConfiguration(FoodStoreScopeTest.Host.class)
                 .withBean(InternalHttp.class, () -> new InternalHttp(name -> Optional.empty(), "test-token"))
                 .withBean(StoreDirectoryPort.class,
@@ -147,7 +150,8 @@ class RemoteStoreOperationServiceTest {
                 .withPropertyValues("shop.food.enabled=true", "shop.food.deployment=standalone",
                         "spring.profiles.active=api")
                 .run(context -> {
-                    assertThat(context).hasNotFailed().hasSingleBean(StoreOperationService.class)
+                    assertThat(context).hasNotFailed().hasSingleBean(JsonMapper.class)
+                            .hasSingleBean(StoreOperationService.class)
                             .hasSingleBean(BizStoreOperationPolicyController.class)
                             .hasSingleBean(BizServiceCalendarController.class);
                     assertThat(context.getBean(StoreOperationService.class))

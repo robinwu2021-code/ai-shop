@@ -1,0 +1,1796 @@
+{
+  "status": "PARTIALLY_IMPLEMENTED_TASK59_DEPLOYMENT_DEFERRED",
+  "root": "backend-plugins/shop-industry-beauty",
+  "package": "ai.neargo.shop.beauty",
+  "modules": [
+    {
+      "name": "beauty-api",
+      "responsibility": "业务接口、Req/VO、内部共同协议、美业自有跨域SPI",
+      "dependencies": [
+        "shop-base"
+      ],
+      "optionalDependencies": []
+    },
+    {
+      "name": "beauty-core",
+      "responsibility": "业务实现、实体、Mapper、规则、事件、恢复Job、内部入口",
+      "dependencies": [
+        "beauty-api",
+        "shop-base",
+        "shop-store-mybatis"
+      ],
+      "optionalDependencies": [
+        "job-api（启用业务Job时）"
+      ]
+    },
+    {
+      "name": "beauty-web",
+      "responsibility": "C/B/平台Controller、Web鉴权接入、本地或远程Service选择",
+      "dependencies": [
+        "beauty-api",
+        "shop-base",
+        "shop-base-auth"
+      ],
+      "optionalDependencies": [
+        "beauty-channel（standalone接入）"
+      ]
+    },
+    {
+      "name": "beauty-channel",
+      "responsibility": "内部HTTP协议客户端、权威Port远程实现、第三方协议适配",
+      "dependencies": [
+        "beauty-api",
+        "shop-base",
+        "svc-client"
+      ],
+      "optionalDependencies": []
+    },
+    {
+      "name": "beauty-server",
+      "responsibility": "美业独立内部业务启动、主数据源、内部安全与就绪检查",
+      "dependencies": [
+        "beauty-core",
+        "beauty-channel"
+      ],
+      "optionalDependencies": []
+    }
+  ],
+  "packages": [
+    {
+      "module": "beauty-api",
+      "package": "ai.neargo.shop.beauty.service",
+      "content": "业务Service接口"
+    },
+    {
+      "module": "beauty-api",
+      "package": "ai.neargo.shop.beauty.dto",
+      "content": "Req、Query、VO，不暴露持久化实体"
+    },
+    {
+      "module": "beauty-api",
+      "package": "ai.neargo.shop.spi.beauty",
+      "content": "仅美业自有跨域契约与事实；按真实接入创建"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.service.impl",
+      "content": "同名ServiceImpl；短事务和业务协调"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.entity",
+      "content": "25项bty候选表对应Entity"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.mapper",
+      "content": "唯一BeautyMappers及内嵌对象Mapper"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.policy",
+      "content": "匹配请求/业务规则，资源锁由共用所有者执行"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.statemachine",
+      "content": "预约、任务、提交过程状态约束"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.assembler",
+      "content": "日历/账单/打印内容等必要转换"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.event",
+      "content": "真实事件消费、inbox去重、outbox发布接线"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.job",
+      "content": "提交恢复、预约协调、快照清理等JobHandler"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.config",
+      "content": "BeautyAutoConfiguration/Properties/PersistenceConfiguration"
+    },
+    {
+      "module": "beauty-core",
+      "package": "ai.neargo.shop.beauty.api.internal",
+      "content": "仅内部资源RPC入口，与用户Web隔离"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beauty.api.mp",
+      "content": "消费者本人/公开入口"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beauty.api.biz",
+      "content": "前台/技师/商家Web/老板共用商家资源入口"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beauty.api.ops",
+      "content": "受控治理诊断恢复入口"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beauty.config",
+      "content": "BeautyWebAutoConfiguration及独立Web条件"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beautyclient",
+      "content": "BeautyClientConfiguration；仅远程Service选择"
+    },
+    {
+      "module": "beauty-web",
+      "package": "ai.neargo.shop.beautyclient.impl",
+      "content": "RemoteAppointmentService等同接口薄适配"
+    },
+    {
+      "module": "beauty-channel",
+      "package": "ai.neargo.shop.beauty.client",
+      "content": "@HttpExchange接口、序列化、错误映射"
+    },
+    {
+      "module": "beauty-channel",
+      "package": "ai.neargo.shop.beauty.port",
+      "content": "既有/已批准权威SPI远程实现"
+    },
+    {
+      "module": "beauty-channel",
+      "package": "ai.neargo.shop.beauty.adapter",
+      "content": "按供应商接入的预约签名/外部号映射协议"
+    },
+    {
+      "module": "beauty-server",
+      "package": "ai.neargo.shop.beauty.server",
+      "content": "BeautyApplication"
+    },
+    {
+      "module": "beauty-server",
+      "package": "ai.neargo.shop.beauty.server.config",
+      "content": "BeautyServerConfiguration/InternalSecurityConfiguration"
+    }
+  ],
+  "businessModules": [
+    {
+      "code": "A",
+      "services": "StorePolicyService、CapabilityService",
+      "boundary": "bty_store_policy/version；门店基本资料及准入由共用域提供"
+    },
+    {
+      "code": "B",
+      "services": "ServiceDefinitionService、ServiceCatalogQueryService、AppointmentAvailabilityService",
+      "boundary": "bty_service_definition/version/requirement；商品SKU价格目录复用"
+    },
+    {
+      "code": "C",
+      "services": "共用人员/账号Service或SPI",
+      "boundary": "不创建BtyPersonnel；人员、任职、岗位、资格、账号授权归共用域"
+    },
+    {
+      "code": "D",
+      "services": "AppointmentWorkbenchQueryService、ResourceChangeService、GroupSchedulingService",
+      "boundary": "美业组合读模型/业务意图；排班、容量桶、hold、occupation归共用资源域"
+    },
+    {
+      "code": "E",
+      "services": "GuestRegistrationService、CareProfileService",
+      "boundary": "临客仅用共用顾客登记身份；bty_care_profile/note/media保存护理扩展"
+    },
+    {
+      "code": "F",
+      "services": "AppointmentService、AppointmentAvailabilityService",
+      "boundary": "bty_appointment/item/assignment；资源仲裁通过共用合同"
+    },
+    {
+      "code": "G",
+      "services": "ReceptionService",
+      "boundary": "到店/转工单/排队组合；共用等候号，无美业重复队列账"
+    },
+    {
+      "code": "H",
+      "services": "WorkOrderService、ServiceTaskService、ServiceSubmissionService",
+      "boundary": "bty_work_order/service_task/service_step/service_participation；来源编排与分配guard"
+    },
+    {
+      "code": "I",
+      "services": "WorkOrderService、ServiceSubmissionService",
+      "boundary": "账单投影和提交恢复，报价支付普通订单由Core/Pay执行"
+    },
+    {
+      "code": "J",
+      "services": "共用储值Service或SPI",
+      "boundary": "不创建美业充值/余额/消费流水表"
+    },
+    {
+      "code": "K",
+      "services": "TreatmentPlanService",
+      "boundary": "bty_treatment_plan/session；权益规则发行余次与使用账归Pay"
+    },
+    {
+      "code": "L",
+      "services": "共用营销/会员/权益/分析Service或SPI",
+      "boundary": "无美业活动/券发行状态机副本"
+    },
+    {
+      "code": "M",
+      "services": "共用库存/订单Service或SPI",
+      "boundary": "耗材关联taskNo；不创建美业库存账"
+    },
+    {
+      "code": "N",
+      "services": "ServiceCaseCoordinationService、ServiceTaskService",
+      "boundary": "任务撤销与证据归任务；争议/审批/退款走共用所有者，薄协调不新增同义案件聚合"
+    },
+    {
+      "code": "O",
+      "services": "PerformanceService、CommissionPolicyService、CommissionService",
+      "boundary": "bty_performance_allocation/share、commission_policy/entry"
+    },
+    {
+      "code": "P",
+      "services": "共用班次/财务Service或SPI",
+      "boundary": "无美业钱箱/对账/结算账本"
+    },
+    {
+      "code": "Q",
+      "services": "CustomerTimelineQueryService、AppointmentWorkbenchQueryService、ServiceReportQueryService",
+      "boundary": "派生读模型，投影不作为容量仲裁或支付事实"
+    },
+    {
+      "code": "R",
+      "services": "ServiceExceptionService、FollowUpCoordinationService",
+      "boundary": "协调当前任务/护理内容，共用通知送达与回访任务管理"
+    },
+    {
+      "code": "S",
+      "services": "ServicePrintDocumentService",
+      "boundary": "装配脱敏业务文档，打印任务/设备/补打账由共用域维护"
+    },
+    {
+      "code": "T",
+      "services": "CapabilityService、ServiceTraceQueryService、ServiceOperationQueryService、ServiceRecoveryService",
+      "boundary": "业务受控查询/恢复；审计监控备份与外部通道复用"
+    }
+  ],
+  "apiBindings": [
+    {
+      "apiId": "BAPI-001",
+      "module": "A",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizStorePolicyController",
+      "service": "StorePolicyService"
+    },
+    {
+      "apiId": "BAPI-002",
+      "module": "A",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizStorePolicyController",
+      "service": "StorePolicyService"
+    },
+    {
+      "apiId": "BAPI-003",
+      "module": "A",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-004",
+      "module": "A",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCapabilityApplicationController",
+      "service": "CapabilityService"
+    },
+    {
+      "apiId": "BAPI-144",
+      "module": "A",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpStoreController",
+      "service": "ServiceCatalogQueryService"
+    },
+    {
+      "apiId": "BAPI-005",
+      "module": "B",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-006",
+      "module": "B",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-007",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController",
+      "service": "ServiceDefinitionService"
+    },
+    {
+      "apiId": "BAPI-008",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController",
+      "service": "ServiceDefinitionService"
+    },
+    {
+      "apiId": "BAPI-009",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceController",
+      "service": "ServiceCatalogQueryService"
+    },
+    {
+      "apiId": "BAPI-010",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAvailabilityController",
+      "service": "AppointmentAvailabilityService"
+    },
+    {
+      "apiId": "BAPI-011",
+      "module": "B",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-145",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpServiceController",
+      "service": "ServiceCatalogQueryService"
+    },
+    {
+      "apiId": "BAPI-146",
+      "module": "B",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAvailabilityController",
+      "service": "AppointmentAvailabilityService"
+    },
+    {
+      "apiId": "BAPI-012",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-013",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-014",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-015",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-016",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-017",
+      "module": "C",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-018",
+      "module": "C",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-019",
+      "module": "C",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-020",
+      "module": "D",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-021",
+      "module": "D",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-022",
+      "module": "D",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-023",
+      "module": "D",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-024",
+      "module": "D",
+      "owner": "共用人员/资源所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-025",
+      "module": "D",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController",
+      "service": "AppointmentWorkbenchQueryService"
+    },
+    {
+      "apiId": "BAPI-026",
+      "module": "D",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController",
+      "service": "AppointmentWorkbenchQueryService"
+    },
+    {
+      "apiId": "BAPI-027",
+      "module": "D",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizResourceChangeController",
+      "service": "ResourceChangeService"
+    },
+    {
+      "apiId": "BAPI-028",
+      "module": "D",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizResourceChangeController",
+      "service": "ResourceChangeService"
+    },
+    {
+      "apiId": "BAPI-029",
+      "module": "D",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizGroupSchedulingController",
+      "service": "GroupSchedulingService"
+    },
+    {
+      "apiId": "BAPI-030",
+      "module": "E",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-031",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+      "service": "GuestRegistrationService"
+    },
+    {
+      "apiId": "BAPI-032",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+      "service": "GuestRegistrationService"
+    },
+    {
+      "apiId": "BAPI-033",
+      "module": "E",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-034",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCareProfileController",
+      "service": "CareProfileService"
+    },
+    {
+      "apiId": "BAPI-035",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCareProfileController",
+      "service": "CareProfileService"
+    },
+    {
+      "apiId": "BAPI-036",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCareProfileController",
+      "service": "CareProfileService"
+    },
+    {
+      "apiId": "BAPI-037",
+      "module": "E",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCareProfileController",
+      "service": "CareProfileService"
+    },
+    {
+      "apiId": "BAPI-038",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-039",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-040",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-041",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-042",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-043",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-044",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-045",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-046",
+      "module": "F",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-147",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-148",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-149",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-150",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-151",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-152",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-153",
+      "module": "F",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-047",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-048",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-049",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWaitingTicketController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-050",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWaitingTicketController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-051",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWaitingTicketController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-052",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentController",
+      "service": "AppointmentService"
+    },
+    {
+      "apiId": "BAPI-053",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-154",
+      "module": "G",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
+      "service": "ReceptionService"
+    },
+    {
+      "apiId": "BAPI-054",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-055",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-056",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-057",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-058",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-059",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-060",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-061",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-062",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-063",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-064",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-065",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-066",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-067",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-155",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-159",
+      "module": "H",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-068",
+      "module": "I",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-069",
+      "module": "I",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-070",
+      "module": "I",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-071",
+      "module": "I",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "service": "WorkOrderService"
+    },
+    {
+      "apiId": "BAPI-072",
+      "module": "I",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+      "service": "ServiceSubmissionService"
+    },
+    {
+      "apiId": "BAPI-073",
+      "module": "I",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+      "service": "ServiceSubmissionService"
+    },
+    {
+      "apiId": "BAPI-074",
+      "module": "I",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-075",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-076",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-077",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-078",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-079",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-080",
+      "module": "J",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-081",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-082",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-083",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-084",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-085",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-086",
+      "module": "K",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizTreatmentPlanController",
+      "service": "TreatmentPlanService"
+    },
+    {
+      "apiId": "BAPI-087",
+      "module": "K",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizTreatmentPlanController",
+      "service": "TreatmentPlanService"
+    },
+    {
+      "apiId": "BAPI-088",
+      "module": "K",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-156",
+      "module": "K",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpTreatmentPlanController",
+      "service": "TreatmentPlanService"
+    },
+    {
+      "apiId": "BAPI-089",
+      "module": "L",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-090",
+      "module": "L",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-091",
+      "module": "L",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-092",
+      "module": "L",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-093",
+      "module": "L",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-094",
+      "module": "M",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-095",
+      "module": "M",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-096",
+      "module": "M",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-097",
+      "module": "M",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-098",
+      "module": "M",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-099",
+      "module": "N",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-100",
+      "module": "N",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-101",
+      "module": "N",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-102",
+      "module": "N",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceRemedyCaseController",
+      "service": "ServiceCaseCoordinationService"
+    },
+    {
+      "apiId": "BAPI-103",
+      "module": "N",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAssetDisputeController",
+      "service": "ServiceCaseCoordinationService"
+    },
+    {
+      "apiId": "BAPI-104",
+      "module": "N",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-157",
+      "module": "N",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpServiceDisputeController",
+      "service": "ServiceCaseCoordinationService"
+    },
+    {
+      "apiId": "BAPI-105",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceTaskController",
+      "service": "ServiceTaskService"
+    },
+    {
+      "apiId": "BAPI-106",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCommissionPolicyController",
+      "service": "CommissionPolicyService"
+    },
+    {
+      "apiId": "BAPI-107",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCommissionPolicyController",
+      "service": "CommissionPolicyService"
+    },
+    {
+      "apiId": "BAPI-108",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCommissionEntryController",
+      "service": "CommissionService"
+    },
+    {
+      "apiId": "BAPI-109",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizPerformanceAdjustmentCaseController",
+      "service": "PerformanceService"
+    },
+    {
+      "apiId": "BAPI-110",
+      "module": "O",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCommissionSettlementRecordController",
+      "service": "CommissionService"
+    },
+    {
+      "apiId": "BAPI-111",
+      "module": "P",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-112",
+      "module": "P",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-113",
+      "module": "P",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-114",
+      "module": "P",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-115",
+      "module": "P",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-116",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCustomerTimelineController",
+      "service": "CustomerTimelineQueryService"
+    },
+    {
+      "apiId": "BAPI-117",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController",
+      "service": "AppointmentWorkbenchQueryService"
+    },
+    {
+      "apiId": "BAPI-118",
+      "module": "Q",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-119",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceReportController",
+      "service": "ServiceReportQueryService"
+    },
+    {
+      "apiId": "BAPI-120",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceReportController",
+      "service": "ServiceReportQueryService"
+    },
+    {
+      "apiId": "BAPI-121",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReportExportController",
+      "service": "ServiceReportQueryService"
+    },
+    {
+      "apiId": "BAPI-122",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizReportExportController",
+      "service": "ServiceReportQueryService"
+    },
+    {
+      "apiId": "BAPI-158",
+      "module": "Q",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.mp.MpCustomerTimelineController",
+      "service": "CustomerTimelineQueryService"
+    },
+    {
+      "apiId": "BAPI-123",
+      "module": "R",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-124",
+      "module": "R",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizAppointmentWorkbenchController",
+      "service": "AppointmentWorkbenchQueryService"
+    },
+    {
+      "apiId": "BAPI-125",
+      "module": "R",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizExceptionWorkitemController",
+      "service": "ServiceExceptionService"
+    },
+    {
+      "apiId": "BAPI-126",
+      "module": "R",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController",
+      "service": "FollowUpCoordinationService"
+    },
+    {
+      "apiId": "BAPI-127",
+      "module": "R",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController",
+      "service": "FollowUpCoordinationService"
+    },
+    {
+      "apiId": "BAPI-128",
+      "module": "R",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizFollowUpTaskController",
+      "service": "FollowUpCoordinationService"
+    },
+    {
+      "apiId": "BAPI-129",
+      "module": "R",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-130",
+      "module": "S",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServicePrintDocumentController",
+      "service": "ServicePrintDocumentService"
+    },
+    {
+      "apiId": "BAPI-131",
+      "module": "S",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-132",
+      "module": "S",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-133",
+      "module": "S",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-134",
+      "module": "S",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-135",
+      "module": "T",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizCapabilityController",
+      "service": "CapabilityService"
+    },
+    {
+      "apiId": "BAPI-136",
+      "module": "T",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-137",
+      "module": "T",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+      "service": "WorkOrderBillService"
+    },
+    {
+      "apiId": "BAPI-138",
+      "module": "T",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.ops.OpsServiceRecoveryController",
+      "service": "ServiceRecoveryService"
+    },
+    {
+      "apiId": "BAPI-139",
+      "module": "T",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.ops.OpsServiceRecoveryController",
+      "service": "ServiceRecoveryService"
+    },
+    {
+      "apiId": "BAPI-140",
+      "module": "T",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-141",
+      "module": "T",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-142",
+      "module": "T",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-143",
+      "module": "T",
+      "owner": "共用合同所有者",
+      "controller": null,
+      "service": null
+    },
+    {
+      "apiId": "BAPI-160",
+      "module": "T",
+      "owner": "beauty-web",
+      "controller": "ai.neargo.shop.beauty.api.biz.BizServiceOperationController",
+      "service": "ServiceOperationQueryService"
+    }
+  ],
+  "tables": [
+    {
+      "table": "bty_store_policy",
+      "entity": "ai.neargo.shop.beauty.entity.BtyStorePolicy",
+      "mapper": "BeautyMappers.StorePolicyMapper"
+    },
+    {
+      "table": "bty_store_policy_version",
+      "entity": "ai.neargo.shop.beauty.entity.BtyStorePolicyVersion",
+      "mapper": "BeautyMappers.StorePolicyVersionMapper"
+    },
+    {
+      "table": "bty_service_definition",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceDefinition",
+      "mapper": "BeautyMappers.ServiceDefinitionMapper"
+    },
+    {
+      "table": "bty_service_definition_version",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion",
+      "mapper": "BeautyMappers.ServiceDefinitionVersionMapper"
+    },
+    {
+      "table": "bty_service_requirement",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceRequirement",
+      "mapper": "BeautyMappers.ServiceRequirementMapper"
+    },
+    {
+      "table": "bty_appointment",
+      "entity": "ai.neargo.shop.beauty.entity.BtyAppointment",
+      "mapper": "BeautyMappers.AppointmentMapper"
+    },
+    {
+      "table": "bty_appointment_item",
+      "entity": "ai.neargo.shop.beauty.entity.BtyAppointmentItem",
+      "mapper": "BeautyMappers.AppointmentItemMapper"
+    },
+    {
+      "table": "bty_appointment_assignment",
+      "entity": "ai.neargo.shop.beauty.entity.BtyAppointmentAssignment",
+      "mapper": "BeautyMappers.AppointmentAssignmentMapper"
+    },
+    {
+      "table": "bty_work_order",
+      "entity": "ai.neargo.shop.beauty.entity.BtyWorkOrder",
+      "mapper": "BeautyMappers.WorkOrderMapper"
+    },
+    {
+      "table": "bty_service_task",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceTask",
+      "mapper": "BeautyMappers.ServiceTaskMapper"
+    },
+    {
+      "table": "bty_service_step",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceStep",
+      "mapper": "BeautyMappers.ServiceStepMapper"
+    },
+    {
+      "table": "bty_service_participation",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceParticipation",
+      "mapper": "BeautyMappers.ServiceParticipationMapper"
+    },
+    {
+      "table": "bty_service_submission",
+      "entity": "ai.neargo.shop.beauty.entity.BtyServiceSubmission",
+      "mapper": "BeautyMappers.ServiceSubmissionMapper"
+    },
+    {
+      "table": "bty_trade_binding",
+      "entity": "ai.neargo.shop.beauty.entity.BtyTradeBinding",
+      "mapper": "BeautyMappers.TradeBindingMapper"
+    },
+    {
+      "table": "bty_action_log",
+      "entity": "ai.neargo.shop.beauty.entity.BtyActionLog",
+      "mapper": "BeautyMappers.ActionLogMapper"
+    },
+    {
+      "table": "bty_care_profile",
+      "entity": "ai.neargo.shop.beauty.entity.BtyCareProfile",
+      "mapper": "BeautyMappers.CareProfileMapper"
+    },
+    {
+      "table": "bty_care_note",
+      "entity": "ai.neargo.shop.beauty.entity.BtyCareNote",
+      "mapper": "BeautyMappers.CareNoteMapper"
+    },
+    {
+      "table": "bty_care_media",
+      "entity": "ai.neargo.shop.beauty.entity.BtyCareMedia",
+      "mapper": "BeautyMappers.CareMediaMapper"
+    },
+    {
+      "table": "bty_treatment_plan",
+      "entity": "ai.neargo.shop.beauty.entity.BtyTreatmentPlan",
+      "mapper": "BeautyMappers.TreatmentPlanMapper"
+    },
+    {
+      "table": "bty_treatment_session",
+      "entity": "ai.neargo.shop.beauty.entity.BtyTreatmentSession",
+      "mapper": "BeautyMappers.TreatmentSessionMapper"
+    },
+    {
+      "table": "bty_performance_allocation",
+      "entity": "ai.neargo.shop.beauty.entity.BtyPerformanceAllocation",
+      "mapper": "BeautyMappers.PerformanceAllocationMapper"
+    },
+    {
+      "table": "bty_performance_share",
+      "entity": "ai.neargo.shop.beauty.entity.BtyPerformanceShare",
+      "mapper": "BeautyMappers.PerformanceShareMapper"
+    },
+    {
+      "table": "bty_commission_policy",
+      "entity": "ai.neargo.shop.beauty.entity.BtyCommissionPolicy",
+      "mapper": "BeautyMappers.CommissionPolicyMapper"
+    },
+    {
+      "table": "bty_commission_entry",
+      "entity": "ai.neargo.shop.beauty.entity.BtyCommissionEntry",
+      "mapper": "BeautyMappers.CommissionEntryMapper"
+    },
+    {
+      "table": "bty_source_allocation_guard",
+      "entity": "ai.neargo.shop.beauty.entity.BtySourceAllocationGuard",
+      "mapper": "BeautyMappers.SourceAllocationGuardMapper"
+    }
+  ],
+  "implementationClasses": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/spi/BeautyReceptionInternalApi.java",
+      "class": "ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionCalls.java",
+      "class": "ai.neargo.shop.beauty.client.BeautyReceptionCalls",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java",
+      "class": "ai.neargo.shop.beauty.client.BeautyReceptionResponses",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteGuestRegistrationService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteGuestRegistrationService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteReceptionService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteReceptionService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteServiceSubmissionService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteServiceSubmissionService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderBillService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteWorkOrderBillService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderService.java",
+      "class": "ai.neargo.shop.beauty.client.RemoteWorkOrderService",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckoutClientConfiguration.java",
+      "class": "ai.neargo.shop.beauty.config.BeautyCheckoutClientConfiguration",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCheckoutPort.java",
+      "class": "ai.neargo.shop.beauty.port.RemoteCheckoutPort",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyGuestController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyGuestController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyOperationController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyOperationController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyReceptionController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautySubmissionController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautySubmissionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyTraceController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyTraceController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalBeautyWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.server.api.InternalBeautyWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizArrivalChallengeController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizArrivalChallengeController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizBusinessTraceController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizBusinessTraceController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizGuestRegistrationController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizGuestRegistrationController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizReceptionController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizServiceSubmissionController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizServiceSubmissionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.api.biz.BizWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpReceptionController.java",
+      "class": "ai.neargo.shop.beauty.api.mp.MpReceptionController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/mp/MpWorkOrderController.java",
+      "class": "ai.neargo.shop.beauty.api.mp.MpWorkOrderController",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundDelegatedCalls.java",
+      "class": "ai.neargo.shop.auth.BoundDelegatedCalls",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalCall.java",
+      "class": "ai.neargo.shop.spi.security.InternalCall",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalReply.java",
+      "class": "ai.neargo.shop.spi.security.InternalReply",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/security/InternalRequestBinding.java",
+      "class": "ai.neargo.shop.spi.security.InternalRequestBinding",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "class": "ai.neargo.shop.svc.InternalBindings",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalCallSerializer.java",
+      "class": "ai.neargo.shop.svc.InternalCallSerializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "class": "ai.neargo.shop.svc.InternalReplyDeserializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplySerializer.java",
+      "class": "ai.neargo.shop.svc.InternalReplySerializer",
+      "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
+    }
+  ],
+  "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.",
+  "plannedSharedClasses": {
+    "status": "TASK68_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+    "authority": "主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖；当前既有28私有业务表，M3候选新增另列。",
+    "classes": [
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
+        "class": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
+        "role": "[编码编译/静态复审完成；统一测试未执行] marketing本域严格goods解析及owner规则；规范分组/选择/摘要统一调用纯SPI契约"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
+        "class": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+        "role": "[编码编译/静态复审完成；统一测试未执行] shared marketing owner fence and capability"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java",
+        "class": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "role": "[编码编译/静态复审完成；统一测试未执行] exact-PK shared fence SQL"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java",
+        "class": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "role": "[编码编译/静态复审完成；统一测试未执行] old/new economic quote/plan compatibility and consumed integrity"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
+        "class": "ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot",
+        "role": "[编码编译/静态复审完成；统一测试未执行] internal immutable economic/display quote envelope"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java",
+        "class": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "role": "[编码编译/静态复审完成；统一测试未执行] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎"
+      }
+    ]
+  },
+  "plannedExecutionClasses": {
+    "status": "M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED",
+    "authority": "主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。",
+    "classes": [
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionPort",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourcePort",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionContract",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionInternalApi",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourceInternalApi",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java",
+        "class": "ai.neargo.shop.spi.trade.ExecutionOriginalProtocol",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java",
+        "class": "ai.neargo.shop.svc.ExecutionOriginalCodec",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionUnit",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecution",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionAction",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java",
+        "class": "ai.neargo.shop.trade.mapper.ServiceExecutionMapper",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java",
+        "class": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      }
+    ]
+  }
+}

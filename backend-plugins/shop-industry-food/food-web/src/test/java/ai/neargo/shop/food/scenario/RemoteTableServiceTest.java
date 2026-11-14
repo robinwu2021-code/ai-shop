@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 class RemoteTableServiceTest {
@@ -97,7 +98,9 @@ class RemoteTableServiceTest {
         server.start();
         try {
             var http = new InternalHttp(name -> Optional.of("http://127.0.0.1:"+server.getAddress().getPort()), "wire");
-            new WebApplicationContextRunner().withConfiguration(AutoConfigurations.of(FoodWebAutoConfiguration.class))
+            new WebApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(
+                            JacksonAutoConfiguration.class,FoodWebAutoConfiguration.class))
                     .withBean(InternalHttp.class, () -> http)
                     .withUserConfiguration(FoodPolicyApiTest.PolicyHost.class)
                     .withPropertyValues("shop.food.enabled=true", "spring.profiles.active=api",

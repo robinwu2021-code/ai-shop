@@ -50,7 +50,6 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
         f.sql().execute("CREATE TABLE fnb_option_group_item (" + common + "option_item_no VARCHAR(32) UNIQUE,"
                 + "group_no VARCHAR(32),source_kind VARCHAR(16),spec_value_no VARCHAR(64),modifier_no VARCHAR(32),"
                 + "min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),sort_no INT)");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_OPTION_GROUP_CHANGED"));
         return f;
     }
 

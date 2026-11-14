@@ -15,8 +15,10 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
-/** 唯一允许写 inv_* 的模块 */
-const OWNER = join(BACKEND, "shop-inventory");
+/** Actual inventory write owners: embedded host owner plus the extracted domain and service entry points (ADR-046). */
+const OWNERS = ["shop-inventory", "inventory/inventory-domain", "inventory/inventory-svc"]
+  .map((module) => join(BACKEND, module));
+const isInventoryOwner = (f: string) => OWNERS.some((owner) => f.startsWith(owner + "/"));
 
 /** 写方法。`select*` 一律不算——读两边是防腐层的正常工作 */
 const WRITE_CALLS = /\.(insert|insertBatch|updateById|update|deleteById|delete|applyDelta|hold|unhold)\s*\(/;
@@ -32,20 +34,28 @@ function javaFiles(dir: string, out: string[] = []): string[] {
 }
 
 const rel = (p: string) => p.slice(ROOT.length + 1);
-// Scenario fixtures deliberately seed isolated H2 databases; the ownership boundary is production code.
-// Keep every production module covered, including application adapters and infrastructure SQL.
-const isProductionOutsider = (f: string) => f.includes("/src/main/java/") && !f.startsWith(OWNER + "/");
-const outsiders = javaFiles(BACKEND).filter(isProductionOutsider);
+// Scenario fixtures deliberately seed isolated H2 databases; the SQL ownership boundary is production code.
+const isProductionOutsider = (f: string) => f.includes("/src/main/java/") && !isInventoryOwner(f);
+const outsiders = javaFiles(BACKEND).filter((f) => !isInventoryOwner(f));
+// Isolated datasource fixtures seed inventory facts to test read-only ports; production ownership is enforced below.
+const productionSqlSources = outsiders.filter((f) => f.includes("/src/main/"));
 
 describe("进销存表的写权", () => {
   it("scenario fixtures are separate from the production write boundary", () => {
     expect(isProductionOutsider(join(BACKEND, "shop-app/src/test/java/Fixture.java"))).toBe(false);
     expect(isProductionOutsider(join(BACKEND, "shop-app/src/main/java/Adapter.java"))).toBe(true);
-    expect(isProductionOutsider(join(OWNER, "src/main/java/Owner.java"))).toBe(false);
+    for (const owner of OWNERS) {
+      expect(isProductionOutsider(join(owner, "src/main/java/Owner.java"))).toBe(false);
+      expect(isProductionOutsider(join(owner + "-outsider", "src/main/java/Adapter.java"))).toBe(true);
+    }
+    expect(isProductionOutsider(join(BACKEND, "inventory/inventory-client/src/main/java/Client.java"))).toBe(true);
+    expect(isProductionOutsider(join(BACKEND, "inventory/inventory-api/src/main/java/Contract.java"))).toBe(true);
   });
 
   it("有东西可查", () => {
     expect(outsiders.length).toBeGreaterThan(100);
+    expect(productionSqlSources.length).toBeGreaterThan(100);
+    expect(productionSqlSources.every((f) => f.includes("/src/main/") && !f.includes("/src/test/"))).toBe(true);
   });
 
   /*
@@ -106,7 +116,7 @@ describe("进销存表的写权", () => {
   it("★★★ shop-inventory 之外的 SQL 注解里不许出现 inv_ 表的写语句", () => {
     const bad: string[] = [];
     const sqlWrite = /(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+inv_[a-z_]+/i;
-    for (const f of outsiders) {
+    for (const f of productionSqlSources) {
       const src = readFileSync(f, "utf8");
       if (!/inv_[a-z_]+/.test(src)) continue;
       for (const [i, line] of src.split("\n").entries()) {

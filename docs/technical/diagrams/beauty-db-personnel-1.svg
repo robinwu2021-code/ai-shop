@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740">
+<title>人员数据库逻辑引用 1</title><desc>从数据库设计JSON生成，展示候选表及图内引用，跨图引用见字段字典；非已执行DDL。</desc>
+<defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#8497a8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f8fb"/>
+<text x="45" y="40" font-family="sans-serif" font-size="24">人员 · 目标结构 1</text>
+<path d="M645,142 C600,142 600,142 555,142" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M85,297 H60 V142 H85" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,297 C600,297 600,297 555,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M85,452 H60 V142 H85" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="85" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="118" font-family="sans-serif" font-size="18" font-weight="bold">mch_personnel</text>
+<text x="99" y="147" font-family="sans-serif" font-size="16">共用业务人员主档</text>
+<text x="99" y="175" font-family="sans-serif" font-size="12">personnel_no, name, avatar_ref</text>
+<rect x="645" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="118" font-family="sans-serif" font-size="18" font-weight="bold">mch_personnel_account</text>
+<text x="659" y="147" font-family="sans-serif" font-size="16">当前人员账号关联</text>
+<text x="659" y="175" font-family="sans-serif" font-size="12">link_no, personnel_no, mch_account_no</text>
+<rect x="85" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="273" font-family="sans-serif" font-size="18" font-weight="bold">mch_personnel_store</text>
+<text x="99" y="302" font-family="sans-serif" font-size="16">跨门店业务任职</text>
+<text x="99" y="330" font-family="sans-serif" font-size="12">assignment_no, personnel_no, store_no</text>
+<rect x="645" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="273" font-family="sans-serif" font-size="18" font-weight="bold">mch_personnel_position</text>
+<text x="659" y="302" font-family="sans-serif" font-size="16">任职上的业务岗位</text>
+<text x="659" y="330" font-family="sans-serif" font-size="12">position_no, assignment_no, position_code</text>
+<rect x="85" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="428" font-family="sans-serif" font-size="18" font-weight="bold">mch_personnel_skill</text>
+<text x="99" y="457" font-family="sans-serif" font-size="16">项目服务资格</text>
+<text x="99" y="485" font-family="sans-serif" font-size="12">skill_no, personnel_no, store_no</text>
+<rect x="645" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="428" font-family="sans-serif" font-size="18" font-weight="bold">mch_schedule_rule</text>
+<text x="659" y="457" font-family="sans-serif" font-size="16">资源班表规则</text>
+<text x="659" y="485" font-family="sans-serif" font-size="12">rule_no, resource_no, store_no</text>
+<rect x="85" y="555" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="583" font-family="sans-serif" font-size="18" font-weight="bold">mch_schedule_exception</text>
+<text x="99" y="612" font-family="sans-serif" font-size="16">请假加班停约例外</text>
+<text x="99" y="640" font-family="sans-serif" font-size="12">exception_no, resource_no, store_no</text>
+</svg>

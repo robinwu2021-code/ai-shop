@@ -34,6 +34,9 @@ public class PointsOrderTermsPortImpl implements PointsOrderTermsPort {
         this.enabled = enabled;
     }
 
+    @Value("${shop.points.default-participation-enabled:${shop.points.unified-earning-enabled:false}}")
+    private boolean defaultParticipation;
+
     @Override
     @Transactional(value = "payTxManager", readOnly = true)
     public Optional<Terms> resolve(
@@ -69,7 +72,7 @@ public class PointsOrderTermsPortImpl implements PointsOrderTermsPort {
                 && (!merchant.equals(agreement.merchantNo()) || !store.equals(agreement.storeNo())))
             throw new IllegalArgumentException("POINTS_TERMS_STORE_MISMATCH");
         boolean redeem =
-                agreement != null
+                (agreement != null || defaultParticipation)
                         && read.enabled(
                                 new PointsReadStore.Availability(
                                         type.typeCode(),

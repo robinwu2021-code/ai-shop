@@ -2,7 +2,7 @@
 export type PointsTypeConfigStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 
 /** PointsTypeChange 的 action 取值域，按服务端契约校验。 */
-export type PointsTypeChangeAction = "ACTIVATE" | "DRAIN" | "RETIRE";
+export type PointsTypeChangeAction = "ACTIVATE" | "DRAIN" | "RETIRE" | "PAUSE_EARNING" | "RESUME_EARNING" | "SET_DEFAULT";
 
 /** PointsFallback 的 mode 取值域，按服务端契约校验。 */
 export type PointsFallbackMode = "FIXED" | "RATIO";
@@ -190,6 +190,8 @@ export interface PointsReceivablePage {
 }
 
 export interface Settlement {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
   /** 对应的子订单，**一条 = 一个子订单** */
@@ -259,6 +261,8 @@ export interface Settlement {
  * 出问题时要看的是后者。失败的记录也在这里。
  */
 export interface SplitLog {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 所属结算单 */
   settleNo: string;
   /** 对应的子订单 */
@@ -381,6 +385,8 @@ export const WITHDRAW_TRANSITIONS: Record<WithdrawStatus, WithdrawStatus[]> = {
 };
 
 export interface Withdrawal {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 提现单号 */
   withdrawNo: string;
   /** 申请商家 */
@@ -413,6 +419,8 @@ export type InvoiceTitleType = "COMPANY" | "PERSONAL";
 export type InvoiceStatus = "PENDING" | "ISSUED" | "REJECTED";
 
 export interface InvoiceRequest {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 开票申请单号 */
   invoiceNo: string;
   /** 申请商家 */
@@ -488,6 +496,10 @@ export interface TaxRule {
  * 只会去问开票的人，而对方也不知道。
  */
 export interface PurchaseInvoice {
+  /** Human-facing settlement document numbers linked to this record. */
+  settleDocumentNos?: string[];
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 平台侧的进项票记录号（不是发票上印的号） */
   invoiceNo: string;
   /** 哪家商家的票 */
@@ -538,6 +550,8 @@ export interface PurchaseInvoice {
  * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
  */
 export interface BuyerInvoiceRequest {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 开票申请号 */
   requestNo: string;
   /** 针对哪一单 */
@@ -637,6 +651,8 @@ export interface ChannelMessage {
  * 不要存进任何全局 state、不要打日志。
  */
 export interface PayoutRow {
+  /** Human-facing settlement document numbers linked to this record. */
+  settleDocumentNos?: string[];
   /**
    * 放款单号（V391）。**有号的按号回填凭证**（`payPayout`），
    * 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。
@@ -852,7 +868,7 @@ export interface PayChannelSetting {
   name: string;
   /** 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 */
   enabled: boolean;
-  /** JSON 数组文本，如 `["CN"]`。空 = 全市场可用 */
+  /** JSON 数组文本，如 `["CN"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」） */
   markets: string | null;
   /** 结算币种，如 CNY */
   currency: string | null;
@@ -873,6 +889,8 @@ export interface PayChannelSetting {
  * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
  */
 export interface SettleBatch {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 */
   batchNo: string;
   /** 收款主体号 */
@@ -1051,6 +1069,8 @@ export type DebtTxnType =
 export interface PointsTypeConfig {
   /** 积分类型唯一编码 */
   typeCode: string;
+  /** 积分名称，运营端展示名称 */
+  name: string;
   /** 市场代码 */
   market: string;
   /** ISO 货币代码 */
@@ -1070,6 +1090,10 @@ export interface PointsTypeConfig {
   idleDays: number;
   /** 服务端业务状态 */
   status: PointsTypeConfigStatus;
+  /** Whether new earning is paused; existing promised work remains recoverable. */
+  earningPaused?: boolean;
+  /** Whether this is the server-selected points type for order rewards. */
+  orderDefault?: boolean;
 }
 export interface PointsChangeResult {
   /** 幂等操作请求号，重试必须复用 */
@@ -1088,18 +1112,29 @@ export interface PointsCreate {
   command: {
     /** 积分类型唯一编码 */
     typeCode: string;
-    /** 市场代码 */
-    market: string;
-    /** 积分与最小货币单位的换算比例 */
-    rate: PointsTypeConfig["rate"];
-    /** 最大抵扣比例，万分比 */
-    deductRatioBp: number;
-    /** 账户无活动失效天数 */
-    idleDays: number;
+    /** 积分名称 */
+    name: string;
+    /** ISO 货币代码；省略时使用系统市场币种 */
+    currency?: string;
+    /** 每 minorUnit 个最小货币单位可兑换 pointsUnit 积分 */
+    rate?: { pointsUnit: number; minorUnit: number };
   };
   /** 服务端不可用原因或操作审计原因 */
   reason: string;
 }
+export interface PointsTypeRename {
+  /** Stable idempotency identifier; retry the same command with the same identifier. */
+  requestId: string;
+  /** Unique points-type code; separate points types never share balances or rules. */
+  typeCode: string;
+  /** Previously observed points name used to detect concurrent renaming. */
+  expectedName: string;
+  /** Human-readable name displayed for this business resource. */
+  name: string;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason?: string;
+}
+
 export interface PointsTypeChange {
   /** 幂等操作请求号，重试必须复用 */
   requestId: string;
@@ -1108,7 +1143,7 @@ export interface PointsTypeChange {
   /** 请求执行的业务动作 */
   action: PointsTypeChangeAction;
   /** 服务端不可用原因或操作审计原因 */
-  reason: string;
+  reason?: string;
 }
 export interface PointsFallback {
   /** 不可变修订版本 */
@@ -1298,6 +1333,10 @@ export interface PointsRequestReview {
   reason: string;
 }
 export interface PointsRequestView {
+  /** 资金申请提交时间，Unix 毫秒时间戳 */
+  submittedAt?: number;
+  /** 资金申请审核时间，Unix 毫秒时间戳；尚未审核时为 0 */
+  reviewedAt?: number;
   /** 持久记录主键 */
   id: number;
   /** 原资金或申请请求号 */
@@ -1622,6 +1661,10 @@ export interface PointsRecoveryExecution {
   status: PointsExecutionStatus;
 }
 export interface PointsEventView {
+  /** Suborder identifier whose reward facts are being inspected. */
+  subOrderNo?: string | null;
+  /** Business reason recorded for the operation, rejection or manual recovery. */
+  reason?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 源事实事件编号 */
@@ -1669,6 +1712,14 @@ export interface PointsAccountQ {
   /** 账本持有人编号，与持有人类型联合定位 */
   holderNo: string;
 }
+export interface PointsAccountsQ extends PointsCursor {
+  /** 积分类型唯一编码，用于限定账户账本。 */
+  typeCode: string;
+  /** 账户持有人类别：会员或门店。 */
+  holderType: PointsHolder;
+  /** 按精确编号筛选账户；省略时返回该类型的账户列表。 */
+  holderNo?: string;
+}
 export interface PointsAccountView {
   /** 服务端冻结的账务或准备快照 */
   snapshot: PointsAccountQ & {
@@ -1703,6 +1754,8 @@ export interface PointsFreeze {
   reason: string;
 }
 export interface PointsVoucherView {
+  /** Human-facing document number; null or absent for historical unmapped records. */
+  documentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 原记账凭证编号 */
@@ -1715,6 +1768,35 @@ export interface PointsVoucherView {
   ratePoints: number;
   /** 换算比例的最小货币单位数量 */
   rateMinor: number;
+  /** 原凭证创建时间，Unix 毫秒 */
+  createdAt: number;
+}
+export type PointsTransactionDirection = "EARN" | "REDEEM" | "REVERSAL";
+export interface PointsTransactionsQ extends PointsCursor {
+  /** 积分类型唯一编码。 */
+  typeCode: string;
+  /** 流水方向：发放、核销或冲正。 */
+  direction: PointsTransactionDirection;
+  /** 查询区间起始时间，ISO-8601 格式。 */
+  from: string;
+  /** 查询区间结束时间，ISO-8601 格式。 */
+  to: string;
+  /** 门店编号，可选的精确筛选条件。 */
+  storeNo?: string;
+  /** 会员编号，可选的精确筛选条件。 */
+  userNo?: string;
+}
+export interface PointsTransactionView {
+  /** 该凭证对应的业务方向。 */
+  direction: PointsTransactionDirection;
+  /** 本次积分业务的凭证及创建时间、比例快照。 */
+  voucher: PointsVoucherView;
+  /** 关联门店编号；无法归属门店时为空。 */
+  storeNo: string | null;
+  /** 关联会员编号；不涉及会员时为空。 */
+  userNo: string | null;
+  /** 本凭证所有用户分录的净积分变化；可能为零，需查看详情理解分录。 */
+  pointsDelta: number;
 }
 export interface PointsCursorPage<T> {
   /** 本页记录 */
@@ -1725,6 +1807,8 @@ export interface PointsCursorPage<T> {
   hasMore: boolean;
 }
 export interface PointsEntryView {
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
+  voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 不可变积分分录编号 */
@@ -1741,8 +1825,12 @@ export interface PointsEntryView {
   deltaPoints: number;
   /** 该分录完成后的积分余额 */
   afterPoints: number;
+  /** 分录创建时间，Unix 毫秒 */
+  at: number;
 }
 export interface PointsFlowView {
+  /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
+  voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 不可变资金池流水号 */
@@ -1880,6 +1968,20 @@ export interface PointsStats {
   throughVoucherId: number;
   /** 服务端统计重建时间，Unix 毫秒 */
   rebuiltAt: number;
+}
+export interface PointsStatsPeriod {
+  /** 积分类型唯一编码。 */
+  typeCode: string;
+  /** 统计周期起始日期，YYYY-MM-DD。 */
+  from: string;
+  /** 统计周期结束日期，YYYY-MM-DD。 */
+  to: string;
+  /** 周期内由服务端聚合的指标。 */
+  metrics: Record<string, number>;
+  /** 统计数据可用的日期数量。 */
+  availableDays: number;
+  /** 统计数据缺失的日期数量。 */
+  missingDays: number;
 }
 export interface PointsStatsRebuild {
   /** 幂等操作请求号，重试必须复用 */

@@ -55,9 +55,7 @@ public interface PayChannelMasterService {
     /**
      * 这个通道在哪些市场可用（V295 起读 {@code sys_pay_channel_market}）。
      *
-     * <p><b>返回空列表 = 不限市场</b>，不是「哪个市场都不可用」。
-     * 两者在调用方是相反的动作，而这张表从空的开始 ——
-     * 按「空 = 都不可用」会让存量通道一夜之间全部消失。
+     * <p><b>返回空列表 = 哪个市场都不可用</b>（db/pay V12 起；此前是「不限市场」，V12 先把存量的「不限」搬成了显式行）。
      */
     List<String> marketsOf(String payChannel);
 

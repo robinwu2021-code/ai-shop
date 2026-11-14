@@ -50,7 +50,10 @@ public interface OpsPayoutListAppService {
                       * 放款单号（V391）。<b>有号的按号回填凭证</b>（`/ops/payouts/{no}/paid`），
                       * 没号的是存量老路（逐张 `/ops/payables/{settleNo}/paid`）。两条路并存到存量清零。
                       */
-                     String payoutNo) {
+                     String payoutNo, java.util.List<String> settleDocumentNos) {
+    public PayoutRow(String entityNo, String merchantName, String accountType, String accountName, String accountNumber, String bankName, String bankBranch, long amountMinor, int billCount, String remark, List<String> settleNos, String payoutNo) { this(entityNo, merchantName, accountType, accountName, accountNumber, bankName, bankBranch, amountMinor, billCount, remark, settleNos, payoutNo, java.util.List.of()); }
+    public PayoutRow withSettleDocumentNos(java.util.List<String> settleDocumentNos) { return new PayoutRow(entityNo, merchantName, accountType, accountName, accountNumber, bankName, bankBranch, amountMinor, billCount, remark, settleNos, payoutNo, settleDocumentNos); }
+
     }
 
     /**

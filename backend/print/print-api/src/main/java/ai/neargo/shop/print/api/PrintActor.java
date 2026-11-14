@@ -16,9 +16,11 @@ public record PrintActor(
         dataScopes = Set.copyOf(Objects.requireNonNull(dataScopes, "dataScopes"));
         if (tenantNo == null || tenantNo.isBlank() || tenantNo.length() > 32)
             throw new IllegalArgumentException("tenantNo");
-        if (entityNo == null || entityNo.isBlank() || entityNo.length() > 32)
+        if (actorNo == null || actorNo.isBlank() || actorNo.length() > 64)
+            throw new IllegalArgumentException("actorNo");
+        if (entityNo == null || entityNo.isBlank() || entityNo.length() > 64)
             throw new IllegalArgumentException("entityNo");
-        if (storeNo == null || storeNo.isBlank() || storeNo.length() > 32)
+        if (storeNo == null || storeNo.isBlank() || storeNo.length() > 64)
             throw new IllegalArgumentException("storeNo");
     }
 }

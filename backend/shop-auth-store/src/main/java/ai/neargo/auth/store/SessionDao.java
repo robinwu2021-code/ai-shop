@@ -74,6 +74,12 @@ public class SessionDao {
                 .query(SessionDao::map).optional();
     }
 
+    /** Switch tickets serialize validation and revocation of their exact source session. */
+    public Optional<SessionRow> findByHashForUpdate(String tokenHash) {
+        return jdbc.sql("SELECT " + COLS + " FROM " + table + " WHERE token_hash = :h FOR UPDATE")
+                .param("h", tokenHash).query(SessionDao::map).optional();
+    }
+
     /**
      * 撤销一条。
      *

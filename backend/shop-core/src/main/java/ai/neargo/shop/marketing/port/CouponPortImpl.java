@@ -1,24 +1,32 @@
 package ai.neargo.shop.marketing.port;
 
-import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
-import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.entity.MktUserCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.UserCouponMapper;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
+import ai.neargo.shop.spi.marketing.CouponPort;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+
+import javax.sql.DataSource;
 
 /**
  * trade → marketing：下单时的券计算与核销（{@link CouponPort}）。
@@ -34,6 +42,18 @@ import java.util.Comparator;
 @Component
 public class CouponPortImpl implements CouponPort {
 
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    private void requireCheckoutTransaction() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || checkoutSource == null
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+    }
+
     private final LegacyCouponWriteFencePort sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
@@ -42,6 +62,53 @@ public class CouponPortImpl implements CouponPort {
         this.sourceFence = sourceFence;
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
+    }
+
+    @Override
+    public Allocation quoteOrdinary(
+            String userNo, String userCouponNo, List<MerchantAmount> groups) {
+        if (userCouponNo == null) {
+            return Allocation.none();
+        }
+        var instance = ownUserCoupon(userNo, userCouponNo);
+        ordinary(templateOf(instance.getCouponNo()));
+        return allocate(userNo, userCouponNo, groups);
+    }
+
+    @Override
+    public void lockOrdinary(String userNo, String userCouponNo) {
+        requireCheckoutTransaction();
+        var original = ownUserCoupon(userNo, userCouponNo);
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    var coupon =
+                            couponMapper.selectOne(
+                                    Wrappers.<MktCoupon>lambdaQuery()
+                                            .eq(MktCoupon::getTenantNo, "MAIN")
+                                            .eq(MktCoupon::getCouponNo, original.getCouponNo())
+                                            .last("FOR UPDATE"));
+                    var instance =
+                            userCouponMapper.selectOne(
+                                    Wrappers.<MktUserCoupon>lambdaQuery()
+                                            .eq(MktUserCoupon::getTenantNo, "MAIN")
+                                            .eq(MktUserCoupon::getUserNo, userNo)
+                                            .eq(MktUserCoupon::getUserCouponNo, userCouponNo)
+                                            .last("FOR UPDATE"));
+                    if (instance == null
+                            || !original.getCouponNo().equals(instance.getCouponNo())) {
+                        throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+                    }
+                    ordinary(coupon);
+                    assertUsable(instance, coupon);
+                });
+    }
+
+    private void ordinary(MktCoupon coupon) {
+        if (coupon == null
+                || !Set.of("FULL_CUT", "DISCOUNT").contains(coupon.getType())
+                || !Set.of("PLATFORM", "MERCHANT").contains(coupon.getFunder())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
     }
 
     @Override

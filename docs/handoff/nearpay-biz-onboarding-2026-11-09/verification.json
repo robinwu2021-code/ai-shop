@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-09",
+  "backend": {
+    "run": 3715,
+    "passed": 3366,
+    "skipped": 349,
+    "failed": 0,
+    "errors": 0
+  },
+  "flutter": {
+    "passed": 863,
+    "skipped": 7,
+    "failed": 0
+  },
+  "dartHttp": {
+    "passed": 1,
+    "syntheticHost": true,
+    "realAiShop": false,
+    "realVendor": false
+  },
+  "analyze": "passed",
+  "webRelease": "passed",
+  "aiShopDocStandard": {
+    "passed": 6,
+    "existingFailed": 2
+  },
+  "logs": [
+    {
+      "path": "/tmp/nearpay-biz-final-verify.log",
+      "sha256": "3de275934191b6012e93100959daf5cdd8d9ea46578f324b07f8461a3eb1d7ad"
+    },
+    {
+      "path": "/tmp/bapp-biz-full-test-final.log",
+      "sha256": "74b4a461b483cb4ed37bde04cb2e39facd82e2e9bc1c968ebfe620a496abe11e"
+    },
+    {
+      "path": "/tmp/bapp-biz-real-http.log",
+      "sha256": "4804b0309730472bbb9f93ab19f2016f57bee16cada4de729203456dd8a1cada"
+    },
+    {
+      "path": "/tmp/bapp-biz-analyze-final.log",
+      "sha256": "2ee2331f669aa30e77ea41dd52e86d3026a3aa3647de42d9f783eae9fbefa5d2"
+    },
+    {
+      "path": "/tmp/bapp-biz-web-build-final.log",
+      "sha256": "b1c624feb112220c38ce97cd5b32573a0bfa44bb0884947c63ad6273f7ee8a19"
+    },
+    {
+      "path": "/tmp/ai-shop-biz-handoff-doc-check.log",
+      "sha256": "18ee399b82a80138a70744a62ed8f72b97acffa2e390d09f453af96f687f3500"
+    }
+  ]
+}

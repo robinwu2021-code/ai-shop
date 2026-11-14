@@ -40,7 +40,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Primary-schema tests cover station ownership and immutable route counters rather than mapper stubs. */
 class StationServiceTest extends FoodWriteGuardFixture {
     private void run(BiConsumer<AssertableApplicationContext, Fixture> test) {
-        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class,
+        runner()
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
+                .withUserConfiguration(StorePolicyPublicationTest.Publication.class,
                 OptionGroupServiceTest.Groups.class, Stations.class).run(c -> {
                     var f = new OptionGroupServiceTest().fixture(c);
                     for (String store : List.of("A","B")) f.sql().update(

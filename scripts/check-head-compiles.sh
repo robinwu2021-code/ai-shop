@@ -29,6 +29,7 @@
 # 逃生门：
 #   SKIP_COMPILE_GATE=1   整个闸门都跳过（.githooks/pre-push 里判断）
 #   SKIP_TEST_GATE=1      只编译、不跑测试
+#   SKIP_BEAUTY_GATE=1    跳过美业插件段（scripts/check-beauty-plugin.sh）
 #
 # 什么时候该用 SKIP_TEST_GATE：**共享工作区里别人写到一半时不该用** ——
 # 这个脚本跑的是干净 HEAD 副本，别人未提交的半成品影响不到它。
@@ -161,6 +162,66 @@ fi
 echo "✓ 没有新增失败（基线 $(wc -l < "$BASE" | tr -d ' ') 条一条没多）"
 rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并打印路径
 
+# ── 餐饮插件（backend-plugins/shop-industry-food）──
+#
+# 上面的全量只编零售形态（backend/ 默认 reactor），插件五个模块与宿主的 food-embedded 测试
+# 都不在里面 —— 2026-10-26 评审时 HEAD 上已经红着一条插件测试（FoodArchitectureTest），
+# 就是因为没有任何闸门编它、测它。这里用与部署相同的 profile（见下 FOOD_PROFILES）
+# 把插件拉进同一个 reactor，**只跑餐饮的测试**（零售全量上面已经跑过，不重复）。
+#
+# 排除两类：
+#   FoodMigrationPackagingIT —— 读打好的 jar，属于 verify 阶段；
+#   *Native*                 —— 宿主侧原生 HTTP 场景，要一次性 MySQL（scripts/verify-food-primary-mysql.py），
+#                               与插件里 FOOD_TEST_DISPOSABLE 门控的用例同一类，常规构建不跑。
+# 判据是 0 失败（插件没有已知失败清单）。约 2 分钟。
+FOOD_LOG="$(mktemp "${TMPDIR:-/tmp}/head-food-test.XXXXXX")"
+# profile 与部署（scripts/deploy-backend.sh）一致：2026-10-29 起 food-embedded 测试源码里有依赖 commerce 集成的用例
+# （FoodChannelVertical*），只开 food-embedded,food-verify 时宿主测试编译不过 —— 之前被前面模块的失败遮住了。
+FOOD_PROFILES="food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded"
+echo "→ 餐饮插件：mvn -P$FOOD_PROFILES test（只跑餐饮测试，约 2 分钟）"
+START=$(date +%s)
+set +e
+(cd "$WT/backend" && mvn -o -B -fae -P"$FOOD_PROFILES" test \
+    -Dtest='ai/neargo/shop/food/**,**/Food*,!FoodMigrationPackagingIT,!**/*Native*' \
+    -Dsurefire.failIfNoSpecifiedTests=false) > "$FOOD_LOG" 2>&1
+FOOD_RC=$?
+set -e
+echo "  用时 $(( $(date +%s) - START )) 秒"
+FOOD_TOTAL="$(grep -oE '^\[(INFO|ERROR)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$FOOD_LOG" \
+  | sed -E 's/.*Tests run: ([0-9]+),.*/\1/' | awk 'NF{s+=$1} END{print s+0}')"
+FOOD_FAILED="$({ grep -E '^\[ERROR\]   [A-Za-z0-9_]+\.[a-zA-Z0-9_]+' "$FOOD_LOG" || true; } \
+  | sed -E 's/^\[ERROR\]   ([A-Za-z0-9_]+)\.([a-zA-Z0-9_]+).*/\1.\2/' | sort -u)"
+echo "  餐饮 $FOOD_TOTAL 跑 / $(printf '%s' "$FOOD_FAILED" | grep -c . || true) 红"
+if [ "$FOOD_TOTAL" -lt 800 ]; then
+  echo ""
+  echo "✗ 餐饮测试没有正常跑起来（识别到 $FOOD_TOTAL 条，正常在 900 上下）。日志：$FOOD_LOG"
+  tail -30 "$FOOD_LOG"
+  exit 1
+fi
+if [ -n "$FOOD_FAILED" ] || [ "$FOOD_RC" -ne 0 ]; then
+  echo ""
+  echo "✗ 餐饮插件测试失败："
+  printf '%s\n' "$FOOD_FAILED" | sed '/^$/d; s/^/    /'
+  echo "  完整日志：$FOOD_LOG"
+  exit 1
+fi
+echo "✓ 餐饮插件与宿主 food-embedded 测试全绿"
+rm -f "$FOOD_LOG"
+
+# ── 美业插件（backend-plugins/shop-industry-beauty，执行方案 D10 / W1.6）──
+#
+# 美业是独立 Maven 工程，只能从仓库解析宿主构件；为了不覆盖 ~/.m2，它在克隆出来的独立仓库里装、测。
+# 细节与判据见 scripts/check-beauty-plugin.sh；已知失败清单在插件目录下（只准变短）。约 1 分钟。
+BEAUTY_SUMMARY="跳过"
+if [ "${SKIP_BEAUTY_GATE:-}" = "1" ]; then
+  echo "⚠ 已跳过美业闸门（SKIP_BEAUTY_GATE=1）"
+else
+  BEAUTY_COUNT="$(mktemp "${TMPDIR:-/tmp}/head-beauty-count.XXXXXX")"
+  "$ROOT/scripts/check-beauty-plugin.sh" "$WT" "$BEAUTY_COUNT"
+  BEAUTY_SUMMARY="$(cat "$BEAUTY_COUNT") 跑 / 只含已知失败"
+  rm -f "$BEAUTY_COUNT"
+fi
+
 # 记下**这一次验的是哪个提交**，给 deploy-backend.sh 比对用。
 #
 # 为什么需要：闸门跑四到六分钟，而这个目录常有多个会话在推 —— 跑完之后 HEAD 会前进，
@@ -182,7 +243,7 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 # 会有这种「看起来莫名其妙被拦」的时刻。
 {
     printf '%s\n' "$VERIFIED_SHA"
-    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）\n' \
+    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）· 餐饮 %s 跑 / 0 红 · 美业 %s\n' \
         "$(date '+%F %T')" "$TOTAL" \
-        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')"
+        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')" "$FOOD_TOTAL" "$BEAUTY_SUMMARY"
 } > "$(git rev-parse --git-dir)/gate-verified-sha"

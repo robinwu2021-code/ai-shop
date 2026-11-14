@@ -16,6 +16,9 @@ import lombok.Setter;
 @Setter
 @TableName("mkt_fission_campaign")
 public class MktFissionCampaign extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 唯一合法的奖励类型 */
     public static final String COUPON = "COUPON";

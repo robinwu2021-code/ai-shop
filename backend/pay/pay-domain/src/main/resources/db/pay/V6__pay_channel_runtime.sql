@@ -1,0 +1,51 @@
+-- 支付服务 v4 · 迁移 6（I2 · S1）：渠道运行。「未知」补查任务与渠道适配器生命周期。
+
+CREATE TABLE pay_channel_followup (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键（Java Long）',
+  invocation_no VARCHAR(64) NOT NULL COMMENT '原调用号（pay_channel_call_log.invocation_no）',
+  trace_id VARCHAR(64) NOT NULL COMMENT '原追踪号：补查产生的调用记录沿用它',
+  operation VARCHAR(24) NOT NULL COMMENT '原操作：PAY / CONFIRM / REFUND / CLOSE / VOID / PAYOUT',
+  pay_channel VARCHAR(32) NOT NULL COMMENT '渠道码',
+  pay_merchant_id BIGINT NULL COMMENT '收款商户 pay_merchant.id',
+  pay_order_id BIGINT NULL COMMENT '支付单 pay_order.id',
+  stl_payment_id BIGINT NULL COMMENT '通道尝试 stl_payment.id',
+  pay_refund_id BIGINT NULL COMMENT '退款单 pay_refund.id',
+  status VARCHAR(24) NOT NULL COMMENT 'PENDING / RESOLVED / ESCALATED / CANCELLED',
+  open_key VARCHAR(100) NULL COMMENT 'PENDING 时 = operation|stl_payment_id|pay_refund_id：同一对象同一操作只有一个进行中补查',
+  attempts INT NOT NULL DEFAULT 0 COMMENT '已补查次数',
+  next_at DATETIME(3) NOT NULL COMMENT '下次补查时间（指数退避）',
+  last_result VARCHAR(255) NULL COMMENT '最近一次补查结果摘要',
+  resolved_at DATETIME(3) NULL COMMENT '得出结论的时间',
+  pay_exception_id BIGINT NULL COMMENT '超过上限转人工时建的 pay_exception.id',
+  created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+  created_by VARCHAR(64) NULL COMMENT '创建人（审计字段）',
+  updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+  updated_by VARCHAR(64) NULL COMMENT '修改人（审计字段）',
+  version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除；资金与历史事实不删',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_pay_channel_followup_1 (open_key),
+  KEY idx_pay_channel_followup_1 (status,next_at),
+  KEY idx_pay_channel_followup_2 (pay_order_id),
+  KEY idx_pay_channel_followup_3 (invocation_no)
+) COMMENT='「未知」补查任务：渠道调用结果不明（超时、5xx、未登记渠道码）时登记，按退避自动查询，直到有结论或转人工';
+
+CREATE TABLE pay_channel_lifecycle_log (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键（Java Long）',
+  pay_channel VARCHAR(32) NOT NULL COMMENT '渠道码',
+  pay_merchant_id BIGINT NULL COMMENT '收款商户 pay_merchant.id；渠道级状态（整个渠道停用）为空',
+  from_state VARCHAR(24) NOT NULL COMMENT '原状态：REGISTERED / INITIALIZED / ACTIVE / DEGRADED / SUSPENDED / DRAINING / STOPPED',
+  to_state VARCHAR(24) NOT NULL COMMENT '新状态',
+  reason VARCHAR(255) NOT NULL COMMENT '原因：熔断打开、健康检查失败、运营停用、凭据吊销、应用关闭…',
+  operator_no VARCHAR(64) NOT NULL COMMENT '操作人（系统触发为 SYSTEM）',
+  occurred_at DATETIME(3) NOT NULL COMMENT '发生时间',
+  created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+  created_by VARCHAR(64) NULL COMMENT '创建人（审计字段）',
+  updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+  updated_by VARCHAR(64) NULL COMMENT '修改人（审计字段）',
+  version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除；资金与历史事实不删',
+  PRIMARY KEY (id),
+  KEY idx_pay_channel_lifecycle_log_1 (pay_channel,occurred_at),
+  KEY idx_pay_channel_lifecycle_log_2 (pay_merchant_id,occurred_at)
+) COMMENT='渠道适配器生命周期日志：每个「渠道 × 收款商户」运行时实例的一次状态变化';

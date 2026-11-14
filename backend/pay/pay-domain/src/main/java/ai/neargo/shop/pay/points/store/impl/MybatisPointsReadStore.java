@@ -189,13 +189,16 @@ public class MybatisPointsReadStore implements PointsReadStore {
     private PointType type(Map<String, Object> r) {
         return new PointType(
                 (String) r.get("type_code"),
+                (String) r.getOrDefault("name", r.get("type_code")),
                 (String) r.get("market"),
                 (String) r.get("currency"),
                 (int) num(r, "scale"),
                 new RedeemRate(num(r, "rate_points"), num(r, "rate_minor")),
                 (int) num(r, "deduct_ratio_bp"),
                 (int) num(r, "idle_days"),
-                PointType.Status.valueOf((String) r.get("status")));
+                PointType.Status.valueOf((String) r.get("status")),
+                Boolean.TRUE.equals(r.get("earning_paused")) || "1".equals(String.valueOf(r.get("earning_paused"))),
+                r.get("market") != null && r.get("market").equals(r.get("active_market")));
     }
 
     private long num(Map<String, Object> r, String key) {

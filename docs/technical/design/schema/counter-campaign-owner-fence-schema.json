@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "owner": "shared-marketing",
+  "platformVersion": 603,
+  "migration": "backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql",
+  "resource": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json",
+  "table": {
+    "name": "mkt_counter_campaign_fence",
+    "engine": "InnoDB",
+    "collation": "OWNER_IDENTITY",
+    "columns": [
+      {
+        "name": "tenant_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "default": null,
+        "collation": "OWNER_IDENTITY",
+        "charset": "OWNER_IDENTITY"
+      },
+      {
+        "name": "scope_kind",
+        "type": "varchar(16)",
+        "nullable": false,
+        "default": null,
+        "collation": "utf8mb4_bin",
+        "charset": "utf8mb4"
+      },
+      {
+        "name": "scope_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "collation": "OWNER_IDENTITY",
+        "charset": "OWNER_IDENTITY"
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "nullable": false,
+        "default": "0",
+        "collation": null,
+        "charset": null
+      }
+    ],
+    "primaryKey": [
+      "tenant_no",
+      "scope_kind",
+      "scope_no"
+    ],
+    "checks": {
+      "ck_mkt_counter_fence_scope": "scope_kind IN ('PLATFORM', 'ENTITY')",
+      "ck_mkt_counter_fence_revision": "revision >= 0"
+    },
+    "charset": "DATABASE_DEFAULT"
+  },
+  "seed": {
+    "tenant": "MAIN",
+    "kind": "PLATFORM",
+    "no": "PLATFORM"
+  },
+  "inputs": [
+    {
+      "table": "mkt_campaign",
+      "resolution": "ENTITY",
+      "immutable": [
+        "tenant_no",
+        "entity_no",
+        "campaign_no"
+      ]
+    },
+    {
+      "table": "pmt_activity",
+      "resolution": "OWNER",
+      "immutable": [
+        "tenant_no",
+        "entity_no",
+        "activity_no",
+        "owner"
+      ]
+    },
+    {
+      "table": "pmt_activity_version",
+      "resolution": "ACTIVITY",
+      "immutable": [
+        "tenant_no",
+        "activity_no",
+        "version_no"
+      ]
+    },
+    {
+      "table": "pmt_activity_goods",
+      "resolution": "ACTIVITY",
+      "immutable": [
+        "tenant_no",
+        "activity_no",
+        "entity_no"
+      ]
+    },
+    {
+      "table": "pmt_activity_rule",
+      "resolution": "ACTIVITY",
+      "immutable": [
+        "tenant_no",
+        "activity_no"
+      ]
+    },
+    {
+      "table": "pmt_enrollment",
+      "resolution": "ENROLLMENT",
+      "immutable": [
+        "tenant_no",
+        "entity_no",
+        "enrollment_no",
+        "activity_no"
+      ]
+    },
+    {
+      "table": "pmt_enrollment_goods",
+      "resolution": "ENROLLMENT_GOODS",
+      "immutable": [
+        "tenant_no",
+        "enrollment_no"
+      ]
+    }
+  ],
+  "ownerIdentity": {
+    "charset": "utf8mb4",
+    "bindings": [
+      {
+        "table": "mkt_campaign",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_version",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_goods",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_rule",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_enrollment",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_enrollment_goods",
+        "column": "tenant_no"
+      },
+      {
+        "table": "mkt_campaign",
+        "column": "entity_no"
+      },
+      {
+        "table": "pmt_activity",
+        "column": "entity_no"
+      },
+      {
+        "table": "pmt_enrollment",
+        "column": "entity_no"
+      }
+    ]
+  }
+}

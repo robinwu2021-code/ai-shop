@@ -63,7 +63,9 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/ai_shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
     username: ${SHOP_DB_USER:shop}
-    password: ${SHOP_DB_PASS:shop}
+    # 不带默认值（安全规范 §3.2，NoSecretDefaultInConfigTest）：漏配就启动失败，而不是静默用一个人人知道的口令。
+    # 本机运行先 export SHOP_DB_PASS；测试走 h2db profile 自带空口令
+    password: ${SHOP_DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # ⚠️ 建表只走 Flyway。sql.init 每次启动重跑、ALTER 不幂等、无版本记录，
@@ -103,6 +105,17 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  trade:
+    channel:
+      # New external receivable admission is opt-in; this does not enable a supplier or local cash acknowledgement.
+      enabled: ${SHOP_TRADE_CHANNEL_ENABLED:false}
+  ops:
+    auth:
+      # 运营登录第二因子（安全规范 §2.7，G9）：email = 密码对了再发 6 位码到登录邮箱，凭码换会话。
+      # 只有测试世界配 off（testcfg）；prod profile 配 off 启动即失败（OpsSecondFactorGuard）
+      second-factor: ${SHOP_OPS_SECOND_FACTOR:email}
+  management:
+    signing-key: ${SHOP_MANAGEMENT_SIGNING_KEY:}
   core:
     entitlement:
       # Offline source fencing only; an empty key leaves migration transitions closed.
@@ -139,7 +152,14 @@ shop:
       # 判据照跑、命中打 WARN（「[类目闸] 放行未授权上架」），那是开闸前估影响面的依据。
       # 打开时**必须同时**把 b-app 的 ENFORCE_CATEGORY_GATE 打开，见 b-app/src/shared/flags.ts。
       enforce: ${SHOP_CATEGORY_GATE_ENFORCE:false}
-  # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
+  # 本地持久根。缺省 ./data 保留旧 uploads/ 和 print-private/ 路径。
+  # 容器建议 /data/storage，宿主机挂载 /data0/app/ai-shop/storage；物理根不进入 object key。
+  storage:
+    root: ${SHOP_STORAGE_ROOT:./data}
+  # 显式旧路径继续优先，避免升级时悄悄移动存量文件。
+  upload:
+    dir: ${SHOP_UPLOAD_DIR:${shop.storage.root}/uploads}
+  # 图片/文件存储：local 与 cos 显式选择；云故障不自动切回本地。GCS 尚未实现。
   media:
     provider: ${SHOP_MEDIA_PROVIDER:local}
     # 公开图出口（ADR-026）。库里只存规范地址（= shop.cos.domain，生产 https://img.hxmall.top）。
@@ -153,6 +173,15 @@ shop:
   geo:
     # 高德 Web 服务 key（后端代理，密钥不落端）。空 = 地图能力关闭：定位取地址按钮隐藏、地址校验跳过
     amap-key: ${AMAP_WEB_KEY:}
+    # 按门店地区选地图（TDD-双地图提供方与门店选点）：CN 高德、TW/AE Google；某地区的提供方没配密钥就没有地图选点，
+    # 不跨家兜底（高德在阿联酋没有底图，Google 在大陆不可达）
+    provider-by-market: ${SHOP_GEO_PROVIDER_BY_MARKET:CN:AMAP,TW:GOOGLE,AE:GOOGLE}
+    # Google 服务端 key（Places API (New) + Geocoding，后端代理，不下发）。空 = 台湾 / 阿联酋没有地图选点
+    google-key: ${GOOGLE_MAPS_SERVER_KEY:}
+    # 端上画地图用的浏览器 JS key（限定包名 / 域名，会经 store-setup 下发到端上），与上面的服务端 key 分开
+    amap-js-key: ${AMAP_JS_KEY:}
+    amap-js-security: ${AMAP_JS_SECURITY:}
+    google-js-key: ${GOOGLE_MAPS_JS_KEY:}
   cos:
     secret-id: ${COS_SECRET_ID:}
     secret-key: ${COS_SECRET_KEY:}
@@ -164,6 +193,9 @@ shop:
     # （nginx 转发时把 Host 设回桶域名，签名才对得上）
     private-base-url: ${COS_PRIVATE_BASE_URL:}
   auth:
+    captcha:
+      # Coordinate native CAPTCHA-capable clients before enabling server enforcement.
+      enabled: ${SHOP_AUTH_CAPTCHA_ENABLED:false}
     # 密钥票据免登录（ADR-027）：自动化测试用。默认关，关着时 /common/auth/automation 返回 404。
     # 线上只放公钥；私钥在本机仓库外。开着而公钥或白名单为空则拒绝启动。
     # subjects 形如 B:<user_no>,OPS:<staff_no>，只有这些账号能用票据登录，权限与其正常登录相同。
@@ -176,6 +208,8 @@ shop:
     #   ehcache = 零依赖 + 本地磁盘持久化，**单实例部署用它**
     #   redis   = 多副本部署的唯一选项（会话要跨实例共享）
     token-store: ${SHOP_TOKEN_STORE:memory}
+    login-ticket:
+      ttl: ${SHOP_LOGIN_TICKET_TTL:PT5M}
     ehcache:
       # 每个实例独占一个目录：Ehcache 会加文件锁，两个实例指同一个目录时后启动的起不来
       dir: ${SHOP_SESSION_DIR:./data/sessions}
@@ -191,6 +225,15 @@ shop:
       # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
       # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
       fixed: ${SHOP_OTP_FIXED:}
+  merchant:
+    # 本部署的唯一经营市场（TDD-B端建店默认经营市场）。决定新主体的 market 与 FREE 期币种；
+    # 该市场须在 sys_market 中启用。台湾实例设 TW。
+    default-market: ${SHOP_DEFAULT_MARKET:CN}
+    # 注册时可选的经营地区（TDD-注册地区与三步建店），逗号分隔。登录带的 marketCode 只在新建账号时生效，
+    # 不在清单内一律落 default-market。缺省 = 只有 default-market（与改动前等价）。测试实例 TW,CN,AE。
+    registration-markets: ${SHOP_REGISTRATION_MARKETS:${shop.merchant.default-market}}
+    # 建店时顶层行业选「其他」用的经营类型（须是已发布的经营类型）。空 = 不提供顶层「其他」。
+    other-business-type: ${SHOP_OTHER_BUSINESS_TYPE:}
   period:
     # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
     # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
@@ -240,7 +283,30 @@ shop:
   outbox:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
-    archive-only: ["PLATFORM:PRICING_CONFIG_PUBLISHED"]
+    archive-only:
+      - "PLATFORM:RETAIL_CHANNEL_FULFILLMENT_SEALED"
+      - "ORDER:CHANNEL_ORDER_ACCEPTED"
+      - "PLATFORM:CATALOG_SOURCE_CHANGED"
+      - "PLATFORM:PRICING_CONFIG_PUBLISHED"
+      - "PLATFORM:PRINT_JOB_CHANGED"
+      - "PLATFORM:FOOD_DISH_CHANGED"
+      - "PLATFORM:FOOD_TABLE_AREA_CHANGED"
+      - "PLATFORM:FOOD_STORE_POLICY_PUBLISHED"
+      - "PLATFORM:FOOD_OPTION_GROUP_CHANGED"
+      - "PLATFORM:FOOD_TABLE_CHANGED"
+      - "PLATFORM:FOOD_CONFIG_PUBLISHED"
+      - "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED"
+      - "PLATFORM:FOOD_RECIPE_CHANGED"
+      - "PLATFORM:FOOD_MENU_CHANGED"
+      - "PLATFORM:FOOD_MENU_DISABLED"
+      - "PLATFORM:FOOD_DINING_SESSION_CHANGED"
+      - "PLATFORM:FOOD_STATION_CHANGED"
+      - "PLATFORM:FOOD_BUNDLE_CHANGED"
+      - "PLATFORM:FOOD_CART_CHANGED"
+      - "PLATFORM:FOOD_MODIFIER_CHANGED"
+      - "PLATFORM:FOOD_SALES_RESTRICTION_CHANGED"
+      - "PLATFORM:FOOD_MENU_CHANNEL_BINDING_CHANGED"
+      - "PLATFORM:DINING_QUEUE_CHANGED"
     concurrency: 5
     queue-capacity: 500
     recovery-interval: 5s
@@ -446,6 +512,9 @@ shop:
       mch-after-sale-fields: ${WX_TPL_MCH_AFTER_SALE_FIELDS:}
       mch-review: ${WX_TPL_MCH_REVIEW:}
       mch-review-fields: ${WX_TPL_MCH_REVIEW_FIELDS:}
+      # Only an approved template of WX_APPID; semantic keys: store,title,amount,time.
+      stored-value-redeemed: ${WX_TPL_STORED_VALUE_REDEEMED:}
+      stored-value-redeemed-fields: ${WX_TPL_STORED_VALUE_REDEEMED_FIELDS:}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。
@@ -507,6 +576,10 @@ shop:
     # 冻结窗口天数（TDD-账期推进与放款记录 §2.1 A）。freeze_expire_at = 本批最早成交 + 它
     freeze-days: ${SHOP_SETTLE_FREEZE_DAYS:7}
   job:
+    service-execution-recovery:
+      cron: ${SHOP_JOB_SERVICE_EXECUTION_RECOVERY_CRON:0 * * * * *}
+    manual-service-admission-recovery:
+      cron: ${SHOP_JOB_MANUAL_SERVICE_ADMISSION_RECOVERY_CRON:0 * * * * *}
     outbox:
       # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
       cron: ${SHOP_JOB_OUTBOX_CRON:*/5 * * * * *}
@@ -549,6 +622,14 @@ shop:
 
   # 发码限流（安全整改方案 §2.2 的三道闸）。**生产必须开着**
   otp:
+    # 软阈值：本进程固定小时/24小时窗口；只决定是否要求滑块，不替代原硬限流。
+    adaptive:
+      account-hourly: ${SHOP_OTP_ADAPTIVE_ACCOUNT_HOURLY:3}
+      account-daily: ${SHOP_OTP_ADAPTIVE_ACCOUNT_DAILY:5}
+      platform-hourly: ${SHOP_OTP_ADAPTIVE_PLATFORM_HOURLY:500}
+      platform-daily: ${SHOP_OTP_ADAPTIVE_PLATFORM_DAILY:3000}
+      maximum-keys: ${SHOP_OTP_ADAPTIVE_MAXIMUM_KEYS:100000}
+      # scenes 按 OtpScenes 常量配置；除 LOGIN 外默认关闭，启用还需登记可信 entries 及渠道模板。
     rate-limit: ${SHOP_OTP_RATE_LIMIT:true}
     interval-seconds: ${SHOP_OTP_INTERVAL_SECONDS:60}
     daily-per-phone: ${SHOP_OTP_DAILY_PER_PHONE:10}
@@ -556,6 +637,16 @@ shop:
 
   # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
   pay:
+    # 浏览器可访问的独立支付运营端地址；留空时不展示跳转入口，不能使用内部服务地址。
+    ops-public-base-url: ${SHOP_PAY_OPS_PUBLIC_BASE_URL:}
+    # B App 进件转发：需真实联调验收后启用；商家会话必须使用 db。
+    biz-onboarding:
+      enabled: ${NEARPAY_BIZ_ONBOARDING_ENABLED:false}
+      # 固定 HTTPS origin；开发仅允许 loopback HTTP。原用户身份透传，不配置服务密钥。
+      base-url: ${NEARPAY_BIZ_ORIGIN:}
+    channel-account-claims:
+      enabled: ${NEARPAY_CHANNEL_ACCOUNT_CLAIMS_ENABLED:false}
+      base-url: ${NEARPAY_BIZ_ORIGIN:}
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
       # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.
@@ -572,6 +663,21 @@ shop:
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
     # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
     stub: ${SHOP_PAY_STUB:false}
+    # stub 开着时替哪些渠道做进件（逗号分隔）。没点名的渠道照样「未接通」，进件直接失败 ——
+    # 此前查不到网关就回落 stub，任何渠道都能「开户成功」（TDD-支付服务-I1存量缺陷 F05）。
+    stub-channels: ${SHOP_PAY_STUB_CHANNELS:WECHAT,ALIPAY}
+    merchant:
+      # 收款商户双写（TDD-支付服务-I4进件与收款商户 S4）：旧表 mch_payment_merchant / mch_store / mch_entity
+      # 提交后把进件单、收款商户、门店绑定跟到支付域新表。先开它、再跑 pay-merchant-backfill，比对为 0 后才读切。
+      # 新表写失败只记日志 [pay-merchant-dual-write]，不挡旧路径
+      dual-write: ${SHOP_PAY_MERCHANT_DUAL_WRITE:false}
+      # 读切（S6）：legacy = 旧表解析（默认）；pay = 门店绑定解析（没绑定就是没有，不兜底主体级号）。
+      # 配 pay 也要启动时全量比对 C07 无未确认差异才生效，否则仍走旧解析并打 ERROR [pay-merchant-read]。切回 legacy 即回退
+      read-from: ${SHOP_PAY_MERCHANT_READ_FROM:legacy}
+      compare:
+        # 比对 C07（pay-merchant-compare）里人工确认过的差异，逗号分隔，每项是日志里那条差异的 key
+        # （门店|渠道|类别|旧值|新值）。任一侧的值再变，旧确认自然不再匹配
+        confirmed: ${SHOP_PAY_MERCHANT_COMPARE_CONFIRMED:}
     wechat:
       # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
       # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty
@@ -608,13 +714,26 @@ shop:
       # 验回调签名与验应答签名都用它。**不配 = 不验签**，启动时会打一条 WARN
       platform-public-key: ${WX_PLATFORM_PUBLIC_KEY:}
       platform-public-key-path: ${WX_PLATFORM_PUBLIC_KEY_PATH:}
+      # 回调按 Wechatpay-Serial 选公钥（安全规范 G4 · TDD-支付服务-W2渠道层补完 S6）。不配 serial = 只有一把、任何 serial 都用它（存量）。
+      # 证书 / 公钥轮换：先配上新一把（-next，必须带 -next-serial），新旧并存验回调；微信切到新证书、稳定后再把新的挪到上面、去掉 -next
+      platform-public-key-serial: ${WX_PLATFORM_PUBLIC_KEY_SERIAL:}
+      platform-public-key-next: ${WX_PLATFORM_PUBLIC_KEY_NEXT:}
+      platform-public-key-next-path: ${WX_PLATFORM_PUBLIC_KEY_NEXT_PATH:}
+      platform-public-key-next-serial: ${WX_PLATFORM_PUBLIC_KEY_NEXT_SERIAL:}
       # 支付结果回调。必须 HTTPS 且公网可达；不配则拒绝下单
       # （发出去也收不到通知，那笔单会停在 PENDING 只能等对账日）
       notify-url: ${WX_NOTIFY_URL:}
+      # 退款结果回调地址。空 = 由 notify-url 推导（路径末段后加 refund，查询参数保留）；地址不按这个规律时显式配
+      refund-notify-url: ${WX_REFUND_NOTIFY_URL:}
+    callback:
+      # 渠道回调时间戳允许的偏差（G4）：超出即按重放拒收；验签之后才看，伪造请求刷不了这条
+      timestamp-window: ${SHOP_PAY_CALLBACK_TIMESTAMP_WINDOW:PT5M}
     alipay:
       enabled: ${ALIPAY_PAY_ENABLED:false}
       app-id: ${ALIPAY_APP_ID:}
       private-key-path: ${ALIPAY_PRIVATE_KEY_PATH:}
+      # 支付宝公钥（验应答与回调）：内容或路径二选一，内容优先（G5：此前代码只读 public-key、这里只配了 -path，启用即验签恒失败）
+      public-key: ${ALIPAY_PUBLIC_KEY:}
       public-key-path: ${ALIPAY_PUBLIC_KEY_PATH:}
       # 平台自己的收款账号：补差时作为出资方（trans_out）。
       # 不配的话补差会明确失败，而不是静默补 0
@@ -647,6 +766,27 @@ shop:
 #
 # **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
 # 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
+
+# 进销存独立服务的领域包读 inventory.*（ADR-046）。商城过渡期内嵌，部署、测试与菜单开关
+# （sys_function_point.gated_by）认的仍是 shop.inventory.* —— 在这里一对一桥接，存量配置一个字都不用改。
+# 商城切流（M8）后内嵌装配删除，这一段随之删除。
+inventory:
+  enabled: ${shop.inventory.enabled:false}
+  flyway-enabled: ${shop.inventory.flyway-enabled:true}
+  flyway-locations: ${shop.inventory.flyway-locations:classpath:db/inventory}
+  datasource:
+    url: ${shop.inventory.datasource.url:}
+    username: ${shop.inventory.datasource.username:}
+    password: ${shop.inventory.datasource.password:}
+    max-pool-size: ${shop.inventory.datasource.max-pool-size:8}
+  reserve:
+    max-ttl-seconds: ${shop.inventory.reserve.max-ttl-seconds:86400}
+  jobs:
+    enabled: ${shop.job.enabled:false}
+    outbox-cron: ${shop.job.inv-outbox.cron:*/5 * * * * *}
+    snapshot-cron: ${shop.job.inv-snapshot.cron:0 30 3 * * *}
+    reservation-expiry-cron: ${shop.job.inv-reservation-expiry.cron:0 * * * * *}
+
 logging:
   level:
     com.zaxxer.hikari: WARN
@@ -660,6 +800,13 @@ spring:
   config:
     activate:
       on-profile: api
+# 商城 HTTP 按部署面拆：公网 api 只挂 /biz 商家路由，内网 ops 只挂 /ops 运营路由。
+# 两边共用同一套宿主端口（ShopMallConfiguration 在两个 profile 都装配）。
+commerce:
+  mall:
+    http:
+      operator:
+        enabled: false
 
 ---
 spring:
@@ -669,6 +816,11 @@ spring:
 server:
   # 与 api 不同端口：即使误挂到公网，也不会撞上已开放的 8080
   port: 8081
+commerce:
+  mall:
+    http:
+      buyer:
+        enabled: false
 
 ---
 spring:

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.entitlement.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
@@ -43,6 +45,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Local pay snapshots only: comparison records discrepancies and never adjusts resources or invokes sources. */
 @Service
 public class EntitlementReconciliationServiceImpl implements EntitlementReconciliationService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final PayEntReconRunMapper runs;
     private final PayEntReconDiffMapper diffs;
     private final EntInstanceMapper instances;
@@ -83,6 +87,7 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
         var run=runs.lock(scope.tenantNo(),key);
         if(!hash.equals(run.getPayloadHash())) throw BizException.of(ErrorCode.CONFLICT);
         if("COMPLETED".equals(run.getStatus())) return view(run);
+        documents.bind(DocumentType.ENTITLEMENT_RECON_RUN, scope.tenantNo(), run.getReconNo());
         List<Comparison> comparisons=switch(c.axis()) {
             case "MONEY" -> money(scope,c);
             case "ISSUANCE" -> issuance(scope,c);
@@ -101,6 +106,7 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
             diff.setExpectedSnapshot(json.writeValueAsString(comparison.expected()));
             diff.setActualSnapshot(json.writeValueAsString(comparison.actual()));
             EntitlementRecords.changed(diffs.insert(diff));
+            documents.bind(DocumentType.ENTITLEMENT_RECON_DIFF, scope.tenantNo(), diff.getDiffNo());
         }
         run.setStatus("COMPLETED"); run.setCheckedCount((long)comparisons.size()); run.setDiffCount(differences);
         run.setScanCursor(more?comparisons.getLast().no():null); run.setCompletedAt(EntitlementRecords.now());
@@ -207,8 +213,9 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
     private PayEntReconRun find(CatalogScope scope,String no) {
         platform(scope);
         if(no==null || no.isBlank() || no.length()>64) throw BizException.of(ErrorCode.BAD_REQUEST);
+        String sourceNo=documents.internal(DocumentType.ENTITLEMENT_RECON_RUN, scope.tenantNo(), no);
         var row=runs.selectOne(Wrappers.<PayEntReconRun>lambdaQuery().eq(PayEntReconRun::getTenantNo,scope.tenantNo())
-                .eq(PayEntReconRun::getEntityNo,scope.entityNo()).eq(PayEntReconRun::getReconNo,no));
+                .eq(PayEntReconRun::getEntityNo,scope.entityNo()).eq(PayEntReconRun::getReconNo,sourceNo));
         if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }
@@ -218,17 +225,17 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
         var result=runs.selectPage(new Page<>(page,size),Wrappers.<PayEntReconRun>lambdaQuery()
                 .eq(PayEntReconRun::getTenantNo,scope.tenantNo()).eq(PayEntReconRun::getEntityNo,scope.entityNo())
                 .eq(date!=null,PayEntReconRun::getBizDate,date).orderByDesc(PayEntReconRun::getId));
-        return new PageData<>(result.getRecords().stream().map(EntitlementReconciliationServiceImpl::view).toList(),
+        return new PageData<>(documents.project(DocumentType.ENTITLEMENT_RECON_RUN, result.getRecords(), PayEntReconRun::getTenantNo, PayEntReconRun::getReconNo, this::view),
                 result.getTotal(),page,size);
     }
 
     @Override public PageData<DiffView> differences(CatalogScope scope,String no,long page,long size) {
-        find(scope,no); page(page,size);
+        var run = find(scope,no); page(page,size);
         var result=diffs.selectPage(new Page<>(page,size),Wrappers.<PayEntReconDiff>lambdaQuery()
                 .eq(PayEntReconDiff::getTenantNo,scope.tenantNo()).eq(PayEntReconDiff::getEntityNo,scope.entityNo())
-                .eq(PayEntReconDiff::getReconNo,no).orderByAsc(PayEntReconDiff::getId));
-        return new PageData<>(result.getRecords().stream().map(d -> new DiffView(d.getDiffNo(),d.getReconNo(),
-                d.getEntityNo(),d.getResourceNo(),d.getDiffKind(),d.getStatus())).toList(),result.getTotal(),page,size);
+                .eq(PayEntReconDiff::getReconNo,run.getReconNo()).orderByAsc(PayEntReconDiff::getId));
+        return new PageData<>(documents.project(DocumentType.ENTITLEMENT_RECON_DIFF, result.getRecords(), PayEntReconDiff::getTenantNo, PayEntReconDiff::getDiffNo, d -> new DiffView(d.getDiffNo(),d.getReconNo(),
+                d.getEntityNo(),d.getResourceNo(),d.getDiffKind(),d.getStatus()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_RECON_DIFF, d.getTenantNo(), d.getDiffNo()))),result.getTotal(),page,size);
     }
 
     private static void page(long page,long size) {
@@ -237,9 +244,9 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
     private static long number(Map<String,Object> row,String key) {
         return new BigDecimal(row.get(key).toString()).longValueExact();
     }
-    private static RunView view(PayEntReconRun row) {
+    private RunView view(PayEntReconRun row) {
         return new RunView(row.getReconNo(),row.getEntityNo(),row.getAxis(),row.getStatus(),row.getCheckedCount(),
-                row.getDiffCount(),row.getScanCursor(),row.getBizDate(),row.getMarketZone(),row.getCurrency());
+                row.getDiffCount(),row.getScanCursor(),row.getBizDate(),row.getMarketZone(),row.getCurrency()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_RECON_RUN, row.getTenantNo(), row.getReconNo()));
     }
     private static void platform(CatalogScope scope) {
         if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);

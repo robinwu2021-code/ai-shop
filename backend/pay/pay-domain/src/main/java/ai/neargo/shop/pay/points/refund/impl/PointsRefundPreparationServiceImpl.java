@@ -13,7 +13,7 @@ import ai.neargo.shop.pay.points.policy.RefundRatioPolicy;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
-import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
@@ -107,7 +107,10 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
         }
         var grantHead = read.position(PositionMove.Kind.GRANT.table(), grantNo);
         var redeemHead = read.position(PositionMove.Kind.REDEEM.table(), redeemNo);
-        require(grantHead != null || redeemHead != null, "POINTS_REFUND_SOURCE_UNKNOWN");
+        if (grantHead == null && redeemHead == null) {
+            // An earning budget shortage must never block refunding a verified cash purchase.
+            validateUnfundedPaidSource(command, cumulative, responsibility);
+        }
         long due = 0;
         long pendingDue = 0;
         Map<String, Long> dueByLine = new HashMap<>();
@@ -312,6 +315,34 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
         return preparation;
     }
 
+    private void validateUnfundedPaidSource(RefundCommand command, Map<String, Long> cumulative,
+                                           Map<String, Object> lifecycle) {
+        require(lifecycle != null, "POINTS_REFUND_SOURCE_UNKNOWN");
+        var state = json.readTree((String) lifecycle.get("payload_json"));
+        require(state.hasNonNull("paidFact"), "POINTS_REFUND_SOURCE_UNKNOWN");
+        var paid = json.treeToValue(state.get("paidFact"), LifecycleFact.class);
+        require(command.userNo().equals(paid.userNo()) && command.typeCode().equals(paid.typeCode())
+                && command.subOrderNo().equals(paid.subOrderNo()) && command.sourceVersion() >= paid.sourceVersion(),
+                "POINTS_REFUND_SUBJECT_MISMATCH");
+        require(paid.payment() != null && paid.payment().equals(command.payment()), "POINTS_REFUND_PAYMENT_MISMATCH");
+        var previous = new HashMap<String, Long>();
+        var confirmed = read.confirmedRefunds(command.typeCode(), command.subOrderNo());
+        require(confirmed.size() <= 10000, "POINTS_REFUND_HISTORY_LIMIT");
+        for (var row : confirmed) {
+            var refund = json.readValue((String) row.get("payload_json"), RefundSnapshot.class);
+            require(command.userNo().equals(refund.command().userNo())
+                    && command.payment().equals(refund.command().payment()), "POINTS_REFUND_SUBJECT_MISMATCH");
+            for (var line : refund.command().lines()) previous.merge(line.itemId(),line.cumulativeGoodsMinor(),Math::max);
+        }
+        require(paid.lines().size() == cumulative.size() && cumulative.keySet().containsAll(previous.keySet()), "POINTS_REFUND_LINES_INVALID");
+        var seen = new java.util.HashSet<String>();
+        for (var line : paid.lines()) {
+            Long amount = cumulative.get(line.itemId());
+            require(seen.add(line.itemId()) && amount != null && amount >= previous.getOrDefault(line.itemId(),0L)
+                    && amount <= line.goodsMinor(), "POINTS_REFUND_LINES_INVALID");
+        }
+    }
+
     private Map<String, Long> validate(RefundCommand command) {
         require(
                 command != null
@@ -332,7 +363,7 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
                         && nonblank(payment.merchantNo())
                         && nonblank(payment.storeNo())
                         && nonblank(payment.accountVersion())
-                        && nonblank(payment.subMerchantId())
+                        && (!"AGGREGATED".equals(payment.fundsPath()) || nonblank(payment.subMerchantId()))
                         && nonblank(payment.tradeNo())
                         && nonblank(payment.outTradeNo())
                         && payment.orderTotalMinor() >= command.businessCashMinor(),

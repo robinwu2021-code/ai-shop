@@ -1,0 +1,8 @@
+{
+  "observed_at_utc": "2026-10-23T02:26:00.371568+00:00",
+  "observer": "root",
+  "implementer_asserted_not_executed": true,
+  "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql",
+  "sha256": "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2",
+  "sql": "-- Beauty V7: preserve each capacity demand unit as a distinct planned assignment.\n-- V1-V6 and all existing rows remain unchanged; planned_assignment_no stays unique.\n\nALTER TABLE `bty_appointment_assignment`\n    DROP INDEX `uk_bty_appointment_assignment_2`,\n    ADD INDEX `idx_bty_appointment_assignment_1` (`tenant_no`, `entity_no`, `appointment_item_no`, `appointment_revision`, `requirement_no`, `resource_no`);\n"
+}

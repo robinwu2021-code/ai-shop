@@ -2,8 +2,8 @@ package ai.neargo.shop.printbridge;
 
 import ai.neargo.job.api.*;
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.export.*;
-import ai.neargo.shop.print.simulation.SimulationRunner;
+import ai.neargo.shop.printing.center.export.*;
+import ai.neargo.shop.printing.center.simulation.SimulationRunner;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
@@ -57,7 +57,7 @@ public class PrintArtifactJobHandlers {
                 "处理隔离模拟、PDF生成、重启恢复及过期清理",
                 "print",
                 "*/10 * * * * *",
-                false,
+                true,
                 60,
                 120,
                 true,

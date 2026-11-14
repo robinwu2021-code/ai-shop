@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       biz 拿它建出来的商品身上真的带着 optionCode</li>
  * </ol>
  *
- * <p>手机号段：商户 {@code 126004xxxxx}、买家 {@code 130004xxxxx}。
+ * <p>手机号段：商户 {@code 186004xxxxx}、买家 {@code 130004xxxxx}。
  * 全量跑时与别的类共库，号段撞了会复用到别人的账号 —— 那种假绿只数行数是数不出来的。
  */
 @SpringBootTest
@@ -63,7 +63,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★★ 预售额度是真闸门：现货 1 件 + 额度 3 件 → 第 2/3/4 件买得到，第 5 件买不到")
     void presaleQuotaIsARealGate() throws Exception {
-        String biz = merchant("12600400001", "预售额度店");
+        String biz = merchant("18600400001", "预售额度店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 1);
         String skuNo = firstSku(goodsNo);
@@ -112,7 +112,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★ 取消预售单要把额度还回去 —— 不还的话「没卖多少却说额度满了」")
     void cancellingAPresaleOrderReturnsTheQuota() throws Exception {
-        String biz = merchant("12600400010", "预售取消店");
+        String biz = merchant("18600400010", "预售取消店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 0);   // 纯预售：一件现货都没有
         String skuNo = firstSku(goodsNo);
@@ -143,7 +143,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★ 截单时间真的截得住：截单前买得到，改成已过截单立刻买不到")
     void cutoffStopsNewOrders() throws Exception {
-        String biz = merchant("12600400020", "截单时间店");
+        String biz = merchant("18600400020", "截单时间店");
         String goodsNo = listedGoods(biz, 0);
         String skuNo = firstSku(goodsNo);
         String ops = opsLogin();
@@ -163,7 +163,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("预售配置的两条硬校验：截单必须早于到货、额度不能为负")
     void presaleConfigValidations() throws Exception {
-        String biz = merchant("12600400030", "预售校验店");
+        String biz = merchant("18600400030", "预售校验店");
         String skuNo = firstSku(listedGoods(biz, 3));
         String ops = opsLogin();
 
@@ -189,7 +189,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★ 超卖告警只报「运营自己调出来的」—— 调额度到已售之下，这条 SKU 立刻出现在告警里")
     void oversellAlertComesFromShrinkingTheQuota() throws Exception {
-        String biz = merchant("12600400040", "超卖告警店");
+        String biz = merchant("18600400040", "超卖告警店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 0);
         String skuNo = firstSku(goodsNo);
@@ -225,7 +225,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("presaleOnly 只出开了预售的 SKU —— 否则那个 tab 会长期显示为空而接口 200")
     void presaleOnlyFiltersInSql() throws Exception {
-        String biz = merchant("12600400050", "预售筛选店");
+        String biz = merchant("18600400050", "预售筛选店");
         String merchantNo = merchantNoOf(biz);
         String withPresale = firstSku(listedGoods(biz, 5));
         String withoutPresale = firstSku(listedGoods(biz, 5));
@@ -249,7 +249,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★ SKU 级压下架 = 主体下架 + 撤池，但**不撤过审**（商家自己就能恢复）")
     void forceOffSkuSuspendsWithoutRevokingAudit() throws Exception {
-        String biz = merchant("12600400060", "SKU压下架店");
+        String biz = merchant("18600400060", "SKU压下架店");
         String goodsNo = listedGoods(biz, 10);
         String skuNo = firstSku(goodsNo);
         String ops = opsLogin();
@@ -279,7 +279,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("SKU 级审核解析到父商品：驳回后整件商品是 REJECTED，理由回到商家")
     void auditSkuResolvesToParentGoods() throws Exception {
-        String biz = merchant("12600400070", "SKU审核店");
+        String biz = merchant("18600400070", "SKU审核店");
         String goodsNo = pendingGoods(biz, 10);
         String skuNo = firstSku(goodsNo);
         String ops = opsLogin();
@@ -316,7 +316,7 @@ class OpsProductGovernFlowTest {
                 .andExpect(jsonPath("$.data.records[0].archivedAt").doesNotExist());
 
         // ★ 商家端真的查得到 —— 这一步才是 E27 那条断裂
-        String biz = merchant("12600400080", "模板取用店");
+        String biz = merchant("18600400080", "模板取用店");
         JsonNode mine = templateByNo(biz, templateNo);
         assertThat(mine).as("平台刚建的模板商家查不到 = 模板依然是死的").isNotNull();
         assertThat(mine.get("scope").asString()).isEqualTo("PLATFORM");
@@ -347,7 +347,7 @@ class OpsProductGovernFlowTest {
         String name = "换季规格-" + System.nanoTime();
         String templateNo = saveTemplate(ops, "{\"categoryType\":\"FRESH\",\"name\":\"" + name + "\","
                 + "\"options\":[{\"code\":\"S1\",\"label\":\"小份\"}]}");
-        String biz = merchant("12600400090", "模板归档店");
+        String biz = merchant("18600400090", "模板归档店");
         assertThat(templateByNo(biz, templateNo)).isNotNull();
 
         mvc().perform(post("/ops/spec-templates/" + templateNo + "/archive")
@@ -410,7 +410,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("商家自存的模板在平台端一律 404 —— 别家存了什么不该被平台顺手改掉")
     void merchantTemplateIsInvisibleToPlatform() throws Exception {
-        String biz = merchant("12600400100", "自存模板店");
+        String biz = merchant("18600400100", "自存模板店");
         String body = mvc().perform(post("/biz/spec-templates").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"我自己的规格\","
@@ -574,7 +574,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★ 过审即在售 —— 商家提交完还要再点一次上架，等于这件货一直没在卖")
     void approvalPutsGoodsOnSaleWithoutASecondClick() throws Exception {
-        String biz = merchant("12600400100", "过审即上架店");
+        String biz = merchant("18600400100", "过审即上架店");
         String goodsNo = pendingGoods(biz, 10);
 
         // 提交审核 = 「我要卖它」
@@ -595,7 +595,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★★ 改一个在售商品的错别字，它不该就此永远下架")
     void editingAnOnSaleGoodsComesBackOnSaleAfterReaudit() throws Exception {
-        String biz = merchant("12600400110", "改字不掉架店");
+        String biz = merchant("18600400110", "改字不掉架店");
         String goodsNo = listedGoods(biz, 10);
 
         /*
@@ -632,7 +632,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★★ 商品参数：平台配的产地/保质期到得了商家手上，且不会变成 SKU")
     void productParamsReachMerchantAndDoNotBecomeSkus() throws Exception {
-        String biz = merchant("12600400120", "参数落地店");
+        String biz = merchant("18600400120", "参数落地店");
 
         /*
          * 一、平台给蔬菜配的 PROP 维度必须下发到 /biz/spec-props。
@@ -693,7 +693,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★★ SKU 的外部身份：条码/货号/单位存得进读得回，且条码可以跨店重复")
     void skuCarriesExternalIdentity() throws Exception {
-        String biz = merchant("12600400120", "外部身份店");
+        String biz = merchant("18600400120", "外部身份店");
         TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -718,7 +718,7 @@ class OpsProductGovernFlowTest {
          * 确实印着它。这条断言是 V252 里「barcode 只建普通索引」的守卫：
          * 哪天有人「顺手」把它改成唯一索引，这里会红。
          */
-        String other = merchant("12600400130", "另一家也卖这饼干");
+        String other = merchant("18600400130", "另一家也卖这饼干");
         TestStoreCategory.open(mvc(), json, other, "CAT210");
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + other)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -759,7 +759,7 @@ class OpsProductGovernFlowTest {
     @Test
     @DisplayName("★★ 划线价与成本价要删得掉 —— updateById 默认跳过 null，删了会自己回来")
     void clearableSkuFieldsActuallyClear() throws Exception {
-        String biz = merchant("12600400140", "删得掉店");
+        String biz = merchant("18600400140", "删得掉店");
         TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,0 +1,25 @@
+{
+  "status": "DEPLOYED",
+  "previousSha256": "b85174d978e7b385ec3b8abe5512f02b2d2f13d0efe95f8adfa5c9f73d04ac6f",
+  "newSha256": "70c8181b92893618a0e3b4c045aaae03eeb3b924ca0d1a62ac02c0cb2df7c82e",
+  "apiHealth": "UP",
+  "opsHealth": "UP",
+  "captchaEnabled": true,
+  "addedMigration": "V663",
+  "historicMigrationsUnchanged": true,
+  "independentServicesRestarted": false,
+  "smoke": [
+    {
+      "path": "/biz/auth/login",
+      "code": 10452
+    },
+    {
+      "path": "/biz/auth/email-otp/send",
+      "code": 10452
+    }
+  ],
+  "challenge": "PNG generated",
+  "backupContainer": "ai-shop-api-before-captcha-20261113-retry1",
+  "releaseCommit": "d3342239ac68a0ad50c4cc92adb56633938d90fd",
+  "firstAttempt": "rolled back healthy after DDL privilege failure and startup timeout; V663 migration then succeeded"
+}

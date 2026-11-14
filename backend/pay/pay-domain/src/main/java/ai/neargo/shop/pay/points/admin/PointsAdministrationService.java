@@ -15,9 +15,13 @@ import java.util.List;
 public interface PointsAdministrationService {
     List<PointType> types();
 
+    PointType orderDefault(String market);
+
     ChangeResult create(Create request, String actor);
 
     ChangeResult transition(TypeChange request, String actor);
+
+    ChangeResult rename(TypeRename request, String actor);
 
     FallbackRule fallback(String typeCode);
 
@@ -38,12 +42,17 @@ public interface PointsAdministrationService {
     enum TypeAction {
         ACTIVATE,
         DRAIN,
-        RETIRE
+        RETIRE,
+        PAUSE_EARNING,
+        RESUME_EARNING,
+        SET_DEFAULT
     }
 
     record Create(String requestId, CreateType command, String reason) {}
 
     record TypeChange(String requestId, String typeCode, TypeAction action, String reason) {}
+
+    record TypeRename(String requestId, String typeCode, String expectedName, String name, String reason) {}
 
     record FallbackRule(long revision, RuleMode mode, long value) {}
 

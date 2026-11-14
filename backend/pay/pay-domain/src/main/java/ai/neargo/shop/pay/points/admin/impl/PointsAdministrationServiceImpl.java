@@ -66,6 +66,11 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     }
 
     @Override
+    public PointType orderDefault(String market) {
+        return read.activeType(market).orElse(null);
+    }
+
+    @Override
     public ChangeResult create(Create r, String actor) {
         require(r.command() != null, "POINTS_TYPE_INVALID");
         return execute(
@@ -82,12 +87,13 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
     @Override
     public ChangeResult transition(TypeChange r, String actor) {
         require(r.action() != null, "POINTS_TYPE_ACTION_INVALID");
+        String reason = nonblank(r.reason()) ? r.reason() : "积分状态变更：" + r.action().name();
         return execute(
                 "TYPE_STATE",
                 r.requestId(),
                 r.typeCode(),
                 actor,
-                r.reason(),
+                reason,
                 r,
                 false,
                 at -> {
@@ -95,8 +101,31 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
                         case ACTIVATE -> types.activate(r.typeCode(), actor);
                         case DRAIN -> types.drain(r.typeCode(), actor);
                         case RETIRE -> types.retire(r.typeCode(), actor);
+                        case SET_DEFAULT -> types.setDefault(r.typeCode(), actor);
+                        case PAUSE_EARNING, RESUME_EARNING -> {
+                            var locked = config.lockRules(r.typeCode());
+                            require(locked != null && "ACTIVE".equals(locked.get("status")), "POINTS_TYPE_NOT_ACTIVE");
+                            switches.change(new PointsSwitchService.Command(
+                                    PointsKeys.position("OS", "TYPE_STATE", r.requestId()),
+                                    PointsSwitchService.Scope.TYPE, r.typeCode(), r.typeCode(),
+                                    r.action() == TypeAction.RESUME_EARNING, at, actor, reason,
+                                    PointsSwitchService.Flow.EARN));
+                        }
                     }
                 });
+    }
+
+    @Override
+    public ChangeResult rename(TypeRename r, String actor) {
+        String name = r.name() == null ? "" : r.name().trim();
+        require(!name.isBlank() && name.length() <= 80 && nonblank(r.expectedName()), "POINTS_TYPE_INVALID");
+        return execute("RENAME", r.requestId(), r.typeCode(), actor, nonblank(r.reason()) ? r.reason() : "修改积分名称", r, false, at -> {
+            var current = config.lockRules(r.typeCode());
+            require(current != null, "POINTS_TYPE_UNKNOWN");
+            require(r.expectedName().equals(current.get("name")), "POINTS_TYPE_NAME_CONFLICT");
+            require(read.types().stream().noneMatch(t -> !t.typeCode().equalsIgnoreCase(r.typeCode()) && t.name().equalsIgnoreCase(name)), "POINTS_TYPE_DUPLICATE");
+            config.renameType(r.typeCode(), r.expectedName(), name, actor);
+        });
     }
 
     @Override
@@ -249,6 +278,10 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
                         && nonblank(actor)
                         && nonblank(reason),
                 "POINTS_OPERATOR_INPUT_INVALID");
+        if (request instanceof TypeChange change && change.action() == TypeAction.SET_DEFAULT) {
+            String market = read.type(type).orElseThrow(() -> new IllegalArgumentException("POINTS_TYPE_UNKNOWN")).market();
+            config.lockMarketTypes(market);
+        }
         if (!creating) {
             if ("*".equals(type)) {
                 read.types().stream()

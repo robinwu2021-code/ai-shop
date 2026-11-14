@@ -12,6 +12,10 @@ import tools.jackson.databind.ObjectMapper;
 /** At-least-once delivery completes the original persisted bundle; it never manufactures another claim. */
 @Component
 public class ActivityBenefitDecisionConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "activity-benefit-decision"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final ActivityBenefitCoordinator coordinator;
     private final ObjectMapper json;
     public ActivityBenefitDecisionConsumer(ActivityBenefitCoordinator coordinator, ObjectMapper json) {

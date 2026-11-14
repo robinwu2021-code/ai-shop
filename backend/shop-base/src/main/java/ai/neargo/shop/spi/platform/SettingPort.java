@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.platform;
 
+import java.util.Optional;
+
 /**
  * 各域 → platform：读写平台可调参数。
  *
@@ -17,4 +19,22 @@ public interface SettingPort {
 
     /** 写入并留痕（谁在什么时候改的）。改参数会改变历史数据的呈现，所以留痕不是可选项。 */
     void put(String key, String json, String operatorNo);
+
+    /** Version-aware consumers must not fabricate an initial version from an unsupported provider. */
+    default Optional<VersionedValue> getVersioned(String key) {
+        throw new UnsupportedOperationException("Versioned settings are unsupported");
+    }
+
+    /** A null expected value means create only; an existing value must match version and exact JSON. */
+    default VersionedValue compareAndSet(String key, VersionedValue expected, String json, String operatorNo) {
+        throw new UnsupportedOperationException("Versioned settings are unsupported");
+    }
+
+    record VersionedValue(String json, long version) {
+        public VersionedValue {
+            if (json == null || version < 0 || version > 9007199254740991L) {
+                throw new IllegalArgumentException("Explicit JSON and a safe settings version required");
+            }
+        }
+    }
 }

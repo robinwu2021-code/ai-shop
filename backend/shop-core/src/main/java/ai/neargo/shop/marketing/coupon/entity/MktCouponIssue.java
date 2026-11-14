@@ -19,6 +19,9 @@ import lombok.Setter;
 @Setter
 @TableName("mkt_coupon_issue")
 public class MktCouponIssue extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 发给所有人 */
     public static final String ALL = "ALL";

@@ -10,6 +10,11 @@ package ai.neargo.shop.fulfillment.dto;
 public record VerifyResultVO(boolean success, String subOrderNo, String reason) {
 
     public static final String ALREADY_VERIFIED = "ALREADY_VERIFIED";
+    /**
+     * <b>核销接口已不再返回这个原因</b>：别的点的码与不存在的码一律回 {@link #NOT_FOUND}、不带子单号，
+     * 否则核销台就是一个「哪些码是活的」的探测器（见 {@code PickupServiceImpl#doVerify}）。
+     * 常量留着是因为端上词条与旧数据（核销日志的 result 列）里还有它。
+     */
     public static final String NOT_THIS_PICKUP = "NOT_THIS_PICKUP";
     public static final String REFUNDED = "REFUNDED";
     public static final String NOT_FOUND = "CODE_NOT_FOUND";

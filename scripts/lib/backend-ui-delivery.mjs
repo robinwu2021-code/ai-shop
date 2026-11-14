@@ -24,17 +24,38 @@ export function validateDeferredDelivery(data, {app, prefix, published, handlers
     return result;
 }
 
-export function readDeferredDelivery(root, file, {app, prefix, handlers, missing}) {
+export function readDeferredDelivery(root, file, {app, prefix, handlers, missing,
+    contract = 'docs/api/entitlement-backend.openapi.json'}) {
     if (!existsSync(join(root, file))) return new Set();
     const data = JSON.parse(readFileSync(join(root, file), 'utf8'));
     if (typeof data.plan !== 'string' || !data.plan.startsWith('docs/technical/')
             || data.plan.split('/').includes('..') || !existsSync(join(root, data.plan))) {
         throw new Error('Staged delivery must name an existing frontend task plan');
     }
-    const spec = JSON.parse(readFileSync(join(root, 'docs/api/entitlement-backend.openapi.json'), 'utf8'));
-    const published = new Set(Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods)
-        .filter(method => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
-        .map(method => keyOf({method: method.toUpperCase(), path}))));
+    // 每份清单用 contracts（数组）或 contract（单份）指明它的条目必须出现在哪些 docs/api 下的 OpenAPI 里
+    // （按域分清单）；都不写则沿用调用方给的默认契约（最早那份权益契约）。
+    const contracts = data.contracts ?? (data.contract !== undefined ? [data.contract] : [contract]);
+    if (!Array.isArray(contracts) || !contracts.length || contracts.length > 16
+            || new Set(contracts).size !== contracts.length
+            || contracts.some(file => typeof file !== 'string'
+                || !/^docs\/api\/[A-Za-z0-9._-]+\.json$/.test(file) || file.split('/').includes('..')
+                || !existsSync(join(root, file)))) {
+        throw new Error('Staged delivery requires existing, unique API contracts under docs/api');
+    }
+    const published = new Set();
+    for (const file of contracts) {
+        const spec = JSON.parse(readFileSync(join(root, file), 'utf8'));
+        if (!spec.openapi?.startsWith('3.') || !spec.paths || typeof spec.paths !== 'object') {
+            throw new Error(`Invalid staged OpenAPI contract: ${file}`);
+        }
+        for (const [path, methods] of Object.entries(spec.paths)) {
+            for (const method of Object.keys(methods)) {
+                if (['get', 'post', 'put', 'patch', 'delete'].includes(method)) {
+                    published.add(keyOf({method: method.toUpperCase(), path}));
+                }
+            }
+        }
+    }
     return validateDeferredDelivery(data, {app, prefix, published,
         handlers: new Set(handlers.map(keyOf)), missing: new Set(missing.map(keyOf))});
 }

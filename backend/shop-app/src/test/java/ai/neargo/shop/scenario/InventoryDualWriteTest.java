@@ -5,8 +5,8 @@ import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.spi.product.StockPort;
@@ -82,7 +82,7 @@ class InventoryDualWriteTest {
     @Test
     @DisplayName("★★★ 装配的是双写口 —— 拿到 StockPortImpl 就说明这一档整个没生效")
     void dualWritePortIsWired() {
-        assertThat(stockPort.getClass().getSimpleName())
+        assertThat(org.springframework.util.ClassUtils.getUserClass(stockPort).getSimpleName())
                 .as("stock-authority=DUAL 时交易域该拿到 DualWriteStockPort")
                 .isEqualTo("DualWriteStockPort");
     }
@@ -146,8 +146,8 @@ class InventoryDualWriteTest {
     }
 
     @Test
-    @DisplayName("★★ 退货：两本账都加回来")
-    void restoreIsMirrored() {
+    @DisplayName("旧 RESTORE 缺真实售后原单时保留待处理事件，不能猜测仓库恢复")
+    void legacyRestoreWithoutSavedAfterSaleOriginalRemainsPending() {
         Fixture f = fixture(10);
         String no = "SO-" + f.seq;
 
@@ -159,7 +159,12 @@ class InventoryDualWriteTest {
         stockPort.restore("AS-" + f.seq, List.of(new StockPort.SkuQty(f.skuNo, 2)));
         dispatcher.dispatchPending();
 
-        assertThat(onHand(f)).as("退货加回来").isEqualTo(7);
+        assertThat(onHand(f)).as("没有真实原单证据，Inventory 不能凭 SKU 所有权猜测恢复").isEqualTo(5);
+        SysOutbox pending = outboxMapper.selectOne(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, "AS-" + f.seq)
+                .eq(SysOutbox::getEventType, InvMirrorEvent.RESTORE));
+        assertThat(pending).as("未证实的旧效果仍留在真实队列中重试").isNotNull();
+        assertThat(pending.getStatus()).isEqualTo(SysOutbox.PENDING);
     }
 
     @Test
@@ -221,6 +226,28 @@ class InventoryDualWriteTest {
         assertThat(reserved(f))
                 .as("幂等靠 external_ref（= lockNo），不靠「只跑一次」")
                 .isEqualTo(once);
+    }
+
+    @Test
+    @DisplayName("★★★ 一单两个规格、每页只读一行：两行都搬到，同一个 ref 下一次占住")
+    void multiSkuHeldLockMigratesAcrossPages() {
+        /*
+         * 锁号就是订单号：一单买两个规格是两行 LOCKED、同一个锁号。此前逐行 reserve，
+         * 第二行同 ref、行不同 → CONFLICT 被吞掉；而且只读前 limit 行，翻不到后面那些。
+         * 两件都没占住的那一件，切真相源那天会重新可售。
+         */
+        Fixture a = fixture(10);
+        Fixture b = fixture(10, a.entityNo);
+        stockPort.lock("SO-PAIR-" + a.seq, List.of(
+                new StockPort.SkuQty(a.skuNo, 2), new StockPort.SkuQty(b.skuNo, 3)));
+
+        backfill.migrateHeldLocks(1);
+
+        assertThat(reserved(a)).as("第一个规格占住").isEqualTo(2);
+        assertThat(reserved(b)).as("★ 同一单的第二个规格也要占住").isEqualTo(3);
+        assertThat(backfill.diffOnly(5000).diffs().stream()
+                .anyMatch(d -> a.skuNo.equals(d.skuNo()) || b.skuNo.equals(d.skuNo())))
+                .as("搬完之后两条都不该再有差异").isFalse();
     }
 
     @Test
@@ -344,7 +371,7 @@ class InventoryDualWriteTest {
 
     // ------------------------------------------------------------------ 种子
 
-    private record Fixture(int seq, String skuNo, String owner, String itemId) {
+    private record Fixture(int seq, String skuNo, String owner, String itemId, String entityNo) {
     }
 
     /** 只在平台建、**不搬运**：进销存里没有它，镜像事件必然找不到业主。 */
@@ -384,8 +411,13 @@ class InventoryDualWriteTest {
      * {@code lock} 会被平台以「库存不足」拒掉 —— 而那恰恰说明真相源没搞错。
      */
     private Fixture fixture(int qty) {
+        return fixture(qty, null);
+    }
+
+    /** {@code entityNo} 给定时与那个商家同一货主（一单买同一家的两个规格） */
+    private Fixture fixture(int qty, String sameEntity) {
         int seq = SEQ.incrementAndGet();
-        String entityNo = "E-DUAL-" + seq;
+        String entityNo = sameEntity != null ? sameEntity : "E-DUAL-" + seq;
         String skuNo = "SKU-DUAL-" + seq;
 
         // ① 平台侧：真相源
@@ -411,7 +443,7 @@ class InventoryDualWriteTest {
         String owner = acl.ownerOfSku(skuNo);
         String itemId = acl.itemIdOfSku(skuNo);
 
-        return new Fixture(seq, skuNo, owner, itemId);
+        return new Fixture(seq, skuNo, owner, itemId, entityNo);
     }
 
     private int onHand(Fixture f) {

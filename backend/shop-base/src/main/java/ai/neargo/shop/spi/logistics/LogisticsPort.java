@@ -44,6 +44,14 @@ public interface LogisticsPort {
         return new Precheck("UNKNOWN", null, null, System.currentTimeMillis(), "物流渠道暂未返回结果", false);
     }
 
+    /**
+     * 这家承运商能不能查轨迹：有可用的轨迹渠道覆盖这个码（与 {@link #precheck} 判「快递100 覆盖」同一口径）。
+     * 快递公司清单的 {@code traceSupported} 取它（TDD-商户App快递公司 E5）；false 照样能发货，只是查不到轨迹。
+     */
+    default boolean traceCovers(String carrier) {
+        return false;
+    }
+
     /** Invoked only after the local shipping transaction commits; failure cannot undo shipping. */
     default SyncResult syncAfterShip(String subOrderNo) {
         return new SyncResult("PENDING", null, null, true, "物流同步中");

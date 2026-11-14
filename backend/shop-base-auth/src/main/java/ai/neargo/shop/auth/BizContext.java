@@ -267,6 +267,35 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
         return no;
     }
 
+    /**
+     * 这家店我能不能动（门店级访问）。
+     *
+     * <p>{@code storeNos} 是按<b>当前主体</b>解析的（老板 = 主体名下全部门店，
+     * 店员 = 他被授权的那几家），所以「在集合里」同时回答了两件事：
+     * 这家店属于当前商家、且这个人被授权到了它。
+     */
+    public boolean hasStoreAccess(String storeNo) {
+        return storeNo != null && !storeNo.isBlank() && storeNos != null && storeNos.contains(storeNo);
+    }
+
+    /**
+     * 门店级资源的统一闸：<b>入参里的门店号</b>（路径变量、请求体、或资源反查出的门店）必须是我能动的店，否则 403。
+     *
+     * <p>为什么光有 {@link #requireMerchantNo()} 不够：主体级校验只挡得住<b>别家商家</b>的店。
+     * 同一主体下只被授权到 A 店的店员，把路径里的门店号换成 B 店，主体校验照样通过 ——
+     * 于是他能改 B 店的送货方式、开 B 店的预约时段、处理 B 店的售后，而且没有任何报错。
+     * {@code X-Store-No} 那一道由 {@code BizContextFilter} 把关，但<b>显式传门店号的端点不走那道</b>，
+     * 所以要在这里再判一次。
+     *
+     * @return 原样返回门店号，方便链式取用
+     */
+    public static String requireStoreAccess(String storeNo) {
+        if (!current().hasStoreAccess(storeNo)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return storeNo;
+    }
+
     public static String requirePickupNo(String pickupNo) {
         if (!current().pickupNos().contains(pickupNo)) {
             throw BizException.of(ErrorCode.NOT_THIS_PICKUP_POINT);

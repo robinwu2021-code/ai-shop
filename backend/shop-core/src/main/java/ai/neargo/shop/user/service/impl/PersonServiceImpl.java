@@ -92,6 +92,14 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public Optional<UsrPerson> findByPhone(String phone) {
+        String hash=crypto.hash(phone);
+        if(hash==null)throw BizException.of(ErrorCode.BAD_REQUEST);
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(()->
+                Optional.ofNullable(byHash(hash)).filter(p->UsrPerson.ACTIVE.equals(p.getStatus())));
+    }
+
+    @Override
     public Optional<UsrPerson> findByUser(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return Optional.empty();
@@ -143,6 +151,19 @@ public class PersonServiceImpl implements PersonService {
         return raw == null || raw.isBlank()
                 ? ai.neargo.shop.common.Masks.tail(p.getPhoneTail())
                 : ai.neargo.shop.common.Masks.phone(raw);
+    }
+
+    @Override
+    public java.util.List<UsrPerson> matchPhones(java.util.List<String> personNos,String query){
+        if(personNos==null||personNos.isEmpty())return java.util.List.of();
+        if(personNos.size()>200)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        return personMapper.selectList(Wrappers.<UsrPerson>lambdaQuery().in(UsrPerson::getPersonNo,personNos).eq(UsrPerson::getStatus,UsrPerson.ACTIVE))
+                .stream().filter(p->{
+                    if(query==null)return true;
+                    if(p.getPhoneTail()!=null&&p.getPhoneTail().startsWith(query))return true;
+                    if(p.getPhoneEnc()==null)return false;
+                    try{String phone=crypto.decrypt(p.getPhoneEnc());return phone!=null&&(phone.startsWith(query)||phone.endsWith(query));}catch(RuntimeException unavailable){return false;}
+                }).toList();
     }
 
     @Override

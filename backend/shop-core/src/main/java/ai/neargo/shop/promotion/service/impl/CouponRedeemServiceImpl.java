@@ -1,5 +1,9 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
 
@@ -34,6 +38,12 @@ import java.util.List;
  */
 @Service
 public class CouponRedeemServiceImpl implements CouponRedeemService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(CouponRedeemServiceImpl.class);
@@ -74,6 +84,7 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     @Override
     @Transactional
     public RedeemResult redeem(String entityNo, String code, String storeNo, String operatorNo) {
+        ownershipWrites.lockAndCheck("MAIN", entityNo, storeNo);
         PmtUserCoupon uc = byCode(entityNo, code);
         PmtCoupon c = template(uc.getCouponNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);

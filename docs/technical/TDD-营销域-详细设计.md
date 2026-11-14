@@ -6,6 +6,7 @@
 > 原型：[营销 · 活动统一模型原型](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（37 屏，下文 `sNN`）
 > 决策：[ADR-024 拼团与社区集单并存](ADR/ADR-024-拼团与社区集单并存.md)
 > 实施切片：[TDD-营销-活动统一模型与集单](TDD-营销-活动统一模型与集单.md)（P1 的落点、测试与消融；本文是它的上位设计）
+> 零售续批：[§9 到店券开始时间](#9-r01-到店券开始时间2026-11-10)、[§10 特价/买赠预算与成交快照](#10-r01-特价买赠预算份数与成交快照)已实现并定向验证；不以本文历史草稿状态覆盖续批证据。
 
 ---
 
@@ -566,3 +567,233 @@ EnrollmentVO { enrollmentNo, activityNo, entityNo, entityName, goodsNos[], quota
 - 运营端：平台活动是平台级配置，登记进 G4 的「不该登记」说明（与 `sys_*` 配置表同一理由），不做数据域过滤。
 - 迁移：`ALTER TABLE pmt_activity MODIFY entity_no VARCHAR(64) DEFAULT NULL` —— 放在 P3，
   且同一条迁移里加 `owner` 列（默认 MERCHANT），存量行字节级不变。
+
+## §9 R01 到店券开始时间（2026-11-10）
+
+状态：本子批已实现并通过隔离夹具后的H2定向验证；标准Maven测试启动仍受共享验收夹具扫描干扰。档位1。
+依据：[零售复核 R01 / RET-09](项目功能完成复核与剩余任务-2026-11-10.md)、
+[券模型 §4](design/TDD-券与活动模型.md#4-核销方式先澄清这个项目里有两个核销)、
+[评审遗留](待办-零售核心评审遗留.md)原第4项（本批已移除）。本批交付到店核销有效期闭环；特价/买赠预算与成交快照留在 R01 后续子批。
+
+### §0 需求 → 设计
+
+| AC | 验收行为 | 落点 |
+|---|---|---|
+| R01-C1 | 未来开始的绝对有效期券，查码显示不可核销及 `NOT_STARTED` | `shop-core` / `ai.neargo.shop.promotion.service.impl.CouponRedeemServiceImpl#whyNot` |
+| R01-C2 | 直接核销未开始的一次券/次卡被拒，次数与核销流水均不变 | 同一 `whyNot`，沿既有事务及条件更新 |
+| R01-C3 | 已开始的绝对有效期券可核销；相对有效期券领取即开始，不受模板 `startAt` 影响 | 复用 `ai.neargo.shop.promotion.entity.PmtCoupon#startedAt` |
+| R01-C4 | 商家端沿现有核销页显示未开始原因，三语均有提示 | `CouponRedeemView.reason`、`verify.couponReason.NOT_STARTED` |
+
+每条 AC 均有落点；本批不新增独立校验器或余额。
+
+### §1 现状与影响面
+
+`CouponAllocServiceImpl` 和券包已使用 `PmtCoupon.startedAt(now)`；到店核销的 `peek`、`redeem` 共用的
+`whyNot` 只有核销方式、撤回、过期、次数和模板状态判断，遗漏开始时间，导致提前定向发放的券可线下消费。
+在该业务判断中复用实体规则，同时覆盖预览与写入。核销页已按 `redeemable` 隐藏核销按钮，并按原因动态翻译。
+主体范围、`biz:verify` 权限、3秒重复回执、次数条件更新及不可撤销流水沿现有实现执行。
+
+### §2 方案与实施计划
+
+选择：在既有 `whyNot` 复用 `startedAt`。只在页面拦截会漏掉直接 POST，复制有效期算法则与结账/券包形成多份规则。
+契约：GET `/biz/coupon-redeem/{code}` 的 `reason` 增加 `NOT_STARTED`；POST 拒绝仍使用
+`COUPON_NOT_APPLICABLE`。新增 B 端三语词条 `verify.couponReason.NOT_STARTED`；端点、权限、库表与配置沿现有合同。
+
+| 文件（仓库相对路径） | 职责 |
+|---|---|
+| `backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/CouponRedeemServiceImpl.java` | 共用开始时间判断 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/CouponRedeemService.java` | 返回原因契约说明 |
+| `backend/shop-app/src/test/java/ai/neargo/shop/scenario/StoreCodeRedeemTest.java` | 真实发放、预览、核销与持久化断言 |
+| `packages/shared/src/types/marketing.ts` | 原因码对账 |
+| `b-app/src/i18n/locale/{zh-CN,en,ar}.ts` | 三语提示 |
+| 本文、`待办-零售核心评审遗留.md`、复核报告及功能/任务CSV | 仅按本批新证据更新 R01 子项状态 |
+
+- [x] 扩展 `StoreCodeRedeemTest`：未来绝对券一次/三次均拒绝，核销流水为0；已开始与相对券成功。
+- [x] 补开始时间业务判断、返回原因说明、共享合同及三语文案。
+- [x] 编码后集中编译 `shop-app -am`，运行两组测试（共享夹具干扰下改用临时隔离classpath），以及 B 端类型/i18n检查。
+- [x] 对照上述文件清单审阅本批差异，回填实际证据和剩余项。
+
+验证遵循 [Java规范 §八](../../.claude/skills/ai-shop-dev-standards/references/java.md#八简洁实现框架校验与增量验证2026-10-30-用户确认)。
+
+### §5 实现 → 需求
+
+| AC | 测试方法 / 检查 | 结果 |
+|---|---|---|
+| R01-C1/C2 | `StoreCodeRedeemTest#absoluteCouponCannotBeRedeemedBeforeStart`（1/3次） | 隔离H2场景2/2通过 |
+| R01-C3 | `StoreCodeRedeemTest#absoluteCouponCanBeRedeemedAfterStart`、`relativeCouponStartsOnReceipt` | 隔离H2场景2/2通过 |
+| R01-C4 | B端 `vue-tsc --noEmit`、i18n词条检查；现有页面按原因动态翻译 | 两项退出0；页面分支源码核对，未做真机验收 |
+| 既有行为 | `StoreCodeRedeemTest` 其余6项、`CouponNotStartedTest` 2项 | 隔离H2场景8/8通过 |
+
+源码证据：修复前 `whyNot` 未调用 `startedAt`；新增拒绝及零持久化断言可识别该遗漏。
+
+2026-11-10 本批实际验证：JDK21，执行
+`mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=StoreCodeRedeemTest,CouponNotStartedTest -Dsurefire.failIfNoSpecifiedTests=false`。
+源码及测试编译通过，首次测试启动遇到已搬迁打印模块的旧 `.class` 重名；确认 `print-domain` 无对应源码后仅清理其 `target`。
+重跑标准命令仍有12项上下文错误：共享工作区未提交的 `PayBizAiShopLocalLauncher.LocalDatabase`
+被扫描，要求专用 `host-test-db-url`；该失败不记为业务通过，也未修改其他会话源码。
+
+随后以同一批已编译类和原Maven运行classpath，用JUnit Platform Launcher 6.0.3执行上述两类测试。
+仅复制 `shop-app/target/test-classes` 到临时目录，排除普通 `@Configuration` 的无关
+`PayBizAiShopLocalLauncher`、`PayBizNativeHttpTest`、`PayBizOnboardingHttpTest` 及其内部类；原目录与源码均保留。
+实际摘要如下（`/tmp/ai-shop-retail-r01-isolated.log`）。Launcher输出摘要后仍有Spring调度线程，已用SIGTERM关闭本次临时JVM；
+退出143是测试完成后的人工收尾，不作为标准Maven通过证据。
+
+```text
+12 tests found
+12 tests started
+12 tests successful
+0 tests failed
+npm --prefix b-app run type-check                           # exit 0
+node scripts/check-i18n-orphan.mjs                         # exit 0
+词条对账：用了但没有 0｜有了但没人用 0（已知欠账 0）
+```
+
+本批未改SQL与数据库原子更新，H2证据只覆盖上述规则和已有流水行为；未作MySQL9迁移、真实HTTP/扫码设备及部署验收。
+
+### §6 设计 → 实现与后续顺序
+
+本批限定文件与§2逐项一致；`git diff` 核对了7个代码/类型/文案文件、两份既有TDD/遗留文档。
+复核报告及两份CSV原为共享工作区未跟踪文件，只定点更新 R01/RET-09 与本批记录，66功能/25任务及其余行保持原样。
+未提交、未部署；未改其他会话源码。标准Maven上下文干扰尚待该验收夹具所属任务收口。
+
+零售全局后续顺序按[复核报告联合执行清单](项目功能完成复核与剩余任务-2026-11-10.md#retail-inventory-checklist)：
+用户最新调整为先完成零售业务，库存放在最后。当前先继续本营销TDD负责的R01特价/买赠成交快照、
+真实让利预算与份数/取消返还，再收口其余零售业务；I01/I04及指定商家库存联验后置。R04会员资产合同另行收口。
+迟到款与已结算商家退款的处置口径沿评审遗留保持待决定。
+
+## §10 R01 特价/买赠预算、份数与成交快照
+
+状态：已实现、定向验证通过；未提交/部署 · 档位1 · 2026-11-10。依据：[复核R01](项目功能完成复核与剩余任务-2026-11-10.md)、
+[活动PRD](../requirements/PRD-营销-活动统一模型.md) AC-2及活动规则、[评审遗留](待办-零售核心评审遗留.md)原第5项（本批已移除）。库存接入后置。
+
+### §0 需求 → 设计
+
+| AC | 验收行为 | 落点 |
+|---|---|---|
+| R01-P1 | 特价实际降低单价才记生效；多规格、团价覆盖或旧活动胜出不误扣新活动 | `GoodsQueryPort.SkuSnapshot`、`GoodsQueryPortImpl`、`CampaignPortRouter` |
+| R01-P2 | 新模型特价按实际单价差×购买量，买赠按成交单价×实际送出量扣预算；同一活动一单只扣一份 | `OrderServiceImpl`、`ActivityPricingServiceImpl.commitItemUsage` |
+| R01-P3 | 回执只用冻结活动与金额，不重新选当前活动；订单行保留活动来源、类型、实际让利 | `OrdItem`、`CampaignPort.ItemBenefitUse`、`CreatePricing` |
+| R01-P4 | 重放不重复扣；取消一次退回原预算与份数；预算不足沿既有超发规则记账、不扣穿、不退他人额度 | `pmt_apply`、原活动根锁/条件UPDATE、`release` |
+| R01-P5 | 特价/赠品让利不再作为订单抵扣减第二遍 | `pmt_apply.amount_minor`保持0、预算占用独立字段；原订单金额合同 |
+
+### §1 现状与影响面
+
+旧回执只含货号和gift标志，路由在落单后重查胜出活动；商品端多规格过滤和团价覆盖不在回执中，预算让利也已丢失。
+复用既有价格胜出算法、GiftRule、订单同事务及pmt_apply回退；不重建营销引擎、不改库存owner、权限或订单金额分摊。
+旧模型活动仍按既有规则成交，不为其新增新模型预算；同价特价新模型优先、买赠同赠量旧模型优先的取法保留。
+
+### §2 方案与实施计划
+
+选择随价格/赠品规则返回活动来源，并由下单冻结实际生效结果；不在commit阶段重新查规则或反推来源。
+特价预算是付费行原价（含门店价）减成交价的差×购买量；买赠预算按该SKU成交单价×实际赠品量，赠品库存不足被取消时不占买赠预算/份数。
+同一活动跨SKU/门店汇总为一单一份，金额求和；沿既有QUOTA_OVERRUN策略保留实际成交，不超占预算/份数，取消不返超发额度。
+
+契约变更：SPI价格offer与GiftRule携带新模型活动号；SkuSnapshot携带特价活动及每件实际让利；ItemBenefitUse携带冻结活动与总让利。
+新增迁移 `V644__retail_item_benefit_snapshot.sql`：`ord_item.activity_no/activity_benefit_type/activity_benefit_minor`及
+`pmt_apply.budget_minor`（可空；历史记录按amount_minor回退）。订单减免amount_minor与价格内让利预算分开，防止重复抵扣。
+本批不新增公开端点、权限、i18n或配置。
+
+幂等沿用`pmt_apply.apply_no`已有唯一键：同域SHA-256将tenant/order/activity绑定为稳定回执号；持有活动根锁后先插入回执，
+重复键时读取包含已取消记录的原回执。预算条件更新和回执完成同事务，失败整体回滚；不锁不存在的回执间隙。
+取消沿活动根→回执行的顺序认领并返还；已取消原号重放不重新占用，超发原号重放返回原超发结果。
+
+| 模块/完整类 | 修改职责 |
+|---|---|
+| shop-base / `ai.neargo.shop.spi.marketing.CampaignPort`、`ai.neargo.shop.spi.product.GoodsQueryPort` | 冻结价格/赠品及消费回执契约 |
+| shop-app / `ai.neargo.shop.portal.port.CampaignPortRouter` | 一次选取价格/赠品来源；按冻结活动汇总回执 |
+| shop-core / `ai.neargo.shop.product.port.GoodsQueryPortImpl` | 记录实际降低单价的新模型特价 |
+| shop-core / `ai.neargo.shop.promotion.service.ActivityPricingService`及其impl | 价格来源返回、预算条件更新、根锁下原号幂等及取消返还 |
+| shop-core / `ai.neargo.shop.promotion.entity.PmtApply`、`ai.neargo.shop.trade.entity.OrdItem` | 持久化预算与成交快照 |
+| shop-core / `ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper` | 唯一回执重复键后的当前读，包含已取消记录 |
+| shop-core / `ai.neargo.shop.trade.service.impl.OrderServiceImpl` | 保存赠品来源、落行快照、按实际送出量回执 |
+| shop-app资源及测试 | V644、`schema-test.sql`；`ai.neargo.shop.scenario.RetailItemBenefitFlowTest`、`RetailItemBenefitNativeMysqlTest`及既有`ActivityItemQuotaCommitTest` |
+
+- [x] 补回归：实际特价预算、多规格不生效、同活动多SKU一份、买赠实际数量、冻结来源、重放、取消、超发与订单金额。
+- [x] 完成本批编码并集中编译；修正后仅验证受影响部分，使用MySQL9验证增量迁移及并发。
+- [x] 检查限定差异、schema生成与实体对齐，回填真实证据和复核R01状态。
+
+### §5 实现 → 需求
+
+订单场景使用真实商品、活动、订单行及pmt_apply断言，不按当前活动反算预期。
+
+| AC | 测试方法（`RetailItemBenefitFlowTest`，除非另注） | 结果 |
+|---|---|---|
+| R01-P1 | `multiSkuGoodsWithoutEffectiveFlashDoesNotConsumeQuotaOrBudget`、`flashWithoutARealPriceReductionDoesNotConsumeAnyShare`、`aBetterLegacyFlashDoesNotConsumeTheNewActivityBudget` | 3项通过 |
+| R01-P2/P5 | `flashChargesActualDifferenceAndCancellationReturnsItsFrozenBudget`、`giftAcrossTwoSkusChargesActualGiftsButOneOrderShare`、`noGiftActuallySentDoesNotConsumeGiftBudget` | 3项通过；特价/赠品不重复抵扣 |
+| R01-P3 | `frozenWinnerIsUsedEvenAfterActivityEnds`；前述订单行快照与规则变更后断言 | 通过 |
+| R01-P4 | `budgetOverrunNeverConsumesOrReturnsAnotherOrdersBudget`；前述取消、取消后重放断言 | 通过 |
+| 既有普通价格边界 | `ordinaryPriceOfferKeepsItsUnsupportedTriggerRejection` | 通过 |
+| R01-P4原生并发 | `RetailItemBenefitNativeMysqlTest#concurrentSameOrderAndReplayAfterCancellationChargeOnlyOnce`、`concurrentLastBudgetAndOverrunCancellationNeverAffectTheWinner`、`concurrentDifferentActivitiesDoNotLockEachOthersReceiptGaps` | MySQL9 3项通过 |
+| 份数既有行为 | `ActivityItemQuotaCommitTest` 2项 | 通过 |
+| 历史预算/平台回退 | `ActivityBudgetEnforcementTest` 2项、`PlatformActivityReleaseTest` 1项 | 3项通过 |
+
+本批编译：JDK21，初批`mvn -o -f backend/pom.xml -pl shop-app -am test-compile -DskipTests`成功；
+审查修正后`mvn -o -f backend/pom.xml -pl shop-app -am compile -DskipTests`成功。
+中间一次全测试编译受其他会话新建`CommerceChainLocalLauncher`测试启动器的`registerBean`编译错误影响；未修改该文件。
+最终三个R01测试源码以当前主源码产物及相同classpath做限定javac编译，成功。
+
+沿§9已知夹具干扰的隔离方式运行JUnit Platform Launcher 6.0.3，原测试目录/源码不改；临时运行目录排除无关near-pay验收夹具。
+实际结果（初轮55项相关H2场景证据与下列结果有重叠，不相加）：
+
+```text
+R01受影响专项：14 tests found / 14 started / 14 successful / 0 skipped / 0 failed，exit 0
+历史预算/平台回退：3 tests found / 3 successful / 0 failed，exit 0
+```
+
+日志：`/tmp/ai-shop-r01-affected.log`、`/tmp/ai-shop-r01-compat.log`、`/tmp/ai-shop-r01-scoped-test-compile.log`。
+MySQL9原生测试使用独占UUID临时库，仅创建相关三表、执行真实V644增量迁移，保留生产回执唯一键及两个二级索引，
+调用真实Mapper/Service与事务验证竞争；结束删除本次临时库。不据此宣称全量Flyway历史/166部署/真实App资金链验收通过。
+原生首轮夹具漏填`trigger_type`已修正；独立审查发现的空回执间隙锁风险已改为唯一键先插入，并以不同活动并发用例验证。
+
+生成/守卫：重生成H2 schema仅增加本批4列；本批两实体/四列与DDL对齐、三个变更SQL/Mapper/Service方言扫描通过。
+全仓SQL方言守卫仍报告14处范围外库存迁移/适配及历史测试命中；全仓entity-alignment因支付`PayApiRequestLog`的`PayBaseEntity`解析失败而未执行测试。
+未改这些历史SQL、止血线或无关支付实体；这两项不宣称全仓通过。
+
+### §6 设计 → 实现
+
+本批限定15个代码/测试/迁移/生成文件，对应§2全部设计职责：2个SPI、路由、商品快照、营销接口/实现/Mapper/实体、
+订单服务/实体、V644与H2 schema、3个测试文件；另更新本TDD、评审遗留、复核报告和两份CSV。
+共享工作区未提交其他会话文件，未部署V644、未改变库存/支付开关。方案偏差：复用已有apply_no唯一键实现永久回执，
+以避免原生MySQL空回执锁间隙；没有新建幂等表、Outbox或第二套营销计数器。
+
+执行遵循[Java规范§八](../../.claude/skills/ai-shop-dev-standards/references/java.md#八简洁实现框架校验与增量验证2026-10-30-用户确认)，不回退正确实现重复制造失败。
+
+
+## §11 C06 普通活动与券管理正式接线（2026-11-10）
+
+### §0 范围与需求对账
+
+用户继续C06零售App余项，库存最后。复用现有ActivityVO/ActivityDraft与CouponVO/CouponSaveCmd、POST保存/PUT状态合同，替换实际活动入口的临时ops调用；券目录保留原类入口并进入统一管理页，沿已有发券/记录流程。旧原型类仅兼容，不开全局ops门禁。不重建预算/份数或改退款、资产与地区规则。
+
+### §1 合同与交互
+
+- 普通活动列表includeEnded=true，排除GROUP/CUTOFF；创建支持满额减、特价、买赠和有门槛/封顶的折扣（正式COMBO）。PRICE/GIFT明确买入商品、赠品与总quota；金额按原店currencyScale精确解析。服务端新建即RUNNING，不发送伪draft，也不显示已存草稿。
+- 活动排期ONE_OFF/ALWAYS_ON/RECURRING按正式结构，固定起止为门店时区绝对毫秒；循环weekday=1..7，当前后端循环口径为UTC+8，界面明示。无可信时区/精度不补猜测值。长期活动必须quota或budget，特价/买赠必须quota。保存先读正式商品冲突并显示；冲突是提醒，按既有同类胜出规则继续。
+- 券创建覆盖原经营入口的现金/满减与折扣：CASH或PERCENT，折扣1..9.999折与封顶、有效期RELATIVE/ABSOLUTE、TARGETED/CENTER发行、每人限领、总量、预算及ORDER/STORE_CODE次数；新券作用于原STORE。最大支出按现金面额/折扣封顶×次数×发行量显示，未知敞口不填0；已发券管理沿既有状态合同，不修改历史计数。
+- 两类状态仅按真实RUNNING/PAUSED/ENDED与ACTIVE/PAUSED/ENDED驱动；结束须确认且不可恢复。PUT回执校验原号/目标状态，随后回读。未知失败不假装成功；创建结果不明确时先查记录，不能盲目换请求重建。
+- API/表单/详情/商品选择与确认均冻结原商家/店/用户/会话和campaign权限；商品读取stock。失权复用现有角色刷新/会话退出，旧数据立即隐藏。权限、live写合同白名单和地区开关保持原状。
+
+### §2 内联执行清单
+
+- [x] 新增promotions正式API/模型与活动/券管理页面、创建表单；现有活动两入口切换，CouponCatalogPage委托统一管理页。
+- [x] mock活动/券按正式保存及状态形状服务，保持团购隔离与原发放回执；CASH预算展示对齐正式枚举。
+- [x] 用正式fixture验证写体、金额/敞口/排期、PUT/未知结果回读、权限和原号守卫，执行受影响既有旅程/限定静态与后端规则场景。
+- [x] 一次只读复核及必要增量修复，回填本节/报告/CSV/App交接，不提交部署。
+
+### §5 验证
+
+本批App新增20项分组/增量通过：首轮正式API/表单/状态/未知结果/权限与时区16项，复核补多次现金券发放0/3位精度及原发放记录3项，商品冲突取消/确认1项。正式入口活动创建暂停、券创建→暂停→恢复→多次发放→结束及正式券目录3项通过；复用商品选择、人群发券、触达和平台活动4项兼容旅程通过。分组计数不累加重跑轮次。
+
+后端既有7项通过：ActivityBudgetEnforcementTest预算条件更新、ComboActivityFlowTest组合校验，CouponIssueFlowTest折扣封顶/基点/预算敞口/相对有效期冻结/暂停禁发。本批无Java生产修改；沿既有隔离运行快照与R04覆盖类，限定编译这3个测试类运行，不代表当前共享工作区整仓重新构建或全量数据库验收。
+
+限定Flutter analyze通过；新增promotion词条四语言对账、受影响差异空白检查通过。一次只读review的两项P2已修复：CASH发放最大支出漏乘timesTotal，以及发放/记录固定两位金额；覆盖在上述3项测试内。商品冲突新增fixture先修正activityName与弹层异步等待，再单项通过，没有改写服务端冲突规则。
+
+运行证据：`/tmp/ai-shop-c06-promotions.log`、`-review.log`、`-conflicts.log`、`-journeys.log`、`-compat.log`、`-analyze-final.log`、`-backend.log`（后缀均接同一`ai-shop-c06-promotions`前缀）。普通活动/券业务本地通过不代表真实渠道、台湾开放、资产扣返、库存或部署准出。
+
+### §6 设计 → 实现
+
+App新增`features/promotions/promotions_api.dart`和`promotions_pages.dart`，两处活动入口改用正式页，原CouponCatalogPage保留类型并委托新页；共享goods_picker只新增默认保持原行为的allowAll。mock_v24/v26按正式活动/券列表、保存、状态、冲突与发放预算响应，团购与旧发券回执沿用。未打开live写入白名单或改地区/库存门禁。
+
+沿既有StoreCoupon补timesTotal（兼容默认1），发券识别正式CASH并以全部可用次数计算BigInt敞口。共享money提取精确分组显示，gbMoney签名/默认行为保留，会员发放与记录按原店currencyScale显示并保留RTL隔离。活动/券详情显示原适用范围和券次数，不将未知金额显示成零。
+
+四语言词条/生成文件、合同与既有旅程fixture同步更新；复用现有设计、验证与交接文档，未另建营销引擎、权限或预算计数器。未提交、未部署；C06其余模块及真实验收继续单列，I01/I04库存最后。

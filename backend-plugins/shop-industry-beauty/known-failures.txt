@@ -1,0 +1,10 @@
+# 美业插件进 pre-push 那天（2026-11-09，执行方案 W1.6）就存在的测试失败 —— 只准变短，不准变长。
+#
+# 全是独立部署形态 beauty-server 的装配用例（执行方案 D11：不阻塞；决定独立部署美业前由美业负责人修）：
+#   - BookingServerWiringTest 两条：standalone 装配缺数据源 / 缺 ServiceExecutionStockIntentMapper；
+#   - BeautyBm04AssemblyTest 两条：一条装配同上，一条读不存在的 beauty-core/.../V600__checkout_payment_operation.sql。
+# 修好一条删一行；删空就等于「美业必须全绿」，不用改脚本。
+ai.neargo.shop.beauty.scenario.BookingServerWiringTest.opsAndNoApiShapeDoNotRegisterRecoveryJob
+ai.neargo.shop.beauty.scenario.BookingServerWiringTest.standaloneServerHasLocalUniqueSourceAndRemoteOwnerWithoutProviderConstructorCycle
+ai.neargo.shop.beauty.scenario.BeautyBm04AssemblyTest.embeddedHostServerRetailDisabledAndOpsSelectOnlyExpectedBeans
+ai.neargo.shop.beauty.scenario.BeautyBm04AssemblyTest.wireAddsNoMigrationAndPublicApiCountsRemainStable

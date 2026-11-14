@@ -33,7 +33,10 @@ public final class PricingConfigCommands {
         }
     }
     public record UpgradeReq(long expectedDraftVersion, String templateRevisionNo) { }
-    public record InitializeReq(String templateRevisionNo, String reason) { }
+    public record InitializeReq(String templateRevisionNo, String reason, String initialOverride) {
+        public InitializeReq(String templateRevisionNo, String reason) { this(templateRevisionNo, reason, "{}"); }
+        public InitializeReq { initialOverride = initialOverride == null ? "{}" : initialOverride; }
+    }
     public record PublishReq(long expectedDraftVersion, String expectedActiveRevisionNo,
             String previewHash, String reason, String rollbackFromRevisionNo) { }
     public record DraftVO(String no, String industryCode, long draftVersion, String activeRevisionNo,

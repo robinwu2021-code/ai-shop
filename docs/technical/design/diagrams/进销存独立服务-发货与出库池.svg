@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="430" viewBox="0 0 940 430" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>发货到商家：入库、发货过账、出库池四种状态</title><desc>上排是一台设备在库存服务里的一生：宿主质检通过后带放行凭证入库开周期，发货过账关周期并生成出库池记录。出库池只有待签收时可以调整或撤回；签收即领取，之后库存服务不再跟踪。退货入库开新周期，原记录标已退回；已签收的退货加业务确认冻结。最重要的一条线是「签收」：它是库存与业务的交接点。</desc>
+<defs><marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker><marker id="pd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#B39A6A" stroke-width="1.4" stroke-linecap="round"/></marker><style>.bx{fill:#FFFFFF;stroke:#D5DBE3;stroke-width:1.2}.bn{fill:#FFFDF6;stroke:#D9C89A;stroke-width:1.4;stroke-dasharray:5 3}.bg{fill:#F3F6FA;stroke:#C8D0DA;stroke-width:1.2}.bk{fill:#FFF5F3;stroke:#E2B7AE;stroke-width:1.2}.n{font-size:13.5px;font-weight:600;fill:#161A21}.s{font-size:11px;fill:#5A6472}.band{font-size:11.5px;fill:#7B8695;letter-spacing:.08em}.l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}.lw{font-size:10.5px;fill:#8A7434;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}.ard{stroke:#B39A6A;stroke-width:1.3;fill:none;stroke-dasharray:5 3}.tag{font-size:10px;fill:#8A7434;font-weight:600}</style></defs>
+<text class="band" x="30" y="28">仓内（库存服务跟踪）</text>
+<text class="band" x="520" y="28">出库池（交接凭证，不是库存）</text>
+<rect class="bg" x="30" y="46" width="150" height="70" rx="8"/>
+<text class="n" x="46" y="72">宿主质检通过</text>
+<text class="s" x="46" y="92">得到放行凭证 gateRef</text>
+<rect class="bx" x="210" y="46" width="150" height="70" rx="8"/>
+<text class="n" x="226" y="72">在仓（周期 OPEN）</text>
+<text class="s" x="226" y="92">入库过账开周期</text>
+<text class="s" x="226" y="108">余额 +1</text>
+<rect class="bx" x="390" y="46" width="110" height="70" rx="8"/>
+<text class="n" x="406" y="72">发货过账</text>
+<text class="s" x="406" y="92">ISSUE · 关周期</text>
+<text class="s" x="406" y="108">余额 −1</text>
+<rect class="bx" x="530" y="46" width="170" height="70" rx="8"/>
+<text class="n" x="546" y="72">待签收 AVAILABLE</text>
+<text class="s" x="546" y="92">带商家 / 站点 / 接收人</text>
+<text class="s" x="546" y="108">= 在途</text>
+<rect class="bx" x="740" y="46" width="170" height="70" rx="8"/>
+<text class="n" x="756" y="72">已签收 CLAIMED</text>
+<text class="s" x="756" y="92">接收人签收 = 领取</text>
+<text class="s" x="756" y="108">之后归宿主跟踪</text>
+<rect class="bk" x="530" y="196" width="170" height="64" rx="8"/>
+<text class="n" x="546" y="222">已撤回 REVOKED</text>
+<text class="s" x="546" y="242">纠正入库 · 开新周期</text>
+<rect class="bk" x="740" y="196" width="170" height="64" rx="8"/>
+<text class="n" x="756" y="222">已退回 RETURNED</text>
+<text class="s" x="756" y="242">退货入库 · 开新周期</text>
+<rect class="bn" x="210" y="196" width="290" height="64" rx="8"/>
+<text class="n" x="226" y="222">退货待业务确认（冻结）</text>
+<text class="s" x="226" y="242">原记录已签收时才有；宿主确认后解冻</text>
+<path class="ar" d="M180 81 L208 81" marker-end="url(#pa)"/><text class="l" x="182" y="70">入库</text>
+<path class="ar" d="M360 81 L388 81" marker-end="url(#pa)"/>
+<path class="ar" d="M500 81 L528 81" marker-end="url(#pa)"/>
+<path class="ar" d="M700 81 L738 81" marker-end="url(#pa)"/><text class="l" x="702" y="70">签收</text>
+<path class="ar" d="M615 116 Q650 140 615 160 Q580 140 615 116" /><text class="l" x="622" y="150">调整</text>
+<path class="ar" d="M600 116 L600 194" marker-end="url(#pa)"/><text class="l" x="540" y="178">撤回</text>
+<path class="ar" d="M825 116 L825 194" marker-end="url(#pa)"/><text class="l" x="830" y="160">退货入库</text>
+<path class="ard" d="M790 116 Q760 150 702 116" marker-end="url(#pd)"/><text class="lw" x="726" y="152">释放（受控）</text>
+<path class="ard" d="M740 238 L502 236" marker-end="url(#pd)"/>
+<path class="ar" d="M530 228 Q400 300 285 118" marker-end="url(#pa)"/><text class="l" x="372" y="292">回到在仓</text>
+<text class="s" x="30" y="340">只有「待签收」能调整（改商家 / 站点 / 接收人）或撤回；已签收要先由宿主释放领取。</text>
+<text class="s" x="30" y="362">已过账的发货单不能作废 —— 设备已经离开仓库，作废只会让账面「变回在仓」而实物不在。</text>
+<text class="s" x="30" y="384">终态（已撤回、已退回）不可再领取；回仓永远开新周期，旧周期不重开。</text>
+</svg>

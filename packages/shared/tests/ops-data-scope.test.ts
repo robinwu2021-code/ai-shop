@@ -23,8 +23,12 @@
 // 分批推进时不需要人去记「这一批还要改哪些 Service」，守卫会点名。
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { backendModules } from "./backend-modules";
+
+// @ts-expect-error -- shared ES module scanner
+import { readScopeRegistrations } from "../../../scripts/lib/data-scope-registrations.mjs";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
@@ -67,6 +71,28 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  "PaymentResolutionOpsServiceImpl#visibleParents":
+    "先按当前运营数据域读取可见子单，再只为同批payNos比较全体子单；全体比较只用于拒绝含域外子单的主单，"
+    + "不返回其明细。RetailPaymentResolutionFlowTest同时覆盖部分可见拒绝与全部可见通过，禁止删除先行域内查询",
+  "PaymentResolutionOpsServiceImpl#list":
+    "allowed已由visibleParents按全部子单均在当前数据域内筛定；仅按该批已授权主单号回捞退款资格，"
+    + "不扩大列表可见范围。主单本身不具备商家锚点，不能代替子单全量可见性判定",
+
+  /*
+   * 套餐商城运营查询（/ops/biz-mall/**，可移植 commerce starter）。静态调用图从
+   * MallHttpContextPort 进到 ShopMallAuthority，而它的**商家分支**会经 BizIdentityResolver
+   * 解析门店成员；运营分支（operator(...)）只读运营会话与功能点，不解析商家身份。
+   * 商城运营数据本身是平台口径（套餐目录、平台收款、全平台订单），**没有接运营数据域**：
+   * 成立的前提是 commerce:* 功能点只授给 SUPER_ADMIN（V625/V627）。要把这些码授给
+   * 配了数据域的角色，必须先给商城查询接上数据域，并删掉这一条。
+   */
+  "BizIdentityResolverImpl#resolve":
+    "商城运营路由经 ShopMallAuthority 的静态可达；运行时运营分支不解析商家身份。商城运营查询为平台口径，"
+    + "commerce:* 只授 SUPER_ADMIN（V625/V627）；授给有数据域的角色前须先接数据域并删除本条",
+  // 合并进统一主线后，BizIdentityResolverImpl 的门店成员解析落在 membershipFor（理由同上一条）。
+  "BizIdentityResolverImpl#membershipFor":
+    "商城运营路由经 ShopMallAuthority 的静态可达；运行时运营分支不解析商家身份。商城运营查询为平台口径，"
+    + "commerce:* 只授 SUPER_ADMIN（V625/V627）；授给有数据域的角色前须先接数据域并删除本条",
   /*
    * 供应商收款账户的回捞（ADR-011）。这个方法**同时服务两侧**：
    * B 端商家看自己的账户（那边的会话里没有运营数据域，直查会 SELECT 不到），
@@ -75,6 +101,15 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 而 stl_bill 注册了 MERCHANT 锚点、那条主查询已经过域 —— 这一步只按那个主体点查一行，
    * 不放大任何可见范围。与 toOpsVO 的回捞同一类。
    */
+  /*
+   * 门店配送方式读接口的「沿用商户设置」判定（TDD-商户App接口字段对齐 已拍板 2）。
+   * 运营门店列表（OpsStoreController）经 StoreFulfillmentService#get 可达：门店那一行已经由上一步
+   * 列表过了数据域，这里只按该门店的 entity_no 点查一行主体、读它的 fulfillment_reach 算兜底那一路，
+   * 不放大可见范围。B 端商家会话里没有运营数据域，不绕的话直查会 SELECT 不到。
+   */
+  "StoreFulfillmentServiceImpl#inheritedChannelOf":
+    "按已授权门店的 entity_no 回捞主体一行，只读 fulfillment_reach 算兜底配送路；门店已在上一步过数据域，"
+    + "不放大可见范围。方法同时服务 B 端（商家会话无运营数据域）",
   "PayoutAccountServiceImpl#activeAccount":
     "按已授权的 entityNo 回捞该主体生效中的收款账户；主体来自已过数据域的 opsPayables 结算单列表，"
     + "不放大可见范围。方法本身要绕域是因为 B 端商家会话里没有运营的数据域",
@@ -311,6 +346,23 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     + "同样是**判定**不是列举，userNo 由调用方（算价）给定、按 entity_no + person_no 定位到一行会员；"
     + "按数据域再裁一次，会把快照受众里的人判成不符合 —— 活动对他静默不减钱",
 
+  // 平台级聚合 / 按已授权主键回捞的统计
+  "ReachMatcher#areasOf":
+    "覆盖分布（/ops/coverage/distribution）是平台级供需聚合：按聚落、区县数「有几家商家覆盖」，"
+    + "返回只有计数、不含任何商家身份或范围明细（与 /ops/coverage/health 同一类）。"
+    + "按运营的商家数据域裁掉一部分门店，会把有供给的聚落误报成「有人无货」",
+  "ReachMatcher#cellsOf":
+    "与 areasOf 同一件事：同一次覆盖计算里按门店号取格子，只用于计数，不回明细",
+  "PeriodOrderPortImpl#lines":
+    "集单期已下单件数。期号来自已过数据域的商品所挂的集单活动（按 entity_no 圈定），"
+    + "这里按 period_no 等值回捞、只汇总成一个件数；裁掉的话期内已下单数被低估，名额判断跟着错",
+
+  // 归属判定，不是列表查询
+  "ProductScopeFactsPortImpl#goodsOwned":
+    "判「这些货是不是这个主体的」：按显式的 tenant_no + entity_no + goods_no 计数，只回一个布尔。"
+    + "不回任何行，所以不放大可见范围；按运营的数据域再裁一次的效果是「自家的货被判成别家的」，"
+    + "活动/特价对自己的货静默失效（活动算价与保存时的归属校验都走它）",
+
   // ── 批① ord_sub_order 之后留下的 ──
   "MerchantOrderServiceImpl#toOpsVO":
     "按子单主键回捞主单（ord_order）补社区字段。行级可见性已由上一步的子单查询判定；"
@@ -463,6 +515,46 @@ const OWNER_COLUMNS = [
 ];
 
 const ANCHOR_WAIVED: Record<string, string> = {
+  "ord_industry_fulfillment:COMMUNITY": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_fulfillment:PICKUP": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_order_source:COMMUNITY": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_industry_order_source:PICKUP": "行业订单来源与履约投影按经营主体授权；只持社区或自提点域的运营直接查询应为空，必须经原订单主体授权入口，不能把行业来源按地点公开。",
+  "ord_manual_price_adjustment:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_adjustment:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_policy:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_manual_price_policy:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_price_quote:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_price_quote:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_pricing_funding_source:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_pricing_funding_source:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_config:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_config:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_revision:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "ord_store_pricing_revision:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prd_sku_pricing_policy:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prd_sku_pricing_policy:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
+  "prn_incident:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_incident:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_operation:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_operation:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_printer:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_printer:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_request:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_request:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_route_catalog:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_route_catalog:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_template_catalog:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_template_catalog:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
+  "prn_attempt:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_attempt:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_device:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_device:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_job:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_job:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_route:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_route:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_template:COMMUNITY": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
+  "prn_template:PICKUP": "打印设备、模板、路由与任务属于经营主体/门店；只持社区或自提点域的运营直接查询应为空，避免暴露门店设备、凭证内容与打印任务。",
   "ent_code_token:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
   "ent_code_token:PICKUP": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
   "ord_ent_order_use:COMMUNITY": "身份凭证或订单权益协调记录不按社区/自提点公开；仅该维度运营查询应为空，须用实际主体权限入口，不得查看他人凭证。",
@@ -961,13 +1053,21 @@ function tablesIn(cls: string, region: string, depth = 0, seen = new Set<string>
 
 /** 从 (类, 方法) 出发，能走到的「绕过了数据域、且摸的是已注册表」的点 → 表名[] */
 function bypassSites(cls: string, mname: string, registered: Set<string>,
-                     seen = new Set<string>(), depth = 0): Map<string, string[]> {
+                     seen = new Map<string, number>(), depth = 0): Map<string, string[]> {
   const sites = new Map<string, string[]>();
   const c = classes.get(cls);
-  if (!c || depth > 6) return sites;
+  // 深度 9：6 层时活动算价多一层（flashWinners）就把人群判定挤出视野，G2 误报死条目；
+  // 放到 9 之后又照出了覆盖分布与集单期统计两处，都已逐条核对登记
+  if (!c || depth > 9) return sites;
   const key = `${cls}#${mname}`;
-  if (seen.has(key)) return sites;
-  seen.add(key);
+  /*
+   * 记「到过的最浅深度」，不是「到过没有」：深度优先先从一条深路径摸到某个方法时，
+   * 它的下游会被深度上限截掉；若此时就标成已访问，之后那条浅路径会被跳过 ——
+   * 绕过点于是随遍历顺序时有时无（加一个无关的调用就能让 G2 报死条目）。
+   */
+  const prev = seen.get(key);
+  if (prev !== undefined && prev <= depth) return sites;
+  seen.set(key, depth);
   for (const body of c.methods.get(mname) ?? []) {
     let idx = 0;
     while ((idx = body.indexOf("executeWithoutScope", idx)) >= 0) {
@@ -1017,14 +1117,7 @@ function opsEndpoints() {
 
 /** DataScopeRegistration.java → 表名 → { 维度: 锚点列 } */
 function registeredTables(): Map<string, Record<string, string>> {
-  const src = readFileSync(REGISTRATION, "utf8");
-  const out = new Map<string, Record<string, string>>();
-  for (const m of src.matchAll(/registry\.register\(\s*"(\w+)"\s*,\s*Map\.of\(([\s\S]*?)\)\s*\)\s*;/g)) {
-    const anchors: Record<string, string> = {};
-    for (const a of m[2]!.matchAll(/ScopeDim\.(\w+)\s*,\s*"(\w+)"/g)) anchors[a[1]!] = a[2]!;
-    out.set(m[1]!, anchors);
-  }
-  return out;
+  return readScopeRegistrations(ROOT);
 }
 
 /** schema-test.sql → 表名 → 列名集合。**逐表切块**，不做全局 grep ——
@@ -1045,49 +1138,87 @@ function schemaColumns(): Map<string, Set<string>> {
   return out;
 }
 
-// ────────────────────────────────────────────────── 守卫
+/** Native-only tables are real MySQL tables, deliberately absent from H2. Reuse the
+ * producer's hash/descriptor/DDL validation rather than adding a guard exemption. */
+function nativeSchemaColumns(): Map<string, Set<string>> {
+  const source = execFileSync("python3", ["-c", `
+import json, pathlib, runpy, sys
+root = pathlib.Path(sys.argv[1])
+generator = runpy.run_path(str(root / "backend/scripts/gen-test-schema.py"))
+policies = generator["load_projection_policy"](root / "backend/shop-app/src/main/resources/db/migration", root=root)
+tables = {}
+for path, projection in policies.items():
+    if projection.entry["mode"] not in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}:
+        continue
+    generator["project_migration"](path, policies)
+    for table in projection.descriptor.get("tables", [projection.descriptor.get("table")]):
+        tables[table["name"]] = [column["name"] for column in table["columns"]]
+print(json.dumps(tables))
+`, ROOT], { encoding: "utf8" });
+  return new Map(Object.entries(JSON.parse(source) as Record<string, string[]>)
+    .map(([table, columns]) => [table, new Set(columns)]));
+}
 
-// Print reads authorize an actor and constrain every mapper query explicitly. This is
-// verified source evidence for these three paths, not a global table/bypass exemption.
-const PRINT_PATH_TABLES: Record<string, string[]> = {
-  "/ops/print/health": ["prn_printer", "prn_job", "prn_request"],
-  "/ops/print/incidents": ["prn_incident"],
-  "/ops/print/operations/{operationNo}": ["prn_operation"],
-};
-const bodyOf = (cls: string, method: string) => classes.get(cls)?.methods.get(method)?.join("\n") ?? "";
-const printActorBody = bodyOf("PrintActorFactory", "operator");
-const printTargetBody = bodyOf("PrintOpsServiceImpl", "target");
-const printScopedBody = bodyOf("PrintSupport", "scoped");
-const printScopeProof = {
-  authorizedBeforeFacts: printActorBody.includes("Realm.OPERATOR")
-    && printActorBody.includes("Objects.equals(user.tenantNo(), tenant)")
-    && printActorBody.includes("ScopeDim.MERCHANT.equals(r.dim())")
-    && printActorBody.includes("r.refs().contains(entity)")
-    && printActorBody.indexOf("!allowed") >= 0
-    && printActorBody.indexOf("!allowed") < printActorBody.indexOf("merchants.storesOwned("),
-  targetIdentity: ["a.tenantNo().equals(tenant)", "a.entityNos().contains(entity)", "a.storeNos().contains(store)"]
-    .every(fragment => printTargetBody.includes(fragment)),
-  sqlIdentity: ["tenant_no", "entity_no", "store_no"].every(column => printScopedBody.includes(`.eq("${column}",`)),
-  allReadsScoped: [["PrintMonitorServiceImpl", "getHealth"], ["PrintMonitorServiceImpl", "listIncidents"],
-    ["PrintQueryServiceImpl", "getOperation"]].every(([cls, method]) => {
-      const body = bodyOf(cls!, method!);
-      const reads = [...body.matchAll(/\.select(?:One|Count|Page|List)\s*\(/g)].length;
-      const scoped = [...body.matchAll(/PrintSupport\.<\w+>scoped\(scope\(a\)\)/g)].length;
-      return reads > 0 && reads === scoped;
-    }),
-  opsEntryTargets: ["getFleetHealth", "listIncidents", "getOperation"]
-    .every(method => bodyOf("PrintOpsServiceImpl", method).includes("target(a,")),
-};
-const printScopeVerified = Object.values(printScopeProof).every(Boolean);
-const verifiedPrintPath = (e: { cls: string; path: string }) =>
-  printScopeVerified && e.cls === "OpsPrintController" && e.path in PRINT_PATH_TABLES;
+/** Branch proof for the scanner's context-insensitive calls: ops passes literal true. */
+function templateBranchSafe(accessBody: string, callerBody: string, taxBody = ""): boolean {
+  const start = accessBody.indexOf("if (template)");
+  if (start < 0) return false;
+  const open = accessBody.indexOf("{", start);
+  const close = matchClose(accessBody, open, "{", "}");
+  const branch = accessBody.slice(open, close + 1);
+  const rest = accessBody.slice(close + 1);
+  return /user\.realm\(\) != Realm\.OPERATOR/.test(branch)
+    && /user\.subjectKind\(\) != SubjectKind\.OPS/.test(branch)
+    && /throw BizException\.of\(ErrorCode\.FORBIDDEN\)/.test(branch)
+    && !/stores\./.test(branch)
+    && /^\s*else\s*\{/.test(rest)
+    && /user\.realm\(\) != Realm\.MERCHANT/.test(rest)
+    && /stores\.cards\(/.test(rest)
+    && (/access\.draft\(true\)/.test(callerBody)
+      || (/access\.platform\(\)/.test(callerBody) && /return pricing\.draft\(true\)/.test(taxBody)));
+}
+
+function invoiceEnrichmentSafe(selector: string, enrichment: string): boolean {
+  return selector.includes("purchaseInvoiceMapper.selectList(") && !selector.includes("executeWithoutScope")
+    && selector.includes("return invoiceViews(rows)")
+    && enrichment.includes("invoices.stream().map(StlPurchaseInvoice::getInvoiceNo).toList()")
+    && enrichment.includes(".in(StlBill::getPurchaseInvoiceNo, ids)");
+}
+
+function provenBypass(endpoint: {path:string;cls:string;method:string}, site: string): boolean {
+  if (site === "SettleServiceImpl#invoiceViews" && endpoint.path === "/ops/purchase-invoices") {
+    return invoiceEnrichmentSafe((classes.get("SettleServiceImpl")?.methods.get("opsInvoices") ?? []).join("\n"),
+      (classes.get("SettleServiceImpl")?.methods.get("invoiceViews") ?? []).join("\n"));
+  }
+  if (!["StoreDirectoryPortImpl#activeEntities", "StoreDirectoryPortImpl#cards"].includes(site)) return false;
+  if (!["/ops/pricing-tax-settings", "/ops/pricing-templates/{no}/draft",
+      "/ops/pricing-templates/{no}/revisions/{revisionNo}"].includes(endpoint.path)) return false;
+  return templateBranchSafe((classes.get("PricingAccessPolicy")?.methods.get("draft") ?? []).join("\n"),
+    (classes.get(endpoint.cls)?.methods.get(endpoint.method) ?? []).join("\n"),
+    (classes.get("PricingTaxAccessPolicy")?.methods.get("platform") ?? []).join("\n"));
+}
+
+// ────────────────────────────────────────────────── 守卫
 
 describe("运营端数据域接入", () => {
   const registry = registeredTables();
   const registered = new Set(registry.keys());
   const schema = schemaColumns();
+  const nativeSchema = nativeSchemaColumns();
   const endpoints = opsEndpoints();
   const gets = endpoints.filter((e) => e.verb === "GET");
+
+  it("branch and row-enrichment evidence fails when original authorization is removed", () => {
+    const access = (classes.get("PricingAccessPolicy")?.methods.get("draft") ?? []).join("\n");
+    expect(templateBranchSafe(access, "access.draft(true)")).toBe(true);
+    expect(templateBranchSafe(access.replace("user.realm() != Realm.OPERATOR", "false"), "access.draft(true)")).toBe(false);
+    expect(templateBranchSafe(access, "access.draft(false)")).toBe(false);
+    const selector = (classes.get("SettleServiceImpl")?.methods.get("opsInvoices") ?? []).join("\n");
+    const enrich = (classes.get("SettleServiceImpl")?.methods.get("invoiceViews") ?? []).join("\n");
+    expect(invoiceEnrichmentSafe(selector, enrich)).toBe(true);
+    expect(invoiceEnrichmentSafe("executeWithoutScope " + selector, enrich)).toBe(false);
+    expect(invoiceEnrichmentSafe(selector, enrich.replace(".in(StlBill::getPurchaseInvoiceNo, ids)", ""))).toBe(false);
+  });
 
   it("解析没失效 —— 扫不到东西时不能静默通过", () => {
     expect(classes.size, "一个 Java 类都没扫到，目录结构变了？").toBeGreaterThan(300);
@@ -1102,17 +1233,11 @@ describe("运营端数据域接入", () => {
     ).toBeGreaterThan(20);
   });
 
-  it("打印显式范围合同必须同时校验会话、目标与每条SQL", () => {
-    expect(printScopeProof).toEqual({ authorizedBeforeFacts: true, targetIdentity: true,
-      sqlIdentity: true, allReadsScoped: true, opsEntryTargets: true });
-  });
-
   it("★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错", () => {
     const offenders: string[] = [];
     for (const e of gets) {
       for (const [site, tables] of bypassSites(e.cls, e.method, registered)) {
-        if (site in SCOPE_BYPASS_OK) continue;
-        if (site === "MerchantScopeFactsPortImpl#storesOwned" && verifiedPrintPath(e)) continue;
+        if (site in SCOPE_BYPASS_OK || provenBypass(e, site)) continue;
         offenders.push(`GET ${e.path} → ${site}（${tables.join("/")}）`);
       }
     }
@@ -1391,7 +1516,6 @@ describe("运营端数据域接入", () => {
         for (const t of tablesIn(e.cls, body)) {
           if (registered.has(t) || !schema.has(t)) continue;
           if (t in OPS_READS_UNREGISTERED_OK) continue;
-          if (verifiedPrintPath(e) && PRINT_PATH_TABLES[e.path]!.includes(t)) continue;
           // 没有归属列的表（字典、配置、菜单）本来就不该按主体裁
           if (!OWNER_COLUMNS.some((o) => schema.get(t)!.has(o))) continue;
           offenders.push(`${t} ← ${e.verb} ${e.path}`);
@@ -1415,11 +1539,18 @@ describe("运营端数据域接入", () => {
     ).toEqual([]);
   });
 
+  it("G3 原生专属表使用已校验的真实列，不要求虚构 H2 表", () => {
+    expect(schema.has("mch_resource_occupation")).toBe(false);
+    expect(nativeSchema.get("mch_resource_occupation")?.has("entity_no")).toBe(true);
+    expect(nativeSchema.has("nonexistent_scope_table")).toBe(false);
+    expect(nativeSchema.get("mch_resource_occupation")?.has("nonexistent_anchor")).toBe(false);
+  });
+
   it("★★★ G3 已注册表必须真的存在 —— 注册一张不存在的表，那条登记就是一句谎话", () => {
-    const ghosts = [...registered].filter((t) => !schema.has(t));
+    const ghosts = [...registered].filter((t) => !schema.has(t) && !nativeSchema.has(t));
     expect(
       ghosts.sort(),
-      "DataScopeRegistration 登记了这些表，而 schema-test.sql 里没有它们。\n"
+      "DataScopeRegistration 登记了这些表，但 H2 DDL 与经迁移/描述符校验的原生专属表里都没有它们。\n"
       + "  登记不存在的表不会报错（没有查询会碰到它），但它会让人以为这块已经防住了。",
     ).toEqual([]);
   });
@@ -1460,7 +1591,7 @@ describe("运营端数据域接入", () => {
   it("★★★ G3 锚点列必须在该表的 DDL 里真的存在 —— 拼错列名只会静默拼出 1=0", () => {
     const bad: string[] = [];
     for (const [table, anchors] of registry) {
-      const cols = schema.get(table);
+      const cols = schema.get(table) ?? nativeSchema.get(table);
       if (!cols) continue;   // 上一条已经点名了
       for (const [dim, col] of Object.entries(anchors)) {
         if (!cols.has(col)) bad.push(`${table}.${col}（${dim}）`);
@@ -1468,7 +1599,7 @@ describe("运营端数据域接入", () => {
     }
     expect(
       bad.sort(),
-      "这些锚点列在 schema-test.sql 的对应建表语句里不存在。\n"
+      "这些锚点列在 H2 DDL 或经迁移校验的原生专属表描述符里不存在。\n"
       + "  **逐表核对，不是全局 grep** —— `status` 这种列名到处都是，全局 grep 会假阳性通过。\n"
       + "  最常见的成因：迁移里加了列，忘了 `python3 backend/scripts/gen-test-schema.py`。",
     ).toEqual([]);

@@ -44,7 +44,8 @@ public final class PayStoredValueRequests {
     public record Consumptions(EntitlementContext context, ConsumptionQuery query) {
         public Consumptions { ContractChecks.present(context); ContractChecks.present(query); }
     }
-    public record UseQuote(EntitlementContext context, SourceRef sourceRef) {
+    public record UseQuote(EntitlementContext context, SourceRef sourceRef,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice) {
+        public UseQuote(EntitlementContext context,SourceRef sourceRef){this(context,sourceRef,null);}
         public UseQuote { ContractChecks.present(context); ContractChecks.present(sourceRef); }
     }
     private static void check(EntitlementContext ctx, String entity) {

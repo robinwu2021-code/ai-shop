@@ -1,0 +1,37 @@
+{
+  "build": "SUCCESS",
+  "tests": 17,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.arch.MediaRefCoverageTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.arch.MpEndpointAuthTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.arch.OrphanModuleTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintDocumentPolicyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "log": "/tmp/print-media-mp-orphan-green.log",
+  "originalDiagnosticSnapshot": "e8171d9258d39cdca05851aa892ec3c1140c93fc",
+  "scope": "Actual current endpoint authentication, declared Maven module ownership, real optional media metadata and brand logo protection; no known baseline changes"
+}

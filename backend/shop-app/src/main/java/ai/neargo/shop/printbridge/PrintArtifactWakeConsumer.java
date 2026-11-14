@@ -1,15 +1,17 @@
 package ai.neargo.shop.printbridge;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 import ai.neargo.shop.event.*;
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.export.PrintExportWorker;
-import ai.neargo.shop.print.simulation.SimulationRunner;
+import ai.neargo.shop.printing.center.export.PrintExportWorker;
+import ai.neargo.shop.printing.center.simulation.SimulationRunner;
 
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+@ConditionalOnProperty(
         name = "shop.print.enabled",
         havingValue = "true")
 @Component

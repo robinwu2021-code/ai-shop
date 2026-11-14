@@ -34,6 +34,24 @@ class ActivityGroupBuyTest {
     private ActivityService activityService;
     @Autowired
     private ai.neargo.shop.promotion.service.ActivityPricingService pricing;
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
+    /**
+     * 活动只能挂<b>本主体自己的货</b>（CampaignGoodsOwnershipTest），所以货要真的建出来、归属到这家。
+     * 只写一个货号的话，保存会按「别家的货」当不存在拒掉。
+     */
+    private String owned(String entityNo, String goodsNo) {
+        ai.neargo.shop.product.entity.PrdGoods g = new ai.neargo.shop.product.entity.PrdGoods();
+        g.setGoodsNo(goodsNo);
+        g.setEntityNo(entityNo);
+        g.setTitle("团购测试货 " + goodsNo);
+        g.setType("STANDARD");
+        g.setOnSale(true);
+        g.setAuditStatus("APPROVED");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
+        return goodsNo;
+    }
 
     private static int seq = 7300;
 
@@ -54,11 +72,12 @@ class ActivityGroupBuyTest {
     @DisplayName("★★★ 一个人的「团」存不进去 —— 那是降价，而界面上写着团购")
     void groupNeedsAtLeastTwo() {
         String e = "M-GB-" + (++seq);
-        assertThatThrownBy(() -> activityService.save(e, group(1, 900L, List.of("G-A" + seq)), "OP"))
+        String goods = owned(e, "G-A" + seq);
+        assertThatThrownBy(() -> activityService.save(e, group(1, 900L, List.of(goods)), "OP"))
                 .as("1 人成团放过去的话，它就是一个谁买都生效的降价，而商家以为自己在攒人")
                 .isInstanceOf(BizException.class);
 
-        ActivityVO ok = activityService.save(e, group(2, 900L, List.of("G-A" + seq)), "OP");
+        ActivityVO ok = activityService.save(e, group(2, 900L, List.of(goods)), "OP");
         assertThat(ok.triggerQty()).as("2 人是下限，要存得进").isEqualTo(2);
     }
 
@@ -80,7 +99,7 @@ class ActivityGroupBuyTest {
     @DisplayName("★★★ 一件货同时挂两个团购 —— 第二个存不进去（买家会看到一个价、付另一个价）")
     void oneGoodsOneGroupAtATime() {
         String e = "M-GB-" + (++seq);
-        String goods = "G-C" + seq;
+        String goods = owned(e, "G-C" + seq);
         ActivityVO first = activityService.save(e, group(2, 900L, List.of(goods)), "OP");
 
         assertThatThrownBy(() -> activityService.save(e, group(3, 800L, List.of(goods)), "OP"))
@@ -108,7 +127,7 @@ class ActivityGroupBuyTest {
     @DisplayName("★★★ 团购的成团价不是限时特价 —— 不判触发的话所有人都按成团价买到")
     void groupPriceIsNotAFlashPrice() {
         String e = "M-GB-" + (++seq);
-        String goods = "G-E" + seq;
+        String goods = owned(e, "G-E" + seq);
         activityService.save(e, group(3, 800L, List.of(goods)), "OP");
 
         assertThat(pricing.flashPrices(null, List.of(goods)))
@@ -135,7 +154,7 @@ class ActivityGroupBuyTest {
     @DisplayName("★★ 别的玩法不受这条限制 —— 限时特价与团购撞在一起这一轮不管")
     void nonGroupActivitiesAreNotBlocked() {
         String e = "M-GB-" + (++seq);
-        String goods = "G-D" + seq;
+        String goods = owned(e, "G-D" + seq);
         activityService.save(e, group(2, 900L, List.of(goods)), "OP");
 
         ActivityDraft flash = new ActivityDraft(null, "限时特价 · " + seq, "CLEAR", null,

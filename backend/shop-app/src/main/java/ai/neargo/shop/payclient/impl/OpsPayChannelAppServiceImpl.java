@@ -105,8 +105,9 @@ public class OpsPayChannelAppServiceImpl implements OpsPayChannelAppService {
          * 换存储不该让调用方跟着改；而这里也不能改读那一列，
          * 读了就会出现「运营改了、页面显示旧值」。
          */
+        // V12 起无行 = 不可用（W2 S8）：派生成 []，不再是 null —— null 在运营页上一直显示成「全部市场」
         List<String> ms = master.marketsOf(c.getPayChannel());
-        String marketsJson = ms.isEmpty() ? null
+        String marketsJson = ms.isEmpty() ? "[]"
                 : ms.stream().collect(Collectors.joining("\",\"", "[\"", "\"]"));
         return new ChannelVO(c.getPayChannel(), c.getName(), Boolean.TRUE.equals(c.getEnabled()),
                 marketsJson, c.getCurrency(), c.getSettleCycle(),

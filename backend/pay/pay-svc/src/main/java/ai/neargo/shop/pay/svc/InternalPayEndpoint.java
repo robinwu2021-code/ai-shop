@@ -100,11 +100,20 @@ public class InternalPayEndpoint {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String merchantScope,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(invoiceService.list(status, keyword, page, size));
+        /*
+         * **收窄条件强制必填**（F10 · Review R10）。这个进程没有数据域拦截器：调用方不带范围的话，
+         * 受限运营看到的就是全部商家的发票，页面照常渲染、没有任何报错。缺了就拒，不默认成「不限」。
+         */
+        if (merchantScope == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return ResponseEntity.ok(invoiceService.list(status, keyword, page, size,
+                ai.neargo.shop.pay.client.PayInternalApi.decodeMerchantScope(merchantScope)));
     }
 
     /**
@@ -152,8 +161,13 @@ public class InternalPayEndpoint {
      *                   支付域不认用户身份，这条链路上没有会话
      */
 
-    /** 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状 */
+    /**
+     * 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状。
+     * 常量时间比较（F11 · Review R12）：{@code String.equals} 在第一个不同字节就返回，耗时泄露猜对了几位。
+     */
     private boolean authorized(String given) {
-        return !token.isBlank() && token.equals(given);
+        return !token.isBlank() && given != null
+                && java.security.MessageDigest.isEqual(token.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        given.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

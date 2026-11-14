@@ -9,6 +9,7 @@ import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMarketMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,13 +65,15 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
             var pairs = marketMapper.selectList(Wrappers.emptyWrapper());
             Map<String, Set<String>> byChannel = new HashMap<>();
             for (var p : pairs) {
-                byChannel.computeIfAbsent(p.getPayChannel(), k -> new HashSet<>()).add(p.getMarket());
+                if (active(p)) {
+                    byChannel.computeIfAbsent(p.getPayChannel(), k -> new HashSet<>()).add(p.getMarket());
+                }
             }
             return rows.stream()
                     .filter(r -> {
                         var allowed = byChannel.get(r.getPayChannel());
-                        // 无行 = 不限市场。见 SysPayChannelMarket 的类注释
-                        return allowed == null || allowed.isEmpty() || allowed.contains(m);
+                        // 无行 = 不可用（V12 起，W2 S8）。见 SysPayChannelMarket 的类注释
+                        return allowed != null && allowed.contains(m);
                     })
                     .toList();
         });
@@ -84,7 +87,8 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
         return DataScopeContext.executeWithoutScope(() ->
                 marketMapper.selectList(Wrappers.<SysPayChannelMarket>lambdaQuery()
                                 .eq(SysPayChannelMarket::getPayChannel, payChannel))
-                        .stream().map(SysPayChannelMarket::getMarket).sorted().toList());
+                        .stream().filter(PayChannelMasterServiceImpl::active)
+                        .map(SysPayChannelMarket::getMarket).sorted().toList());
     }
 
     @Override
@@ -113,7 +117,12 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
                         .orderByAsc(SysPayChannel::getId)));
     }
 
+    /**
+     * 整体在支付库的事务里（F14 · Review R22）：市场替换是先删后插，中途失败时删已发生、插只做了一半 ——
+     * 而空的市场集合就是「不限市场」，一个只在大陆开的通道会就此对全部市场开放，且没有报错。
+     */
     @Override
+    @org.springframework.transaction.annotation.Transactional("payTxManager")
     public SysPayChannel updateSettings(String payChannel, Boolean enabled, String markets,
                                         String currency, String settleCycle) {
         SysPayChannel row = find(payChannel)
@@ -149,12 +158,18 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
      * 这个动作没有表达方式。
      */
     private void replaceMarkets(String payChannel, String markets) {
+        List<String> tokens = Arrays.stream(markets.replaceAll("[\\[\\]\"\\\\\\s]", "").split(","))
+                .filter(t -> !t.isBlank()).toList();
+        if (tokens.isEmpty()) {
+            /*
+             * W2 S8：V12 起「无行 = 不可用」。清空市场在此前等于「全部市场」，现在等于「哪儿都不可用」——
+             * 而运营页的提示语还写着前者。两种意思相反的操作不能共用一个空输入：拒掉，要停用请用开关。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         DataScopeContext.executeWithoutScope(() -> {
             marketMapper.deleteByChannel(payChannel);
-            for (String token : markets.replaceAll("[\\[\\]\"\\\\\\s]", "").split(",")) {
-                if (token.isBlank()) {
-                    continue;
-                }
+            for (String token : tokens) {
                 SysPayChannelMarket row = new SysPayChannelMarket();
                 row.setPayChannel(payChannel);
                 row.setMarket(token);
@@ -162,6 +177,11 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
             }
             return null;
         });
+    }
+
+    /** V4 加的 {@code status}：显式停用的那一行不算可用（空 = 列默认 ENABLED） */
+    private static boolean active(SysPayChannelMarket row) {
+        return !"DISABLED".equals(row.getStatus());
     }
 
 }

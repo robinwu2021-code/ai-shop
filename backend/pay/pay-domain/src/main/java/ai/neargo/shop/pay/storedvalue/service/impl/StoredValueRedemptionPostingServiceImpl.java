@@ -30,8 +30,10 @@ import ai.neargo.shop.pay.storedvalue.entity.SvVoucher;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueAllocationPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValuePostingPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueUseFacts;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionPostingService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueStoreProjector;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueStatementProjector;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
@@ -52,11 +54,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Fixed lock order: fence -> intent -> account -> lots. Every source/authorization lookup precedes this boundary. */
+/** Fixed lock order: fence -> intent -> issuer quota -> account -> lots. Every source/authorization lookup precedes this boundary. */
 @Service
 public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedemptionPostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerLedgerBridge issuerLedger;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueLotBasisService lotBasis;
     private final EntitlementSourceFence fences;
     private final EntUseIntentMapper intents;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueWalletExecutionGuard walletGuard;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.clearing.StoredValueClearingService clearing;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueBrandLedgerService brandLedger;
     private final SvAccountMapper accounts;
     private final SvLotMapper lots;
     private final SvHoldAllocationMapper allocations;
@@ -68,13 +82,14 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
     private final StoredValueStoreProjector stores;
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
+    private final StoredValueStatementProjector statements;
     public StoredValueRedemptionPostingServiceImpl(EntitlementSourceFence fences, EntUseIntentMapper intents,
             SvAccountMapper accounts, SvLotMapper lots, SvHoldAllocationMapper allocations, SvVoucherMapper vouchers,
             SvEntryMapper entries, SvPostingLineMapper journal, EntUsageMapper usages, StoredValueAllocationPolicy policy,
-            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json) {
+            StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json, StoredValueStatementProjector statements) {
         this.fences = fences; this.intents = intents; this.accounts = accounts; this.lots = lots;
         this.allocations = allocations; this.vouchers = vouchers; this.entries = entries; this.journal = journal;
-        this.usages = usages; this.policy = policy; this.stores = stores; this.events = events; this.json = json;
+        this.usages = usages; this.policy = policy; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
     @Override @Transactional("payTxManager")
     public HoldView prepare(EntitlementContext ctx, Prepared frozen) {
@@ -93,11 +108,13 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         var original = intents.lock(ctx.tenantNo(), c.operationNo());
         if (original == null || !claim.getPayloadHash().equals(original.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
-        var account = account(ctx, c);
+        boolean brandWallet=walletGuard.before(ctx,c,frozen.source().walletProof(),false);
+        if(!brandWallet)issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
+        var account = account(ctx,c,frozen.source().walletProof());
         if (!"ACTIVE".equals(account.getStatus()) || account.getVersion() != c.expectedAssetRevision()) conflict();
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
         StoredValueUseFacts.conserve(account, ownedLots);
-        var plan = policy.allocate(StoredValueUseFacts.available(ownedLots, json), frozen.source());
+        var plan = policy.allocate(brandWallet?lotBasis.available(ctx.tenantNo(),ownedLots):StoredValueUseFacts.available(ownedLots, json), frozen.source());
         if (plan.amountMinor() != c.amountMinor() || plan.allocations().isEmpty()) conflict();
         var byNo = ownedLots.stream().collect(Collectors.toMap(SvLot::getLotNo, Function.identity()));
         long principal = 0, bonus = 0;
@@ -112,6 +129,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             allocation.setPrincipalMinor(part.principalMinor()); allocation.setBonusMinor(part.bonusMinor());
             allocation.setItemsAllocation(json.writeValueAsString(part.items())); changed(allocations.insert(allocation));
         }
+        issuerLedger.held(ctx,account.getAccountNo(),c.operationNo());
         account.setHeldPrincipalMinor(Math.addExact(account.getHeldPrincipalMinor(), principal));
         account.setHeldBonusMinor(Math.addExact(account.getHeldBonusMinor(), bonus)); save(account, ctx);
         original.setStatus("HELD"); original.setUpdatedAt(now()); original.setUpdatedBy(ctx.actorNo());
@@ -132,7 +150,9 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
                     || !decision.decisionNo().equals(row.getSourceDecisionNo())) conflict();
             return view(row);
         }
-        var account = account(ctx, c);
+        boolean brandWallet=walletGuard.before(ctx,c,frozen.source().walletProof(),true);
+        if(!brandWallet)issuerLedger.beforeAccount(ctx,c.entityNo(),c.storeNo(),c.currency(),c.accountNo());
+        var account = account(ctx,c,frozen.source().walletProof());
         var ownedLots = lots.lockLive(ctx.tenantNo(), account.getAccountNo());
         StoredValueUseFacts.conserve(account, ownedLots);
         Map<String, SvLot> byNo = ownedLots.stream().collect(Collectors.toMap(SvLot::getLotNo, Function.identity()));
@@ -162,7 +182,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             account.setBonusMinor(account.getBonusMinor() - bonus);
             account.setAccountSeq(Math.addExact(account.getAccountSeq(), 1));
             var at = LocalDateTime.ofInstant(decision.occurredAt(), ZoneOffset.UTC);
-            post(ctx, account, frozen, principal, bonus, parts, at);
+            var voucher=post(ctx, account, frozen, principal, bonus, parts, at);
             row.setUsageNo(no("EU", List.of(ctx.tenantNo(), operation), json));
             row.setCommittedAt(at); row.setSettledSourceKey(source.settledKey());
             var usage = new EntUsage(); audit(usage, ctx, now());
@@ -176,6 +196,10 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             usage.setServiceStaffName(frozen.source().serviceStaffName()); usage.setSourceOrderNo(source.sourceNo());
             usage.setOperatorNo(ctx.actorNo()); usage.setStatus("COMMITTED"); usage.setOccurredAt(at);
             changed(usages.insert(usage));
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), usage.getUsageNo());
+            statements.redemption(ctx, account, usage, voucher);
+            if(brandWallet)brandLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());else issuerLedger.consumed(ctx,c.entityNo(),account.getAccountNo(),voucher.getVoucherNo());
+            clearing.record(ctx,usage.getUsageNo(),voucher.getVoucherNo());
             stores.consume(ctx, c.userNo(), c.entityNo(), c.storeNo(), frozen.source().storeName(), at);
             events.publish(new EntitlementUsed(no("UE", List.of(ctx.tenantNo(), operation), json), row.getUsageNo(),
                     c.userNo(), c.entityNo(), c.storeNo(), "STORED_VALUE", c.accountNo(), c.amountMinor(), null,
@@ -190,7 +214,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         row.setSourceDecisionNo(decision.decisionNo()); row.setStatus(commit ? "COMMITTED" : "RELEASED");
         row.setUpdatedAt(now()); row.setUpdatedBy(ctx.actorNo()); changed(intents.updateById(row)); return view(row);
     }
-    private void post(EntitlementContext ctx, SvAccount account, Prepared frozen, long principal, long bonus,
+    private SvVoucher post(EntitlementContext ctx, SvAccount account, Prepared frozen, long principal, long bonus,
                        List<SvHoldAllocation> parts, LocalDateTime at) {
         var c = frozen.command();
         var voucher = new SvVoucher(); audit(voucher, ctx, now());
@@ -201,6 +225,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         voucher.setPrincipalDelta(-principal); voucher.setBonusDelta(-bonus);
         voucher.setAfterPrincipalMinor(account.getPrincipalMinor()); voucher.setAfterBonusMinor(account.getBonusMinor());
         voucher.setOccurredAt(at); changed(vouchers.insert(voucher));
+        documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.SV_VOUCHER, ctx.tenantNo(), voucher.getVoucherNo());
         for (var part : parts) {
             var entry = new SvEntry(); audit(entry, ctx, now()); entry.setVoucherNo(voucher.getVoucherNo());
             entry.setLotNo(part.getLotNo()); entry.setPrincipalDelta(-part.getPrincipalMinor());
@@ -212,9 +237,13 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             posting.setLineNo(++index); posting.setPool(line.pool()); posting.setBook(line.book());
             posting.setSide(line.side()); posting.setAmountMinor(line.amountMinor()); changed(journal.insert(posting));
         }
+            return voucher;
     }
-    private SvAccount account(EntitlementContext ctx, UseCommand c) {
-        var account = accounts.lockOwner(ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
+    private SvAccount account(EntitlementContext ctx,UseCommand c,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Proof proof){
+        if(proof!=null){var selected=accounts.lockAccount(ctx.tenantNo(),c.accountNo());if(selected==null)conflict();walletGuard.account(ctx,c,proof);return selected;}
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), c.userNo(), c.entityNo(), c.currency());
+        var selected=issuerAccounts.lookup(ctx.tenantNo(),c.entityNo(),c.storeNo(),c.currency(),c.userNo(),true);
+        var account=selected.issuerScoped()?accounts.lockAccount(ctx.tenantNo(),selected.accountNo()):accounts.lockOwner(ctx.tenantNo(),c.userNo(),c.entityNo(),c.currency(),c.storeNo());
         if (account == null || !account.getAccountNo().equals(c.accountNo())) conflict();
         return account;
     }
@@ -223,9 +252,9 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
                 || account.getBonusMinor() < account.getHeldBonusMinor()) conflict();
         account.setUpdatedAt(now()); account.setUpdatedBy(ctx.actorNo()); changed(accounts.updateById(account));
     }
-    private static HoldView view(EntUseIntent row) {
+    private HoldView view(EntUseIntent row) {
         return new HoldView(row.getOperationNo(), State.valueOf(row.getStatus()), row.getOperationNo(), row.getUsageNo(),
-                instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()));
+                instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
     private static void changed(int result) { if (result != 1) conflict(); }
     private static LocalDateTime now() {

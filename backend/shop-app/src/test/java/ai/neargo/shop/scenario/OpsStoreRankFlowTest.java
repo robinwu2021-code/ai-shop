@@ -116,6 +116,7 @@ class OpsStoreRankFlowTest {
         o.setSubOrderNo("SO-RANK-" + System.nanoTime());
         o.setOrderNo("O-RANK-" + System.nanoTime());
         o.setUserNo("U-RANK-PROBE");
+        o.setIdentityRevision(1L);
         o.setEntityNo("M0001");
         o.setStoreNo(storeNo);
         o.setStatus(OrdSubOrder.COMPLETED);

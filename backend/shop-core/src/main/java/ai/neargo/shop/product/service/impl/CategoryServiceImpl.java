@@ -13,6 +13,7 @@ import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.service.CategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
@@ -94,7 +95,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @org.springframework.cache.annotation.Cacheable(value = "categoryType", key = "#categoryNo")
+    @Cacheable(
+            value = "categoryType",
+            key = "#categoryNo",
+            condition = "#categoryNo != null && !#categoryNo.isBlank()")
     public String categoryTypeOf(String categoryNo) {
         if (categoryNo == null || categoryNo.isBlank()) {
             return null;

@@ -5,7 +5,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * 业务键生成：{@code 前缀 + yyyyMMddHHmmss + 4 位序 + 3 位随机}。
+ * 实体业务键生成：{@code 前缀 + yyMMdd + 10 位 Crockford 随机串}。
+ * 人工业务单号使用 numbering.DocumentNumberGenerator；安全凭证及内部幂等标识另按所属协议生成。
  *
  * <p>为什么不用 UUID：业务键会被人念（客服问「您的订单号是」）、会被打印在取货码小票上、
  * 会按时间排序做运营查询。UUID 三样都不占。
@@ -14,12 +15,20 @@ import java.time.format.DateTimeFormatter;
  * 真撞了也有唯一索引兜底（业务键在库里一律建 UNIQUE）。
  */
 public final class BizKey {
+    public static final String OPERATING_ENTITY = "OE";
+    public static final String MANAGEMENT_SPACE = "MGS";
+    public static final String MANAGEMENT_GRANT = "MGG";
+    public static final String BRAND = "BR";
+    public static final String BRAND_FINANCIAL_ACTIVATION = "BRFA";
+    public static final String BRAND_BINDING = "BRB";
 
     /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
     public static final String ACTIVITY_VERSION = "AV";
     public static final String ORDER = "SO";
     public static final String SUB_ORDER = "SUB";
     public static final String AFTER_SALE = "AS";
+    /** App 外收款记录（{@code ord_offline_record}）：商家自报流水，与支付单号空间不重叠，退款接口按它查不到 */
+    public static final String OFFLINE_RECORD = "OFR";
     /** 预约时段（{@code mch_appointment_slot}）。门店的服务容量，不是商品的 */
     public static final String APPOINTMENT_SLOT = "APS";
     public static final String USER = "U";
@@ -32,6 +41,25 @@ public final class BizKey {
     public static final String PERSON = "PS";
     /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
     public static final String MEMBER = "MB";
+    public static final String STORED_VALUE_PLAN = "SVP";
+    public static final String STORED_VALUE_PLAN_VERSION = "SVNV";
+    public static final String STORED_VALUE_RELEASE_LINK = "SVLK";
+    public static final String STORED_VALUE_ACTIVITY_APPROVAL = "SVAP";
+    public static final String STORED_VALUE_ISSUE_POLICY = "SVIP";
+    public static final String STORED_VALUE_POLICY_VERSION = "SVPV";
+    public static final String STORED_VALUE_ISSUER = "SVI";
+    public static final String STORED_VALUE_ISSUER_VERSION = "SIV";
+    public static final String STORED_VALUE_ISSUER_ACCESS = "SIA";
+    public static final String STORED_VALUE_MIGRATION = "SVM";
+    public static final String STORED_VALUE_QUOTA = "SVQ";
+    public static final String STORED_VALUE_QUOTA_RESERVATION = "SVQR";
+    public static final String STORED_VALUE_HOLD_ALLOCATION = "SVHA";
+    public static final String STORED_VALUE_CLEARING = "SVCL";
+    public static final String STORED_VALUE_RELEASE = "SVRL";
+    public static final String STORED_VALUE_RELEASE_TIER = "SVRT";
+    public static final String SCOPE_MEMBER = "MSM";
+    public static final String STORE_MEMBER_PROFILE = "MSP";
+    public static final String MEMBER_SCOPE_LINK = "MSL";
     /** 会员来源明细。每一次来源一行 */
     public static final String MEMBER_SOURCE = "MS";
     /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */
@@ -78,6 +106,10 @@ public final class BizKey {
     public static final String COMMUNITY_APPLY = "CA";
     public static final String GOODS = "G";
     public static final String SKU = "SK";
+    /** 报价资金来源日志，仅绑定报价生命周期，不代表扣款授权。 */
+    public static final String PRICING_FUNDING_SOURCE = "PFS";
+    /** Store SKU promotion eligibility and merchant tax classification. */
+    public static final String SKU_PRICING_POLICY = "SPP";
     public static final String SPEC_TEMPLATE = "SPT";
     /** 平台标准品（TDD-标准品库）。种子用的是 STD1xxx/STD2xxx，新建走这个前缀 */
     public static final String SPU_STD = "STD";
@@ -128,6 +160,14 @@ public final class BizKey {
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
+    /** 进件单号（pay_onboarding.onboarding_no，TDD-支付服务-I4进件与收款商户 S7） */
+    public static final String PAY_ONBOARDING = "PON";
+    /** 支付单号（pay_order.pay_order_no，TDD-支付服务-I3支付单退款流水） */
+    public static final String PAY_ORDER = "PYO";
+    /** 退款单号（pay_refund.pay_refund_no） */
+    public static final String PAY_REFUND = "PYR";
+    /** 记账凭证号（pay_ledger_voucher.voucher_no） */
+    public static final String LEDGER_VOUCHER = "LVC";
     /** 对账差异单 */
     public static final String RECON_DIFF = "RD";
     /** 资金风控影子期日志 */
@@ -179,6 +219,8 @@ public final class BizKey {
     public static final String STORE_VISIT = "VS";
     /** 店铺码印刷量登记。线下事实，运营录入 */
     public static final String QRCODE_PRINT = "QP";
+    /** Immutable business printing fact (refund / stored-value receipt). */
+    public static final String BUSINESS_PRINT_FACT = "BF";
     /** 快递代下单的取件单（TDD-快递100商家寄件）。作为 thirdOrderId 传给通道，长度要 ≤32 */
     public static final String EXPRESS_PICKUP = "EP";
     /**

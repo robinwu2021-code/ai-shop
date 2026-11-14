@@ -1,0 +1,15 @@
+{
+  "build": "SUCCESS",
+  "tests": 1,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.unit.StoredValueOfflineCreditResultTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "log": "/tmp/print-offline-credit-focused.log",
+  "scope": "Supply valid original recharge owner/source fixture to real issuer routing bridge; original assertSame posting result preserved"
+}

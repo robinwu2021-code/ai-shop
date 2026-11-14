@@ -1,8 +1,13 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -24,9 +29,9 @@ import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 新模型券的实现。
@@ -42,6 +47,18 @@ import java.util.List;
  */
 @Service
 public class PmtCouponServiceImpl implements CouponService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(PmtCouponServiceImpl.class);
@@ -98,11 +115,11 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponVO> list(String entityNo, boolean includeEnded) {
-        return couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+        return documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getEntityNo, entityNo)
                         .ne(!includeEnded, PmtCoupon::getStatus, PmtCoupon.ENDED)
                         .isNull(PmtCoupon::getArchivedAt)
-                        .orderByDesc(PmtCoupon::getId))
+                        .orderByDesc(PmtCoupon::getId)), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo)
                 .stream().map(c -> vo(c, usage(entityNo))).toList();
     }
 
@@ -144,15 +161,14 @@ public class PmtCouponServiceImpl implements CouponService {
          * 券包读不出模板就没有标题、没有面额，整页空白而不报错。
          */
         List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
-                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
                         .eq(PmtUserCoupon::getUserNo, userNo)
                         .ne(PmtUserCoupon::getStatus, PmtUserCoupon.REVOKED)
-                        .orderByDesc(PmtUserCoupon::getId)));
+                        .orderByDesc(PmtUserCoupon::getId)), PmtUserCoupon::getUserCouponNo, PmtUserCoupon::setDocumentNo));
         List<MyCouponVO> out = new ArrayList<>();
+        var templates = templatesOf(rows);
         for (PmtUserCoupon uc : rows) {
-            PmtCoupon c = DataScopeContext.executeWithoutScope(() ->
-                    couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
-                            .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+            PmtCoupon c = templates.get(uc.getCouponNo());
             if (c == null) {
                 continue;
             }
@@ -169,7 +185,7 @@ public class PmtCouponServiceImpl implements CouponService {
                             ? uc.getRedeemCode() : null,
                     c.getMinAmountMinor(), total, used, Math.max(0, total - used),
                     nz(uc.getExpireAt()), uc.getStatus(), usable,
-                    merchantNameOf(c.getEntityNo()), c.getScopeType()));
+                    merchantNameOf(c.getEntityNo()), c.getScopeType()).withDocumentNo(uc.getDocumentNo()));
         }
         return out;
     }
@@ -201,6 +217,16 @@ public class PmtCouponServiceImpl implements CouponService {
                 || (nz(c.getStartAt()) <= now && nz(c.getEndAt()) >= now);
     }
 
+    /** 他手上这张券有几张 —— 加锁读（当前读），只在已锁券行的写路径上用 */
+    private int heldCountLocked(String userNo, String couponNo) {
+        return DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectList(
+                Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .select(PmtUserCoupon::getId)
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .eq(PmtUserCoupon::getCouponNo, couponNo)
+                        .last("FOR UPDATE"))).size();
+    }
+
     private int heldCount(String userNo, String couponNo) {
         Long n = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectCount(
                 Wrappers.<PmtUserCoupon>lambdaQuery()
@@ -215,7 +241,7 @@ public class PmtCouponServiceImpl implements CouponService {
         return new ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon(c.getCouponNo(), c.getTitle(),
                 c.getBenefitMode(), nz(c.getBenefitValue()), nz(c.getBenefitCapMinor()),
                 nz(c.getMinAmountMinor()), c.getEntityNo(), c.getFunder(),
-                nz(c.getStartAt()), nz(c.getEndAt()), c.getValidDays(), remain, received, c.getStatus());
+                nz(c.getStartAt()), nz(c.getEndAt()), c.getValidDays(), remain, received, c.getStatus()).withDocumentNo(c.getDocumentNo());
     }
 
     @Override
@@ -223,10 +249,10 @@ public class PmtCouponServiceImpl implements CouponService {
         long now = System.currentTimeMillis();
         // 券模板只按 entity_no 登记数据域，买家会话读它会被判 1=0（见 myCoupons 的注释）
         List<PmtCoupon> rows = DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getStatus, PmtCoupon.ACTIVE)
                         .eq(PmtCoupon::getIssueMode, PmtCoupon.ISSUE_CENTER)
-                        .isNull(PmtCoupon::getArchivedAt)));
+                        .isNull(PmtCoupon::getArchivedAt)), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo));
         List<ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon> out = new ArrayList<>();
         for (PmtCoupon c : rows) {
             if (!customerFacing(c) || !inWindow(c, now)) {
@@ -240,25 +266,35 @@ public class PmtCouponServiceImpl implements CouponService {
     }
 
     @Override
-    @Transactional
     public ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo) {
-        PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
-                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")));
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_USER_COUPON, 1), () -> receiveNumbered(userNo, couponNo));
+    }
+
+    private ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receiveNumbered(String userNo, String couponNo) {
+        PmtCoupon c = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo));
         long now = System.currentTimeMillis();
         if (c == null || !PmtCoupon.ISSUE_CENTER.equals(c.getIssueMode()) || !customerFacing(c)) {
             // 定向券、到店券不能自己领：它们的对象是商家选的，不是谁点到谁拿
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         if (!PmtCoupon.ACTIVE.equals(c.getStatus()) || !inWindow(c, now)) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
-        if (heldCount(userNo, couponNo) >= Math.max(nz(c.getPerUserLimit()), 1)) {
+        /*
+         * **限领按 (人, 券) 串行判**：先锁券行，再用当前读数他手上几张。
+         * 先数后插、两边都数到 0 就都插了 —— 限领 1 张的券到手 2 张。不另加唯一键：限领可以是 N 张。
+         * 数要用加锁读：可重复读下普通读拿的是事务第一次读（上面读模板那次）时的快照，锁等到了数的还是旧数。
+         */
+        PmtCoupon locked = lockedRow(couponNo);
+        if (heldCountLocked(userNo, couponNo) >= Math.max(nz(c.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
         // 预算是硬闸门：再发这一张会超就不发（与定向发放同一口径，不部分发放）
         long per = maxPerCoupon(c);
-        if (nz(c.getBudgetMinor()) > 0 && (long) (nz(c.getReceivedCount()) + 1) * per > nz(c.getBudgetMinor())) {
+        if (nz(c.getBudgetMinor()) > 0 && (long) (nz(locked.getReceivedCount()) + 1) * per > nz(c.getBudgetMinor())) {
             throw BizException.of(ErrorCode.COUPON_BUDGET_EXCEEDED);
         }
         /*
@@ -285,7 +321,7 @@ public class PmtCouponServiceImpl implements CouponService {
         // 到期时刻领取时就落库（理由见 issue() 里同一句）
         uc.setExpireAt(PmtCoupon.RELATIVE.equals(c.getValidityMode())
                 ? now + (long) c.getValidDays() * DAY : nz(c.getEndAt()));
-        DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+        DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", uc, uc.getUserCouponNo(), userCouponMapper::insert, PmtUserCoupon::setDocumentNo));
         return heldView(uc, c, now);
     }
 
@@ -293,15 +329,14 @@ public class PmtCouponServiceImpl implements CouponService {
     public List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> held(String userNo) {
         long now = System.currentTimeMillis();
         List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
-                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
                         .eq(PmtUserCoupon::getUserNo, userNo)
                         .ne(PmtUserCoupon::getStatus, PmtUserCoupon.REVOKED)
-                        .orderByDesc(PmtUserCoupon::getId)));
+                        .orderByDesc(PmtUserCoupon::getId)), PmtUserCoupon::getUserCouponNo, PmtUserCoupon::setDocumentNo));
         List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> out = new ArrayList<>();
+        var templates = templatesOf(rows);
         for (PmtUserCoupon uc : rows) {
-            PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
-                    Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo())
-                            .last("limit 1")));
+            PmtCoupon c = templates.get(uc.getCouponNo());
             if (c != null && customerFacing(c)) {
                 out.add(heldView(uc, c, now));
             }
@@ -309,11 +344,22 @@ public class PmtCouponServiceImpl implements CouponService {
         return out;
     }
 
+    private java.util.Map<String, PmtCoupon> templatesOf(List<PmtUserCoupon> rows) {
+        if (rows.isEmpty()) return java.util.Map.of();
+        List<String> keys = rows.stream().map(PmtUserCoupon::getCouponNo).distinct().toList();
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(
+                DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon",
+                couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery().in(PmtCoupon::getCouponNo, keys)),
+                PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo)).stream()
+                .collect(java.util.stream.Collectors.toMap(PmtCoupon::getCouponNo, row -> row));
+    }
+
     private ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon heldView(PmtUserCoupon uc, PmtCoupon c, long now) {
-        boolean usable = uc.usableAt(now, c.timesTotalOrOne()) && PmtCoupon.ACTIVE.equals(c.getStatus());
+        boolean usable = uc.usableAt(now, c.timesTotalOrOne()) && c.startedAt(now)
+                && PmtCoupon.ACTIVE.equals(c.getStatus());
         return new ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon(uc.getUserCouponNo(),
                 customerView(c, true), uc.getStatus(), usable, nz(uc.getReceivedAt()), uc.getUsedAt(),
-                nz(uc.getExpireAt()));
+                nz(uc.getExpireAt())).withDocumentNo(uc.getDocumentNo());
     }
 
     @Override
@@ -326,12 +372,21 @@ public class PmtCouponServiceImpl implements CouponService {
     // ---------------------------------------------------------------- 建券
 
     @Override
-    @Transactional
     public CouponVO save(String entityNo, CouponSaveCmd cmd, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> saveNumbered(entityNo, cmd, operatorNo));
+    }
+
+    private CouponVO saveNumbered(String entityNo, CouponSaveCmd cmd, String operatorNo) {
+        ownershipWrites.lockEntityAndCheck("MAIN", entityNo);
         PmtCoupon c = cmd.couponNo() == null || cmd.couponNo().isBlank()
                 ? null : require(entityNo, cmd.couponNo());
         boolean create = c == null;
-        if (!create) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+        if (!create) {
+            if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+            // 「发行量不能改到低于已领」要按加锁之后的已领数判：读行与加锁之间可能有人领走了几张
+            c.setReceivedCount(lockedRow(c.getCouponNo()).getReceivedCount());
+        }
         if (create) {
             c = new PmtCoupon();
             c.setCouponNo(BizKey.next(BizKey.PROMO_COUPON));
@@ -345,9 +400,17 @@ public class PmtCouponServiceImpl implements CouponService {
         assertSane(c, create ? 0 : nz(c.getReceivedCount()));
 
         if (create) {
-            couponMapper.insert(c);
+            documentNumbers.bind(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", c, c.getCouponNo(), couponMapper::insert, PmtCoupon::setDocumentNo);
         } else {
+            /*
+             * **改券不写 received_count。** 它只归领取 / 发放那两条带条件的 SQL 累加管：
+             * updateById 整行写回会把读行之后被领走的那几张抹掉 —— 余量凭空多出来，
+             * 超发的券查不回来。updateById 跳过 null 字段，置空就是「这一列不写」。
+             */
+            Integer received = c.getReceivedCount();
+            c.setReceivedCount(null);
             couponMapper.updateById(c);
+            c.setReceivedCount(received);
         }
         saveScopes(c.getCouponNo(), cmd);
         log.info("[券] {} 券 {} by {}", create ? "建" : "改", c.getCouponNo(), operatorNo);
@@ -498,31 +561,68 @@ public class PmtCouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         PmtCoupon c = require(entityNo, couponNo);
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         // 已结束不可复活：券的有效期与预算都是按那个终点算过的
         if (PmtCoupon.ENDED.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         c.setStatus(status);
-        couponMapper.updateById(c);
+        // 只写状态这一列：整行写回会带上读到的旧 received_count，把并发领走的那一张抹掉（理由同 saveNumbered）
+        couponMapper.update(null, Wrappers.<PmtCoupon>lambdaUpdate()
+                .eq(PmtCoupon::getCouponNo, couponNo)
+                .set(PmtCoupon::getStatus, status));
         return vo(c);
     }
 
     // ---------------------------------------------------------------- 发放
 
-    /** The legacy overload must enter a real transaction before its internal delegation. */
+    /** Delegate before opening the transaction so the candidate audience can be reserved first. */
     @Override
-    @Transactional
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo) {
         return issue(entityNo, couponNo, segmentNo, null, operatorNo);
     }
 
     @Override
-    @Transactional
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
                                List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
+        // Authorize the original template before resolving its remote audience.
+        // Release the preflight source lock before remote audience resolution and number reservation.
+        // issueNumbered rechecks the same source under the final write transaction.
+        documentNumbers.transaction(Map.of(), () -> {
+            PmtCoupon candidate = require(entityNo, couponNo);
+            if (candidate.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", candidate.getEntityNo());
+        sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
+            if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
+                throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
+            }
+            return null;
+        });
+        boolean byItems = audiences != null && !audiences.isEmpty();
+        MemberQueryPort.SegmentAudience audience = byItems
+                ? toSegmentAudience(memberPort.resolve(entityNo, audiences, null))
+                : memberPort.resolveSegment(entityNo, segmentNo);
+
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_ISSUE, 1,
+                DocumentType.MARKETING_USER_COUPON, audience.reachable().size()), () ->
+                issueNumbered(entityNo, couponNo, segmentNo, audiences, operatorNo, audience));
+    }
+
+    private CouponIssueVO issueNumbered(String entityNo, String couponNo, String segmentNo,
+            List<MemberQueryPort.AudienceItem> audiences, String operatorNo,
+            MemberQueryPort.SegmentAudience audience) {
+        boolean byItems = audiences != null && !audiences.isEmpty();
+
         PmtCoupon c = require(entityNo, couponNo);
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+        /*
+         * 余量与预算按**加锁之后**的已领数算。上面那次读在锁之前：另一批在这中间发完、提交，
+         * 这里按旧的已领数算余量，两批合计就会超过发行量（余量 5 张发出去 8 张）。
+         */
+        PmtCoupon locked = lockedRow(couponNo);
+        c.setReceivedCount(locked.getReceivedCount());
+        c.setStatus(locked.getStatus());
         if (!PmtCoupon.ACTIVE.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
@@ -530,10 +630,6 @@ public class PmtCouponServiceImpl implements CouponService {
          * 两种入参：新版给受众项（标签 / 分层 / 人群 / 来源，取或，与活动、发消息同一个解析器）；
          * 旧版只给一个人群号或预设键。都给时以受众项为准。
          */
-        boolean byItems = audiences != null && !audiences.isEmpty();
-        MemberQueryPort.SegmentAudience audience = byItems
-                ? toSegmentAudience(memberPort.resolve(entityNo, audiences, null))
-                : memberPort.resolveSegment(entityNo, segmentNo);
         String batchSegmentNo = byItems
                 ? (audiences.size() == 1 && MemberQueryPort.AudienceItem.SEGMENT.equals(audiences.get(0).type())
                         ? audiences.get(0).value() : null)
@@ -547,10 +643,9 @@ public class PmtCouponServiceImpl implements CouponService {
         List<String> targets = new ArrayList<>();
         int alreadyHas = 0;
         for (MemberQueryPort.Audience a : audience.reachable()) {
-            Long held = userCouponMapper.selectCount(Wrappers.<PmtUserCoupon>lambdaQuery()
-                    .eq(PmtUserCoupon::getCouponNo, couponNo)
-                    .eq(PmtUserCoupon::getUserNo, a.userNo()));
-            if (held != null && held >= nz(c.getPerUserLimit())) {
+            // 当前读（券行已在上面锁住）：与领券同一口径，限领不能被并发的领券 / 另一批发放绕开
+            int held = heldCountLocked(a.userNo(), couponNo);
+            if (held >= nz(c.getPerUserLimit())) {
                 alreadyHas++;
                 continue;
             }
@@ -601,11 +696,25 @@ public class PmtCouponServiceImpl implements CouponService {
             if (PmtCoupon.REDEEM_STORE_CODE.equals(c.getRedeemMode())) {
                 uc.setRedeemCode(redeemCode());
             }
-            userCouponMapper.insert(uc);
+            documentNumbers.bind(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", uc, uc.getUserCouponNo(), userCouponMapper::insert, PmtUserCoupon::setDocumentNo);
         }
 
+        /*
+         * 已领数用**带条件的 SQL 累加**，与领券同一手法：不再整行写回（那会把并发领走的抹掉），
+         * 且「加上这一批仍不超发行量」与累加在同一条语句里判。装不下就整批拒、随事务回滚 ——
+         * 与预算同一口径，不部分发放。
+         */
+        if (!targets.isEmpty()) {
+            int n = targets.size();
+            int affected = couponMapper.update(null, Wrappers.<PmtCoupon>lambdaUpdate()
+                    .eq(PmtCoupon::getCouponNo, couponNo)
+                    .apply("(total_count IS NULL OR received_count + {0} <= total_count)", n)
+                    .setSql("received_count = received_count + " + n));
+            if (affected != 1) {
+                throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+            }
+        }
         c.setReceivedCount(nz(c.getReceivedCount()) + targets.size());
-        couponMapper.updateById(c);
 
         int skipped = unreachable + alreadyHas + soldOut;
         PmtCouponIssue batch = new PmtCouponIssue();
@@ -622,7 +731,7 @@ public class PmtCouponServiceImpl implements CouponService {
         batch.setAmountMinor(amount);
         batch.setOperatorNo(operatorNo);
         batch.setIssuedAt(now);
-        issueMapper.insert(batch);
+        documentNumbers.bind(DocumentType.MARKETING_COUPON_ISSUE, "PMT", "pmt_coupon_issue", batch, batch.getIssueNo(), issueMapper::insert, PmtCouponIssue::setDocumentNo);
 
         log.info("[券] 定向发放 {} 人群 {} 计划 {} 发出 {} 跳过 {}({})",
                 couponNo, segmentNo, audience.matched(), targets.size(), skipped,
@@ -632,11 +741,11 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponIssueVO> issues(String entityNo, String couponNo) {
-        List<CouponIssueVO> batches = issueMapper.selectList(Wrappers.<PmtCouponIssue>lambdaQuery()
+        List<CouponIssueVO> batches = documentNumbers.load(DocumentType.MARKETING_COUPON_ISSUE, "PMT", "pmt_coupon_issue", issueMapper.selectList(Wrappers.<PmtCouponIssue>lambdaQuery()
                         .eq(PmtCouponIssue::getEntityNo, entityNo)
                         .eq(couponNo != null && !couponNo.isBlank(),
                                 PmtCouponIssue::getCouponNo, couponNo)
-                        .orderByDesc(PmtCouponIssue::getId))
+                        .orderByDesc(PmtCouponIssue::getId)), PmtCouponIssue::getIssueNo, PmtCouponIssue::setDocumentNo)
                 .stream().map(this::issueVo).toList();
         return withUsage(entityNo, batches);
     }
@@ -652,10 +761,10 @@ public class PmtCouponServiceImpl implements CouponService {
         if (batches.isEmpty()) {
             return batches;
         }
-        List<PmtUserCoupon> used = userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+        List<PmtUserCoupon> used = documentNumbers.load(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
                 .eq(PmtUserCoupon::getEntityNo, entityNo)
                 .in(PmtUserCoupon::getIssueNo, batches.stream().map(CouponIssueVO::issueNo).toList())
-                .gt(PmtUserCoupon::getTimesUsed, 0));
+                .gt(PmtUserCoupon::getTimesUsed, 0)), PmtUserCoupon::getUserCouponNo, PmtUserCoupon::setDocumentNo);
         if (used.isEmpty()) {
             return batches;
         }
@@ -683,7 +792,7 @@ public class PmtCouponServiceImpl implements CouponService {
                     .mapToLong(a -> a.getAmountMinor() == null ? 0 : a.getAmountMinor()).sum();
             return new CouponIssueVO(b.issueNo(), b.couponNo(), b.segmentNo(), b.planned(), b.issued(),
                     b.skipped(), b.skipReasons(), b.amountMinor(), b.operatorNo(), b.issuedAt(), b.audiences(),
-                    countByIssue.getOrDefault(b.issueNo(), 0L).intValue(), amount);
+                    countByIssue.getOrDefault(b.issueNo(), 0L).intValue(), amount).withDocumentNo(b.documentNo());
         }).toList();
     }
 
@@ -775,7 +884,7 @@ public class PmtCouponServiceImpl implements CouponService {
         return new CouponIssueVO(b.getIssueNo(), b.getCouponNo(), b.getSegmentNo(),
                 nz(b.getPlannedCount()), nz(b.getIssuedCount()), nz(b.getSkippedCount()),
                 reasons, nz(b.getAmountMinor()), b.getOperatorNo(), nz(b.getIssuedAt()),
-                parseAudience(b.getAudienceJson()), 0, 0L);
+                parseAudience(b.getAudienceJson()), 0, 0L).withDocumentNo(b.getDocumentNo());
     }
 
     private CouponVO vo(PmtCoupon c) {
@@ -795,13 +904,26 @@ public class PmtCouponServiceImpl implements CouponService {
                 nz(c.getReceivedCount()), nz(c.getPerUserLimit()), c.getBudgetMinor(),
                 exposure, c.getStatus(),
                 (int) usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[0],
-                usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[1]);
+                usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[1]).withDocumentNo(c.getDocumentNo());
+    }
+
+    /**
+     * 加锁读券行（{@code FOR UPDATE} 是当前读）。计数类的判断都要用它读到的值：
+     * 可重复读下，普通读拿的是事务里第一次读时的快照，看不到锁之前别人已提交的领取。
+     */
+    private PmtCoupon lockedRow(String couponNo) {
+        PmtCoupon row = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo).last("limit 1 FOR UPDATE")));
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return row;
     }
 
     private PmtCoupon require(String entityNo, String couponNo) {
-        PmtCoupon c = couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
+        PmtCoupon c = documentNumbers.loadOne(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
                 .eq(PmtCoupon::getEntityNo, entityNo)
-                .eq(PmtCoupon::getCouponNo, couponNo).last("limit 1"));
+                .eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo);
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

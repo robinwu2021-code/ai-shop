@@ -36,6 +36,9 @@ class ActivityScheduleTest {
     @Autowired
     private ActivityService activityService;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
     private static int seq = 5100;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -159,17 +162,27 @@ class ActivityScheduleTest {
     void conflictsReportRunningOnly() {
         String e = "M-ACT-" + (++seq);
         long now = System.currentTimeMillis();
+        // 活动只能挂本主体自己的货（CampaignGoodsOwnershipTest）：G-9 要真的是这家的
+        ai.neargo.shop.product.entity.PrdGoods g = new ai.neargo.shop.product.entity.PrdGoods();
+        String g9 = "G-9-" + seq;
+        g.setGoodsNo(g9);
+        g.setEntityNo(e);
+        g.setTitle("周三特价货");
+        g.setType("STANDARD");
+        g.setOnSale(true);
+        g.setAuditStatus("APPROVED");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
         ActivityVO flash = activityService.save(e, new ActivityDraft(null, "周三特价", "CLEAR", null,
                 PmtActivity.TRIGGER_GOODS, null, null,
                 PmtActivity.BENEFIT_PRICE, 990L, null, null,
                 PmtActivity.ONE_OFF, now - 1000, now + 86400_000L, null,
-                50, null, List.of(), List.of("G-9")), "OP");
+                50, null, List.of(), List.of(g9)), "OP");
 
-        assertThat(activityService.conflicts(e, List.of("G-9")))
+        assertThat(activityService.conflicts(e, List.of(g9)))
                 .extracting(x -> x.activityName()).containsExactly("周三特价");
 
         activityService.setStatus(e, flash.activityNo(), PmtActivity.ENDED);
-        assertThat(activityService.conflicts(e, List.of("G-9")))
+        assertThat(activityService.conflicts(e, List.of(g9)))
                 .as("已结束的不算冲突，报出来只会让人以为要处理").isEmpty();
     }
 }

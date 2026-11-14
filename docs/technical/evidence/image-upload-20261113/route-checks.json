@@ -1,0 +1,166 @@
+[
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "public-avatar",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "public-evidence",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "public-avatar",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "public-evidence",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-qual",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-aftersale",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-mallpay",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/uploads/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/media/",
+    "status": 404
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "scenario": "private-reports",
+    "route": "/media/",
+    "status": 404
+  }
+]

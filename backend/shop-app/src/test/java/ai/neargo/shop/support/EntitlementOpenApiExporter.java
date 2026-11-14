@@ -177,6 +177,12 @@ public final class EntitlementOpenApiExporter {
             return result;
         }
         if (type.isMapLikeType()) return Map.of("type", "object", "additionalProperties", schema(type.getContentType(), response));
+        // DEDUCTION scopes use their real record fields, without an invented discriminator.
+        if (raw.isSealed() && raw.isInterface()) {
+            var alternatives = new ArrayList<Map<String,Object>>();
+            for (Class<?> subtype : raw.getPermittedSubclasses()) alternatives.add(schema(mapper.constructType(subtype), response));
+            return Map.of("oneOf", alternatives);
+        }
         String canonical = type.toCanonical() + (response ? ":response" : ":request");
         String name = raw.getSimpleName() + "_" + digest(canonical);
         if (!schemas.containsKey(name)) {

@@ -128,6 +128,22 @@ class LogisticsPortImplTest {
     }
 
     @Test
+    @DisplayName("★★ traceCovers：只有可用的快递100 覆盖的承运商才算能查轨迹（TDD-商户App快递公司 E5）")
+    void trace_covers_only_kuaidi100_mapped_carriers() {
+        TraceProvider kd100 = mock(TraceProvider.class);
+        when(kd100.name()).thenReturn("kuaidi100");
+        when(kd100.available()).thenReturn(true);
+        when(kd100.covers("SF")).thenReturn(true);
+        LogisticsPortImpl p = port();
+        assertThat(p.traceCovers("SF")).isFalse();
+        p.setPrecheckProviders(List.of(kd100));
+        assertThat(p.traceCovers("SF")).isTrue();
+        assertThat(p.traceCovers("TCAT")).isFalse();
+        when(kd100.available()).thenReturn(false);
+        assertThat(p.traceCovers("SF")).isFalse();
+    }
+
+    @Test
     @DisplayName("★★★ 线下付款单（SELF）永不问微信；已签收的不问；APP 不走插件")
     void noProbeCases() {
         wb(LgsWaybill.PROFILE_SELF, "PICKED_UP");

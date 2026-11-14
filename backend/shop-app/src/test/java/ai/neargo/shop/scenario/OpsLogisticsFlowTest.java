@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 而本类的运单用例会在 SF 名下造在途单。所以这一条排在任何运单用例之前跑
  * （它现在用独立的 ZLAST 承运商，已不依赖全局在途单，排序留着当保险）。
  *
- * <p>手机号段 {@code 126006xxxxx}（商户）/ {@code 130006xxxxx}（买家）。
+ * <p>手机号段 {@code 186006xxxxx}（商户）/ {@code 130006xxxxx}（买家）。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -160,7 +160,7 @@ class OpsLogisticsFlowTest {
     @Order(2)
     @DisplayName("★ 发货即登记运单：回填了单号的才有，没回填的没有；列表筛选真的收敛结果")
     void shipmentsRegisteredOnShip() throws Exception {
-        String biz = merchant("12600060001", "物流·运单补齐店");
+        String biz = merchant("18600060001", "物流·运单补齐店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
 
@@ -205,7 +205,7 @@ class OpsLogisticsFlowTest {
     @Order(2)
     @DisplayName("★ 运单承运商取商家发货时选的那个，不是平台 topCarrier —— 否则轨迹查错承运商、恒查不到")
     void shipmentUsesMerchantChosenCarrier() throws Exception {
-        String biz = merchant("12600060050", "物流·承运商快照店");
+        String biz = merchant("18600060050", "物流·承运商快照店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
         String shipped = expressOrder("13000060050", goodsNo, skuNo);
@@ -226,7 +226,7 @@ class OpsLogisticsFlowTest {
     @Order(2)
     @DisplayName("★ 轮询自己物化在途运单：商家发货后不读运营列表，轮询也要能扫到这单")
     void pollMaterializesShippedOrders() throws Exception {
-        String biz = merchant("12600060060", "物流·轮询物化店");
+        String biz = merchant("18600060060", "物流·轮询物化店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
         String shipped = expressOrder("13000060060", goodsNo, skuNo);
@@ -246,7 +246,7 @@ class OpsLogisticsFlowTest {
     @Order(2)
     @DisplayName("★ applyWxDisplay 显式写 null：失败态清得掉上次的 token/渠道，不被 updateById 跳过")
     void applyWxDisplayClearsOnFailure() throws Exception {
-        String biz = merchant("12600060070", "物流·微信渠道写回店");
+        String biz = merchant("18600060070", "物流·微信渠道写回店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
         String shipped = expressOrder("13000060070", goodsNo, skuNo);
@@ -278,7 +278,7 @@ class OpsLogisticsFlowTest {
     @Order(3)
     @DisplayName("★ 换运单号三条闸：原因必填 · 同承运商不许重号 · 已签收不许改；换号本身进轨迹")
     void waybillGates() throws Exception {
-        String biz = merchant("12600060010", "物流·换单号店");
+        String biz = merchant("18600060010", "物流·换单号店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
 
@@ -342,7 +342,7 @@ class OpsLogisticsFlowTest {
     @Order(3)
     @DisplayName("★ 重放三条闸：线下付款单换 token → 10400 · 点名不存在的渠道 → 30015 · 已签收 → 30014；受理回到待订阅")
     void replayGates() throws Exception {
-        String biz = merchant("12600060080", "物流·重放店");
+        String biz = merchant("18600060080", "物流·重放店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
         String sub = expressOrder("13000060080", goodsNo, skuNo);
@@ -515,7 +515,7 @@ class OpsLogisticsFlowTest {
         assertThat(carrier("YTO").get("enabled").asBoolean()).isFalse();
 
         // 造一张真的在途单（下单 → 付款 → 发货回填单号 → 读时补齐）
-        String biz = merchant("12600060020", "物流·在途单店");
+        String biz = merchant("18600060020", "物流·在途单店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
         String sub = expressOrder("13000060021", goodsNo, skuNo);

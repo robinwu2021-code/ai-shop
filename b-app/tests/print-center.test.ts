@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isActualPrintCompleted, isPdfDownloadable, printJobActions, receiptPreviewLines } from '../src/shared/print-center';
+import { isActualPrintCompleted, isPdfDownloadable, printJobActions, receiptPreviewLines, simulationEvidence } from '../src/shared/print-center';
 import type { PrintJob } from '@/api/print';
 describe('print evidence and recovery controls', () => {
  it('never treats simulation or PDF readiness as physical completion', () => { for (const status of ['PASSED','READY','ACCEPTED','PRINTING','UNKNOWN']) expect(isActualPrintCompleted(status)).toBe(false); expect(isPdfDownloadable('READY')).toBe(true); expect(isActualPrintCompleted('COMPLETED')).toBe(true); });
@@ -10,4 +10,12 @@ describe('print evidence and recovery controls', () => {
 describe('compact receipt text preview',()=>{
  it('preserves right-side amounts, warning and separators',()=>{expect(receiptPreviewLines({mandatoryNotice:'支付小票',rows:[{text:'实付',right:'88.00'},{type:'rule'}]},['预览，非真实出票'])).toEqual(['支付小票','预览，非真实出票','实付  88.00','────────────────']);});
  it('does not duplicate a legacy title',()=>{expect(receiptPreviewLines({mandatoryNotice:'支付小票',rows:[{text:'支付小票'}]})).toEqual(['支付小票']);});
+});
+
+
+describe('simulation detail evidence',()=>{
+ it('keeps expected, actual and journal evidence separately readable',()=>{
+  const frozen=(value:unknown)=>({canonicalJson:JSON.stringify(value),sha256:'fixture'});
+  expect(simulationEvidence({expectedResults:frozen({accepted:true}),actualResults:frozen({accepted:false}),eventJournal:frozen([{event:'TIMEOUT_UNKNOWN'}])})).toEqual({expected:'{\n  "accepted": true\n}',actual:'{\n  "accepted": false\n}',journal:'[\n  {\n    "event": "TIMEOUT_UNKNOWN"\n  }\n]'});
+ });
 });

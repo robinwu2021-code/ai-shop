@@ -1,0 +1,89 @@
+{
+ "environment": "production",
+ "database": "192.168.3.61:3307/ai_shop_ume",
+ "sourceVersion": "657",
+ "targetVersion": "658",
+ "mysqlVersion": "9.7.4",
+ "flywayVersion": "11.14.1",
+ "migrationRunner": "MenuMigration in the ai-shop-ops image (Java 21), app datasource account, migration dir containing only V658",
+ "flyway": {
+  "version": "658",
+  "checksum": -783404707,
+  "success": 1
+ },
+ "checks": {
+  "sys_role": {
+   "rows": 15,
+   "unchanged": true,
+   "sha256": "84ee1d588deed453e333a249d0103aea0aad267fb62012321145c93dfd320cfd"
+  },
+  "sys_role_member": {
+   "rows": 6,
+   "unchanged": true
+  },
+  "previousFlywayHistoryUnchanged": true,
+  "pointsRemoved": [
+   "OPS_AFTERSALE__TAB_REFUND_BACK"
+  ],
+  "pointsAdded": [],
+  "pointIdentityPermissionsAndGates": {
+   "rows": 282,
+   "unchanged": true
+  },
+  "menuMappings": {
+   "expected": 151,
+   "matched": 151,
+   "allMatched": true,
+   "legacyPaymentAliases": 8
+  },
+  "functionRows": 18,
+  "retiredFunctions": {
+   "OPS_MEMBER": {
+    "enabled": "0",
+    "pointsLeft": 0
+   },
+   "OPS_POINTS": {
+    "enabled": "0",
+    "pointsLeft": 0
+   },
+   "OPS_MESSAGE": {
+    "enabled": "0",
+    "pointsLeft": 0
+   }
+  },
+  "roleVisibleHrefsUnchanged": {
+   "subjects": 12,
+   "unchanged": true
+  },
+  "rolePermCodesUnchanged": {
+   "subjects": 15,
+   "unchanged": true
+  },
+  "grants": {
+   "rowsBefore": 582,
+   "rowsAfter": 580,
+   "removed": [
+    [
+     "FINANCE",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "<NULL>"
+    ],
+    [
+     "SUPER_ADMIN",
+     "OPS_AFTERSALE__TAB_REFUND_BACK",
+     "<NULL>"
+    ]
+   ],
+   "added": [],
+   "lost": []
+  },
+  "customRolesUntouched": [
+   "NP_IT_CONFIG",
+   "NP_IT_REVIEW",
+   "STORE_APPLY_REVIEW"
+  ]
+ },
+ "menuSnapshotSha256Before": "0b06283ddec9378a6626f9752d9a386ac51e662b2937bfdf6f47013df7e05e2f",
+ "menuSnapshotSha256After": "3014e8081f7167cabac31c64d67cb562319521f39c3e2c49ee498d65264909c8",
+ "problems": []
+}

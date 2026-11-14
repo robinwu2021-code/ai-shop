@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="650" viewBox="0 0 1180 650" role="img" aria-labelledby="title desc">
+<title id="title">餐饮实时查询与独立统计库架构（方案）</title>
+<desc id="desc">当前营业日查询业务权威；已结束营业日通过统一任务每日汇总到独立报表数据库，历史报表只读已发布统计。商家签核日结保留在原业务库。</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9" fill="#475569"/></marker></defs>
+<style>text{font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;fill:#17202a}.title{font-size:26px;font-weight:700}.h{font-size:21px;font-weight:700}.b{font-size:18px}.n{font-size:16px;fill:#475569}.box{fill:white;stroke:#94a3b8;stroke-width:1.5}.line{fill:none;stroke:#475569;stroke-width:2;marker-end:url(#arrow)}</style>
+<rect width="1180" height="650" fill="#fff"/>
+<text x="40" y="43" class="title">餐饮报表：实时业务查询 ＋ 每日独立统计</text>
+<text x="40" y="73" class="n">设计待实现 · 复用 shop-report 与原任务平台 · 不改变原交易、库存、资金及签核权威</text>
+<rect x="35" y="100" width="330" height="300" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+<text x="55" y="135" class="h">业务侧：原权威事实</text>
+<rect x="55" y="155" width="290" height="90" rx="8" class="box"/>
+<text x="70" y="185" class="b">订单 / 餐饮 / 桌台 / 厨房</text>
+<text x="70" y="216" class="n">原单、营业日、事件、冻结快照</text>
+<rect x="55" y="260" width="290" height="65" rx="8" class="box"/>
+<text x="70" y="287" class="b">独立 PAY / INVENTORY</text>
+<text x="70" y="311" class="n">仅真实只读合同；缺失标未知</text>
+<text x="55" y="359" class="b">商家日结签核仍保留原库</text>
+<text x="55" y="383" class="n">统计重跑不覆盖已签核版本</text>
+<rect x="425" y="100" width="310" height="300" rx="12" fill="#f0fdfa" stroke="#99c7bf"/>
+<text x="445" y="135" class="h">统一任务：每日构建</text>
+<text x="445" y="178" class="b">按门店时区 / 营业切点计划</text>
+<text x="445" y="216" class="b">读取 → 汇总 → 校验</text>
+<text x="445" y="254" class="b">不可见版本 → 原子发布</text>
+<text x="445" y="297" class="n">标脏 / 回看 / 历史补算</text>
+<text x="445" y="327" class="n">分区互斥、原号查回、来源水位</text>
+<text x="445" y="373" class="n">没有跨库长事务或任意 JOIN</text>
+<rect x="795" y="100" width="350" height="300" rx="12" fill="#eff6ff" stroke="#bfcee5"/>
+<text x="815" y="135" class="h">独立数据库 ai_shop_report</text>
+<text x="815" y="180" class="b">rpt_food_metric_daily 日统计</text>
+<text x="815" y="216" class="b">构建 / 来源清单 / 发布指针</text>
+<text x="815" y="252" class="b">门店游标 / 待重算 / 导出任务</text>
+<text x="815" y="298" class="n">独立数据源、账号、事务、迁移</text>
+<text x="815" y="330" class="n">失败保留上一完整发布版本</text>
+<text x="815" y="372" class="n">原零售自然日表及口径不变</text>
+<path d="M365 200 H420" class="line"/><text x="372" y="184" class="n">只读</text>
+<path d="M735 216 H790" class="line"/><text x="742" y="199" class="n">发布</text>
+<rect x="340" y="455" width="500" height="100" rx="12" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+<text x="365" y="492" class="h">餐饮 B 端 / 老板端 / 获准平台视图</text>
+<text x="365" y="529" class="b">来源、生成时间、版本、币种及缺口均可见</text>
+<path d="M200 400 V505 H335" class="line"/>
+<text x="60" y="445" class="b">当前营业日 / 现场待办</text>
+<path d="M970 400 V505 H845" class="line"/>
+<text x="880" y="445" class="b">历史 / 周报 / 月报</text>
+<text x="45" y="605" class="b">每日正常生成一次；迟到事件只标记日期重算，历史查询不触发补算或回扫业务库。</text>
+<text x="45" y="633" class="n">日切后缓冲、回看天数与任务频率是方案建议值；生产启用、数据库创建及任务注册均未执行。</text>
+</svg>

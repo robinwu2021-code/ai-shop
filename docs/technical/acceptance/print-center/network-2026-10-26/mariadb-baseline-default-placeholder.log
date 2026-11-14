@@ -1,0 +1,144 @@
+15:15:03.980 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mariadb://127.0.0.1:33556/print_accept_baseline?user=root (MariaDB 11.4)
+15:15:04.122 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `print_accept_baseline`.`flyway_schema_history` does not exist yet
+15:15:04.132 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 504 migrations (execution time 00:00.111s)
+15:15:04.151 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `print_accept_baseline`.`flyway_schema_history` ...
+15:15:04.197 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `print_accept_baseline`: << Empty Schema >>
+15:15:04.257 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "1 - baseline"
+15:15:04.363 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "2 - seed master data"
+15:15:04.382 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "3 - usr identity"
+15:15:04.399 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "4 - category tree"
+15:15:04.419 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "5 - auth code"
+15:15:04.435 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "6 - retire legacy categories"
+15:15:04.450 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "7 - store delivery rule"
+15:15:04.466 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "8 - sys setting"
+15:15:04.481 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "9 - mch violation"
+15:15:04.496 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "10 - mch store audit"
+15:15:04.511 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "11 - community grid fence"
+15:15:04.525 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "12 - unify category type"
+15:15:04.538 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "13 - store stock"
+15:15:04.554 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "14 - settle store account"
+15:15:04.574 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "15 - store goods"
+15:15:04.588 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "16 - pickup owner store"
+15:15:04.602 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "17 - campaign store"
+15:15:04.617 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "18 - store role multi"
+15:15:04.631 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "19 - quote breach"
+15:15:04.643 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "20 - msg template"
+15:15:04.657 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "21 - coupon budget"
+15:15:04.671 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "22 - phase1 master data"
+15:15:04.692 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "23 - self operated settle"
+15:15:04.712 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "24 - ops archive"
+15:15:04.728 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "25 - coupon issue"
+15:15:04.740 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "26 - merchant qualification"
+15:15:04.753 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "27 - s3 admission control"
+15:15:04.769 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "28 - settle fee rule"
+15:15:04.782 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "29 - goods fulfillments backfill"
+15:15:04.794 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "30 - sys region"
+15:15:04.806 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "32 - community region"
+15:15:04.820 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "33 - service area"
+15:15:04.836 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "34 - order buyer confirm"
+15:15:04.850 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "35 - service area audit"
+15:15:04.869 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "36 - community apply"
+15:15:04.881 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "37 - micro pay quota"
+15:15:04.895 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "38 - settle subsidy"
+15:15:04.910 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "60 - ops staff scope"
+15:15:04.924 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "61 - content center"
+15:15:04.951 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "62 - perm config"
+15:15:05.076 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "63 - recon diff"
+15:15:05.096 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "64 - perm code refine"
+15:15:05.230 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "65 - perm tighten"
+15:15:05.324 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "66 - perm nearest codes"
+15:15:05.418 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "67 - staff create and ui flag"
+15:15:05.433 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "68 - mch staff log"
+15:15:05.445 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "69 - sub order receiver snapshot"
+15:15:05.459 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "70 - audit log detail"
+15:15:05.472 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "71 - mch role"
+15:15:05.499 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "72 - perm config realign"
+15:15:05.609 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "73 - fix admission point perm"
+15:15:05.625 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "74 - perm backend only points"
+15:15:05.667 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "75 - admission point own perm"
+15:15:05.681 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "76 - admission grant explicit"
+15:15:05.694 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "77 - iam menu order point"
+15:15:05.705 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "78 - mode risk function point"
+15:15:05.718 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "79 - apply qualification items"
+15:15:05.731 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "80 - qualification function point"
+15:15:05.744 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "81 - funds mode"
+15:15:05.759 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "82 - points activate"
+15:15:05.773 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "84 - appeal status rejected"
+15:15:05.785 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "86 - points overview function point"
+15:15:05.798 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "87 - merchant type three way"
+15:15:05.814 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "90 - notify log"
+15:15:05.826 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "91 - shedlock"
+15:15:05.837 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "92 - notify log function point"
+15:15:05.850 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "93 - wechat subject type fix"
+15:15:05.865 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "94 - order invoice request"
+15:15:05.878 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "95 - job run"
+15:15:05.890 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "96 - msg subscribe quota"
+15:15:05.902 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "97 - msg receiver"
+15:15:05.917 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "98 - violation store no"
+15:15:05.932 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "99 - store directory function point"
+15:15:05.944 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "100 - sku presale"
+15:15:05.956 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "101 - stock lock presale"
+15:15:05.969 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "102 - spec template status"
+15:15:05.981 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "103 - spec template function point"
+15:15:05.993 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "104 - msg push token"
+15:15:06.006 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "110 - stl withdraw"
+15:15:06.017 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "111 - stl settle invoice"
+15:15:06.029 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "112 - withdraw function point"
+15:15:06.041 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `print_accept_baseline` to version "120 - risk domain"
+Exception in thread "main" org.flywaydb.core.api.FlywayException: Unable to parse statement in backend/shop-app/src/main/resources/db/migration/V121__growth_attribution_rule_and_fission.sql at line 1 col 1. See https://rd.gt/3ipi7Pm for more information. No value provided for placeholder: ${shop.attribution.window-days:30}.  Check your configuration!
+	at org.flywaydb.core.internal.parser.Parser.getNextStatement(Parser.java:299)
+	at org.flywaydb.core.internal.parser.Parser$ParserSqlStatementIterator.next(Parser.java:727)
+	at org.flywaydb.core.internal.parser.Parser$ParserSqlStatementIterator.next(Parser.java:692)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.parse(ParserSqlScript.java:75)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.validate(ParserSqlScript.java:116)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.executeInTransaction(ParserSqlScript.java:181)
+	at org.flywaydb.core.internal.resolver.sql.SqlMigrationExecutor.canExecuteInTransaction(SqlMigrationExecutor.java:80)
+	at org.flywaydb.core.internal.command.DbMigrate.isExecuteGroupInTransaction(DbMigrate.java:315)
+	at org.flywaydb.core.internal.command.DbMigrate.applyMigrations(DbMigrate.java:278)
+	at org.flywaydb.core.internal.command.DbMigrate.migrateGroup(DbMigrate.java:255)
+	at org.flywaydb.core.internal.command.DbMigrate.lambda$migrateAll$0(DbMigrate.java:153)
+	at org.flywaydb.database.mysql.MySQLNamedLockTemplate.execute(MySQLNamedLockTemplate.java:62)
+	at org.flywaydb.database.mysql.MySQLConnection.lock(MySQLConnection.java:159)
+	at org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory.lock(JdbcTableSchemaHistory.java:164)
+	at org.flywaydb.core.internal.command.DbMigrate.migrateAll(DbMigrate.java:153)
+	at org.flywaydb.core.internal.command.DbMigrate.migrate(DbMigrate.java:104)
+	at org.flywaydb.core.Flyway.lambda$migrate$3(Flyway.java:245)
+	at org.flywaydb.core.FlywayExecutor.execute(FlywayExecutor.java:240)
+	at org.flywaydb.core.Flyway.migrate(Flyway.java:186)
+	at BaselineProbe.main(BaselineProbe.java:5)
+Caused by: org.flywaydb.core.api.FlywayException: No value provided for placeholder: ${shop.attribution.window-days:30}.  Check your configuration!
+	at org.flywaydb.core.internal.parser.PlaceholderReplacingReader.read(PlaceholderReplacingReader.java:197)
+	at java.base/java.io.FilterReader.read(FilterReader.java:65)
+	at org.flywaydb.core.internal.parser.PositionTrackingReader.read(PositionTrackingReader.java:37)
+	at java.base/java.io.FilterReader.read(FilterReader.java:65)
+	at org.flywaydb.core.internal.parser.RecordingReader.read(RecordingReader.java:37)
+	at java.base/java.io.FilterReader.read(FilterReader.java:65)
+	at org.flywaydb.core.internal.parser.PeekingReader.refillPeekBuffer(PeekingReader.java:77)
+	at org.flywaydb.core.internal.parser.PeekingReader.peek(PeekingReader.java:191)
+	at org.flywaydb.core.internal.parser.PeekingReader.peek(PeekingReader.java:173)
+	at org.flywaydb.core.internal.parser.Parser.readToken(Parser.java:464)
+	at org.flywaydb.core.internal.parser.Parser.getNextStatement(Parser.java:175)
+	at org.flywaydb.core.internal.parser.Parser$ParserSqlStatementIterator.next(Parser.java:727)
+	at org.flywaydb.core.internal.parser.Parser$ParserSqlStatementIterator.next(Parser.java:692)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.parse(ParserSqlScript.java:75)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.validate(ParserSqlScript.java:116)
+	at org.flywaydb.core.internal.sqlscript.ParserSqlScript.executeInTransaction(ParserSqlScript.java:181)
+	at org.flywaydb.core.internal.resolver.sql.SqlMigrationExecutor.canExecuteInTransaction(SqlMigrationExecutor.java:80)
+	at org.flywaydb.core.internal.command.DbMigrate.isExecuteGroupInTransaction(DbMigrate.java:315)
+	at org.flywaydb.core.internal.command.DbMigrate.applyMigrations(DbMigrate.java:278)
+	at org.flywaydb.core.internal.command.DbMigrate.migrateGroup(DbMigrate.java:255)
+	at org.flywaydb.core.internal.command.DbMigrate.lambda$migrateAll$0(DbMigrate.java:153)
+	at org.flywaydb.database.mysql.MySQLNamedLockTemplate.execute(MySQLNamedLockTemplate.java:62)
+	at org.flywaydb.database.mysql.MySQLConnection.lock(MySQLConnection.java:159)
+	at org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory.lock(JdbcTableSchemaHistory.java:164)
+	at org.flywaydb.core.internal.command.DbMigrate.migrateAll(DbMigrate.java:153)
+	at org.flywaydb.core.internal.command.DbMigrate.migrate(DbMigrate.java:104)
+	at org.flywaydb.core.Flyway.lambda$migrate$3(Flyway.java:245)
+	at org.flywaydb.core.FlywayExecutor.execute(FlywayExecutor.java:240)
+	at org.flywaydb.core.Flyway.migrate(Flyway.java:186)
+	at BaselineProbe.main(BaselineProbe.java:5)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at jdk.compiler/com.sun.tools.javac.launcher.Main.execute(Main.java:484)
+	at jdk.compiler/com.sun.tools.javac.launcher.Main.run(Main.java:208)
+	at jdk.compiler/com.sun.tools.javac.launcher.Main.main(Main.java:135)

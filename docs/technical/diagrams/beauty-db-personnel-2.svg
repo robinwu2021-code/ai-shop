@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="275" viewBox="0 0 1200 275">
+<title>人员数据库逻辑引用 2</title><desc>从数据库设计JSON生成，展示候选表及图内引用，跨图引用见字段字典；非已执行DDL。</desc>
+<defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#8497a8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f8fb"/>
+<text x="45" y="40" font-family="sans-serif" font-size="24">人员 · 目标结构 2</text>
+<rect x="85" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="118" font-family="sans-serif" font-size="18" font-weight="bold">mch_schedule_change_log</text>
+<text x="99" y="147" font-family="sans-serif" font-size="16">班表调整历史</text>
+<text x="99" y="175" font-family="sans-serif" font-size="12">change_no, resource_no, source_ref</text>
+</svg>

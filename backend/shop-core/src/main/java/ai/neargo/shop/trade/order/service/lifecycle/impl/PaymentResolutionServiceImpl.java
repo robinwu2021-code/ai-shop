@@ -48,6 +48,7 @@ public class PaymentResolutionServiceImpl implements PaymentResolutionService {
             row.setCurrency(receipt.currency());
             row.setPayChannel(receipt.payChannel());
             row.setTradeNo(receipt.tradeNo());
+            row.setOriginOutTradeNo(receipt.outTradeNo());
             row.setReason(reason);
             row.setStatus(OrdPaymentResolution.MANUAL_REQUIRED);
             try {
@@ -69,9 +70,10 @@ public class PaymentResolutionServiceImpl implements PaymentResolutionService {
         var row = DataScopeContext.executeWithoutScope(() -> resolutions.selectOne(
                 Wrappers.<OrdPaymentResolution>lambdaQuery().eq(OrdPaymentResolution::getPayNo, payNo)
                         .eq(OrdPaymentResolution::getUserNo, buyerNo)
-                        .eq(OrdPaymentResolution::getStatus, OrdPaymentResolution.MANUAL_REQUIRED)
+                        .in(OrdPaymentResolution::getStatus,
+                                OrdPaymentResolution.MANUAL_REQUIRED, OrdPaymentResolution.REFUNDING)
                         .orderByDesc(OrdPaymentResolution::getId).last("LIMIT 1")));
-        return row == null ? null : new PaymentResolutionView(row.getStatus(), row.getReason(), row.getPaymentNo());
+        return row == null ? null : new PaymentResolutionView(OrdPaymentResolution.MANUAL_REQUIRED, row.getReason(), row.getPaymentNo());
     }
 
     @Override
@@ -80,11 +82,12 @@ public class PaymentResolutionServiceImpl implements PaymentResolutionService {
         var rows = DataScopeContext.executeWithoutScope(() -> resolutions.selectList(
                 Wrappers.<OrdPaymentResolution>lambdaQuery().in(OrdPaymentResolution::getPayNo, payNos)
                         .eq(OrdPaymentResolution::getUserNo, buyerNo)
-                        .eq(OrdPaymentResolution::getStatus, OrdPaymentResolution.MANUAL_REQUIRED)
+                        .in(OrdPaymentResolution::getStatus,
+                                OrdPaymentResolution.MANUAL_REQUIRED, OrdPaymentResolution.REFUNDING)
                         .orderByDesc(OrdPaymentResolution::getId)));
         Map<String, PaymentResolutionView> result = new HashMap<>();
         rows.forEach(row -> result.putIfAbsent(row.getPayNo(),
-                new PaymentResolutionView(row.getStatus(), row.getReason(), row.getPaymentNo())));
+                new PaymentResolutionView(OrdPaymentResolution.MANUAL_REQUIRED, row.getReason(), row.getPaymentNo())));
         return Map.copyOf(result);
     }
 

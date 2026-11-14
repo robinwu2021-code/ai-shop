@@ -91,12 +91,23 @@ function isConstrained(usingFile: string, type: string): boolean {
   return owners[0].constrained.has(type);
 }
 
+/** HTTP exchange clients serialize requests; only Spring MVC handlers trigger inbound validation. */
+function hasInboundMapping(src: string): boolean {
+  return /@(?:RestController|Controller|RequestMapping|GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)\b/.test(src);
+}
+
 describe("Bean Validation：注解要真的会触发", () => {
+  it("outbound HttpExchange interfaces do not suppress independently mapped inbound handlers", () => {
+    expect(hasInboundMapping("interface Client { @PostExchange(PATH) void send(@RequestBody Req body); }")).toBe(false);
+    expect(hasInboundMapping("interface Server { @PostMapping(PATH) void receive(@RequestBody Req body); }")).toBe(true);
+    expect(hasInboundMapping("@RestController class Server { void receive(@RequestBody Req body) {} }")).toBe(true);
+  });
   it("★★★ 带约束的 DTO 用作 @RequestBody 时，参数必须有 @Valid —— 少了它规则一次都不跑", () => {
     const total = [...SCOPES.values()].reduce((n, s) => n + s.constrained.size, 0);
     expect(total, "一个带约束的 DTO 都没找到，说明解析器坏了而不是代码干净").toBeGreaterThan(0);
     const bad: string[] = [];
     for (const { path, src } of FILES) {
+      if (!hasInboundMapping(src)) continue;
       for (const m of src.matchAll(/(?:@[\w.]*Valid(?:ated)?\s+)?@RequestBody\s+(?:@[\w.]*Valid(?:ated)?\s+)?(?:final\s+)?([\w.]+)/g)) {
         const type = m[1].split(".").pop()!;
         if (!isConstrained(path, type)) continue;

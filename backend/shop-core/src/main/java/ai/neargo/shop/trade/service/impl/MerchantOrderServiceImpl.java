@@ -1,54 +1,53 @@
 package ai.neargo.shop.trade.service.impl;
 
-import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
-import ai.neargo.shop.trade.order.command.OrderActor;
-import ai.neargo.shop.trade.order.command.ShipCommand;
-import ai.neargo.shop.trade.order.service.OrderShippingService;
-import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
-import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
-import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import ai.neargo.shop.trade.order.mapper.PaymentMapper;
-
-import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-
-import ai.neargo.shop.trade.service.MerchantOrderService;
-import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import ai.neargo.shop.spi.user.UserQueryPort;
-
-import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.spi.logistics.LogisticsPort;
-import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
-import ai.neargo.shop.trade.dto.OrderVO;
-import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.StoreMarkets;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
+import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
+import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.dto.MerchantOrderFullVO;
+import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
+import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.order.mapper.InvoiceRequestMapper;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
-import ai.neargo.shop.trade.service.OrderStateMachine;
-import ai.neargo.shop.trade.service.OrderStatusView;
+import ai.neargo.shop.trade.order.command.OrderActor;
+import ai.neargo.shop.trade.order.command.ShipCommand;
+import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderStatus;
-import ai.neargo.shop.trade.order.statemachine.Actor;
-import org.springframework.transaction.annotation.Transactional;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
-import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+import ai.neargo.shop.trade.order.service.OrderShippingService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.statemachine.Actor;
+import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.service.OrderStatusView;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -125,6 +124,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private PaymentResolutionService paymentResolutions;
 
     /** Express commands need package facts before the legacy JSON view is reconstructed. */
+    private StoreMarkets storeMarkets;
+
+    @Autowired
+    public void setStoreMarkets(StoreMarkets markets) {
+        this.storeMarkets = markets;
+    }
+
     @Autowired
     public void setOrderShippingService(OrderShippingService service) {
         this.orderShippingService = service;
@@ -174,6 +180,59 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 .withLogisticsSync(syncOf(sub.getSubOrderNo()));
     }
 
+
+    /** 发票申请（P2 完整详情用）。setter 注入：存量手工构造本类的地方不用跟着改 */
+    private InvoiceRequestMapper invoiceRequests;
+
+    @Autowired(required = false)
+    public void setInvoiceRequests(InvoiceRequestMapper invoiceRequests) {
+        this.invoiceRequests = invoiceRequests;
+    }
+
+    @Override
+    public MerchantOrderFullVO full(String merchantNo, String storeNo, String subOrderNo) {
+        OrderVO order = detail(merchantNo, storeNo, subOrderNo);
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        OrdOrder main = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1")));
+        String currency = main == null || main.getCurrency() == null ? "CNY" : main.getCurrency();
+
+        MerchantOrderFullVO.Customer customer = new MerchantOrderFullVO.Customer(order.buyerNickname(),
+                order.receiver() == null ? null : order.receiver().name(),
+                order.receiver() == null ? null : order.receiver().phone(),
+                order.receiver() == null ? null : order.receiver().salutation());
+        MerchantOrderFullVO.Source source = new MerchantOrderFullVO.Source(sub.getCaller(), sub.getTrafficSource(),
+                main == null ? null : main.getAdmissionKind(), main == null ? null : main.getPayScene());
+
+        List<MerchantOrderFullVO.Payment> payments = new java.util.ArrayList<>();
+        if (main != null && main.getOfflineConfirmedAt() != null) {
+            payments.add(new MerchantOrderFullVO.Payment("OFFLINE", main.getPayChannel(), nz(sub.getPayAmount()),
+                    main.getOfflineConfirmedAt(), null, main.getOrderNo(), main.getOfflineConfirmedBy()));
+        } else if (main != null && main.getPaidAt() != null) {
+            payments.add(new MerchantOrderFullVO.Payment("ONLINE", main.getPayChannel(), nz(sub.getPayAmount()),
+                    main.getPaidAt(), main.getPayTradeNo(), main.getOrderNo(), null));
+        }
+
+        List<MerchantOrderFullVO.Operation> operations = DataScopeContext.executeWithoutScope(() ->
+                statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getSubOrderNo, sub.getSubOrderNo())
+                        .orderByAsc(OrdStatusLog::getAt).orderByAsc(OrdStatusLog::getId))).stream()
+                .map(l -> new MerchantOrderFullVO.Operation(l.getAt() == null ? 0L : l.getAt(), l.getEvent(),
+                        l.getFromStatus(), l.getStatus(), l.getLabel(), l.getOperatorType(), l.getOperatorNo()))
+                .toList();
+
+        MerchantOrderFullVO.Invoice invoice = null;
+        if (invoiceRequests != null) {
+            OrdInvoiceRequest r = DataScopeContext.executeWithoutScope(() -> invoiceRequests.selectOne(
+                    Wrappers.<OrdInvoiceRequest>lambdaQuery().eq(OrdInvoiceRequest::getOrderNo, sub.getOrderNo())
+                            .orderByDesc(OrdInvoiceRequest::getId).last("limit 1")));
+            if (r != null) {
+                invoice = new MerchantOrderFullVO.Invoice(r.getRequestNo(), r.getStatus(), r.getTitleType(),
+                        r.getTitle(), r.getInvoiceNo(), r.getIssuedAt(), nz(r.getAmountMinor()));
+            }
+        }
+        return new MerchantOrderFullVO(order, currency, sub.getRemark(), customer, source, payments, operations, invoice);
+    }
 
     /** 物流页（TDD-物流模块 B2）。setter 注入：存量手工构造本类的地方不用跟着改 */
     private LogisticsPort logisticsPort;
@@ -270,6 +329,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (current == null || !new OrderActor(merchantNo, storeNo, operatorNo).owns(current)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        requireGenericFulfillment(current);
         if (OrdSubOrder.EXPRESS.equals(current.getFulfillment())) {
             orderShippingService.ship(subOrderNo, new ShipCommand(List.of(), expressCompany, expressNo),
                     new OrderActor(merchantNo, storeNo, operatorNo));
@@ -279,9 +339,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     /** Preserve nonexpress route semantics; only the first state transition uses the canonical CAS/log gate. */
-    private OrderVO shipLegacy(OrdSubOrder sub, String expressNo, String expressCompany, String operatorNo) {
-        if (!ExpressCompanies.isValid(expressCompany)
-                || expressNo == null || expressNo.isBlank()) {
+    private OrderVO shipLegacy(OrdSubOrder sub, String expressNo, String requestedCompany, String operatorNo) {
+        // 市场取订单自己的门店（TDD-商户App快递公司 §2）：叫快递回填时调用方门店号为空；本市场名称归一成码再存
+        String expressCompany = ExpressCompanies.resolve(storeMarkets.of(sub.getStoreNo()), requestedCompany)
+                .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
+        if (expressNo == null || expressNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         String no = expressNo.trim();
@@ -329,6 +391,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
         var sub=require(merchantNo,storeNo,subOrderNo);
+        if (OrdSubOrder.SERVICE_EXECUTION.equals(sub.getFulfillmentAuthority())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         var order=DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
                 Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1")));
         if(order==null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
@@ -343,6 +408,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
+        if (siblings.stream()
+                .anyMatch(
+                        row ->
+                                OrdSubOrder.SERVICE_EXECUTION.equals(
+                                        row.getFulfillmentAuthority()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         PaymentImpactPolicy.requireSingleStore(siblings.stream().map(OrdSubOrder::getStoreNo).toList());
         if (siblings.stream().anyMatch(row -> !merchantNo.equals(row.getEntityNo())
                 || !sub.getStoreNo().equals(row.getStoreNo()))) {
@@ -374,6 +446,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Transactional
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        requireGenericFulfillment(sub);
         if (hasOpenAfterSale(subOrderNo)) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -469,6 +542,14 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         return sub;
     }
 
+    private void requireGenericFulfillment(OrdSubOrder sub) {
+        long owned = DataScopeContext.executeWithoutScope(() -> subOrderMapper.countIndustrySources(
+                sub.getTenantNo(), sub.getEntityNo(), sub.getStoreNo(), sub.getOrderNo(), sub.getSubOrderNo()));
+        if (owned > 0) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+    }
+
     private void save(OrdSubOrder sub) {
         DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
     }
@@ -503,7 +584,24 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                                   String status, List<String> fulfillments,
                                   java.time.LocalDate from, java.time.LocalDate to,
                                   long page, long size) {
+        return list(merchantNo, storeNos, status, fulfillments, from, to, null, page, size);
+    }
+
+    @Override
+    public PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
+                                  String status, List<String> fulfillments,
+                                  java.time.LocalDate from, java.time.LocalDate to, String caller,
+                                  long page, long size) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        /*
+         * 行业（P2 · B1）：「订单」Tab 只放本店行业的业务单，餐饮 / 美业在核心里落的单不能混进零售列表。
+         * RETAIL 连同 caller 为空的存量单一起算 —— 早于 V615 的单都是零售。
+         */
+        if ("RETAIL".equals(caller)) {
+            w.and(x -> x.eq(OrdSubOrder::getCaller, "RETAIL").or().isNull(OrdSubOrder::getCaller));
+        } else if (caller != null && !caller.isBlank()) {
+            w.eq(OrdSubOrder::getCaller, caller);
+        }
         /*
          * 门店过滤。**结算键 entity_no 仍然保留** —— 两个键各管各的：
          * entity_no 是「这单的钱算谁的」（历史快照，门店换主体也不改），
@@ -641,7 +739,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         i.getPrice() == null ? 0L : i.getPrice(),
                         i.getQty() == null ? 0 : i.getQty(),
                         i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType(),
-                        Boolean.TRUE.equals(i.getIsGift())))
+                        Boolean.TRUE.equals(i.getIsGift())).withPhysicalQuantity(i.getSaleQuantity(),
+                                i.getQuantityUnit(), i.getSourceComponentRef()))
                 .toList();
 
         // paidAt 只在主单上（子单没有这一列），同 toOpsVO 的做法 join 回去取
@@ -656,7 +755,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(), items,
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
-                        nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
+                        nz(s.getDiscountAmount()), nz(s.getPayAmount()),
+                        // 币种取主单（P2）：此前写死 CNY，台湾门店的单在商家端显示成人民币
+                        main == null || main.getCurrency() == null ? "CNY" : main.getCurrency()),
                 s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
                 null,
                 s.getCreatedAt() == null ? 0L

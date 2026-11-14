@@ -69,5 +69,9 @@
       "method": "GET",
       "path": "/ops/pay/entitlements/{instanceNo}/lifecycle"
     }
+  ],
+  "contracts": [
+    "docs/api/entitlement-backend.openapi.json",
+    "docs/api/print-operations.openapi.json"
   ]
 }

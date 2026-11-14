@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.points.port;
 
+import ai.neargo.shop.spi.pay.FundsPath;
+
 /** Explicit money operations; accepting a command never means money has arrived. */
 public interface PointsFundsGateway {
     /** Advertises separately verified capabilities before accepting a financial promise. */
@@ -10,11 +12,6 @@ public interface PointsFundsGateway {
 
     /** Resolves an unknown outcome using the original immutable command. */
     FundsResult query(FundsCommand command);
-
-    enum FundsPath {
-        DIRECT,
-        AGGREGATED
-    }
 
     enum FundsPurpose {
         SUBSIDY,

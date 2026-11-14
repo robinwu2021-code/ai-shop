@@ -17,6 +17,12 @@ import lombok.Setter;
 @Setter
 @TableName("mch_store")
 public class MchStore extends BaseEntity {
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String businessTypeCode;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String commerceModel;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private Long businessTypeChangedAt;
 
     /**
      * 自营：平台是销售主体。没有 EDI 时只能自营，故为默认值。
@@ -177,6 +183,21 @@ public class MchStore extends BaseEntity {
             updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String addressDetail;
 
+    /**
+     * 建店时行业选「其他」后老板自填的行业名（V629，≤20 字）。<b>只是说明</b>：
+     * 经营类型仍以 {@link #businessTypeCode} 为准，任何判定都不读这一列。
+     */
+    private String industryText;
+
+    /** 同上，子业态选「其他」时自填的那一级（V629，≤20 字） */
+    private String subIndustryText;
+
+    /** 建店选的行业码（V643，TDD-子行业与能力端验收 B4）；存量门店或顶层「其他」为空 */
+    private String industryCode;
+
+    /** 建店选的子行业码（V643）；子行业「其他」时为空 */
+    private String subIndustryCode;
+
     /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
     private String featured;
 
@@ -219,9 +240,15 @@ public class MchStore extends BaseEntity {
     private Integer scoreService;
     private Integer scoreSpeed;
 
-    /** 门店坐标（gcj02，E6，V190）。地理编码或定位回填；候选取货点按它排距离 */
+    /** 门店坐标（E6，V190；坐标系见 {@link #coordSys}）。地理编码或定位回填；候选取货点按它排距离 */
     private Integer latE6;
     private Integer lngE6;
+    /**
+     * {@link #latE6}/{@link #lngE6} 的坐标系（V630）：{@code gcj02} / {@code wgs84}。建店地图选点时写入 ——
+     * 大陆高德是 gcj02，台湾 / 阿联酋 Google 是 wgs84（TDD-双地图提供方与门店选点 AC5）。
+     * null = 存量与非选点路径写的坐标，按历史口径即 gcj02。
+     */
+    private String coordSys;
     /** 地理编码给的区县码（国标 6 位），与 sys_region 同口径 */
     private String adcode;
     /** 地址经地理编码校验并标准化（V190）。没配地图密钥时保持 0，不拦保存 */

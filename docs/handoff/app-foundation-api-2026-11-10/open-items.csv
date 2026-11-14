@@ -1,0 +1,7 @@
+﻿id,item,state,owner,nextAction
+ENV01,App正式HTTPS入口,未确认,环境负责人/App,确认映射166的HTTPS origin、前缀和TLS；Postman可先用受控隧道
+AUTH01,真实店主/员工/PAY typed委托,基础身份/门店已验；PAY/组织待指定,后端/App,166基础身份与临时多店已验收并清理；继续指定PAY typed成员/管理空间最小授权样本，不传凭据进仓库
+N101,N1新建关闭/库存归属协议缺口,阻断写入,后端/库存,先完整事实与预留协议、同步前置；本轮只联调诊断与已有原单恢复
+INV01,独立库存V27尚未接App writer,待接线,后端/库存,SHOP凭据、指定owner/档案、服务端客户端接入、调用面验收
+N201,N2运营核实与真实可收款,待受控验收,后端/运营/App,OPS页面本轮未发；需真实受控运营流程，LINKED后仍独立验核验/启用/门店绑定/readiness
+APP01,App真机/实际通知,待验收,App/后端,逐例回交caseId、构建版本、脱敏trace及结果；不能用本地fixture替代166旅程

@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-12",
+  "environment": "UME166",
+  "aiShopBackendCommit": "c495d763144af4e0b4748bcf32ea412ead5c1a15",
+  "aiShopWebCommit": "39a38a751c5515a0f56f77bc055b96c10d3aeeb8",
+  "nearPayBackendCommit": "4d1e5b813fd4678b738bc2133ac8dffafc0fe80b",
+  "mainRelease": {
+    "releaseId": "source-board-20261112-aa5a78cd3-r2",
+    "stage": "/data0/app/ai-shop/releases/source-board-20261112-aa5a78cd3-r2",
+    "migrationsChanged": false,
+    "channelDispatchPerformed": false,
+    "nearPayReadback": {
+      "merchantRef": "PM4183D38BDC47421E",
+      "status": "APPROVED",
+      "onboardings": [
+        {
+          "onboardingNo": "OB010C12DDF672422A",
+          "status": "CANCELLED",
+          "reviewStatus": "APPROVED"
+        }
+      ]
+    },
+    "status": "DEPLOYED",
+    "shopSha256": "591381e6971a9988fc33cf1428c299a16b5ab23c0da32e714b595ab2f16dd26b",
+    "paySha256": "3f1dd0823fa1f6ba5f64c30029297cecc3d68ebf12bbc1b95e3450f57fb4e5c7",
+    "web": "/data/www/ai-shop-ops/releases/source-board-20261112-aa5a78cd3-r2",
+    "publicPayOpsConfigured": true,
+    "payConfigUnchanged": true,
+    "inventoryUnchanged": true
+  },
+  "frontendLabelsRelease": {
+    "releaseId": "source-board-labels-20261112-39a38a751",
+    "commit": "39a38a751c5515a0f56f77bc055b96c10d3aeeb8",
+    "backendRestarted": false,
+    "previousWeb": "/data/www/ai-shop-ops/releases/source-board-20261112-aa5a78cd3-r2",
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/source-board-labels-20261112-39a38a751",
+    "indexMatchesArtifact": true,
+    "runtimesUnchanged": true,
+    "lockReleased": true
+  },
+  "verification": {
+    "sourceReadback": {
+      "entityNo": "M261112N1B45EVMKE",
+      "merchantRef": "PM4183D38BDC47421E",
+      "sourceStatus": "APPROVED",
+      "onboardings": [
+        {
+          "onboardingNo": "OB010C12DDF672422A",
+          "status": "CANCELLED",
+          "reviewStatus": "APPROVED",
+          "handoffStatus": null
+        }
+      ]
+    },
+    "missingEntity": "NONE",
+    "otherScope": "NONE",
+    "missingInternalTokenHttp": 401,
+    "unregisteredCallerHttp": 403,
+    "anonymousOpsRead": {
+      "http": 401,
+      "code": 10401
+    },
+    "runtimes": {
+      "ai-shop-api": {
+        "id": "d5396fe2782297ff0f8193b5dd96398325adbf053858e933fbeda980946a96ba",
+        "startedAt": "2026-11-12T12:02:36.44630882Z",
+        "running": true,
+        "sha256": "591381e6971a9988fc33cf1428c299a16b5ab23c0da32e714b595ab2f16dd26b"
+      },
+      "ai-shop-ops": {
+        "id": "5c2a22dc4c75f4033c30455d51415259cd2157f51c36d02ca350d01787ce1652",
+        "startedAt": "2026-11-12T12:04:24.837815629Z",
+        "running": true,
+        "sha256": "591381e6971a9988fc33cf1428c299a16b5ab23c0da32e714b595ab2f16dd26b"
+      },
+      "nearpay-prod": {
+        "id": "cbffe9076ee34a9216d51ca3d6d299aa343a7cb9d4d78324ae0ab4fd15d13cf8",
+        "startedAt": "2026-11-12T12:01:43.648393145Z",
+        "running": true,
+        "sha256": "3f1dd0823fa1f6ba5f64c30029297cecc3d68ebf12bbc1b95e3450f57fb4e5c7"
+      },
+      "inventory-test": {
+        "id": "39a53a0a9c011ae622e5554cf01e266e4a0c7cbeab1d9fd552d5f93158c2dbb2",
+        "startedAt": "2026-11-11T04:18:59.89562105Z",
+        "running": true
+      }
+    },
+    "publicPayOpsBase": "https://twpay.umeshop.ai/oms",
+    "locksPresent": [],
+    "payConfigSha256": "13d19edcd3676d222df7803c3b6af827a172acd0ef7b10a021e2fe8553810912",
+    "public": {
+      "indexMatchesArtifact": true,
+      "jsCssAssetsVerified": 25,
+      "deepLinkRouteHttp": 200,
+      "url": "https://twpay.umeshop.ai/ops-shop/merchants/?tab=onboarding"
+    }
+  },
+  "normalGate": {
+    "fullBackendCommit": "aa5a78cd3bb5383930b63524f61d5fbd83be2345",
+    "bypass": false,
+    "backend": {
+      "tests": 7564,
+      "existingFailures": 2,
+      "newFailures": 0
+    },
+    "food": {
+      "tests": 1264,
+      "failures": 0
+    },
+    "beauty": {
+      "tests": 282,
+      "existingFailures": 4,
+      "newFailures": 0
+    },
+    "finalOps": {
+      "assertions": 1018,
+      "failures": 0
+    },
+    "shared": {
+      "assertions": 728,
+      "existingFailures": 14,
+      "newFailures": 0
+    }
+  },
+  "chrome": {
+    "existingAccount": "neara@neargo.ai",
+    "sourceEntityFilter": "M261112N1B45EVMKE",
+    "merchantFilter": "PM4183D38BDC47421E",
+    "onboardingNo": "OB010C12DDF672422A",
+    "exactSourceAndDestinationObserved": true
+  },
+  "channelDispatchPerformed": false,
+  "permissionsChanged": false,
+  "migrationsChanged": false,
+  "initialLayoutAttempt": {
+    "status": "ROLLED_BACK",
+    "rollbackErrors": []
+  },
+  "preservedNearPayFrontend": "/data/www/nearpay-oms-releases/channel-config-live-20261112-74f885d9"
+}

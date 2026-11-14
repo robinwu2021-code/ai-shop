@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 拦截「两份 DDL 漂移」：生产走 {@code db/migration/V*.sql}（MySQL），
@@ -50,18 +50,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SchemaDriftTest {
 
-    /*
-     * `IF NOT EXISTS` 必须可选，缩进必须宽松 —— 否则**整张表被静默漏掉**，
-     * 症状却伪装成下游某支迁移「ALTER 了一张不存在的表」（V187/V195/V213 就是这么炸的：
-     * 它们写的是裸 `CREATE TABLE` + 2 空格缩进，而 120 份用 4 空格 + IF NOT EXISTS）。
-     * gen-test-schema.py 一直是 `CREATE TABLE(?: IF NOT EXISTS)?` 且不挑缩进 ——
-     * **两个重放器必须同口径**，这里严于生成器就等于凭空造出一份差异。
-     */
-    private static final Pattern TABLE = Pattern.compile(
-            "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
-    private static final Pattern COLUMN = Pattern.compile("^\\h+(\\w+)\\h+(?:BIGINT|INT|INTEGER|SMALLINT|TINYINT|MEDIUMINT|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|CHAR|VARCHAR|TEXT|TINYTEXT|MEDIUMTEXT|LONGTEXT|CLOB|JSON|DATE|DATETIME|TIMESTAMP|TIME|BOOL|BOOLEAN|BIT|BLOB|LONGBLOB|VARBINARY|BINARY|ENUM|SET)\\b", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
-    private static final Set<String> NOT_COLUMNS = Set.of(
-            "UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "GENERATED");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     /**
@@ -83,7 +71,7 @@ class SchemaDriftTest {
      * 才能重试），所以解析器要认它。
      */
     private static final Pattern ADD_COLUMN_NAME = Pattern.compile(
-            "ADD COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(\\w+)", Pattern.CASE_INSENSITIVE);
+            "\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?(?!(?:IF|COLUMN|CONSTRAINT|UNIQUE|KEY|INDEX|PRIMARY|FOREIGN|CHECK)\\b)(\\w+)\\s+[A-Z]", Pattern.CASE_INSENSITIVE);
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
     /** 表改名。不认它的话，后续针对新表名的 ALTER 全部报「该表尚未建立」，而真因在几十行之前。 */
     private static final Pattern RENAME_TABLE = Pattern.compile(
@@ -142,6 +130,25 @@ class SchemaDriftTest {
                 replay(Files.readString(f, StandardCharsets.UTF_8), migration);
             }
         }
+        // 支付 v4、密钥模块（W5）的独立迁移目录接在后面（与生产执行顺序、与 gen-test-schema.py 同口径）
+        for (String extra : List.of("../pay/pay-domain/src/main/resources/db/pay",
+                "../secret/secret-store/src/main/resources/db/secret")) {
+            Path dir = root.resolve(extra).normalize();
+            if (!Files.isDirectory(dir)) {
+                continue;
+            }
+            try (var files = Files.list(dir)) {
+                for (Path f : files.filter(f -> f.getFileName().toString().matches("V\\d+__.*\\.sql"))
+                        .sorted(Comparator.comparingInt(SchemaDriftTest::versionOf)).toList()) {
+                    replay(Files.readString(f, StandardCharsets.UTF_8), migration);
+                }
+            }
+        }
+        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root),
+                root.resolve("src/main/resources/db/migration")).verifyCommonFixture(
+                        Files.readString(root.resolve("src/test/resources/schema-test.sql")));
+        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root),
+                root.resolve("src/main/resources/db/migration")).applyTo(migration);
         Map<String, Set<String>> test = parse(root.resolve("src/test/resources/schema-test.sql"));
 
         assertThat(test.keySet())
@@ -151,6 +158,78 @@ class SchemaDriftTest {
         migration.forEach((table, columns) -> assertThat(test.get(table))
                 .as("表 %s 的列不一致（改了 Flyway 就要同步改 schema-test.sql）", table)
                 .containsExactlyInAnyOrderElementsOf(columns));
+    }
+
+    @Test
+    void compactCreateRetainsEveryColumnAndIgnoresConstraintExpressions() {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        replay("CREATE TABLE compact (\n id BIGINT, tenant_no VARCHAR(32), amount DECIMAL(12,2), "
+                + "state ENUM('ACTIVE','INACTIVE'), CONSTRAINT ck_state CHECK (state IN ('ACTIVE','INACTIVE'))\n);", tables);
+        assertThat(tables.get("compact")).containsExactlyInAnyOrder("id", "tenant_no", "amount", "state");
+    }
+
+    @Test
+    void mixedAlterAddsColumnsWithoutTreatingKeysAsColumns() {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        replay("CREATE TABLE ticket (\n  id BIGINT NOT NULL\n);", tables);
+        replay("ALTER TABLE ticket MODIFY id BIGINT NULL, ADD customer_no VARCHAR(64) NULL, "
+                + "ADD COLUMN IF NOT EXISTS actor_no VARCHAR(64), ADD UNIQUE KEY uk_ticket (customer_no), "
+                + "ADD CONSTRAINT ck_ticket CHECK (id >= 0);", tables);
+        assertThat(tables.get("ticket")).containsExactlyInAnyOrder("id", "customer_no", "actor_no");
+    }
+
+    @Test
+    void singleSpaceColumnsAndMultilineChecksAreParsedStructurally() throws IOException {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        for (String file :
+                List.of(
+                        "V506__entitlement_exception_action.sql",
+                        "V517__entitlement_migration_alias.sql",
+                        "V593__shared_resource_identity.sql")) {
+            replay(Files.readString(Path.of("src/main/resources/db/migration", file)), tables);
+        }
+        assertThat(tables.get("pay_ent_exception_action"))
+                .hasSize(17)
+                .contains("id", "response_snapshot");
+        assertThat(tables.get("ent_migration_alias")).hasSize(23).contains("comparison_hash");
+        assertThat(tables.get("mch_resource")).hasSize(17).doesNotContain("CHECK", "AND", "OR");
+        replay(
+                "ALTER TABLE mch_resource RENAME TO renamed_resource;"
+                        + "ALTER TABLE renamed_resource RENAME COLUMN name TO title;"
+                        + "ALTER TABLE renamed_resource DROP COLUMN capacity;"
+                        + "ALTER TABLE renamed_resource ADD COLUMN extra INT;",
+                tables);
+        assertThat(tables.get("renamed_resource"))
+                .contains("title", "extra")
+                .doesNotContain("name", "capacity");
+        replay("DROP TABLE renamed_resource;", tables);
+        assertThat(tables).doesNotContainKey("renamed_resource");
+    }
+
+    @Test
+    void malformedCreateCannotConsumeFollowingTable() {
+        for (String malformed :
+                List.of(
+                        "CREATE TABLE broken (id INT;",
+                        "CREATE TABLE broken (id INT",
+                        "CREATE TABLE broken (id INT)",
+                        "CREATE TABLE broken id INT;",
+                        "CREATE TABLE broken (id INT));",
+                        "CREATE TABLE broken (id INT, CHECK ((id > 0));",
+                        "CREATE TABLE broken (title VARCHAR(32) DEFAULT 'unterminated);",
+                        "CREATE TABLE broken (id INT /* unterminated);")) {
+            assertThatThrownBy(
+                            () ->
+                                    replay(
+                                            malformed
+                                                    + "\n"
+                                                    + "CREATE TABLE following (\n"
+                                                    + "  real_column INT\n"
+                                                    + ");",
+                                            new LinkedHashMap<>()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Malformed SQL");
+        }
     }
 
     /** 从 {@code V15__xxx.sql} 取出 15。文件名不合规直接失败，好过按 0 排到最前面。 */
@@ -213,17 +292,6 @@ class SchemaDriftTest {
     }
 
     private void collectCreates(String sql, Map<String, Set<String>> tables) {
-        Matcher t = TABLE.matcher(sql);
-        while (t.find()) {
-            Set<String> columns = new LinkedHashSet<>();
-            Matcher c = COLUMN.matcher(t.group(2));
-            while (c.find()) {
-                String name = c.group(1);
-                if (!NOT_COLUMNS.contains(name.toUpperCase())) {
-                    columns.add(name);
-                }
-            }
-            tables.put(t.group(1), columns);
-        }
+        tables.putAll(SchemaDdl.createColumns(sql));
     }
 }

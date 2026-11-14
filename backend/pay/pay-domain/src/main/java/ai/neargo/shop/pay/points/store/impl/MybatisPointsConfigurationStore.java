@@ -47,12 +47,16 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
 
     @Override
     public void createType(PointType t, String actor) {
-        DataScopeContext.executeWithoutScope(
-                () -> {
-                    mapper.createType(t, actor);
-                    mapper.createPool(t.typeCode(), t.currency(), actor);
-                    return null;
-                });
+        try {
+            DataScopeContext.executeWithoutScope(
+                    () -> {
+                        mapper.createType(t, actor);
+                        mapper.createPool(t.typeCode(), t.currency(), actor);
+                        return null;
+                    });
+        } catch (DuplicateKeyException duplicate) {
+            throw new IllegalArgumentException("POINTS_TYPE_DUPLICATE", duplicate);
+        }
     }
 
     @Override
@@ -89,6 +93,40 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     @Override
     public Map<String, Object> lockLifecycle(String type, String sub) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockLifecycle(type, sub));
+    }
+
+    @Override
+    public void renameType(String type, String expectedName, String name, String actor) {
+        DataScopeContext.executeWithoutScope(() -> {
+            try {
+                if (mapper.renameType(type, expectedName, name, actor) != 1)
+                    throw new IllegalArgumentException("POINTS_TYPE_NAME_CONFLICT");
+            } catch (DuplicateKeyException duplicate) {
+                throw new IllegalArgumentException("POINTS_TYPE_DUPLICATE", duplicate);
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public void lockMarketTypes(String market) {
+        DataScopeContext.executeWithoutScope(() -> {
+            // SQL ORDER BY + filesort does not guarantee InnoDB lock acquisition order.
+            // Match the explicit type-code order used by global availability switches.
+            mapper.marketTypes(market).stream().sorted().forEach(mapper::lockType);
+            return null;
+        });
+    }
+
+    @Override
+    public void setOrderDefault(String type, String market, String actor) {
+        DataScopeContext.executeWithoutScope(() -> {
+            mapper.clearOrderDefault(market, actor);
+            if (mapper.setOrderDefault(type, market, actor) != 1) {
+                throw new IllegalStateException("POINTS_TYPE_STATE_CONFLICT");
+            }
+            return null;
+        });
     }
 
     @Override

@@ -105,7 +105,8 @@ function FinanceInner() {
 
   // 后端这两个查询不分页：结算单按子单一张，量大但筛选维度窄，
   // 先给筛选、分页等有量之后再说 —— 造一个假的分页壳比没有分页更误导
-  const settleQ = { status: status || undefined, merchantNo: keyword || undefined };
+  const documentSearch = /^STS[0-9]{14,}$/.test(keyword.trim());
+  const settleQ = { status: status || undefined, merchantNo: documentSearch ? undefined : keyword || undefined };
   const settlements = useQuery({ queryKey: ["settlements", settleQ], queryFn: () => api.listSettlements(settleQ), enabled: tab === "settlements" });
   const splitQ = { settleNo: keyword || undefined };
   const splits = useQuery({ queryKey: ["splits", splitQ], queryFn: () => api.listSplitRecords(splitQ), enabled: tab === "splits" });
@@ -119,11 +120,12 @@ function FinanceInner() {
 
   const execBack = useMutation({
     mutationFn: (asNo: string) => api.executeRefundSplitBack(asNo),
-    onSuccess: () => { invalidate(); notify.success(c.toastRefundBack); },
+    onSuccess: (result) => { invalidate(); notify.success(result.status === "REFUNDED"
+      ? c.toastRefundBack : c.toastRefundPending); },
   });
 
   const settleColumns: Column<Settlement>[] = [
-    { header: c.colSettleNo, cell: (s) => <IdCell value={s.settleNo} />, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (s) => <IdCell value={s.documentNo ?? ""} />, numeric: true, align: "start" },
     { header: c.colOrder, cell: (s) => <IdCell value={s.subOrderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (s) => s.merchantNo },
     {
@@ -172,7 +174,7 @@ function FinanceInner() {
   ];
 
   const splitColumns: Column<SplitLog>[] = [
-    { header: c.colSettleNo, cell: (r) => <IdCell value={r.settleNo} />, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (r) => <IdCell value={r.documentNo ?? ""} />, numeric: true, align: "start" },
     { header: c.colOrder, cell: (r) => r.subOrderNo, numeric: true, align: "start" },
     {
       header: c.colAction,
@@ -191,7 +193,7 @@ function FinanceInner() {
   ];
 
   const backColumns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => a.afterSaleNo, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => a.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colRefundAmount, cell: (a) => money(a.refundMinor), numeric: true },
@@ -203,6 +205,9 @@ function FinanceInner() {
           ? fill(c.shareText, { p: a.share.platform, m: a.share.merchant, k: a.share.pickup })
           : <span className="text-[var(--destructive)]">{c.shareUndecided}</span>,
     },
+    { header: c.refundExecutionState, cell: (a) => a.refundExecution
+      ? [a.refundExecution.status, a.refundExecution.phase, a.refundExecution.errorCode].filter(Boolean).join(" / ")
+      : "—", className: "whitespace-normal" },
     { header: c.colVerdict, cell: (a) => a.verdict ?? "—", className: "whitespace-normal", width: "20rem" },
     {
       header: c.colActions,
@@ -212,7 +217,7 @@ function FinanceInner() {
             size="sm"
             onClick={async () => {
               const ok = await confirm({
-                title: fill(c.confirmBackTitle, { no: a.afterSaleNo }),
+                title: fill(c.confirmBackTitle, { no: a.documentNo ?? "" }),
                 desc: fill(c.confirmBackDesc, { amount: money(a.refundMinor) }),
                 danger: true, confirmText: c.confirmBackOk,
               });
@@ -259,7 +264,7 @@ function FinanceInner() {
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={settleStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
-            columns={settleColumns} rows={settlements.data?.records ?? []} loading={settlements.isLoading}
+            columns={settleColumns} rows={(settlements.data?.records ?? []).filter((row) => !documentSearch || row.documentNo === keyword.trim())} loading={settlements.isLoading}
             error={settlements.error} onRetry={() => settlements.refetch()}
             rowKey={(s) => s.settleNo}
             empty={c.emptySettle}
@@ -286,12 +291,6 @@ function FinanceInner() {
           </HelpNote>
           <DataTable
             columns={backColumns}
-            /*
-             * `?? []` 而不是直接传：这条端点后端还没有（refund-split-backs 整域未开工，
-             * 见 ops-endpoint-exists 的 UNBUILT_DOMAINS），真接口下拿到的是 404 的错误响应，
-             * 直接传给表格就是 `rows.filter is not a function` —— **整页崩**，
-             * 而它本该只是这一个 tab 显示空态。
-             */
             rows={backs.data ?? []} loading={backs.isLoading}
             error={backs.error} onRetry={() => backs.refetch()}
             rowKey={(a) => a.afterSaleNo}

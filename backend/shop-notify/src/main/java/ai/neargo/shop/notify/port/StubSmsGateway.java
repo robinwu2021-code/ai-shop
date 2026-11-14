@@ -1,6 +1,7 @@
 package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.SendResult;
+import ai.neargo.shop.common.otp.OtpScenes;
 import ai.neargo.shop.spi.notify.SmsPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,14 @@ public class StubSmsGateway implements SmsPort {
 
     /** @param code 验证码明文。**只在桩里保留**。来单短信这里放的是「单号|金额」 */
     public record Sent(String phone, String code) {
+    }
+
+    @Override public void requireOtpScene(String scene) {
+        if (!OtpScenes.ALL.contains(scene)) throw new SmsException("otp_scene_unconfigured", false);
+    }
+    @Override public SendResult sendOtpForScene(String phone, String code, String scene, String bizType, String operatorNo) {
+        requireOtpScene(scene);
+        return sendOtp(phone, code);
     }
 
     @Override

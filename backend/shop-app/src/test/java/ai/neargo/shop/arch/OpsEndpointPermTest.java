@@ -67,6 +67,7 @@ class OpsEndpointPermTest {
      */
     private static final Map<String, String> ANY_OPERATOR = new TreeMap<>(Map.ofEntries(
             Map.entry("/ops/auth/login", "登录本身。要权限才能登录是个死循环"),
+            Map.entry("/ops/auth/login/verify", "登录第二步（邮箱验证码）—— 此时同样还没有会话"),
             Map.entry("/ops/auth/forgot", "找回密码 —— 此时他还没有会话"),
             Map.entry("/ops/auth/reset", "重置密码，凭邮件/短信里的令牌，不凭会话权限"),
             Map.entry("/ops/captcha", "图形验证码，登录前就要取"),
@@ -206,7 +207,7 @@ class OpsEndpointPermTest {
                 if (!path.startsWith("/ops")) {
                     continue;
                 }
-                out.merge(path, guardedNear(lines, i), (a, b) -> a || b);
+                out.merge(path, guardedNear(lines, i) || operatorInBody(lines, i), (a, b) -> a || b);
             }
         }
         return out;
@@ -233,6 +234,26 @@ class OpsEndpointPermTest {
             }
             if (lines[j].strip().endsWith("}")) {
                 break;   // 上一个方法结束了
+            }
+        }
+        return false;
+    }
+
+    private static final Pattern OPERATOR_CALL =
+            Pattern.compile("context\\.operator\\(\"[a-z][a-z:_-]*\"\\)");
+
+    /**
+     * 商城可移植 starter 不依赖宿主的 Spring Security，不挂 {@code @PreAuthorize}：
+     * 方法体里调 {@code context.operator("commerce:…")}，宿主按实时会话与库里的功能点判权，判不过直接 403。
+     * 只读本方法体（撞到下一个 Mapping 就停），与 scripts/gen-perm-endpoint-matrix.mjs 同一规则。
+     */
+    private static boolean operatorInBody(String[] lines, int at) {
+        for (int j = at + 1; j < lines.length; j++) {
+            if (MAPPING.matcher(lines[j]).find()) {
+                return false;
+            }
+            if (OPERATOR_CALL.matcher(lines[j]).find()) {
+                return true;
             }
         }
         return false;

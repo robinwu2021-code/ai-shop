@@ -82,6 +82,19 @@ class JobHandlerEndpointTest {
     }
 
     @Test
+    void 独立调度器打进来的任务_任务体里调支付时来源端是JOB_上游接口是handler名() {
+        // M2.7 按来源端 JOB 抽样补偿查单：生产的任务都走这条路，不绑就全记成 UNKNOWN、抽样认不出来
+        AtomicReference<ai.neargo.shop.spi.pay.CallSource> inside = new AtomicReference<>();
+        endpointOf(handler("demo", in -> {
+            inside.set(ai.neargo.shop.spi.pay.CallSources.current());
+            return JobResult.ok("ok");
+        })).run("demo", TOKEN, new JobHandlerEndpoint.RunReq("r1", "CRON", null, Map.of()));
+
+        assertThat(inside.get().originClient()).isEqualTo(ai.neargo.shop.spi.pay.CallSources.JOB);
+        assertThat(inside.get().originApi()).isEqualTo("demo");
+    }
+
+    @Test
     void 令牌对了才拿得到声明() {
         ResponseEntity<List<JobDeclaration>> r =
                 endpointOf(handler("demo", in -> JobResult.ok("ok"))).declarations(TOKEN);

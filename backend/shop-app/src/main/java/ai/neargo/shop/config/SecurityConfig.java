@@ -11,7 +11,14 @@ import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
 import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
+import ai.neargo.shop.auth.RequestMetaFilter;
+import ai.neargo.shop.pay.api.guard.PortalFace;
+import ai.neargo.shop.pay.api.guard.core.GuardFilters;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.platform.AppVersionService;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -159,8 +166,12 @@ public class SecurityConfig {
     @Profile("api")
     @Order(1)
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
-                                      ObjectProvider<BizIdentityResolver> resolver) throws Exception {
-        return http
+                                      ObjectProvider<BizIdentityResolver> resolver,
+                                      ObjectProvider<BizContextFilter.Admission> admission,
+                                      GuardFilters portalFilters,
+                                      ObjectProvider<AppVersionService> appVersions,
+                                      ObjectProvider<ObjectMapper> json) throws Exception {
+        http
                 .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())          // 无 cookie 会话，CSRF 不适用
@@ -176,7 +187,9 @@ public class SecurityConfig {
                          * 要求先登录才能登录是个死循环。
                          */
                         .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
-                                "/biz/auth/otp/send").permitAll()
+                                "/biz/auth/otp/send", "/biz/auth/email-otp/send",
+                                "/biz/auth/identities", "/biz/auth/identities/enter",
+                                "/biz/auth/captcha/challenge", "/biz/auth/captcha/verify").permitAll()
                         // 异步与错误分派放行 —— 理由见 operatorChain 同一行的注释
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .anyRequest().authenticated())
@@ -190,10 +203,23 @@ public class SecurityConfig {
                 .addFilterBefore(new MerchantTokenAuthFilter(tokenStore),
                         UsernamePasswordAuthenticationFilter.class)
                 // BizContextFilter 必须在认证之后：它要用登录态去解析经营侧作用域
-                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE)),
+                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE), admission.getIfAvailable()),
                         MerchantTokenAuthFilter.class)
-                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
-                .build();
+                // 商家端支付（/biz/pay/**，ADR-044 BIZ 面）：复用上面认好的商家会话，接入层只做请求记录与「必须是商家令牌」。
+                // 其它 /biz 路径它不碰（过滤器按入口前缀自判）
+                .addFilterAfter(portalFilters.forEntry(PortalFace.BIZ), BizContextFilter.class)
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()));
+        /*
+         * 旧版本写入被拒（TDD-商户App问题回报与版本 V7）：认证之后、选店之前判 —— 旧包的写请求
+         * 不该先撞上门店准入（70006）再被告知升级。只认请求头，不带头的请求一律放行。
+         * 用 ObjectProvider 与上面两个一样：只装了安全链的切片测试里没有版本策略，那里退回不拦。
+         */
+        AppVersionService versions = appVersions.getIfAvailable();
+        ObjectMapper mapper = json.getIfAvailable();
+        if (versions != null && mapper != null) {
+            http.addFilterBefore(new ClientVersionGateFilter(versions, mapper), BizContextFilter.class);
+        }
+        return http.build();
     }
 
     /**
@@ -235,7 +261,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(reg -> reg
                         // 忘记密码的两条同样免鉴权：忘了密码自然登不进来。
                         // 安全性靠邮件里那个一次性令牌，以及「账号不存在也返回成功」
-                        .requestMatchers("/ops/auth/login", "/ops/auth/forgot",
+                        .requestMatchers("/ops/auth/login", "/ops/auth/login/verify", "/ops/auth/forgot",
                                 "/ops/auth/reset").permitAll()
                         /*
                          * **异步与错误分派放行。** 不放的话，SSE（/ops/stream）每次到点
@@ -257,6 +283,113 @@ public class SecurityConfig {
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
                 // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
+                .build();
+    }
+
+    /**
+     * 渠道回调（安全规范 §2.4 / §5.1，G11）：此前 {@code /pay/callback/**} 不匹配任何链，安全全靠 controller 自己。
+     * 现在给它一条显式的链：无会话、不认 Bearer、放行到 controller（可信靠验签 + 主动查单）；**不开 CORS**（服务端对服务端）；
+     * 用 {@link ai.neargo.shop.auth.RequestMetaFilter} 设可信来源 IP（{@code ClientMeta}），回调记录里的 IP 不再取客户端自报的头。
+     * 验签在链上的渠道回调守卫里（开发计划 M4），controller 只回查与入账。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(5)
+    SecurityFilterChain channelCallbackChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher("/pay/callback/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new ai.neargo.shop.auth.RequestMetaFilter("CHANNEL"),
+                        org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                // 渠道回调守卫（开发计划 M4）：先落原文 → 验签 → 核对收款商户，不过回 FAIL、不进 controller
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CALLBACK),
+                        org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * 开放 API（ADR-044；安全规范 §5.1）：{@code /open/pay/**} 只认 AppId + 签名，由支付接入层的鉴权过滤器认人 ——
+     * 认不出就 401、请求不进 controller，并写一行请求记录。不认 Bearer、无会话、<b>不开 CORS</b>（服务端对服务端），
+     * 来源 IP 经 {@code ClientMeta}。Spring Security 这一层全放行：鉴权在链上的过滤器里已经做完。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(6)
+    SecurityFilterChain openPayChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.OPEN.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new RequestMetaFilter("PARTNER"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.OPEN), SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * POS 终端（pay-guard TDD §2.2 C；开发计划 M6.2）：{@code /terminal/pay/**} 只认终端号 + 设备密钥签名，由接入守卫的
+     * {@code TerminalGuard} 认人（激活接口除外：凭一次性激活码）—— 认不出就 401、不进 controller，并写请求记录。
+     * 与开放 API 同形：无会话、不开 CORS（设备对服务端），Spring Security 这一层全放行。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(9)
+    SecurityFilterChain terminalPayChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.TERMINAL.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new RequestMetaFilter("POS"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.TERMINAL), SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * 收银台（安全规范 §2.5）：顾客不登录也能付，凭证是路径里的收银令牌 / 码号，由收银台服务逐次校验；过滤器照样记请求（令牌只留哈希前缀）。
+     * <b>不开 CORS</b>（同源）；{@code X-Frame-Options: DENY} 防被套进别人页面诱导支付；{@code Referrer-Policy: no-referrer}
+     * 防令牌经 Referer 外泄；{@code Cache-Control: no-store}。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(7)
+    SecurityFilterChain checkoutChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.CHECKOUT.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(h -> h.frameOptions(f -> f.deny())
+                        .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
+                .addFilterBefore(new RequestMetaFilter("H5"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * 支付运营端（ADR-044 OPS 面；安全规范 §2.7）：与 {@code /ops/**} 同一套运营会话与 RBAC（权限码 {@code pay:*}），
+     * 仅 ops 部署装配；接入层过滤器在令牌过滤器之后写请求记录。nginx 侧与运营前端同一份白名单（G1）。
+     */
+    @Bean
+    @Profile("ops")
+    @Order(8)
+    SecurityFilterChain payOpsChain(HttpSecurity http, TokenStore tokenStore,
+                                    ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver,
+                                    GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.OPS.prefix() + "/**")
+                .cors(c -> c.configurationSource(corsSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(reg -> reg
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(portalFilters.forEntry(PortalFace.OPS), OperatorTokenAuthFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }

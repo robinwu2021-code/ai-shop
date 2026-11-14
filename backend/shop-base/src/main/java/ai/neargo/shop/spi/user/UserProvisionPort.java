@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.user;
 
+import java.util.Optional;
+
 /**
  * trade → user：<b>按手机号确保有一个账号</b>。
  *
@@ -21,4 +23,7 @@ public interface UserProvisionPort {
      * @return 该手机号对应的 userNo；没有账号时**新建一个**
      */
     String ensureUserByPhone(String phone);
+
+    /** Resolve an existing, verified email owner; does not create identities or issue tokens. */
+    default Optional<String> registeredUserByEmail(String email) { throw new UnsupportedOperationException(); }
 }

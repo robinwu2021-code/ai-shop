@@ -20,6 +20,10 @@ import ai.neargo.shop.payclient.EntitlementReconciliationAppService;
 import ai.neargo.shop.payclient.EntitlementLifecycleAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
+import ai.neargo.shop.spi.trade.PricingFundingCapabilities;
+import ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers;
+import ai.neargo.shop.numbering.DocumentNumberService;
+import ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort;
 import ai.neargo.shop.payclient.port.RemoteEntitlementCapabilityPort;
 import ai.neargo.shop.pay.migration.service.EntitlementOwnerRegistryService;
 import ai.neargo.shop.payclient.port.RemoteEntitlementOwnerRegistryPort;
@@ -97,6 +101,7 @@ class EntitlementRuntimeRoutingTest {
                 .withBean(EntitlementExceptionService.class, () -> mock(EntitlementExceptionService.class))
             .withBean(EntitlementExceptionRecoveryService.class, () -> mock(EntitlementExceptionRecoveryService.class))
             .withBean(StoredValueRechargeService.class, () -> mock(StoredValueRechargeService.class))
+            .withBean(StoredValueCustomerBindingPort.class, () -> mock(StoredValueCustomerBindingPort.class))
             .withBean(StoredValueCreditService.class, () -> mock(StoredValueCreditService.class))
             .withBean(StoredValueQueryService.class, () -> mock(StoredValueQueryService.class))
             .withBean(StoredValueRedemptionService.class, () -> mock(StoredValueRedemptionService.class))
@@ -112,6 +117,8 @@ class EntitlementRuntimeRoutingTest {
             .withBean(SvRechargeMapper.class, () -> mock(SvRechargeMapper.class))
             .withBean(PaymentMapper.class, () -> mock(PaymentMapper.class))
             .withBean(EntitlementUseWriter.class, () -> mock(EntitlementUseWriter.class))
+            .withBean(PayRightsDocumentNumbers.class, () -> mock(PayRightsDocumentNumbers.class))
+            .withBean("payDocumentNumbers", DocumentNumberService.class, () -> mock(DocumentNumberService.class))
             .withBean(EntitlementSourceFence.class, () -> mock(EntitlementSourceFence.class))
             .withBean(PayEntOutboxMapper.class, () -> mock(PayEntOutboxMapper.class))
             .withBean(PayEntitlementEventBridgePort.class, () -> mock(PayEntitlementEventBridgePort.class))
@@ -134,6 +141,14 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c.getBean(EntitlementMigrationAppService.class)).isInstanceOf(EntitlementMigrationAppServiceImpl.class);
             assertThat(c).hasSingleBean(PayEntitlementOutboxRelay.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isNotInstanceOf(RemoteEntitlementUsePort.class);
+            c.getBean(PayEntitlementProperties.class).getEntitlement().getUse().setEnabled(true);
+            c.getBean(PayEntitlementProperties.class).getStoredValue().setEnabled(true);
+            assertThat(c.getBean(EntitlementCapabilityPort.class).pricing(new PricingFundingCapabilities.Scope(
+                    "MAIN", "E", "S", "CORE", "ORDER_USE", "CNY")).status())
+                    .isEqualTo(PricingFundingCapabilities.Status.SUPPORTED);
+            assertThat(c.getBean(StoredValueCapabilityPort.class).pricing(new PricingFundingCapabilities.Scope(
+                    "MAIN", "E", "S", "CORE", "SERVICE_USE", "CNY")).status())
+                    .isEqualTo(PricingFundingCapabilities.Status.SUPPORTED);
         });
         runner.withPropertyValues("shop.pay.deployment=standalone").run(c -> {
             assertThat(c).hasSingleBean(EntitlementLifecycleAppService.class)

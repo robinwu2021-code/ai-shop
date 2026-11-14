@@ -17,6 +17,27 @@ import java.util.Map;
  * 所以路由那边按<b>同类取最优</b>合并（既有口径），而不是相加。
  */
 public interface ActivityPricingService {
+    /**
+     * Reject unsupported scoped offers without evaluating cashier or fabricated guest audiences.
+     */
+    void rejectUnsupportedCounterChoices(
+            List<CampaignPort.MerchantAmount> groups, Map<String, String> choices);
+
+    void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos);
+
+    /** A combined-owner evaluation supplies one captured wall clock after acquiring its durable fence. */
+    void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices, long ownerNowMillis);
+
+    /** Mandatory purchased-goods effects remain forbidden for AUTO, NONE and explicit selections. */
+    void rejectUnsupportedCounterPriceEffects(List<CampaignPort.MerchantAmount> groups, long ownerNowMillis);
+
+    /** The same minimum-price algorithm checks only winning ordinary checkout price sources. */
+    Map<String, Long> ordinaryFlashPrices(
+            String buyerNo, Collection<String> goodsNos, Map<String, Long> competingPrices);
+
+    /** Validate selected local activity rules and hold their roots when called by checkout. */
+    void requireOrdinarySelection(String buyerNo, CampaignPort.Discount selected);
 
     /**
      * 按商家算自动优惠。
@@ -48,8 +69,39 @@ public interface ActivityPricingService {
     /** 限时特价：这些商品此刻的活动价。只含命中的 */
     Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos);
 
+    /** Selected local price sources with the same ordinary-checkout trigger checks as the price engine. */
+    Map<String, CampaignPort.PriceOffer> flashOffers(String userNo, Collection<String> goodsNos,
+            Map<String, Long> competingPrices, boolean ordinary);
+
     /** 买赠：这些商品此刻的「买 N 送 M」。只含命中的 */
     Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos);
+
+    /**
+     * 限时特价：这些商品此刻<b>是哪个活动</b>给的价（与 {@link #flashPrices} 同一取法：取最低价那个）。
+     * 下单扣特价的限量要知道扣哪个活动的。只含命中的。
+     */
+    Map<String, String> flashActivityOf(String userNo, Collection<String> goodsNos);
+
+    /** 买赠：这些商品此刻是哪个活动在送（与 {@link #giftRules} 同一取法：送得最多那个）。只含命中的 */
+    Map<String, String> giftActivityOf(String userNo, Collection<String> goodsNos);
+
+    /**
+     * 限时特价 / 买赠这一单用掉的份数。
+     *
+     * <p>这两种的优惠不在 {@code discounts.auto()} 里（特价改的是商品价、赠品是加行），于是从不走 {@link #commit}：
+     * 保存时强制要求的限量（{@code ACTIVITY_QUOTA_REQUIRED}）此前从没被扣过，算价那边的
+     * {@code hasQuotaLeft} 也就永远为真 —— 「限量 100 份」等于不限。
+     *
+     * <p>与 {@link #commit} 同一口径：<b>带条件的累加</b>（{@code quota_used + qty <= quota}），抢不到不抛、
+     * 照样记一行标 {@code QUOTA_OVERRUN}；扣中的每一份记一行 {@code pmt_apply}（金额 0 —— 优惠在价里，
+     * 不进订单优惠额），取消订单时 {@link #release} 按行退。同一单同一活动重复调用不重复扣。
+     *
+     * @param qty 份数。份 = 单（「份数」的界面口径），调用方一单一个活动传 1
+     * @param amountMinor 冻结的实际让利，只占活动预算，不再进入订单抵扣金额
+     * @return 扣中了没有（false = 超发）
+     */
+    boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo,
+            int qty, long amountMinor);
 
     /**
      * 下单之后扣限量。<b>带条件的 UPDATE</b>：

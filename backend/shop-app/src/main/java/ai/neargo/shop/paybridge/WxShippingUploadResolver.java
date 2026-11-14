@@ -21,6 +21,12 @@ import java.util.Objects;
 /** Payer comes from the original successful payment; mapped package material comes from its frozen queue revision. */
 @Component
 public class WxShippingUploadResolver {
+    /**
+     * 微信只认 {@code delivery_id}，那只是大陆表（TDD-商户App快递公司 E4）。台湾码不是微信码，
+     * 固定按大陆口径判，不按订单市场 —— 台湾单本来就不该进微信上报。
+     */
+    private static final String WECHAT_MARKET = "CN";
+
     private final StoreOrderMapper subOrders;
     private final OrderItemMapper items;
     private final PaymentLedgerService ledger;
@@ -54,7 +60,7 @@ public class WxShippingUploadResolver {
         List<OrdSubOrder> legacy = DataScopeContext.executeWithoutScope(() -> subOrders.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, row.getOrderNo())));
         OrdSubOrder shipped = legacy.stream().filter(s -> !blank(s.getExpressNo())).findFirst().orElse(null);
-        if (shipped == null || !ExpressCompanies.isValid(shipped.getExpressCompany())) {
+        if (shipped == null || !ExpressCompanies.isValidFor(WECHAT_MARKET, shipped.getExpressCompany())) {
             return Material.missing("存量快递单缺运单号或可识别的承运商编码");
         }
         return new Material(desc, shipped.getExpressNo(), shipped.getExpressCompany(), openid, null);
@@ -68,7 +74,7 @@ public class WxShippingUploadResolver {
         if (frozen.shipments().isEmpty()) { return Material.missing("没有实际已发出的快递包裹"); }
         for (WxShippingPort.ShippingItem item : frozen.shipments()) {
             if (blank(item.itemDesc()) || blank(item.trackingNo())
-                    || !ExpressCompanies.isValid(item.expressCompany())) {
+                    || !ExpressCompanies.isValidFor(WECHAT_MARKET, item.expressCompany())) {
                 return Material.missing("已发出包裹缺商品描述、运单号或有效承运商");
             }
         }

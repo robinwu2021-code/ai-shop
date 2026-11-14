@@ -20,6 +20,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Recipient resolution follows current owner/IAM facts; retrying delivery never calls an entitlement command. */
 @Component
 public class EntitlementExceptionNotificationSubscriber implements OutboxConsumer {
+    @Override public String handlerId() { return "entitlement-exception-notification"; }
+
     private final MessageService messages;
     private final MerchantStaffPort merchants;
     private final OpsStaffPort operations;

@@ -3,12 +3,12 @@ package ai.neargo.shop.print.channel;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.channel.font.*;
-import ai.neargo.shop.print.channel.pdf.*;
-import ai.neargo.shop.print.channel.storage.*;
-import ai.neargo.shop.print.layout.*;
-import ai.neargo.shop.print.support.*;
-import ai.neargo.shop.print.template.*;
+import ai.neargo.shop.print.channel.port.font.*;
+import ai.neargo.shop.print.channel.port.pdf.*;
+import ai.neargo.shop.print.channel.port.storage.*;
+import ai.neargo.shop.printing.center.layout.*;
+import ai.neargo.shop.printing.center.support.*;
+import ai.neargo.shop.printing.center.template.*;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;

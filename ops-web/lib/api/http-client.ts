@@ -2,6 +2,7 @@
 // 契约口径见 lib/types/common.ts（{code,msg,data}），与 C 端一致。
 import { pointsAcceptLanguage } from "../points-language";
 import { currentAuth, refreshPerms, scopeOf, useAuth } from "../auth";
+import { loginReturnHref, readSharedToken } from "../auth/ops-bridge";
 import { notify } from "../notify";
 import type { Result } from "../types";
 import { ApiError } from "./error";
@@ -72,7 +73,7 @@ function onUnauthorized(): void {
   const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const login = `${BASE}/login`;
   if (!window.location.pathname.startsWith(login)) {
-    window.location.href = login;
+    window.location.href = `${BASE}${loginReturnHref(window.location)}`;
   }
 }
 
@@ -98,18 +99,21 @@ function onForbidden(): void {
 
 async function req<T>(base: string, path: string, init?: RequestInit): Promise<T> {
   let r: Response;
+  const requestHeaders = { ...headers(path), ...init?.headers };
+  const requestToken = new Headers(requestHeaders).get("Authorization")?.replace(/^Bearer /i, "") ?? null;
   try {
-    r = await fetch(`${base}${path}`, { ...init, headers: { ...headers(path), ...init?.headers } });
+    r = await fetch(`${base}${path}`, { ...init, headers: requestHeaders });
   } catch {
     throw new ApiError(-1, translate(curLocale(), "error.network")); // 网络层失败
   }
   const body = (await r.json().catch(() => ({}))) as Partial<Result<T>>;
-  if (r.status === 401) {
-    onUnauthorized();
-  }
-  if (r.status === 403) {
-    onForbidden();
-  }
+  let shared: string | null = null;
+  try { if (typeof window !== "undefined") shared = readSharedToken(window.sessionStorage); } catch { /* disabled storage */ }
+  // An old persisted A request can settle while shared B is being verified.
+  // Its error still reaches the caller, but must not invalidate the newer identity.
+  const belongsToCurrentSession = requestToken === (currentAuth()?.token || null) && (!shared || shared === requestToken);
+  if (r.status === 401 && belongsToCurrentSession) onUnauthorized();
+  if (r.status === 403 && belongsToCurrentSession) onForbidden();
   if (!r.ok || (body.code !== undefined && body.code !== 0)) {
     // 后端已本地化 msg 优先；否则用状态码映射的 i18n 文案
     const msg = body.msg || translate(curLocale(), statusKey(r.status));
@@ -129,8 +133,15 @@ function makeClient(base: string) {
    * （`gen-openapi` 与 `check-ops-contract`）把带查询串的整串当成路径去比对后端注册，
    * 比不上就报「后端没有这个接口」。**路径要保持字面量**，可变部分交给这里。
    */
+  /*
+   * `data` 是 Blob（图片凭证）时**原样发字节**，Content-Type 取 Blob 自己的类型 ——
+   * 商城线下凭证上传 `evidence/content` 收的是 image/jpeg|png 请求体，不是 JSON，
+   * 也不是 multipart。包成 JSON 的话后端拿到的是 `{}`。
+   */
   post: <T>(path: string, data?: unknown, q?: object, requestHeaders?: Record<string, string>) =>
-    req<T>(base, `${path}${qs(q)}`, { method: "POST", body: JSON.stringify(data ?? {}), headers: requestHeaders }),
+    req<T>(base, `${path}${qs(q)}`, data instanceof Blob
+      ? { method: "POST", body: data, headers: { "Content-Type": data.type || "application/octet-stream", ...requestHeaders } }
+      : { method: "POST", body: JSON.stringify(data ?? {}), headers: requestHeaders }),
   put: <T>(path: string, data?: unknown) => req<T>(base, path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
   };
 }

@@ -11,12 +11,12 @@
 //   积分账 pts_voucher → pts_ledger_entry / pts_pool_flow
 //         ord_points_binding → ord_sub_order；售后决策 → ord_points_refund_binding
 //   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { readColumnNames, readSchema as readDdlSchema } from "../../../scripts/lib/ddl.mjs";
+// @ts-expect-error -- shared pure JavaScript lineage API
+import { KEY_OWNERS, TABLE_KEY_OWNERS, NAME_COLLISIONS, COLLISION_MEMBERS, relations, resolveReference, columnBadge, unclassifiedBusinessKeys, describeRelation } from "../../../scripts/lib/schema-lineage.mjs";
 import { join } from "node:path";
-// @ts-expect-error -- Shared schema metadata is an .mjs module.
-import { KEY_OWNER_DEFINITIONS as KEY_OWNERS, NAME_COLLISIONS } from "../../../scripts/lib/schema-keys.mjs";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
@@ -123,6 +123,36 @@ const LINEAGE: Hop[] = [
 
 describe("对账血缘", () => {
   const schema = readSchema();
+  const tables = readDdlSchema(ROOT);
+
+  it("manual execution uses scoped original owner relations without changing existing task/grant owners", () => {
+    const unit = resolveReference(tables, "ord_service_execution", "unit_no");
+    expect(unit?.to).toBe("ord_service_execution_unit");
+    expect(unit?.scope).toEqual([
+      { from: "tenant_no", to: "tenant_no" }, { from: "entity_no", to: "entity_no" },
+      { from: "store_no", to: "store_no" },
+    ]);
+    expect(resolveReference(tables, "ord_service_execution_unit", "source_line_no")?.to)
+      .toBe("ord_checkout_line");
+    expect(resolveReference(tables, "ord_service_execution_action", "execution_no")?.to)
+      .toBe("ord_service_execution");
+    expect(resolveReference(tables, "ord_service_execution_unit", "task_no")).toBeNull();
+    expect(KEY_OWNERS.task_no.table).toBe("notify_push_task");
+    expect(resolveReference(tables, "mbr_reach_log", "task_no")?.to).toBe("notify_push_task");
+    expect(relations(tables).some((r: any) => r.from === "ord_service_execution_unit"
+      && r.to === "notify_push_task")).toBe(false);
+    expect(resolveReference(tables, "ent_sale_reservation", "grant_no")?.to).toBe("ent_grant");
+    expect(resolveReference(tables, "ord_service_execution", "grant_no")).toBeNull();
+  });
+
+  it("共用人员键归属明确且不把账号关联或岗位编号误连到其他业务", () => {
+    expect(KEY_OWNERS.personnel_no).toEqual({ table: "mch_personnel" });
+    expect(KEY_OWNERS.assignment_no).toEqual({ table: "mch_personnel_store" });
+    expect(NAME_COLLISIONS.link_no).toContain("人员");
+    expect(NAME_COLLISIONS.position_no).toContain("岗位");
+    expect(schema.get("mch_personnel_store")?.has("personnel_no")).toBe(true);
+    expect(schema.get("mch_personnel_position")?.has("assignment_no")).toBe(true);
+  });
 
   it("解析到了迁移 —— 解析失效时不能静默通过", () => {
     // 正则解析最坏的失败方式是「一张表都没抽到」却报绿
@@ -152,18 +182,7 @@ describe("对账血缘", () => {
   it("新出现的跨表同名业务键必须被分类", () => {
     if (!schema.size) return;
 
-    const byKey = new Map<string, string[]>();
-    for (const [table, cols] of schema) {
-      for (const c of cols) {
-        if (!c.endsWith("_no") || c === "tenant_no") continue;
-        byKey.set(c, [...(byKey.get(c) ?? []), table]);
-      }
-    }
-
-    const unclassified = [...byKey]
-      .filter(([, ts]) => ts.length >= 2)
-      .filter(([k]) => !(k in KEY_OWNERS) && !(k in NAME_COLLISIONS))
-      .map(([k, ts]) => `${k}（出现在 ${ts.join("、")}）`);
+    const unclassified = unclassifiedBusinessKeys(tables);
 
     expect(
       unclassified,
@@ -175,6 +194,15 @@ describe("对账血缘", () => {
     ).toEqual([]);
   });
 
+  it("支付资料原申请键和typed操作人保持各自命名域，不伪造跨族外键", () => {
+    for (const column of ["request_no", "actor_no"]) {
+      expect(COLLISION_MEMBERS[column]).toContain("mch_pay_service_application");
+      expect(resolveReference(tables, "mch_pay_service_application", column)).toBeNull();
+    }
+    expect(NAME_COLLISIONS.request_no).toContain("source_caller/source_scope");
+    expect(NAME_COLLISIONS.actor_no).toContain("actor_realm");
+  });
+
   it("登记的归属真实存在 —— 指向不存在的表或列即失效", () => {
     if (!schema.size) return;
     const broken = Object.entries(KEY_OWNERS)
@@ -184,12 +212,6 @@ describe("对账血缘", () => {
       broken,
       `KEY_OWNERS 里这些归属指向了不存在的表或列：${broken.join("、")}`,
     ).toEqual([]);
-  });
-
-  it("ER generation uses the shared key ownership and collision metadata", () => {
-    const generator = readFileSync(join(ROOT, "scripts/gen-erd.mjs"), "utf8");
-    expect(generator).toMatch(/import\s*\{\s*KEY_OWNERS,\s*NAME_COLLISIONS\s+as\s+NAME_COLLISIONS_WHY\s*\}\s*from\s*["']\.\/lib\/schema-keys\.mjs["']/);
-    expect(generator).not.toMatch(/(?:const|let)\s+KEY_OWNERS\s*=/);
   });
 
   it("登记的同名冲突仍然存在 —— 解决了要删登记", () => {
@@ -217,11 +239,320 @@ describe("对账血缘", () => {
     const inH2 = new Set(
       [...h2.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)].map((m) => m[1]!),
     );
-    const onlyJs = [...schema.keys()].filter((t) => !inH2.has(t));
-    const onlyPy = [...inH2].filter((t) => !schema.has(t));
+    // The application H2 fixture replays core first, then the pay Flyway history.
+    // Compare the same two inputs here; the lineage ownership checks above remain
+    // scoped to their original core history, as before this combined fixture existed.
+    const payHistory = "backend/pay/pay-domain/src/main/resources/db/pay";
+    expect(existsSync(join(ROOT, payHistory)), "pay Flyway history must exist for the combined fixture").toBe(true);
+    // W5 密钥模块（db/secret）同样接在后面重放
+    const secretHistory = "backend/secret/secret-store/src/main/resources/db/secret";
+    const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory,
+      ...(existsSync(join(ROOT, secretHistory)) ? [secretHistory] : [])]) as Map<string, { cols: string[] }>;
+    // Exact native-owner omissions belong to the shared H2 policy, never an ad hoc table exemption.
+    const projectionPolicy = JSON.parse(readFileSync(join(ROOT, "backend/scripts/h2-fixture-policy.json"), "utf8"));
+    const nativeAbsent = new Set<string>(projectionPolicy.entries
+      .filter((entry: any) => entry.datasource === "PRIMARY"
+        && ["NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"].includes(entry.mode))
+      .flatMap((entry: any) => entry.absentTables));
+    const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t) && !nativeAbsent.has(t));
+    const onlyPy = [...inH2].filter((t) => !fixtureSchema.has(t));
+    const unexpectedNative = [...nativeAbsent].filter((t) => inH2.has(t));
     expect(
-      { onlyJs, onlyPy },
-      "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
-    ).toEqual({ onlyJs: [], onlyPy: [] });
+      { onlyJs, onlyPy, unexpectedNative },
+      "JS 与 python 解析出的表集合或原生 owner 缺席策略不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
+    ).toEqual({ onlyJs: [], onlyPy: [], unexpectedNative: [] });
+  });
+  const tenant = [{ from: "tenant_no", to: "tenant_no" }];
+  const ref = (from: string, col: string, to: string, toCol = col, scope = tenant) => ({ from, col, to, toCol, scope });
+  const byColumn = (col: string) => relations(tables).filter((r: any) => r.col === col);
+
+  // A global marketing owner would fabricate checkout edges and lose tenant scope.
+  it("quote_no 保留营销、统一定价、结算与渠道四族的限定关系", () => {
+    expect(byColumn("quote_no")).toEqual([
+      ref("mkt_quote_revision", "quote_no", "mkt_quote"),
+      ref("ord_price_quote_line", "quote_no", "ord_price_quote"),
+      ref("ord_price_quote_allocation", "quote_no", "ord_price_quote"),
+      ref("ord_pricing_funding_source", "quote_no", "ord_price_quote"),
+      ref("ord_industry_order_source", "quote_no", "ord_price_quote"),
+      ref("ord_checkout_confirmation", "quote_no", "ord_checkout_quote"),
+      ref("ord_channel_import", "quote_no", "ord_channel_quote", "quote_no", [
+        ...tenant, { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" },
+        { from: "admission_no", to: "admission_no" },
+      ]),
+    ]);
+  });
+
+  it.each([
+    ["prn_route_version", "route_no", "prn_route_catalog", "route_no"],
+    ["prn_request", "policy_version_no", "prn_policy_version", "policy_version_no"],
+    ["sv_recharge", "plan_no", "sv_recharge_plan", "plan_no"],
+    ["sv_statement", "plan_no", "sv_recharge_plan", "plan_no"],
+    ["ord_pricing_template", "active_revision_no", "ord_pricing_template_revision", "revision_no"],
+    ["ord_store_pricing_config", "active_revision_no", "ord_store_pricing_revision", "revision_no"],
+  ])("统一新增关系 %s.%s 保留真实目标列及 tenant", (from, col, to, toCol) => {
+    expect(resolveReference(tables, from, col)).toEqual(ref(from, col, to, toCol));
+  });
+
+  it("统一打印及品牌角色键归属不因抽取 resolver 而丢失", () => {
+    expect(KEY_OWNERS.active_job_no).toEqual({ table: "prn_job", col: "job_no" });
+    expect(KEY_OWNERS.from_brand_no).toEqual({ table: "mch_brand", col: "brand_no" });
+    expect(KEY_OWNERS.to_brand_no).toEqual({ table: "mch_brand", col: "brand_no" });
+    expect(KEY_OWNERS.collection_entity_no).toEqual({ table: "mch_entity", col: "entity_no" });
+  });
+
+  it("source_line_no 仅包含结算行实际存在的 scope 列", () => {
+    expect(resolveReference(tables, "ord_service_execution_unit", "source_line_no"))
+      .toEqual(ref("ord_service_execution_unit", "source_line_no", "ord_checkout_line", "source_line_no", [
+        ...tenant, { from: "caller", to: "caller" },
+        { from: "source_operation_no", to: "operation_no" },
+        { from: "sub_order_no", to: "sub_order_no" },
+      ]));
+  });
+
+  it("quote_no 两根不连自身或跨族，结算确认不连营销报价", () => {
+    for (const root of ["mkt_quote", "ord_price_quote", "ord_checkout_quote", "ord_channel_quote"]) {
+      expect(schema.get(root)?.has("quote_no")).toBe(true);
+      expect(resolveReference(tables, root, "quote_no"), root).toBeNull();
+      expect(byColumn("quote_no").filter((r: any) => r.from === root)).toEqual([]);
+      expect(columnBadge(tables, root, "quote_no")).not.toContain('fk');
+    }
+    expect(byColumn("quote_no").filter((r: any) =>
+      (r.from.startsWith("ord_checkout_") && r.to === "mkt_quote") ||
+      (r.from.startsWith("mkt_") && r.to === "ord_checkout_quote")
+    )).toEqual([]);
+  });
+
+  it("仅 operation.current_quote_no 引用 tenant 内结算报价", () => {
+    const expected = ref("ord_checkout_operation", "current_quote_no", "ord_checkout_quote", "quote_no");
+    expect(byColumn("current_quote_no")).toEqual([expected]);
+    expect(resolveReference(tables, "ord_checkout_operation", "current_quote_no")).toEqual(expected);
+    expect(columnBadge(tables, "ord_checkout_operation", "current_quote_no")).toBe('<i class="k fk">FK</i>');
+    const extended = new Map(tables);
+    extended.set("unreviewed_operation", { cols: [{ name: "current_quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_operation", "current_quote_no")).toBeNull();
+    expect(columnBadge(extended, "unreviewed_operation", "current_quote_no")).toBe("");
+  });
+
+  it("quote_no 未审计来源表拒绝分类和 FK，保留 UK 优先", () => {
+    const extended = new Map(tables);
+    extended.set("unreviewed_quote", { cols: [{ name: "quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+    expect(relations(extended).filter((r: any) => r.from === "unreviewed_quote")).toEqual([]);
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe("");
+    expect(unclassifiedBusinessKeys(extended).filter((x: string) => x.startsWith("quote_no（"))).toEqual([
+      `quote_no（出现在 ${[...tables.keys()].filter((table) => COLLISION_MEMBERS.quote_no.includes(table)).concat("unreviewed_quote").join("、")}）`,
+    ]);
+    extended.get("unreviewed_quote").uniques.add("quote_no");
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe('<i class="k uk">UK</i>');
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+  });
+
+  it("voucher_no 保留积分两条与储值三条同族关系且不跨族、不连根、不 self", () => {
+    expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("sv_") && r.to === "pts_voucher"), "stored-value must never reference points voucher").toBe(false);
+    expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("pts_") && r.to === "sv_voucher"), "points must never reference stored-value voucher").toBe(false);
+    expect(byColumn("voucher_no")).toEqual([
+      ref("pts_ledger_entry", "voucher_no", "pts_voucher", "voucher_no", []),
+      ref("pts_pool_flow", "voucher_no", "pts_voucher", "voucher_no", []),
+      ref("sv_entry", "voucher_no", "sv_voucher"),
+      ref("sv_posting_line", "voucher_no", "sv_voucher"),
+      ref("sv_statement", "voucher_no", "sv_voucher"),
+    ]);
+    for (const t of ["pts_voucher", "sv_voucher"]) {
+      expect(resolveReference(tables, t, "voucher_no")).toBeNull();
+    }
+    expect(relations(tables).some((r: any) => r.from === r.to)).toBe(false);
+  });
+
+  it.each([
+    ["pmt_migration_decision", "plan_no", "ent_migration_plan", "plan_no", tenant],
+    ["ent_migration_import", "plan_no", "ent_migration_plan", "plan_no", tenant],
+    ["ent_legacy_coupon_operation", "source_order_no", "ord_order", "order_no", tenant],
+    ["ent_sale_reservation", "grant_no", "ent_grant", "grant_no", tenant],
+    ["pmt_pay_coupon_projection", "grant_no", "ent_grant", "grant_no", tenant],
+    ["ord_checkout_payment_request", "actor_account_no", "mch_account", "mch_account_no", tenant],
+    ["stl_payment_operation", "actor_account_no", "mch_account", "mch_account_no", tenant],
+    ["pmt_activity_reservation", "tier_no", "pmt_recharge_tier", "tier_no", [...tenant, { from: "version_no", to: "version_no" }]],
+    ["prd_store_catalog_version", "catalog_no", "prd_store_catalog", "catalog_no", [...tenant, { from: "entity_no", to: "entity_no" }]],
+  ])("限定正向关系 %s.%s 保留目标列和全部 scope", (from, col, to, toCol, scope) => {
+    const expected = ref(from as string, col as string, to as string, toCol as string, scope as typeof tenant);
+    expect(resolveReference(tables, from, col)).toEqual(expected);
+    expect(relations(tables)).toContainEqual(expected);
+    const uniqueSource = ["pmt_migration_decision", "ent_migration_import", "prd_store_catalog_version"].includes(from as string);
+    expect(columnBadge(tables, from, col)).toBe(uniqueSource ? '<i class="k uk">UK</i>' : '<i class="k fk">FK</i>');
+    const description = describeRelation(expected);
+    expect(description).toContain(`${from}.${col} → ${to}.${toCol}`);
+    for (const pair of scope as typeof tenant) expect(description).toContain(`${from}.${pair.from} = ${to}.${pair.to}`);
+  });
+
+  it("已审计 USER buyer 指 user_no，套餐多态 buyer 不连用户；confirmation 与迁移 return 保留 tenant", () => {
+    expect(byColumn("buyer_no")).toEqual([
+      ref("ord_industry_order_source", "buyer_no", "usr_account", "user_no"),
+      ref("ord_checkout_operation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_checkout_confirmation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_checkout_payment_request", "buyer_no", "usr_account", "user_no"),
+      ref("stl_payment_operation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_manual_service_admission", "buyer_no", "usr_account", "user_no"),
+    ]);
+    expect(resolveReference(tables, "mch_plan_purchase", "buyer_no")).toBeNull();
+    expect(byColumn("confirmation_no")).toEqual([
+      ref("ord_create_intent", "confirmation_no", "ord_checkout_confirmation"),
+      ref("ord_checkout_operation", "confirmation_no", "ord_checkout_confirmation"),
+      ref("ord_service_execution", "confirmation_no", "ord_checkout_confirmation"),
+    ]);
+    expect(byColumn("return_no")).toEqual([ref("ent_migration_return", "return_no", "pmt_migration_return")]);
+  });
+
+  it.each([
+    ["ent_ledger", "instance_no", "ent_instance", "instance_no"],
+    ["ent_use_reversal", "usage_no", "ent_usage", "usage_no"],
+    ["sv_lot", "recharge_no", "sv_recharge", "recharge_no"],
+    ["sv_entry", "lot_no", "sv_lot", "lot_no"],
+    ["pay_ent_exception_action", "exception_no", "pay_ent_exception", "exception_no"],
+    ["pay_ent_recon_diff", "recon_no", "pay_ent_recon_run", "recon_no"],
+    ["ent_migration_plan", "stage_no", "ent_migration_stage", "stage_no"],
+    ["ent_migration_plan", "alias_no", "ent_migration_alias", "alias_no"],
+    ["ent_legacy_coupon_operation", "checkout_no", "ord_legacy_coupon_checkout", "checkout_no"],
+    ["ent_migration_asset", "import_no", "ent_migration_import", "import_no"],
+    ["ent_migration_return", "return_no", "pmt_migration_return", "return_no"],
+    ["ent_legacy_coupon_issue", "target_template_no", "ent_template", "template_no"],
+    ["ent_grant", "template_version_no", "ent_template_version", "version_no"],
+    ["sv_recharge", "activity_version_no", "pmt_activity_version", "version_no"],
+  ])("真实普通/角色引用 %s.%s → %s.%s", (from, col, to, toCol) => {
+    expect(resolveReference(tables, from, col)).toEqual(ref(from, col, to, toCol));
+    expect(relations(tables)).toContainEqual(ref(from, col, to, toCol));
+  });
+
+  it("协议/条件/局部键的每个实际源表均无无条件 FK", () => {
+    const negatives: Record<string, string[]> = {
+      receipt_no: ["stl_payment", "ent_migration_return"],
+      source_event_no: ["sys_outbox", "pmt_effect_projection"],
+      entry_no: ["pts_ledger_entry", "ent_ledger"],
+      line_no: ["prd_stock_alignment_line", "sv_posting_line"],
+      execution_no: ["ord_refund_execution", "ord_refund_obligation"],
+      actor_account_no: ["mch_staff_log"],
+      plan_no: ["pts_topup_plan", "ent_migration_plan"],
+      source_order_no: ["ent_usage"],
+      grant_no: ["ent_instance", "ent_grant"],
+      tier_no: ["pmt_recharge_tier"],
+      catalog_no: ["prd_store_catalog"],
+    };
+    for (const [col, sources] of Object.entries(negatives)) for (const from of sources) {
+      expect(schema.get(from)?.has(col), `${from}.${col} really exists`).toBe(true);
+      expect(resolveReference(tables, from, col), `${from}.${col}`).toBeNull();
+      expect(byColumn(col).filter((r: any) => r.from === from), `${from}.${col}`).toEqual([]);
+      expect(columnBadge(tables, from, col), `${from}.${col}`).not.toContain('fk');
+    }
+  });
+
+  const fixture = (source = ["buyer_no", "tenant_no"], target = ["user_no", "tenant_no"], uniques: string[] = []) => new Map([
+    ["ord_checkout_operation", { cols: source.map(name => ({ name })), uniques: new Set(uniques) }],
+    ["usr_account", { cols: target.map(name => ({ name })), uniques: new Set() }],
+  ]);
+  it("目标角色列及 scope 双方列必须存在；badge 使用同一真实 resolver", () => {
+    for (const f of [fixture(undefined, ["tenant_no"]), fixture(["buyer_no"]), fixture(undefined, ["user_no"]), fixture(["tenant_no"])]) {
+      expect(relations(f)).toEqual([]);
+      expect(columnBadge(f, "ord_checkout_operation", "buyer_no")).toBe("");
+    }
+    expect(relations(fixture())).toEqual([ref("ord_checkout_operation", "buyer_no", "usr_account", "user_no")]);
+    expect(columnBadge(fixture(), "ord_checkout_operation", "buyer_no")).toBe('<i class="k fk">FK</i>');
+    expect(columnBadge(fixture(undefined, undefined, ["buyer_no"]), "ord_checkout_operation", "buyer_no")).toBe('<i class="k uk">UK</i>');
+    expect(columnBadge(fixture(undefined, ["tenant_no"], ["buyer_no"]), "ord_checkout_operation", "buyer_no")).toBe('<i class="k uk">UK</i>');
+  });
+
+  it.each(["unit_no", "action_no", "source_line_no", "source_operation_no", "declaration_no",
+    "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no",
+    "snapshot_no", "legal_entity_no", "occupation_no", "start_command_no", "logical_demand_no",
+    "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no", "request_no", "actor_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
+    const extended = new Map(tables);
+    extended.set("unreviewed_table", { cols: [{ name: col }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_table", col)).toBeNull();
+    expect(columnBadge(extended, "unreviewed_table", col)).toBe("");
+    expect(unclassifiedBusinessKeys(extended).some((x: string) => x.startsWith(`${col}（`) && x.includes("unreviewed_table"))).toBe(true);
+  });
+
+  it("新增占用与品牌键已审计，局部需求及跨族快照不伪造 FK", () => {
+    const debt = unclassifiedBusinessKeys(tables);
+    for (const key of ["quote_no", "snapshot_no", "legal_entity_no", "occupation_no", "start_command_no",
+      "logical_demand_no", "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no"]) {
+      expect(debt.some((entry: string) => entry.startsWith(`${key}（`)), key).toBe(false);
+    }
+    expect(byColumn("snapshot_no")).toEqual([]);
+    expect(byColumn("logical_demand_no")).toEqual([]);
+    for (const source of ["mch_resource_occupation_unit", "mch_resource_occupation_segment", "mch_resource_occupation_bucket"]) {
+      expect(resolveReference(tables, source, "occupation_no")).toEqual(ref(source, "occupation_no", "mch_resource_occupation",
+        "occupation_no", [...tenant, { from: "entity_no", to: "entity_no" }]));
+    }
+    for (const source of ["mch_resource_occupation", "mch_resource_occupation_unit"]) {
+      expect(resolveReference(tables, source, "start_command_no")).toEqual(ref(source, "start_command_no", "mch_resource_command",
+        "command_no", [...tenant, { from: "entity_no", to: "entity_no" }]));
+    }
+    for (const [col, sources] of Object.entries({
+      legal_entity_no: ["mch_brand", "mbr_brand_audience_snapshot"],
+      issuer_entity_no: ["pmt_brand_cost_rule", "pmt_brand_cost_snapshot", "pmt_brand_cost_statement"],
+      expense_entity_no: ["pmt_brand_cost_statement", "pmt_brand_cost_fact"],
+    })) for (const source of sources) {
+      expect(resolveReference(tables, source, col)).toEqual(ref(source, col, "mch_entity", "entity_no"));
+    }
+  });
+
+  it("品牌费用规则版本匹配完整发行范围，任一 scope 列缺失就拒绝关系", () => {
+    const source = "pmt_brand_cost_snapshot", target = "pmt_brand_cost_rule";
+    const scope = [...tenant, ...["management_no", "brand_no", "issuer_entity_no"].map(name => ({ from: name, to: name }))];
+    expect(resolveReference(tables, source, "rule_version_no"))
+      .toEqual(ref(source, "rule_version_no", target, "rule_version_no", scope));
+    for (const table of [source, target]) for (const pair of scope) {
+      const missing = new Map(tables);
+      const def = tables.get(table);
+      missing.set(table, { ...def, cols: def.cols.filter((col: any) => col.name !== pair.from) });
+      expect(resolveReference(missing, source, "rule_version_no"), `${table}.${pair.from}`).toBeNull();
+    }
+  });
+
+  it("全登记 owner 和限定引用目标及 scope 列真实存在", () => {
+    for (const [from, owners] of Object.entries(TABLE_KEY_OWNERS) as [string, Record<string, any>][]) for (const [col, owner] of Object.entries(owners)) {
+      expect(schema.get(from)?.has(col), `${from}.${col}`).toBe(true);
+      expect(schema.get(owner.table)?.has(owner.col ?? col)).toBe(true);
+      for (const pair of owner.scope ?? []) {
+        expect(schema.get(from)?.has(pair.from)).toBe(true);
+        expect(schema.get(owner.table)?.has(pair.to)).toBe(true);
+      }
+    }
+  });
+
+  it("原两条 points LINEAGE 是实际生产关系", () => {
+    for (const from of ["pts_ledger_entry", "pts_pool_flow"]) expect(relations(tables)).toContainEqual(ref(from, "voucher_no", "pts_voucher", "voucher_no", []));
+  });
+
+  it("条件说明保留真实链路及限定语义", () => {
+    expect(NAME_COLLISIONS.source_order_no).toContain("SERVICE_USE");
+    expect(NAME_COLLISIONS.source_order_no).toContain("ord_sub_order.sub_order_no");
+    expect(NAME_COLLISIONS.grant_no).toContain("MIGRATION_BASELINE");
+    expect(NAME_COLLISIONS.grant_no).toContain("ent_migration_asset.baseline_no");
+    expect(NAME_COLLISIONS.execution_no).toContain("PRF-");
+    expect(NAME_COLLISIONS.execution_no).toContain("ord_points_refund_execution");
+    expect(NAME_COLLISIONS.execution_no).toContain("ord_refund_execution");
+  });
+
+});
+
+// The actual parsed coordination table has a discriminator, never a bare scope_no FK.
+describe("shared marketing counter fence lineage", () => {
+  const tables = readDdlSchema(ROOT);
+  it("keeps ENTITY and PLATFORM scope_no conditional on tenant and scope_kind", () => {
+    const columns = tables.get("mkt_counter_campaign_fence")?.cols.map((c: any) => c.name);
+    expect(columns).toEqual(["tenant_no", "scope_kind", "scope_no", "revision"]);
+    expect(KEY_OWNERS.scope_no).toBeUndefined();
+    expect(resolveReference(tables, "mkt_counter_campaign_fence", "scope_no")).toBeNull();
+    expect(relations(tables).filter((r: any) => r.from === "mkt_counter_campaign_fence")).toEqual([]);
+    expect(NAME_COLLISIONS.scope_no).toContain("tenant_no+scope_kind");
+    expect(NAME_COLLISIONS.scope_no).toContain("ENTITY");
+    expect(NAME_COLLISIONS.scope_no).toContain("PLATFORM");
+  });
+  it("rejects an unknown scope_no source instead of granting a global collision exemption", () => {
+    const unknown = new Map(tables);
+    unknown.set("unreviewed_scope_owner", { cols: [{ name: "scope_no" }], uniques: new Set() });
+    expect(unclassifiedBusinessKeys(unknown).some((key: string) =>
+      key.startsWith("scope_no（") && key.includes("unreviewed_scope_owner"))).toBe(true);
+    expect(resolveReference(unknown, "unreviewed_scope_owner", "scope_no")).toBeNull();
   });
 });

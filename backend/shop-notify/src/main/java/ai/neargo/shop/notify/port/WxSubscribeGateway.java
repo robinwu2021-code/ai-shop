@@ -2,6 +2,9 @@ package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.SendResult;
 import ai.neargo.shop.spi.notify.WxSubscribePort;
+import java.util.HashSet;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -253,6 +256,24 @@ public class WxSubscribeGateway implements WxSubscribePort {
         return out;
     }
 
+    /** Optional approved template for this app; absent mapping keeps capability closed. */
+    @Autowired
+    void storedValueTemplate(@Value("${shop.wx.templates.stored-value-redeemed:}") String template,
+            @Value("${shop.wx.templates.stored-value-redeemed-fields:}") String fields) {
+        putFielded(SCENE_STORED_VALUE_REDEEMED, template, fields);
+    }
+
+    @Override
+    public boolean configuredForApp(String scene) {
+        if (!SCENE_STORED_VALUE_REDEEMED.equals(scene)) { return templateId(scene) != null; }
+        FieldedTpl t = fieldedTpls.get(scene);
+        return t != null && !appid.isBlank() && !secret.isBlank()
+                && t.fields().keySet().containsAll(Set.of("store", "title", "amount", "time"))
+                && t.fields().values().stream().allMatch(v -> v.matches(
+                        "(?:thing|name|amount|time|date|character_string|phrase|number)[1-9][0-9]*"))
+                && new HashSet<>(t.fields().values()).size() == t.fields().size();
+    }
+
     private void putFielded(String scene, String templateId, String fields) {
         if (templateId == null || templateId.isBlank()) {
             return;   // 没选模板：这个场景只发站内信 / App 推送
@@ -406,6 +427,9 @@ public class WxSubscribeGateway implements WxSubscribePort {
         if (t.fields().isEmpty()) {
             throw new WxSubscribeException(scene + " 的字段映射没配（WX_TPL_*_FIELDS，写成 语义键:格名,…）", false);
         }
+        if (SCENE_STORED_VALUE_REDEEMED.equals(scene) && !configuredForApp(scene)) {
+            throw new WxSubscribeException("Stored-value template mapping incomplete", false);
+        }
         return send(openId, t.templateId(), page, fieldedData(t.fields(), values));
     }
 
@@ -476,11 +500,17 @@ public class WxSubscribeGateway implements WxSubscribePort {
 
         String resp = post("/cgi-bin/message/subscribe/send?access_token=" + accessToken(false),
                 body.toString());
+        if (!Pattern.compile(NUM_FIELD.formatted("errcode")).matcher(resp).find()) {
+            throw new WxSubscribeException("微信发送结果缺少状态码", false, true);
+        }
         int code = intField(resp, "errcode");
         if (code == 40001 || code == 42001) {
             // token 失效（后台改过 secret、或本地缓存跨过了有效期）：强刷一次再试，只试一次
             resp = post("/cgi-bin/message/subscribe/send?access_token=" + accessToken(true),
                     body.toString());
+            if (!Pattern.compile(NUM_FIELD.formatted("errcode")).matcher(resp).find()) {
+                throw new WxSubscribeException("微信发送结果缺少状态码", false, true);
+            }
             code = intField(resp, "errcode");
         }
         if (code != 0) {
@@ -504,7 +534,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
                       + "（顺序决定数字后缀），改 WxSubscribeGateway 里 data.put 的键"
                     : "";
             throw new WxSubscribeException(
-                    "微信拒绝：" + code + " " + strField(resp, "errmsg") + hint, false);
+                    "微信拒绝：" + code + " " + strField(resp, "errmsg") + hint, code == -1);
         }
         return SendResult.of(strField(resp, "msgid"), templateId);
     }
@@ -546,12 +576,15 @@ public class WxSubscribeGateway implements WxSubscribePort {
                             .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
                             .build(),
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+                throw new WxSubscribeException("微信接口HTTP状态：" + resp.statusCode(), false, true);
+            }
             return resp.body();
         } catch (java.io.IOException e) {
-            throw new WxSubscribeException("微信接口网络失败：" + e.getMessage(), true);
+            throw new WxSubscribeException("微信接口网络失败：" + e.getMessage(), false, true);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new WxSubscribeException("微信接口调用被中断", true);
+            throw new WxSubscribeException("微信接口调用被中断", false, true);
         }
     }
 

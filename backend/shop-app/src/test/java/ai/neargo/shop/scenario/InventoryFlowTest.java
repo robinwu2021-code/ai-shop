@@ -7,23 +7,23 @@ import ai.neargo.shop.invbridge.InventoryBackfillService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.inventory.entity.InvOutbox;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
-import ai.neargo.shop.inventory.service.InventoryEventSink;
+import ai.neargo.inventory.domain.entity.InvOutbox;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboxMapper;
+import ai.neargo.inventory.domain.service.InventoryEventSink;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import ai.neargo.shop.inventory.service.InboundService;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.InventorySnapshotService;
-import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.OutboundService;
-import ai.neargo.shop.inventory.service.ReservationService;
-import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
-import ai.neargo.shop.inventory.service.ReturnReceiptService;
-import ai.neargo.shop.inventory.service.StockCountService;
-import ai.neargo.shop.inventory.service.StockQueryService;
-import ai.neargo.shop.inventory.service.TransferService;
-import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.inventory.domain.service.InboundService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventorySnapshotService;
+import ai.neargo.inventory.domain.service.InventoryOrderTraceService;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.OutboundService;
+import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.service.OriginalReservationRestoreService;
+import ai.neargo.inventory.domain.service.ReturnReceiptService;
+import ai.neargo.inventory.domain.service.StockCountService;
+import ai.neargo.inventory.domain.service.StockQueryService;
+import ai.neargo.inventory.domain.service.TransferService;
+import ai.neargo.inventory.domain.support.InvEnums;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -195,6 +195,248 @@ class InventoryFlowTest {
                         ReturnReceiptService.Quality.SALEABLE)), "店员"))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(totalOf(f.owner, f.item)).isEqualTo(8);
+    }
+
+    @Test
+    void reservationRetryComparesOriginalNormalizedLinesAndLifecycle() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-RETRY-" + f.seq;
+        String sub = "SUB-RETRY-" + f.seq;
+        String id = reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 1, sub),
+                new ReservationService.Line(f.item, f.location, 2, sub)), 900, 2);
+        assertThat(reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 3, sub)), 900, 2)).isEqualTo(id);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 4, sub)), 900, 2))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item + "-OTHER", f.location, 3, sub)), 900, 2))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 3, sub + "-OTHER")), 900, 2))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location + "-OTHER", 3, sub)), 900, 2))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 3, sub)), 900, 1))
+                .isInstanceOf(BizException.class);
+        var held = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(held.reservationId()).isEqualTo(id);
+        assertThat(held.lifecycleVersion()).isEqualTo(2);
+        assertThat(held.status()).isEqualTo(ReservationService.Status.HELD);
+        assertThat(held.lines()).containsExactly(new ReservationService.Line(f.item, f.location, 3, sub));
+        reservations.allocatePaidByRef(ref);
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.ALLOCATED);
+        reservations.issueByFulfillmentRef(sub, "SYSTEM");
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.COMMITTED);
+        assertThat(reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 3, sub)), 900, 2)).isEqualTo(id);
+        assertThat(onHand(f)).isEqualTo(7);
+        assertThat(available(f)).isEqualTo(7);
+    }
+
+    @Test
+    void reservationQueryDistinguishesAbsenceFromCancellationTombstone() {
+        Fixture f = fixture();
+        String ref = "SO-QUERY-" + f.seq;
+        assertThat(reservations.query(f.owner, ref)).isEmpty();
+        reservations.cancelByRef(f.owner, ref);
+        var cancelled = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(cancelled.status()).isEqualTo(ReservationService.Status.RELEASED);
+        assertThat(cancelled.lines()).isEmpty();
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref,
+                List.of(new ReservationService.Line(f.item, f.location, 1)), 900))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
+    void receiptAndRestoreShareOriginalCapacityInBothDirections() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-SHARED-RETURN-" + f.seq;
+        String sub = "SUB-SHARED-RETURN-" + f.seq;
+        reservations.reserve(f.owner, ref,
+                List.of(new ReservationService.Line(f.item, f.location, 4, sub)), 900, 2);
+        reservations.allocatePaidByRef(ref);
+        reservations.issueByFulfillmentRef(sub, "SYSTEM");
+        returnReceipts.receive("RR-SHARED-" + f.seq, "AS-SHARED-" + f.seq, ref, sub,
+                List.of(new ReturnReceiptService.Line(f.item, 2, ReturnReceiptService.Quality.SALEABLE)), "SYSTEM");
+        assertThatThrownBy(() -> originalRestores.restore("RF-OVER-" + f.seq, ref,
+                List.of(new OriginalReservationRestoreService.ItemQty(f.item, 3))))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(onHand(f)).isEqualTo(8);
+        originalRestores.restore("RF-REST-" + f.seq, ref,
+                List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
+        originalRestores.restore("RF-REST-" + f.seq, ref,
+                List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
+        assertThatThrownBy(() -> returnReceipts.receive("RR-OVER-SHARED-" + f.seq,
+                "AS-SHARED-" + f.seq, ref, sub,
+                List.of(new ReturnReceiptService.Line(f.item, 1, ReturnReceiptService.Quality.SALEABLE)), "SYSTEM"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(onHand(f)).isEqualTo(10);
+    }
+
+    @Test
+    void postpaidAcceptanceSurvivesExpiryAndLatePaymentNeverRedeductsIssue() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-POSTPAID-" + f.seq;
+        String first = "SUB-POSTPAID-A-" + f.seq;
+        String second = "SUB-POSTPAID-B-" + f.seq;
+        List<ReservationService.Line> original = List.of(
+                new ReservationService.Line(f.item, f.location, 2, first),
+                new ReservationService.Line(f.item, f.location, 2, second));
+        String reservationId = reservations.reserve(f.owner, ref, original, -60, 3);
+        assertThat(reservations.issueByFulfillmentRef(first, "SYSTEM")).isNull();
+        assertThat(onHand(f)).isEqualTo(10);
+        reservations.acceptUnpaid(f.owner, ref);
+        reservations.acceptUnpaid(f.owner, ref);
+        reservations.expireOverdue(200);
+        var accepted = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(accepted.status()).isEqualTo(ReservationService.Status.ACCEPTED_UNPAID);
+        assertThat(accepted.paymentAcknowledged()).isFalse();
+        assertThat(available(f)).isEqualTo(6);
+        assertThat(reservations.reserve(f.owner, ref, original.reversed(), 900, 3)).isEqualTo(reservationId);
+        assertThatThrownBy(() -> reservations.reserve(f.owner, ref, original, 900, 2))
+                .isInstanceOf(BizException.class);
+
+        String outboundNo = reservations.issueByFulfillmentRef(first, "SYSTEM");
+        assertThat(reservations.issueByFulfillmentRef(first, "SYSTEM")).isEqualTo(outboundNo);
+        var partial = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(partial.status()).isEqualTo(ReservationService.Status.PARTIAL_UNPAID);
+        assertThat(partial.paymentAcknowledged()).isFalse();
+        assertThat(onHand(f)).isEqualTo(8);
+        assertThat(available(f)).isEqualTo(6);
+
+        reservations.allocatePaidByRef(ref);
+        reservations.allocatePaidByRef(ref);
+        assertThat(reservations.commit(f.owner, ref, "PAYMENT")).isEqualTo(outboundNo);
+        var paid = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(paid.status()).isEqualTo(ReservationService.Status.PARTIALLY_COMMITTED);
+        assertThat(paid.paymentAcknowledged()).isTrue();
+        assertThat(onHand(f)).isEqualTo(8);
+        reservations.issueByFulfillmentRef(second, "SYSTEM");
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.COMMITTED);
+        assertThat(onHand(f)).isEqualTo(6);
+        assertThat(available(f)).isEqualTo(6);
+    }
+
+    @Test
+    void fullyIssuedUnpaidOrderRemainsUnpaidUntilPaymentCommit() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-CREDIT-ISSUE-" + f.seq;
+        String sub = "SUB-CREDIT-ISSUE-" + f.seq;
+        reservations.reserve(f.owner, ref, List.of(new ReservationService.Line(f.item, f.location, 3, sub)), 900, 3);
+        reservations.acceptUnpaid(f.owner, ref);
+        String outboundNo = reservations.issueByFulfillmentRef(sub, "SYSTEM");
+        var issued = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(issued.status()).isEqualTo(ReservationService.Status.ISSUED_UNPAID);
+        assertThat(issued.paymentAcknowledged()).isFalse();
+        assertThat(onHand(f)).isEqualTo(7);
+        assertThat(reservations.commit(f.owner, ref, "PAYMENT")).isEqualTo(outboundNo);
+        assertThat(reservations.commit(f.owner, ref, "PAYMENT")).isEqualTo(outboundNo);
+        assertThat(reservations.issueByFulfillmentRef(sub, "SYSTEM")).isEqualTo(outboundNo);
+        var paid = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(paid.status()).isEqualTo(ReservationService.Status.COMMITTED);
+        assertThat(paid.paymentAcknowledged()).isTrue();
+        assertThat(onHand(f)).isEqualTo(7);
+    }
+
+    @Test
+    void postpaidCancellationReleasesOnlyUnissuedAndReturnsRequireOriginalIssue() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-CREDIT-CANCEL-" + f.seq;
+        String issuedSub = "SUB-CREDIT-SENT-" + f.seq;
+        String cancelledSub = "SUB-CREDIT-CANCEL-" + f.seq;
+        reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 2, issuedSub),
+                new ReservationService.Line(f.item, f.location, 3, cancelledSub)), 900, 3);
+        reservations.acceptUnpaid(f.owner, ref);
+        reservations.issueByFulfillmentRef(issuedSub, "SYSTEM");
+        reservations.cancelByRef(f.owner, ref);
+        reservations.cancelByRef(f.owner, ref);
+        var cancelled = reservations.query(f.owner, ref).orElseThrow();
+        assertThat(cancelled.status()).isEqualTo(ReservationService.Status.PARTIAL_RELEASED);
+        assertThat(cancelled.paymentAcknowledged()).isFalse();
+        assertThat(reservations.issueByFulfillmentRef(cancelledSub, "SYSTEM")).isNull();
+        assertThat(onHand(f)).isEqualTo(8);
+        assertThat(available(f)).isEqualTo(8);
+        assertThatThrownBy(() -> originalRestores.restore("RF-CREDIT-OVER-" + f.seq, ref,
+                List.of(new OriginalReservationRestoreService.ItemQty(f.item, 3))))
+                .isInstanceOf(IllegalStateException.class);
+        originalRestores.restore("RF-CREDIT-RETURN-" + f.seq, ref,
+                List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
+        assertThat(onHand(f)).isEqualTo(10);
+        reservations.allocatePaidByRef(ref);
+        assertThat(reservations.query(f.owner, ref).orElseThrow().paymentAcknowledged()).isTrue();
+        assertThat(onHand(f)).isEqualTo(10);
+    }
+
+    @Test
+    void partialCancellationBeforeAcceptanceDoesNotProtectRemainderFromExpiry() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-CREDIT-PREACCEPT-" + f.seq;
+        String cancelledSub = "SUB-CREDIT-PREACCEPT-VOID-" + f.seq;
+        reservations.reserve(f.owner, ref, List.of(
+                new ReservationService.Line(f.item, f.location, 2, cancelledSub),
+                new ReservationService.Line(f.item, f.location, 3, "SUB-CREDIT-PREACCEPT-LIVE-" + f.seq)), -60, 3);
+        reservations.releaseAllocatedByFulfillmentRef(cancelledSub);
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.HELD);
+        assertThat(available(f)).isEqualTo(7);
+        reservations.expireOverdue(200);
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.EXPIRED);
+        assertThat(onHand(f)).isEqualTo(10);
+        assertThat(available(f)).isEqualTo(10);
+    }
+
+    @Test
+    void postpaidPaymentBeforeHandoffOnlyAllocatesAndKeepsIssueAtHandoff() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String ref = "SO-CREDIT-EARLYPAY-" + f.seq;
+        String sub = "SUB-CREDIT-EARLYPAY-" + f.seq;
+        reservations.reserve(f.owner, ref, List.of(new ReservationService.Line(f.item, f.location, 3, sub)), 900, 3);
+        reservations.acceptUnpaid(f.owner, ref);
+        assertThat(reservations.commit(f.owner, ref, "PAYMENT")).isNull();
+        assertThat(reservations.query(f.owner, ref).orElseThrow().status())
+                .isEqualTo(ReservationService.Status.ALLOCATED);
+        assertThat(onHand(f)).isEqualTo(10);
+        assertThat(available(f)).isEqualTo(7);
+        reservations.issueByFulfillmentRef(sub, "SYSTEM");
+        reservations.allocatePaidByRef(ref);
+        assertThat(onHand(f)).isEqualTo(7);
+        assertThat(available(f)).isEqualTo(7);
+    }
+
+    @Test
+    void creditAcceptanceRejectsMissingOrdinaryAndCancelledReservations() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "SYSTEM");
+        String missing = "SO-CREDIT-MISSING-" + f.seq;
+        assertThatThrownBy(() -> reservations.acceptUnpaid(f.owner, missing)).isInstanceOf(BizException.class);
+        assertThat(reservations.query(f.owner, missing)).isEmpty();
+        String ordinary = "SO-ORDINARY-" + f.seq;
+        reservations.reserve(f.owner, ordinary, List.of(new ReservationService.Line(f.item, f.location, 2)), 900, 2);
+        assertThatThrownBy(() -> reservations.acceptUnpaid(f.owner, ordinary)).isInstanceOf(BizException.class);
+        String cancelled = "SO-CREDIT-VOID-" + f.seq;
+        reservations.reserve(f.owner, cancelled, List.of(new ReservationService.Line(f.item, f.location, 3)), 900, 3);
+        reservations.release(f.owner, cancelled);
+        assertThatThrownBy(() -> reservations.acceptUnpaid(f.owner, cancelled)).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> reservations.commit(f.owner, cancelled, "PAYMENT"))
+                .isInstanceOf(BizException.class);
+        assertThat(onHand(f)).isEqualTo(10);
+        assertThat(available(f)).isEqualTo(8);
     }
 
     @Test
@@ -637,6 +879,11 @@ class InventoryFlowTest {
             InventoryBackfillService.Report r = backfill.run(false, 50, cursor);
             cursor = r.nextAfterId();
         } while (cursor != null);
+        // 完整的搬运 = 余额 + 在途预留（fb690c847）。只搬余额时，库里只要有别的用例下单留下的锁，
+        // 平台 held>0 而进销存 reserved=0，对差就永远不干净 —— 那不是本条要测的东西。
+        // 一次搬完：它按 status=LOCKED 选、平台侧状态不变，重复调用会反复选中同一批（幂等地「再搬」一次），
+        // 所以不能写成「搬到返回 0 为止」的循环 —— 那是死循环。
+        backfill.migrateHeldLocks(10_000);
 
         InventoryBackfillService.Report diff = backfill.diffOnly(5000);
 

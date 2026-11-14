@@ -43,6 +43,11 @@ public class IndustryServiceImpl implements IndustryService {
     }
 
     @Override
+    public boolean registered(String industry) {
+        return industry != null && !industry.isBlank() && find(industry) != null;
+    }
+
+    @Override
     public boolean microAllowed(String industry, String payChannel) {
         SysIndustry row = find(industry);
         // **查不到一律不允许**。返回 true 的话，商家会填完全部资料才被通道拒绝

@@ -35,6 +35,9 @@ public interface ExpressPickupPort {
 
     /**
      * 解析并验签一条回调。<b>验签不过返回空</b> —— 调用方不落库、不回成功。
+     *
+     * <p>返回的 {@link Callback#taskId()} / {@link Callback#orderId()} <b>只取签名覆盖到的报文</b>；
+     * 入参 {@code taskId} 是不在签名里的表单字段，只用来与签名里的值比对，对不上返回空。
      */
     Optional<Callback> parseCallback(String taskId, String sign, String param);
 
@@ -57,6 +60,8 @@ public interface ExpressPickupPort {
     }
 
     /**
+     * @param taskId         签名报文里的 taskId；报文不带时为空（<b>不回填未签名的表单字段</b>）
+     * @param orderId        签名报文里的通道订单号 —— 认单首选它
      * @param providerStatus 通道的原始状态码（快递100：0 下单成功 / 10 已取件 / 99 已取消 …）
      * @param chargedWeightG 计费重量（克），没给为空
      * @param freightMinor   折后运费（分），没给为空

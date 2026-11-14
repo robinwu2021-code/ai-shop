@@ -43,11 +43,11 @@ function seededPoints() {
     //
     // 所以这里不再用一条大正则啃整条语句，而是**先切出 INSERT 的值区，再逐元组扫**。
     for (const head of sql.matchAll(/INSERT\s+(?:IGNORE\s+)?INTO sys_function_point\s*\(([^)]*)\)\s*(VALUES|SELECT)/g)) {
-      const columns = head[1]!.split(",").map(column => column.trim().replace(/`/g, "").toLowerCase());
       const from = head.index! + head[0].length;
       const stmtEnd = sql.indexOf(";", from);
       const payload = sql.slice(from, stmtEnd < 0 ? sql.length : stmtEnd);
       // SELECT 形式只有一组值，且后面跟着 FROM DUAL WHERE …；截到 FROM 为止
+      const columns = head[1].split(",").map((c) => c.trim());
       const body = head[2] === "SELECT"
         ? "(" + payload.slice(0, payload.search(/\b(?:FROM|WHERE)\b/) < 0 ? payload.length
                                 : payload.search(/\b(?:FROM|WHERE)\b/)) + ")"
@@ -60,18 +60,17 @@ function seededPoints() {
         const cells = tuple[1].split(",").map((c) => c.trim());
         if (cells.length < 12) continue;   // 不是功能点那一组（列少了就不是）
         const lit = (v: string) => (v === "NULL" ? null : v.replace(/^'|'$/g, ""));
-        const column = (name: string) => {
-          const index = columns.indexOf(name);
-          if (index < 0 || index >= cells.length) throw new Error(`Missing function point column: ${name}`);
-          return lit(cells[index]!);
+        const cell = (name: string) => {
+          const i = columns.indexOf(name);
+          return i < 0 ? null : lit(cells[i]);
         };
         out.push({
-          pointCode: column("point_code")!,
-          functionCode: column("function_code")!,
-          group: column("group_name"),
-          href: column("href"),
-          ui: column("ui_perm_code"),
-          type: column("point_type")!,
+          pointCode: cell("point_code")!,
+          functionCode: cell("function_code")!,
+          group: cell("group_name"),
+          href: cell("href"),
+          ui: cell("ui_perm_code"),
+          type: cell("point_type") ?? "MENU",
         });
       }
     }
@@ -101,6 +100,10 @@ function seededPoints() {
     for (const m of sql.matchAll(/DELETE\s+FROM\s+sys_function_point\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
       removed.add(m[1]);
     }
+    // Bulk soft-retirement preserves historical rows but removes their menu points from the live catalog.
+    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+[^;]*?\bdeleted\s*=\s*1[^;]*?\bWHERE\s+point_code\s+IN\s*\(([^)]*)\)/g)) {
+      for (const point of m[1]!.matchAll(/'([^']+)'/g)) removed.add(point[1]!);
+    }
     // A soft-retirement by function_code also retires each child menu point.
     for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+[^;]*?\bdeleted\s*=\s*1[^;]*?\bWHERE\s+function_code\s*=\s*'([^']+)'/g)) {
       removedFunctions.add(m[1]);
@@ -112,7 +115,14 @@ function seededPoints() {
    * 于是同一个 href 在 `out` 里有两条 —— 只减掉新码那条，旧码那条还会把 href 报成「只在库里」。
    */
   const removedHrefs = new Set(out.filter((p) => removed.has(p.pointCode)).map((p) => p.href));
-  return out.filter((p) => !removed.has(p.pointCode) && !removedFunctions.has(p.functionCode) && !(p.href && removedHrefs.has(p.href)));
+  /*
+   * 连带清理**只针对 V62 那批顺序编号旧码**（OPS_XXX_05 这种）。
+   * 按 href 派生的现行码不连带：V658 撤售后治理下重复的「退款分账」（OPS_AFTERSALE__TAB_REFUND_BACK），
+   * 经营财务那条 OPS_FINANCE__TAB_REFUND_BACK 与它同 href 却仍在用 —— 一并减掉就成了「只在 nav 里」。
+   */
+  const legacySequential = (code: string) => /^OPS_[A-Z]+_\d+$/.test(code);
+  return out.filter((p) => !removed.has(p.pointCode) && !removedFunctions.has(p.functionCode)
+    && !(p.href && removedHrefs.has(p.href) && legacySequential(p.pointCode)));
 }
 
 /** nav.ts 里的叶子（有 href + label 的那些） */

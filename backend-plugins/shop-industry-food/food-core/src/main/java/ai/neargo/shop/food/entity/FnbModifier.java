@@ -18,6 +18,7 @@ public class FnbModifier extends BaseEntity {
     private String kind;
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String salesSkuNo;
+    private String inventoryMode;
     private String publishedRevisionNo;
     private String status;
 }

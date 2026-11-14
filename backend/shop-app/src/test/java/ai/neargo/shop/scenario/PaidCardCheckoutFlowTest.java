@@ -6,9 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.service.OrderService;
-import ai.neargo.shop.spi.settle.SettlePort;
-import ai.neargo.shop.pay.channel.TestPayGateway;
-import ai.neargo.shop.support.CheckoutScenarioPayments;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStores;
@@ -59,8 +56,6 @@ class PaidCardCheckoutFlowTest {
     @Autowired OrderService orders;
     @Autowired EntitlementManagementAppService catalog;
     @Autowired JdbcTemplate jdbc;
-    @Autowired SettlePort settlement;
-    @Autowired TestPayGateway testChannel;
     @Autowired WebApplicationContext web;
     @Autowired ObjectMapper json;
     @Autowired OtpStore otp;
@@ -86,7 +81,7 @@ class PaidCardCheckoutFlowTest {
     @ValueSource(strings = {"COUNT", "PERIOD_COUNT", "PERIOD_DAILY"})
     void realCheckoutFreezesFourRightsIssuesOnceAndConsumesViaMemberCode(String model) throws Exception {
         var mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "124" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+        String phone = "194" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String buyer = TestLogin.consumer(mvc, json, otp, phone);
         String actor = tokens.of(Realm.CONSUMER).get(buyer).orElseThrow().user().userNo();
         String entity = id(), goods = id(), sku = id(), store = id();
@@ -95,14 +90,19 @@ class PaidCardCheckoutFlowTest {
         jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,is_primary,status,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,?,1,1,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 id(), entity, actor);
-        String merchant = TestLogin.merchantOwner(mvc, json, otp, phone);
-        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,is_default,tenant_no,created_at,updated_at) "
-                + "VALUES (?,?,'swimming store','ACTIVE',1,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",store,entity);
+        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,is_default,offline_pay_enabled,"
+                + "tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'swimming store','ACTIVE',1,1,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",store,entity);
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'30 swims','CARD','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
         jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,?,'CN',30000,100,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 sku, goods, entity);
+        jdbc.update("INSERT INTO mch_qualification(qual_no,entity_no,qual_type,qual_name,expire_at,status,"
+                + "tenant_no,created_at,updated_at) VALUES (?,?,'BUSINESS_LICENSE','Card checkout license',?,"
+                + "'VALID','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", id(), entity,
+                System.currentTimeMillis() + 86400000L);
+        String merchant = TestLogin.merchantOwner(mvc, json, otp, phone);
         var scope = new CatalogScope("MAIN", entity, actor, false);
         var template = catalog.create(scope, rule("30 swims", model), id());
         var v1 = catalog.publish(scope, template.templateNo(), template.revision(), id());
@@ -119,11 +119,12 @@ class PaidCardCheckoutFlowTest {
         assertThat(first.templateVersionNo()).isEqualTo(v1.versionNo());
         assertThat(first.productRevision()).isEqualTo(1);
         assertThat(first.unitsPerItem()).isEqualTo(2);
-        jdbc.update("UPDATE prd_goods SET on_sale=1,audit_status='APPROVED',fulfillments='[\"STORE_VERIFY\"]' "
+        jdbc.update("UPDATE prd_goods SET on_sale=1,audit_status='APPROVED',"
+                + "pay_modes='[\"ONLINE\",\"OFFLINE\"]',fulfillments='[\"STORE_VERIFY\"]' "
                 + "WHERE goods_no=?", goods);
         var checkout = new OrderService.CreateOrderCommand(
                 List.of(new OrderService.CreateOrderCommand.Item(goods, sku, 2)), "STORE_VERIFY", null,
-                null, null, null, "bound card awaiting sale admission", null, null, null, null);
+                null, null, null, "bound card awaiting sale admission", null, "OFFLINE", null, null);
         catalog.policy(scope,template.templateNo(),
                 new ai.neargo.shop.pay.entitlement.dto.IssuePolicyViews.SavePolicy(0,10L,0L,10,true),id());
         var created=orders.createFor(actor,checkout,id());
@@ -133,12 +134,25 @@ class PaidCardCheckoutFlowTest {
         assertThat(payJdbc().queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?",Integer.class,entity)).isZero();
         paymentGate.requireReady("MAIN",order);
         assertThat(catalog.get(scope,template.templateNo()).issuePolicy().heldCount()).isEqualTo(4);
-        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
-        orders.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
+                .isEqualTo("WAIT_OFFLINE_PAY");
+        String subOrder = jdbc.queryForObject("SELECT sub_order_no FROM ord_sub_order WHERE order_no=?",
+                String.class, order);
+        var paid = json.readTree(mvc.perform(MockMvcRequestBuilders.post(
+                        "/biz/order/" + subOrder + "/confirm-offline-pay")
+                .header("Authorization", "Bearer " + merchant))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(paid.path("code").asInt()).as(paid.toString()).isZero();
+        assertThat(jdbc.queryForObject("SELECT pay_channel FROM ord_order WHERE order_no=?", String.class, order))
+                .isEqualTo("OFFLINE");
+        assertThat(jdbc.queryForObject("SELECT offline_confirmed_by FROM ord_order WHERE order_no=?",
+                String.class, order)).isEqualTo(entity);
+        assertThat(jdbc.queryForObject("SELECT offline_confirmed_at FROM ord_order WHERE order_no=?",
+                Long.class, order)).isPositive();
         var event=new ai.neargo.shop.event.SysOutbox();
         event.setEventType("ORDER_PAID"); event.setAggregateId(order);
-        event.setPayload(json.writeValueAsString(new ai.neargo.shop.spi.trade.OrderEvents.OrderPaid(
-                order,actor,60000,CheckoutScenarioPayments.CHANNEL)));
+        event.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
+                + "AND event_type='ORDER_PAID' ORDER BY id DESC LIMIT 1", String.class, order));
         events.consume(event); events.consume(event);
         assertThat(coordinator.recover(ctx,order).issued()).isEqualTo(4);
         assertThat(payJdbc().queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?",Integer.class,entity)).isEqualTo(4);

@@ -1,0 +1,32 @@
+{
+  "https://nearshop.umeshop.ai": {
+    "operatorLogin": true,
+    "identityReadback": true,
+    "commerceInventoryMenu": true,
+    "legacyPayMenuUpdated": true,
+    "roleMatrixReads": {
+      "BD": 36,
+      "FINANCE": 40,
+      "AUDITOR": 23
+    },
+    "functionPoints": 249,
+    "payIdentityReadback": true,
+    "payAccessRead": true,
+    "payMerchantListRead": true
+  },
+  "https://twpay.umeshop.ai": {
+    "operatorLogin": true,
+    "identityReadback": true,
+    "commerceInventoryMenu": true,
+    "legacyPayMenuUpdated": true,
+    "roleMatrixReads": {
+      "BD": 36,
+      "FINANCE": 40,
+      "AUDITOR": 23
+    },
+    "functionPoints": 249,
+    "payIdentityReadback": true,
+    "payAccessRead": true,
+    "payMerchantListRead": true
+  }
+}

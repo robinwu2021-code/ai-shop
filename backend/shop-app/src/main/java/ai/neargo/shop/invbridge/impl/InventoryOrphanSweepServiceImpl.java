@@ -1,12 +1,12 @@
 package ai.neargo.shop.invbridge.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.inventory.entity.InvItemRef;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.inventory.domain.entity.InvItemRef;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.shop.invbridge.InventoryOrphanSweepService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;

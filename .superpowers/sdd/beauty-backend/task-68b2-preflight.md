@@ -1,0 +1,17 @@
+# Task68B2 integration preflight (released after B1 review)
+
+Authority: main TDD §0.4/§2.47, original Task68 addendum plus shared-contract and A collation overlays. B1 independent R1 is PASS/APPROVED at code commit 419e9d94fa5618d8783abcdb847201c05fa1d525. Exact12 modified baseline hashes match released inventory and two new source paths are absent. Recheck against new root coding HEAD before dispatch.
+
+| Producer / consumer pair | Concrete conflict and ruling |
+|---|---|
+| B1 SPI / Router, legacy, promotion | Use the two new explicit-choices overloads and pure CounterCampaignContract seven statics. Old whole-B brief item2 incorrectly assigned normalization/digest to private Rules: approved SPI overlay overrides it. No private cross-domain dependency or baseline exemption. |
+| Owner scoped rows / canonical choices and money | A proves ten actual effective identity collations, not store collation. Use actual scoped head query plus actual store predicate query and PK membership; whole-store SQL null/Java-isBlank handled separately. Raw owner facts remain sealed, public references exact. |
+| One owner evaluation / quote display and economic hash | Build selected money/seal/all eligible options from one captured evaluation; persist schema1 envelope once. Frozen read/replay never reconstructs options from current rules. Writer internal return changes with sole consumer in same slice. |
+| Codec / quote guard, placement, recovery and admission | Route all listed quote/plan reads and hash checks through strict codec. B1 constructors preserve current flow but do not authorize original-policy bypass. Derive schema0 only from locked original persisted authority/intent/consent; new operations always schema1. |
+| Preliminary/final evaluation / product waits and source writers | Same primary READ_COMMITTED transaction, platform then sorted entity shared fence, current uncached reads. Fresh final owner time after all pricing/catalog waits. No row-only lock or retry/fallback to base price. |
+| Consumed discounted order / manual cash source | Narrow schema1 original confirmation/hash/allocation proof permits only frozen merchant discount; M1/schema0 remain zero. No live marketing checks after sale, no Pay. Preserve early CONFLICT versus existing observer UNKNOWN catch boundary. |
+| Old serializer goldens / genuine old pending intent | Eight archived serializer inputs are not a historical common-owner runtime. Task67 beauty V8 driver leaves common owners current. Real pending producer must run genuine old common sources at Task66 commit in separate temp output/classpath only in unified B. No stripped seal or manually forged intent/hash/reservation. |
+| B2 fixture/IT / C finite runner | Author actual real USER/GUEST owner-stock-cash tests in14path slice; C later names exact methods and root-owned Task68 gate. No inherited historical native tests, fabricated positive replies or runtime execution now. |
+| B2 internal consistency / end-to-end completion | Complete product/provider/quote/recovery/admission changes together; report exact methods and deferred runtime evidence. B1 source changes require exact gap report to root before edit. B2 code is not M3 quantity grants/M4 occupation; canStart remains false. |
+
+Ready for sole implementer dispatch after root publication commit. No tests, serializers, old-source builds, SQL, migrations, apps, native checks or deployment executed by this preflight. Root final whole-C02 compile matrix remains after B2 and C.

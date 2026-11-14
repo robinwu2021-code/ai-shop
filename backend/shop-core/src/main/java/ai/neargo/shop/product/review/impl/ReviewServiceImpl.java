@@ -363,6 +363,31 @@ public class ReviewServiceImpl implements ReviewService {
     private static final int APPEALABLE_BELOW = 3;
 
     @Override
+    public ReviewVO merchantReview(String merchantNo, String reviewNo) {
+        return toVO(ofMerchant(merchantNo, reviewNo), false, appealOf(reviewNo));
+    }
+
+    @Override
+    public List<ReviewVO> merchantAppeals(String merchantNo, int page, int size) {
+        int limit = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        long offset = ((long) Math.max(1, page) - 1) * limit;
+        List<RvwAppeal> appeals = DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(RvwAppeal::getEntityNo, merchantNo)
+                        .orderByDesc(RvwAppeal::getId)
+                        .last("limit " + limit + " offset " + offset)));
+        if (appeals.isEmpty()) return List.of();
+        Map<String, RvwReview> reviews = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getEntityNo, merchantNo)
+                        .in(RvwReview::getReviewNo,
+                                appeals.stream().map(RvwAppeal::getReviewNo).toList()))
+                        .stream().collect(Collectors.toMap(RvwReview::getReviewNo, r -> r)));
+        return appeals.stream().filter(a -> reviews.containsKey(a.getReviewNo()))
+                .map(a -> toVO(reviews.get(a.getReviewNo()), false, a)).toList();
+    }
+
+    @Override
     public int pendingReplyCount(String merchantNo) {
         Long n = DataScopeContext.executeWithoutScope(() ->
                 reviewMapper.selectCount(Wrappers.<RvwReview>lambdaQuery()

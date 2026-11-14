@@ -10,7 +10,7 @@ import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
-import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;

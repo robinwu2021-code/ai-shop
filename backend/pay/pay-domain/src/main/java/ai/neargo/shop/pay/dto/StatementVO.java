@@ -51,6 +51,9 @@ public record StatementVO(String period,
                        long freightCostMinor,
                        long netMinor, int commissionRate,
                        String status, String invoiceStatus,
-                       Long settledAt, String voucherNo) {
+                       Long settledAt, String voucherNo, String documentNo) {
+        public Line(String settleNo, String orderNo, String subOrderNo, long grossMinor, long commissionMinor, long serviceFeeMinor, long freightIncomeMinor, long freightCostMinor, long netMinor, int commissionRate, String status, String invoiceStatus, Long settledAt, String voucherNo) { this(settleNo, orderNo, subOrderNo, grossMinor, commissionMinor, serviceFeeMinor, freightIncomeMinor, freightCostMinor, netMinor, commissionRate, status, invoiceStatus, settledAt, voucherNo, null); }
+        public Line withDocumentNo(String documentNo) { return new Line(settleNo, orderNo, subOrderNo, grossMinor, commissionMinor, serviceFeeMinor, freightIncomeMinor, freightCostMinor, netMinor, commissionRate, status, invoiceStatus, settledAt, voucherNo, documentNo); }
+
     }
 }

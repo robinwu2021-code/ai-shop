@@ -1,0 +1,396 @@
+{
+  "status": "SOURCE_REVIEWED_EMBEDDED_COMPILED_RUNTIME_PENDING",
+  "scope": "C04c-c1 beauty embedded protection only; actual START not enabled",
+  "base": "87311602bc7e1ce53eeace63a16ea29397164d03",
+  "sourceSha256": "0462b1371b6972f4e1b7f88e40a153909c5e2e20a276420543fb5d5c9d1925d5",
+  "files": [
+    {
+      "path": "backend/scripts/gen-test-schema.py",
+      "status": "MODIFIED",
+      "bytes": 65559,
+      "sha256": "bdaa258784acf574830a91a1b6401f05af947da53baee1cd5aa81d9b2666d4c2"
+    },
+    {
+      "path": "backend/scripts/h2-fixture-policy.json",
+      "status": "MODIFIED",
+      "bytes": 8903,
+      "sha256": "d98335ee38dd82866116b481c1701cd951d971c4fcef934d372f520d9dc1c4dd"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V607__resource_actual_occupation.sql",
+      "status": "UNTRACKED",
+      "bytes": 44900,
+      "sha256": "42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages.properties",
+      "status": "MODIFIED",
+      "bytes": 25517,
+      "sha256": "325249dac2cfc97ebbe450c9df6a10c67a871ee54224fd6ea75a07025e89d753"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages_ar.properties",
+      "status": "MODIFIED",
+      "bytes": 38381,
+      "sha256": "aab539b377ac631bea7bf42b4a124d9b8b1dd9b0a8dccaec8f569805a7d650ec"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages_en.properties",
+      "status": "MODIFIED",
+      "bytes": 27963,
+      "sha256": "5dda4750f836b67a03249bf4d13828526cb8794939c8a9c979842834cc6282ce"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/SchemaParityTest.java",
+      "status": "MODIFIED",
+      "bytes": 6783,
+      "sha256": "25f1724baeb72d68fcd5892ad1e0fcbca65e8a44374ee23c9aa7abafb2da8cfd"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/H2FixtureProjection.java",
+      "status": "MODIFIED",
+      "bytes": 17716,
+      "sha256": "06864e1444ea11fbad4e3dbc1ae579e3e777465047365a707514fbc49e9a546d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/H2FixtureProjectionTest.java",
+      "status": "MODIFIED",
+      "bytes": 12642,
+      "sha256": "f6f8f1fe4af9a2a5ad6bea56252d627dc615730b7860e68cc7298544744079ed"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/ResourceOccupationFixtureConfiguration.java",
+      "status": "UNTRACKED",
+      "bytes": 861,
+      "sha256": "2eb3ab027fb3a7b9079da863e96d1a2d62eea89b7b4fe8cf891a9e2091879281"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/ResourceOccupationNativeFixture.java",
+      "status": "UNTRACKED",
+      "bytes": 13347,
+      "sha256": "03f196b1db6c2dde5f2e537fd15dbc82959188438ffa68b6b7172eafe2ebd241"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/SchemaDdl.java",
+      "status": "MODIFIED",
+      "bytes": 13047,
+      "sha256": "b442fa7504b3d3dd9383ca965866471550568190ba78dc9afdfd0472c0a2afba"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/SchemaDriftTest.java",
+      "status": "MODIFIED",
+      "bytes": 16466,
+      "sha256": "8af6e31e4e4e57594f9c6a1ee0eef3174b99284abaec049112f9f0d3a86043ee"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/infra/SchemaGeneratorTest.java",
+      "status": "MODIFIED",
+      "bytes": 14205,
+      "sha256": "d2d9a6a3ff70145afa260d580d5db031cd704a89d4904706fac81845f3034800"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ActualResourceExecutionIT.java",
+      "status": "UNTRACKED",
+      "bytes": 10457,
+      "sha256": "c1b791ea82815a9303061386aca43e7200910bb25f522dae39aab496a7a7ea5f"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelMaintenanceIT.java",
+      "status": "MODIFIED",
+      "bytes": 28943,
+      "sha256": "829a3ef9ddd7facd2a5df82d561dc4e24786b155ee0ed53f7dd619e6f04f6769"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceAdmissionPersistenceIT.java",
+      "status": "MODIFIED",
+      "bytes": 24110,
+      "sha256": "2e5486aba45cbf2ddd238da1ef346e2b327db2b5353f2c7490441e2d15358808"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceBookingExecutionIT.java",
+      "status": "MODIFIED",
+      "bytes": 66051,
+      "sha256": "109ffa7981670f59d988d93829282d1e80d3a396c70a9b1d1d661581818e5afe"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceBookingPersistenceIT.java",
+      "status": "MODIFIED",
+      "bytes": 21571,
+      "sha256": "7dd33191b4d1fe708be21f07bab71686756ab1b23775e74ec83537082f02238f"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceCommandPersistenceIT.java",
+      "status": "MODIFIED",
+      "bytes": 40178,
+      "sha256": "c1cae13eefa4435c520e576512ce4063ccc671541c9f94a440999d4d74d9ee3b"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceFactsPersistenceIT.java",
+      "status": "MODIFIED",
+      "bytes": 22472,
+      "sha256": "13904d651a4b2e658dd82240113add509486041ed56cb56946f972c40a6c28d5"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceMaintenanceIT.java",
+      "status": "MODIFIED",
+      "bytes": 20158,
+      "sha256": "2417a96224f27838b823880b4b57433edca1fdfc426e821c35abeaccf3c8a57b"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceRecoveryFactsIT.java",
+      "status": "MODIFIED",
+      "bytes": 15772,
+      "sha256": "82a898c7270665dab2d36d479ec981ee8567857d015a29dd5198f8dca32af240"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceSourceAuthorizationIT.java",
+      "status": "MODIFIED",
+      "bytes": 25662,
+      "sha256": "9eb09eee580de6345d5a07605adb371a64932ef59508957938536b66b14a21d2"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ScheduleMaintenanceIT.java",
+      "status": "MODIFIED",
+      "bytes": 19678,
+      "sha256": "bf94bf68f39f0a54ac1968973a9fe5a76431e669369d4fcf910f3b2b9fd3d29f"
+    },
+    {
+      "path": "backend/shop-app/src/test/resources/schema-test.sql",
+      "status": "MODIFIED",
+      "bytes": 1405802,
+      "sha256": "622f49ce35cd8f96200b9861f670d6094d23b30a7a8e1989e38001a944e940e4"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java",
+      "status": "MODIFIED",
+      "bytes": 81345,
+      "sha256": "58df4aef758432859ab8b6071f20cde31f3b875ac7f08dda1de1b72e1f10b32f"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceCandidatesPort.java",
+      "status": "MODIFIED",
+      "bytes": 2630,
+      "sha256": "d03d6d212333a5a98e8642fa9a48cabe2f5b22184a59611c2ee6b402aeb8837e"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceFactsPort.java",
+      "status": "MODIFIED",
+      "bytes": 2345,
+      "sha256": "79e5ab47c1c547bc6c47b3c2f040adb87fff6424b0cd516de12419c84692a9c8"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalServiceResponses.java",
+      "status": "MODIFIED",
+      "bytes": 4126,
+      "sha256": "0f0b5d31d99af49182fb54de45a0449c08fff617f2d6c8a16c0e6a1ae18ccc5c"
+    },
+    {
+      "path": "backend/shop-base/src/test/java/ai/neargo/shop/svc/BoundInternalProtocolTest.java",
+      "status": "MODIFIED",
+      "bytes": 13394,
+      "sha256": "d34bad3ac88be33da4098307f13689c11f750a5cff77534d4c1d84ac076a1453"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/config/PersonnelDataScopeRegistration.java",
+      "status": "MODIFIED",
+      "bytes": 2111,
+      "sha256": "7582fea6f740fffd77de13a3078d4276acace0058dbab3c1f01af7bfe4e74a88"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/ResourceBookingAllocationRow.java",
+      "status": "MODIFIED",
+      "bytes": 482,
+      "sha256": "01ff72b0b9deb5fdc1fb74077085908f2971acfb838be90ac435f1e023a14363"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/ResourceCommandFactRow.java",
+      "status": "MODIFIED",
+      "bytes": 482,
+      "sha256": "f0bfe0426751b13481b4e666250a5c9e64024f87347b33ad2e35d664c0a279db"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/ResourceFactRow.java",
+      "status": "MODIFIED",
+      "bytes": 363,
+      "sha256": "af289c5861038a60bae5609af4f4ecbbee9e88066f3fb7a173e1cee82f812807"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchBookingHoldUnit.java",
+      "status": "MODIFIED",
+      "bytes": 1369,
+      "sha256": "988ee60ccbaee63f2584477446676a682b83c904036b8346a21edd466d862d77"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchBookingOwner.java",
+      "status": "MODIFIED",
+      "bytes": 1827,
+      "sha256": "b80f292c6797fb2d17e3dfb61bcd349a4c6cd536e6f9a598d0fbc3313ac20f1c"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceBucket.java",
+      "status": "MODIFIED",
+      "bytes": 1223,
+      "sha256": "aefe66a6df484b13bc4767f774a6db6edb65ecd0a46e7557629d9368b82410a2"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceCommand.java",
+      "status": "MODIFIED",
+      "bytes": 3804,
+      "sha256": "e7b511460133293b2340b99c70d3d10495615142497b3b40aa9444445ed50410"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceOccupation.java",
+      "status": "UNTRACKED",
+      "bytes": 1349,
+      "sha256": "953da7e8682fdcc5073df3b8b7622b3f9153d79dcdbf52e52a4f09649afc5372"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceOccupationBucket.java",
+      "status": "UNTRACKED",
+      "bytes": 848,
+      "sha256": "ad08b39e62807d6ce350ba1d0c9d0c24606b2e6be06ede85927f3171c001ded4"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceOccupationSegment.java",
+      "status": "UNTRACKED",
+      "bytes": 1243,
+      "sha256": "6a3b294cac6ddc9bb3efaf33f691bcecdcaf87e57bed74b4b0b90b12d1807079"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchResourceOccupationUnit.java",
+      "status": "UNTRACKED",
+      "bytes": 894,
+      "sha256": "b8bb8e0050c22bab9c75c2d3198221c8b45f765299dfe3e7b4a269d0af1b7c9b"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java",
+      "status": "MODIFIED",
+      "bytes": 83303,
+      "sha256": "04e556469af025b51d33adc5345796e316b4193d6d8d69c91ef91ff7a8dc3b4f"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceOccupationGuard.java",
+      "status": "UNTRACKED",
+      "bytes": 5302,
+      "sha256": "1c4da32445a28a40a1d90668508585fb99eb94417bce93a2d9d0c5043a3cf0c7"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceOccupationSchemaVerifier.java",
+      "status": "UNTRACKED",
+      "bytes": 26271,
+      "sha256": "741d79f18e5789178ccc45d0eaf459b1c6198c79757a5cdd103c29951478a213"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceBookingPortImpl.java",
+      "status": "MODIFIED",
+      "bytes": 7514,
+      "sha256": "02385d3ca3330203d3b5f6068b0e5e0960e6281281dc33be8aa2cbc6b7a0a103"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceCandidatesPortImpl.java",
+      "status": "MODIFIED",
+      "bytes": 10385,
+      "sha256": "f26a34ea177ae38573caa9c96aaf3d4ec7025ab7b3bce208a32e81b4475f06c3"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceCommandFactsPortImpl.java",
+      "status": "MODIFIED",
+      "bytes": 3351,
+      "sha256": "48a743015ee304fc0efd89d5c3c4a99a88cf6f1a5d435ca1dde459744e32f5c6"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceFactsPortImpl.java",
+      "status": "MODIFIED",
+      "bytes": 2358,
+      "sha256": "2e7d71a0c80747c1dfe11c53cd1f0ff605ee63ded022bd8c8fd3b3002e75ae85"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/ResourceCommandService.java",
+      "status": "MODIFIED",
+      "bytes": 4072,
+      "sha256": "c23b841345df8e56dc57f3beb704afa847caba12c8de39375d7faf3604663fde"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/PersonnelServiceImpl.java",
+      "status": "MODIFIED",
+      "bytes": 33160,
+      "sha256": "6cb45540d44e95868b21880029585602ed63297dc47a598633dfafe2f0a4d3ba"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceBookingServiceImpl.java",
+      "status": "MODIFIED",
+      "bytes": 27807,
+      "sha256": "e6ded1f415c5184fdab21c05c872beaef75e6142f6f2272616ebf56b38a89fa9"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceCommandServiceImpl.java",
+      "status": "MODIFIED",
+      "bytes": 25409,
+      "sha256": "e92cb2b62e205dbbf13705b3f2f64a8c6e9908f9b8bb0f870512447937c97fe0"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceServiceImpl.java",
+      "status": "MODIFIED",
+      "bytes": 12774,
+      "sha256": "99fe75c9223ec68cc0f6f667352737c45cbdede79cf76456a7ab16735cb05bda"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ScheduleServiceImpl.java",
+      "status": "MODIFIED",
+      "bytes": 16969,
+      "sha256": "cfd6bc308cf87137bdd8771899a43e88a1397db3c49d8b77ce21c3c8196a7ebd"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/resources/META-INF/shop/resource-actual-occupation-schema.json",
+      "status": "UNTRACKED",
+      "bytes": 115998,
+      "sha256": "dfc64b4595db561e4ba0e5b4b72f633b9e07d7d4ad3d0d284fe5bd731bdb35d1"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceCapacityContractTest.java",
+      "status": "UNTRACKED",
+      "bytes": 2017,
+      "sha256": "473af875b59230f6207cb26c81cafa88ce37f70b0ac51d76633693c691122abc"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceOccupationGuardTest.java",
+      "status": "UNTRACKED",
+      "bytes": 5557,
+      "sha256": "02939ce4d7dfe318a9bb9d2cbb594fe4734c9494150803c07b7173b3b255d98a"
+    },
+    {
+      "path": "docs/api/响应格式规范.md",
+      "status": "MODIFIED",
+      "bytes": 16069,
+      "sha256": "8c5986ebd088080d6beda13c9706124f7ea8666bdcd241aeb6276201718ff5bf"
+    },
+    {
+      "path": "docs/technical/design/schema/resource-actual-occupation-schema.json",
+      "status": "UNTRACKED",
+      "bytes": 96063,
+      "sha256": "dab9bdd6631d1816a79c0fd4db48f29bdfd402351f499b0892a4acffefedd984"
+    },
+    {
+      "path": "scripts/gen-resource-actual-occupation-schema.mjs",
+      "status": "UNTRACKED",
+      "bytes": 9801,
+      "sha256": "467b22bc1c35d79cd6c6239b675d158869348432190e136a401d4c2014867e8e"
+    }
+  ],
+  "verification": {
+    "profile": "beauty-embedded",
+    "targets": [
+      "shop-app",
+      "beauty-web"
+    ],
+    "command": "clean test-compile -DskipTests",
+    "result": "BUILD SUCCESS",
+    "logSha256": "5b57db65f35d5c9fe02ab491caf223e709aa06f19ad6b00774b333351fe8a046",
+    "otherIndustryValidation": "OUT_OF_SCOPE",
+    "standaloneValidation": "OUT_OF_SCOPE",
+    "runtimeTests": "NOT_RUN",
+    "database": "NOT_RUN",
+    "deployment": "NOT_RUN"
+  },
+  "review": "docs/technical/design/reviews/beauty-resource-occupation-source-review-fix1.md"
+}

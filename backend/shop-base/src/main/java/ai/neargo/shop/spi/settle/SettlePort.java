@@ -1,6 +1,8 @@
 package ai.neargo.shop.spi.settle;
 
 import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
+import ai.neargo.shop.spi.pay.PayMerchantQueryPort.PayRoute;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
 
@@ -102,9 +104,9 @@ public interface SettlePort {
      * <p>合成一个之后，顺序与失败处理只有一处，而不是每个调用方各写一遍。
      *
      * <h2>下单失败时流水怎么办</h2>
-     * <b>关掉它</b>，不留在 PENDING。留着的话对账会反复回查一笔
-     * 通道那边压根不存在的单；而关掉之后用户重试会开一笔新的（带后缀的新单号），
-     * 那正是重试该有的样子。
+     * 保留原 PENDING 流水。失败响应、超时或本地配置缺失不能证明前一次请求未被通道受理；
+     * 后续必须按原商户单号查询，不能因此换号或把未知结果改成已关闭。
+     * 只有拥有可证明未发送或通道终态关闭证据的支付所有者才能关闭原指令。
      *
      * @return 成功时带端上唤起收银台的参数；失败时 {@code success = false} 且带原因
      */
@@ -156,8 +158,26 @@ public interface SettlePort {
     /** Exact initiated channel reference, used by the explicitly enabled development callback. */
     default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }
 
+    /** Explicit ledger discriminator. Unknown historical rows remain on their legacy route. */
+    default String paymentBusiness(String paymentNoOrOutTradeNo) { return "CONSUMER"; }
+    default boolean reconcilePlatformPayment(String paymentNoOrOutTradeNo) { return false; }
+
     record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
-                          String tradeNo, long amountMinor, String currency, String status) { }
+                          String tradeNo, long amountMinor, String currency, String status,
+                          String documentNo, String outTradeNo) {
+        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                              String tradeNo, long amountMinor, String currency, String status) {
+            this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, null, null);
+        }
+        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                              String tradeNo, long amountMinor, String currency, String status, String documentNo) {
+            this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, documentNo, null);
+        }
+        public PaymentReceipt withDocumentNo(String documentNo) {
+            return new PaymentReceipt(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor,
+                    currency, status, documentNo, outTradeNo);
+        }
+    }
 
 
     /**
@@ -184,9 +204,22 @@ public interface SettlePort {
      */
     record PaymentOpen(String orderNo, String userNo, String entityNo,
                        String payChannel, long amountMinor, String subject,
-                       String currency, List<PaymentStore> stores) {
+                       String currency, List<PaymentStore> stores,
+                       @JsonInclude(JsonInclude.Include.NON_NULL) PayRoute acquiringRoute) {
         public PaymentOpen {
             stores = stores == null ? List.of() : List.copyOf(stores);
+        }
+
+        /** Preserve the old request JSON and constructors when no acquiring route was frozen. */
+        public PaymentOpen(String orderNo, String userNo, String entityNo, String payChannel, long amountMinor,
+                           String subject, String currency, List<PaymentStore> stores) {
+            this(orderNo, userNo, entityNo, payChannel, amountMinor, subject, currency, stores, null);
+        }
+
+        /** A selected account becomes part of the immutable original instruction and its request hash. */
+        public PaymentOpen withAcquiringRoute(PayRoute route) {
+            return new PaymentOpen(orderNo, userNo, entityNo, payChannel, amountMinor, subject,
+                    currency, stores, route);
         }
 
         /** 兼容普通现金支付调用；积分交易必须显式提供交易币种及门店路由。 */
@@ -249,9 +282,6 @@ public interface SettlePort {
     record SplitReversal(String subOrderNo, String afterSaleNo, long goodsMinor, long freightMinor,
                          long goodsPaidMinor) {
     }
-
-    /** 旧签名：幂等键固定为 {@code AS-子单号}，一张子单只能退一次钱。新代码用带售后单号的那个。 */
-    String refund(String subOrderNo, long amountMinor, String reason);
 
     /**
      * 发起退款。**调用前必须确认 {@link #reverseSplit} 已成功。**

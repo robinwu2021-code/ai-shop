@@ -1,0 +1,56 @@
+{
+  "base": "28eb4b5ef18cbbacdaee4d9e1eb6200e18489f2a",
+  "productsVerified": 5,
+  "files": [
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "old_bytes": 26048,
+      "old_sha256": "4071d9e6c2c9e26d02c18c81c1391223754e8644af45f2f6defabc3cbcc6c9e8",
+      "new_bytes": 26777,
+      "new_sha256": "ff101d151bcc656f6a463b1f0eaca3ad86f0b2cf5e549579b73ef9f07c0bec46"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "old_bytes": 18354,
+      "old_sha256": "3515082fb2a3f59f71225dc759e118199d46bf61750b2e178dc1349a97675d98",
+      "new_bytes": 21145,
+      "new_sha256": "1a78cd9d604a5d66b278fa98f47f97a9b6dfd497d7008552ccfc27bb362fdd2b"
+    },
+    {
+      "path": "scripts/gen-erd.mjs",
+      "old_bytes": 23359,
+      "old_sha256": "3aed77acfd0b42da8621a139d3b90bd5327a93239a561bcd2f7dea7d79359e72",
+      "new_bytes": 23362,
+      "new_sha256": "e4048ebc7147fe27b37f357e01df77cf9eb53ad3fd89c572b2f49de4b6c127cc"
+    },
+    {
+      "path": "docs/technical/diagrams/db-ord.svg",
+      "old_bytes": 15204,
+      "old_sha256": "7b6d6d9e8502e4858ad9537bba5d8da06159ec695bb8e047173b4ad89f237896",
+      "new_bytes": 15510,
+      "new_sha256": "0d5fd53dc52ba5190a9d8cecf557b562c0a136c5218efd8544a2a9f6350fb330"
+    },
+    {
+      "path": "docs/technical/reference/\u6570\u636e\u5e93-ER\u56fe.md",
+      "old_bytes": 64142,
+      "old_sha256": "607483d5203fc9a4df5c8c5524cb5039982182422e94ebbebc1a0093036d71e0",
+      "new_bytes": 64734,
+      "new_sha256": "0624590bd46391eafd87ab358f3d770109a4e79073cae1c339217f0da723292a"
+    }
+  ],
+  "finalCombined": "71pass",
+  "ablation": "3fail/68pass",
+  "exactModuleRestored": true,
+  "a5Unchanged": true,
+  "directGenerationHashComparisons": 21,
+  "topicSvgFinalBaseEquals": 3,
+  "topicFirstHashMissing": true,
+  "limit": "firstmanifest omittedtopics; firstunchangedstatus transcript +finalBASE hashes, notdirectfirsthash",
+  "diff": "/tmp/task60a-a5c-review-package-ffc22a27-c129-4843-8821-373529d4ebce.diff",
+  "diffSha256": "012e75a40dbe9963f9a8b851bf8a87d0947d33aee965094633c94782b7428e3d",
+  "manifestSha256": "658c4dd480f4e02fbafbb850a3e0fc1b15f53e79a87226b12f9c1fbb6926e463",
+  "reportSha256": "acbe0c382c9e9f84feedd3e68def0530b88fe946db6d8ddfa3cc2f5772ac89b3",
+  "productCommit": "811de0f35c67dd1319e087974cb92d7ace8ded0e",
+  "productTree": "6ec2e56f679b2d76486a084d53d4e92dac27753c",
+  "reviewSha256": "9fe8d710d0885a2e66622c525dc2ec93e0a12038ec2c71d221cf716b78f398f7"
+}

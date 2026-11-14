@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {renderActualFoodSource,foodSourceProjection} from './lib/food-source-inventory.mjs';
 import {buildFoodModuleInventory,renderFoodModuleInventory} from './lib/food-module-code-inventory.mjs';
 import {buildFoodMethodInventory,renderFoodMethodInventory} from './lib/food-method-inventory.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -35,6 +36,7 @@ const typeFor=a=>{
  return stem;
 };
 const resources={policy:['StoreOperationPolicy','StoreOperationService'],policies:['StoreOperationPolicy','StoreOperationService'],calendar:['ServiceCalendar','StoreOperationService'],menus:['Menu','MenuService'],'option-groups':['OptionGroup','OptionGroupService'],bundles:['Bundle','BundleService'],stations:['Station','StationService'],dishes:['Dish','DishService'],modifiers:['Modifier','ModifierService'],'sku-routes':['KitchenRoute','KitchenRouteService'],'sales-restrictions':['SalesRestriction','SalesRestrictionService'],catalog:['MenuCatalog','MenuService'],tables:['Table','TableService'],sessions:['DiningSession','DiningSessionService'],reservations:['Reservation','ReservationService'],checks:['Check','CheckService'],carts:['CheckCart','CheckCartService'],quotes:['DiningQuote','DiningOrderService'],batches:['OrderBatch','DiningOrderService'],tasks:['KitchenTask','KitchenTaskService'],courses:['Course','CourseService'],settlements:['DiningCheckout','DiningCheckoutService'],adjustments:['DiningAdjustment','DiningCheckoutService'],returns:['DiningReturn','DiningReturnService'],jobs:['PrintJob','PrintService'],'cash-shifts':['CashShift','CashShiftService'],entries:['CashEntry','CashShiftService'],closes:['BusinessClose','BusinessCloseService'],exceptions:['CloseException','BusinessCloseService'],reports:['DiningReport','DiningReportService'],'report-exports':['DiningReportExport','DiningReportService'],'report-rebuilds':['DiningReportRebuild','DiningReportService'],capabilities:['DiningCapability','DiningCapabilityService'],mappings:['ExternalMapping','ExternalMappingService'],'integration-exceptions':['IntegrationException','IntegrationExceptionService'],'sync-batches':['SyncBatch','SyncBatchService'],entitlements:['DiningEntitlement','DiningEntitlementService'],'banquet-plans':['BanquetPlan','BanquetPlanService'],custodies:['BottleCustody','BottleCustodyService'],'room-charges':['RoomCharge','RoomChargeService']};
+Object.assign(resources, {'queue-tickets':['Queue','QueueService']});
 Object.assign(resources, {'table-areas':['TableArea','TableService'],'table-operations':['TableOperation','CheckService'],seats:['CheckSeat','CheckService'],actions:['DiningActionLog','CheckService'],'config-revisions':['ConfigRevision','MenuService'],operations:['OrderBatchOperation','DiningOrderService']});
 Object.assign(resources, {'menu-channel-bindings':['MenuChannelBinding','MenuChannelBindingService'],syncs:['CatalogSync','CatalogSyncService'],'catalog-syncs':['CatalogSync','CatalogSyncService'],recipes:['Recipe','RecipeService'],'production-consumptions':['ProductionConsumption','ProductionConsumptionService']});
 const seen=new Set();const methods=s.apis.map(a=>{
@@ -44,16 +46,19 @@ const seen=new Set();const methods=s.apis.map(a=>{
  if(resource==='entries'&&a.domain==='L')resource='custodies';
  const [concept,defaultSvc]=resources[resource]||['DiningOperation','DiningOperationService'];const svc=codePlan.methodOverrides[a.id]?.service||defaultSvc;
  const controller=codePlan.methodOverrides[a.id]?.controller||realm+concept+'Controller';let method=codePlan.methodOverrides[a.id]?.method||typeFor(a);if(seen.has(controller+'.'+method))throw Error('Duplicate method '+controller+'.'+method);seen.add(controller+'.'+method);
- const name=method[0].toUpperCase()+method.slice(1);const owner=a.domain==='H'?'ai.neargo.shop.print':'ai.neargo.shop.food';
+ const name=method[0].toUpperCase()+method.slice(1);const owner='ai.neargo.shop.food';
  return {...a,httpMethod:a.method,pkg,svc,controller,controllerPackage:owner+'.api.'+realm.toLowerCase(),method,request:name+(a.method==='GET'?'Query':'Req'),vo:concept+'VO'};
 });
 const persistence=s.tables.map(t=>{
  const report=t.name.startsWith('rpt_'),print=t.name.startsWith('prn_');
- const owner=print?'shared-print':report?'shop-report':'food-core';const pkg=print?'ai.neargo.shop.print':report?'ai.neargo.shop.report':'ai.neargo.shop.food';
+ const owner=print?'shared-print':report?'shop-report':'food-core';const pkg=print?'ai.neargo.shop.printing':report?'ai.neargo.shop.report':'ai.neargo.shop.food';
  const entity=report?'DailyFoodMetricRow':cap(t.name);const mapper=report?'ReportFoodMetricDailyDao':(print?'PrintMappers.':'FoodMappers.')+cap(t.name.replace(/^(fnb|prn|rpt)_/,''))+'Mapper';
- return {table:t.name,entity,entityClass:pkg+(report?'.dto.':'.entity.')+entity,mapper,mapperClass:pkg+(report?'.dao.':'.mapper.')+mapper,owner};
+ const actualMapper=codePlan.tableOwners[t.name]?.mapperClass;
+ return {table:t.name,entity,entityClass:pkg+(report?'.dto.':'.entity.')+entity,mapper:actualMapper?actualMapper.split('.').at(-1):mapper,mapperClass:actualMapper||pkg+(report?'.dao.':'.mapper.')+mapper,owner};
 });
-const moduleInventory=buildFoodModuleInventory(s,{methods:methods.map(a=>({apiId:a.id,controller:a.controller,controllerPackage:a.controllerPackage,controllerClass:a.controllerPackage+'.'+a.controller,method:a.method,service:a.svc,serviceClass:(a.domain==='H'?'ai.neargo.shop.print':'ai.neargo.shop.food')+'.service.'+a.svc,request:a.input?a.request:null,response:a.vo,httpMethod:a.httpMethod,path:a.path})),persistence},codePlan,baselines);
+const actual=s.sourceImplementation;
+const moduleInventory=buildFoodModuleInventory(s,{methods:methods.map(a=>({apiId:a.id,controller:a.controller,controllerPackage:a.controllerPackage,controllerClass:a.controllerPackage+'.'+a.controller,method:a.method,service:a.svc,serviceClass:(a.domain==='H'?'ai.neargo.shop.printing':'ai.neargo.shop.food')+'.service.'+a.svc,request:a.input?a.request:null,response:a.vo,httpMethod:a.httpMethod,path:a.path})),persistence},codePlan,baselines);
+moduleInventory.sourceImplementation=foodSourceProjection(actual,'code');
 for(const a of methods){const item=moduleInventory.endpoints.find(e=>e.apiId===a.id);a.request=item.requestClass;a.vo=item.returnType;}
 let md=`# 餐饮系统代码结构与对象清单
 
@@ -169,11 +174,11 @@ md+=`\n顾客端白名单已逐项编号并映射对应Mp Controller；顾客会
 `;
 
 for(const p of persistence)md+=`| ${p.table} | ${p.entityClass} | ${p.mapperClass} | ${p.owner} |\n`;
-md+=`\n共享打印类名为该能力的候选名，实施前与共享模块统一；rpt_沿JdbcClient/DAO和Row record，不生成MyBatis Mapper。共享prn_五表归共享打印能力，rpt_一表归shop-report；food-core只管理${s.tables.filter(t=>t.name.startsWith("fnb_")).length}张餐饮候选表。基础商品、SKU、账号、主体、门店、资金、订单不生成餐饮Entity/Mapper副本。
+md+=`\n共享打印五表Entity/PrintMappers/PrintService已归shop-core的ai.neargo.shop.printing唯一owner；FOOD公开Controller归food-web。原/biz/print/jobs是未来共享B入口目标，NOT_REGISTERED；本表该目标的Req/VO和方法仅为PLANNED_TRANSPORT_CONTRACT，不代表存在对应Java类。实际入口/DTO见原API册第十一节及actualImplementations。rpt_沿JdbcClient/DAO和Row record，不生成MyBatis Mapper。共享prn_五表归共享打印能力，rpt_一表归shop-report；food-core只管理${s.tables.filter(t=>t.name.startsWith("fnb_")).length}张餐饮候选表。基础商品、SKU、账号、主体、门店、资金、订单不生成餐饮Entity/Mapper副本。
 
 ### Controller及Service完整包名
 
-Controller完整类名见上一节。Service统一为ai.neargo.shop.food.service.XxxService、ai.neargo.shop.food.service.impl.XxxServiceImpl；打印例外归ai.neargo.shop.print.service/impl。Req/VO统一ai.neargo.shop.food.dto或所属Controller内record；不得新建dto.request/response/application DTO平行层。每个类的文件位于对应模块src/main/java加包路径，嵌套Mapper只占集合类文件。机器清单同步保存controllerClass、serviceClass、serviceImplClass、entityClass、mapperClass。
+Controller完整类名见上一节。Service统一为ai.neargo.shop.food.service.XxxService、ai.neargo.shop.food.service.impl.XxxServiceImpl；共享打印owner归ai.neargo.shop.printing.service/impl；FOOD enqueue经FoodPrintService冻结文档后调用PrintPort，查询/重试/补打由FOOD Controller直接调用PrintPort。Req/VO统一ai.neargo.shop.food.dto或所属Controller内record；不得新建dto.request/response/application DTO平行层。每个类的文件位于对应模块src/main/java加包路径，嵌套Mapper只占集合类文件。机器清单同步保存controllerClass、serviceClass、serviceImplClass、entityClass、mapperClass。
 
 ## 七、定制Mapper方法及Service事务边界
 
@@ -231,15 +236,17 @@ food-core/src/test/java/.../
 
 本版取代food-domain/application/infrastructure/web/starter分层和全部Repository/RepositoryImpl清单。当前设计含${s.tables.length}张候选表、${s.apis.length}个目标API及109项需求追踪；目标合同不表示已实现，缺口见API册第八节；需要复杂policy/state machine时按core现有方式局部引入。历史八模块草案不再作为可选推荐。
 
-后续按主体切店/realm权限、幂等和未知恢复、同SKU多口味、资源容量、分批出品、退餐并发、后付库存、现金归班、签核更正、打印补打及同步去重设计业务验证。文档检查不代替Java编译或业务测试。${s.databaseInitialization?"本机73张餐饮业务表已初始化，执行记录见TDD-餐饮系统-数据库初始化；详细方法以《餐饮系统-Controller-Service-Mapper方法清单》为准；五个餐饮Java模块及部分管理端点已有实现；目标方法清单不能替代逐接口编译、原生数据库与宿主验收；订单报价、称重、耗用及Keeta仍按独立依赖记录。":"本轮未创建Java工程、源类或迁移。"}
+后续按主体切店/realm权限、幂等和未知恢复、同SKU多口味、资源容量、分批出品、退餐并发、后付库存、现金归班、签核更正、打印补打及同步去重设计业务验证。文档检查不代替Java编译或业务测试。${s.databaseInitialization?"历史本机V1/73张初始化记录见原TDD；云端当前基线V15/84张（含history），本批源码迁移尚未部署；详细方法以《餐饮系统-Controller-Service-Mapper方法清单》为准；五个餐饮Java模块及部分管理端点已有实现；目标方法清单不能替代逐接口编译、原生数据库与宿主验收；订单报价、称重、耗用及Keeta仍按独立依赖记录。":"本轮未创建Java工程、源类或迁移。"}
 `;
+md=md.replace('## 一、结论与现有代码依据',renderActualFoodSource(actual,'code')+'## 一、结论与现有代码依据');
 fs.writeFileSync(path.join(root,'docs/technical/design/餐饮系统-代码结构与对象清单.md'),md);
-fs.writeFileSync(path.join(root,'docs/technical/design/schema/food-code-inventory.json'),JSON.stringify({status:'PROPOSED',style:'platform-java-standard',source:'food-system-design.json',packageRoot:'ai.neargo.shop.food',modules:['food-api','food-core','food-web','food-channel','food-server'],controllers:[...new Set(methods.map(a=>a.controller))],methods:moduleInventory.endpoints,persistence:moduleInventory.persistence,businessModuleIndex:moduleInventory.modules.map(m=>({moduleId:m.moduleId,name:m.name,ownedApiIds:m.ownedApiIds,ownedTables:m.ownedTables}))},null,2)+'\n');
+fs.writeFileSync(path.join(root,'docs/technical/design/schema/food-code-inventory.json'),JSON.stringify({status:'SOURCE_AND_RETAINED_TARGETS',sourceImplementation:foodSourceProjection(actual,'code'),style:'platform-java-standard',source:'food-system-design.json',packageRoot:'ai.neargo.shop.food',modules:['food-api','food-core','food-web','food-channel','food-server'],controllers:[...new Set(methods.map(a=>a.controller))],methods:moduleInventory.endpoints,persistence:moduleInventory.persistence,businessModuleIndex:moduleInventory.modules.map(m=>({moduleId:m.moduleId,name:m.name,ownedApiIds:m.ownedApiIds,ownedTables:m.ownedTables}))},null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/technical/design/schema/food-module-code-inventory.json'),JSON.stringify(moduleInventory,null,2)+'\n');
-fs.writeFileSync(path.join(root,'docs/technical/design/餐饮系统-按业务模块代码清单.md'),renderFoodModuleInventory(moduleInventory));
+fs.writeFileSync(path.join(root,'docs/technical/design/餐饮系统-按业务模块代码清单.md'),renderActualFoodSource(actual,'code')+renderFoodModuleInventory(moduleInventory));
 
 const methodPlan=JSON.parse(fs.readFileSync(path.join(root,'docs/technical/design/schema/food-method-plan.json'),'utf8'));
 const methodInventory=buildFoodMethodInventory(s,moduleInventory,methodPlan,codePlan);
+methodInventory.sourceImplementation=foodSourceProjection(actual,'method');
 fs.writeFileSync(path.join(root,'docs/technical/design/schema/food-method-inventory.json'),JSON.stringify(methodInventory,null,2)+'\n');
-fs.writeFileSync(path.join(root,'docs/technical/design/餐饮系统-Controller-Service-Mapper方法清单.md'),renderFoodMethodInventory(methodInventory,moduleInventory));
+fs.writeFileSync(path.join(root,'docs/technical/design/餐饮系统-Controller-Service-Mapper方法清单.md'),renderActualFoodSource(actual,'method')+renderFoodMethodInventory(methodInventory,moduleInventory));
 console.log(`Generated CORE-aligned inventory: 5 modules, ${new Set(methods.map(a=>a.controller)).size} controllers, ${methods.length} API methods, ${persistence.length} table mappings`);

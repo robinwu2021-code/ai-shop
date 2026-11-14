@@ -18,8 +18,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class StoredValueAllocationPolicy {
     public record LotBalance(String lotNo, long principalMinor, long bonusMinor, RedemptionScope scope,
-                             Instant creditedAt) {
+                             Instant creditedAt, Long originalPrincipalMinor, Long originalBonusMinor) {
+        public LotBalance(String lotNo,long principalMinor,long bonusMinor,RedemptionScope scope,Instant creditedAt){this(lotNo,principalMinor,bonusMinor,scope,creditedAt,null,null);}
         public LotBalance {
+            ContractChecks.require((originalPrincipalMinor==null)==(originalBonusMinor==null));
+            if(originalPrincipalMinor!=null){ContractChecks.require(originalPrincipalMinor>0&&originalBonusMinor>=0&&principalMinor<=originalPrincipalMinor&&bonusMinor<=originalBonusMinor);ContractChecks.addAmounts(originalPrincipalMinor,originalBonusMinor);}
             ContractChecks.id(lotNo); ContractChecks.addAmounts(principalMinor, bonusMinor);
             ContractChecks.present(scope); ContractChecks.present(scope.refs()); ContractChecks.present(creditedAt);
             ContractChecks.require(Set.of("ALL", "STORES", "GOODS", "CATEGORIES").contains(scope.mode()));
@@ -77,8 +80,11 @@ public class StoredValueAllocationPolicy {
             }
             if (used == 0) continue;
             var lot = lots.get(i);
-            long bonus = BigInteger.valueOf(used).multiply(BigInteger.valueOf(lot.bonusMinor()))
-                    .divide(BigInteger.valueOf(Math.addExact(lot.principalMinor(), lot.bonusMinor()))).longValueExact();
+            long basisBonus=lot.originalBonusMinor()==null?lot.bonusMinor():lot.originalBonusMinor();
+            long basisTotal=lot.originalPrincipalMinor()==null?Math.addExact(lot.principalMinor(),lot.bonusMinor()):Math.addExact(lot.originalPrincipalMinor(),lot.originalBonusMinor());
+            long bonus=BigInteger.valueOf(used).multiply(BigInteger.valueOf(basisBonus)).divide(BigInteger.valueOf(basisTotal)).longValueExact();
+            // Holds and rounding may exhaust one component. The final allocation consumes the exact residue.
+            bonus=Math.max(Math.max(0,used-lot.principalMinor()),Math.min(lot.bonusMinor(),bonus));
             allocations.add(new Allocation(lot.lotNo(), used - bonus, bonus, details));
         }
         return new Plan(paid, allocations);

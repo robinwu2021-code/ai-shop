@@ -75,6 +75,12 @@ public interface ReviewService {
 
     // ---------------------------------------------------------------- 商家侧（B-11.7）
 
+    /** 本主体原评价，含申诉成立后隐藏的原文与裁决；不向其他主体暴露。 */
+    ReviewVO merchantReview(String merchantNo, String reviewNo);
+
+    /** 本主体申诉历史，包含原评价已隐藏的裁决，按申诉新到旧分页。 */
+    List<ReviewVO> merchantAppeals(String merchantNo, int page, int size);
+
     /** 待商家回复的评价数（工作台待办）。 */
     int pendingReplyCount(String merchantNo);
 

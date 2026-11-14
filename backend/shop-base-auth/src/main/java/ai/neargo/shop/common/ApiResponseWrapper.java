@@ -1,6 +1,7 @@
 package ai.neargo.shop.common;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -60,6 +61,12 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
      */
     private static final String SHORT_LINK2_PATH_PREFIX = "/l/";
 
+    /**
+     * 支付接入层的开放 API 与收银台（ADR-044；安全规范 §5.2）：它们有自己的响应体
+     * {@code {code, message, data, requestId}} 与真 HTTP 状态，是对第三方公开的契约，不能被内部信封再包一层。
+     */
+    private static final String[] PAY_PORTAL_PATH_PREFIXES = {"/open/pay/", "/checkout/", "/biz/pay/v2/"};
+
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         // String 走 StringHttpMessageConverter，包成对象再交给它会 ClassCastException —— 这里就排除
@@ -71,7 +78,10 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   Class<? extends HttpMessageConverter<?>> selectedConverterType,
                                   ServerHttpRequest request, ServerHttpResponse response) {
         // supports() 拿不到请求，所以路径在这里判
-        if (body instanceof ApiResult<?> || isInternal(request) || isShortLink(request) || pathOf(request).equals("/private/print-artifacts")) {
+        if (MediaType.TEXT_EVENT_STREAM.isCompatibleWith(selectedContentType)
+                || body instanceof ApiResult<?> || body instanceof Resource || isInternal(request) || isShortLink(request)
+                || isPayPortal(request)
+                || pathOf(request).equals("/private/print-artifacts")) {
             return body;
         }
         return ApiResult.ok(body);
@@ -86,6 +96,17 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
     static boolean isShortLink(ServerHttpRequest request) {
         String p = pathOf(request);
         return p.startsWith(SHORT_LINK_PATH_PREFIX) || p.startsWith(SHORT_LINK2_PATH_PREFIX);
+    }
+
+    /** 请求路径是否在支付接入层自带响应体的入口之下（开放 API、收银台） */
+    static boolean isPayPortal(ServerHttpRequest request) {
+        String p = pathOf(request);
+        for (String prefix : PAY_PORTAL_PATH_PREFIXES) {
+            if (p.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 去掉 context path 的请求路径。两处判前缀共用一份 —— 分开写迟早只改一处 */

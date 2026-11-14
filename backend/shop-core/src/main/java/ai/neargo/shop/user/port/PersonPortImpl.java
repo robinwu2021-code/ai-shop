@@ -32,6 +32,9 @@ public class PersonPortImpl implements PersonPort {
     }
 
     @Override
+    public Optional<PersonView> findByPhone(String phone) { return personService.findByPhone(phone).map(this::view); }
+
+    @Override
     public Optional<PersonView> findByUser(String userNo) {
         return personService.findByUser(userNo).map(this::view);
     }
@@ -40,6 +43,9 @@ public class PersonPortImpl implements PersonPort {
     public Optional<PersonView> find(String personNo) {
         return personService.find(personNo).map(this::view);
     }
+
+    @Override
+    public java.util.List<PersonView> matchPhones(java.util.List<String> ids,String query){return personService.matchPhones(ids,query).stream().map(this::view).toList();}
 
     @Override
     public Optional<String> revealPhone(String personNo) {

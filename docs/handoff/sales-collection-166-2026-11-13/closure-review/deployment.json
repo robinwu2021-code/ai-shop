@@ -1,0 +1,31 @@
+{
+  "releaseId": "sales-closure-20261113-01c5f665b",
+  "sourceCommit": "01c5f665b791b0ff33548427d7fd1ed85b537de6",
+  "shopBaselineSha256": "7095f47e08f5ef6abdab161252fc79b0548548c23d06038ce2a5225c865f4500",
+  "opsBaseline": "/data/www/ai-shop-ops/releases/ops-merchant-form-ui-20261113-df0f6bf3e",
+  "opsSourceBase": "df0f6bf3eb56f921a2eb5a7ae652c6996b062567",
+  "testStores": [
+    "ST261113Y693VWBMKT"
+  ],
+  "fundsMode": "TEST",
+  "opsOverlayFiles": {
+    "ops-web/app/mall/copy.ts": "3f1164f38e05c1476527dc5137443b15cf899d5a9474aca8c1c3381f6512ebe4",
+    "ops-web/app/mall/order-drawer.tsx": "6d515e99b25f65ca6627b8da156d030b3e6b5cc0c6058f2ccc09fe72f1f7ee6d",
+    "ops-web/lib/api/contracts/commerce.ts": "0a71084149ac7cfbfb6cafed44a773df35773763df6e7f55a37fdda0c52da22e",
+    "ops-web/lib/api/https/commerce.test.ts": "677b0cc173bea094c257ad00922ad959b987b6932ec21180a9794fdf3421ce30",
+    "ops-web/lib/api/https/commerce.ts": "ba896a6105baae12dd2c17ae4455a3bddff8a322f0b39060a77f87dbfdea08e1",
+    "ops-web/lib/api/mocks/commerce.ts": "dd192a04bea7f5b724c443007d7c376cca6fed986a9a5659e1e3f059f72c29e1",
+    "ops-web/lib/mall-offline-review.test.ts": "3326f7a1c69bee92c1fc5e58f6011043758eb379a4c87d015ba87f21dc58b710",
+    "ops-web/lib/mall-offline-review.ts": "30ff92cf4c0cb3da76df3b681885fca9c5a742163aef9da6225640db1eaab6d7",
+    "ops-web/lib/types/commerce.ts": "6246ac460c60ca7f37e81e1a2ee77f09dba36a3867df282dd8c254c80bf0b603"
+  },
+  "status": "DEPLOYED",
+  "candidateSha256": "0ed89ae0f55506150165418c36c0eec4ccb6c4a6715ca492cf11755b8a6cbf0b",
+  "health": {
+    "api": "UP",
+    "ops": "UP"
+  },
+  "web": "/data/www/ai-shop-ops/releases/sales-closure-20261113-01c5f665b",
+  "migrationRequired": false,
+  "changedClasses": 37
+}

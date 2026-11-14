@@ -1,0 +1,195 @@
+{
+  "task": "Task69A1/C03",
+  "status": "CODE_PHASE_SPEC_PASS_QUALITY_APPROVED",
+  "codeCommit": "bf8fe7688d5a02179726fc93a055ebc5907c6141",
+  "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
+  "review": ".superpowers/sdd/beauty-backend/review-task-69a1-r1.md",
+  "reviewSha256": "b0a6c3b387f6ad9fdfef81f1012107c010f6855ef15e56bfcbae04cb65621b81",
+  "report": ".superpowers/sdd/beauty-backend/task-69a1-report.md",
+  "reportSha256": "389e9b4a846127557edbd99fed87b8d09d2ed1fc64e0d1c2ea33df38a34e14a1",
+  "sourceFiles": [
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java",
+      "sha256": "d5139a440ebd5fc2f4d36b620a2452e49b805e102cbf40c8ce1758937e709794",
+      "lines": 126
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java",
+      "sha256": "b5616bb44cd7026efbd0f41483398154ffdcc307b63631756e6dcd1f0dd6e070",
+      "lines": 126
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java",
+      "sha256": "30c696797e64d45fd7f3078a19cea0349cf65bfda627366fc2ddd1a8330eb39f",
+      "lines": 320
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java",
+      "sha256": "fbfa2de4f2e009a962821486b4674c77feca84dffc161557ab9f158c81c1dff5",
+      "lines": 30
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java",
+      "sha256": "aeb61d56eae353dd234957678a8d55542933a7ae79d2c363287b3465a078fa2a",
+      "lines": 24
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java",
+      "sha256": "9d57f297951ea3da637c2ab4da4d1558eaf865240ee294852d82b5c1fee3fa55",
+      "lines": 73
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java",
+      "sha256": "2a9813c2d6e637aeed9c7ab63f86ded8f56b5ee45cb15e695d1a90af48c7daaa",
+      "lines": 133
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java",
+      "sha256": "bf4ac74c1a990bda585cc68d9448435eecd35cb317da8cc11d7ca1c0dc040759",
+      "lines": 75
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java",
+      "sha256": "cf0b14eaefbac6778005996a18a2b52dd1ab3caf7196e78c225866ba9c30cbc4",
+      "lines": 103
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java",
+      "sha256": "6d12d6b9d1b1bb27ad376f956024c4a6da3fa87035f8d0c0a3b5d1b64064700c",
+      "lines": 55
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java",
+      "sha256": "895135d36f58a8df7734f577ecdf919b2615e9aaf5f183d57e7762c9d950d24f",
+      "lines": 295
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java",
+      "sha256": "487bb9abdbdb3bbb184b6c14a924cc28163342fc464714358d018e9c9816e4ec",
+      "lines": 467
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-app/src/main/resources/db/migration/V544__manual_service_execution_authority.sql",
+      "sha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
+      "lines": 257
+    },
+    {
+      "kind": "create",
+      "path": "docs/technical/design/schema/manual-service-execution-schema.json",
+      "sha256": "3febfef28f90cd32fe5ecd7dff604dc620565109178e31e8688d3d7320cc6547",
+      "lines": 1090
+    },
+    {
+      "kind": "create",
+      "path": "scripts/gen-manual-service-execution-schema.mjs",
+      "sha256": "e237758449530fe8688f38a8392dfaae7505f41985e6d66e3b642b5fb56c8497",
+      "lines": 159
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-core/src/main/resources/META-INF/shop/manual-service-execution-schema.json",
+      "sha256": "42ad3a0b965391cd06afd434a6f6e90d359aef2812b6776ccc0ef7293f58443e",
+      "lines": 1135
+    },
+    {
+      "kind": "create",
+      "path": "backend/shop-base/src/test/java/ai/neargo/shop/spi/trade/ServiceExecutionContractTest.java",
+      "sha256": "1d3cb598352fb7f660d201a4ebbab73e431692a10798cca431cc48dc8fe0ed42",
+      "lines": 366
+    },
+    {
+      "kind": "create",
+      "path": "scripts/tests/manual-service-execution-schema.test.mjs",
+      "sha256": "563fa80c2ea0d0215034b4df081d442abd2cd810d329c0c8bc6af6c8f2e35600",
+      "lines": 123
+    },
+    {
+      "kind": "modify",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "sha256": "af10d4f19082048af15e17f898dc243c5b74ffab45e05155ad386cc619c2d5aa",
+      "lines": 251,
+      "baselineSha256": "078252ca3d328303acd6c2672dcd2530e67d14b8e34b181eba6d2d33296eefaf"
+    },
+    {
+      "kind": "modify",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "sha256": "988cf3011965643676ba10318a3e7bf0cc5684bd22acacf9e01f9057dd9ad776",
+      "lines": 233,
+      "baselineSha256": "1a48e6aa81374748746687396f8c841ce28a9ccae50dc41237d2e8bfb88d03d2"
+    },
+    {
+      "kind": "modify",
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "sha256": "2fc0537a3f4e2946eca242dd8dc088027df7b1b0f4caf8230a8e4999d514c62f",
+      "lines": 344,
+      "baselineSha256": "51309bb26f30398667775bf7c725a5a8d3cf2f52d3b3d4be6c7568ff3e0a9120"
+    },
+    {
+      "kind": "modify",
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "sha256": "7a938a8734213e9ef05ab94a57b134285abaec3b5dc7f15c6269c8e059854009",
+      "lines": 453,
+      "baselineSha256": "cf9dbe849632b1ae53c7b8d19d21eed612588c5d6ae386584605110c62955b4f"
+    },
+    {
+      "kind": "modify",
+      "path": "scripts/lib/schema-lineage.mjs",
+      "sha256": "939b8e5b2ba22c2f664262abd97e4944f02d16ab9389ca574dc1247fccf6c245",
+      "lines": 565,
+      "baselineSha256": "3520fce93c23528278630929e9843fb60f34b5afbf3ceb47cbd1642f057980e1"
+    }
+  ],
+  "historical486MigrationsUnchanged": true,
+  "compile": [
+    {
+      "kind": "current-source Java/test-source compilation",
+      "modules": 24,
+      "seconds": 38.246,
+      "log": "/tmp/task69a1-test-compile-6.log",
+      "sha256": "a54e081dbc663558f827fe4bdf4499909e783cc34c4a642ae64bf608c537afd0"
+    },
+    {
+      "kind": "fix1 resource refresh; Java up-to-date",
+      "modules": 24,
+      "seconds": 2.022,
+      "log": "/tmp/task69a1-fix-round-1-test-compile.log",
+      "sha256": "42a6854d4fa7f0231330128cc230cc32b38416cf89914761533d8e79ca7e567d"
+    }
+  ],
+  "testsAuthoredNotExecuted": {
+    "junit": 19,
+    "node": 7,
+    "vitest": "selected entity/lineage cases"
+  },
+  "testsExecuted": false,
+  "migrationExecuted": false,
+  "applicationStarted": false,
+  "deployed": false,
+  "canStart": false,
+  "paymentIntegration": false,
+  "integrationDebt": [
+    "C18 general H2 generator fails parsing unchanged V541 quoted semicolon; no candidate output or fixture overwritten",
+    "C18 H2 JSON projection and real installed-marker combined fixtures; no guard relaxation/fake Flyway marker",
+    "Actual installed-schema/concurrency/transport/old-new compatibility verification remains B"
+  ],
+  "erStaticGeneration": {
+    "tables": 369,
+    "relations": 635,
+    "domains": 16,
+    "svgFiles": 20
+  },
+  "next": "A2 source fence and real observation/base-startup integration"
+}

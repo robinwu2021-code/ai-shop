@@ -1,9 +1,17 @@
 package ai.neargo.shop.payclient;
 
 import ai.neargo.shop.pay.client.PayInternalApi;
+import ai.neargo.shop.pay.client.PaymentInternalApi;
+import ai.neargo.shop.pay.client.port.RemotePaymentPort;
+import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.svc.InternalServiceInterceptor;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
+import java.util.Map;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,8 +27,42 @@ public class PayClientConfig {
     /** 与迁移前一致：pay 的内部调用读超时 5 秒 */
     private static final Duration PAY_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    /** 来源申请支付服务（near-pay source-links/apply），运营端「申请支付服务」用 */
+    @Bean
+    PaySourceLinkApi paySourceLinkApi(InternalHttp http) {
+        return http.client(ServiceName.PAY, PaySourceLinkApi.class, PAY_READ_TIMEOUT);
+    }
+
     @Bean
     PayInternalApi payInternalApi(InternalHttp http) {
         return http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT);
+    }
+
+    /**
+     * 调用方鉴权头，注册成 PAY 的按服务拦截器：{@link InternalHttp} 给<b>每一个</b> PAY 客户端都挂上
+     * （收款页 {@code PayBizInternalApi}、运营支付页 {@code PayOpsInternalApi}、{@code PayInternalApi}…）。
+     * 独立 near-pay 按调用方鉴权，只带共享令牌会 401。见 {@link PayCallerHeaders}。
+     */
+    @Bean
+    @ConditionalOnProperty(name = "shop.pay.internal-caller")
+    InternalServiceInterceptor payCallerHeaders(Environment env) {
+        return new InternalServiceInterceptor(ServiceName.PAY,
+                PayCallerHeaders.of(env.getProperty("shop.pay.internal-caller"), credentials(env)));
+    }
+
+    private static Map<String, String> credentials(Environment env) {
+        return Binder.get(env)
+                .bind("shop.pay.internal-caller-credentials", Bindable.mapOf(String.class, String.class)).orElse(Map.of());
+    }
+
+    /**
+     * 支付单的远程实现（TDD-支付服务-I3支付单退款流水 S8）：按调用方鉴权，凭据逐个调用方配
+     * （{@code shop.pay.internal-caller-credentials.MALL} / {@code .FOOD}，部署环境给，不进仓库）。
+     */
+    @Bean
+    PaymentPort remotePaymentPort(InternalHttp http, Environment env) {
+        Map<String, String> credentials = credentials(env);
+        return new RemotePaymentPort(http.client(ServiceName.PAY, PaymentInternalApi.class, PAY_READ_TIMEOUT),
+                credentials, ServiceName.PAY);
     }
 }

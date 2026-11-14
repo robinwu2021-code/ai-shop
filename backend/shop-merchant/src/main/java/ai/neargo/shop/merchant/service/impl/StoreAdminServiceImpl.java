@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -13,10 +14,12 @@ import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.service.StoreAdminService;
+import ai.neargo.shop.merchant.service.StoreCategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +36,13 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(StoreAdminServiceImpl.class);
 
+    private final MerchantStoreCreation commerce;
+    private final StoreCategoryService categories;
     private final MchStoreMapper storeMapper;
+    private final PayMerchantMirror payMirror;
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
     private final MchStoreRoleMapper roleMapper;
     private final MchPaymentMapper paymentMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
@@ -54,12 +63,17 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
-    public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+    public StoreAdminServiceImpl(MerchantStoreCreation commerce, StoreCategoryService categories,
+                                 MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
+                                 PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
+        this.categories = categories;
+        this.commerce = commerce;
         this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
@@ -84,6 +98,15 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @Override
     @Transactional
     public StoreVO create(String merchantNo, String name, String address) {
+        return create(merchantNo, new CreateCommand(name, address, null, null, null));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO create(String merchantNo, CreateCommand cmd) {
+        ownership.lockEntityAndCheck("MAIN",merchantNo);
+        String name = cmd.name();
+        var actor = commerce.actor(null);
         if (name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -98,22 +121,38 @@ public class StoreAdminServiceImpl implements StoreAdminService {
          * 这对存量是零行为变化 —— 默认店不能停用（见 setStatus），
          * 而单店商家的唯一一家就是默认店，所以他的 ACTIVE 数恒等于总数。
          */
+        MchStore s = new MchStore();
+        commerce.prepare(s, actor, cmd.businessTypeCode());
+        s.setStoreNo(BizKey.next(BizKey.STORE));
+        var replay = commerce.reserveBranch(actor, merchantNo, cmd, s.getStoreNo());
+        if (replay.isPresent()) {
+            MchStore original = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                    Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getEntityNo, merchantNo)
+                            .eq(MchStore::getStoreNo, replay.get())
+                            .last("for share")));
+            if (original == null) throw BizException.of(ErrorCode.CONFLICT);
+            return toVO(original, activePayMerchantNos(merchantNo), staffCountOf(original.getStoreNo()));
+        }
         planService.requireStoreQuota(merchantNo,
-                () -> (int) stores(merchantNo).stream()
+                () -> (int) stores(merchantNo, actor != null).stream()
                         .filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
         // 数完之后才读列表：第一家店要自动成为默认店，这个判断不能用加锁前的快照
-        List<MchStore> existing = stores(merchantNo);
-
-        MchStore s = new MchStore();
+        List<MchStore> existing = stores(merchantNo, actor != null);
         s.setEntityNo(merchantNo);
-        s.setStoreNo(BizKey.next(BizKey.STORE));
         s.setName(name);
-        s.setAddress(address);
+        s.setAddress(cmd.address());
         // 第一家店自动成为默认店；之后新建的都不是 —— 默认标的转移是显式动作
         s.setIsDefault(existing.isEmpty());
         s.setStatus(MchStore.ACTIVE);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
+        commerce.inserted(s, actor);
         inheritServiceAreas(merchantNo, existing, s.getStoreNo());
+        if (cmd.categoryNos() != null) {
+            String copyFrom = existing.isEmpty() ? null : existing.getFirst().getStoreNo();
+            categories.initForNewStore(merchantNo, s.getStoreNo(), cmd.categoryNos(), copyFrom);
+        }
         return toVO(s, activePayMerchantNos(merchantNo), Map.of());
     }
 
@@ -196,6 +235,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         DataScopeContext.executeWithoutScope(() -> storeMapper.update(null,
                 Wrappers.<MchStore>lambdaUpdate()
                         .set(MchStore::getSlug, slug)
+                        // 不带实体的 update 不走自动填充：不手动推 updated_at，门店同步（StoreSyncPublisher 按 updated_at 扫）
+                        // 看不到这次改动，near-pay 的立牌码就拿不到 store_code（2026-11-07 台北早餐）
+                        .set(MchStore::getUpdatedAt, java.time.LocalDateTime.now())
                         .eq(MchStore::getId, s.getId())));
         s.setSlug(slug);
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
@@ -250,6 +292,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             return null;
         });
         target.setIsDefault(true);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         return toVO(target, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }
 
@@ -268,6 +311,21 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             if (!activePayMerchantNos(merchantNo).contains(payMerchantNo)) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+            /*
+             * 还要是**这家店能用的号**：主体级号（store_no 为空串）给哪家店都行；
+             * 某家门店单独进件的号是那家店的结算账户，绑给别的店 = 这家店的钱进了那家店的户（F03 · Review R03）。
+             */
+            String dedicatedTo = DataScopeContext.executeWithoutScope(() ->
+                            paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                    .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo)))
+                    .stream()
+                    .map(p -> p.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : p.getStoreNo())
+                    .findFirst()
+                    .orElse(MchPaymentMerchant.ENTITY_LEVEL);
+            if (!dedicatedTo.equals(MchPaymentMerchant.ENTITY_LEVEL) && !dedicatedTo.equals(storeNo)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             s.setPayMerchantNo(payMerchantNo);
         } else {
             // 传空是合法操作：回到「用主体的默认收款号」，不是清空错误
@@ -275,6 +333,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         }
         // 留痕：它改变的是钱的去向，出问题时要能回答「什么时候换的」
         s.setPaymentChangedAt(System.currentTimeMillis());
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }
@@ -282,15 +341,20 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     // ------------------------------------------------------------------ 内部
 
     private List<MchStore> stores(String merchantNo) {
+        return stores(merchantNo, false);
+    }
+
+    private List<MchStore> stores(String merchantNo, boolean current) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getEntityNo, merchantNo)
                         .orderByDesc(MchStore::getIsDefault)
-                        .orderByAsc(MchStore::getId)));
+                        .orderByAsc(MchStore::getId).last(current, "for share")));
     }
 
     /** 越权保护：门店号对不上主体一律 404，**不要 403** —— 403 等于确认这个号存在。 */
     private MchStore require(String merchantNo, String storeNo) {
+        ownership.lockAndCheck("MAIN",merchantNo,storeNo);
         return stores(merchantNo).stream()
                 .filter(s -> s.getStoreNo().equals(storeNo))
                 .findFirst()
@@ -341,7 +405,10 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                  */
                 storeLinkService.linkOf(
                         s.getSlug() != null && !s.getSlug().isBlank() ? s.getSlug() : s.getStoreCode(),
-                        null));
+                        null),
+                // 经营市场由调用方按主体补（StoreVO#withMarket）；这里带门店自己的经营类型与建店选的行业码（V643）
+                null, null, null, null, s.getIndustryCode(), s.getSubIndustryCode(), s.getBusinessTypeCode(),
+                s.getIndustryText(), s.getSubIndustryText());
     }
 
     /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */

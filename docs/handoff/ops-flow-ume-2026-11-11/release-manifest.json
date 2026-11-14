@@ -1,0 +1,14 @@
+{
+  "target": "UME166",
+  "sourceCommit": "1e9975eebef70c5f626f71072c2c33d08726af72",
+  "baseCommit": "87f03a6adcd105e9039e18a0b625df808fd38eda",
+  "expectedRuntimeSha256": "7ece70f156aecc37e130a45f571931c523a215417d45969ea91f8558bb4df63a",
+  "jarSha256": "2e6a6fda9858cec6f4566bf682e87e8cc56f8fec4a650ed553d25f87e32cebb4",
+  "jarBytes": 123363790,
+  "remoteStage": "/data0/app/ai-shop/releases/opsflow-26b46e54",
+  "backendTests": 76,
+  "opsTests": 36,
+  "mock": false,
+  "independentPayReplaced": false,
+  "inventoryReplaced": false
+}

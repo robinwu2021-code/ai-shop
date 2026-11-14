@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTheme, applyTheme } from "@/lib/stores/theme";
 import { useLocaleStore, applyLocale } from "@/lib/stores/locale";
 import { notify } from "@/lib/notify";
+import { describeError } from "@/lib/commerce-reason";
 import { Toaster } from "@/components/ui/toaster";
 import { refreshPerms, useAuth } from "@/lib/auth";
 
@@ -105,7 +106,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         // 所有 mutation 失败统一 toast（消息已本地化：后端 message / mock i18n / ApiError）。
         mutationCache: new MutationCache({
-          onError: (e) => notify.error(e instanceof Error ? e.message : String(e)),
+          // describeError：商城（commerce）的机器原因码翻成人话，其余错误原样（见 lib/commerce-reason.ts）
+          onError: (e) => notify.error(describeError(e)),
         }),
         defaultOptions: { queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: false } },
       }),

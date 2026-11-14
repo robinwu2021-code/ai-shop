@@ -28,6 +28,8 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
     private final ObjectProvider<PointsOrderTermsPort> terms;
     private final ObjectProvider<OrderPointsFactService> journal;
     private final TransactionTemplate tx;
+    private final ai.neargo.shop.trade.order.points.earning.PointsEarningRules earningRules;
+    private final ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsOrderPlacementCoordinatorImpl(
@@ -37,14 +39,30 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
             ObjectProvider<PointsRedeemPort> redeem,
             ObjectProvider<PointsOrderTermsPort> terms,
             ObjectProvider<OrderPointsFactService> journal,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ai.neargo.shop.trade.order.points.earning.PointsEarningRules earningRules,
+            ai.neargo.shop.spi.product.PointsEarningCatalogPort earningCatalog) {
         this.mapper = mapper;
+        this.earningRules = earningRules;
+        this.earningCatalog = earningCatalog;
         this.bindings = bindings;
         this.orders = orders;
         this.redeem = redeem;
         this.terms = terms;
         this.journal = journal;
         this.tx = new TransactionTemplate(manager);
+    }
+
+    private ObjectProvider<PointsEarningRulePort> sharedRules;
+    private boolean unifiedEarning;
+    private ObjectProvider<PointsOperationsPort> operations;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setUnifiedOperations(ObjectProvider<PointsOperationsPort> operations) { this.operations=operations; }
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureUnifiedEarning(ObjectProvider<PointsEarningRulePort> rules,
+            @org.springframework.beans.factory.annotation.Value("${shop.points.unified-earning-enabled:false}") boolean enabled) {
+        this.sharedRules = rules;
+        this.unifiedEarning = enabled;
     }
 
     @Override
@@ -147,7 +165,8 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
             if (port == null)
                 return mark(order, Phase.UNKNOWN, "POINTS_IMPLEMENTATION_REQUIRED", null);
             try {
-                outcome = port.hold(resolved.command());
+                outcome = resolved.operationNo()==null?port.hold(resolved.command()):unified().hold(
+                        holdContext(state,"HOLD"),resolved.command());
             } catch (IllegalArgumentException rejected) {
                 if (reconfirm(rejected.getMessage()))
                     return mark(order, Phase.RECONFIRM, rejected.getMessage(), null);
@@ -241,16 +260,8 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
             require(
                     !targets.isEmpty() && redeem.getIfAvailable() != null,
                     "POINTS_REQUOTE_REQUIRED");
-            quote =
-                    redeem.getObject()
-                            .quote(
-                                    new PointsRedeemPort.RedeemQuery(
-                                            d.market(),
-                                            d.userNo(),
-                                            d.wantPoints(),
-                                            d.scene(),
-                                            d.client(),
-                                            targets));
+            var query = new PointsRedeemPort.RedeemQuery(d.market(),d.userNo(),d.wantPoints(),d.scene(),d.client(),targets);
+            quote = unifiedEarning ? unified().quote(first.typeCode(),d.currency(),query) : redeem.getObject().quote(query);
             require(
                     quote != null
                             && first != null
@@ -365,7 +376,9 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                                 d.client(),
                                 targets,
                                 expected);
-        return new Resolved(admissions, quote, command);
+        boolean versioned=unifiedEarning && !admissions.isEmpty() && admissions.stream().allMatch(a ->
+                json.readValue(a.snapshot().ruleSnapshot(),EarningSnapshot.class).schemaVersion()==3);
+        return new Resolved(admissions, quote, command, null, versioned ? "ORDER_REDEEM_V3" : null);
     }
 
     private EarningSnapshot freezeRules(
@@ -377,11 +390,14 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                     line != null && supplied.put(line.itemId(), line) == null,
                     "POINTS_PLACEMENT_LINES_INVALID");
         require(supplied.size() == items.size(), "POINTS_PLACEMENT_LINES_INVALID");
-        long[] deductions =
+        long[] cashShares =
                 LineShares.allocate(
-                        deduct,
+                        c.target().target().goodsMinor() - deduct,
                         items.stream().mapToLong(PointsRedeemPort.Item::goodsMinor).toArray());
         List<PointsEarnPort.EarnLine> frozen = new ArrayList<>();
+        List<RuleTrace> traces = new ArrayList<>();
+        earningRules.ensureDefault(terms.typeCode(), terms.fallback(), terms.fallbackRevision());
+        var publishedRules = earningRules.all(terms.typeCode());
         for (int i = 0; i < items.size(); i++) {
             var item = items.get(i);
             var line = supplied.get(item.itemId());
@@ -391,17 +407,37 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                             && line.goodsCashMinor() == item.goodsMinor()
                             && line.refundedBeforeGrantMinor() == 0,
                     "POINTS_PLACEMENT_LINES_INVALID");
+            String category = earningCatalog.goodsCategory(line.goodsNo());
+            var matched = ai.neargo.shop.trade.order.points.earning.PointsEarningRules.match(publishedRules, earningCatalog.ancestry(category));
+            traces.add(new RuleTrace(line.itemId(),category,matched.scope(),matched.revision()));
             frozen.add(
                     new PointsEarnPort.EarnLine(
                             line.itemId(),
                             line.goodsNo(),
-                            line.categoryNo(),
+                            category,
                             line.quantity(),
-                            item.goodsMinor() - deductions[i],
+                            cashShares[i],
                             0,
-                            line.rule() == null ? terms.fallback() : line.rule()));
+                            matched.rule()));
         }
-        return new EarningSnapshot(1, terms.fallbackRevision(), frozen);
+        if (unifiedEarning && frozen.stream().allMatch(line -> line.rule().mode() == PointsEarnPort.RuleMode.RATIO)) {
+            var shared = sharedRules == null ? null : sharedRules.getIfAvailable();
+            require(shared != null, "POINTS_EARNING_RULES_UNAVAILABLE");
+            frozen.clear(); traces.clear();
+            for (int i = 0; i < items.size(); i++) {
+                var item = items.get(i); var raw = supplied.get(item.itemId());
+                String category = earningCatalog.goodsCategory(raw.goodsNo());
+                long cash = cashShares[i];
+                var calculation = shared.calculate(new PointsEarningRulePort.Query(terms.typeCode(), terms.currency(), category, cash));
+                require(calculation.type().ratePoints() == terms.ratePoints()
+                        && calculation.type().rateMinor() == terms.rateMinor(), "POINTS_EARNING_RATE_CHANGED");
+                frozen.add(new PointsEarnPort.EarnLine(item.itemId(), raw.goodsNo(), category, raw.quantity(), cash, 0,
+                        new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO, calculation.ratioBp())));
+                traces.add(new RuleTrace(item.itemId(), category, calculation.matchedScope(), calculation.revision()));
+            }
+            return new EarningSnapshot(3, terms.fallbackRevision(), frozen, traces, "ORDER_EARN_V3");
+        }
+        return new EarningSnapshot(2, terms.fallbackRevision(), frozen, traces);
     }
 
     @Override
@@ -495,7 +531,7 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                                 root.version());
         var frozen =
                 new Resolved(
-                        resolved.admissions(), resolved.quote(), resolved.command(), cancellation);
+                        resolved.admissions(), resolved.quote(), resolved.command(), cancellation, resolved.operationNo());
         return change(
                 current,
                 Phase.CANCEL_REQUESTED,
@@ -512,7 +548,8 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
             if (port == null) return current;
             require(resolved.cancellationCommand() != null, "POINTS_CANCELLATION_PROOF_REQUIRED");
             try {
-                port.release(resolved.cancellationCommand());
+                if(resolved.operationNo()==null)port.release(resolved.cancellationCommand());
+                else unified().release(holdContext(current,"RELEASE"),resolved.cancellationCommand());
             } catch (RuntimeException unavailable) {
                 return current;
             }
@@ -540,6 +577,16 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                 return inspect(current.draft().orderNo());
             throw open;
         }
+    }
+
+    private PointsOperationsPort unified() {
+        var port=operations==null?null:operations.getIfAvailable();
+        require(port!=null,"POINTS_IMPLEMENTATION_REQUIRED");return port;
+    }
+    private PointsOperationsPort.Context holdContext(Placement placement,String action) {
+        var r=placement.resolved();
+        return new PointsOperationsPort.Context("TRADE:"+action+":"+placement.draft().orderNo(),
+                new PointsOperationsPort.Operation(PointsOperationsPort.Source.TRADE,placement.draft().orderNo(),r.operationNo(),r.quote().typeCode()),placement.draft().currency());
     }
 
     private Placement locked(String order, BiFunction<SourceOrder, Placement, Placement> action) {

@@ -24,6 +24,8 @@ import ai.neargo.shop.pay.mapper.entitlement.EntUseAllocationMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseIntentMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseProposalMapper;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
+import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
+import ai.neargo.shop.pay.entitlement.policy.BrandCouponUseProof;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
@@ -39,6 +41,8 @@ import tools.jackson.databind.ObjectMapper;
 /** No external port may be invoked inside this transaction. Lock intent -> instance -> original day bucket. */
 @Component
 public class EntitlementUseWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     public static final String PERIOD = "LIFETIME";
     private final EntUseIntentMapper intents;
     private final EntitlementSourceFence fences;
@@ -72,6 +76,11 @@ public class EntitlementUseWriter {
 
     @Transactional("payTxManager")
     public HoldView prepare(EntitlementContext context, Prepared frozen) {
+        return prepare(context, frozen, null);
+    }
+
+    @Transactional("payTxManager")
+    public HoldView prepare(EntitlementContext context, Prepared frozen, BrandCouponUseProof brandProof) {
         var c = frozen.command();
         var fence = fences.lock(context, "USE", c.operationNo(), c.sourceRef(), c.userNo(), c.entityNo());
         if (fences.cancelled(fence)) return cancelled(fence);
@@ -95,10 +104,17 @@ public class EntitlementUseWriter {
         if (original == null || !original.getPayloadHash().equals(row.getPayloadHash())) conflict();
         if (!"PREPARING".equals(original.getStatus())) return view(original);
         var asset = instances.lock(context.tenantNo(), c.instanceNo());
-        if (asset == null || !c.userNo().equals(asset.getUserNo()) || !c.entityNo().equals(asset.getEntityNo())
+        if (asset == null || !c.userNo().equals(asset.getUserNo())
                 || frozen.assetRevision() != asset.getVersion()
                 || !c.assetKind().name().equals(asset.getKind())
                 || !("ACTIVE".equals(asset.getStatus()) || "PENDING_ACTIVATION".equals(asset.getStatus()))) conflict();
+        var lockedDefinition = json.readValue(asset.getRuleSnapshot(), EntitlementDefinition.class);
+        if (!lockedDefinition.equals(frozen.definition())) conflict();
+        if ("BRAND_STORES".equals(lockedDefinition.redemptionScope().mode())) {
+            if (!"ORDER_COUPON".equals(asset.getKind()) || !"ORDER_COUPON".equals(lockedDefinition.kind())
+                    || brandProof == null || !brandProof.matches(context.tenantNo(), asset.getEntityNo(),
+                    lockedDefinition, asset.getTemplateVersionNo(), c.entityNo(), c.storeNo())) conflict();
+        } else if (!c.entityNo().equals(asset.getEntityNo())) conflict();
         if (asset.getEffectiveUntil() != null && !now().isBefore(asset.getEffectiveUntil())) conflict();
         if (asset.getEffectiveFrom() != null && now().isBefore(asset.getEffectiveFrom())) conflict();
         if (asset.getRemainingUnits() != null
@@ -156,6 +172,7 @@ public class EntitlementUseWriter {
             row.setCommittedAt(utc(decision.occurredAt()));
             var usage = usage(context, frozen, row, asset);
             changed(usages.insert(usage));
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, context.tenantNo(), usage.getUsageNo());
             events.publish(new EntitlementUsed(UUID.randomUUID().toString(), usageNo, c.userNo(), c.entityNo(),
                     c.storeNo(), c.assetKind().name(), c.instanceNo(), null, c.units(),
                     decision.occurredAt().toEpochMilli()));
@@ -224,6 +241,6 @@ public class EntitlementUseWriter {
     }
     public HoldView view(EntUseIntent row) {
         return new HoldView(row.getOperationNo(), State.valueOf(row.getStatus()), row.getOperationNo(),
-                row.getUsageNo(), instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()));
+                row.getUsageNo(), instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
 }

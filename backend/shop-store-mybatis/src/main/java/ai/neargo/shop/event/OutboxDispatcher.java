@@ -2,6 +2,7 @@ package ai.neargo.shop.event;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.spi.pay.CallSources;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +153,11 @@ public class OutboxDispatcher {
     private void deliver(SysOutbox event) {
         for (OutboxConsumer consumer : consumers) {
             if (consumer.supports(event.getEventType())) {
-                consumer.consume(event);
+                // 消费里调支付，来源记成这个事件类型（CallSources.OUTBOX，开发计划 M2.1）
+                CallSources.asOutbox(event.getEventType(), () -> {
+                    consumer.consume(event);
+                    return null;
+                });
             }
         }
     }

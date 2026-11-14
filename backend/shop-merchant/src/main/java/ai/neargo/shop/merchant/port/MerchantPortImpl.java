@@ -1,11 +1,15 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.spi.pay.PayMerchantQueryPort;
+import ai.neargo.shop.spi.pay.PayMerchantReadSwitch;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
@@ -15,15 +19,23 @@ import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
+import java.util.function.Consumer;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
+import java.util.Objects;
 import java.util.Optional;
+import javax.sql.DataSource;
 
 /**
  * 商家域对外的两个 Port：查询（{@link MerchantQueryPort}）与开通（{@link MerchantAdminPort}）。
@@ -56,7 +68,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     private static final int MAX_ENTITIES_PER_ACCOUNT = 5;
 
+    private final MerchantStoreCreation commerce;
     private final MchEntityMapper merchantMapper;
+    private final PayMerchantMirror payMirror;
+    private final org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch;
+    private final org.springframework.beans.factory.ObjectProvider<PayMerchantQueryPort> payRoutes;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
@@ -93,9 +109,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 可见范围判定的唯一入口（ADR-034）。正向命中走索引点查、反向展开走内存，同一条 ReachRule.decide */
     private final ai.neargo.shop.merchant.reach.ReachMatcher reachMatcher;
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
+    /** Native fixtures default to MySQL; Spring selects the actual primary database's current-read lock. */
+    private String defaultStoreCurrentLock = " FOR SHARE";
 
 
-    public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
+    public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
@@ -119,7 +137,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             org.springframework.beans.factory.ObjectProvider<
                                     ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
                             org.springframework.beans.factory.ObjectProvider<
-                                    ai.neargo.shop.merchant.service.DebtService> debtServiceProvider) {
+                                    ai.neargo.shop.merchant.service.DebtService> debtServiceProvider,
+                                    PayMerchantMirror payMirror,
+                                    org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch,
+                                    org.springframework.beans.factory.ObjectProvider<PayMerchantQueryPort> payRoutes) {
+        this.payMirror = payMirror;
+        this.readSwitch = readSwitch;
+        this.payRoutes = payRoutes;
+        this.commerce = commerce;
         this.admissionServiceProvider = admissionServiceProvider;
         this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
@@ -144,6 +169,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.merchantPaymentMapper = merchantPaymentMapper;
         this.merchantMapper = merchantMapper;
         this.merchantStoreService = merchantStoreService;
+    }
+
+    @Autowired
+    public void setDefaultStoreReadDataSource(@Qualifier("dataSource") DataSource dataSource) {
+        defaultStoreCurrentLock = new JdbcTemplate(dataSource).execute((ConnectionCallback<String>) connection ->
+                "H2".equals(connection.getMetaData().getDatabaseProductName()) ? " FOR UPDATE" : " FOR SHARE");
     }
 
     @Override
@@ -305,6 +336,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 预览<b>这家店</b>改成这份范围后覆盖哪儿（V381 范围门店级）。门店为空 = 默认店 */
     @Override
     public List<String> previewReachable(String merchantNo, String storeNo, List<String[]> areas) {
+        /*
+         * 图形先校验、再看主体：待补证照的新店也在画范围，若先按「主体没激活」回空，
+         * 不合法的图形就拿到 code 0 + 覆盖 0（166 台北早餐实测），与保存的 10473 不一致。
+         */
+        if (areas != null) {
+            areas.stream().filter(a -> a != null && a.length >= 2 && a[0] != null && isPolygon(a))
+                    .forEach(a -> parsePolygon(a[3]));
+        }
         // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
         MchEntity m = activeEntity(merchantNo);
         if (m == null) {
@@ -315,12 +354,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 所有粒度都自选即生效（2026-08-24 起），预览没有「待审」这一档。
          */
         List<MchServiceArea> rows = areas == null ? List.<MchServiceArea>of() : areas.stream()
-                .filter(a -> a != null && a.length >= 2 && a[0] != null && a[1] != null && !a[1].isBlank())
+                .filter(a -> a != null && a.length >= 2 && a[0] != null
+                        && (a[1] != null && !a[1].isBlank() || isPolygon(a)))
                 .map(a -> {
                     var r = new MchServiceArea();
                     r.setEntityNo(merchantNo);
                     r.setLevel(a[0]);
                     r.setRefCode(a[1]);
+                    if (isPolygon(a)) {
+                        /*
+                         * 自画范围（商户 App 字段对齐 A2）：与保存同一道解析与同一个错误码 10473。
+                         * 此前这里不收 geometry，画出来的范围在预览里整片消失，
+                         * 商家看着「覆盖 0」不敢保存，或者保存了才发现预览从来不算它。
+                         */
+                        r.setRefCode(parsePolygon(a[3]).fingerprint());
+                        r.setGeometry(a[3]);
+                    }
                     r.setStatus(AREA_ACTIVE);
                     r.setMode(a.length > 2 && MchServiceArea.MODE_EXCLUDE.equals(a[2])
                             ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
@@ -333,6 +382,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
         return reachMatcher.previewReachable(m, storeNo, rows);
+    }
+
+    /** 与保存同一道解析、同一个错误码 10473 */
+    private ai.neargo.shop.geo.GeoPolygon parsePolygon(String geometry) {
+        try {
+            return ai.neargo.shop.geo.GeoPolygon.parse(geometry, geoProps.getPolygonMaxVertices());
+        } catch (IllegalArgumentException e) {
+            throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
+        }
+    }
+
+    /** 预览项是不是带了几何的多边形：{@code [POLYGON, refCode?, mode, geometry]} */
+    private static boolean isPolygon(String[] a) {
+        return MchServiceArea.LEVEL_POLYGON.equals(a[0]) && a.length > 3 && a[3] != null && !a[3].isBlank();
     }
 
     @Override
@@ -433,6 +497,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         // 「有行但全关」与「无行」都返回空集：前者写入口本就拦着（READONLY 门店除外，
         // 而它不接新单），调用方把空集一律当「未迁移，按旧口径放行」不会放出真单
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> staffDisplayNames(String entityNo, java.util.Collection<String> userNos) {
+        if (entityNo == null || userNos == null || userNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // 调用方只传本店记录里的用户号，且限定在当前主体内：不解数据域也不会多看到别家的人
+        var rows = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, entityNo)
+                        .and(w -> w.in(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNos)
+                                .or().in(ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNos))));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var a : rows) {
+            if (a.getDisplayName() == null || a.getDisplayName().isBlank()) {
+                continue;
+            }
+            // 店主按 C 端用户号登录，手机号登录的店员主体号是店员账号号：两种都认
+            for (String key : new String[]{a.getUserNo(), a.getMchAccountNo()}) {
+                if (key != null && userNos.contains(key)) {
+                    out.putIfAbsent(key, a.getDisplayName().trim());
+                }
+            }
+        }
         return out;
     }
 
@@ -864,12 +954,57 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<PayStore> payStoreById(Long storeId) {
+        if (storeId == null) {
+            return Optional.empty();
+        }
+        MchStore store = DataScopeContext.executeWithoutScope(() -> storeMapper.selectById(storeId));
+        return store == null ? Optional.empty() : payStoreOf(store.getStoreNo());
+    }
+
+    @Override
+    public Optional<PayStore> payStoreOf(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo));
+            if (store == null) {
+                return Optional.empty();
+            }
+            MchEntity entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, store.getEntityNo()));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? "CN" : entity.getMarket();
+            return Optional.of(new PayStore(store.getId(), storeNo, store.getName(), store.getEntityNo(),
+                    entity == null ? store.getEntityNo() : entity.getName(), market,
+                    entity == null ? null : entity.getFundsMode()));
+        });
+    }
+
+    @Override
     @Transactional(transactionManager = "transactionManager", readOnly = true,
             isolation = Isolation.REPEATABLE_READ)
     public Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {
         if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()
                 || channel == null || channel.isBlank()) {
             return Optional.empty();
+        }
+        if (readFromPay(channel)) {
+            // 读切（I4 S6）：门店绑定本身就是「显式绑定」；门店与主体须仍在营业，与旧口径一致
+            boolean entityActive = DataScopeContext.executeWithoutScope(() -> merchantMapper.exists(
+                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).eq(MchEntity::getStatus, ACTIVE)));
+            if (!entityActive) {
+                return Optional.empty();
+            }
+            return payRouteOf(merchantNo, storeNo, channel, true).map(r -> {
+                MchPaymentMerchant row = legacyRowOf(merchantNo, r.payMerchantNo()).orElse(null);
+                String sub = "MERCHANT_OWN".equals(r.accessMode()) ? r.channelMerchantId() : r.subMerchantId();
+                String version = row != null && row.getVersion() != null ? String.valueOf(row.getVersion())
+                        : "P" + r.keyVersion();
+                return new PaymentRoute(merchantNo, storeNo, r.payMerchantNo(), channel, sub,
+                        r.payMerchantNo() + ":" + version, r.fundsPath());
+            });
         }
         // 同一数据库快照内读取归属、显式门店绑定和实际收款档案，不借用其他门店或默认账户。
         return DataScopeContext.executeWithoutScope(() -> {
@@ -902,55 +1037,100 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    public Optional<String> payMerchantNoOf(String merchantNo, String storeNo) {
-        if (merchantNo == null || merchantNo.isBlank()) {
-            return Optional.empty();
-        }
+    public Optional<String> payMerchantNoOf(String merchantNo, String storeNo, String channel) {
         /*
          * 只认**本主体已 ACTIVE** 的收款号 —— 与 StoreAdminServiceImpl.setPayment 同一条门槛。
          * 门店上存着的号可能在配好之后被停用（进件被驳回、账户被冻结），
          * 那时不能继续往它打款：不校验的话，症状是打款接口报错而账面显示已打，
          * 比一开始就解析不出号难查得多。
          */
-        java.util.Set<String> usable = DataScopeContext.executeWithoutScope(() ->
-                        merchantPaymentMapper.selectList(
-                                Wrappers.<ai.neargo.shop.merchant.entity.MchPaymentMerchant>lambdaQuery()
-                                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getEntityNo, merchantNo)
-                                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getApplyStatus,
-                                                ai.neargo.shop.merchant.entity.MchPaymentMerchant.ACTIVE)))
-                .stream()
-                .map(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getPayMerchantNo)
-                .filter(x -> x != null && !x.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
-        if (usable.isEmpty()) {
+        return accountOf(merchantNo, storeNo, channel, true).map(MchPaymentMerchant::getPayMerchantNo);
+    }
+
+    /**
+     * 「门店 × 渠道 → 收款记录」的**唯一**解析（F01 / F02 · Review R01 / R02）。结算取号、收款能力、额度累加都走这里；
+     * 此前三处各一套规则，同一门店 × 渠道会落到三行上。
+     *
+     * <p>顺序：门店显式绑定的号 → 本店专属号 → 默认门店绑定的号 → 主体级号；同档按建档先后（id 升序），
+     * 不取决于数据库返回顺序。别家门店的专属号永不参与。渠道为真实通道时只在同渠道里找；
+     * {@link #CHANNEL_FREE_PAY_CHANNELS} 与空渠道不按渠道过滤。
+     *
+     * @param activeOnly 结算取号只认 ACTIVE；能力 / 额度沿用原口径，不限状态（审核中的号也有它的支付方式与额度）
+     */
+    private Optional<MchPaymentMerchant> accountOf(String merchantNo, String storeNo, String channel, boolean activeOnly) {
+        if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
         }
+        if (readFromPay(channel)) {
+            // 读切（I4 S6）：门店绑定说了算，没绑定就是没有（R01）；activeOnly 在新模型里恒成立（只绑 ACTIVE）
+            return payRouteOf(merchantNo, storeNo, channel, false)
+                    .flatMap(r -> legacyRowOf(merchantNo, r.payMerchantNo()));
+        }
+        return legacyAccountOf(merchantNo, storeNo, channel, activeOnly);
+    }
 
-        if (storeNo != null && !storeNo.isBlank()) {
-            String configured = Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
-                            storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                                    .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
-                                    .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+    @Override
+    public Optional<String> legacyPayMerchantNoOf(String merchantNo, String storeNo, String channel) {
+        return merchantNo == null || merchantNo.isBlank() ? Optional.empty()
+                : legacyAccountOf(merchantNo, storeNo, channel, true).map(MchPaymentMerchant::getPayMerchantNo);
+    }
+
+    /** 旧解析本体，不看读切 */
+    private Optional<MchPaymentMerchant> legacyAccountOf(String merchantNo, String storeNo, String channel,
+                                                         boolean activeOnly) {
+        boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
+        String store = storeNo == null ? "" : storeNo;
+        List<MchPaymentMerchant> candidates = DataScopeContext.executeWithoutScope(() ->
+                        merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)))
+                .stream()
+                .filter(p -> !activeOnly || MchPaymentMerchant.ACTIVE.equals(p.getApplyStatus()))
+                .filter(p -> anyChannel || channel.equals(p.getPayChannel()))
+                // 只有主体级与本店专属两档有资格；别家门店的专属号是那家店的结算账户
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), ""))
+                        || (!store.isEmpty() && store.equals(p.getStoreNo())))
+                .sorted(java.util.Comparator.comparing(MchPaymentMerchant::getId,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        java.util.function.Function<String, Optional<MchPaymentMerchant>> byNo = no -> no == null || no.isBlank()
+                ? Optional.empty()
+                : candidates.stream().filter(p -> no.equals(p.getPayMerchantNo())).findFirst();
+
+        if (!store.isEmpty()) {
+            String bound = Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
+                            storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                                    .eq(MchStore::getEntityNo, merchantNo)
+                                    .eq(MchStore::getStoreNo, store)
                                     .last("limit 1"))))
-                    .map(ai.neargo.shop.merchant.entity.MchStore::getPayMerchantNo)
+                    .map(MchStore::getPayMerchantNo)
                     .orElse(null);
-            // 配了但已不可用 → 落回主体默认号，而不是解析失败：
-            // 钱照收了，不能因为商家把号停了就把这笔结算卡死
-            if (configured != null && !configured.isBlank() && usable.contains(configured)) {
-                return Optional.of(configured);
+            // 配了但已不可用（或不是这个渠道的号）→ 往下落，而不是解析失败：钱照收了，不能把结算卡死
+            Optional<MchPaymentMerchant> hit = byNo.apply(bound);
+            if (hit.isPresent()) {
+                return hit;
+            }
+            Optional<MchPaymentMerchant> own = candidates.stream().filter(p -> store.equals(p.getStoreNo())).findFirst();
+            if (own.isPresent()) {
+                return own;
             }
         }
-        // 主体默认号 = 默认门店配的号；默认门店也没配就取第一个可用号。
-        // 「第一个」是稳定的：查询按 id 顺序，进件先后不会因为查询而变
-        String byDefaultStore = defaultStoreNo(merchantNo)
+        Optional<MchPaymentMerchant> byDefaultStore = defaultStoreNo(merchantNo)
                 .map(sn -> DataScopeContext.executeWithoutScope(() ->
-                        storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, sn)
+                        storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getStoreNo, sn)
                                 .last("limit 1"))))
-                .map(ai.neargo.shop.merchant.entity.MchStore::getPayMerchantNo)
-                .filter(x -> x != null && !x.isBlank() && usable.contains(x))
-                .orElse(null);
-        return Optional.of(byDefaultStore != null ? byDefaultStore : usable.iterator().next());
+                .map(MchStore::getPayMerchantNo)
+                .flatMap(byNo)
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), "")));
+        if (byDefaultStore.isPresent()) {
+            return byDefaultStore;
+        }
+        return candidates.stream()
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), "")))
+                .findFirst();
     }
 
     @Override
@@ -1010,6 +1190,51 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         // 一次**本不存在的补差** —— 应付已按全额算，再补一次就是重复付款
         return m == null || m.getFundsMode() == null || m.getFundsMode().isBlank()
                 ? FUNDS_AGGREGATED : m.getFundsMode();
+    }
+
+    @Override
+    public Optional<StoreProfile> storeProfileOf(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo));
+            if (store == null) {
+                return Optional.<StoreProfile>empty();
+            }
+            MchEntity entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, store.getEntityNo()));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? null : entity.getMarket();
+            return Optional.of(new StoreProfile(store.getStoreNo(), store.getEntityNo(), store.getName(),
+                    store.getAddress(), market, store.getIndustryCode(), store.getSubIndustryCode()));
+        });
+    }
+
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper;
+
+    /** 行业表（V643）；setter 注入，不动构造函数 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setIndustryMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper) {
+        this.industryMapper = industryMapper;
+    }
+
+    @Override
+    public List<IndustryRow> industries() {
+        if (industryMapper == null) {
+            return List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> industryMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.SysStoreIndustry>lambdaQuery()
+                                        .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getIndustryCode)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getSort)))
+                .stream()
+                .map(r -> new IndustryRow(r.getIndustryCode(),
+                        r.getSubIndustryCode() == null || r.getSubIndustryCode().isEmpty() ? null
+                                : r.getSubIndustryCode(),
+                        r.getBusinessTypeCode(), r.getNameZh(), r.getNameTw(), r.getNameEn(),
+                        r.getSort() == null ? 0 : r.getSort(), Integer.valueOf(1).equals(r.getEnabled())))
+                .toList();
     }
 
     @Override
@@ -1076,6 +1301,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * 不带通道条件会随机拿到其中一行 —— 而两个通道的费率承担方与账期本来就可以不同。
      */
     private MchPaymentMerchant paymentOf(String merchantNo, String storeNo, String payChannel) {
+        if (readFromPay(payChannel)) {
+            return payRouteOf(merchantNo, storeNo, payChannel, false)
+                    .flatMap(r -> legacyRowOf(merchantNo, r.payMerchantNo())).orElse(null);
+        }
         return DataScopeContext.executeWithoutScope(() -> {
             if (storeNo != null && !storeNo.isBlank()) {
                 MchPaymentMerchant own = merchantPaymentMapper.selectOne(
@@ -1154,6 +1383,42 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     @Override
     @Transactional
     public String activate(ActivateCommand cmd) {
+        return activate(cmd, false);
+    }
+
+    @Override
+    @Transactional
+    public String activateSelfOperated(ActivateCommand cmd) {
+        return activate(cmd, true);
+    }
+
+    @Override public void validateInitialStore(InitialStore store) {
+        var rows=industries();
+        var parent=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && r.subIndustryCode()==null)
+                .findFirst().orElseThrow(()->BizException.of(ErrorCode.BAD_REQUEST));
+        var child=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && store.subIndustryCode().equals(r.subIndustryCode()))
+                .findFirst().orElseThrow(()->BizException.of(ErrorCode.BAD_REQUEST));
+        if (!parent.enabled() || !child.enabled() || !child.businessTypeCode().equals(store.businessTypeCode()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    private void ensureApprovedStore(MchEntity entity, ActivateCommand cmd, boolean platformStore,
+            ai.neargo.commerce.api.common.ActorContext actor) {
+        var draft=cmd.store();
+        var existing=defaultStoreOf(entity.getEntityNo(),true);
+        // A licence upgrade preserves the existing default store, including LEGACY and its type.
+        if (existing!=null) return;
+        if (draft==null || platformStore) {
+            ensureDefaultStore(entity.getEntityNo(),cmd.name(),null,null,null,platformStore);
+            return;
+        }
+        validateInitialStore(draft);
+        if (actor==null) actor=commerce.actor(cmd.ownerUserNo());
+        ensureDefaultStore(entity.getEntityNo(),draft.name(),draft.address(),actor,draft.businessTypeCode(),false,
+                store->{store.setIndustryCode(draft.industryCode());store.setSubIndustryCode(draft.subIndustryCode());},cmd.ownerUserNo());
+    }
+
+    private String activate(ActivateCommand cmd, boolean platformStore) {
         String ownerUserNo = cmd.ownerUserNo();
         String name = cmd.name();
         String type = cmd.subject();
@@ -1180,6 +1445,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, cmd.activatedEntityNo()).last("limit 1")));
         if (existing != null) {
+            if (cmd.marketCode()!=null && !cmd.marketCode().equals(existing.getMarket()))
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             /*
              * **占位主体的「补证照」升级**，与「重复点通过」的幂等重放共用这一支。
              *
@@ -1205,7 +1472,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             merchantMapper.updateById(existing);
             // 重复点击「通过」是常态：全部按幂等写，不重复插
             ensureOwnerStaff(existing.getEntityNo(), ownerUserNo);
-            ensureDefaultStore(existing.getEntityNo(), name);
+            ensureApprovedStore(existing,cmd,platformStore,null);
             ensureFreePlan(existing.getEntityNo());
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
@@ -1216,7 +1483,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return existing.getEntityNo();
         }
 
-        requireEntityQuota(ownerUserNo);
+        var actor=!platformStore && cmd.store()!=null ? commerce.actor(ownerUserNo) : null;
+        requireEntityQuota(ownerUserNo, false);
 
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
@@ -1230,6 +1498,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         String canonical = masterDataPort.canonicalSubject(type);
         m.setLegalForm(canonical != null ? canonical : type);
         m.setOwnerUserNo(ownerUserNo);
+        if (cmd.marketCode()!=null) m.setMarket(cmd.marketCode());
         // 新店从中位分起步，不是 0 分 —— 0 分会让新店在任何按评分排的列表里垫底，
         // 而它还没有任何订单可以证明自己（ADR-009 里「平台推荐位」要解决的也是这个问题）
         m.setRating(RATING_INIT);
@@ -1256,7 +1525,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *   分账主体 少了第一笔订单就分不了账（ADR-002）
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name);
+        ensureApprovedStore(m,cmd,platformStore,actor);
         ensureFreePlan(m.getEntityNo());
         syncCommunities(m.getEntityNo(), cmd.communityNos());
         ensurePayment(m.getEntityNo(), type, cmd.settleAccountType());
@@ -1279,12 +1548,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 永远补不齐的占位主体。想在这个占位主体下再开一家店，走正常建店接口
          * （那时 BizContext 已经有了，不需要走这条路）。
          */
-        var shell = pendingLicenseEntityOf(ownerUserNo);
+        var actor = commerce.actor(ownerUserNo);
+        var shell = pendingLicenseEntityOf(ownerUserNo, actor != null);
         if (shell.isPresent()) {
-            return new QuickStartResult(shell.get(), defaultStoreNoOf(shell.get()));
+            // 同一待补证壳的重试必须是同一市场；换了市场不能复用旧壳（它的免费期币种已冻结）
+            if (cmd.market() != null) {
+                MchEntity existing = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                        Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get()).last("limit 1")));
+                if (existing != null && !cmd.market().equals(existing.getMarket()))
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            var row = defaultStoreOf(shell.get(), actor != null);
+            commerce.checkReplay(row, cmd.businessTypeCode());
+            return new QuickStartResult(shell.get(), row == null ? null : row.getStoreNo());
         }
 
-        requireEntityQuota(ownerUserNo);
+        requireEntityQuota(ownerUserNo, actor != null);
 
         String name = cmd.storeName().trim();
         MchEntity m = new MchEntity();
@@ -1313,6 +1592,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         m.setJoinedAt(System.currentTimeMillis());
         m.setStatus(MchEntity.PENDING_LICENSE);
         m.setServiceScope(AREA_COMMUNITY);
+        if (cmd.market() != null) m.setMarket(cmd.market());
         merchantMapper.insert(m);
 
         /*
@@ -1322,34 +1602,100 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *                   显示一条永远推不动的记录
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name, cmd.address());
+        // 三步建店填的楼层门牌与自填行业随门店一起落库（TDD-注册地区与三步建店 AC9）；重试命中已有壳时不改
+        ensureDefaultStore(m.getEntityNo(), name, cmd.address(), actor, cmd.businessTypeCode(), false, store -> {
+            store.setAddressDetail(cmd.addressDetail());
+            store.setIndustryText(cmd.industryText());
+            store.setSubIndustryText(cmd.subIndustryText());
+            // 行业 / 子行业码（TDD-子行业与能力端验收 B4）：控制器已按行业表校验，只有登记过的才会带来
+            store.setIndustryCode(cmd.industryCode());
+            store.setSubIndustryCode(cmd.subIndustryCode());
+            // 地图选点坐标原样存、记坐标系（TDD-双地图提供方与门店选点 AC5）：高德 gcj02，Google wgs84
+            if (cmd.latE6() != null && cmd.lngE6() != null) {
+                store.setLatE6(cmd.latE6());
+                store.setLngE6(cmd.lngE6());
+                store.setCoordSys(cmd.coordSys());
+            }
+        });
         ensureFreePlan(m.getEntityNo());
         /*
          * 门店号一并返回。调用方拿它当 X-Store-No 进这家新店 —— 身份解析按门店反查主体，
          * 而这个账号名下可能已经有另一张执照（多证照），按默认主体解析出来的是**旧的那家**。
          */
-        return new QuickStartResult(m.getEntityNo(), defaultStoreNoOf(m.getEntityNo()));
+        return new QuickStartResult(m.getEntityNo(), defaultStoreOf(m.getEntityNo(), actor != null).getStoreNo());
     }
 
     /** 主体的默认门店号。解除数据域的理由同 {@link #ensureDefaultStore} —— 建主体时作用域还不存在。 */
-    private String defaultStoreNoOf(String merchantNo) {
-        var store = DataScopeContext.executeWithoutScope(() ->
+    private MchStore defaultStoreOf(String merchantNo, boolean current) {
+        return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
-                        .last("limit 1")));
-        return store == null ? null : store.getStoreNo();
+                        .last(current ? "limit 1" + defaultStoreCurrentLock : "limit 1")));
     }
 
     @Override
     public java.util.Optional<String> pendingLicenseEntityOf(String userNo) {
+        return pendingLicenseEntityOf(userNo, false);
+    }
+
+    @Override
+    public java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo) {
+        if (selectedEntityNo != null) {
+            requirePendingLicenseOwner(userNo, selectedEntityNo);
+            return java.util.Optional.of(selectedEntityNo);
+        }
+        return DataScopeContext.executeWithoutScope(() -> legacyApplicationEntity(userNo));
+    }
+
+    private java.util.Optional<String> legacyApplicationEntity(String userNo) {
+        // Current locking reads, including inactive owner rows. Dropping those rows would
+        // silently turn a disabled pending shop into permission to file a new application.
+        var owners = staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                .eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)
+                .last("for update"));
+        if (owners.isEmpty()) return java.util.Optional.empty();
+        var pending = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                .in(MchEntity::getEntityNo, owners.stream().map(MchAccount::getEntityNo).toList())
+                .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("for update"));
+        if (pending.isEmpty()) return java.util.Optional.empty();
+        if (pending.size() != 1) throw BizException.of(ErrorCode.FORBIDDEN);
+        String entity = pending.getFirst().getEntityNo();
+        if (owners.stream().noneMatch(a -> entity.equals(a.getEntityNo()) && MchAccount.ACTIVE.equals(a.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        var stores = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getEntityNo, entity).last("for update"));
+        if (stores.stream().anyMatch(s -> s.getCommerceModel() != null && !"LEGACY".equals(s.getCommerceModel()))
+                || stores.stream().noneMatch(s -> Boolean.TRUE.equals(s.getIsDefault()) && MchStore.ACTIVE.equals(s.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        return java.util.Optional.of(entity);
+    }
+
+    private void requirePendingLicenseOwner(String userNo, String entityNo) {
+        var owned = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<MchAccount>lambdaQuery()
+                        .eq(MchAccount::getEntityNo, entityNo)
+                        .eq(MchAccount::getUserNo, userNo)
+                        .eq(MchAccount::getIsOwner, true)
+                        .eq(MchAccount::getStatus, "ACTIVE")
+                        .last("limit 1 for update")));
+        if (owned.isEmpty()) throw BizException.of(ErrorCode.FORBIDDEN);
+        var pending = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, entityNo)
+                        .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("limit 1 for update")));
+        if (pending == null) throw BizException.of(ErrorCode.FORBIDDEN);
+    }
+
+    private java.util.Optional<String> pendingLicenseEntityOf(String userNo, boolean current) {
         if (userNo == null || userNo.isBlank()) {
             return java.util.Optional.empty();
         }
         List<String> ownedEntityNos = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .eq(current, ai.neargo.shop.merchant.entity.MchAccount::getStatus, "ACTIVE")
+                        .last(current, "for share"))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo).toList());
         if (ownedEntityNos.isEmpty()) {
             return java.util.Optional.empty();
@@ -1358,7 +1704,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .in(MchEntity::getEntityNo, ownedEntityNos)
                         .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
-                        .last("limit 1")));
+                        .last(current ? "limit 1 for share" : "limit 1")));
         return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
     }
 
@@ -1371,14 +1717,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * <p>只数 owner 行 —— 被邀请去别人店里当店员不占自己的名额，
      * 那不是他的证照。
      */
-    private void requireEntityQuota(String ownerUserNo) {
+    private void requireEntityQuota(String ownerUserNo, boolean current) {
         if (ownerUserNo == null || ownerUserNo.isBlank()) {
             return;
         }
         long owned = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .last(current, "for share"))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo)
                 .distinct().count());
         if (owned >= MAX_ENTITIES_PER_ACCOUNT) {
@@ -1454,12 +1801,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */
-    private void ensureDefaultStore(String merchantNo, String name) {
-        ensureDefaultStore(merchantNo, name, null);
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore) {
+        ensureDefaultStore(merchantNo, name, address, actor, type, platformStore, store -> { });
     }
 
-    /** @param address 门店地址，可空 —— 走审核那条路时地址在店铺资料里单独填，只有快速开店会带进来 */
-    private void ensureDefaultStore(String merchantNo, String name, String address) {
+    /** @param extras 插入前补上的门店资料（快速开店的楼层门牌与自填行业） */
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore,
+            Consumer<ai.neargo.shop.merchant.entity.MchStore> extras) {
+        ensureDefaultStore(merchantNo,name,address,actor,type,platformStore,extras,null);
+    }
+
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore,
+            Consumer<ai.neargo.shop.merchant.entity.MchStore> extras, String targetOwner) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 storeMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)));
@@ -1467,6 +1823,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return;
         }
         var store = new ai.neargo.shop.merchant.entity.MchStore();
+        if (platformStore) store.setCommerceModel("LEGACY");
+        else commerce.prepare(store, actor, type);
         store.setStoreNo(BizKey.next(BizKey.STORE));
         store.setEntityNo(merchantNo);
         store.setName(name);
@@ -1476,7 +1834,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         store.setIsDefault(true);
         store.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
         store.setFeatured("[]");
+        extras.accept(store);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
+        if (!platformStore) commerce.inserted(store, actor, targetOwner);
     }
 
     /**
@@ -1544,6 +1905,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 ? settleAccountType : masterDataPort.settleAccountType(canonical));
         p.setAppliedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.insert(p));
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
     }
 
     /**
@@ -1613,6 +1975,19 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
         @Override
     public java.util.Set<String> activeChannelsOf(String merchantNo, String storeNo) {
+        if (readFromPay("*")) {
+            Optional<MchStore> st = storeOf(merchantNo, storeNo, false);
+            if (st.isEmpty()) {
+                return java.util.Set.of();
+            }
+            MchEntity entity = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? "CN" : entity.getMarket();
+            return payRoutes.getObject().collectableRoutes(st.get().getId(), market).stream()
+                    .map(PayMerchantQueryPort.PayRoute::payChannel)
+                    .collect(java.util.stream.Collectors.toSet());
+        }
         return DataScopeContext.executeWithoutScope(() ->
                 merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
                         .eq(MchPaymentMerchant::getEntityNo, merchantNo)
@@ -1631,7 +2006,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public PayCapability payCapabilityOf(String merchantNo, String storeNo) {
-        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        // 付款前还不知道渠道：按门店绑定解析（与 OFFLINE 结算取号同一行）
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo, null);
         if (pm == null) {
             /*
              * 进件还没走完的商家：全放行。
@@ -1738,28 +2114,38 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     @Transactional
-    public void accruePayQuota(String merchantNo, String storeNo, long amountMinor) {
+    public void accruePayQuota(String merchantNo, String storeNo, String channel, long amountMinor) {
         if (amountMinor <= 0) {
             return;
         }
-        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo, channel);
         if (pm == null) {
             // 进件还没走完：没有额度可记，也不该因此让支付回调失败
             return;
         }
+        /*
+         * 周期由这里按当前时间算而不是让调用方传 —— 传进来的话，
+         * 补发的历史回调会把去年的钱记进今年的额度里。
+         */
         String period = currentQuotaPeriod();
-        if (!period.equals(pm.getQuotaPeriod())) {
-            /*
-             * 周期翻篇：清零重算。
-             *
-             * 周期由这里按当前时间算而不是让调用方传 —— 传进来的话，
-             * 补发的历史回调会把去年的钱记进今年的额度里。
-             */
-            pm.setQuotaPeriod(period);
-            pm.setQuotaUsedMinor(0L);
+        /*
+         * **一条原子 UPDATE 累加，周期翻篇也在同一条里判**（F06 · Review R24）。
+         *
+         * 此前是「读出来 → 内存里加 → updateById」：带 @Version，并发回调时后到的那条撞乐观锁、
+         * 返回 0，而返回值没人看 —— 10 个并发回调实测只记上 1 笔，小微超限就这样漏过去。
+         * 也不用「失败重读重试」：这里常在支付回调的事务里调用，REPEATABLE READ 下重读拿到的还是旧快照。
+         * 版本号照样 +1，别处按版本做的乐观并发不受影响。
+         */
+        int updated = merchantPaymentMapper.update(null, Wrappers.<MchPaymentMerchant>lambdaUpdate()
+                .setSql("quota_used_minor = CASE WHEN quota_period = {0} THEN COALESCE(quota_used_minor, 0) + {1} ELSE {1} END",
+                        period, amountMinor)
+                .set(MchPaymentMerchant::getQuotaPeriod, period)
+                .setSql("version = COALESCE(version, 0) + 1")
+                .eq(MchPaymentMerchant::getId, pm.getId()));
+        if (updated != 1) {
+            // 行在读与写之间被删了：宁可让这次回调失败重推，也不要静默少记
+            throw new IllegalStateException("额度累加未落库：payment merchant id=" + pm.getId());
         }
-        pm.setQuotaUsedMinor((pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor()) + amountMinor);
-        merchantPaymentMapper.updateById(pm);
     }
 
     /**
@@ -1773,23 +2159,44 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return String.valueOf(java.time.LocalDate.now().getYear());
     }
 
-    /** 本店专属收款记录优先，回落到主体默认号 —— 不配店号就是「合并结算，走主体号」。 */
-    private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo) {
-        if (storeNo != null && !storeNo.isBlank()) {
-            MchPaymentMerchant own = DataScopeContext.executeWithoutScope(() ->
-                    merchantPaymentMapper.selectOne(
-                    Wrappers.<MchPaymentMerchant>lambdaQuery()
-                            .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                            .eq(MchPaymentMerchant::getStoreNo, storeNo)
-                            .last("LIMIT 1")));
-            if (own != null) {
-                return own;
-            }
+    /**
+     * 读切（TDD-支付服务-I4进件与收款商户 S6）此刻是否由支付新模型回答。只管真实渠道：线下 / 免单 / 桩 / 测试与空渠道
+     * 旧解析本就不按渠道过滤、也不对应任何收款号，照旧口径（{@code "*"} = 不问具体渠道的整体开关）。
+     */
+    private boolean readFromPay(String channel) {
+        if (channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel)) {
+            return false;
         }
-        return merchantPaymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
-                .last("LIMIT 1"));
+        PayMerchantReadSwitch s = readSwitch.getIfAvailable();
+        return s != null && s.readFromPay() && payRoutes.getIfAvailable() != null;
+    }
+
+    /** 本主体的门店；门店号为空取默认门店（存量子单没有门店）。别家主体的门店不答 */
+    private Optional<MchStore> storeOf(String merchantNo, String storeNo, boolean activeOnly) {
+        String sNo = storeNo == null || storeNo.isBlank() ? defaultStoreNo(merchantNo).orElse(null) : storeNo;
+        if (sNo == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<MchStore>lambdaQuery().eq(MchStore::getEntityNo, merchantNo).eq(MchStore::getStoreNo, sNo)
+                        .eq(activeOnly, MchStore::getStatus, ACTIVE).last("LIMIT 1"))));
+    }
+
+    private Optional<PayMerchantQueryPort.PayRoute> payRouteOf(String merchantNo, String storeNo, String channel,
+                                                               boolean activeStore) {
+        return storeOf(merchantNo, storeNo, activeStore).flatMap(st -> payRoutes.getObject().routeOf(st.getId(), channel));
+    }
+
+    /** 新模型解析出的号 → 旧行（资料、额度仍在旧行上，双写期两边一致） */
+    private Optional<MchPaymentMerchant> legacyRowOf(String merchantNo, String payMerchantNo) {
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.selectOne(
+                Wrappers.<MchPaymentMerchant>lambdaQuery().eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                        .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo).last("LIMIT 1"))));
+    }
+
+    /** 能力 / 额度用的收款记录：与结算取号同一条解析（{@link #accountOf}），不限状态（F02 · R02） */
+    private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo, String channel) {
+        return accountOf(merchantNo, storeNo, channel, false).orElse(null);
     }
 
     private java.util.Set<String> readList(String rawJson) {

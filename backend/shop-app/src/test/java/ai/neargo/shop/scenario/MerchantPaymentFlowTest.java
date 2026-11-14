@@ -54,7 +54,7 @@ class MerchantPaymentFlowTest {
     @Test
     @DisplayName("★ 激活后进件是占位态：店开着，但还收不了钱")
     void placeholderIsNotReceivable() throws Exception {
-        String token = merchant("12600128001", "进件测试店A");
+        String token = merchant("18600128001", "进件测试店A");
 
         mvc().perform(get("/biz/merchant/payment").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -82,7 +82,7 @@ class MerchantPaymentFlowTest {
     @Test
     @DisplayName("★ 资料不齐不往通道发 —— 通道拒一次要等一个工作日")
     void incompleteSubmitIsRejectedLocally() throws Exception {
-        String token = merchant("12600128002", "进件测试店B");
+        String token = merchant("18600128002", "进件测试店B");
 
         mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -94,7 +94,7 @@ class MerchantPaymentFlowTest {
     @Test
     @DisplayName("★ 进件通过：出 pay_merchant_no，且结算账号只回显掩码")
     void submitThenActive() throws Exception {
-        String token = merchant("12600128003", "进件测试店C");
+        String token = merchant("18600128003", "进件测试店C");
 
         String body = mvc().perform(post("/biz/merchant/payment")
                         .header("Authorization", "Bearer " + token)
@@ -127,7 +127,7 @@ class MerchantPaymentFlowTest {
     void rejectedCarriesReason() throws Exception {
         // stub 网关按主体名判：带「驳回」二字就返回 REJECTED。
         // 假网关恒成功的话，驳回分支在开发期永远走不到，而它正是最容易写错的一段
-        String token = merchant("12600128004", "驳回测试店");
+        String token = merchant("18600128004", "驳回测试店");
 
         mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -143,7 +143,7 @@ class MerchantPaymentFlowTest {
     @Test
     @DisplayName("开好的户不许重复提交 —— 通道会给新号，历史分账仍指向旧号")
     void activeCannotResubmit() throws Exception {
-        String token = merchant("12600128005", "进件测试店D");
+        String token = merchant("18600128005", "进件测试店D");
         String payload = "{\"payChannel\":\"WECHAT\",\"settleAccount\":\"6222021111222233334\","
                 + "\"licenses\":[\"https://cdn/license.jpg\"],"
                 + "\"contactName\":\"王五\",\"contactPhone\":\"13900000002\"}";
@@ -157,10 +157,71 @@ class MerchantPaymentFlowTest {
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
     }
 
+    // ---------------------------------------------------------------- F05 · Review R05 / R06 / R23
+
+    @Autowired
+    private ai.neargo.shop.pay.channel.StubApplymentGateway stubApplyment;
+
+    private static String fullPayload(String channel, String account) {
+        return "{\"payChannel\":\"" + channel + "\",\"settleAccount\":\"" + account + "\","
+                + "\"licenses\":[\"https://cdn/license.jpg\"],"
+                + "\"contactName\":\"钱七\",\"contactPhone\":\"13900000009\"}";
+    }
+
+    @Test
+    @DisplayName("★★★ F05 stub 只替登记过的渠道做事 —— 没接通、也没登记的渠道进件必须失败，不能静默「开户成功」")
+    void stubDoesNotImpersonateUnlistedChannel() throws Exception {
+        String token = merchant("18600128010", "未接通渠道店");
+
+        mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(fullPayload("PAYBY", "6222020000000000010")))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.PAY_CHANNEL_UNAVAILABLE.code()));
+    }
+
+    @Test
+    @DisplayName("★★★ F05 已发给通道、在等回执的进件不许再提 —— 重复进件会拿到第二个商户号")
+    void inFlightCannotResubmit() throws Exception {
+        String token = merchant("18600128011", "在途进件店");
+        mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(fullPayload("WECHAT", "6222020000000000011")))
+                .andExpect(jsonPath("$.code").value(0));
+        // 模拟「已发通道、还没回执」：stub 是同步出结果的，只能把行拨回在途
+        jdbc.update("UPDATE mch_payment_merchant SET apply_status='APPLYING', channel_apply_no='CH-INFLIGHT'"
+                + " WHERE entity_no=(SELECT entity_no FROM mch_entity WHERE name='在途进件店') AND pay_channel='WECHAT'");
+
+        mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(fullPayload("WECHAT", "6222020000000000011")))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
+    @Test
+    @DisplayName("★★ F05 重提后旧驳回原因真的清空 —— updateById 跳过 null，set(null) 清不掉")
+    void resubmitClearsRejectReason() throws Exception {
+        String token = merchant("18600128012", "重提清原因店");
+        mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(fullPayload("WECHAT", "6222020000000000012")))
+                .andExpect(jsonPath("$.code").value(0));
+        String where = " WHERE entity_no=(SELECT entity_no FROM mch_entity WHERE name='重提清原因店') AND pay_channel='WECHAT'";
+        jdbc.update("UPDATE mch_payment_merchant SET apply_status='REJECTED', reject_reason='旧原因：账户名不一致'" + where);
+        // 真通道是异步审核：重提后停在 APPLYING。回执路径另有显式清空，这里要量的是提交那一步本身
+        stubApplyment.keepApplyingFor("重提清原因店");
+        try {
+            mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON).content(fullPayload("WECHAT", "6222020000000000012")))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.applyStatus").value("APPLYING"));
+        } finally {
+            stubApplyment.clearTestHooks();
+        }
+
+        assertThat(jdbc.queryForObject("SELECT reject_reason FROM mch_payment_merchant" + where, String.class))
+                .as("商家改完资料重提，还看见上一次的驳回原因，会以为没提交成功").isNull();
+    }
+
     @Test
     @DisplayName("回查幂等：重复回执不会换掉已生成的收款商户号")
     void refreshKeepsPayMerchantNo() throws Exception {
-        String token = merchant("12600128006", "进件测试店E");
+        String token = merchant("18600128006", "进件测试店E");
         mvc().perform(post("/biz/merchant/payment").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"payChannel\":\"WECHAT\",\"settleAccount\":\"6222024444555566667\","

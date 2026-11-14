@@ -55,7 +55,7 @@ class CardProductBindingFlowTest {
     }
     @Test void actualPublishedCardBindingKeepsSkuPriceAndOriginalReplyAcrossLaterChanges() throws Exception {
         var mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "124" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+        String phone = "184" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String buyer = TestLogin.consumer(mvc, json, otp, phone);
         String actor = tokens.of(Realm.CONSUMER).get(buyer).orElseThrow().user().userNo();
         String entity = id(), goods = id(), sku = id();

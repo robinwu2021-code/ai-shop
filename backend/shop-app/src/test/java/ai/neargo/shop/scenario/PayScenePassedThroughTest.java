@@ -61,7 +61,7 @@ class PayScenePassedThroughTest {
     @Test
     @DisplayName("一期支付回调保留下单场景且不调用积分")
     void phaseOnePreservesSceneSnapshotWithoutPointsGrant() throws Exception {
-        String token = TestLogin.consumer(mvc(), json, otpStore, "12800128096");
+        String token = TestLogin.consumer(mvc(), json, otpStore, "19800128096");
 
         // 下单时带 X-Client=MP_WECHAT —— 订单的 payScene 就是从这个头来的
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)

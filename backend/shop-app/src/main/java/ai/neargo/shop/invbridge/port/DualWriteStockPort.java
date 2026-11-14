@@ -1,25 +1,31 @@
 package ai.neargo.shop.invbridge.port;
 
-import ai.neargo.shop.invbridge.InvMirrorEvent;
-import ai.neargo.shop.invbridge.OriginalMirrorRestore;
+import ai.neargo.shop.event.DomainEvent;
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.invbridge.InvMirrorEvent;
+import ai.neargo.shop.invbridge.OriginalMirrorRestore;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.event.DomainEvent;
-import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
+import ai.neargo.shop.spi.product.InvManagedPort;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
+import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.spi.product.OriginalStockReturnPort;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ai.neargo.shop.spi.product.InvManagedPort;
-import ai.neargo.shop.spi.product.StockPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 双写：<b>平台仍是真相源，进销存跟着记一笔</b>。
@@ -56,7 +62,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Primary
 @ConditionalOnInventory
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
-public class DualWriteStockPort implements StockPort {
+public class DualWriteStockPort implements StockPort, ReservationOwner {
+    private ObjectProvider<OriginalStockReturnPort> originalReturns;
+
+    @Autowired
+    public void setOriginalReturns(ObjectProvider<OriginalStockReturnPort> originalReturns) {
+        this.originalReturns = originalReturns;
+    }
+
+    @Override
+    public String stockAuthority() {
+        return "DUAL";
+    }
 
     private static final Logger log = LoggerFactory.getLogger(DualWriteStockPort.class);
 
@@ -207,6 +224,14 @@ public class DualWriteStockPort implements StockPort {
     }
 
     @Override
+    @Transactional
+    public RestoreResult restore(String restoreNo, String originalOrderNo, List<StockPort.SkuQty> items) {
+        var router = originalReturns.getIfAvailable();
+        if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return router.restore(restoreNo, originalOrderNo, items);
+    }
+
+    @Override
     public void restore(String restoreNo, List<StockPort.SkuQty> items) {
         platform.restore(restoreNo, items);
         mirror(InvMirrorEvent.RESTORE, restoreNo, items);
@@ -221,6 +246,15 @@ public class DualWriteStockPort implements StockPort {
     @Override
     public int sellable(String skuNo) {
         return platform.sellable(skuNo);
+    }
+
+    /**
+     * 按门店的那一版同样要显式转发：接口默认实现退回不带门店那一版（「取最能卖的那家」），
+     * 于是这家店没货、却拿别家的库存放行加购，到结算落店时才拒 —— 与上面同一类静默失效。
+     */
+    @Override
+    public int sellable(String skuNo, String storeNo) {
+        return platform.sellable(skuNo, storeNo);
     }
 
     @Override

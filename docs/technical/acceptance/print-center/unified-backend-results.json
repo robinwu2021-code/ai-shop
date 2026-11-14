@@ -1,0 +1,217 @@
+{
+  "baseline": "d0e1b93ee",
+  "compiled_reactor": "/tmp/print-unified-reactor-pom.xml",
+  "java": "Homebrew JDK21",
+  "focused_log": "/tmp/print-owner-focused-final.log",
+  "recovery_log": "/tmp/print-owner-recovery-final.log",
+  "classes": [
+    {
+      "class": "ai.neargo.shop.trade.order.printing.OrderPrintFactRecorderTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintingPortConfigurationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.UnifiedPrintDeviceGateTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.UnifiedPrintProjectionTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintDeliveryTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printing.PrintDocumentPolicyTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.PrintStatePolicyTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.PrintFontInitializationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.channel.CompactReceiptAcceptanceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.channel.PrintDatabaseAcceptanceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.channel.ReceiptSoftwareAcceptanceTest",
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.agent.AgentDurabilityTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.infra.SchemaDriftTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.infra.SchemaSeedReplayTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printbridge.PrintActorFactoryScopeTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printbridge.PrintNotifyOutboxRegistrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.printbridge.PrintRecoveryConfigurationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "superseded_by": "/tmp/print-owner-recovery-final.log"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.MerchantRoleFlowTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.PrintEnabledAssemblyTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.PrintNotifyBridgeTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.PrintOrderSoftwareFlowTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.scenario.FoodKdsSubscriptionTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.scenario.FoodPrintDocumentAssemblerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.scenario.FoodStationRuntimeTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.scenario.DiningKdsEventConsumerTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.event.DiningKitchenAcceptedConsumerTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.food.channel.CorePrintPortTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "totals": {
+    "tests": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "baseline_failures": [
+    "ArchitectureTest.implsMustLiveInDedicatedPackage",
+    "ArchitectureTest.noFullyQualifiedReferences",
+    "ArchitectureTest.serviceMustBeInterface",
+    "BizEndpointPermTest.everyBizEndpointHasADecision"
+  ],
+  "baseline_evidence": "docs/technical/acceptance/print-center/unified-backend-baseline-evidence.json",
+  "notes": [
+    "CorePrintPortTest requires local temporary socket binding; unsandboxed offline Maven passed all 4 tests.",
+    "Final full focused run had one fixture-only configuration failure; targeted rerun used real H2 DataSourceTransactionManager and passed. No production logic changed between runs.",
+    "V567 and V579 unchanged; V551-553 archived; V582-584 are candidate additive migrations."
+  ]
+}

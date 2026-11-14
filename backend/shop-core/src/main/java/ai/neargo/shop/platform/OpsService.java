@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform;
 
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
@@ -13,6 +15,9 @@ import java.util.List;
 public interface OpsService {
 
     LoginResultVO login(String username, String password);
+
+    /** 第二因子：用登录时发到邮箱的码换会话（安全规范 §2.7）。挑战不存在、过期、码错满 5 次 → 未授权 */
+    LoginResultVO verifySecondFactor(String challenge, String code);
 
     /**
      * 给一个运营员工签发会话，<b>不验密码</b> —— 只给密钥票据登录用（ADR-027），
@@ -31,6 +36,12 @@ public interface OpsService {
      * 而拦住的成本远低于事后从库里恢复。
      */
     StaffVO setStaffEnabled(String staffNo, boolean enabled);
+
+    /**
+     * 免二次验证白名单（员工账号页逐个勾选）。第二因子开着时，勾了的账号只凭密码登录。
+     * 理由必填、不能给自己勾；变更与每次免验证登录都进审计。
+     */
+    StaffVO setStaffSecondFactorExempt(String staffNo, boolean exempt, String reason);
 
     /**
      * 改角色。
@@ -114,6 +125,8 @@ public interface OpsService {
      */
     PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size);
 
+    PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size, boolean onBehalfOnly);
+
     /**
      * 审核入驻。**驳回必须写理由**；通过才创建商家主体。
      *
@@ -132,7 +145,7 @@ public interface OpsService {
      *                   进去建品、上架被拒，而错误说的是「你还没有资质授权」。
      *                   传空 = 只经营无门槛类目（合法，不是漏填）
      */
-    void auditApply(String applyNo, boolean approved, String reason,
+    MerchantApplyVO auditApply(String applyNo, boolean approved, String reason,
                     String serviceScope, List<String> communityNos,
                     List<String> grantCodes);
 
@@ -150,6 +163,12 @@ public interface OpsService {
     /** C 端提交入驻申请（由 /mp/merchant/apply 调用）。 */
     String createApply(SubmitApplyCommand cmd);
 
+    /** Pin the B-side applicant's selected store or eligible legacy shell in the write transaction. */
+    String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo);
+
+    record MerchantProfileSubmission(MerchantApplyVO application, boolean replayed, boolean revised) {}
+    MerchantProfileSubmission submitMerchantProfile(SubmitApplyCommand cmd, String selectedEntityNo);
+
     /**
      * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。
      *
@@ -158,14 +177,14 @@ public interface OpsService {
      * {@code assertServiceScopeAllowed}、「一人一份进行中的申请」这几道闸一条都不放宽。
      * <b>代填不是豁免</b>：自营能免证件是因为不存在第三方，而代填的时候第三方是存在的。
      *
-     * <p>与自填只差两件事，都记在单子上：
+     * <p>代填独立新建，不自动关联旧待补证主体。另外两件事记在单子上：
      * <ul>
      *   <li>{@code submitted_by} 记下是谁录的 —— 审核那一步才知道该多看一眼；</li>
      *   <li>{@code agreed_at} 留空 —— <b>运营不能替商户勾协议</b>，等他自己补。</li>
      * </ul>
      *
      * <p><b>刻意不做「填完即激活」。</b> 制单与审核分离在这个仓库里是有先例的，
-     * 而代填恰恰最需要那一层：资料是运营录的，核验不该也是同一个人。
+     * 审核仍须具备审核权限；有权限的代填人可以自审，系统记录同人操作。
      *
      * @param cmd         与自填逐字相同的一份资料，{@code userNo} 是<b>商户本人</b>的
      *                    （由手机号解析出来），不是运营的
@@ -209,6 +228,9 @@ public interface OpsService {
      */
     long acceptAgreement(String userNo);
 
+    /** B 端按当前主体确认；null 只匹配尚未关联主体的本人申请。 */
+    long acceptAgreement(String userNo, String selectedEntityNo);
+
     /**
      * 我的入驻申请状态（C 端）。<b>此前提交完就查不到了</b> ——
      * 商家不知道审到哪一步，只能打电话问运营。
@@ -216,6 +238,9 @@ public interface OpsService {
      * @return 没申请过时为 null —— 「没申请过」是正常状态，不是异常
      */
     MerchantApplyVO myApply(String userNo);
+
+    /** Current owner and already-authorized entity set; newest application per entity. */
+    java.util.Map<String, MerchantApplyVO> latestAppliesOf(String userNo, List<String> entityNos);
 
     /**
      * @param communityNos 覆盖社区。申请时可空，<b>但审核通过时必须有</b>（ADR-009）——
@@ -274,7 +299,21 @@ public interface OpsService {
                                *
                                * 可空：存量端上还在只传 qualifications。
                                */
-                              List<QualificationItem> qualificationItems) {
+                              List<QualificationItem> qualificationItems, String marketCode,
+                              MerchantAdminPort.InitialStore storeProfile) {
+        public SubmitApplyCommand(String userNo, String name, String subject, String contactName, String contactPhone,
+                String referrerPhone, String category, String description, String serviceScope, List<String> communityNos,
+                List<String> qualifications, boolean asPickupPoint, String industry, String industryNote,
+                List<QualificationItem> qualificationItems, String marketCode) {
+            this(userNo,name,subject,contactName,contactPhone,referrerPhone,category,description,serviceScope,communityNos,
+                    qualifications,asPickupPoint,industry,industryNote,qualificationItems,marketCode,null);
+        }
+        public SubmitApplyCommand(String userNo, String name, String subject, String contactName, String contactPhone,
+                String referrerPhone, String category, String description, String serviceScope, List<String> communityNos,
+                List<String> qualifications, boolean asPickupPoint, String industry, String industryNote, List<QualificationItem> qualificationItems) {
+            this(userNo,name,subject,contactName,contactPhone,referrerPhone,category,description,serviceScope,communityNos,
+                    qualifications,asPickupPoint,industry,industryNote,qualificationItems,null);
+        }
     }
 
     /**

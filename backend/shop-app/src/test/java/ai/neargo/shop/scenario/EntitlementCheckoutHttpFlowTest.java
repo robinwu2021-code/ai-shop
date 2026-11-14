@@ -9,6 +9,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStores;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.support.RefundScenarioPayments;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.event.SysOutbox;
@@ -19,9 +22,6 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.service.EntitlementOrderUseService;
 import ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy;
 import ai.neargo.shop.trade.service.OrderService;
-import ai.neargo.shop.spi.settle.SettlePort;
-import ai.neargo.shop.pay.channel.TestPayGateway;
-import ai.neargo.shop.support.CheckoutScenarioPayments;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -49,17 +49,17 @@ class EntitlementCheckoutHttpFlowTest {
     @Autowired WebApplicationContext web;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
-    @Autowired SettlePort settlement;
-    @Autowired TestPayGateway testChannel;
     @Autowired TokenStores tokens;
     @Autowired OtpStore otp;
     @Autowired EntitlementOrderUseDecisionConsumer consumer;
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
+    @Autowired PaymentLedgerService ledger;
+    @Autowired TestPayGateway paymentChannel;
     @MockitoSpyBean EntitlementUsePort pay;
-    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
+    private String id() { return UUID.randomUUID().toString(); }
     private String phone() {
-        return "125" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+        return "185" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
     private JsonNode request(MockMvc mvc, String path, String token, Object body) throws Exception {
         return json.readTree(mvc.perform(post(path).header("Authorization", "Bearer " + token)
@@ -151,8 +151,8 @@ class EntitlementCheckoutHttpFlowTest {
         assertThat(jdbc.queryForObject("SELECT pay_amount FROM ord_order WHERE order_no=?", Long.class, order))
                 .isEqualTo(800);
         assertThat(orderUses.sealForPayment("MAIN", order).getPayAmount()).isEqualTo(800);
-        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
-        orderService.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
+        String trade = RefundScenarioPayments.receivedForOrder(jdbc, ledger, paymentChannel, order);
+        orderService.markPaid(order, "TEST", trade);
         var decided = new SysOutbox(); decided.setEventType("ENTITLEMENT_ORDER_USE_DECIDED");
         decided.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
                 + "AND event_type='ENTITLEMENT_ORDER_USE_DECIDED'", String.class, op));

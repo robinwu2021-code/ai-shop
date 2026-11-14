@@ -1,0 +1,6 @@
+{
+  "apps/merchant_app/lib/features/goods/goods_image_preview.dart": "a3fadb590da05229ee4d95ab630204f9c7cbbc143fd798e30d81eb9cbca747f4",
+  "apps/merchant_app/lib/features/goods/goods_pages.dart": "60a5179f4904b603e5c460ab7518ea62e39034a9e0d9fdf3cf10d90a3451c713",
+  "apps/merchant_app/lib/features/standard_onboarding/onboarding_api.dart": "5ce66e31428a222b20be951b69a169afd3370aadb48345d36ea010e26d538d07",
+  "packages/foundation/lib/src/network.dart": "c2f5c7d68332f15a0ad5d9cca9e8ac4651974b00a4b2832bbf3f8f5206b322ac"
+}

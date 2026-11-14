@@ -1,0 +1,82 @@
+{
+  "task": "Task68A",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "base": "791d5f6e086cd371a5821ae684894b41c7b42ca9",
+  "codeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+  "sourcePins": [
+    {
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "sha256": "51309bb26f30398667775bf7c725a5a8d3cf2f52d3b3d4be6c7568ff3e0a9120"
+    },
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "sha256": "3520fce93c23528278630929e9843fb60f34b5afbf3ceb47cbd1642f057980e1"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "sha256": "cf9dbe849632b1ae53c7b8d19d21eed612588c5d6ae386584605110c62955b4f"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
+      "sha256": "387c97d77fc705a29326529e300306d36b1929d19301ea24b4c5e911af54232a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java",
+      "sha256": "70ba17bf45f83aaee890954a090cdcc45ffcb5c55e2bfd25b66708adf8c974c4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
+      "sha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf"
+    },
+    {
+      "path": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json",
+      "sha256": "0041175c3e0d17b9c40eed67724178f34e3bc59218e7ea0fcc74cc5f95625eb8"
+    },
+    {
+      "path": "scripts/gen-counter-campaign-owner-fence-schema.mjs",
+      "sha256": "4eecbe54725b48cafb5b0180baff9c343df65119d6a3105b951f953acc0519c2"
+    },
+    {
+      "path": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json",
+      "sha256": "194d705c2b44d3ff0dde762df970d0a1216a8a9b00de263091fd07490901228d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/CounterCampaignFenceIT.java",
+      "sha256": "28878c2110da3dc25c3167e6b4e1ac100935a42cac9248f4ffec9935b1eb6732"
+    },
+    {
+      "path": "scripts/tests/counter-campaign-owner-fence-schema.test.mjs",
+      "sha256": "7d85a09ae0ee6039ce740d951bd1b01cc747de82d80ce8782384c2a5a74a4fab"
+    }
+  ],
+  "reviews": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68a-r0.md",
+      "sha256": "ca82e9857d6783325eafe2c1b8b07d232d3f05640908cab1ab10e973d036c1bb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68a-r1.md",
+      "sha256": "ac2171cb77f9e1b9d38f2361a6f548b79d35475a8722c694a97d50cabfc41fc7"
+    }
+  ],
+  "build": {
+    "modules": 24,
+    "seconds": 40.347,
+    "coreMain": 1067,
+    "coreTestSources": 86,
+    "hostMain": 413,
+    "hostTestSources": 750,
+    "testsExecuted": false
+  },
+  "unexecuted": {
+    "nativeMethods": 18,
+    "nodeMethods": 4,
+    "lineageCases": 2
+  },
+  "migrationExecuted": false,
+  "pricingActivated": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false,
+  "identityPolicy": "Actual10effectiveownerCOLUMNbindings==database/table/fencetenant/scopecollation;kind/linkimmutablebinary; mismatchunavailable"
+}

@@ -60,7 +60,7 @@ class OpsNotifyFlowTest {
     @Test
     @DisplayName("★ 用户提工单 → 有处理权限的运营收到「新工单」，读后角标回落")
     void ticketNotifiesHandlers() throws Exception {
-        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127301");
+        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127301");
         String admin = ai.neargo.shop.support.TestLogin.admin(mvc(), json);
 
         mvc().perform(post("/mp/ticket").header("Authorization", "Bearer " + user)
@@ -99,7 +99,7 @@ class OpsNotifyFlowTest {
             staffMapper.insert(s);
         }
 
-        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127302");
+        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127302");
         mvc().perform(post("/mp/ticket").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subject\":\"运费问题\",\"content\":\"多收了运费\"}"))
@@ -115,7 +115,7 @@ class OpsNotifyFlowTest {
     @Test
     @DisplayName("★ 营销频控：同模板未过最小间隔第二条被拦；停用模板一条都发不出")
     void marketingQuotaIsEnforced() throws Exception {
-        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127303");
+        String user = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127303");
         String userNo = profileUserNo(user);
 
         MsgTemplate tpl = new MsgTemplate();

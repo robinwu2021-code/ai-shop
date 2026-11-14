@@ -24,6 +24,16 @@ public class AcceptanceAvailabilityProjection {
     private final PointsAvailabilityMapper mapper;
     private final ObjectMapper json=new ObjectMapper();
     public AcceptanceAvailabilityProjection(PointsAvailabilityMapper mapper) { this.mapper=mapper; }
+    @org.springframework.beans.factory.annotation.Value("${shop.points.default-participation-enabled:${shop.points.unified-earning-enabled:false}}")
+    private boolean defaultParticipation;
+    @org.springframework.beans.factory.annotation.Value("${shop.points.default-participation-since:0}")
+    private long participationSince;
+    @org.springframework.context.event.EventListener(org.springframework.context.event.ContextRefreshedEvent.class)
+    public void initializeDefaultParticipation() {
+        if (!defaultParticipation) return;
+        if (participationSince<=0) throw new IllegalArgumentException("POINTS_PARTICIPATION_START_REQUIRED");
+        for (var type : mapper.types()) rebuild(type);
+    }
 
     public List<Interval> current(String type) {
         return DataScopeContext.executeWithoutScope(() -> {
@@ -86,6 +96,10 @@ public class AcceptanceAvailabilityProjection {
                     .filter(k -> k.scope().endsWith("STORE") || k.scope().endsWith("MERCHANT")).toList();
             var outages=keys.stream().flatMap(k -> bySelector.getOrDefault(k,List.of()).stream()).toList();
             available.addAll(ExpiryPolicy.coverage(route.getValue(),outages));
+        }
+        if(defaultParticipation) {
+            if(participationSince<=0)throw new IllegalArgumentException("POINTS_PARTICIPATION_START_REQUIRED");
+            available.add(new Interval(participationSince,Long.MAX_VALUE));
         }
         var common=SwitchPolicy.selectors(new Availability(type,null,null,null,market,null,null,Flow.REDEEM)).stream()
                 .filter(k -> !k.scope().endsWith("USER") && !k.scope().endsWith("STORE") && !k.scope().endsWith("MERCHANT"))

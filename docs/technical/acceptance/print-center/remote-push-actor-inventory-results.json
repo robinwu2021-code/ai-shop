@@ -1,0 +1,52 @@
+{
+  "build": "SUCCESS",
+  "tests": 66,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.printing.PrintDeliveryTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.print.channel.PrintDatabaseAcceptanceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.PrintOrderSoftwareFlowTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.GoodsActivityOnlyFlowTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryFlowTest",
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryReserveTtlCapTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "runOrder": "alphabetical",
+  "log": "/tmp/print-actor-inventory-green2.log",
+  "inventoryRedLog": "/tmp/print-actor-inventory-red.log",
+  "scope": "64-character merchant operation attribution and finite test fixture isolation; no production inventory or checkout behavior changed"
+}

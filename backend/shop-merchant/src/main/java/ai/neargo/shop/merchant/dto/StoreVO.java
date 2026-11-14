@@ -48,5 +48,65 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                        *
                        * <p><b>空 = 没配域名</b>，端上据此不显示链接（不是显示一个点不开的地址）。
                        */
-                      String shareUrl) {
+                      String shareUrl,
+                      /*
+                       * 以下 7 项是 B 端建店（TDD-B端建店默认经营市场 AC5）用的门店经营上下文，均可为空：
+                       * market 取门店所属主体（mch_entity.market），currency / currencyScale / timeZone 取 sys_market；
+                       * businessTypeCode 取 mch_store；industryCode / subIndustryCode 取建店存下的码（V643），
+                       * 没存时按默认映射等于经营类型。
+                       * App 建店后按「店号 + 主体号 + 市场」认出新店，缺 market 会被当成「没建成」。
+                       */
+                      String market,
+                      String currency,
+                      Integer currencyScale,
+                      String timeZone,
+                      String industryCode,
+                      String subIndustryCode,
+                      String businessTypeCode,
+                      /*
+                       * 建店时行业 / 子业态选「其他」后自填的文字（TDD-注册地区与三步建店 AC9），均可为空。
+                       * 有文字的那一级，industryCode / subIndustryCode 报 OTHER（见 withMarket）。
+                       */
+                      String industryText,
+                      String subIndustryText) {
+
+    /** 不带经营上下文的旧构造：其它门店列表照旧用它。 */
+    public StoreVO(String storeNo, String name, String address, boolean isDefault,
+                   String status, String payMerchantNo, boolean payReady, int staffCount,
+                   boolean planSuspended, int rating, int ratingCount, String businessMode,
+                   boolean selfOperated, String slug, String shareUrl) {
+        this(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                null, null, null, null, null, null, null, null, null);
+    }
+
+    /** 不带自填行业的构造（TDD-B端建店默认经营市场 那一版的形状）。 */
+    public StoreVO(String storeNo, String name, String address, boolean isDefault,
+                   String status, String payMerchantNo, boolean payReady, int staffCount,
+                   boolean planSuspended, int rating, int ratingCount, String businessMode,
+                   boolean selfOperated, String slug, String shareUrl, String market, String currency,
+                   Integer currencyScale, String timeZone, String industryCode, String subIndustryCode,
+                   String businessTypeCode) {
+        this(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                market, currency, currencyScale, timeZone, industryCode, subIndustryCode, businessTypeCode,
+                null, null);
+    }
+
+    /** 行业或子业态选了「其他」时报的码，与 store-setup / quick-start 同一个 */
+    public static final String OTHER = "OTHER";
+
+    /**
+     * 补上门店所属主体的经营市场（元数据取不到时只给 market）；行业与子业态按默认映射等于经营类型，
+     * 自填过文字的那一级报 {@link #OTHER} —— 与建店时提交的一致，端上回显不用自己猜。
+     */
+    public StoreVO withMarket(String market, String currency, Integer currencyScale, String timeZone) {
+        // 自填的那一级报 OTHER；建店存了码（V643）就用存的，没存（存量门店）回落经营类型 —— 与改动前一致
+        String industry = industryText != null ? OTHER : industryCode != null ? industryCode : businessTypeCode;
+        String sub = subIndustryText != null ? OTHER : subIndustryCode != null ? subIndustryCode : businessTypeCode;
+        return new StoreVO(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                market, currency, currencyScale, timeZone, industry, sub, businessTypeCode,
+                industryText, subIndustryText);
+    }
 }

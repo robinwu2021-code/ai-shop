@@ -1,0 +1,20 @@
+{
+  "status": "BLOCKED",
+  "baseline587Built": false,
+  "historicalMigrationsChanged": false,
+  "rawMysql": "V1 line 15: utf8mb4_uca1400_ai_ci unsupported; prior batch evidence retained",
+  "mariadbVersion": "11.4.13",
+  "defaultFlyway": {
+    "failedVersion": "121",
+    "reason": "Unresolved placeholder in comment: shop.attribution.window-days:30"
+  },
+  "diagnosticOnly": {
+    "placeholderReplacement": false,
+    "lastSuccessfulVersion": "513",
+    "failedVersion": "514",
+    "sqlState": "42000",
+    "errorCode": 1064,
+    "reason": "MariaDB does not accept MySQL DROP CHECK syntax"
+  },
+  "nextRequirement": "A trustworthy complete schema baseline or a separately approved full-history compatibility/bootstrap design, never a partial print schema"
+}

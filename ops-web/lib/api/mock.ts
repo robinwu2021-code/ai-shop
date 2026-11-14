@@ -1,3 +1,4 @@
+import { printMock } from "./mocks/print";
 // Mock 实现（组合根）。按域切片在 lib/api/mocks/*.ts，全部走 lib/mock/db 内存数据 + 模拟延迟。
 // 切片之间方法名不得重叠（后者会静默覆盖前者），由 contract.test.ts 断言。
 import type { Api } from "./contract";
@@ -5,6 +6,7 @@ import { dashboardMock } from "./mocks/dashboard";
 import { merchantMock } from "./mocks/merchant";
 import { orderMock } from "./mocks/order";
 import { paymentMock } from "./mocks/payment";
+import { payOpsMock } from "./mocks/payops";
 import { communityMock } from "./mocks/community";
 import { fulfillmentMock } from "./mocks/fulfillment";
 import { storeMock } from "./mocks/store";
@@ -23,13 +25,16 @@ import { riskMock } from "./mocks/risk";
 import { messageMock } from "./mocks/message";
 import { contentMock } from "./mocks/content";
 import { systemMock } from "./mocks/system";
+import { commerceMock } from "./mocks/commerce";
 
 /** 各域 mock 切片。contract.test.ts 用它逐片校验 key 集合、检测重复实现。 */
 export const MOCK_SLICES = {
+  print: printMock,
   dashboard: dashboardMock,
   merchant: merchantMock,
   order: orderMock,
   payment: paymentMock,
+  payops: payOpsMock,
   community: communityMock,
   fulfillment: fulfillmentMock,
   store: storeMock,
@@ -48,10 +53,11 @@ export const MOCK_SLICES = {
   message: messageMock,
   content: contentMock,
   system: systemMock,
+  commerce: commerceMock,
 } as const;
 
 export const mockApi: Api = {
-  ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
+  ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock, ...payOpsMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock, ...commerceMock,
 };

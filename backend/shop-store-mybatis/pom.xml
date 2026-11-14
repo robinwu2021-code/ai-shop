@@ -27,6 +27,10 @@
         判据不是「用没用到」而是「进没进 classpath」—— 那正是 AOT 的判据。
     -->
     <dependencies>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+        </dependency>
         <!--
             依赖 auth 而不只是内核：AuditMetaObjectHandler 要知道**当前是谁**
             才能填 created_by / updated_by，JobSupport 与归档要 DataScopeContext。

@@ -88,7 +88,14 @@ public class OtpSendGuard {
      * @param senderKey 发起人标识（C 端是账号号，它背后是一个微信 openid）。
      *                  为 null 时跳过这一维 —— B 端登录页没有会话，那里只能靠号码与 IP。
      */
+    public int resendAfterSeconds() { return Math.toIntExact(perPhoneInterval.window().toSeconds()); }
+
     public void check(String phone, String senderKey) {
+        RequestMetaContext.Meta meta = RequestMetaContext.current();
+        check(phone, senderKey, meta == null ? null : meta.ip());
+    }
+
+    public void check(String phone, String senderKey, String ip) {
         if (!enabled) {
             return;
         }
@@ -118,8 +125,6 @@ public class OtpSendGuard {
          * 取不到时**放行而不是拒绝** —— 这一道是补充闸，前两道已经按号挡住了主要滥用；
          * 因为拿不到 IP 就把正常用户挡在门外，代价比漏掉一个机器人大得多。
          */
-        RequestMetaContext.Meta meta = RequestMetaContext.current();
-        String ip = meta == null ? null : meta.ip();
         if (ip == null || ip.isBlank()) {
             return;
         }

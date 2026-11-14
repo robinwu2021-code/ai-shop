@@ -46,7 +46,7 @@ class EntitlementConsumerQueryHttpFlowTest {
     private String entity;
     @BeforeEach void setup() throws Exception {
         mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        phone = "126" + String.format("%08d",
+        phone = "186" + String.format("%08d",
                 Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         token = TestLogin.consumer(mvc, json, otp, phone);
         user = tokens.of(Realm.CONSUMER).get(token).orElseThrow().user().userNo();

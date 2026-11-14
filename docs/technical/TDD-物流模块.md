@@ -288,7 +288,7 @@
 
 ### 2.3 API
 
-> 本节只列契约形状与取舍；逐端点的请求 / 响应 / 错误码 / 鉴权见 **[物流-API](物流-API.md)**。
+> 本节只列契约形状与取舍；逐端点的请求 / 响应 / 错误码 / 鉴权见 **[物流-API](design/物流-API.md)**。
 
 #### 2.3.1 模块契约（`shop-base/spi/logistics`）
 
@@ -322,11 +322,11 @@ public final class LogisticsEvents {
 
 `TrackView` **就是现有的 `OrderVO.Trace` 加字段**（字段只加不改，老端不受影响）：
 现有 `status` · `nodes[]`（倒序，`at` 毫秒）· `displayMode`（`wx-plugin` / `self-map`）· `displayToken` · `route`；
-新增 `carrier` · `waybillNo` · `signedAt` · `atLocker` · `freshAt` · `refreshable`。字段表见 [物流-API §3](物流-API.md)。
+新增 `carrier` · `waybillNo` · `signedAt` · `atLocker` · `freshAt` · `refreshable`。字段表见 [物流-API §3](design/物流-API.md)。
 
 #### 2.3.2 HTTP 端点
 
-逐端点见 **[物流-API](物流-API.md)**（13 个：C 端 2、B 端 3、运营端 5、回调 3）。这里只记两条形状上的决定：
+逐端点见 **[物流-API](design/物流-API.md)**（13 个：C 端 2、B 端 3、运营端 5、回调 3）。这里只记两条形状上的决定：
 
 - **用户与运营端点留在主应用**（C / B 端在交易域的 controller，运营端在 `portal/ops`）：物流模块不认识用户，
   「这张单是不是你的」只有交易域能判 —— 先按当前登录人查到子单（防 IDOR），再拿业务键问 `LogisticsPort`；
@@ -338,8 +338,8 @@ public final class LogisticsEvents {
 
 ### 2.4 核心流程
 
-> 本节是摘要。每个模块的输入、步骤、幂等、失败处理与测试要点见 **[物流-功能模块方案](物流-功能模块方案.md)**（回调 M4、查询 M7、作业 M8）；
-> 按场景的调用与推送清单见 **[物流-调用清单](物流-调用清单.md)**。
+> 本节是摘要。每个模块的输入、步骤、幂等、失败处理与测试要点见 **[物流-功能模块方案](design/物流-功能模块方案.md)**（回调 M4、查询 M7、作业 M8）；
+> 按场景的调用与推送清单见 **[物流-调用清单](design/物流-调用清单.md)**。
 
 ![物流主链路](diagrams/物流模块-主链路.svg)
 

@@ -1,3 +1,6 @@
+import { requirePointsNames } from "@shared/utils/points-name";
+import type { OrderPointsEarning } from "@shared/types";
+import type { StoredValueIssuerRecordsPage,StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
 //
@@ -204,7 +207,8 @@ export const httpApi: ShopApi = {
   applyInvoice: (req) => call<InvoiceRequest>("applyInvoice", undefined, req),
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
-  orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
+  orderDetail: (orderNo, paymentReference) => call<Order>("orderDetail", { orderNo }, paymentReference ? { paymentReference: true } : undefined),
+  orderPointsEarning: (orderNo) => call<OrderPointsEarning[]>("orderPointsEarning", { orderNo }),
   orderPointsState: (orderNo) => call<PointsOrderState>("orderPointsState", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
   trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),
@@ -335,7 +339,19 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
-  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
+  storedValuePendingServices:()=>call("storedValuePendingServices"),
+  storedValueService:orderNo=>call("storedValueService",{orderNo}),
+  storedValueAuthorize:(orderNo,body)=>call("storedValueAuthorize",{orderNo},body),
+  storedValueIssuers:query=>call("storedValueIssuers",undefined,{...query}),
+  storedValueLocateIssuer:focusDocumentNo=>call("storedValueLocateIssuer",undefined,{focusDocumentNo}),
+  storedValueIssuerRecords:async(issuerRef,query)=>{
+    const page=await call<StoredValueIssuerRecordsPage>("storedValueIssuerRecords",undefined,{issuerRef,...query});
+    return {...page,store:{storeNo:page.issuer.storeNo||"",storeName:page.issuer.name,businessTimeZone:page.issuer.businessTimeZone||"UTC"}};
+  },
+  storedValueStores: (query) => call("storedValueStores", undefined, { ...query } satisfies StoredValueStoresQuery),
+  storedValueRecords: (storeNo, query) => call("storedValueRecords", { storeNo }, { ...query } satisfies StoredValueRecordsQuery),
+  storedValueNotificationCapability: () => call("storedValueNotificationCapability"),
+  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts").then(requirePointsNames),
   pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
     "pointsEntries", undefined, { typeCode, after, limit: 20 }),
 

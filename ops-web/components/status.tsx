@@ -25,6 +25,7 @@ import { useI18n } from "@/lib/i18n";
 export function useMerchantStatusMap(): StatusMap<MerchantStatus> {
   const { t } = useI18n();
   return {
+    PENDING_LICENSE: { label: t("merchantStatus.PENDING_LICENSE"), tone: "warning" },
     ACTIVE: { label: t("merchantStatus.ACTIVE"), tone: "success" },
     SUSPENDED: { label: t("merchantStatus.SUSPENDED"), tone: "danger" },
     FROZEN: { label: t("merchantStatus.FROZEN"), tone: "warning" },

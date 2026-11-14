@@ -25,7 +25,7 @@ import tools.jackson.databind.ObjectMapper;
  * payload = {@code {realm: B|OPS, sub, exp, nonce}}。
  *
  * <p><b>线上只有公钥</b>：这台机器被翻遍也签不出票据。私钥在本机（仓库外），由
- * {@code scripts/automation/ticket.py} 使用。
+ * {@code scripts/automation/_ticket.py} 使用（keygen.py / api.py 经它签票）。
  *
  * <p>校验顺序：先验签，再看字段 —— 没验过签的 payload 一个字都不信（包括拿它的 nonce 去占位）。
  */

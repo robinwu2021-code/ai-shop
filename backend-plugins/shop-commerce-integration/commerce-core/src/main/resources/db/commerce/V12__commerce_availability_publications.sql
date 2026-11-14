@@ -1,0 +1,28 @@
+-- Immutable availability publication evidence only; the original inventory owner retains its ledger.
+CREATE TABLE cim_availability_publication (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    publication_no VARCHAR(32) NOT NULL,
+    generation BIGINT NOT NULL,
+    target_scope_key VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    connection_no VARCHAR(32) NOT NULL,
+    mapping_no VARCHAR(32) NOT NULL,
+    mapping_revision_no VARCHAR(32) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    operation_no VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    external_evidence_ref VARCHAR(256) NULL,
+    UNIQUE KEY uk_cim_availability_no(publication_no),
+    UNIQUE KEY uk_cim_availability_operation(operation_no),
+    UNIQUE KEY uk_cim_availability_generation(entity_no,target_scope_key,generation),
+    KEY ix_cim_availability_connection(entity_no,store_no,connection_no,created_at,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

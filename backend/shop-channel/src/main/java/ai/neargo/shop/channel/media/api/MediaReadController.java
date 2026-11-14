@@ -1,7 +1,7 @@
 package ai.neargo.shop.channel.media.api;
 
 import ai.neargo.shop.channel.media.LocalDiskMediaStore;
-import ai.neargo.shop.media.SysMediaAsset;
+import ai.neargo.shop.media.MediaKeys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -9,6 +9,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,7 +46,7 @@ public class MediaReadController {
     private final String privatePrefix;
 
     public MediaReadController(LocalDiskMediaStore store,
-                               @Value("${shop.upload.dir:./data/uploads}") String dir,
+                               @Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
                                @Value("${shop.upload.private-prefix:/media}") String privatePrefix) {
         this.store = store;
         this.root = Path.of(dir).toAbsolutePath().normalize();
@@ -73,7 +74,7 @@ public class MediaReadController {
          * 公开档不该走这条路：它有缓存头、有签名开销，而且混着走会让
          * 「哪些图是私有的」这个问题在两个地方各有一个答案。
          */
-        if (SysMediaAsset.GOODS.equalsIgnoreCase(segment(key, 2))) {
+        if (MediaKeys.isPublicKey(key)) {
             return ResponseEntity.notFound().build();
         }
 
@@ -92,22 +93,8 @@ public class MediaReadController {
                 .body(new FileSystemResource(file));
     }
 
-    private static String segment(String key, int i) {
-        String[] seg = key.split("/");
-        return i < seg.length ? seg[i] : "";
-    }
-
     private static MediaType contentTypeOf(Path file) {
-        String name = file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
-        if (name.endsWith(".png")) {
-            return MediaType.IMAGE_PNG;
-        }
-        if (name.endsWith(".gif")) {
-            return MediaType.IMAGE_GIF;
-        }
-        if (name.endsWith(".webp")) {
-            return MediaType.parseMediaType("image/webp");
-        }
-        return MediaType.IMAGE_JPEG;
+        return MediaTypeFactory.getMediaType(file.getFileName().toString())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
     }
 }

@@ -1,0 +1,69 @@
+# 支付独立部署切换（pay-guard 开发计划 M7.5 / D8）：直接调支付的四类调用方改转 pay-svc（8083）。
+#
+# ⚠️ 这是**未生效**的切换件：文件名不以 .conf 结尾，任何 server 都没有 include 它。
+#
+# 什么时候用：M7.2 / M7.3 完成之后 —— 判据是 pay-svc 的 PendingRemotePortsConfig 已经空了。
+# 在那之前切过去，渠道回调会在「投影订单」这一步抛（入账已先完成，但业务侧看不到已付）。
+#
+# 怎么切（预发先演练一遍，M7.7）：
+#   1. 复制为 /etc/nginx/ai-shop/pay-standalone.locations；
+#   2. www.hxmall.top.conf 的 443 server 里：删掉 `location ^~ /pay/callback/`（转 8081 的那条），
+#      在原位置写 `include /etc/nginx/ai-shop/pay-standalone.locations;`；
+#   3. shop-app 设 shop.pay.deployment=standalone 重启（商家端 / 运营端的支付接口改走 /internal/pay/v1）；
+#   4. nginx -t && systemctl reload nginx。
+# 回滚：去掉 include、恢复 /pay/callback/ 转 8081 那条，shop-app 改回 embedded —— 两边的守卫与 controller 是同一份。
+#
+# 不在这里的：商家端（/biz/**）、运营端（/ops/**）、小程序（/mp/**）仍只到业务服务 8081（pay-guard TDD §2.7）；
+# /internal/ 仍由上面那条 location 限死在本机。转发头一律覆写成 $remote_addr（NginxEdgeRulesTest G2）。
+
+# 开放 API：AppId + 签名，pay-svc 的 OPEN 守卫认人
+location ^~ /open/pay/ {
+    proxy_pass http://127.0.0.1:8083;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection        "";
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+}
+
+# POS 终端：终端号 + 设备密钥签名（TERMINAL 守卫）；激活接口按 IP 限频在守卫外另配
+location ^~ /terminal/pay/ {
+    proxy_pass http://127.0.0.1:8083;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection        "";
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+}
+
+# 渠道回调：公网可达、不带我方令牌，回调守卫按渠道与收款商户验签
+location ^~ /pay/callback/ {
+    proxy_pass http://127.0.0.1:8083;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection        "";
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+}
+
+# 托管收银台：收银令牌 / 码号由收银台服务逐次校验
+location ^~ /checkout/v1/ {
+    proxy_pass http://127.0.0.1:8083;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection        "";
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+}

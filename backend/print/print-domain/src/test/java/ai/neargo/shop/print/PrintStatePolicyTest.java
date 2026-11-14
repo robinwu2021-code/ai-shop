@@ -3,8 +3,8 @@ package ai.neargo.shop.print;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.dispatch.*;
-import ai.neargo.shop.print.dispatch.PrintStateModels.*;
+import ai.neargo.shop.printing.center.dispatch.*;
+import ai.neargo.shop.printing.center.dispatch.PrintStateModels.*;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,11 @@
 package ai.neargo.shop.trade.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.hash;
+import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.sourceHash;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.orderNo;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.operationNo;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.reference;
@@ -66,6 +71,10 @@ import tools.jackson.databind.ObjectMapper;
 /** A performed service and its consent are core facts. Resource preparation and consumption stay in pay. */
 @Service
 public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrderService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final EntitlementServiceOrderMapper orders;
     private final EntitlementAuthorizationMapper authorizations;
     private final CustomerIdentityPort customers;
@@ -108,6 +117,11 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 () -> customers.resolveReference(ctx, new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
     }
     @Override @Transactional
+    public ServiceOrderSnapshot createMonetarySelected(EntitlementContext ctx,String entity,ServiceOrderCreate c,String key,String walletFingerprint){
+        ai.neargo.shop.spi.entitlement.ContractChecks.hash(walletFingerprint);
+        return createInternal(ctx,entity,c.storeNo(),c.items(),key,hash(json.writeValueAsString(List.of("STORED_VALUE_SELECTED",c,walletFingerprint))),true,()->customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef())).userNo());
+    }
+    @Override @Transactional
     public ServiceOrderSnapshot createIdentified(EntitlementContext ctx, String entity,
                                                  ServiceOrderIdentifiedCreate c, String key) {
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
@@ -116,6 +130,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
             List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
+        ownershipWrites.lockAndCheck(ctx.tenantNo(), entity, storeNo);
         String no = orderNo(ctx, entity, key, json);
         var previous = orders.find(ctx.tenantNo(), no);
         if (previous != null) return replay(previous, ctx, entity, storeNo, payload);
@@ -156,7 +171,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         row.setOperationNo(operationNo(no)); row.setEntityNo(entity); row.setStoreNo(storeNo);
         row.setUserNo(userNo); row.setOperatorNo(ctx.actorNo()); row.setRequestKeyHash(hash(key));
         row.setPayloadHash(payload); row.setSourceSnapshot(json.writeValueAsString(frozen));
-        row.setSourceHash(hash(row.getSourceSnapshot())); row.setContextSnapshot(json.writeValueAsString(ctx));
+        row.setSourceHash(sourceHash(row.getSourceSnapshot(), json)); row.setContextSnapshot(json.writeValueAsString(ctx));
         row.setDeadline(LocalDateTime.ofInstant(at.plusSeconds(900), ZoneOffset.UTC));
         row.setCreatedAt(LocalDateTime.ofInstant(at, ZoneOffset.UTC)); row.setUpdatedAt(row.getCreatedAt());
         row.setCreatedBy(ctx.actorNo()); row.setUpdatedBy(ctx.actorNo());
@@ -232,7 +247,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var expiry = quote.expiresAt().isBefore(view.deadline()) ? quote.expiresAt() : view.deadline();
         var bounded = new Quote(quote.quoteRef(), quote.sourceRef(), quote.accountNo(), quote.currency(),
                 quote.amountMinor(), quote.applicableMinor(), quote.redeemable(), quote.reason(), quote.assetRevision(),
-                quote.snapshotHash(), expiry);
+                quote.snapshotHash(), expiry,quote.walletProof());
         row.setPreviewSnapshot(json.writeValueAsString(new PreviewBinding(AssetKind.STORED_VALUE, null, null, bounded)));
         row.setPreviewExpiresAt(LocalDateTime.ofInstant(expiry, ZoneOffset.UTC));
         row.setStatus("PREVIEWED"); update(row, ctx.actorNo());

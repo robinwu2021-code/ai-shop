@@ -1,5 +1,6 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/inventory/V*.sql 得到。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -23,6 +24,8 @@
 -- 写测试时只声明真正需要的那些。
 
 
+-- Native capability absent: backend/inventory/inventory-domain/src/main/resources/db/inventory/V17__execution_stock_retention.sql | inv_execution_retention,inv_execution_retention_claim
+
 CREATE TABLE IF NOT EXISTS inv_owner
 (
     id           BIGINT       NOT NULL AUTO_INCREMENT,
@@ -34,9 +37,13 @@ CREATE TABLE IF NOT EXISTS inv_owner
     created_by   VARCHAR(64)  DEFAULT NULL,
     updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by   VARCHAR(64)  DEFAULT NULL,
+    system_code VARCHAR(32) NOT NULL DEFAULT 'SHOP',
+    write_authority VARCHAR(16) NOT NULL DEFAULT 'EMBEDDED',
+    profile_version INT DEFAULT NULL,
+    external_type VARCHAR(32) NOT NULL DEFAULT 'ENTITY',
     PRIMARY KEY (id),
     CONSTRAINT uk_owner UNIQUE (owner_id),
-    CONSTRAINT uk_owner_ext UNIQUE (external_ref)
+    CONSTRAINT uk_owner_system_type_ext UNIQUE (system_code, external_type, external_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_location
@@ -54,6 +61,9 @@ CREATE TABLE IF NOT EXISTS inv_location
     created_by         VARCHAR(64)  DEFAULT NULL,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by         VARCHAR(64)  DEFAULT NULL,
+    region_ref VARCHAR(64) DEFAULT NULL,
+    disabled_at DATETIME DEFAULT NULL,
+    holder_ref VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_loc UNIQUE (owner_id, location_id),
     CONSTRAINT uk_loc_ext UNIQUE (owner_id, external_ref)
@@ -100,9 +110,17 @@ CREATE TABLE IF NOT EXISTS inv_item
     source_on_sale TINYINT DEFAULT NULL,
     retired_at DATETIME DEFAULT NULL,
     succeeded_by VARCHAR(40) DEFAULT NULL,
+    cost_currency VARCHAR(3) NULL,
+    valuation_version BIGINT NOT NULL DEFAULT 0,
+    tracking_mode VARCHAR(16) NOT NULL DEFAULT 'QUANTITY',
+    gate_policy VARCHAR(16) NOT NULL DEFAULT 'NONE',
+    gate_ref_type VARCHAR(32) DEFAULT NULL,
+    external_ref VARCHAR(64) DEFAULT NULL,
+    attributes TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_item UNIQUE (owner_id, item_id),
-    CONSTRAINT uk_item_code UNIQUE (owner_id, item_code)
+    CONSTRAINT uk_item_code UNIQUE (owner_id, item_code),
+    CONSTRAINT uk_item_external_ref UNIQUE (owner_id, external_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_item_ref
@@ -124,8 +142,8 @@ CREATE TABLE IF NOT EXISTS inv_stock_balance
     owner_id      VARCHAR(32) NOT NULL,
     item_id       VARCHAR(32) NOT NULL,
     location_id   VARCHAR(32) NOT NULL,
-    on_hand       INT         NOT NULL DEFAULT 0,
-    reserved      INT         NOT NULL DEFAULT 0,
+    on_hand DECIMAL(24,6) NOT NULL DEFAULT 0,
+    reserved DECIMAL(24,6) NOT NULL DEFAULT 0,
     safety_stock  INT         DEFAULT NULL,
     last_moved_at DATETIME    DEFAULT NULL,
     version       BIGINT      NOT NULL DEFAULT 0,
@@ -133,6 +151,7 @@ CREATE TABLE IF NOT EXISTS inv_stock_balance
     updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by      VARCHAR(64) DEFAULT NULL,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    unavailable_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_balance UNIQUE (owner_id, item_id, location_id)
 );
@@ -146,14 +165,17 @@ CREATE TABLE IF NOT EXISTS inv_ledger
     doc_kind        VARCHAR(8)  NOT NULL,
     doc_no          VARCHAR(32) NOT NULL,
     line_no         INT         NOT NULL,
-    reason_code     VARCHAR(16) NOT NULL,
-    qty_delta       INT         NOT NULL,
-    balance_after   INT         NOT NULL,
+    reason_code VARCHAR(32) NOT NULL,
+    qty_delta DECIMAL(24,6) NOT NULL,
+    balance_after DECIMAL(24,6) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     occurred_at     DATETIME    NOT NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     operator        VARCHAR(64) DEFAULT NULL,
     created_by      VARCHAR(64) DEFAULT NULL,
+    cost_currency VARCHAR(3) NULL,
+    batch_no VARCHAR(32) NULL,
+    lot_ref VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_doc_line UNIQUE (doc_no, line_no)
 );
@@ -174,9 +196,15 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     updated_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
     lifecycle_version INT NOT NULL DEFAULT 1,
+    source_manifest_hash CHAR(64) NULL,
+    disposition_revision BIGINT NULL,
+    confirmation_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_reservation UNIQUE (owner_id, reservation_id),
-    CONSTRAINT uk_reservation_ext UNIQUE (owner_id, external_ref)
+    CONSTRAINT uk_reservation_ext UNIQUE (owner_id, external_ref),
+    CONSTRAINT ck_inv_original_manifest CHECK ((source_manifest_hash IS NULL AND confirmation_operation_no IS NULL AND disposition_revision IS NULL) OR
+         (source_manifest_hash IS NOT NULL AND disposition_revision IS NOT NULL
+          AND disposition_revision>=1 AND (CASE lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN lifecycle_version IS NULL THEN NULL ELSE FALSE END END)))
 );
 
 CREATE TABLE IF NOT EXISTS inv_reservation_line
@@ -197,8 +225,13 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     issued_at DATETIME DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by VARCHAR(64) DEFAULT NULL,
+    source_sku_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no)
+    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no),
+    CONSTRAINT ck_inv_original_source CHECK ((source_sku_no IS NULL AND source_store_no IS NULL) OR
+         (source_sku_no IS NOT NULL AND qty>0 AND released_qty>=0 AND issued_qty>=0
+          AND issued_qty+released_qty<=qty))
 );
 
 CREATE TABLE IF NOT EXISTS inv_inbound_order
@@ -207,12 +240,12 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     inbound_no       VARCHAR(32)  NOT NULL,
     owner_id         VARCHAR(32)  NOT NULL,
     location_id      VARCHAR(32)  NOT NULL,
-    source_type VARCHAR(16) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
     source_ref       VARCHAR(64)  DEFAULT NULL,
     supplier_name    VARCHAR(64)  DEFAULT NULL,
     status           VARCHAR(16)  NOT NULL DEFAULT 'DRAFT',
-    total_qty        INT          NOT NULL DEFAULT 0,
-    total_cost_minor BIGINT       NOT NULL DEFAULT 0,
+    total_qty DECIMAL(24,6) NOT NULL,
+    total_cost_minor BIGINT NULL,
     occurred_at      DATETIME     NOT NULL,
     posted_at        DATETIME     DEFAULT NULL,
     voided_at        DATETIME     DEFAULT NULL,
@@ -223,6 +256,9 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by       VARCHAR(64)  DEFAULT NULL,
     supplier_no VARCHAR(32) DEFAULT NULL,
+    basis VARCHAR(32) DEFAULT NULL,
+    attachment_refs VARCHAR(1024) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inbound UNIQUE (owner_id, inbound_no)
 );
@@ -234,7 +270,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_line
     line_no         INT         NOT NULL,
     owner_id        VARCHAR(32) NOT NULL,
     item_id         VARCHAR(32) NOT NULL,
-    qty             INT         NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
     uom             VARCHAR(16) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     batch_no        VARCHAR(32) DEFAULT NULL,
@@ -243,6 +279,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_line
     created_by      VARCHAR(64) DEFAULT NULL,
     updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inbound_line UNIQUE (inbound_no, line_no)
 );
@@ -253,13 +290,13 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     outbound_no      VARCHAR(32)  NOT NULL,
     owner_id         VARCHAR(32)  NOT NULL,
     location_id      VARCHAR(32)  NOT NULL,
-    purpose VARCHAR(16) NOT NULL,
+    purpose VARCHAR(32) NOT NULL,
     source_ref       VARCHAR(64)  DEFAULT NULL,
     reservation_id   VARCHAR(32)  DEFAULT NULL,
     reason_code      VARCHAR(16)  DEFAULT NULL,
     status           VARCHAR(16)  NOT NULL DEFAULT 'DRAFT',
-    total_qty        INT          NOT NULL DEFAULT 0,
-    total_cost_minor BIGINT       NOT NULL DEFAULT 0,
+    total_qty DECIMAL(24,6) NOT NULL,
+    total_cost_minor BIGINT NULL,
     occurred_at      DATETIME     NOT NULL,
     posted_at        DATETIME     DEFAULT NULL,
     voided_at        DATETIME     DEFAULT NULL,
@@ -272,6 +309,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     target_type VARCHAR(16) DEFAULT NULL,
     target_no   VARCHAR(32) DEFAULT NULL,
     target_name VARCHAR(64) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_outbound UNIQUE (owner_id, outbound_no)
 );
@@ -283,7 +321,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_line
     line_no         INT         NOT NULL,
     owner_id        VARCHAR(32) NOT NULL,
     item_id         VARCHAR(32) NOT NULL,
-    qty             INT         NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
     uom             VARCHAR(16) NOT NULL,
     unit_cost_minor BIGINT      DEFAULT NULL,
     batch_no        VARCHAR(32) DEFAULT NULL,
@@ -291,6 +329,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_line
     created_by      VARCHAR(64) DEFAULT NULL,
     updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    parent_serial_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_outbound_line UNIQUE (outbound_no, line_no)
 );
@@ -313,6 +352,12 @@ CREATE TABLE IF NOT EXISTS inv_stock_count
     created_by  VARCHAR(64)  DEFAULT NULL,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    content_version INT NOT NULL DEFAULT 0,
+    approved_version INT DEFAULT NULL,
+    submitted_by VARCHAR(64) DEFAULT NULL,
+    reviewer VARCHAR(64) DEFAULT NULL,
+    review_note VARCHAR(255) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_count UNIQUE (owner_id, count_no)
 );
@@ -418,7 +463,7 @@ CREATE TABLE IF NOT EXISTS inv_open_credential
 (
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     credential_id   VARCHAR(32)  NOT NULL,
-    owner_id        VARCHAR(32)  NOT NULL,
+    owner_id VARCHAR(32) NULL,
     app_key         VARCHAR(64)  NOT NULL,
     app_secret_hash VARCHAR(128) NOT NULL,
     name            VARCHAR(64)  DEFAULT NULL,
@@ -430,6 +475,8 @@ CREATE TABLE IF NOT EXISTS inv_open_credential
     created_by      VARCHAR(64)  DEFAULT NULL,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64)  DEFAULT NULL,
+    system_code VARCHAR(32) DEFAULT NULL,
+    capabilities VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_credential UNIQUE (credential_id),
     CONSTRAINT uk_app_key UNIQUE (app_key)
@@ -565,6 +612,544 @@ CREATE TABLE IF NOT EXISTS inv_return_receipt
     CONSTRAINT uk_inv_return_receipt_line UNIQUE (receipt_no, line_no)
 );
 
+CREATE TABLE IF NOT EXISTS inv_demand_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    owner_id VARCHAR(32) NOT NULL,
+    external_ref VARCHAR(64) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    plan_hash VARCHAR(64) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    lifecycle_version INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_demand_scope UNIQUE (owner_id,external_ref),
+    CONSTRAINT uk_demand_no UNIQUE (owner_id,plan_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_demand_leaf
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    owner_id VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    leaf_ref VARCHAR(64) NOT NULL,
+    component_ref VARCHAR(64) NOT NULL,
+    fulfillment_ref VARCHAR(64) NOT NULL,
+    branch_kind VARCHAR(24) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    issued_qty DECIMAL(24,6) NOT NULL DEFAULT 0,
+    released_qty DECIMAL(24,6) NOT NULL DEFAULT 0,
+    unit VARCHAR(16) NOT NULL,
+    definition_hash VARCHAR(64) NOT NULL,
+    document_no VARCHAR(32) NULL,
+    ledger_ref VARCHAR(32) NULL,
+    cost_minor BIGINT NULL,
+    currency VARCHAR(3) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_demand_leaf UNIQUE (owner_id,plan_no,leaf_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_demand_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    owner_id VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    operation_ref VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    original_operation_ref VARCHAR(64) NULL,
+    receipt_snapshot TEXT NOT NULL,
+    delta_snapshot TEXT NOT NULL,
+    reversed TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_demand_operation UNIQUE (owner_id,operation_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_production_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    owner_id VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    event_no VARCHAR(32) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    operation_ref VARCHAR(64) NOT NULL,
+    receipt_snapshot TEXT NOT NULL,
+    reverse_event_no VARCHAR(32) NULL,
+    reverse_hash VARCHAR(64) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_production_event UNIQUE (owner_id,store_no,event_no),
+    CONSTRAINT uk_production_reverse UNIQUE (owner_id,store_no,reverse_event_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_lot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    lot_ref VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(32) NOT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    unit_cost_minor BIGINT NULL,
+    currency VARCHAR(3) NULL,
+    expire_at DATE NULL,
+    source_doc_no VARCHAR(32) NOT NULL,
+    source_line_no INT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_stock_lot UNIQUE (owner_id,lot_ref),
+    CONSTRAINT uk_stock_lot_source UNIQUE (owner_id,source_doc_no,source_line_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_item_valuation_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    before_snapshot TEXT NOT NULL,
+    after_snapshot TEXT NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_item_valuation_operation UNIQUE (owner_id,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS inv_food_stock_projection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    source_system VARCHAR(32) NOT NULL,
+    source_item_no VARCHAR(32) NOT NULL,
+    target_owner_id VARCHAR(64) NULL,
+    target_location_id VARCHAR(64) NULL,
+    target_item_id VARCHAR(64) NULL,
+    base_unit VARCHAR(16) NOT NULL,
+    tracking_mode VARCHAR(16) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    on_hand DECIMAL(24,6) NULL,
+    reserved_qty DECIMAL(24,6) NULL,
+    source_version BIGINT NOT NULL,
+    generation BIGINT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    source_updated_at DATETIME(3) NOT NULL,
+    received_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_inv_food_stock_projection UNIQUE (tenant_no,entity_no,store_no,source_system,source_item_no),
+    CHECK (source_version >= 0 AND generation >= 0),
+    CHECK ((tracking_mode='UNTRACKED' AND on_hand IS NULL AND reserved_qty IS NULL)
+ OR (tracking_mode='TRACKED' AND on_hand IS NOT NULL AND reserved_qty IS NOT NULL
+ AND on_hand >= 0 AND reserved_qty >= 0 AND reserved_qty <= on_hand))
+);
+
+CREATE TABLE IF NOT EXISTS inv_food_stock_sync_receipt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    source_system VARCHAR(32) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    generation BIGINT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    receipt_no VARCHAR(32) NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    applied_version BIGINT NULL,
+    received_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_inv_food_stock_receipt_no UNIQUE (receipt_no),
+    CONSTRAINT uk_inv_food_stock_receipt_event UNIQUE (tenant_no,entity_no,store_no,source_system,event_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_food_stock_sync_session
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    source_system VARCHAR(32) NOT NULL,
+    generation BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    activated_at DATETIME(3) NULL,
+    disabled_at DATETIME(3) NULL,
+    CONSTRAINT uk_inv_food_stock_session UNIQUE (tenant_no,entity_no,store_no,source_system),
+    CHECK (generation >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS inv_client_system
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_client_system UNIQUE (system_code)
+);
+
+CREATE TABLE IF NOT EXISTS inv_business_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    version INT NOT NULL,
+    body TEXT NOT NULL,
+    body_hash CHAR(64) NOT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_business_profile UNIQUE (owner_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS inv_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    request_id VARCHAR(64) NOT NULL,
+    command_type VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_body TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_command UNIQUE (system_code, owner_id, request_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_audit
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    action VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    before_body TEXT DEFAULT NULL,
+    after_body TEXT DEFAULT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    request_id VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_hold
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    hold_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    reason VARCHAR(24) NOT NULL,
+    source_ref VARCHAR(64) DEFAULT NULL,
+    note VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    released_at DATETIME DEFAULT NULL,
+    released_by VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_stock_hold UNIQUE (owner_id, hold_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_target_ref
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    object_type VARCHAR(32) NOT NULL,
+    object_ref VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    parent_type VARCHAR(32) DEFAULT NULL,
+    parent_ref VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    source_version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    linked_owner_id VARCHAR(32) DEFAULT NULL,
+    linked_location_id VARCHAR(32) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_target_ref UNIQUE (owner_id, system_code, object_type, object_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_serial
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    serial_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    active_episode_id VARCHAR(32) DEFAULT NULL,
+    parent_serial_id VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_serial_id UNIQUE (owner_id, serial_id),
+    CONSTRAINT uk_inv_serial_no UNIQUE (owner_id, serial_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_episode
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    episode_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
+    open_doc_no VARCHAR(32) NOT NULL,
+    close_doc_no VARCHAR(32) DEFAULT NULL,
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME DEFAULT NULL,
+    open_serial_id VARCHAR(32) GENERATED ALWAYS AS (CASE WHEN status = 'OPEN' THEN serial_id ELSE NULL END),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_stock_episode UNIQUE (owner_id, episode_id),
+    CONSTRAINT uk_inv_stock_episode_open UNIQUE (owner_id, open_serial_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_document_serial
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    doc_kind VARCHAR(8) NOT NULL,
+    doc_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    parent_serial_no VARCHAR(64) DEFAULT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_document_serial UNIQUE (owner_id, doc_kind, doc_no, serial_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_document_target
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    doc_kind VARCHAR(8) NOT NULL,
+    doc_no VARCHAR(32) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_ref VARCHAR(64) NOT NULL,
+    name_snapshot VARCHAR(128) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_document_target UNIQUE (owner_id, doc_kind, doc_no, target_type)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_item
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    dispatch_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    outbound_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    serial_no VARCHAR(64) DEFAULT NULL,
+    episode_id VARCHAR(32) DEFAULT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    parent_dispatch_id VARCHAR(32) DEFAULT NULL,
+    root_target_type VARCHAR(32) NOT NULL,
+    root_target_ref VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    resource_version INT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_item UNIQUE (owner_id, dispatch_id),
+    CONSTRAINT uk_inv_dispatch_item_episode UNIQUE (owner_id, episode_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_target
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_ref VARCHAR(64) NOT NULL,
+    name_snapshot VARCHAR(128) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_target UNIQUE (owner_id, dispatch_id, target_type)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_claim
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    claim_no VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    request_id VARCHAR(64) DEFAULT NULL,
+    business_ref VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL,
+    active_dispatch_id VARCHAR(32) GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN dispatch_id ELSE NULL END),
+    released_at DATETIME DEFAULT NULL,
+    released_by VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_claim_active UNIQUE (owner_id, active_dispatch_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_adjust
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    action VARCHAR(16) NOT NULL,
+    before_body TEXT DEFAULT NULL,
+    after_body TEXT DEFAULT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_pending
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    resource_version INT NOT NULL,
+    payload TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    occurred_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_event_pending UNIQUE (event_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_log
+(
+    seq BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    resource_version INT NOT NULL,
+    payload TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    occurred_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq),
+    CONSTRAINT uk_inv_event_log UNIQUE (event_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_subscription
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    acked_seq BIGINT NOT NULL DEFAULT 0,
+    pruned_seq BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_event_subscription UNIQUE (owner_id, system_code)
+);
+
+CREATE TABLE IF NOT EXISTS inv_count_scan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    count_no VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    item_id VARCHAR(32) DEFAULT NULL,
+    verdict VARCHAR(16) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_count_scan UNIQUE (owner_id, count_no, serial_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_paired_transfer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pair_no VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    from_owner_id VARCHAR(32) NOT NULL,
+    outbound_no VARCHAR(32) NOT NULL,
+    from_location_id VARCHAR(32) NOT NULL,
+    to_owner_id VARCHAR(32) NOT NULL,
+    inbound_no VARCHAR(32) NOT NULL,
+    to_location_id VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    line_items TEXT NOT NULL,
+    shipped_at DATETIME NOT NULL,
+    received_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_paired_no UNIQUE (pair_no),
+    CONSTRAINT uk_paired_out UNIQUE (from_owner_id, outbound_no),
+    CONSTRAINT uk_paired_in UNIQUE (to_owner_id, inbound_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL
@@ -590,3 +1175,7 @@ SELECT 'KG', '公斤', 1, 70 FROM DUAL
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'G', '克', 1, 80 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'G');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHOP', 'ai-shop', 'MIGRATION');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHAREHUB', 'ShareHub', 'MIGRATION');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('CHARGING', 'charging', 'MIGRATION');
+UPDATE inv_owner SET external_type = 'PLATFORM' WHERE system_code <> 'SHOP';

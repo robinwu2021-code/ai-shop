@@ -4,10 +4,14 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 地理能力（高德 Web 服务，后端代理，密钥不落端）。merchant / community 域通过它做
+ * 地理能力（后端代理，密钥不落端）。merchant / community 域通过它做
  * 地址校验、坐标归一与逆地理，不直接认识厂商。
  *
- * <p><b>全站坐标一律 gcj02</b>。App 端系统定位给的是 wgs84，调用方带 {@code coordSys}，
+ * <p><b>注入的这一个就是高德</b>，现有调用方不带地区，行为不变。按门店地区选提供方（台湾 / 阿联酋走 Google）
+ * 要经 {@code platform.port.GeoRouter}：Google 实现不注册成本接口的 bean，免得按类型注入的地方拿到两个候选
+ * （TDD-双地图提供方与门店选点）。
+ *
+ * <p><b>高德这一路坐标一律 gcj02</b>。App 端系统定位给的是 wgs84，调用方带 {@code coordSys}，
  * 由 {@link #toGcj02} 归一；没配密钥时 {@link #available()} 为 false，调用方<b>跳过校验而不是拒</b>——
  * 地图能力是增强，不是开店的前置。
  */
@@ -63,6 +67,16 @@ public interface GeoPort {
     record Geocode(boolean ok, String level, String formatted, int latE6, int lngE6, String adcode) {
     }
 
-    record Tip(String name, String address, String adcode, Integer latE6, Integer lngE6, String typecode) {
+    /**
+     * @param coordSys 这条的坐标是哪个坐标系（{@link #GCJ02} / {@link #WGS84}）。高德是 gcj02，Google 是 wgs84；
+     *                 端上把选中的点连同它一起回传给建店（TDD-双地图提供方与门店选点 AC5）。null = 调用方没标
+     */
+    record Tip(String name, String address, String adcode, Integer latE6, Integer lngE6, String typecode,
+               String coordSys) {
+
+        /** 双地图之前的形状：不标坐标系 */
+        public Tip(String name, String address, String adcode, Integer latE6, Integer lngE6, String typecode) {
+            this(name, address, adcode, latE6, lngE6, typecode, null);
+        }
     }
 }

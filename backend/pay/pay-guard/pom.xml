@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pay-guard</artifactId>
+    <packaging>jar</packaging>
+    <description>支付接入守卫：每个入口一个过滤器，认调用方、验签、防重放、留痕；外部 API 与终端凭证的发放（ADR-045）</description>
+
+    <!-- 为什么单独成模块（ADR-045）：
+         接入处理原先散在 pay-portal（过滤器框架）、pay-domain（开放 API 验签）、pay-svc（内部调用过滤器）三处；
+         收到这里后，pay-portal（对外 controller）与 pay-svc（支付服务进程）都依赖它，各自按入口装配。
+
+         **包根 ai.neargo.shop.pay.api.guard**：过滤器必然依赖 Servlet，而 ArchitectureTest 只豁免
+         ai.neargo.shop.pay.api 这一棵子树（ADR-044 §2-2）—— 放在其下，不放宽任何架构规则。
+
+         依赖方向只许 pay-portal / pay-svc → pay-guard → pay-domain：pay-domain 不得反过来引用本模块的类。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 接入方、授权、nonce、请求记录这些业务数据与 PayCaller 仍归支付领域 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 运营 / 商家会话与可信客户端 IP（ClientMeta，安全规范 §4.5） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 凭证的生成、保存与运算（KeyRegistry / KeyVault），实现由装配方提供 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

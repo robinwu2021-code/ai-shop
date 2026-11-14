@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvLotMapper;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueAllocationPolicy;
 import ai.neargo.shop.pay.storedvalue.policy.StoredValueUseFacts;
+import ai.neargo.shop.pay.storedvalue.policy.StoredValueAccountScope;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionPostingService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionService;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
@@ -44,6 +45,11 @@ import tools.jackson.databind.ObjectMapper;
 public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionService {
     private final ObjectProvider<EntitlementUseSourcePort> sources;
     private final ObjectProvider<SourceDecisionPort> decisions;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerAccountService issuerAccounts;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerQueryService walletQueries;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueLotBasisService lotBasis;
     private final SvAccountMapper accounts;
     private final SvLotMapper lots;
     private final EntUseIntentMapper intents;
@@ -62,7 +68,9 @@ public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionSe
     }
     @Override public Quote quote(EntitlementContext ctx, SourceRef ref) {
         enabled(ctx); var source = source(ctx, ref); long amount = StoredValueUseFacts.amount(source);
-        var account = accounts.findOwner(ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency());
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), source.userNo(), source.entityNo(), source.currency());
+        var selected=issuerAccounts.lookup(ctx.tenantNo(),source.entityNo(),source.storeNo(),source.currency(),source.userNo(),false);
+        var account=selected.issuerScoped()?accounts.findAccount(ctx.tenantNo(),selected.accountNo()):accounts.findOwner(ctx.tenantNo(),source.userNo(),source.entityNo(),source.currency(),source.storeNo());
         String accountNo = account == null ? null : account.getAccountNo();
         long revision = account == null ? 0 : account.getVersion();
         long applicable = 0; Reason reason = Reason.NO_ACCOUNT;
@@ -79,6 +87,16 @@ public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionSe
         return new Quote("SQ" + UUID.randomUUID().toString().replace("-", ""), ref, accountNo, source.currency(),
                 amount, applicable, reason == Reason.OK, reason, revision, digest(selection, json),
                 Instant.ofEpochMilli(System.currentTimeMillis()).plusSeconds(120));
+    }
+    @Override public Quote quote(EntitlementContext ctx,SourceRef ref,ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice){
+        enabled(ctx);var source=source(ctx,ref);var query=choice.query();var scope=query.scope();
+        if(!ctx.tenantNo().equals(scope.tenantNo())||!ctx.actorNo().equals(scope.actorNo())||!source.userNo().equals(query.customer().userNo())||!source.entityNo().equals(scope.entityNo())||!source.storeNo().equals(scope.storeNo())||!source.currency().equals(scope.currency()))conflict();
+        var selected=walletQueries.select(query,choice.issuerRef(),choice.accountRef());var account=accounts.findAccount(ctx.tenantNo(),selected.accountNo());
+        if(account==null||!selected.customerNo().equals(account.getCustomerNo())||selected.assetRevision()!=account.getVersion())conflict();
+        long amount=StoredValueUseFacts.amount(source);long applicable=0;Reason reason=Reason.FROZEN;
+        if("ACTIVE".equals(account.getStatus())){applicable=policy.allocate("BRAND".equals(selected.scopeType())?lotBasis.available(ctx.tenantNo(),lots.live(ctx.tenantNo(),account.getAccountNo())):StoredValueUseFacts.available(lots.live(ctx.tenantNo(),account.getAccountNo()),json),source).amountMinor();reason=applicable==amount?Reason.OK:Reason.INSUFFICIENT_APPLICABLE_BALANCE;}
+        var selection=new Selection(ref,source.orderSnapshotHash(),account.getAccountNo(),amount,account.getVersion());
+        return new Quote("SQ"+UUID.randomUUID().toString().replace("-",""),ref,account.getAccountNo(),source.currency(),amount,applicable,reason==Reason.OK,reason,account.getVersion(),digest(selection,json),Instant.ofEpochMilli(System.currentTimeMillis()).plusSeconds(120),new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Proof(scope,selected,source.userNo()));
     }
     @Override public HoldView prepare(EntitlementContext ctx, UseCommand c) {
         var prior = intents.find(ctx.tenantNo(), c.operationNo());

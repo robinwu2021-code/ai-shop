@@ -74,6 +74,17 @@ public final class UserMappers {
     }
 
     /**
+     * 测试身份白名单（TDD-测试身份白名单登录）。删除同样要物理删：唯一键 uk_test_identity 不含 deleted，
+     * 软删的行会一直占着那个手机号 / 邮箱（见下面 OtpTestPhoneMapper 的说明）。
+     */
+    public interface TestIdentityMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrTestIdentity> {
+
+        @org.apache.ibatis.annotations.Delete("DELETE FROM usr_test_identity WHERE id = #{id}")
+        int purge(@org.apache.ibatis.annotations.Param("id") Long id);
+    }
+
+    /**
      * 测试号固定验证码白名单（苹果审核演示账号）。
      *
      * <p>删要<b>物理删</b>：{@code BaseEntity} 上有 {@code @TableLogic}，普通 {@code delete}

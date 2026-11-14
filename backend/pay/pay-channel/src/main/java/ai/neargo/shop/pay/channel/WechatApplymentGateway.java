@@ -58,6 +58,14 @@ public class WechatApplymentGateway extends AbstractApplymentGateway {
         };
     }
 
+    /** 外部单号缺了就不发：退回去用主体编号正是 R04 的撞单 */
+    static String requireRequestNo(SubmitCommand cmd) {
+        if (cmd.requestNo() == null || cmd.requestNo().isBlank()) {
+            throw new ChannelClient.ChannelException("进件缺外部单号（requestNo），不发往通道", false);
+        }
+        return cmd.requestNo();
+    }
+
     /** 我方结算账户形态 → 微信账户类型。 */
     static String bankAccountType(String settleAccountType) {
         return "MERCHANT_ID".equals(settleAccountType) ? "BANK_ACCOUNT_TYPE_CORPORATE"
@@ -72,7 +80,8 @@ public class WechatApplymentGateway extends AbstractApplymentGateway {
                     "认不出的法律形态：" + cmd.legalForm() + "（不猜，猜错会按错误的主体类型进件）", false);
         }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("out_request_no", cmd.entityNo());
+        // 每张进件单、每次提交唯一（F04 · R04）；用主体编号时主体级与门店级进件撞单
+        body.put("out_request_no", requireRequestNo(cmd));
         body.put("organization_type", subject);
         Map<String, Object> subjectInfo = new LinkedHashMap<>();
         subjectInfo.put("merchant_name", cmd.entityName());

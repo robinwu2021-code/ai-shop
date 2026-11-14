@@ -1,5 +1,7 @@
 # 统一试算引擎：存储与Java实施方案
 
+> **税配置最新口径（2026-10-23）：** 平台统一默认、商家自主覆盖，支持EXCLUSIVE额外加税/INCLUSIVE含税倒推，无平台审核；普通订单不再以前置税登记核验阻断。原税档审核/登记来源计划由[CKO-09 C2新口径](./TDD-订单结账-CKO09种子与配置API.md#c2新口径平台默认商家自主设置2026-10-23设计待实现)取代。首版同商家门店共用配置，历史订单冻结原税配置；新合同和内部存储已实现，管理API及交易接线待开发。
+
 > 状态：部分实施（CKO-02～08共享内核及4表配置发布事务），其余按计划待开发 · 2026-10-22 · 档位2。本文细化已讨论规则的存储、Java职责、接口和开发顺序，不表示报价表、API或资金适配已交付。沿用[ADR-040权威边界](./ADR/ADR-040-餐饮销售配置与耗用权威边界.md)，不重新建立商品、订单或资金权威。
 >
 > 规则依据：[三行业优惠组合与多券](./TDD-三行业优惠规则-组合与多券.md)、[规则公式及门店配置](./TDD-统一试算引擎-规则公式与多行业模型.md)、[54条规则目录](./TDD-统一试算引擎-三行业规则与规则引擎.md)。需求沿用[餐饮完整需求](../requirements/餐饮系统-完整需求文档.md)中报价、结账、资金与报表要求，以及上述三行业专项规则。
@@ -10,7 +12,7 @@
 
 CKO-01已完成源码合同核验：[能力、字段差异及纯内核合同基线](./TDD-订单结账-CKO01合同与字段核验.md)。共同时间精度收口为现有DATETIME(3)，经营币种列为CHAR(3)；不代表实际数据库或外部资金合同已验收。
 
-CKO-02实现收据：[定点金额、计价份额、事实集合及SPI来源引用](./TDD-订单结账-CKO02定点金额与事实对象.md)。这些基础对象已实现；[CKO-03配置编译收据](./TDD-订单结账-CKO03规则配置编译.md)记录已实现的类型化编译、强制目录、覆盖/reset及能力校验。[CKO-04业务规则收据](./TDD-订单结账-CKO04业务规则校验.md)记录B01～B12及显式份额金额/原owner/审批校验。[CKO-05多券计划收据](./TDD-订单结账-CKO05多券候选与份额计划.md)记录已实现的有界子集搜索与完整报价评估合同，输出仍为BUSINESS_PRE_TAX。[CKO-06公式与守恒收据](./TDD-订单结账-CKO06公式分摊与守恒.md)记录固定金额公式、原owner逐步报价/资方/尾差及独立复核，输出仍为税前业务证据。[CKO-07地区税收据](./TDD-订单结账-CKO07地区税与最终定税.md)记录纯税预估/最终定税、税类与对价分类及冻结原税AA分配；[CKO-08配置发布收据](./TDD-订单结账-CKO08配置发布与事务.md)记录4表及内部发布Service；种子校验/草稿导入由[CKO-09 A/B收据](./TDD-订单结账-CKO09种子与配置API.md)记录；正式税档与主体登记来源、配置API、税后候选编排、报价表、实际owner适配及交易Service仍待后续任务。
+CKO-02实现收据：[定点金额、计价份额、事实集合及SPI来源引用](./TDD-订单结账-CKO02定点金额与事实对象.md)。这些基础对象已实现；[CKO-03配置编译收据](./TDD-订单结账-CKO03规则配置编译.md)记录已实现的类型化编译、强制目录、覆盖/reset及能力校验。[CKO-04业务规则收据](./TDD-订单结账-CKO04业务规则校验.md)记录B01～B12及显式份额金额/原owner/审批校验。[CKO-05多券计划收据](./TDD-订单结账-CKO05多券候选与份额计划.md)记录已实现的有界子集搜索与完整报价评估合同，输出仍为BUSINESS_PRE_TAX。[CKO-06公式与守恒收据](./TDD-订单结账-CKO06公式分摊与守恒.md)记录固定金额公式、原owner逐步报价/资方/尾差及独立复核，输出仍为税前业务证据。[CKO-07地区税收据](./TDD-订单结账-CKO07地区税与最终定税.md)记录纯税预估/最终定税、税类与对价分类及冻结原税AA分配；[CKO-08配置发布收据](./TDD-订单结账-CKO08配置发布与事务.md)记录4表及内部发布Service；种子校验/草稿导入由[CKO-09 A/B收据](./TDD-订单结账-CKO09种子与配置API.md)记录；C1配置API、新税合同与内部税设置存储已实现；税管理API、真实发布证据、税后候选编排、报价表、实际owner适配及交易Service仍待后续任务。
 
 ## L1 定位
 
@@ -351,21 +353,23 @@ BaseMapper技术上暴露通用写方法不等于业务许可；服务只使用�
 
 ### 2.9 API与输入输出
 
-以下为**候选路由**；实施时与餐饮原API041/131等canonical条目对齐，扩展原资源、不重复注册等义接口。全端沿现有返回封装、业务异常、国际化及鉴权风格。
+配置部分已由[CKO-09 C1](./TDD-订单结账-CKO09种子与配置API.md)按原core资源与BizContext风格落地，精确输入输出见[配置OpenAPI](../api/pricing-config.openapi.json)；预览/发布/初始化/回滚缺真实证据仍阻断，C2税档与主体登记来源待实现。下列报价路由仍为候选，实施时与餐饮API041/131等canonical条目对齐，不代表已交付。
 
 | 端 | 方法与候选路径 | 输入 | 输出 |
 |---|---|---|---|
-| 平台运营 | GET/PUT `/ops/x/trade/pricing-templates/{templateNo}/draft` | PUT：expectedDraftVersion、schemaVersion、definition | templateNo、draftVersion、activeRevisionNo、definition |
-| 平台运营 | POST `.../{templateNo}/preview`、`.../{templateNo}/publish` | preview：草稿版本；publish：见下述公共发布参数 | 编译差异/问题；新revisionNo/hash |
-| B端/云店管理 | GET/PUT `/biz/x/trade/stores/{storeNo}/pricing-config` | PUT：templateRevisionNo、expectedDraftVersion、override | configNo、草稿、锁定模板、当前版本、可改字段 |
-| B端/云店管理 | POST `.../pricing-config/reset-overrides` | expectedDraftVersion、resetPaths | 新草稿及继承来源 |
-| B端/云店管理 | POST `.../pricing-config/preview`、`.../publish` | 草稿版本；公共发布参数 | 差异、能力门禁；新版本 |
-| B端/云店管理 | POST `.../pricing-config/upgrade-template`、`.../rollback` | 目标templateRevisionNo或历史revisionNo、预期头版本、原因 | 生成新草稿或新发布版本；升级不会自动激活 |
+| 平台运营 | GET/PUT `/ops/pricing-templates/{no}/draft` | PUT：expectedDraftVersion、content | no、industryCode、draftVersion、activeRevisionNo、content、templateRevisionNo |
+| 平台运营 | POST `/ops/pricing-templates/{no}/preview`、`.../{no}/publish` | preview：草稿版本；publish：见下述公共发布参数 | 编译差异/问题；新revisionNo/hash |
+| B端/云店管理 | GET/PUT `/biz/pricing-configs/{no}/draft` | PUT：templateRevisionNo、expectedDraftVersion、content；主体/门店取BizContext | no、industryCode、draftVersion、activeRevisionNo、content、templateRevisionNo |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/reset` | expectedDraftVersion、paths | 新草稿及继承来源 |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/preview`、`.../{no}/publish` | 草稿版本；公共发布参数 | 差异、能力门禁；新版本 |
+| B端/云店管理 | POST `/biz/pricing-configs/{no}/upgrade`、`.../{no}/rollback` | 目标templateRevisionNo或历史revisionNo、预期头版本、原因 | 生成新草稿或新发布版本；升级不会自动激活 |
 | 收银/服务员 | POST `/biz/x/food/carts/{cartNo}/quote` | sourceVersion、benefitSelection、fundingIntent、adjustments、cashTender | PricingQuoteVO |
 | 收银/服务员 | POST `/biz/x/food/checks/{checkNo}/quote` | scopeRef、scopeVersion及上述意图；原根账单不能由客户端重置 | PricingQuoteVO |
 | C端/H5/扫码 | POST `/mp/x/food/carts/{cartNo}/quote` | sourceVersion、本人候选券/资金意图；不含员工调整 | 脱敏PricingQuoteVO |
 | B/C | GET 各自前缀`/food/quotes/{quoteNo}`；POST `.../{quoteNo}/revalidate` | revalidate：sourceVersion、expectedEconomicsHash、scopeVersion | 原报价；UNCHANGED/CHANGED/BLOCKED及受控差异 |
 | 内部 | POST `/internal/x/trade/pricing/quotes`及`.../{quoteNo}/revalidate` | 认证调用系统＋typed来源引用＋同合同意图 | 相同内核结果；调用系统不能自报权威单价 |
+
+C1另有POST `/ops/pricing-templates`创建草稿、POST `/ops/pricing-templates/seed-import`固定注册表导入、POST `/biz/pricing-configs/initialize`发布首版及分端GET `.../{no}/revisions/{revisionNo}`读取历史；16个操作均登记到配置OpenAPI。
 
 公共发布参数：`expectedDraftVersion:long, expectedActiveRevisionNo:string|null, previewHash:string, reason:string`，发布带`Idempotency-Key`；创建配置、升级/回滚等写操作同样幂等。具体新增权限码在实施阶段登记到原权限目录及三端矩阵；配置发布、人工打折、人工抹零需分权限校验，不能因已有ORDER_VIEW而授权发布。不预先伪造当前不存在的权限常量。
 
@@ -473,3 +477,49 @@ C端不提供配置发布API，也不能仅凭quoteNo读取别人报价。平台
 ## §6 本轮产物与对账
 
 本实施方案复用既有规则目录与SVG；后续新增税费补充、详细种子及PRICING_RULE_SPEC_V4，完善P09和含税/对价口径。后续CKO-01完成合同核验，CKO-02～07实现共享值对象、配置编译、业务规则、候选、固定公式及纯地区税内核，详见前述收据；已增加4配置表迁移并在一次性MariaDB验证，未迁移既有业务库、未发布真实门店配置或开放报价/资金接口。CKO-09 A/B受控种子校验及草稿导入已实现，新增3来源列以保证版本摘要在短期幂等收据过期后仍受约束；平台审核税档、门店关联主体税登记。下一步CKO-09 C配置API与真实来源接线；schema/API/权限在对应应用任务实施时登记并以真实测试证据回填。
+
+
+### CKO-10 报价内部存储实施合同（2026-10-23）
+
+当前新增V550的ord_price_quote/line/allocation与商品订单同库，按原7表设计补齐余下3张报价表。沿BaseEntity、TradeMappers嵌套Mapper及Service/Impl，不增加Repository或行业副本。此批无新HTTP端点/权限，不启用原零售订单换引擎，也没有业务库执行迁移。
+
+#### L1 使用及权限边界
+
+PricingQuoteService只接收后台已准入事实：save(Context,SaveReq,Idempotency-Key)、get(Context,quoteNo)、retain(Context,quoteNo,originalReference)、supersede(Context,quoteNo,replacementQuoteNo)。Context={tenantNo,entityNo,storeNo,subjectNo?,actorNo}必须由受信入口生成，服务再以这些字段做精确SQL谓词；空subject仅供获准B端散客报价，且只能读取同作用域的匿名报价，不能作为全顾客通配。扫码匿名消费者必须使用后台解析的稳定会话业务No作为subject并核对来源会话，不可用null代替会话鉴权。它不提供用户认证，不应直接作为Controller参数。消费者API和证据脱敏属于CKO11；内部QuoteVO含提供方证据，禁止原样返回C端。
+
+当前保存合同使用schema3商家税计算快照；旧schema2及原零售流程保持原合同，新服务不将旧审核税档变成商家税率。保存会锁定门店实际ACTIVE配置头并核对请求的不可变revision、templateRevision、industry及engineSpecVersion。新的quoteNo、创建/到期时间由服务器生成，原请求不能指定价格数据的真实性；事实/优惠资格及提供方准入仍必须由CKO11权威适配完成。
+
+#### L2 闭合输入输出
+
+SaveReq={source:PricingSourceRef,industry,channel,phase,storeRevisionNo,templateRevisionNo,engineSpecVersion,facts:PricingFacts,tax:MerchantTaxSnapshot,intent,lines,allocations,lifetimeSeconds}。lifetimeSeconds为1～300，来源与范围版本JSON安全。Intent={selection:BenefitSelection,funding}；Funding={storedPlannedMinor,otherPlannedMinor,cashDueMinor,cashTenderMinor?}，cashChangeMinor由后台相减派生。cashDue必须等于明确CASH_PLAN分摊，不能从电子OTHER_PLAN推断现金。现金属于otherPlanned合计的一部分，资金计划不改变营业优惠或代表扣款。
+
+Line={source:PricingUnit,parentSourceLineNo?,kind,taxClass,amounts,invoiceBaseMinor,eligibility:UnitPolicy}。amounts包含goods、signedPriceAdjustment、activity/coupon/manual/pointsDiscount、waiver、fee、net/tax/receivable及considerationOffset，各单位均货币最小单位。保存逐项冻结quantity区间、原价版本、组件/原发票行身份和资格；非OPEN份额拒绝、非活动资格行不能分活动/券优惠，同一套餐组不可同时给父项和叶项收费。税基invoiceBaseMinor是owner提供的原发票行在当前优惠/调价后的完整价税基数（价外为net、含税为gross），并非优惠前商品额；同组每份必须一致；只拿部分AA份额不能重算该行税。已有订单AA历史税分配由后续专用确认协议处理。
+
+Allocation={portion,kind,stepOrder,benefitRef,owner,ownerQuoteRef,applicationRef,ruleNo,ruleVersion,basisMinor,amountMinor,payableRateBp?,algorithmVersion,funders:[{funderRef,amountMinor}]}。kind为ACTIVITY_DISCOUNT/COUPON_DISCOUNT/MANUAL_DISCOUNT/POINTS_DISCOUNT/WAIVER/POINTS_CONSIDERATION/STORED_PLAN/OTHER_PLAN/CASH_PLAN。所有分摊必须落到实际完整计价份额；步骤+应用+行唯一，资方金额合计等于分摊，逐行分类合计与金额一致，计划不超过行应付。积分降价与积分对价不能同时存在。每项提供方证据都只保存，不授予消费资产权限。
+
+QuoteVO={quoteNo,status,expiresAt,factsHash,requestHash,economicsHash,factsSnapshot,configSnapshot,planSnapshot,resultSnapshot,retainedRef?}；日期采用服务器UTC毫秒转换ISO时间。主键id、账户密钥和可执行脚本不进入合同。闭合typed记录序列化，configSnapshot从真实不可变revision读取，不接受任意JSON请求。
+
+#### L3 守恒与不变性
+
+金额校验独立于上游公式：逐行商品+有符号调价-活动/券/人工/积分降价/抹零+费用，必须等于价外net或含税receivable；net+tax=receivable。同原发票行先汇总完整税基，再使用已有TaxEngine逐行HALF_UP校验税合计；不能按拆分份额各自取整。对价抵扣不再作为营业优惠扣一次。remainingDue=receivable-considerationOffset-storedPlanned-otherPlanned，不得负数；未安排金额不冒充收款失败。
+
+factsSnapshot冻结源事实及行资格；configSnapshot是当前发布revision规范JSON；planSnapshot为明确意图及分摊；resultSnapshot为金额、行、税来源和计划。三个hash独立：factsHash覆盖源与资格，requestHash覆盖来源及意图，economicsHash另覆盖配置/引擎、经济金额及资方和提供方证据。递归字段排序、数量去多余零；新quoteNo/行No/分摊No及服务器创建/到期时间不进经济hash；改变资金提供方即使总价相同也改变经济hash。请求幂等hash覆盖全部SaveReq，含有效期，防同键更换内容。
+
+幂等收据和三表同一短事务；分摊落库CHECK或并发唯一失败不会留下报价头/行/收据半成品。已完成同键重放先读原收据，不再依赖当前配置指针；新命令必须使用当前配置。全表无经济UPDATE方法，无物理删除/清理入口。生命周期只更新status/supersededBy/retainedRef及审计/version，不能更新金额和快照。
+
+过期按服务器时间读取EXPIRED，不改变支付状态；retain仅未过期READY允许首次绑定，原reference重放可读取历史证据，不会使报价重新有效；不同reference冲突。已引用不可替代。替代锁两个quote按业务No顺序，并检查主体/门店/消费者、来源及根范围、行业和币种相同，新旧都READY未过期。原意图的唯一资金执行、quote变更后重新授权和落单事务属于CKO14，不以retain替代这些协议。
+
+#### L4 验收对账（内部存储已实现）
+
+PricingQuoteAssemblerTest覆盖规范hash、原行税/AA部分阻断、篡改/作用域、数量格式、重复JSON及生命周期边界；PricingQuotePersistenceTest在独立MariaDB验证三表/收据原子性、不同消费者与门店隔离、并发原键、同值不同资方hash、引用/过期/替代、现金计划和积分对价互斥。原支付/库存/资产Port没有新增调用。C2.4仍未解决，完整报价HTTP及最终下单不得宣称完成。
+
+
+**最终统一验收（2026-10-23）：** 三阶段compile/compile/test-compile通过；恢复消融实现后完整核心BUILD SUCCESS：shop-base261、shop-base-auth28全通过，shop-core544项中488执行通过、56条件数据库用例跳过，对应56项在真实MariaDB全部实际执行通过（20配置发布+8种子+18税设置+10报价、0跳过）。新增纯Assembler7项全通过。Node9、OpenAPI4、SQL方言/Ops孤儿出口棘轮无新增欠账；迁移生成365表/2422种子、H2真实建库、SchemaParity、角色种子、业务键和三语检查通过。
+
+门店隔离消融：仅临时移除head读取的store_no谓词，原生quoteIsAtomicImmutableAndScoped出现1项预期断言失败、0错误；源码逐字节恢复后上述核心与56原生均绿。临时MariaDB已实际移除并由runner确认，不访问业务库。此前原生测试OOM由Docker事件确认，发现既有runner循环变量覆盖容器名导致清理漏掉；已改专用container_name/唯一标签/删除后检查，降低临时DB缓冲区和redo内存，保留失败诊断，不减少用例或放宽断言。
+
+宿主选定34项检查26通过/8失败，保持原统一基线：7项Architecture的方法与错误消息逐字一致，1项SchemaDrift仍为mbr_identity_ticket列解析差异，actual/expected列集合一致；本批没有修改这些既有失败，不声称宿主全绿，也不授权绕过推送检查。
+
+一次新上下文只读评审：Critical/Important/Minor均0。接受的边界与裁决：①调用方认证、价格/资格、能力准入属于CKO11，本存储合同不能授予这些权限；②C2.4仍缺生产组合资金能力证据，保留阻断，不以旧单券接口代替；③三表及收据同事务、完成重放先于动态配置检查、事务内不进行锁失败重试，已由原生用例及评审核对；④生命周期行锁/固定锁序、精确subject（null为IS NULL）及schema3实际配置指针核对已实现；⑤原发票行指身份完整性，其税基为优惠/调价后当前基数，AA只可按完整原行验证，此能力不能替代已付历史税分配；⑥金额、资方、资金计划、显式现金及积分模式守恒已实现，非实际资产扣款；⑦hash保留原稳定列表顺序及提供方证据，仅排除本地随机键和时间，不对语义顺序做排序改价；⑧没有金额UPDATE/删除服务入口，通用Mapper能力不被当作公开变更接口；⑨容器清理只针对本次生成名，未清理其他会话资源；⑩HTTP/脱敏、订单引用唯一执行、支付/库存、退款及原零售切换没有交付，也未借本批提前标完成。误用内部QuoteVO或retain作为付款授权会越过后续准入，应由CKO11/14接口封装防止。
+
+**代码对账：** V550、3个OrdPriceQuote实体、TradeMappers3个嵌套Mapper、PricingQuoteCommands、PricingQuoteAssembler、PricingQuoteService/Impl及两个测试类；扩充原生runner的quote套件及资源清理，Schema/表清单/ER/分层/词汇由原生成器刷新。未新增Controller、外部权限或资金表；未部署、未执行业务库迁移、未推送远端。下一批继续真实报价准入与B/C合同，同时解决C2.4精确owner执行能力，不增加默认全能力provider。

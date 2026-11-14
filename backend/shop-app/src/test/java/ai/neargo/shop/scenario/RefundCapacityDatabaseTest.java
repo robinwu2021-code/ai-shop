@@ -2,6 +2,12 @@ package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.*;
 import ai.neargo.shop.config.PayDataSourceConfig;
+import ai.neargo.shop.pay.numbering.PayDocumentNumberConfiguration;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.pay.points.store.impl.MybatisPointsCashRefundReadStore;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import org.springframework.beans.factory.InitializingBean;
 import ai.neargo.shop.pay.service.impl.*;
 import ai.neargo.shop.spi.settle.RefundRequest;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundRecoveryStatus;
@@ -25,6 +31,8 @@ import java.util.regex.Pattern;
 @SpringJUnitConfig(RefundCapacityDatabaseTest.Config.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties={
+        // 只手工建了几张表：支付 v4 迁移（db/pay）要 ALTER 平台表，与 h2db profile 一样不在这里跑
+        "shop.pay.flyway.enabled=false",
     "spring.datasource.url=${points.jdbc.url:jdbc:h2:mem:capacity-native;MODE=MySQL;DATABASE_TO_LOWER=TRUE}",
     "spring.datasource.username=${points.jdbc.user:sa}","spring.datasource.password=${points.jdbc.password:}",
     "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"})
@@ -118,8 +126,24 @@ class RefundCapacityDatabaseTest {
         return new RefundRecoveryStatus("PREP","A:"+origin+"A","S:"+origin,"ABORTED",100,payment,false,false);
     }
     @Configuration @EnableTransactionManagement
-    @Import({PayDataSourceConfig.class,RefundPaymentStore.class,RefundCapacityLedger.class,PaymentLedgerServiceImpl.class,ai.neargo.shop.pay.points.store.impl.MybatisPointsCashRefundReadStore.class})
+    @Import({PayDataSourceConfig.class, PayDocumentNumberConfiguration.class, PayOperationsDocuments.class,
+        RefundPaymentStore.class, RefundCapacityLedger.class, PaymentLedgerServiceImpl.class,
+        MybatisPointsCashRefundReadStore.class})
     static class Config {
+        /** Keep this shared slice on the real pay-owned numbering store. */
+        @Bean
+        InitializingBean numberingSchema(JdbcTemplate jdbc) {
+            return () -> {
+                String schema = new ClassPathResource("schema-test.sql")
+                        .getContentAsString(StandardCharsets.UTF_8);
+                for (String table : List.of("pay_document_sequence", "pay_document_number")) {
+                    var ddl = Pattern.compile("CREATE TABLE IF NOT EXISTS " + table + "\\b.*?;", Pattern.DOTALL)
+                            .matcher(schema);
+                    assertThat(ddl.find()).as("Numbering schema for %s", table).isTrue();
+                    jdbc.execute(ddl.group());
+                }
+            };
+        }
         @Bean JdbcTemplate jdbc(DataSource ds) { return new JdbcTemplate(ds); }
         @Bean MybatisPlusInterceptor interceptor() { return new MybatisPlusInterceptor(); }
         @Bean MetaObjectHandler metaObjectHandler() {

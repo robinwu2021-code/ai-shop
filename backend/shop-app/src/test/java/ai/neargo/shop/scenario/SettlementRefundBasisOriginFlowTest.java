@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -11,6 +13,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -25,14 +28,23 @@ class SettlementRefundBasisOriginFlowTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SettleService service;
     @Autowired @Qualifier("payTxManager") private PlatformTransactionManager payTx;
+    @Autowired @Qualifier("payDocumentNumberCoordinator") private DocumentNumberCoordinator numbers;
 
     private SettlementBasisFixtures fixture() { return new SettlementBasisFixtures(jdbc, service); }
+
+    private void replayInPayTransaction(Runnable action) {
+        // PayOperationsNumberReservations budgets one bill per input for each of the two generation calls.
+        numbers.withReservation(Map.of(DocumentType.SETTLEMENT_BILL, 2), () -> {
+            new TransactionTemplate(payTx).executeWithoutResult(tx -> action.run());
+            return null;
+        });
+    }
 
     @Test
     void replayWithinSamePayTransactionCommitsOneBillAndBasis() {
         fixture().requireBasis();
         String no = fixture().payment();
-        assertThatCode(() -> new TransactionTemplate(payTx).executeWithoutResult(tx -> {
+        assertThatCode(() -> replayInPayTransaction(() -> {
             assertThat(fixture().generate(no, "OLD-ACCOUNT")).isEqualTo(1);
             assertThat(fixture().generate(no, "NEW-ACCOUNT")).isZero();
         })).doesNotThrowAnyException();
@@ -54,7 +66,7 @@ class SettlementRefundBasisOriginFlowTest {
     void sameTransactionReplayStillRollsBackBothNewRowsOnOuterAbort() {
         fixture().requireBasis();
         String no = fixture().payment();
-        assertThatThrownBy(() -> new TransactionTemplate(payTx).executeWithoutResult(tx -> {
+        assertThatThrownBy(() -> replayInPayTransaction(() -> {
             fixture().generate(no, "OLD-ACCOUNT");
             fixture().generate(no, "NEW-ACCOUNT");
             throw new IllegalStateException("outer abort");

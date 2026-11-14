@@ -100,7 +100,14 @@ public final class ActivityVOs {
                              Integer minQty, Integer periodQuota, Integer decideHours,
                              Integer groupHours,
                              /** 自己组合的条件与优惠；其余玩法为空列表 */
-                             List<RuleItem> rules) {
+                             List<RuleItem> rules, String documentNo) {
+    public ActivityVO(String activityNo, String name, String goal, String storeNo, String triggerType, Long triggerAmountMinor, Integer triggerQty, String benefitType, Long benefitAmountMinor, Integer benefitQty, String benefitRef, String scheduleType, Long startAt, Long endAt, String scheduleRule, Integer quota, Integer quotaUsed, Integer quotaLeft, Long budgetMinor, Long budgetUsedMinor, Long maxExposureMinor, List<AudienceItem> audiences, List<String> goodsNos, String status, String endedReason, boolean liveNow, String cutoffTime, Integer pickupOffset, String pickupFrom, Integer minQty, Integer periodQuota, Integer decideHours, Integer groupHours, List<RuleItem> rules) {
+        this(activityNo, name, goal, storeNo, triggerType, triggerAmountMinor, triggerQty, benefitType, benefitAmountMinor, benefitQty, benefitRef, scheduleType, startAt, endAt, scheduleRule, quota, quotaUsed, quotaLeft, budgetMinor, budgetUsedMinor, maxExposureMinor, audiences, goodsNos, status, endedReason, liveNow, cutoffTime, pickupOffset, pickupFrom, minQty, periodQuota, decideHours, groupHours, rules, null);
+    }
+    public ActivityVO withDocumentNo(String number) {
+        return new ActivityVO(activityNo, name, goal, storeNo, triggerType, triggerAmountMinor, triggerQty, benefitType, benefitAmountMinor, benefitQty, benefitRef, scheduleType, startAt, endAt, scheduleRule, quota, quotaUsed, quotaLeft, budgetMinor, budgetUsedMinor, maxExposureMinor, audiences, goodsNos, status, endedReason, liveNow, cutoffTime, pickupOffset, pickupFrom, minQty, periodQuota, decideHours, groupHours, rules, number);
+    }
+
     }
 
     /** @param activityName 冲突的那个活动叫什么 —— 只给活动号，商家认不出是哪个 */

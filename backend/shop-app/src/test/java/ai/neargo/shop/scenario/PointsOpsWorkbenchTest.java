@@ -47,8 +47,12 @@ class PointsOpsWorkbenchTest {
     DataSource data;
 
     @BeforeAll
-    void schema() {
+    void schema() throws java.sql.SQLException {
         PointsPostingDatabaseTest.initializeSchema(data);
+        try (var connection=data.getConnection(); var columns=connection.getMetaData().getColumns(connection.getCatalog(),null,"pts_point_type","name")) {
+            if (!columns.next()) new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                    new org.springframework.core.io.ClassPathResource("db/migration/V537__points_type_name_unique.sql")).execute(data);
+        }
     }
 
     @Test
@@ -129,6 +133,8 @@ class PointsOpsWorkbenchTest {
         var event = page.rows().getFirst();
         assertThat(event.eventNo()).isEqualTo(no);
         assertThat(event.state()).isEqualTo("MANUAL");
+        assertThat(event.reason()).isEqualTo("TEST_FAILURE");
+        assertThat(event.subOrderNo()).isNull();
         assertThat(new ObjectMapper().writeValueAsString(page))
                 .doesNotContain("SENSITIVE_BANK_BODY", "payload");
         assertThatThrownBy(

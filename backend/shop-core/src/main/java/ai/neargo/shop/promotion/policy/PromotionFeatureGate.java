@@ -3,6 +3,8 @@ package ai.neargo.shop.promotion.policy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.config.PromotionFeatureProperties;
+import ai.neargo.shop.promotion.dto.ActivityActor;
+import ai.neargo.shop.promotion.dto.UnifiedActivityDefinition;
 import ai.neargo.shop.spi.promotion.ActivityCapability;
 import java.util.Collection;
 import java.util.List;
@@ -28,6 +30,22 @@ public class PromotionFeatureGate {
     /** Legacy marketing routes do not call this gate; new unified activity owners must do so. */
     public void requireActivity() {
         require(properties.getActivity().isEnabled());
+    }
+
+    /** A configured scope admits merchant drafts after the normal ownership checks. */
+    public void requireDraft(ActivityActor actor, UnifiedActivityDefinition definition) {
+        if (properties.getActivity().isEnabled()) return;
+
+        var draft = properties.getDraftScope();
+        var stores = definition.storeParticipationScope();
+        require(actor.brandNo() == null
+                && actor.tenantNo().equals(draft.getTenantNo())
+                && actor.entityNo().equals(draft.getEntityNo())
+                && definition.templateCode().equals(draft.getTemplateCode())
+                && definition.currency().equals(draft.getCurrency())
+                && "STORES".equals(stores.mode())
+                && stores.refs().size() == 1
+                && stores.refs().getFirst().equals(draft.getStoreNo()));
     }
 
     /** Ready evidence comes only from owner adapters, never public request input or deployment configuration. */

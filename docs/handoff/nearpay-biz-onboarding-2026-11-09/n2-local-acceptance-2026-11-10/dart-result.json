@@ -1,0 +1,279 @@
+{
+  "status": "PASS",
+  "ownerRef": "U",
+  "merchantNo": "PM3B1440F3DC0B4DB6",
+  "storeNo": "S",
+  "sourceEntityNo": "M",
+  "rejection": {
+    "requestNo": "e82dade3-9e80-45e2-96de-d0a294db0e98",
+    "outcome": "REJECTED",
+    "code": "business_70045"
+  },
+  "claimNo": "CC00E33CAECDC049D6",
+  "createRequestNo": "5e55b9fd-3a5c-429b-a767-e3887d8ddf6b",
+  "upload": {
+    "requestNo": "f5cf86a0-bb71-4ca5-adb0-2f9969cc6cff",
+    "expectedVersion": 0,
+    "recoveredVersion": 1,
+    "fileNo": "dca6a57efa9d4579b50fad88094df4da",
+    "newController": true,
+    "newFileJournal": true,
+    "newCreationDisabled": true,
+    "postCount": 1
+  },
+  "submittedState": "PENDING_VERIFY",
+  "proofPinned": true,
+  "state": "LINKED",
+  "accountStatus": "UNVERIFIED",
+  "accountVerificationStatus": "PENDING",
+  "payMerchantNo": "PM8610077340C34797",
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "POST",
+      "path": "/biz/auth/identities/enter",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/mine",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/merchant/profile",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/context",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/S/context",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/S/features",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/merchant/apply",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/memberships",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6",
+      "command": {
+        "requestNo": "e82dade3-9e80-45e2-96de-d0a294db0e98",
+        "payChannel": "PAYBY"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/by-request/e82dade3-9e80-45e2-96de-d0a294db0e98",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/by-request/e82dade3-9e80-45e2-96de-d0a294db0e98",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6",
+      "command": {
+        "requestNo": "5e55b9fd-3a5c-429b-a767-e3887d8ddf6b",
+        "payChannel": "NEWEBPAY"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/files",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6",
+      "command": {
+        "requestNo": "f5cf86a0-bb71-4ca5-adb0-2f9969cc6cff",
+        "expectedVersion": "0"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/commands/f5cf86a0-bb71-4ca5-adb0-2f9969cc6cff",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/merchant/profile",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/mine",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/merchant/profile",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/context",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/S/context",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/stores/S/features",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/merchant/apply",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/memberships",
+      "storeHeader": null,
+      "entityHeader": null,
+      "merchantHeader": null
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/commands/f5cf86a0-bb71-4ca5-adb0-2f9969cc6cff",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/files",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/files/dca6a57efa9d4579b50fad88094df4da",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6/submit",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6",
+      "command": {
+        "requestNo": "704258e4-678e-419c-b94c-aedff0c1d15a",
+        "expectedVersion": 1
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/channel-account-claims/CC00E33CAECDC049D6",
+      "storeHeader": "S",
+      "entityHeader": "M",
+      "merchantHeader": "PM3B1440F3DC0B4DB6"
+    }
+  ]
+}

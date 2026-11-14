@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import ai.neargo.shop.spi.pay.ChannelCallbackVerifier;
@@ -99,7 +100,8 @@ class StrictRefundCallbackFlowTest {
 
     private String callback(String no, long amount, String currency, String provider) throws Exception {
         query.answer(new PayQueryPort.Result(true, true, true, amount, provider, currency));
-        return MockMvcBuilders.webAppContextSetup(context).build()
+        // 走真实的安全链：验签在渠道回调守卫里（开发计划 M4）
+        return MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build()
                 .perform(post("/pay/callback/" + CHANNEL + "/refund")
                         .contentType(MediaType.APPLICATION_JSON).content("verified:" + no))
                 .andReturn().getResponse().getContentAsString();

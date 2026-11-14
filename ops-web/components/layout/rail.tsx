@@ -4,10 +4,10 @@
 // **当前 21 个业务域，竖排 904px —— 在 720px 以下的窗口必然超出视口。**
 // nav 一直有 overflow-y-auto（滚得动），但 macOS 的覆盖式滚动条静止时不渲染，
 // 于是「下面还有 8 个」没有任何提示。`ScrollHint` 补的就是这个提示，不是滚动本身。
-// 仅依赖 pathname（不读 query），无需 Suspense。
+// 页签可跨业务菜单，调用方提供 Suspense。
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import * as Icons from "lucide-react";
 import {
   RAIL_WIDTH, RAIL_EXPANDED_WIDTH, type NavSection,
@@ -41,7 +41,7 @@ function RailItem({
   );
   // shrink-0：项多时容器溢出滚动，flex 默认会压扁子项（图标变形），必须禁止收缩。
   const base = cn(
-    "group relative flex shrink-0 items-center gap-3 rounded-field py-[7px] transition-colors",
+    "group relative flex shrink-0 items-center gap-3 rounded-field py-[5px] transition-colors",
     expanded ? "px-3" : "justify-center px-0",
   );
   // 折叠态提示：自绘 Tooltip（components/ui/tooltip.tsx，portal+fixed）。
@@ -82,6 +82,7 @@ function RailItem({
 
 export function Rail() {
   const pathname = normPath(usePathname());
+  const search = useSearchParams();
   const perms = useAuth((s) => s.perms);
   const { railExpanded, toggleRail } = useNavPrefs();
   const scrollRef = React.useRef<HTMLElement>(null);
@@ -91,7 +92,7 @@ export function Rail() {
   const serverHrefs = useServerMenu((s) => s.hrefSet);
   const nav = useNavTree();
   const sections = visibleSections(perms, serverHrefs, nav);
-  const activeKey = findActiveSection(pathname, perms, serverHrefs)?.key;
+  const activeKey = findActiveSection(pathname, perms, serverHrefs, nav, search.get("tab"), search.get("view"))?.key;
   const top = sections.filter((s) => !s.pinBottom);
   const bottom = sections.filter((s) => s.pinBottom);
 
@@ -125,7 +126,7 @@ export function Rail() {
           为 12px 再合并一个业务域是拿像素倒推信息架构 —— 收紧自己的间距才是这一层该做的事。
           现在 13×36 + 12×2 + 8 = 500，还剩 24px 余量。
           2026-09-30 加第 14 个 L1「元器件」时又差 14px（14×36+13×2+8 = 538）：项的上下内边距
-          py-2 → py-[7px]，每项 36 → 34，14×34 + 13×2 + 8 = 510，余 14px。图标与字号不动。
+          py-2 → py-[5px]，每项 36 → 34，16×30 + 15×2 + 8 = 518，余 6px。图标与字号不动。
         */}
         <nav ref={scrollRef} className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-1")}>
           {top.map(render)}

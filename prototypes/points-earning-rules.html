@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>线上交易积分赠送规则</title><link rel="stylesheet" href="proto.css"><script src="points-earning-rules.js" defer></script></head>
+<body><div class="wrap proto-demo points-ops points-valuation">
+<header class="top"><div class="eyebrow">AI SHOP · 运营端交互原型 · 2026.10.20</div><h1>赠送规则：默认比例与品类覆盖</h1><p class="sub">沿用当前运营端导航、列表和右侧抽屉。仅演示交互，不修改线上规则。</p></header>
+<figure id="s01"><div class="ops-window"><aside class="ops-rail"><div class="ops-mark">邻</div><span class="ops-rail-icon on">积</span></aside>
+<nav class="ops-subnav" aria-label="积分运营"><h3>积分运营</h3><span>积分设置</span><a class="active" href="#s01">赠送规则</a><span>平台预算</span><span>积分账户</span><span>发放与核销</span></nav>
+<main class="ops-main"><header class="ops-header"><span>积分运营　›　<b>赠送规则</b></span><span>运营管理员</span></header><div class="ops-content">
+<div class="ops-title"><h2>赠送规则</h2><div><button class="ops-btn secondary" id="preview">计算预览</button> <button class="ops-btn" id="new">＋ 新增品类规则</button></div></div>
+<p class="ops-notice">订单赠送积分：消费积分 · HX_TOKEN · 人民币。所有门店默认参与；按商品现金实付计算，不含运费与积分抵扣部分。</p>
+<div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>适用范围</th><th>品类名称</th><th>品类路径</th><th>积分名称</th><th>积分代码</th><th>生效比例</th><th>状态</th><th>修订号</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div></main>
+<div class="ops-drawer-layer" id="layer" hidden><section class="ops-drawer" role="dialog" aria-modal="true" aria-labelledby="title"><header class="ops-drawer-head"><b id="title"></b><button class="pv-close" id="close" aria-label="关闭抽屉">×</button></header><div class="ops-drawer-body" id="body"></div><footer class="ops-drawer-foot" id="actions"></footer></section></div>
+</div><figcaption class="cap">点击行查看详情、调整和生效。草稿不影响当前规则；品类“不赠送”阻止继承，停用覆盖后恢复继承。</figcaption></figure></div></body></html>

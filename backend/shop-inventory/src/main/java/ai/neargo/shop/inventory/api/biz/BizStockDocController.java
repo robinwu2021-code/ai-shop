@@ -1,36 +1,46 @@
 package ai.neargo.shop.inventory.api.biz;
 
-import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.inventory.dto.InventoryVOs;
-import ai.neargo.shop.inventory.service.InboundService;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.OutboundService;
-import ai.neargo.shop.inventory.service.StockCountService;
-import ai.neargo.shop.inventory.service.TransferService;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.inventory.domain.dto.InventoryVOs;
+import ai.neargo.inventory.domain.service.InboundService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.OutboundService;
+import ai.neargo.inventory.domain.service.StockCountService;
+import ai.neargo.inventory.domain.service.TransferService;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 单据（s03 盘点 · s04 进货 · s05 单据 · s06 报损 · s07 调拨）。
  *
- * <p>按**资源**拆而不按屏拆：一屏可能用到两个资源，一个资源也可能出现在两屏 ——
- * 按屏拆的话，改一次交互就要动控制器的边界。
+ * <p>按**资源**拆而不按屏拆：一屏可能用到两个资源，一个资源也可能出现在两屏 —— 按屏拆的话，改一次交互就要动控制器的边界。
  *
- * <p><b>没有创建销售出库的入口</b>：它只能由预留 {@code commit} 产生。
- * 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
+ * <p><b>没有创建销售出库的入口</b>：它只能由预留 {@code commit} 产生。 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
+ *
+ * <p><b>按单号操作的端点都要过门店级判权</b>（{@link #docOwner}）：单号只按业主（主体）查，
+ * 只管 A 店的店员拿到 B 店自有库位上的单号，就能改草稿、过账、作废、看盘点快照。
+ * 新建单据走 {@link #location()}（当前门店，已由 Filter 校验过授权），不在此列；调拨的两头另判。
  */
 @Profile("api")
 @ConditionalOnInventory
@@ -43,204 +53,310 @@ public class BizStockDocController {
     private final TransferService transfers;
     private final InventoryAclService acl;
     private final LocationService locations;
+    /** 切流（M8）：已翻到库存服务的商家，每个端点转给服务的 /console/docs，返回结构相同 */
+    private final InventoryConsoleRoute route;
 
-    public BizStockDocController(InboundService inbound, OutboundService outbound,
-                                 StockCountService counts, TransferService transfers,
-                                 InventoryAclService acl, LocationService locations) {
+    public BizStockDocController(
+            InboundService inbound,
+            OutboundService outbound,
+            StockCountService counts,
+            TransferService transfers,
+            InventoryAclService acl,
+            LocationService locations,
+            InventoryConsoleRoute route) {
         this.inbound = inbound;
         this.outbound = outbound;
         this.counts = counts;
         this.transfers = transfers;
         this.acl = acl;
         this.locations = locations;
+        this.route = route;
     }
 
     // ── 入库 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds")
     public InventoryVOs.DocNoVO createInbound(@RequestBody InboundReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/inbounds", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
         return new InventoryVOs.DocNoVO(inbound.createDraft(draftOf(req)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/inbounds/{no}")
     public void updateInbound(@PathVariable String no, @RequestBody InboundReq req) {
-        inbound.updateDraft(owner(), no, draftOf(req));
+        if (route.remote()) { route.run(c -> c.putTo("/docs/inbounds/" + no, params("storeRef", route.store(), "scopeStores", route.scopeStores()), req)); return; }
+        inbound.updateDraft(docOwner(no), no, draftOf(req));
     }
 
     /** 过账。**请求体里不带数量** —— 数量在草稿里已经存好了，再带一次就有了「以哪份为准」的问题。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/post")
     public void postInbound(@PathVariable String no) {
-        inbound.post(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/inbounds/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
+        inbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/void")
     public void voidInbound(@PathVariable String no) {
-        inbound.voidOrder(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/inbounds/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
+        inbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 出库（报损 / 领用；SALE 被 Service 挡住） ──────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds")
     public InventoryVOs.DocNoVO createOutbound(@RequestBody OutboundReq req) {
-        List<OutboundService.Line> lines = req.lines().stream()
-                .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom())).toList();
-        return new InventoryVOs.DocNoVO(outbound.createDraft(new OutboundService.Draft(
-                owner(), location(), req.purpose(), null, null, req.reasonCode(),
-                req.occurredAt(), req.remark(), req.targetType(), req.targetNo(), lines)));
+        if (route.remote()) return route.via(c -> c.post("/docs/outbounds", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
+        List<OutboundService.Line> lines =
+                req.lines().stream()
+                        .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom()))
+                        .toList();
+        return new InventoryVOs.DocNoVO(
+                outbound.createDraft(
+                        new OutboundService.Draft(
+                                owner(),
+                                location(),
+                                req.purpose(),
+                                null,
+                                null,
+                                req.reasonCode(),
+                                req.occurredAt(),
+                                req.remark(),
+                                req.targetType(),
+                                req.targetNo(),
+                                lines)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/post")
     public void postOutbound(@PathVariable String no) {
-        outbound.post(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/outbounds/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
+        outbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/void")
     public void voidOutbound(@PathVariable String no) {
-        outbound.voidOrder(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/outbounds/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
+        outbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 盘点 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts")
     public InventoryVOs.DocNoVO openCount(@RequestBody CountOpenReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/counts", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
         return new InventoryVOs.DocNoVO(
                 counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo()));
     }
 
-    /**
-     * 读回一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b>，端上直接用它算差异 ——
-     * 拿当前余额顶替的话，盘的过程中卖掉的量会被算成盘亏。
-     */
+    /** 读回一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b>，端上直接用它算差异 —— 拿当前余额顶替的话，盘的过程中卖掉的量会被算成盘亏。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/counts/{no}")
     public InventoryVOs.CountVO count(@PathVariable String no) {
-        return counts.detail(owner(), no);
+        if (route.remote()) return route.via(c -> c.get("/docs/counts/" + no, params("scopeStores", route.scopeStores()), InventoryVOs.CountVO.class));
+        return counts.detail(docOwner(no), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/counts/{no}/lines")
-    public void fillCount(@PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
-        counts.fill(owner(), no, lines);
+    public void fillCount(
+            @PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
+        if (route.remote()) { route.run(c -> c.putTo("/docs/counts/" + no + "/lines", params("scopeStores", route.scopeStores()), lines)); return; }
+        counts.fill(docOwner(no), no, lines);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/post")
     public void postCount(@PathVariable String no) {
-        counts.post(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/counts/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
+        counts.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 调拨 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers")
     public InventoryVOs.DocNoVO createTransfer(@RequestBody TransferReq req) {
-        List<TransferService.Line> lines = req.lines().stream()
-                .map(l -> new TransferService.Line(l.itemId(), l.qty())).toList();
-        return new InventoryVOs.DocNoVO(transfers.create(owner(), req.fromLocationId(), req.toLocationId(),
-                lines, SecurityUtils.currentUserNo()));
+        if (route.remote()) return route.via(c -> c.post("/docs/transfers", params("scopeStores", route.scopeStores()), req, InventoryVOs.DocNoVO.class));
+        List<TransferService.Line> lines =
+                req.lines().stream()
+                        .map(l -> new TransferService.Line(l.itemId(), l.qty()))
+                        .toList();
+        String ownerId = owner();
+        // 两头都要是他动得到的库位：只管 A 店的人不能把货从 B 店调走，也不能往 B 店塞货
+        // 空的库位号交给服务报 BAD_REQUEST，这里只判给了的
+        for (String loc : java.util.Arrays.asList(req.fromLocationId(), req.toLocationId())) {
+            if (loc != null) {
+                requireLocationAccess(List.of(loc));
+            }
+        }
+        return new InventoryVOs.DocNoVO(
+                transfers.create(
+                        ownerId,
+                        req.fromLocationId(),
+                        req.toLocationId(),
+                        lines,
+                        SecurityUtils.currentUserNo()));
     }
 
     /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/transfers/{no}")
     public InventoryVOs.TransferVO transfer(@PathVariable String no) {
-        return transfers.detail(owner(), no);
+        if (route.remote()) return route.via(c -> c.get("/docs/transfers/" + no, params("scopeStores", route.scopeStores()), InventoryVOs.TransferVO.class));
+        return transfers.detail(docOwner(no), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/ship")
     public void ship(@PathVariable String no, @RequestBody(required = false) ShipReq req) {
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/ship", params("scopeStores", route.scopeStores()), req)); return; }
         // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
         ShipReq r = req == null ? new ShipReq(null, null, null) : req;
-        transfers.ship(owner(), no, r.carrierNo(), r.carrierName(), r.trackingNo(),
+        transfers.ship(
+                docOwner(no),
+                no,
+                r.carrierNo(),
+                r.carrierName(),
+                r.trackingNo(),
                 SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/receive")
     public void receive(@PathVariable String no) {
-        transfers.receive(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/receive", params("scopeStores", route.scopeStores()), null)); return; }
+        transfers.receive(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     /**
      * 作废一张<b>还没发出</b>的调拨单 —— 「建错了怎么办」的答案。
      *
-     * <p>此前调拨没有任何撤销路径：单据列表的作废按钮只放行出入库单，
-     * 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
+     * <p>此前调拨没有任何撤销路径：单据列表的作废按钮只放行出入库单， 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
      * 有三张这样的草稿）。已发出的不给作废，见 {@link TransferService#cancel}。
      */
     /**
      * 作废一张<b>还在盘的</b>盘点单 —— 「开错了怎么办」的答案。
      *
-     * <p>自从「一个库位同时只许开一张」那道闸立起来，开错的那张就从
-     * 「不管它」变成了<b>挡路的</b>：不处理掉，这个库位再也盘不了。
-     * 已过账的不给作废，见 {@link StockCountService#cancel}。
+     * <p>自从「一个库位同时只许开一张」那道闸立起来，开错的那张就从 「不管它」变成了<b>挡路的</b>：不处理掉，这个库位再也盘不了。 已过账的不给作废，见 {@link
+     * StockCountService#cancel}。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/void")
     public void voidCount(@PathVariable String no) {
-        counts.cancel(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/counts/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
+        counts.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/void")
     public void voidTransfer(@PathVariable String no) {
-        transfers.cancel(owner(), no, SecurityUtils.currentUserNo());
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
+        transfers.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 请求体 ────────────────────────────────────────────────────────
-    public record LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
+    public record LineReq(
+            String itemId,
+            int qty,
+            String uom,
+            Long unitCostMinor,
+            String batchNo,
+            LocalDate expireAt) {
+        public LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
+            this(itemId, qty, uom, unitCostMinor, null, null);
+        }
     }
 
     /**
-     * @param carrierName <b>端上带下来的名字快照</b>。承运方档案在主库，
-     *                    进销存读不了它 —— 让端上把选中那条的名字一起发过来，
-     *                    比在服务层做一次跨库查询干净得多。
+     * @param carrierName <b>端上带下来的名字快照</b>。承运方档案在主库， 进销存读不了它 —— 让端上把选中那条的名字一起发过来， 比在服务层做一次跨库查询干净得多。
      */
-    public record ShipReq(String carrierNo, String carrierName, String trackingNo) {
-    }
+    public record ShipReq(String carrierNo, String carrierName, String trackingNo) {}
 
-    public record InboundReq(String sourceType, String supplierNo, String supplierName,
-                            LocalDateTime occurredAt,
-                             String remark, List<LineReq> lines) {
-    }
+    public record InboundReq(
+            String sourceType,
+            String supplierNo,
+            String supplierName,
+            LocalDateTime occurredAt,
+            String remark,
+            List<LineReq> lines) {}
 
     /**
      * @param targetType 去向类型（{@code SUPPLIER}），空 = 没有去向（报损）
-     * @param targetNo   去向对象编号。<b>名字不收</b> —— 由服务端查了写快照，
-     *                   端上传的话，改个名字就能让历史单据说谎
+     * @param targetNo 去向对象编号。<b>名字不收</b> —— 由服务端查了写快照， 端上传的话，改个名字就能让历史单据说谎
      */
-    public record OutboundReq(String purpose, String reasonCode, LocalDateTime occurredAt,
-                              String remark, String targetType, String targetNo,
-                              List<LineReq> lines) {
-    }
+    public record OutboundReq(
+            String purpose,
+            String reasonCode,
+            LocalDateTime occurredAt,
+            String remark,
+            String targetType,
+            String targetNo,
+            List<LineReq> lines) {}
 
-    public record CountOpenReq(List<String> itemIds) {
-    }
+    public record CountOpenReq(List<String> itemIds) {}
 
-    public record TransferReq(String fromLocationId, String toLocationId, List<LineReq> lines) {
-    }
+    public record TransferReq(String fromLocationId, String toLocationId, List<LineReq> lines) {}
 
     // ────────────────────────────────────────────────────────────────
     private InboundService.Draft draftOf(InboundReq req) {
-        List<InboundService.Line> lines = req.lines().stream()
-                .map(l -> new InboundService.Line(l.itemId(), l.qty(), l.uom(), l.unitCostMinor()))
-                .toList();
-        return new InboundService.Draft(owner(), location(), req.sourceType(), null,
-                req.supplierNo(), req.supplierName(), req.occurredAt(), req.remark(), lines);
+        List<InboundService.Line> lines =
+                req.lines().stream()
+                        .map(
+                                l ->
+                                        new InboundService.Line(
+                                                l.itemId(),
+                                                l.qty(),
+                                                l.uom(),
+                                                l.unitCostMinor(),
+                                                l.batchNo(),
+                                                l.expireAt()))
+                        .toList();
+        return new InboundService.Draft(
+                owner(),
+                location(),
+                req.sourceType(),
+                null,
+                req.supplierNo(),
+                req.supplierName(),
+                req.occurredAt(),
+                req.remark(),
+                lines);
     }
 
     private String owner() {
         return acl.ownerIdOf(BizContext.requireMerchantNo());
     }
 
+    /**
+     * 按单号操作的业主 + 门店级判权：单据涉及的库位里至少有一个是这个人动得到的。
+     *
+     * <p>「至少一个」而不是「全部」：调拨单一头在 A 店、一头在 B 店，两边的人都要能看、能发、能收。
+     * 共用发货源（主体默认仓）的门店之间，单据落在同一个库位上，本来就分不出是哪家店的 —— 那一类照常放行。
+     */
+    private String docOwner(String no) {
+        String ownerId = owner();
+        requireLocationAccess(acl.locationsOfDoc(ownerId, no));
+        return ownerId;
+    }
+
+    /** 属主不判；单据不存在（空集合）交给业务服务报 NOT_FOUND，这里不抢着回答 */
+    private void requireLocationAccess(Collection<String> docLocations) {
+        BizContext ctx = BizContext.current();
+        if (ctx.owner() || docLocations.isEmpty()) {
+            return;
+        }
+        Set<String> mine = acl.locationsOfStores(ctx.merchantNo(), ctx.storeNos());
+        if (docLocations.stream().noneMatch(mine::contains)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+    }
+
     private String location() {
         BizContext ctx = BizContext.current();
-        return locations.resolveStockLocation(acl.ownerIdOf(ctx.merchantNo()),
+        return locations.resolveStockLocation(
+                acl.ownerIdOf(ctx.merchantNo()),
                 acl.locationIdOf(ctx.merchantNo(), ctx.currentStoreNo()));
     }
 }

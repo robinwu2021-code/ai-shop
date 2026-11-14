@@ -1,0 +1,81 @@
+{
+  "prefix": "/biz/pay/v2",
+  "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/BizOnboardingForwarder.java",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/memberships",
+      "purpose": "有效支付成员及动作"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/capability-progress",
+      "purpose": "能力进度"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings",
+      "purpose": "申请分页"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings",
+      "purpose": "建立申请"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}",
+      "purpose": "单申请状态及驳回原因"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/draft",
+      "purpose": "脱敏草稿"
+    },
+    {
+      "method": "PUT",
+      "path": "/biz/pay/v2/onboardings/{no}/draft",
+      "purpose": "保存版本化草稿"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/draft/confirm",
+      "purpose": "商户确认交运营"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/newebpay-materials",
+      "purpose": "敏感值封存"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/draft/commands/{requestNo}",
+      "purpose": "原命令结果"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/readiness",
+      "purpose": "账户与密钥交接进度"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/files",
+      "purpose": "私有附件元数据"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/files",
+      "purpose": "multipart上传"
+    },
+    {
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/files/{fileNo}",
+      "purpose": "私有二进制读取"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/cancel",
+      "purpose": "取消申请"
+    }
+  ]
+}

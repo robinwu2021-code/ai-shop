@@ -28,7 +28,7 @@ export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
  * 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 ——
  * 而这正是「一人多主体」的常见情形。
  */
-export type MerchantStatus = "ACTIVE" | "SUSPENDED" | "FROZEN";
+export type MerchantStatus = "PENDING_LICENSE" | "ACTIVE" | "SUSPENDED" | "FROZEN";
 
 /**
  * 经营状态的合法迁移。
@@ -37,6 +37,7 @@ export type MerchantStatus = "ACTIVE" | "SUSPENDED" | "FROZEN";
  * 冻结是**风控**，要等风险排除。两者都不可逆地回到 ACTIVE 之外的态。
  */
 export const MERCHANT_TRANSITIONS: Record<MerchantStatus, MerchantStatus[]> = {
+  PENDING_LICENSE: [],
   ACTIVE: ["SUSPENDED", "FROZEN"],
   SUSPENDED: ["ACTIVE"],
   FROZEN: ["ACTIVE"],
@@ -265,8 +266,49 @@ export interface Violation {
  */
 export type ApplyStatus = "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
 
+/** 随申请保存、审核时创建默认门店的资料快照。 */
+export interface InitialStoreProfile {
+  /** 默认门店名 */
+  name: string;
+  /** 完整门店地址 */
+  address: string;
+  /** 系统门店行业 */
+  industryCode: string;
+  /** 系统门店子行业 */
+  subIndustryCode: string;
+  /** 子行业映射的经营类型 */
+  businessTypeCode: string;
+}
+/** 可用于运营代客建店的已启用行业与已发布经营类型。 */
+export interface StoreIndustryChoice {
+  /** 系统门店行业编码 */
+  industryCode: string;
+  /** 子行业编码；行业父项为 null */
+  subIndustryCode: string | null;
+  /** 子行业对应的已发布经营类型编码 */
+  businessTypeCode: string;
+  /** 简体中文名称 */
+  nameZh: string;
+  /** 繁体中文名称 */
+  nameTw?: string | null;
+  /** 英文名称 */
+  nameEn?: string | null;
+  /** 显示顺序 */
+  sort: number;
+  /** 当前是否启用 */
+  enabled: boolean;
+}
+
 /** 入驻申请单（后端 `mch_entity_apply`）。 */
 export interface MerchantApply {
+  /** 实际店主账号 */
+  ownerUserNo?: string | null;
+  /** 申请经营市场 */
+  marketCode?: string | null;
+  /** 审核时使用的原门店资料 */
+  storeProfile?: InitialStoreProfile | null;
+  /** 审核通过后生成的默认门店 */
+  storeNo?: string | null;
   /** 申请单号。审核动作都打在它上面，不是商家号 */
   applyNo: string;
   /** 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 */
@@ -278,7 +320,7 @@ export interface MerchantApply {
   subject: string;
   /** 联系人姓名。审核要打电话找人 */
   contactName: string;
-  /** 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** */
+  /** 联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。 */
   contactPhone: string;
   /**
    * 推荐人手机号（V353，选填）。**奖励靠它人工发** ——
@@ -853,3 +895,48 @@ export type MerchantNudgeReason = Exclude<MerchantChainStuck, "IN_AUDIT">;
 /** 运行时也要能判：类型只在编译期拦得住，按钮是不是该出现是运行时的事 */
 export const NUDGEABLE: readonly MerchantNudgeReason[] =
   ["NO_GOODS", "NOT_ON_SALE", "NO_ACCOUNT", "NO_INBOUND", "STALE_LEDGER"] as const;
+
+/** 独立支付进件只读事实；各审核/渠道阶段独立，不代表可收款。 */
+export interface PayServiceOnboardingChannel {
+  /** NearPay渠道进件单号 */
+  onboardingNo: string;
+  /** 支付渠道编码 */
+  payChannel: string;
+  /** 渠道进件状态；独立于平台审核 */
+  status: string | null;
+  /** 平台进件审核状态 */
+  reviewStatus: string | null;
+  /** 原渠道请求受理结果，UNKNOWN须恢复原单 */
+  submitOutcome: string | null;
+  /** 渠道原始结果码；无回执时为空 */
+  resultCode: string | null;
+  /** 渠道账户候选交接状态 */
+  handoffStatus: string | null;
+  /** ezPay关联事实，不代表所有产品就绪 */
+  ezpayBindingStatus: string | null;
+  /** 当前渠道阻塞或审核补件/拒绝原因 */
+  reason: string | null;
+  /** 最近更新时间，UTC毫秒 */
+  updatedAt: number | null;
+}
+
+export interface PayServiceOnboardingRow {
+  /** ai-shop来源主体号 */
+  entityNo: string;
+  /** 来源主体名称 */
+  entityName: string;
+  /** 来源申请审核结果，不代表渠道或收款就绪 */
+  status: string;
+  /** NearPay支付平台商户号 */
+  merchantRef: string | null;
+  /** 来源关联核验状态 */
+  linkStatus: string | null;
+  /** 来源资料审批状态 */
+  profileStatus: string | null;
+  /** 来源资料补件或拒绝原因 */
+  reviewReason: string | null;
+  /** 该支付商户的真实渠道进件历史，含取消记录 */
+  onboardings: PayServiceOnboardingChannel[];
+  /** 可信支付运营端地址，携带精确支付商户过滤 */
+  onboardingOpsUrl: string | null;
+}

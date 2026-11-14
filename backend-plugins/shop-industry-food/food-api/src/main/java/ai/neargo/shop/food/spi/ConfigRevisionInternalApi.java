@@ -3,23 +3,34 @@ package ai.neargo.shop.food.spi;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
-import ai.neargo.shop.food.dto.RepublishConfigReq;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Query;
 import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.PublishConfigResultVO;
+import ai.neargo.shop.food.dto.RepublishConfigReq;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.product.CatalogRevisionDeserializer;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.OffsetDateTime;
-import java.util.List;
+
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.PostExchange;
+
 import tools.jackson.databind.annotation.JsonDeserialize;
+
+import java.time.OffsetDateTime;
+import java.util.List;
 
 /** Publication and immutable reads travel through the existing FOOD service-token channel. */
 public interface ConfigRevisionInternalApi {
+    String MENU_SOURCE_PATH = "/internal/food/config-revisions/verify-menu-resource";
+
+    @PostExchange(MENU_SOURCE_PATH)
+    Proof verifyMenuResource(@RequestBody Query query);
+
     String REPUBLISH_PATH = "/internal/food/config-revisions/republish";
     String MENU_PATH = "/internal/food/config-revisions/publish-menu";
     String STATION_PATH = "/internal/food/config-revisions/publish-station";
@@ -30,8 +41,10 @@ public interface ConfigRevisionInternalApi {
     String LIST_PATH = "/internal/food/config-revisions/list";
     String GET_PATH = "/internal/food/config-revisions/get";
     String RESOLVE_PATH = "/internal/food/config-revisions/resolve";
+
     @PostExchange(REPUBLISH_PATH)
     PublishConfigResultVO republishRevision(@RequestBody RepublishCommand command);
+
     @PostExchange(MENU_PATH)
     PublishConfigResultVO publishMenu(@RequestBody Command command);
     @PostExchange(STATION_PATH)

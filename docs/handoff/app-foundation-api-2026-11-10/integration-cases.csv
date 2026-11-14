@@ -1,0 +1,13 @@
+﻿id,scene,steps,expected,acceptanceStatus
+F01,注册/登录,验证码验证→identities→选择返回身份或NEW_OWNER→profile,USR/MCH按subjectKind识别；未知账号仅按服务端canCreateOwner建个人身份,166白名单密码/身份进入通过；新注册与短信邮件待验
+F02,员工身份,同一凭证发现OWNER/员工→选员工→冷恢复,使用identityNo原值；MCH无店仍是员工；不可误进入店主写流程,166员工冷会话和USR/MCH往返通过；无店员工真机待验
+F03,门店切换,mine→A profile/context/features→B→延迟返回A,B界面不被A污染；切换不通过set-default，不存在伪造/switch接口,166真实App客户端两店往返通过；真机/延迟返回待验
+F04,门店权限,员工访问未授权门店/错entity头,拒绝，目录与上下文同源；不可凭token前缀或merchantNo猜owner,166跨店/错主体拒绝及员工停用后下一请求拒绝通过；全权限矩阵待验
+F05,平台进件N3/N4,PENDING_LICENSE提交→重复同内容→entities/detail,同单回执与审核回显正确；不创建PAY成员或推导可收款,待166业务验收
+F06,台湾来源/成员,pay-service→memberships→capability/application/readiness,host主体号不当PAY商户号；无真实委托显示无权限而非管理员,待真实成员配置
+F07,N2基本旅程,create→optional files→submit→详情,state到PENDING_VERIFY；版本随每次成功回执更新,待166指定商户验收
+F08,N2故障恢复,断网/丢响应/重启App→by-request或commands原键查询,404保留原key；SUCCEEDED/REJECTED才结束原journal；不泄露完整渠道号/文件,本地通过，166待受控验收
+F09,N2权限隔离,其他主体、同ref不同类型、无store.bind读取claim/files,拒绝；OPS关联后仍由真实账户核验/绑定/readiness决定可收款,本地通过，166待受控验收
+F10,N1只读与关闭,relink-check→受阻入口,明确新建未开放、库存阻断；不执行POST认领或构造原单,当前只读/关闭验收
+F11,连锁,account context→空间→品牌→check→change→decision,无需旧门店头；management/资源授权正确，未知写保留Idempotency-Key,待166管理空间/账号验收
+F12,库存,宿主库存摘要与门店隔离→独立V27边界,不把inventory-test健康当App切流成功；无凭据不直连18086,宿主读可排查；独立接线待完成

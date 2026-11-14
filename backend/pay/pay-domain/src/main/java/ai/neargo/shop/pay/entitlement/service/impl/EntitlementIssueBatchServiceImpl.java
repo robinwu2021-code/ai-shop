@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementGrantWriter;
 import ai.neargo.shop.pay.entitlement.service.EntitlementIssueBatchService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementIssueBatchWriter;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementIssueAudiencePort;
 import java.time.Instant;
@@ -29,9 +30,12 @@ public class EntitlementIssueBatchServiceImpl implements EntitlementIssueBatchSe
     private final EntitlementIssueBatchWriter writer;
     private final ObjectProvider<EntitlementIssueAudiencePort> audiences;
     private final ObjectMapper json;
+    private final ObjectProvider<BrandCouponSourcePort> brandSources;
     public EntitlementIssueBatchServiceImpl(EntitlementCatalogService catalog, EntitlementCommandDeduplicator commands,
-            EntitlementIssueBatchWriter writer, ObjectProvider<EntitlementIssueAudiencePort> audiences, ObjectMapper json) {
+            EntitlementIssueBatchWriter writer, ObjectProvider<EntitlementIssueAudiencePort> audiences, ObjectMapper json,
+            ObjectProvider<BrandCouponSourcePort> brandSources) {
         this.catalog = catalog; this.commands = commands; this.writer = writer; this.audiences = audiences; this.json = json;
+        this.brandSources = brandSources;
     }
     @Override public BatchView create(CatalogScope scope, CreateBatch c, String key) {
         if (c == null) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -42,9 +46,16 @@ public class EntitlementIssueBatchServiceImpl implements EntitlementIssueBatchSe
         var version = catalog.getVersion(scope, c.templateVersionNo());
         if (!version.definition().allowedIssueModes().contains("TARGETED")
                 || "PAID_CARD".equals(version.definition().kind())) throw BizException.of(ErrorCode.CONFLICT);
-        var owner = audiences.getIfAvailable(); if (owner == null) unavailable();
-        var fact = owner.resolve(new EntitlementContext(scope.tenantNo(), scope.actorNo(), key,
-                EntitlementGrantWriter.digest(json.writeValueAsString(c))), scope.entityNo(), c.audienceFactRef());
+        EntitlementIssueAudiencePort.AudienceSnapshot fact;
+        if ("BRAND_STORES".equals(version.definition().redemptionScope().mode())) {
+            var owner = brandSources.getIfAvailable(); if (owner == null) unavailable();
+            fact = owner.audience(scope.tenantNo(), scope.entityNo(), version.definition(),
+                    c.templateVersionNo(), c.audienceFactRef(), scope.actorNo(), key);
+        } else {
+            var owner = audiences.getIfAvailable(); if (owner == null) unavailable();
+            fact = owner.resolve(new EntitlementContext(scope.tenantNo(), scope.actorNo(), key,
+                    EntitlementGrantWriter.digest(json.writeValueAsString(c))), scope.entityNo(), c.audienceFactRef());
+        }
         if (fact == null || !scope.tenantNo().equals(fact.tenantNo()) || !scope.entityNo().equals(fact.entityNo())
                 || !c.audienceFactRef().equals(fact.factRef()) || fact.recipients().size() > 1000
                 || fact.recipients().stream().map(r -> r.userNo()).distinct().count() != fact.recipients().size()) {

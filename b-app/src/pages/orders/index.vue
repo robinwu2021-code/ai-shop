@@ -238,7 +238,7 @@ onShow(async () => {
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head sh-row sh-row--between">
-        <text class="txt-caption sh-num">{{ o.payOrderNo || o.orderNo }}</text>
+        <text v-if="o.documentNo" class="txt-caption sh-num">{{ o.documentNo }}</text>
         <text v-if="tab === 'todo' && workByOrder[o.orderNo]?.afterSaleNo" class="sh-chip sh-chip--warning">
           {{ $t('order.tabAfterSale') }}
         </text>

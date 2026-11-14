@@ -11,6 +11,9 @@ import lombok.Setter;
 @TableName("sv_user_store_index")
 public class SvUserStoreIndex extends BaseEntity {
     private String userNo;
+    private String customerNo;
+    public String getCustomerIdentity(){return customerIdentity();}
+    public String customerIdentity(){return customerNo==null?userNo:customerNo;}
     private String entityNo;
     private String storeNo;
     private String storeName;

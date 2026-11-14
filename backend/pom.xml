@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 站在 neargo 地基上（TDD-backend §2）：继承 neargo-parent → Java 21 + Spring Boot 4.0.x
+    <!-- 站在 neargo 地基上（TDD-backend §2）：继承 neargo-build-parent → Java 21 + Spring Boot 4.0.x
          + maven-enforcer(锁 JDK21) + MyBatis-Plus BOM + neargo commons 版本管理。
          relativePath 留空 → 从本机 ~/.m2 解析。 -->
     <parent>
         <groupId>ai.neargo</groupId>
-        <artifactId>neargo-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <artifactId>neargo-build-parent</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
         <relativePath/>
     </parent>
 
@@ -23,6 +23,7 @@
 
     <!-- 模块数 = 未来可能的部署单元数；域数 = 包数（TDD-backend §4.1） -->
     <modules>
+        <module>commerce</module>
         <!-- 鉴权持久层：会话与登录日志。**不依赖 shop-base**（那会拖来 MyBatis），
              也不认识 Realm —— 它只为「一个命名的令牌池」存会话。
              依赖方向：shop-auth-store ← shop-base，无环 -->
@@ -31,6 +32,9 @@
              各自做什么见 job/pom.xml 里那四条注释。
              它们的包名是 ai.neargo.job.*，与业务域分开：worker 要的正是「不认识业务」 -->
         <module>job</module>
+        <!-- 平台级密钥管理三个模块（契约 / 持久层 / 信封加密与生命周期）收在 backend/secret/ 下，见 secret/pom.xml。
+             包名 ai.neargo.secret.*：业务域依赖它，它不依赖任何业务域（表结构说明 §3.0） -->
+        <module>secret</module>
         <!-- 服务间调用的传输零件（@HttpExchange + RestClient）。**只依赖 spring-web**：
              shop-base 与 job-worker 都要用，而 job-worker 不能依赖 shop-base，所以单独成模块 -->
         <module>svc-client</module>
@@ -48,15 +52,18 @@
         <module>shop-merchant</module>
         <!-- 支付域三个模块（通道 / 领域 / 独立服务形态）收在 backend/pay/ 下，见 pay/pom.xml -->
         <module>pay</module>
-        <!-- 进销存：**独立数据源与独立迁移历史**（db/inventory），将来可独立交付。
-             与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
-             这个是「数据边界不同」：它的表不在 ai_shop 里 -->
+        <!-- 进销存独立服务（ADR-046）：自己的父 POM（neargo-build-parent）、自己的坐标与版本线，
+             不依赖 ai-shop。这里只是**聚合**（一条命令全量构建），不是继承 —— 它不从本 POM 拿任何东西 -->
+        <module>inventory</module>
+        <!-- ai-shop 侧的进销存**适配**：商城 BFF（控制器）、Port 实现、错误码翻译、过渡期内嵌装配。
+             领域代码已搬到 inventory/inventory-domain -->
         <module>shop-inventory</module>
         <!-- 报表：**独立库（ai_shop_report）+ 只存派生数据**。与进销存同为「数据边界不同」，
              但多一条：它的数据全部可重建 —— 丢了重跑日结即可，所以不参与任何业务事务。
              本模块只是持久层；读交易域算汇总那一步是**跨域组合**，按规矩住在 shop-app -->
         <module>shop-report</module>
-        <!-- 电子元器件：独立进程（elec-svc）+ 独立库（ai_shop_elec）。主应用不引它，只给它开 /internal/elec -->
+        <!-- 电子元器件：2026-09-30 已迁到独立仓库 ai-hxkey（服务 / 库 / 目录均名 hxkey）。
+             这里只剩 elec-api —— 两仓之间的内部契约，ai-hxkey 从 ~/.m2 引它 -->
         <module>elec</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
         <module>shop-channel</module>
@@ -70,7 +77,7 @@
 
     <!-- 第三方版本的三条规矩（2026-09-06 复核后改写，此前这段话有三处与事实相反）：
 
-         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-parent →
+         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-build-parent → neargo-bom →
             spring-boot-starter-parent 把 BOM 的 dependencyManagement 一路带下来：ehcache（含
             jakarta classifier）、jakarta.mail、angus-mail、flyway 都在里面，模块只写 g:a，
             版本随 Boot 走。真要偏离 BOM，用 BOM **自己的属性名**覆盖（如 ehcache3.version）
@@ -93,16 +100,51 @@
          下面 maven-enforcer 的 dependencyConvergence 在 validate 阶段看**传递依赖**里的版本分叉 ——
          那是生成器看不见的一层，2026-09-06 挂上时全 reactor 只有上面那一处，钉住即归零。 -->
     <properties>
+        <commerce.version>0.1.0-SNAPSHOT</commerce.version>
         <archunit.version>1.3.0</archunit.version>
+        <!-- 进销存独立服务的版本线（ADR-046）。迁出仓库后换成 Nexus 上的发布版 -->
+        <inventory.version>1.0.0-SNAPSHOT</inventory.version>
         <shedlock.version>6.9.0</shedlock.version>
         <cos.version>5.6.245</cos.version>
         <!-- 可见范围几何：JTS 做多边形解析/含边界精判，S2 做网格覆盖；两者纯 Java、无 JNI（ADR-034） -->
         <jts.version>1.20.0</jts.version>
         <s2.version>2.0.0</s2.version>
+        <!-- 支付渠道管线的熔断与隔离（开发计划 P4 · TDD-支付服务-I2渠道统一封装 S2）。Boot BOM 不管 -->
+        <resilience4j.version>2.3.0</resilience4j.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>cloud.tianai.captcha</groupId>
+                <artifactId>tianai-captcha</artifactId>
+                <version>1.5.6</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-api</artifactId>
+                <version>${inventory.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-domain</artifactId>
+                <version>${inventory.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-client</artifactId>
+                <version>${inventory.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-svc</artifactId>
+                <version>${inventory.version}</version>
+            </dependency>
+            <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-api</artifactId><version>${commerce.version}</version></dependency>
+            <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-core</artifactId><version>${commerce.version}</version></dependency>
+            <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-persistence</artifactId><version>${commerce.version}</version></dependency>
+            <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId><version>${commerce.version}</version></dependency>
+
             <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
             <dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>3.51.1.0</version></dependency>
             <dependency>
@@ -138,6 +180,17 @@
                 <artifactId>shedlock-provider-jdbc-template</artifactId>
                 <version>${shedlock.version}</version>
             </dependency>
+            <!-- 支付渠道管线：按（渠道 × 收款商户）熔断、按渠道隔离并发。版本只在这里出现 -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bulkhead</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
             <!-- 只为 dependencyConvergence 收敛：钉的是今天本来就胜出的那个版本 -->
             <dependency>
                 <groupId>com.google.errorprone</groupId>
@@ -162,7 +215,23 @@
 
     <build>
         <plugins>
-            <!-- 与 neargo-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
+            <!-- Bound integration-test contexts and install the managed Mockito agent at
+                 startup; Java 21 environments need not permit dynamic self-attachment.
+                 Eight cached contexts keep shared scenarios reusable without retaining
+                 the default 32 heavyweight application contexts for the whole suite. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx3072m -javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <systemPropertyVariables>
+                        <spring.test.context.cache.maxSize>8</spring.test.context.cache.maxSize>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <!-- 与 neargo-build-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
                  dependencyConvergence：同一个 classpath 上一个 g:a 只许解析出一个版本，
                  传递依赖带进来的也算 —— 「两处各写一份版本」的真正后果在这里报，
                  而不是靠人读 pom。冲突了就在上面的 dependencyManagement 钉一条，
@@ -179,6 +248,18 @@
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
+                                <!-- 框架公共包只允许 2.0.0-SNAPSHOT；同时检查传递依赖。 -->
+                                <requireProperty>
+                                    <property>neargo.version</property>
+                                    <regex>2\.0\.0-SNAPSHOT</regex>
+                                    <regexMessage>neargo 框架依赖必须统一为 2.0.0-SNAPSHOT。</regexMessage>
+                                </requireProperty>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes><exclude>ai.neargo:*</exclude></excludes>
+                                    <includes><include>ai.neargo:*:[2.0.0-SNAPSHOT]</include></includes>
+                                    <message>neargo 框架依赖只允许 ai.neargo:*:2.0.0-SNAPSHOT。</message>
+                                </bannedDependencies>
                             </rules>
                         </configuration>
                     </execution>
@@ -187,4 +268,58 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>retail-commerce-embedded</id>
+            <modules><module>../backend-plugins/shop-retail-commerce</module></modules>
+        </profile>
+        <profile>
+            <id>food-commerce-embedded</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-commerce</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>commerce-embedded</id>
+            <modules>
+                <module>../backend-plugins/shop-commerce-integration/commerce-api</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-core</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-web</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-channel</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-server</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>food-embedded</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-api</module>
+                <module>../backend-plugins/shop-industry-food/food-core</module>
+                <module>../backend-plugins/shop-industry-food/food-web</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>food-standalone</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-api</module>
+                <module>../backend-plugins/shop-industry-food/food-core</module>
+                <module>../backend-plugins/shop-industry-food/food-web</module>
+            </modules>
+        </profile>
+
+        <!--
+          只给验证用（scripts/check-head-compiles.sh 的餐饮一步）：与 food-embedded 叠加，
+          把 channel / server 也拉进同一个 reactor，插件五个模块的测试一起跑。
+          不是构建形态 —— shop-app 不依赖这两个模块，宿主 classpath 不变。
+        -->
+        <profile>
+            <id>food-verify</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-channel</module>
+                <module>../backend-plugins/shop-industry-food/food-server</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

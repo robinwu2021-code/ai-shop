@@ -7,7 +7,7 @@ import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.MenuScheduleVO;
 import ai.neargo.shop.food.dto.MenuCompositionVO;
 
-/** Atomic draft invalidation; never a publication or channel synchronization acknowledgment. */
+/** Original menu edit/disable fact; never a channel synchronization acknowledgment. */
 public record MenuChanged(String entityNo, String storeNo, String menuNo, String action,
         long version, String operationNo, MenuVO after, MenuScheduleVO schedule, MenuCompositionVO composition,
         List<MenuContextInput> contexts) implements DomainEvent {
@@ -25,5 +25,7 @@ public record MenuChanged(String entityNo, String storeNo, String menuNo, String
     }
     @Override public String aggregateType() { return "FOOD_MENU"; }
     @Override public String aggregateId() { return menuNo; }
-    @Override public String eventType() { return "FOOD_MENU_CHANGED"; }
+    @Override public String eventType() {
+        return "DISABLE_MENU".equals(action) ? "FOOD_MENU_DISABLED" : "FOOD_MENU_CHANGED";
+    }
 }

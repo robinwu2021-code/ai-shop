@@ -1,0 +1,18 @@
+{
+  "policy": {
+    "market": "TW",
+    "callingPrefix": "+886",
+    "recordOnly": true,
+    "smsVerificationEnabled": false,
+    "smsChannelReady": false,
+    "marketEnabled": true
+  },
+  "unconnectedEnableRefused": true,
+  "unauthenticatedRefused": true,
+  "applyHttp": 200,
+  "applyCode": 0,
+  "apply": {
+    "applyNo": "MA261111YV74FRPTR6",
+    "ownerUserNo": "U261106HF6ZK3RERQ"
+  }
+}

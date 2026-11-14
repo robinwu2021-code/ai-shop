@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 父工程是 neargo 的构建父 POM，**不是** ai-shop 的 shop-parent。
+         进销存是独立服务（ADR-046）：ai-shop 只是它的调用方之一，这里不继承 ai-shop 的任何属性与依赖管理。
+         relativePath 留空：本目录要能整体搬出仓库，不许指向目录外（闸门 I4）。 -->
+    <parent>
+        <groupId>ai.neargo</groupId>
+        <artifactId>neargo-build-parent</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ai.neargo.inventory</groupId>
+    <artifactId>inventory-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <description>进销存独立服务 · 父工程（TDD-进销存独立服务与多业态）</description>
+
+    <modules>
+        <!-- 契约：DTO、错误码、事件信封。不含实现，调用方只依赖它与 client -->
+        <module>inventory-api</module>
+        <!-- 领域 + 持久化 + 迁移（「持久层只有一套」，照 pay-domain） -->
+        <module>inventory-domain</module>
+        <!-- 入口守卫：凭证 → 系统 · 业主 · 操作人；实例放行系统 -->
+        <module>inventory-guard</module>
+        <!-- 独立部署的进程。测试一套、生产电商 / 设备两套，都是它，差异只在环境文件 -->
+        <module>inventory-svc</module>
+        <!-- 给调用方的客户端 -->
+        <module>inventory-client</module>
+    </modules>
+
+    <properties>
+        <!-- ai-shop 里两个不含业务的基础包（§2.1 白名单）。groupId 是历史遗留，迁出仓库前随任务服务改坐标 -->
+        <ai-shop-base.version>0.1.0-SNAPSHOT</ai-shop-base.version>
+        <archunit.version>1.3.0</archunit.version>
+        <shedlock.version>6.9.0</shedlock.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-guard</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.inventory</groupId>
+                <artifactId>inventory-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.shop</groupId>
+                <artifactId>job-api</artifactId>
+                <version>${ai-shop-base.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.shop</groupId>
+                <artifactId>svc-client</artifactId>
+                <version>${ai-shop-base.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-spring</artifactId>
+                <version>${shedlock.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                </configuration>
+            </plugin>
+            <!-- 闸门 I3：依赖白名单（TDD §2.1）。与父 POM 的 enforce-build-env 并列。
+                 ai-shop 的构件一律禁止，只放行两个不含业务的基础包；
+                 Redis 与 Spring Security 的过滤链也禁止 —— 它们正是「单独起不来」的根源。
+                 searchTransitive：经传递依赖带进来的同样拦。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-inventory-independence</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <exclude>ai.neargo.shop:*</exclude>
+                                        <exclude>ai.neargo:neargo-common-security</exclude>
+                                        <exclude>ai.neargo:neargo-auth-core</exclude>
+                                        <exclude>org.springframework.boot:spring-boot-starter-data-redis</exclude>
+                                        <exclude>org.springframework.boot:spring-boot-starter-security</exclude>
+                                        <exclude>org.springframework.security:spring-security-web</exclude>
+                                    </excludes>
+                                    <includes>
+                                        <include>ai.neargo.shop:job-api</include>
+                                        <include>ai.neargo.shop:svc-client</include>
+                                    </includes>
+                                    <message>进销存是独立服务（ADR-046）：不许依赖 ai-shop 的业务构件、Redis 或 Spring Security 过滤链。白名单见 TDD-进销存独立服务与多业态 §2.1。</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

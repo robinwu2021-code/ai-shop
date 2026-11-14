@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.notify;
 
+import ai.neargo.shop.common.otp.OtpScenes;
+
 /**
  * 域 → channel：把一条短信交给通道。
  *
@@ -27,6 +29,16 @@ public interface SmsPort {
      * @throws SmsException 通道拒绝或网络失败
      */
     SendResult sendOtp(String phone, String code);
+
+    default void requireOtpScene(String scene) {
+        if (!OtpScenes.LOGIN.equals(scene)) throw new SmsException("otp_scene_unconfigured", false);
+    }
+
+    default SendResult sendOtpForScene(String phone, String code, String scene, String bizType, String operatorNo) {
+        requireOtpScene(scene);
+        return sendOtp(phone, code, bizType, operatorNo);
+    }
+
 
     /**
      * 带**用途**与操作人的重载。理由同 {@link MailPort#send(String, String, String, String, String)}：

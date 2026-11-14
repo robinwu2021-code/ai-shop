@@ -4,7 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.service.InvManagedService;

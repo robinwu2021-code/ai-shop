@@ -6,12 +6,20 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import tools.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-/** Schema two freezes explicit bundle composition without guessing mutable child option or recipe bindings. */
+/** Bundle schemas two and six freeze explicit composition; market context never grants sale or stock authority. */
 public record BundlePublicationSnapshot(int contentSchema, String configKind, String configNo,
         @JsonProperty(required=true) @JsonDeserialize(using=CatalogRevisionDeserializer.class) long sourceVersion,
-        BundleConfigVO bundle, List<SkuIdentityFact> skuFacts, String approvalRef) {
+        BundleConfigVO bundle, List<SkuIdentityFact> skuFacts, String approvalRef,
+        @JsonInclude(JsonInclude.Include.NON_NULL) PublicationMarketContext marketContext) {
     public BundlePublicationSnapshot { skuFacts = List.copyOf(skuFacts); }
+
+    /** Old constructors intentionally omit market context so frozen legacy bytes and hashes remain stable. */
+    public BundlePublicationSnapshot(int contentSchema, String configKind, String configNo, long sourceVersion,
+            BundleConfigVO bundle, List<SkuIdentityFact> skuFacts, String approvalRef) {
+        this(contentSchema, configKind, configNo, sourceVersion, bundle, skuFacts, approvalRef, null);
+    }
 
     @JsonAnySetter
     public void rejectUnknown(String name, Object value) {

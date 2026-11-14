@@ -26,6 +26,10 @@ import org.springframework.context.annotation.Import;
  *
  * 两头夹：这里排除，那边按 inventory.mapper 包显式绑到 invSqlSessionFactory。
  * 少任何一头都只在跑到那一行时才炸。
+ *
+ * 2026-10-29 起进销存的 Mapper 已搬进独立服务（ai.neargo.inventory.domain.mapper，ADR-046），
+ * 不在本扫描根之下，天然够不着；下面排除规则里的 inventory 留给 ai-shop 侧的适配包
+ * （ai.neargo.shop.inventory），防止将来有人在那里放 Mapper。
  */
 @MapperScan(basePackages = "ai.neargo.shop",
         markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,
@@ -39,8 +43,12 @@ import org.springframework.context.annotation.Import;
          *   pay       —— 同一个库但**独立的事务管理器**（PayDataSourceConfig），
          *                目的是让跨域事务在物理上写不出来
          *
+         *   commerce  —— 渠道模块只由自身 enabled 条件注册，不随全局 Mapper 扫描提前装配。
+         *
          *   food      —— 与商品订单共主库，但只允许由餐饮 enabled 条件配置注册，
          *                防止关闭餐饮时全局扫描提前装入 Mapper。
+         *
+         *   beauty    —— 与商品订单共主库，由美业条件配置及结构校验后注册。
          *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
          * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
@@ -49,7 +57,7 @@ import org.springframework.context.annotation.Import;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
@@ -67,9 +75,10 @@ import org.springframework.context.annotation.Import;
         // 子接口，由上面那个 scan 收；按 @Mapper 注解扫只会收到真正标注了的那个。
         "ai.neargo.shop.merchant.mapper",
         // StatusCasMapper（订单状态机转换门）：四个聚合各一对读 / 条件写，跨四张表，绑不到单一实体
-        "ai.neargo.shop.trade.order.mapper",
+        "ai.neargo.shop.trade.order.mapper", "ai.neargo.shop.trade.mapper",
         // Unified activity CAS/accounting updates span resource tables, without a single BaseMapper entity.
-        "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper"},
+        "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper",
+        "ai.neargo.shop.invbridge.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {

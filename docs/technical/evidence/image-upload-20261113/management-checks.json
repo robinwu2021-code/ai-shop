@@ -1,0 +1,146 @@
+[
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/",
+    "check": "page",
+    "status": 200,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms/",
+    "check": "page",
+    "status": 200,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/common/master-data",
+    "check": "public",
+    "status": 200,
+    "code": 0,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/biz/context",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/ops/auth/me",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms-api/auth/me",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/api/internal/",
+    "check": "blocked",
+    "status": 404,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/shop-api/internal/",
+    "check": "blocked",
+    "status": 404,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/media/DOMAINPROBE/DOMAINPROBE/mallpay/202611/DOMAINPROBE.jpg",
+    "check": "blocked",
+    "status": 404,
+    "code": 10500,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/",
+    "check": "page",
+    "status": 200,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms/",
+    "check": "page",
+    "status": 200,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/common/master-data",
+    "check": "public",
+    "status": 200,
+    "code": 0,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/biz/context",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/ops/auth/me",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms-api/auth/me",
+    "check": "auth",
+    "status": 401,
+    "code": 10401,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/api/internal/",
+    "check": "blocked",
+    "status": 404,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/shop-api/internal/",
+    "check": "blocked",
+    "status": 404,
+    "code": null,
+    "passed": true
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/media/DOMAINPROBE/DOMAINPROBE/mallpay/202611/DOMAINPROBE.jpg",
+    "check": "blocked",
+    "status": 404,
+    "code": 10500,
+    "passed": true
+  }
+]

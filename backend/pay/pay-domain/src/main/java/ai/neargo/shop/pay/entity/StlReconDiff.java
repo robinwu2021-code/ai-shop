@@ -68,6 +68,12 @@ public class StlReconDiff extends BaseEntity {
     /** 处置结论。<b>RESOLVED / IGNORED 必填</b> —— 没有结论的「已处理」等于没处理 */
     private String resolution;
 
+    /** 去重键：通道|流水号|差异类型，不含日期（F15 · Review R19，db/pay V3） */
+    private String dedupKey;
+
+    /** 系统生成的说明。{@link #resolution} 只放运营填写的处置结论 */
+    private String note;
+
     private String recoveredOrderNo;
     private Long resolvedAt;
     private String resolvedBy;

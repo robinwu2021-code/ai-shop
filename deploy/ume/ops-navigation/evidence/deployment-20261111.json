@@ -1,0 +1,47 @@
+{
+  "releaseId": "ops-nav-v657-20261111",
+  "baseJarSha256": "5cb4147d5f6ed781a240c5cfa63eda35f394ad9b01422797ac0c77339f8a55ab",
+  "flywayChecksum": -2073663735,
+  "containerIds": {
+    "ai-shop-api": "e56d7e82b4b40acaaa537f8467008300fcc53b222b1b11f5f0220adbf3e00c0b",
+    "ai-shop-ops": "1c7cf73747f7b4c72fe9f2fa2d0e6f10cc9b538f60926d9fde7e840d81f71958",
+    "nearpay-prod": "cbffe9076ee34a9216d51ca3d6d299aa343a7cb9d4d78324ae0ab4fd15d13cf8",
+    "inventory-test": "39a53a0a9c011ae622e5554cf01e266e4a0c7cbeab1d9fd552d5f93158c2dbb2"
+  },
+  "payloadSha256": {
+    "release.py": "fb7342cd2dc75209d895368472c120caf67f5529b569805dba9d4d4c6baf0aef",
+    "ai-shop-web.tar.gz": "c6d71fe412633dc695363d79f7c65575728c19320d63c2e7bfd663e0713717bc",
+    "V657.sql": "cd09fed93d3e5ebee34fcb2b91d294421550660923abc6ce6a81aa023eed66df",
+    "pay-web.tar.gz": "2cd88fe3b2f906597788b459d5c14f412ce74bd25b82be4527512083cd69ca51",
+    "MenuMigration.class": "754b95bfe0a2c7056c6664c4fa324c1060e060b11ea0da49f3d1d79772a0499c"
+  },
+  "aiShopBaseCommit": "b24f13e05",
+  "nearPayBaseCommit": "a2efdfb1",
+  "backendDelta": "only V657 migration resource; existing jar entries byte-identical",
+  "frontendBuild": {
+    "aiShop": {
+      "basePath": "/ops-shop",
+      "apiBase": "/ops-shop",
+      "mock": false
+    },
+    "nearPay": {
+      "basePath": "/oms",
+      "apiBase": "/oms-api/pay-ops/v2",
+      "edition": "live",
+      "mock": false
+    }
+  },
+  "aiShopCommit": "36e1dc3080044770e26952202d70bcbf3eb0028c",
+  "nearPayCommit": "6b052a3efafcbea47e02e804fa2bd10c507d3d45",
+  "environment": "ume-166",
+  "deployedJarSha256": "505b0451bbb84b83c2810ccd9990727dc65abc768c4330b738e7557d0a77801a",
+  "migrationSuccess": true,
+  "realOperatorBothDomains": true,
+  "publicChecks": 46,
+  "oldAssetChecks": 12,
+  "containerConfigurationsPreserved": true,
+  "paymentInventoryContainersUnchanged": true,
+  "lockReleased": true,
+  "backupDirectory": "/data0/app/ai-shop/releases/ops-nav-v657-20261111",
+  "productionFailureDrill": false
+}

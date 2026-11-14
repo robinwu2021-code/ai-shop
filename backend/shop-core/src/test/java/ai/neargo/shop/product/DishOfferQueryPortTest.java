@@ -86,7 +86,8 @@ class DishOfferQueryPortTest {
                     + "locked_stock,deleted) VALUES(1,'SKU','E','S',4,1,0)");
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().priceMinor()).isEqualTo(700);
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().available()).isEqualTo(3);
-            when(c.getBean(CampaignPort.class).flashPrices(List.of("G"))).thenReturn(Map.of("G", 600L));
+            when(c.getBean(CampaignPort.class).flashOffers(List.of("G")))
+                    .thenReturn(Map.of("G", new CampaignPort.PriceOffer("FLASH1", 600L)));
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().priceMinor()).isEqualTo(600);
             assertThat(sql.queryForObject("SELECT stock FROM prd_store_stock", Integer.class)).isEqualTo(4);
             sql.update("UPDATE prd_store_stock SET store_no='OTHER'");

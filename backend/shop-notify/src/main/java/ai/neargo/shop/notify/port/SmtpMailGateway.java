@@ -139,7 +139,8 @@ public class SmtpMailGateway implements MailPort {
              * **不吞**：吞掉会让 createStaff 以为邮件发出去了，于是留下一个
              * 「已建号但没人知道密码」的账号 —— 它看起来正常，只是永远没人登得进去。
              */
-            throw new MailException("邮件发送失败：" + e.getMessage(), e);
+            // 供应商原文常带收件人与正文片段（验证码）；消息里不拼它，原 cause 保留给排障
+            throw new MailException("邮件发送失败", e);
         }
     }
 }

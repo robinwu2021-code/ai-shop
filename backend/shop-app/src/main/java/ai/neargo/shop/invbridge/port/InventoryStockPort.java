@@ -1,22 +1,30 @@
 package ai.neargo.shop.invbridge.port;
 
-import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.ReservationService;
-import ai.neargo.shop.inventory.service.ReturnReceiptService;
-import ai.neargo.shop.inventory.service.StockCountService;
-import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
+import ai.neargo.shop.invbridge.ReservationHoldTtl;
+import ai.neargo.inventory.client.InventoryReservationClient;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.support.InvEnums;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.service.ReturnReceiptService;
+import ai.neargo.inventory.domain.service.StockCountService;
+import ai.neargo.shop.spi.product.OriginalStockReturnPort;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
+import ai.neargo.shop.spi.product.StockPort;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -42,17 +50,38 @@ import org.springframework.transaction.annotation.Transactional;
  * <h2>翻译只有两处</h2>
  * {@code skuNo → itemId}、{@code storeNo → locationId}，都走防腐层。
  * 交易域**一行不改** —— 它给的仍然是 {@code SkuQty}。
+ *
+ * <h2>{@code sellable} 有意不实现</h2>
+ * 落到接口默认值（{@code Integer.MAX_VALUE}，「算不出来、加购不拦」）。按 SKU 算可用量要先知道
+ * 主体号（{@code InventoryAclService#stockAt} 按 entityNo 取），而 {@code StockPort} 上只有 skuNo；
+ * 为加购这一步再接一条商品域查询，不如让下单锁货（{@link #lock}）做唯一的拦截点 ——
+ * 那一步按业主、按库位精确判，不足就整单拒。代价是这一档下加购不会提前提示没货，
+ * 顾客在结算时才知道。切到 INVENTORY 之前若要加购即拦，在这里补一条按 SKU 反查主体的实现。
  */
 @Component
 @Primary
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "INVENTORY")
-public class InventoryStockPort implements StockPort {
+public class InventoryStockPort implements StockPort, ReservationOwner {
+    private ObjectProvider<OriginalStockReturnPort> originalReturns;
+
+    @Autowired
+    public void setOriginalReturns(ObjectProvider<OriginalStockReturnPort> originalReturns) {
+        this.originalReturns = originalReturns;
+    }
+
+    @Override
+    public String stockAuthority() {
+        return "INVENTORY";
+    }
 
     /**
-     * 预留的存活时长。与平台的「未支付自动关单」同一个量级 ——
-     * 比关单短会让还能付款的单先被释放，比它长会让已关的单继续占着货。
+     * 预留的存活时长，由「未支付自动关单」的窗口推出（见 {@link ReservationHoldTtl}）——
+     * 比关单短会让还能付款的单先被释放。此前写死 30 分钟，而关单窗口可配到 24 小时。
      */
-    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+    private ReservationHoldTtl holdTtl;
+
+    @Autowired
+    public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
 
     private final StockCountService counts;
     private final ReservationService reservations;
@@ -73,6 +102,22 @@ public class InventoryStockPort implements StockPort {
     @Autowired
     public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
 
+    /**
+     * 切流（ADR-046 M8）：写入方已翻到库存服务的商家走这里；没配客户端时为空 = 一个商家都没切。
+     * 内嵌那一侧的领域写方法自己有单一写入方的闸（{@code OwnerWriteGuard}），按单号的批处理也只碰内嵌的商家。
+     */
+    private ServiceStockRoute remote;
+
+    @Autowired
+    public void setRemote(ObjectProvider<InventoryReservationClient> client) {
+        InventoryReservationClient c = client.getIfAvailable();
+        this.remote = c == null ? null : new ServiceStockRoute(c);
+    }
+
+    void setRemote(ServiceStockRoute remote) {
+        this.remote = remote;
+    }
+
     public InventoryStockPort(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                               LocationService locations) {
         this.counts = counts;
@@ -87,32 +132,51 @@ public class InventoryStockPort implements StockPort {
         if (items == null || items.isEmpty()) {
             return List.of();
         }
+        Split split = split(items);
         Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
-        for (SkuQty item : items) {
+        for (SkuQty item : split.embedded()) {
             byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
         }
         for (var group : byOwner.entrySet()) {
             int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
-            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS, lifecycleVersion);
+            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()),
+                    ReservationHoldTtl.secondsOf(holdTtl), lifecycleVersion);
+        }
+        // 已翻到服务的商家：全成全败 —— 任何一家失败，撤回服务上已占的几家，抛出去让内嵌那几家随事务回滚
+        List<String> reserved = new ArrayList<>();
+        try {
+            for (var group : split.service().entrySet()) {
+                int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
+                remote.reserve(group.getKey(), lockNo, group.getValue(), ReservationHoldTtl.secondsOf(holdTtl),
+                        lifecycleVersion);
+                reserved.add(group.getKey());
+            }
+        } catch (RuntimeException e) {
+            reserved.forEach(merchant -> remote.cancelQuietly(merchant, lockNo));
+            throw e;
         }
         return List.of();
     }
 
     @Override
     public void release(String lockNo, List<SkuQty> originalNeeds) {
-        originalNeeds.stream().map(item -> acl.ownerOfSku(item.skuNo())).distinct()
+        Split split = split(originalNeeds);
+        split.embedded().stream().map(item -> acl.ownerOfSku(item.skuNo())).distinct()
                 .forEach(owner -> reservations.cancelByRef(owner, lockNo));
+        split.service().keySet().forEach(merchant -> remote.cancel(merchant, lockNo));
     }
 
     @Override
     public void release(String lockNo) {
         // 释放拿不到 items，只能按订单号找 —— 而预留本来就是按 externalRef 存的
         reservations.releaseByRef(lockNo);
+        if (serviceInPlay()) remote.releaseByRef(lockNo);
     }
 
     @Override
     public void confirm(String lockNo) {
         reservations.commitByRef(lockNo, "SYSTEM");
+        if (serviceInPlay()) remote.commitByRef(lockNo);
     }
 
     @Override
@@ -126,16 +190,43 @@ public class InventoryStockPort implements StockPort {
     }
 
     @Override
-    public void allocatePaid(String lockNo) { reservations.allocatePaidByRef(lockNo); }
+    public void allocatePaid(String lockNo) {
+        reservations.allocatePaidByRef(lockNo);
+        if (serviceInPlay()) remote.allocatePaidByRef(lockNo);
+    }
 
     @Override
     public void issue(String fulfillmentRef) {
         reservations.issueByFulfillmentRef(fulfillmentRef, "SYSTEM");
+        if (serviceInPlay()) remote.issue(fulfillmentRef);
     }
 
     @Override
     public void releaseAllocated(String fulfillmentRef) {
         reservations.releaseAllocatedByFulfillmentRef(fulfillmentRef);
+        if (serviceInPlay()) remote.releaseAllocated(fulfillmentRef);
+    }
+
+    @Override
+    public void releaseAllocatedTo(String fulfillmentRef, String orderNo, List<SkuQty> targets) {
+        if (targets == null || targets.isEmpty()) throw new IllegalArgumentException("ALLOCATION_TARGETS_REQUIRED");
+        Split split = split(targets);
+        split.service().forEach((merchant, group) -> remote.releaseAllocatedTo(merchant, orderNo, fulfillmentRef, group));
+        if (split.embedded().isEmpty()) return;
+        Map<String, List<ReservationService.ReleaseTarget>> owners = new LinkedHashMap<>();
+        for (SkuQty target : split.embedded()) {
+            String owner = acl.ownerOfSku(target.skuNo());
+            owners.computeIfAbsent(owner, ignored -> new ArrayList<>())
+                    .add(new ReservationService.ReleaseTarget(acl.itemIdOfSku(target.skuNo()), target.qty()));
+        }
+        owners.forEach((owner, quantities) -> reservations.releaseAllocatedTo(owner, orderNo, fulfillmentRef, quantities));
+    }
+
+    @Override
+    public RestoreResult restore(String restoreNo, String originalOrderNo, List<SkuQty> items) {
+        var router = originalReturns.getIfAvailable();
+        if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return router.restore(restoreNo, originalOrderNo, items);
     }
 
     @Override
@@ -143,12 +234,18 @@ public class InventoryStockPort implements StockPort {
         if (items == null || items.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(items.get(0).skuNo());
-        reservations.restore(owner, restoreNo, toLines(owner, items), "SYSTEM");
+        // 内嵌写的商家走原单回补（按售后单找原订单、按冻结的来源回补）；已翻到服务的商家经客户端
+        Split split = split(items);
+        if (!split.embedded().isEmpty()) originalRestores.restoreLegacy(restoreNo, split.embedded());
+        if (!split.service().isEmpty()) {
+            String originalRef = originalRestores.originalOrderOf(restoreNo);
+            split.service().forEach((merchant, group) -> remote.restore(merchant, restoreNo, originalRef, group));
+        }
     }
 
     @Override
     public RestoreResult restoreOriginal(String purpose, String originalRef, List<SkuQty> items) {
+        requireEmbedded(items == null ? List.of() : items.stream().map(SkuQty::skuNo).toList());
         originalRestores.restore(purpose, originalRef, items);
         return RestoreResult.COMPLETED;
     }
@@ -157,6 +254,7 @@ public class InventoryStockPort implements StockPort {
     public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
                               String fulfillmentRef, List<ReturnLine> lines) {
         if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("RETURN_RECEIPT_LINES_REQUIRED");
+        requireEmbedded(lines.stream().map(ReturnLine::skuNo).toList());
         List<ReturnReceiptService.Line> accepted = lines.stream().map(line -> new ReturnReceiptService.Line(
                 acl.itemIdOfSku(line.skuNo()), line.qty(), ReturnReceiptService.Quality.valueOf(line.quality().name())))
                 .toList();
@@ -166,12 +264,46 @@ public class InventoryStockPort implements StockPort {
     @Override
     public String returnReceiptStatus(String receiptNo) { return returnReceipts.status(receiptNo); }
 
+    /** 按商家的写入方分两堆：内嵌（含没映射的 SKU，行为与切流前一致）与服务（按商家号分组） */
+    private Split split(List<SkuQty> items) {
+        List<SkuQty> embedded = new ArrayList<>();
+        Map<String, List<SkuQty>> service = new LinkedHashMap<>();
+        for (SkuQty item : items) {
+            InventoryAclService.OwnerRoute route = acl.routeOfSku(item.skuNo());
+            String authority = route == null ? null : route.writeAuthority();
+            if (authority == null || InvEnums.WriteAuthority.EMBEDDED.equals(authority)) {
+                embedded.add(item);
+            } else if (InvEnums.WriteAuthority.SVC.equals(authority) && remote != null) {
+                service.computeIfAbsent(route.entityNo(), k -> new ArrayList<>()).add(item);
+            } else {
+                // 翻转对账中，或已翻到服务却没配客户端：拒，不悄悄走内嵌（内嵌这时也不认这本账）
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+        }
+        return new Split(embedded, service);
+    }
+
+    private record Split(List<SkuQty> embedded, Map<String, List<SkuQty>> service) {
+    }
+
+    /** 拿不到明细的按单号动作：有商家在服务上才去调服务的系统级接口，免得纯内嵌的订单也被服务可用性牵连 */
+    private boolean serviceInPlay() {
+        return remote != null && acl.anyServiceWrittenOwner();
+    }
+
+    /** 原单回补、退货收货在服务上还没有对应接口：涉及已翻到服务的商家就拒（M8 待切） */
+    private void requireEmbedded(List<String> skuNos) {
+        if (!split(skuNos.stream().map(sku -> new SkuQty(sku, 1)).toList()).service().isEmpty()) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
     /**
      * 翻译只有两处：{@code skuNo → itemId}、{@code storeNo → locationId}。
      *
-     * <p><b>业主取第一行的</b>：交易域按子单拆过了，一次调用里的行属于同一个商家。
-     * {@code SkuQty} 上没有主体号，靠外部引用表反查 —— 而 SKU 在平台内全局唯一，
-     * 所以这一条是确定的。
+     * <p><b>调用方先按业主分好组再传进来</b>：锁号是父订单号，一次调用可以跨几个商家。
+     * {@code SkuQty} 上没有主体号，靠外部引用表按 SKU 反查 —— SKU 在平台内全局唯一，
+     * 所以分组是确定的。
      *
      * <p>门店设了发货源就扣源仓的；空门店走默认库位，那是存量主体级库存的落点。
      */
@@ -180,7 +312,14 @@ public class InventoryStockPort implements StockPort {
         for (SkuQty q : items) {
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, q.storeNo()));
-            lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty(), q.fulfillmentRef()));
+            lines.add(
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(q.skuNo()),
+                            locationId,
+                            q.qty(),
+                            q.fulfillmentRef(),
+                            q.fulfillmentRef() == null ? null : q.skuNo(),
+                            q.fulfillmentRef() == null ? null : q.storeNo()));
         }
         return lines;
     }
@@ -195,7 +334,17 @@ public class InventoryStockPort implements StockPort {
      */
     @Override
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
+        Split split = split(List.of(new SkuQty(skuNo, 1, storeNo)));
+        if (!split.service().isEmpty()) {
+            remote.setOnHand(split.service().keySet().iterator().next(), skuNo, storeNo, onHand, reason);
+            return;
+        }
         String owner = acl.ownerOfSku(skuNo);
+        if (owner == null) {
+            // 新建的 SKU 还没上账：物料由随后的 SkuUpserted 投影建出来，此时没有可盘的物料。
+            // 不拦这一步 —— 否则「进销存为准」的商家新建商品整单失败（拿空业主去建默认库位）
+            return;
+        }
         String locationId = locations.resolveStockLocation(
                 owner, acl.locationOfStore(owner, storeNo));
         counts.adjustOne(owner, locationId, acl.itemIdOfSku(skuNo), onHand,

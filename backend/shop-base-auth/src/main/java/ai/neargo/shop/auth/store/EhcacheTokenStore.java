@@ -134,6 +134,22 @@ public class EhcacheTokenStore implements TokenStore, AutoCloseable {
         }
     }
 
+    private Optional<String> tokenByHash(String hash, String principal) {
+        return java.util.Arrays.stream(java.util.Optional.ofNullable(userIndex.get(principal)).orElse("").split(SEP))
+                .filter(t -> ai.neargo.auth.store.TokenHash.of(t).equals(hash))
+                .filter(t -> get(t).filter(d -> principal.equals(d.user().userNo())).isPresent()).findFirst();
+    }
+
+    @Override
+    public Optional<SessionData> getByHash(String hash, String principal) {
+        return tokenByHash(hash, principal).flatMap(this::get);
+    }
+
+    @Override
+    public void revokeByHash(String hash, String principal) {
+        tokenByHash(hash, principal).ifPresent(this::revoke);
+    }
+
     @Override
     public void revoke(String token) {
         // 不动索引：见类注释「反向索引是提示，不是真相」

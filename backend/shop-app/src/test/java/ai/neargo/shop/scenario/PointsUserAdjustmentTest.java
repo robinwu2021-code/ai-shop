@@ -30,6 +30,27 @@ class PointsUserAdjustmentTest {
             "payload_json","{\"requestId\":\"S\",\"adjustmentNo\":\"A\",\"typeCode\":\"T\",\"userNo\":\"U\",\"direction\":\""+direction+"\",\"points\":10,\"reason\":\"correction\"}")));
         when(rows.decide(anyString(),anyLong(),anyString(),anyString())).thenReturn(1);
     }
+    @Test void exposes_audit_times_without_fabricating_review_time() {
+        var row = new HashMap<String,Object>();
+        row.put("id",1L); row.put("state","SUBMITTED"); row.put("submitted_by","MAKER"); row.put("version",0L);
+        row.put("payload_json","{\"requestId\":\"S\",\"adjustmentNo\":\"A\",\"typeCode\":\"T\",\"userNo\":\"U\",\"direction\":\"INCREASE\",\"points\":10,\"reason\":\"correction\"}");
+        var created = java.time.LocalDateTime.of(2026,10,25,10,0);
+        row.put("created_at",created); row.put("updated_at",created.plusHours(1));
+        when(rows.page("T",0,30)).thenReturn(List.of(row));
+        var s=service();
+        var pending=s.list("T",0,30).rows().getFirst();
+        assertThat(pending.submittedAt()).isEqualTo(created.atZone(java.time.ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli());
+        assertThat(pending.reviewedAt()).isNull();
+        row.put("state","APPROVED");
+        assertThat(s.list("T",0,30).rows().getFirst().reviewedAt()).isEqualTo(pending.submittedAt()+3600000);
+        row.put("state","REJECTED");
+        var stamp=java.sql.Timestamp.from(java.time.Instant.parse("2026-10-25T03:00:00Z"));
+        row.put("updated_at",stamp);
+        assertThat(s.list("T",0,30).rows().getFirst().reviewedAt()).isEqualTo(stamp.toInstant().toEpochMilli());
+        row.remove("created_at"); row.remove("updated_at");
+        assertThat(s.list("T",0,30).rows().getFirst().submittedAt()).isNull();
+        assertThat(s.list("T",0,30).rows().getFirst().reviewedAt()).isNull();
+    }
     @Test void cannot_review_own_submission() {
         original("INCREASE"); var s=service();
         assertThatThrownBy(() -> s.review(new PointsAdjustmentService.Review("R","A","T",0,true,"ok"),"MAKER"))

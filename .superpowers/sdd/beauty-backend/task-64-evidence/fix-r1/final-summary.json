@@ -1,0 +1,49 @@
+{
+  "status": "DONE_PENDING_SCOPED_INDEPENDENT_REVIEW",
+  "importantFindings": [
+    "I1",
+    "I2",
+    "I3"
+  ],
+  "nativeRed": {
+    "path": "r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f",
+    "tests": 4,
+    "failures": 3,
+    "errors": 0,
+    "skipped": 0
+  },
+  "nativeGreen": {
+    "path": "r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02",
+    "tests": 5,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "candidateInventory": "fix-r1/pre-green/inventory.json",
+  "rootVerifiedAfterGreen": {
+    "sourcePins": 88,
+    "classPins": 203,
+    "total": 291,
+    "mismatches": 0,
+    "ownedDockerLabelEmpty": true,
+    "ownTempAbsent": true,
+    "sharedLockAbsent": true
+  },
+  "actualCleanup": {
+    "uuid": "b2a7265e-ce54-4114-ad64-fb9a94a3ef02",
+    "name": "codex-manual-service-admission-b2a7265e-ce54-4114-ad64-fb9a94a3ef02",
+    "ownedContainerRemoved": true,
+    "temporaryRemoved": true,
+    "admissionRestored": true
+  },
+  "reviewPackage": {
+    "path": "/tmp/task64-r1-review-package-6f3639c9-b27e-45bc-8692-598129161d81.diff",
+    "files": 11,
+    "bytes": 89375,
+    "sha256": "b411dbfec1c715b34fb45e1107320f2a6dd1de3c8a7be6c1364f6e71802b0281",
+    "origin": "Root immutable pre-fix75-file snapshot; no duplicate package generated"
+  },
+  "original39": "historical bounded verification, not acceptance",
+  "remaining": "same original independent reviewer scoped review; root owns acceptance/integration",
+  "minorFollowups": "inventory lock order before M4; observability before operational completion; utility style and warning/deployment configuration"
+}

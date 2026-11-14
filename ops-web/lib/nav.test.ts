@@ -9,6 +9,7 @@ import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
 import { UI_PERM_MAP } from "./perm-map";
+import { pointsLegacyServerMenuHref } from "./points-ops-routes";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 import type { Role } from "./auth";
@@ -63,7 +64,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    */
   const LOGO_H = 56;
   const COLLAPSE_BTN_H = 40;
-  const ITEM_H = 34;   // 图标 20 + 上下内边距 7×2（rail.tsx 的 py-[7px]）
+  const ITEM_H = 30;   // 图标 20 + 上下内边距 5×2（rail.tsx 的 py-[5px]）
   const ITEM_GAP = 2;
   const NAV_PAD = 8;
   /** 1366×768 的笔记本，去掉浏览器 chrome 后可视高约 620。这是要放得下的那一档。 */
@@ -91,6 +92,25 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    * （少一条菜单，人只会以为自己没权限，不会报障）。
    */
   const ADDED_SINCE_MERGE = new Set<string>([
+    "/system?tab=storeIndustry", // Store industry maintenance, existing commerce catalog authority.
+    "/printing", // Newly delivered, permission and runtime gated printing operations.
+    /*
+     * 支付运营端四页（2026-10-26，TDD-支付服务-I5接入层 S9）。挂在「结算与资金」下的「支付运营」分组：
+     * 支付单、支付异常挂 pay:order:view，退款复核挂 pay:refund:view，业务通知挂 pay:log:view。
+     * 超管与财务两行各多出这四条（财务持有三个读码与复核码，不持处置与重推码）。
+     */
+    "/pay-ops/orders",
+    "/pay-ops/exceptions",
+    "/pay-ops/refunds",
+    "/pay-ops/notifies",
+    /*
+     * 支付运营 · 接入与密钥（2026-10-28，开发计划 M5b，V591）：静态收款码 pay:qr:manage、接入方与授权 pay:app:manage、
+     * 请求记录 pay:log:view、平台证书与密钥 sec:key:view。超管四条都多；财务只多「请求记录」（持 pay:log:view）。
+     */
+    "/pay-ops/qr-codes",
+    "/pay-ops/apps",
+    "/pay-ops/request-logs",
+    "/pay-ops/platform-keys",
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
     "/merchants?tab=self-operated",
@@ -124,6 +144,11 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      */
     "/system?tab=testPhone",
     /*
+     * App 版本（2026-11-08，TDD-商户App问题回报与版本）。挂 system:param:read ——
+     * 与「开关与灰度」同一个码，所以超管与技术运维两行各多出这一条，其余角色不变。
+     */
+    "/system?tab=appVersion",
+    /*
      * 供应商收款账户（2026-09-29，V358 · ADR-011 自营供应商模式）。
      * 挂 finance:payout:execute —— 与「登记付款」同一个码，
      * 所以超管与财务两行各多出这一条，其余九个角色一个字都不变。
@@ -135,11 +160,24 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
-    "/points?tab=treasury",
-    "/points?tab=queries",
-    "/points?tab=settlements",
-    "/points/types",
-    "/points/store-access",
+    // Category earning rules add a dedicated points workspace.
+    "/points/earning-rules",
+    // Four dedicated points workspaces replace the old tabbed points page.
+    "/points/budget",
+    "/points/accounts",
+    "/points/transactions",
+    /*
+     * 套餐商城（2026-11-04，Task 5）。七条全挂后端 V556/V558 预置的 `commerce:*` 码，
+     * 那批码**只给 SUPER_ADMIN**，所以只有超管那一行多出它们，其余十个角色一个字都不变。
+     */
+    "/mall",
+    "/mall?tab=products",
+    "/mall?tab=orders",
+    "/mall?tab=claims",
+    "/mall?tab=collection",
+    "/mall?tab=assisted",
+    "/mall?tab=sources",
+    "/mall?tab=categories",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
@@ -159,10 +197,21 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
       // Points Operations moves existing finance points entries without changing point codes.
       const moved: Record<string, string> = {
-        "/finance?tab=points": "/points",
-        "/finance?tab=points-policy": "/points?tab=switches",
+        "/finance?tab=points": "/points/types",
+        "/finance?tab=points-policy": "/points/types",
+        "/points": "/points/types",
+        "/points?tab=overview": "/points/types",
+        "/points?tab=configuration": "/points/types",
+        "/points?tab=switches": "/points/types",
+        "/points?tab=treasury": "/points/budget",
+        "/points?tab=queries": "/points/accounts",
+        "/points?tab=settlements": "/points/transactions",
       };
       const was = new Set((baseline[role] ?? []).map((href) => moved[href] ?? href));
+      // S04/S05 修正历史菜单错权：端点一直使用行业/类目读码；仅调整这三个入口的可见性。
+      if (role === "TECH_OPS") for (const href of ["/system?tab=authCode", "/system?tab=industry", "/system?tab=scope"]) was.delete(href);
+      if (role === "PRODUCT_OPS") was.add("/system?tab=authCode");
+      if (role === "COMMUNITY_OPS") for (const href of ["/system?tab=industry", "/system?tab=scope"]) was.add(href);
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
@@ -205,7 +254,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     const live = new Set<string>();
     for (const s of NAV) {
       const fc = `OPS_${s.key.toUpperCase()}`;
-      for (const l of s.children ?? []) { live.add(l.href); live.add(`${fc}\t${l.href}`); }
+      for (const l of s.children ?? []) { for(const legacy of l.legacyHrefs??[])live.add(legacy); live.add(l.href); live.add(`${fc}\t${l.href}`); }
     }
     const stale = keys.filter((k) => !live.has(k));
     expect(stale, "这些 href 已经不在 NAV 里了。**删之前先确认库里没有指向它们的授权**：\n" +
@@ -405,7 +454,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "points"];
+  const BUILT = ["commerce", "dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "points"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);
@@ -614,7 +663,7 @@ describe("路由归属与面包屑", () => {
       // visibleLeaves 会把它们滤掉，拿它做断言只会验到「看不见」
       const nav = overlayNav(NAV, { leaves: { "/merchants?tab=list": { name: "商户名册" } } });
       expect(navTabs("/merchants", ["audit", "list"], nav).map((t) => t.label))
-        .toEqual(["入驻审核", "商户名册"]);
+        .toEqual(["入驻申请", "商户名册"]);
       expect(breadcrumb("/merchants", "list", null, backendPermsOf("SUPER_ADMIN"), undefined, nav))
         .toContain("商户名册");
     });
@@ -649,7 +698,10 @@ describe("路由归属与面包屑", () => {
       if (s.soon) continue;                       // 未交付的域本来就还没有菜单行
       for (const l of s.children ?? []) {
         if (!l.ready) continue;                   // 没上的功能同理
-        if (!sql.includes(`'${l.href}'`)) missing.push(`${s.key} → ${l.href}（${l.label}）`);
+        const liveHref = pointsLegacyServerMenuHref(l.href);
+        if (!sql.includes(`'${l.href}'`) && !sql.includes(`'${liveHref}'`)) {
+          missing.push(`${s.key} → ${l.href}（${l.label}）`);
+        }
       }
     }
     expect(missing, `这些叶子在 db/migration 里找不到 sys_function_point 行。`
@@ -658,7 +710,7 @@ describe("路由归属与面包屑", () => {
   });
 
   describe("tab 判权（visibleTabKeys）", () => {
-    const KEYS = ["audit", "list", "categories", "admission", "verify", "credit", "ban"];
+    const KEYS = ["audit", "onboarding", "list", "categories", "verify", "credit", "ban"];
 
     it("★★★ 与菜单同一口径 —— 服务端菜单里没有的 tab 也看不到", () => {
       // 只授权了两条：tab 也只该剩这两条
@@ -761,8 +813,8 @@ describe("路由归属与面包屑", () => {
     });
   });
 
-  it("面包屑 = L1 › 分组 › 子功能", () => {
-    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家与门店", "入驻与资质", "入驻审核"]);
+  it("面包屑 = 一级 › 二级", () => {
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻申请"]);
   });
 
   it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
@@ -787,7 +839,7 @@ describe("路由归属与面包屑", () => {
       const s = NAV.find((x) => x.label === e.label)!;
       expect(s.soon, `${s.key} 整域待建却进了搜索候选`).toBeFalsy();
     }
-    expect(sections.map((e) => e.label)).toContain("商家与门店");
+    expect(sections.map((e) => e.label)).toContain("商户中心");
     expect(entries.find((e) => e.label === "商家档案")?.href).toBe("/merchants?tab=list");
   });
 
@@ -853,7 +905,14 @@ it("已解锁的 ?tab= 叶子，页面必须真的认这个 tab —— 否则点
   expect(offenders, `要么把叶子标 soon，要么在页面里加上这个 tab：\n${offenders.join("\n")}`).toEqual([]);
 });
 
-it("keeps both finance and the points workspace assigned to the finance section", () => {
+it("keeps finance, merged marketing and merged support sections owning their routes", () => {
   expect(findActiveSection("/finance")?.key).toBe("finance");
-  expect(findActiveSection("/points")?.key).toBe("points");
+  // 2026-11-11 会员管理、积分运营并入会员营销；消息客服并入内容客服
+  expect(findActiveSection("/points")?.key).toBe("marketing");
+  expect(findActiveSection("/points/budget")?.key).toBe("marketing");
+  expect(findActiveSection("/members")?.key).toBe("marketing");
+  expect(findActiveSection("/messages")?.key).toBe("review");
+  expect(findActiveSection("/messages", ["*"], undefined, NAV, "broadcast")?.key).toBe("marketing");
+  expect(findActiveSection("/merchants", ["*"], undefined, NAV, "admission")?.key).toBe("finance");
+  expect(findActiveSection("/system", ["*"], undefined, NAV, "industry")?.key).toBe("product");
 });

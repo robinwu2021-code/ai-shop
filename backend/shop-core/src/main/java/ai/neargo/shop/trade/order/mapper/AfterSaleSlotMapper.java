@@ -12,8 +12,10 @@ import org.apache.ibatis.annotations.Update;
 public interface AfterSaleSlotMapper {
 
     /** 空位或就是自己（重放）才写入；0 行 = 已有别的进行中售后 */
-    @Update("UPDATE ord_sub_order SET open_after_sale_no = #{as} WHERE sub_order_no = #{sub} "
-            + "AND (open_after_sale_no IS NULL OR open_after_sale_no = #{as})")
+    @Update(
+            "UPDATE ord_sub_order SET open_after_sale_no = #{as} WHERE sub_order_no = #{sub} AND"
+                + " admission_kind='LEGACY_FUNDED' AND (open_after_sale_no IS NULL OR"
+                + " open_after_sale_no = #{as})")
     int occupy(@Param("sub") String subOrderNo, @Param("as") String afterSaleNo);
 
     /** 只释放自己占的那一格 */

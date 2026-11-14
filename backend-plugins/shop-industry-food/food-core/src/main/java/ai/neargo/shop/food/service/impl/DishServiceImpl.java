@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -22,6 +24,7 @@ import ai.neargo.shop.food.dto.DishPresentation.LocalizedName;
 import ai.neargo.shop.food.dto.DishResultVO;
 import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
+import ai.neargo.shop.food.policy.DiningMeasurementPolicy;
 import ai.neargo.shop.food.dto.SaveDishReq;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbDish;
@@ -52,6 +55,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Product facts are read before the local atomic write; the restaurant never updates product price or stock. */
 public class DishServiceImpl implements DishService {
+    private final CatalogCurrencyService currencies;
     private final DishMapper dishes;
     private final ActionLogMapper actions;
     private final IdempotencyService idempotency;
@@ -77,6 +81,17 @@ public class DishServiceImpl implements DishService {
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
             OptionGroupItemMapper items, MediaAssetQueryPort media) {
+        this(dishes, actions, idempotency, publisher, json, manager, catalog, bindings, groups, items,
+                media, (entity, store) -> CatalogCurrencySession.legacy(catalog, entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
+            OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
+            GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
+            OptionGroupItemMapper items, MediaAssetQueryPort media,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.media = media;
         this.dishes = dishes;
         this.actions = actions;
@@ -139,10 +154,13 @@ public class DishServiceImpl implements DishService {
     @Override
     public DishDetailResultVO getDish(String entity, String store, String goods) {
         identifier(entity); identifier(store); identifier(goods); noOuterTransaction();
-        var fact = catalog.getGoods(entity, store, goods);
+        var currency = currencies.open(entity, store);
+        var fact = currency.goods(goods);
         if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                 || !goods.equals(fact.goodsNo())) throw BizException.of(ErrorCode.FORBIDDEN);
+        currency.refresh();
         return readTransaction.execute(status -> {
+            currency.requireFresh();
             var row = dishes.selectOne(Wrappers.<FnbDish>lambdaQuery().eq(FnbDish::getEntityNo, entity)
                     .eq(FnbDish::getGoodsNo, goods));
             if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
@@ -199,16 +217,21 @@ public class DishServiceImpl implements DishService {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Dish command cannot join an existing transaction");
         }
-        var fact = catalog.getGoods(entity, store, goods);
+        var currency = currencies.open(entity, store);
+        var fact = currency.goods(goods);
         if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                 || !goods.equals(fact.goodsNo())) throw BizException.of(ErrorCode.FORBIDDEN);
         verifyMedia(entity, store, normalized.presentation().imageRefs());
+        currency.refresh();
         // Draft management is allowed before audit/on-sale; it does not grant sellability.
         String scope = FoodCommandFingerprint.scope("SAVE_DISH", entity, store);
         String hash = FoodCommandFingerprint.hash("save-dish:v1", goods, json.writeValueAsString(normalized));
         try {
             return transaction.execute(status -> idempotency.execute(key, scope, actor, hash, DishResultVO.class,
-                    () -> save(entity, store, goods, actor, key, normalized)));
+                    () -> {
+                        currency.guardTransaction();
+                        return save(entity, store, goods, actor, key, normalized);
+                    }));
         } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -304,12 +327,9 @@ public class DishServiceImpl implements DishService {
         var presentation = new DishPresentation(name, names, imageRefs, texts(p.tags(), 20, 32),
                 texts(p.allergenNotes(), 20, 255));
         var m = req.measurement();
-        if (!"COUNT".equals(m.mode()) || !"EA".equals(m.unit()) || !Integer.valueOf(0).equals(m.scale())
-                || m.allowedDeviation() != null && m.allowedDeviation().signum() != 0) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
+        DiningMeasurementPolicy.require(m);
         return new SaveDishReq(req.dishKind(), req.prepSeconds(), presentation,
-                new MeasurementPolicy("EA", "COUNT", 0, null), req.version());
+                m, req.version());
     }
 
     private static List<String> texts(List<String> values, int count, int length) {

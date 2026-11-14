@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 看件令牌的几条承诺（TDD-收件人物流触达 §4）：签得出、验得回、改一个字节就失效、过期就失效。
@@ -45,6 +46,34 @@ class ShipTrackTokenTest {
     void otherKeyRejected() {
         ShipTrackToken other = new ShipTrackToken("a-totally-different-key", 30);
         assertThat(token.verify(other.sign("SUB-A"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 没配密钥时 fail closed：不签发，也不认拿公开的开发默认密钥伪造的票")
+    void unconfiguredKeyFailsClosed() {
+        ShipTrackToken unconfigured = new ShipTrackToken("", 30);
+        // 源码里那把开发默认密钥是公开的：拿它签的票，在没配密钥的环境里绝不能验过
+        ShipTrackToken forger = new ShipTrackToken("ai-shop-dev-ship-track-key-do-not-use-in-prod", 30);
+        assertThat(unconfigured.verify(forger.sign("SUB-VICTIM")))
+                .as("没配密钥 ≠ 用公开密钥 —— 否则任何人都能伪造任意子单的看件链接").isEmpty();
+        assertThatThrownBy(() -> unconfigured.sign("SUB-A"))
+                .as("签不出来就别签：发出去的链接迟早被人照着伪造")
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("开发/测试 profile 没配密钥仍可用；生产 profile（api/ops/worker）没配则 fail closed")
+    void devFallbackOnlyUnderDevProfiles() {
+        org.springframework.mock.env.MockEnvironment test = new org.springframework.mock.env.MockEnvironment();
+        test.setActiveProfiles("test", "testcfg", "api", "ops");
+        ShipTrackToken dev = new ShipTrackToken("", 30, test);
+        assertThat(dev.verify(dev.sign("SUB-A"))).contains("SUB-A");
+
+        org.springframework.mock.env.MockEnvironment prod = new org.springframework.mock.env.MockEnvironment();
+        prod.setActiveProfiles("api", "ops", "worker");
+        ShipTrackToken closed = new ShipTrackToken("", 30, prod);
+        assertThat(closed.verify(dev.sign("SUB-A"))).isEmpty();
+        assertThatThrownBy(() -> closed.sign("SUB-A")).isInstanceOf(IllegalStateException.class);
     }
 
     @Test

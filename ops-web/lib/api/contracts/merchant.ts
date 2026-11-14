@@ -1,3 +1,5 @@
+import type {CashRefundApi} from "./offline-cash";
+import type { EntityPlanPurchaseApi } from "./entity-plan-purchase";
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
 import type {
@@ -11,10 +13,46 @@ import type {
   PlanDef,
   PlanUpgradeSignal,
   OnboardingRow,
+  PayServiceOnboardingRow,
   AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow, MerchantNudgeReason, MerchantNudgeResult } from "@/lib/types";
 import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
-export interface MerchantApi {
+/** 申请支付服务表单：法定名称、统一编号必填 */
+export interface PayServiceApplyForm {
+  requestNo: string;
+  legalName: string;
+  registrationNo: string;
+  representativeName?: string;
+  contactPhone?: string;
+  registeredAddress?: string;
+}
+
+/** near-pay 的申请结果：平台商户号、申请单号、状态（新建为 VERIFY_PENDING） */
+export interface PayServiceApplyResult {
+  merchantRef: string;
+  applicationRef: string | null;
+  status: string;
+  storeLinks: unknown[];
+}
+
+/** 仅来源核验与资料审核状态，不代表可收款。 */
+export interface PayServiceStatus {
+  status: string;
+  merchantRef: string | null;
+  linkStatus: string | null;
+  profileStatus: string | null;
+  reviewReason: string | null;
+  merchantOpsUrl: string | null;
+  onboardingOpsUrl: string | null;
+}
+
+/** NearPay 本地事实；来源/资料审核与通道状态彼此独立，不推导收款能力。 */
+export type { PayServiceOnboardingChannel, PayServiceOnboardingRow } from "@/lib/types/merchant";
+
+export type PayServiceOnboardingQ = { keyword?: string; page?: number; size?: number };
+
+export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"entityCashRefunds"|"requestEntityCashRefund"|"payoutEntityCashRefund"|"recoverEntityCashRefund">, EntityPlanPurchaseApi {
+  onBehalfStoreIndustries(): Promise<import("@/lib/types").StoreIndustryChoice[]>;
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   /**
@@ -39,21 +77,12 @@ export interface MerchantApi {
    */
   setFundsMode(v: { merchantNo: string; fundsMode: FundsMode }): Promise<Merchant>;
 
-  /**
-   * 建**平台自营商家**（跳过进件与审核）。只有超管调得动
-   * （`merchant:selfop:create` 不在任何角色的码表里）。
-   *
-   * 拒的情形：手机号格式不对、名称为空、范围不在启用白名单里、
-   * scope=COMMUNITY 却没勾社区（400）—— 最后一条不是挑剔：
-   * 没有覆盖社区的商家上着架却对谁都不可见，而这个故障不报错。
-   *
-   * ⚠️ 别的档不要求勾社区，**但也不等于就可见了**。返回的
-   * `reachableCommunities` 才是真判据。
-   *
-   * **幂等按人**：同一个手机号连调两次返回同一个主体，`created=false`。
-   */
+  /** 当前系统地区的自营建档账号策略。 */
+  selfOperatedContext(): Promise<Pick<import("@/lib/types").MarketPhonePolicy,"market"|"recordOnly"|"marketEnabled">>;
+  /** 自营建档：台湾使用已注册邮箱，大陆保留手机号身份；沿原权限、服务范围规则和 owner 幂等执行。 */
   createSelfOperated(v: {
-    phone: string;
+    phone?: string;
+    ownerEmail?: string;
     name: string;
     /** COMMUNITY / CITY / PLATFORM；空按 COMMUNITY。先过一期启用白名单 */
     serviceScope?: string;
@@ -63,6 +92,11 @@ export interface MerchantApi {
     description?: string;
   }): Promise<SelfOperatedResult>;
 
+  /** 当前登录环境统一配置的入驻地区与电话策略。 */
+  onBehalfContext(): Promise<import("@/lib/types").MarketPhonePolicy>;
+  /** 仅运营代办申请，服务端过滤后分页。 */
+  listOnBehalfApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
+
   /**
    * **代商家提交入驻申请**（三期）。BD 在店里把执照拍下来、当场替老板填完。
    *
@@ -70,15 +104,17 @@ export interface MerchantApi {
    * 证件照要、进件照走、订阅额度照吃、单子照进审核队列。本期只改「谁来填这张表」。
    * 自营能免证件是因为不存在第三方 —— 代填的时候第三方是存在的，那个论证不成立。
    *
-   * **会给这个手机号建一个账号**，而本人当时并不知道。不建的话审核通过时
-   * 没有 owner 可挂，所以只能建 —— 代价是商户首次登录必须看到这件事。
+   * 大陆沿默认手机号策略定位或建号；仅记录地区使用店主已注册邮箱定位 owner，
+   * 手机号只存联系方式，不建立手机号登录身份。
    *
    * **协议不在这里勾**：`agreed_at` 落库时一律为空，运营不能替商户同意。
    *
-   * ⚠️ **代填的人审不了自己填的那张单**（后端按 `submitted_by` 拦，403）——
-   * BD 同时持有审核码与代填码，光靠权限配置挡不住。
+   * 地区由登录环境统一配置决定；旧客户端仅可传入相同地区。审核沿用审核权限并留痕。
    */
   applyOnBehalf(v: {
+    market?: string;
+    ownerEmail?: string;
+    storeProfile?: import("@/lib/types").InitialStoreProfile;
     /** 商户本人手机号。**它决定这张单最终挂给谁** —— 填错就是挂到别人名下 */
     phone: string;
     name: string;
@@ -94,7 +130,7 @@ export interface MerchantApi {
     asPickupPoint?: boolean;
     industry?: string;
     qualificationItems?: {
-      type: string; code?: string; imageUrl?: string;
+      type: import("@/lib/types").QualificationType; code?: string; imageUrl?: string;
       expireAt?: number | null; issuer?: string;
     }[];
   }): Promise<ApplyOnBehalfResult>;
@@ -219,7 +255,7 @@ export interface MerchantApi {
     serviceScope?: string,
     communityNos?: string[],
     grantCodes?: string[],
-  ): Promise<void>;
+  ): Promise<MerchantApply>;
 
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
   getMerchant(merchantNo: string): Promise<Merchant>;
@@ -231,10 +267,10 @@ export interface MerchantApi {
   // 没有一个跨商家的地方能看见。**不碰通道** —— 真实进件通道属支付方案，
   // 看板只读 mch_payment_merchant，回查转调后端已有的 refresh。
 
-  /**
-   * 进件看板。跨商家、跨通道，按状态/通道/关键词筛。
-   * @param q.status 逗号分隔多态；空 = 全部
-   */
+  /** 按可见主体分页读取 NearPay 已存进件事实，不向通道回查。 */
+  nearPayOnboardingBoard(q?: PayServiceOnboardingQ): Promise<Page<PayServiceOnboardingRow>>;
+
+  /** 旧进件列表接口，保留给现有调用者。status 支持逗号分隔多态。 */
   onboardingBoard(q?: OnboardingQ): Promise<Page<OnboardingRow>>;
 
   /**
@@ -274,6 +310,12 @@ export interface MerchantApi {
    * 挂在一个正在毁约的商家身上，赔的是平台的信用。
    */
   setMerchantVerified(merchantNo: string, verified: boolean): Promise<Merchant>;
+  /**
+   * 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联。
+   * 之后的核验、渠道账户、凭证、绑定门店在 near-pay 运营端完成。只有独立部署可用，内嵌部署后端报依赖不可用。
+   */
+  applyPayService(merchantNo: string, form: PayServiceApplyForm): Promise<PayServiceApplyResult>;
+  payServiceStatus(merchantNo: string): Promise<PayServiceStatus>;
   archiveMerchant(merchantNo: string): Promise<Merchant>;
   unarchiveMerchant(merchantNo: string): Promise<Merchant>;
 

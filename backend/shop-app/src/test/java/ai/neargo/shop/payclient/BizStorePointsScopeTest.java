@@ -79,6 +79,8 @@ class BizStorePointsScopeTest {
         .extracting(PointType::typeCode)
         .containsExactly("RETIRED");
     controller.account("TYPE");
+    when(inspection.entries("TYPE", HolderType.STORE, "ST1", null, 0, 20))
+        .thenReturn(new PointsInspectionService.EntryPage(java.util.List.of(), 0, false));
     controller.entries("TYPE", 0, 20);
     BizContext.set(BizContext.current().withStore("ST2"));
     controller.account("TYPE");

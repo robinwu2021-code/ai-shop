@@ -174,7 +174,7 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
                 null,
                 q.tagNos() == null ? List.of() : q.tagNos(),
                 q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0,
-                q.reachTaskNo(), q.reachOutcome());
+                q.reachTaskNo(), q.reachOutcome(), q.idleDays());
     }
 
     @Override
@@ -221,7 +221,7 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
                     .map(t -> t.equals(fromTagNo) ? toTagNo : t).distinct().toList();
             MemberQuery next = new MemberQuery(q.storeNo(), q.level(), q.source(), q.status(), q.phone(),
                     tags, q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(),
-                    q.page(), q.size(), q.reachTaskNo(), q.reachOutcome());
+                    q.page(), q.size(), q.reachTaskNo(), q.reachOutcome(), q.idleDays());
             row.setRuleJson(json.writeValueAsString(next));
             segmentMapper.updateById(row);
             n++;

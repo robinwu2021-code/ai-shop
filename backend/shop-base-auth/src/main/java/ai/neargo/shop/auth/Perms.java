@@ -49,6 +49,17 @@ public final class Perms {
     public static final String PRINT_READ="ops:print:read";
     public static final String PRINT_RESOLVE="ops:print:resolve";
 
+    /** 查看平台默认税配置。 */
+    public static final String PRICING_TAX_READ = "pricing:tax:read";
+    /** 维护平台默认税率及价税模式，不涉及商家审批。 */
+    public static final String PRICING_TAX_UPDATE = "pricing:tax:update";
+
+    /** Shared pricing configuration: read, draft edit and publication are independent grants. */
+    public static final String PRICING_TEMPLATE_READ = "pricing:template:read";
+    public static final String PRICING_TEMPLATE_UPDATE = "pricing:template:update";
+    public static final String PRICING_TEMPLATE_PUBLISH = "pricing:template:publish";
+
+
     // ── 售后 ────────────────────────────────────────────────────────────────
     public static final String AFTERSALE_TICKET_READ = "aftersale:ticket:read";
 
@@ -100,16 +111,13 @@ public final class Perms {
     // ── 履约调度与物流（P-5.1 / P-5.2）──────────────────────────────────────
 
     /**
-     * 到货批次与跨自提点分拣汇总。
+     * 到货批次与跨自提点分拣汇总。<b>只读</b>。
      *
-     * <p><b>批次推进（发车/到货/签收）故意共用这个码</b>，是全表第二处不拆读写的地方
-     * （第一处是店招审核 {@code STORE_PAGE_AUDIT}）。理由与那里相同：
-     * 「看批次」与「发车」是同一个人同一次动作的两半，拆出来会得到一个
-     * 只有社区运营用、且他必然同时持有的码 —— 那种码只增加配置负担。
-     *
-     * <p>还有一条更硬的理由：<b>ops-web 的发车按钮就是用这个码门控的</b>
-     * （{@code app/fulfillment/page.tsx} 的 {@code canDispatch}）。
-     * 后端另判一个写码，等于造一个「看得见、点下去 403」的按钮。
+     * <p>批次推进（发车/到货/签收）此前共用这个码，于是「能看批次」就「能签收」——
+     * 只读角色也能改订单的履约状态。现在推进判 {@link #FULFILLMENT_RULE_UPDATE}：
+     * 不新增码，种子里持本码的角色（超管、社区运营）本就同时持那个写码。
+     * ops-web 的发车按钮（{@code app/fulfillment/page.tsx} 的 {@code canDispatch}）同步改判写码，
+     * 不留「看得见、点下去 403」的按钮。
      */
     public static final String FULFILLMENT_BATCH_READ = "fulfillment:batch:read";
 
@@ -120,7 +128,8 @@ public final class Perms {
     public static final String FULFILLMENT_LOGISTICS_READ = "fulfillment:logistics:read";
 
     /**
-     * 履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号。
+     * 履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号，
+     * 以及批次推进（发车/到货/签收）。
      *
      * <p>四件事共用一个码是 ops-web 的既有口径（三个 tab 的 {@code canEdit} 都是它）。
      * 它们的共同点是「配错了订单发不出去 / 客诉」，而读它们的人（客服、财务）
@@ -151,6 +160,31 @@ public final class Perms {
      * 一个人既能确认这笔该付、又能标记已付，中间没有第二双眼睛。
      */
     public static final String FINANCE_PAYOUT_EXECUTE = "finance:payout:execute";
+
+    /*
+     * 支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。码一开始就是细的：看与动分开，复核单列 ——
+     * 复核要两个不同的人先后通过（RefundService#review），所以授给一个人也执行不了。
+     */
+    public static final String PAY_ORDER_VIEW = "pay:order:view";
+    public static final String PAY_ORDER_MANAGE = "pay:order:manage";
+    public static final String PAY_REFUND_VIEW = "pay:refund:view";
+    public static final String PAY_REFUND_REVIEW = "pay:refund:review";
+    public static final String PAY_LOG_VIEW = "pay:log:view";
+    public static final String PAY_NOTIFY_RESEND = "pay:notify:resend";
+    public static final String PAY_QR_MANAGE = "pay:qr:manage";
+    /**
+     * 支付运营 · 接入方与密钥（开发计划 M5b，pay-guard TDD §2.8.3）。看接入方与授权、看密钥指纹是一档；
+     * 吊销接入方密钥单列 —— 吊了接入方立即调不通，影响面是对方整条业务线。
+     */
+    public static final String PAY_APP_MANAGE = "pay:app:manage";
+    public static final String PAY_APP_CREDENTIAL_REVOKE = "pay:app-credential:revoke";
+    /**
+     * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
+     * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。
+     */
+    public static final String SEC_KEY_VIEW = "sec:key:view";
+    public static final String SEC_KEY_WRITE = "sec:key:write";
+    public static final String SEC_KEY_ENABLE = "sec:key:enable";
 
     public static final String FINANCE_INVOICE_READ = "finance:invoice:read";
 
@@ -270,6 +304,19 @@ public final class Perms {
      * 把它挂在封店权限下，等于只有能封店的人才提醒得了商家。
      */
     public static final String MERCHANT_NUDGE = "merchant:merchant:nudge";
+
+    /**
+     * 门店信息全量重推到支付系统（near-pay）。**不复用 {@link #MERCHANT_BAN}**：
+     * 重推不改任何数据，与封店不是一个量级；挂在封店下等于「能封店的人才能重推」，审计上也说不清凭什么推。
+     * 只给超管（运维动作）。
+     */
+    public static final String MERCHANT_STORE_NEARPAY_SYNC = "merchant:store:nearpay-sync";
+
+    /**
+     * 为主体申请支付服务：在独立支付服务 near-pay 里建平台商户、来源链接与门店关联（TDD-运营端申请支付服务）。
+     * 以平台名义替商家开通收款的第一步，单独一个码，只给超管。
+     */
+    public static final String MERCHANT_PAY_APPLY = "merchant:merchant:pay-apply";
 
     public static final String MERCHANT_CATEGORY_READ = "merchant:category:read";
 
@@ -512,6 +559,15 @@ public final class Perms {
      */
     public static final String SYSTEM_PARAM_UPDATE = "system:param:update";
 
+    /**
+     * 改 App 版本策略（最新版、最低支持版、更新说明、商店地址；TDD-商户App问题回报与版本 已拍板 P5）。
+     *
+     * <p><b>不并进 {@link #SYSTEM_PARAM_UPDATE}</b>：抬高「最低支持版本」会让低于它的所有旧包立刻停写（10426），
+     * 影响面是全部商户，而 param:update 已经给了 TECH_OPS。一个角色都不配，只有超管的通配能到；
+     * 要给发版负责人时，这里加人 + V639 回填 sys_role_point 两步一起做。看策略仍用 {@link #SYSTEM_PARAM_READ}。
+     */
+    public static final String SYSTEM_APP_VERSION_UPDATE = "system:app-version:update";
+
     /** 存储空间统计与待回收清单，只读。 */
     /**
      * 测试号固定验证码白名单 —— <b>只读</b>（TDD-测试号固定验证码）。
@@ -535,6 +591,11 @@ public final class Perms {
      * 只有权限码的话，超管账号一旦被借用就是全平台任意账号登录。
      */
     public static final String SYSTEM_TESTPHONE_UPDATE = "system:testphone:update";
+
+    /** Scoped channel technical evidence; no merchant funds or recipient payload. */
+    public static final String SYSTEM_COMMERCE_READ = "system:commerce:read";
+    /** Installed protocol metadata/status; merchant operating policy stays merchant-owned. */
+    public static final String SYSTEM_COMMERCE_UPDATE = "system:commerce:update";
 
     public static final String SYSTEM_MEDIA_READ = "system:media:read";
 
@@ -730,7 +791,9 @@ public final class Perms {
                     FINANCE_RATE_READ, FINANCE_RATE_UPDATE, FINANCE_RECON_READ,
                     FINANCE_RECON_RESOLVE, FINANCE_SETTLE_EXECUTE, FINANCE_SETTLE_READ,
                     // 提现审批码 2026-10-09 从角色表撤掉（提现端点与菜单点一起退役，见 V392）
-                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ)),
+                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ,
+                    // 支付运营端：看支付单、复核退款、看业务通知。处置异常与重推不给 —— 那是动钱 / 动外部系统
+                    PAY_ORDER_VIEW, PAY_REFUND_VIEW, PAY_REFUND_REVIEW, PAY_LOG_VIEW)),
 
             /*
              * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。

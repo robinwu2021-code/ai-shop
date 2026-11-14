@@ -47,7 +47,7 @@ class InternalElecEndpointTest {
     @Test
     @DisplayName("★★★ C 端令牌 → 有效的 CONSUMER，带用户号；响应就是 record 本身，不被全局信封包")
     void consumerToken() throws Exception {
-        String token = TestLogin.consumer(mvc(), json, otpStore, "12600930001");
+        String token = TestLogin.consumer(mvc(), json, otpStore, "19700930001");
         ElecInternal.Session s = session(token, KEY);
         assertThat(s.valid()).isTrue();
         assertThat(s.realm()).isEqualTo("CONSUMER");

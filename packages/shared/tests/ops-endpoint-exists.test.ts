@@ -159,10 +159,13 @@ function backendEndpoints(): Set<string> {
         const verb = m[1]!.toUpperCase().replace("DELETE", "DEL");
         out.add(`${verb} ${normalize(full)}`);
       }
+      for (const m of src.matchAll(/@(Get|Post|Put|Delete)Mapping\s*\r?\n/g)) {
+        if (prefix.startsWith("/ops")) out.add(`${m[1]!.toUpperCase().replace("DELETE", "DEL")} ${normalize(prefix)}`);
+      }
     }
   };
   for (const m of backendModules(join(ROOT, "backend"))) {
-    walk(join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"));
+    walk(join(ROOT, "backend", m, "src/main/java/ai/neargo"));
   }
   return out;
 }

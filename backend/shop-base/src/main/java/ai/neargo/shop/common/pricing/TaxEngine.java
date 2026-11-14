@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import ai.neargo.shop.common.pricing.TaxAdjustmentResolver.AdjustedLines;
 
@@ -13,22 +14,44 @@ public final class TaxEngine {
     /** Estimates one frozen scope without granting permission to issue an invoice or consume assets. */
     public ProvisionalTaxResult estimate(List<Line> lines, TaxPolicy policy, Context context) {
         checkPolicy(policy, context);
+        return new ProvisionalTaxResult(policy, context, calculateLines(lines, policy.currency(),
+                policy.priceMode(), policy.rates(), context.sourceSnapshotHash(), context.sourceVersion()));
+    }
+
+    /** Merchant-managed tax uses the same line arithmetic without pretending to verify a legal tax profile. */
+    public ConfiguredTaxResult estimateConfigured(List<Line> lines, MerchantTaxSnapshot snapshot,
+            String sourceHash, long sourceVersion) {
+        Objects.requireNonNull(snapshot);
+        lines = PricingRuleCandidate.bounded(lines, 1024);
+        if (lines.isEmpty()) throw failure("TAX_LINES_MISSING");
+        String currency = lines.getFirst().source().baseAmount().currency();
+        var rates = new LinkedHashMap<TaxClass, Integer>();
+        rates.put(TaxClass.STANDARD, snapshot.rateBp());
+        rates.put(TaxClass.ZERO_RATED, 0);
+        rates.put(TaxClass.EXEMPT, null);
+        rates.put(TaxClass.OUT_OF_SCOPE, null);
+        return new ConfiguredTaxResult(snapshot, currency, calculateLines(lines, currency,
+                snapshot.priceTaxMode(), rates, sourceHash, sourceVersion));
+    }
+
+    private List<TaxLineResult> calculateLines(List<Line> lines, String currency, PriceTaxMode priceMode,
+            Map<TaxClass, Integer> rates, String sourceHash, long sourceVersion) {
         lines = PricingRuleCandidate.bounded(lines, 1024);
         if (lines.isEmpty()) {
             throw failure("TAX_LINES_MISSING");
         }
         for (var line : lines) {
-            if (!line.source().baseAmount().currency().equals(policy.currency())) {
+            if (!line.source().baseAmount().currency().equals(currency)) {
                 throw failure("TAX_CURRENCY_MISMATCH");
             }
-            if (line.priceMode() != policy.priceMode()) {
+            if (line.priceMode() != priceMode) {
                 throw failure("TAX_PRICE_MODE_MISMATCH");
             }
-            if (line.taxClass() == TaxClass.UNKNOWN || !policy.rates().containsKey(line.taxClass())) {
+            if (line.taxClass() == TaxClass.UNKNOWN || !rates.containsKey(line.taxClass())) {
                 throw failure("TAX_CLASS_UNKNOWN");
             }
         }
-        new PricingFacts(policy.currency(), context.sourceSnapshotHash(), context.sourceVersion(),
+        new PricingFacts(currency, sourceHash, sourceVersion,
                 lines.stream().map(Line::source).toList());
         var grouped = new LinkedHashMap<String, List<Line>>();
         for (var line : lines) {
@@ -38,7 +61,7 @@ public final class TaxEngine {
         for (var entry : grouped.entrySet()) {
             var first = entry.getValue().getFirst();
             var sources = new ArrayList<PricingUnit>();
-            var price = new MoneyMinor(policy.currency(), 0);
+            var price = new MoneyMinor(currency, 0);
             for (var line : entry.getValue()) {
                 if (line.taxClass() != first.taxClass() || line.priceMode() != first.priceMode()
                         || !line.invoiceBase().equals(first.invoiceBase())) {
@@ -50,12 +73,12 @@ public final class TaxEngine {
             if (!price.equals(first.invoiceBase())) {
                 throw failure("TAX_INVOICE_LINE_INCOMPLETE");
             }
-            var zero = new MoneyMinor(policy.currency(), 0);
+            var zero = new MoneyMinor(currency, 0);
             var original = new TaxLineResult(entry.getKey(), first.taxClass(), first.priceMode(),
-                    policy.rates().get(first.taxClass()), sources, zero, zero, zero, zero);
+                    rates.get(first.taxClass()), sources, zero, zero, zero, zero);
             result.add(reprice(original, price));
         }
-        return new ProvisionalTaxResult(policy, context, result);
+        return List.copyOf(result);
     }
 
     /** Recomputes only a complete fixed plan; no funding changes or optimization loop occur here. */
@@ -193,6 +216,28 @@ public final class TaxEngine {
         public MoneyMinor invoiceNet() { return sum(lines, policy.currency(), 0); }
         public MoneyMinor invoiceTax() { return sum(lines, policy.currency(), 1); }
         public MoneyMinor invoiceGross() { return sum(lines, policy.currency(), 2); }
+    }
+
+    /** Backend configuration calculation; not a payment confirmation or a legally finalized invoice. */
+    public static final class ConfiguredTaxResult {
+        private final MerchantTaxSnapshot snapshot;
+        private final String currency;
+        private final List<TaxLineResult> lines;
+
+        private ConfiguredTaxResult(MerchantTaxSnapshot snapshot, String currency, List<TaxLineResult> lines) {
+            this.snapshot = snapshot;
+            this.currency = currency;
+            this.lines = List.copyOf(lines);
+            invoiceNet();
+            invoiceTax();
+            invoiceGross();
+        }
+
+        public MerchantTaxSnapshot snapshot() { return snapshot; }
+        public List<TaxLineResult> lines() { return lines; }
+        public MoneyMinor invoiceNet() { return sum(lines, currency, 0); }
+        public MoneyMinor invoiceTax() { return sum(lines, currency, 1); }
+        public MoneyMinor invoiceGross() { return sum(lines, currency, 2); }
     }
 
     /** Failure never contains a partial monetary result that a caller could display or settle. */

@@ -113,6 +113,8 @@ class GoodsSaleScopeFlowTest {
         g.setTitle("销售范围测试商品");
         g.setType("STANDARD");
         g.setOnSale(true);
+        // 在售 = 过审且上架：买家详情只给过审的货，只置 on_sale 的种子是一件「没审过就在卖」的货
+        g.setAuditStatus("APPROVED");
         goodsMapper.insert(g);
         return g.getGoodsNo();
     }

@@ -1,0 +1,355 @@
+{
+  "commit": "e8171d9258d39cdca05851aa892ec3c1140c93fc",
+  "diagnosticOnly": true,
+  "testFailureIgnore": true,
+  "notGateEvidence": true,
+  "worktree": "/private/tmp/ai-shop-print-e817-diagnostic",
+  "log": "/tmp/print-e817-all-batches-diagnostic.log",
+  "totals": {
+    "tests": 6202,
+    "failures": 8,
+    "errors": 8,
+    "skipped": 159
+  },
+  "modules": {
+    "backend/shop-store-mybatis": 55,
+    "backend/shop-core": 775,
+    "backend/svc-client": 10,
+    "backend/shop-report": 54,
+    "backend/pay/pay-svc": 71,
+    "backend/pay/pay-domain": 377,
+    "backend/pay/pay-channel": 62,
+    "backend/shop-auth-store": 34,
+    "backend/shop-merchant": 87,
+    "backend/shop-inventory": 13,
+    "backend/print/print-agent": 6,
+    "backend/print/print-domain": 7,
+    "backend/print/print-channel": 45,
+    "backend/shop-notify": 14,
+    "backend/job/job-core": 32,
+    "backend/job/job-worker": 19,
+    "backend/job/job-store": 15,
+    "backend/job/job-api": 11,
+    "backend/shop-app": 4034,
+    "backend/shop-base-auth": 31,
+    "backend/logistics/logistics-channel": 27,
+    "backend/logistics/logistics-domain": 69,
+    "backend/shop-base": 313,
+    "backend/shop-channel": 41
+  },
+  "batchesStarted": [
+    "default-test",
+    "test-batch-d-f",
+    "test-batch-g-l",
+    "test-batch-m-n",
+    "test-batch-o",
+    "test-batch-p",
+    "test-batch-q-r",
+    "test-batch-rest"
+  ],
+  "failures": [
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "test": "trustedQuoteConfirmAndOriginalEventRecoverWithoutDoubleDiscount(String)[1]",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'015619c4-1267-496c-a607-911cd66ec7b3' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'015619c4-1267-496c-a607-911cd66ec7b3' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too long for",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "test": "trustedQuoteConfirmAndOriginalEventRecoverWithoutDoubleDiscount(String)[2]",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'be34bdff-1627-4470-bf32-c10f52388d78' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'be34bdff-1627-4470-bf32-c10f52388d78' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too long for",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "test": "trustedQuoteConfirmAndOriginalEventRecoverWithoutDoubleDiscount(String)[3]",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'7605d782-63b2-485c-a2b2-d5b723adcb1b' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'7605d782-63b2-485c-a2b2-d5b723adcb1b' (36)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too long for",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.arch.MediaRefCoverageTest",
+      "test": "everyImageColumnIsClaimed",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "ai.neargo.shop.media.FoodPresentationMediaRefs.<init>()",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.MediaRefCoverageTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.paybridge.StoredValueNotificationSubscriberTest",
+      "test": "otherAssetKindsKeepTheirExistingInboxRoute",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "\nWanted but not invoked:\nmessageService.push(\n    \"U1\",\n    \"TRADE\",\n    <any>,\n    <any>,\n    null,\n    <any>\n);\n-> at ai.neargo.shop.paybridge.StoredValueNotificationSubscriberTest.otherAssetKindsKeepTheirExistingInboxRoute(StoredValueNotificationSubscriberTest.java:55)\n\nHowever, there was exactly 1 interaction with this mock:\nmessageService.pushTo(\n    \"USER\",\n    \"U1\",\n    \"TRADE\",\n    \"核销成功\",\n    \"本次消费已核销，可在消费记录中查看。\",\n    null,\n    \"EN4c8d49d8c17a5280979e5ce023cbcfc0d61f0b8e11b710e6ba5e1ee8aa0c793b\"\n);\n-> at ai.neargo.shop.paybridge.EntitlementNotificationSubscriber.consume(EntitlementNotificationSubscriber.java:101)\n\n",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.paybridge.StoredValueNotificationSubscriberTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.GroupOrderFlowTest",
+      "test": "goodsPageGroupBlock",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "\nExpecting actual:\n  \"[{\"groupNo\":\"GB261025R9JBAW2STY\",\"goodsNo\":\"G0001\",\"title\":\"五常大米 10斤装\",\"cover\":\"🍚\",\"merchant\":{\"merchantNo\":\"M0001\",\"name\":\"老张粮油店\",\"logo\":\"\",\"rating\":5.0,\"ratingCount\":0,\"verified\":true,\"breachCount\":0,\"selfOperated\":false},\"initiatorNickname\":\"微信用户\",\"initiatorAvatar\":\"\",\"pickupNo\":\"PP0001\",\"pickupName\":\"老张粮油店（自提点）\",\"basePrice\":4980,\"groupPrice\":1000,\"minCount\":2,\"joinedCount\":1,\"reached\":false,\"need\":1,\"expireAt\":1792946033221,\"members\":[{\"avatar\":\"\",\"nickname\":\"微信用户\"}],\"joined\":false,\"isOwner\":false,\"status\":\"OPEN\",\"neighborPickup\":null,\"activityNo\":\"PT261025TDHDFSFCJQ\",\"activityName\":null,\"myOrderNo\":null},{\"groupNo\":\"GB261025424433JNA9\",\"goodsNo\":\"G0001\",\"title\":\"五常大米 10斤装\",\"cover\":\"🍚\",\"merchant\":{\"merchantNo\":\"M0001\",\"name\":\"老张粮油店\",\"logo\":\"\",\"rating\":5.0,\"ratingCount\":0,\"verified\":true,\"breachCount\":0,\"selfOperated\":false},\"initiatorNickname\":null,\"initiatorAvatar\":\"\",\"pickupNo\":null,\"pickupName\":\"\",\"basePrice\":4980,\"groupPrice\":1000,\"minCount\":2,\"joinedCount\":0,\"reached\":false,\"need\":2,\"expireAt\":1793010831534,\"members\":[],\"joined\":false,\"isOwner\":false,\"status\":\"OPEN\",\"neighborPickup\":null,\"activityNo\":\"PT261025QWNQ61M7GB\",\"activityName\":null,\"myOrderNo\":null},{\"groupNo\":\"GB261025Z7FP1GECQ8\",\"goodsNo\":\"G0001\",\"title\":\"五常大米 10斤装\",\"cover\":\"🍚\",\"merchant\":{\"merchantNo\":\"M0001\",\"name\":\"老张粮油店\",\"logo\":\"\",\"rating\":5.0,\"ratingCount\":0,\"verified\":true,\"breachCount\":0,\"selfOperated\":false},\"initiatorNickname\":null,\"initiatorAvatar\":\"\",\"pickupNo\":null,\"pickupName\":\"\",\"basePrice\":4980,\"groupPrice\":900,\"minCount\":2,\"joinedCount\":0,\"reached\":false,\"need\":2,\"expireAt\":1793010831685,\"members\":[],\"joined\":false,\"isOwner\":false,\"status\":\"OPEN\",\"neighborPickup\":null,\"activityNo\":\"PT2610254WZ2EXVQE7\",\"activityName\":null,\"myOrderNo\":null}]\"\nto contain:\n  \"GB26102",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.GroupOrderFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.arch.MpEndpointAuthTest",
+      "test": "loginRequiredEndpointsRejectAnonymous",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[这些端点登记为「要登录」，但匿名访问没有被拒：[GET /mp/points/records → 404, GET /mp/points/account → 404]\n\n要么是有人删掉了取当前用户那一步（于是它成了匿名可调的口子），\n要么是这条登记本来就错。两种都要当场查清楚。] \nExpecting empty but was: [\"GET /mp/points/records → 404\", \"GET /mp/points/account → 404\"]",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.MpEndpointAuthTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.arch.MpEndpointAuthTest",
+      "test": "everyMpEndpointIsClassified",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[这些 /mp 端点还没决定要不要登录：[GET /mp/order/{orderNo}/points-earning, GET /mp/order/{orderNo}/points-state, GET /mp/points/accounts, GET /mp/points/entries, GET /mp/stored-value/issuer-records, GET /mp/stored-value/issuers, GET /mp/stored-value/notification-capability, GET /mp/stored-value/records/locate, POST /mp/order/points-quote]\n\n每一个都可能是匿名可调的口子。跑一遍不带令牌的请求看它回什么，\n然后加进 REQUIRES_LOGIN / ANONYMOUS；判不出来的放 UNDETERMINED\n并说明为什么判不出；平台回调放 PLATFORM_CALLBACK，\n**并给它写一条自己的判据**。] \nExpecting empty but was: [\"GET /mp/order/{orderNo}/points-earning\",\n    \"GET /mp/order/{orderNo}/points-state\",\n    \"GET /mp/points/accounts\",\n    \"GET /mp/points/entries\",\n    \"GET /mp/stored-value/issuer-records\",\n    \"GET /mp/stored-value/issuers\",\n    \"GET /mp/stored-value/notification-capability\",\n    \"GET /mp/stored-value/records/locate\",\n    \"POST /mp/order/points-quote\"]",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.MpEndpointAuthTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.arch.OrphanModuleTest",
+      "test": "noJavaOutsideTheMavenBuild",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[这些 Java 文件在 backend/ 之外，不参与 Maven 构建：[backend-plugins/shop-industry-food/food-web/src/test/java/ai/neargo/shop/food/fixture/web/WebProbes.java]\n\n  不参与构建的代码**不会编译失败、不会有测试变红**，\n  于是它会静静地跟真身分叉 —— 而搜索会命中它、读的人会把它当成现状。\n\n  要么把它挪进 backend/ 的某个模块（并登记进父 pom 的 <modules>），\n  要么删掉。**删之前先与真身逐个比对**：\n  上一个孤儿副本里有两行真身已经丢掉的注释。] \nExpecting empty but was: [\"backend-plugins/shop-industry-food/food-web/src/test/java/ai/neargo/shop/food/fixture/web/WebProbes.java\"]",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.OrphanModuleTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.unit.StoredValueOfflineCreditResultTest",
+      "test": "returnsThePostingResultWhenAnOldReadStillSeesReceived",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "Cannot invoke \"ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.one(String, Object[])\" because \"this.db\" is null",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.unit.StoredValueOfflineCreditResultTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryReserveTtlCapTest",
+      "test": "absurdTtlIsRejected",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[拒是拒了，但不是 TTL 那道闸拒的（探针 owner 不存在，走到后面会以缺货拒）—— 这一条就没测到东西] \nexpected: BAD_REQUEST\n but was: FORBIDDEN",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.InventoryReserveTtlCapTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryFlowTest",
+      "test": "backfillLeavesNoDiff",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[搬过的条目两边的数必须一致且没有待搬的，否则不得切真相源；差异：[Diff[entityNo=M0001, storeNo=null, skuNo=SK0003, platformQty=300, inventoryQty=300, platformHeld=4, inventoryHeld=0]]，待搬：0] \nExpecting value to be true but was false",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.InventoryFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.arch.FunctionPointPermAlignmentTest",
+      "test": "everyUsedPermIsRegistered",
+      "status": "failure",
+      "module": "backend/shop-app",
+      "message": "[这些权限码有端点在用，但没登记成功能点 —— 在运营端的权限配置界面里**看不到、配不了**。由于 @perm.can 认通配，持 * 的超管仍然能用，于是这个能力事实上只有超管有，而这件事在任何界面上都看不出来：] \nExpecting empty but was: [\"elec:base:manage\",\n    \"elec:part:read\",\n    \"elec:rfq:quote\",\n    \"elec:rfq:read\",\n    \"elec:supplier:manage\",\n    \"elec:supplier:read\"]",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.FunctionPointPermAlignmentTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "test": "zeroCashCheckoutMustKeepThePaidOrderAndItsEntitlementDecisionAtomic",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-Mc2915b75-c0df-4734-b699-59ed3fe2661b' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-Mc2915b75-c0df-4734-b699-59ed3fe2661b' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too ",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "test": "actualHeldCouponIsAppliedOnceAndPaymentSealPreventsRepricing",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-M6e5432d6-8ec1-491c-9bf5-ee5672485714' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-M6e5432d6-8ec1-491c-9bf5-ee5672485714' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too ",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest.xml"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "test": "failedTerminalOutboxRollsBackTheCorePaidDecisionWithoutReleasingThePayHold",
+      "status": "error",
+      "module": "backend/shop-app",
+      "message": "\n### Error updating database.  Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-M0c28fe94-d4fd-4902-a4ae-bb558382210c' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n### The error may exist in ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java (best guess)\n### The error may involve ai.neargo.shop.trade.order.printing.OrderPrintFactMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  )\n### Cause: org.h2.jdbc.JdbcSQLDataException: Value too long for column \"entity_no CHARACTER VARYING(32)\": \"'OF-M0c28fe94-d4fd-4902-a4ae-bb558382210c' (40)\"; SQL statement:\nINSERT INTO ord_print_fact  ( tenant_no, entity_no, store_no, print_fact_no, order_no, sub_order_no, source_fact_key, receipt_intent_key, biz_revision, scene, trigger_type, payload_schema_version, source_occurred_at, snapshot, snapshot_hash, printability,  diagnostics, revision, created_at, updated_at )  VALUES (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?  ) [22001-240]\n; Value too ",
+      "report": "/private/tmp/ai-shop-print-e817-diagnostic/backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest.xml"
+    }
+  ],
+  "mavenFinished": true,
+  "batchesCompleted": [
+    {
+      "batch": "default-test",
+      "tests": 609,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 4
+    },
+    {
+      "batch": "test-batch-d-f",
+      "tests": 376,
+      "failures": 1,
+      "errors": 6,
+      "skipped": 10
+    },
+    {
+      "batch": "test-batch-g-l",
+      "tests": 357,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 5
+    },
+    {
+      "batch": "test-batch-m-n",
+      "tests": 593,
+      "failures": 2,
+      "errors": 1,
+      "skipped": 0
+    },
+    {
+      "batch": "test-batch-o",
+      "tests": 483,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "batch": "test-batch-p",
+      "tests": 728,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 10
+    },
+    {
+      "batch": "test-batch-q-r",
+      "tests": 219,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 11
+    },
+    {
+      "batch": "test-batch-rest",
+      "tests": 669,
+      "failures": 1,
+      "errors": 1,
+      "skipped": 1
+    }
+  ],
+  "allEightBatchesCompleted": true,
+  "failureMethods": [
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "method": "trustedQuoteConfirmAndOriginalEventRecoverWithoutDoubleDiscount",
+      "cases": 3,
+      "statuses": [
+        "error"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.arch.MediaRefCoverageTest",
+      "method": "everyImageColumnIsClaimed",
+      "cases": 1,
+      "statuses": [
+        "error"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.paybridge.StoredValueNotificationSubscriberTest",
+      "method": "otherAssetKindsKeepTheirExistingInboxRoute",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.GroupOrderFlowTest",
+      "method": "goodsPageGroupBlock",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.arch.MpEndpointAuthTest",
+      "method": "loginRequiredEndpointsRejectAnonymous",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.arch.MpEndpointAuthTest",
+      "method": "everyMpEndpointIsClassified",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.arch.OrphanModuleTest",
+      "method": "noJavaOutsideTheMavenBuild",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.unit.StoredValueOfflineCreditResultTest",
+      "method": "returnsThePostingResultWhenAnOldReadStillSeesReceived",
+      "cases": 1,
+      "statuses": [
+        "error"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryReserveTtlCapTest",
+      "method": "absurdTtlIsRejected",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.InventoryFlowTest",
+      "method": "backfillLeavesNoDiff",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.arch.FunctionPointPermAlignmentTest",
+      "method": "everyUsedPermIsRegistered",
+      "cases": 1,
+      "statuses": [
+        "failure"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "method": "zeroCashCheckoutMustKeepThePaidOrderAndItsEntitlementDecisionAtomic",
+      "cases": 1,
+      "statuses": [
+        "error"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "method": "actualHeldCouponIsAppliedOnceAndPaymentSealPreventsRepricing",
+      "cases": 1,
+      "statuses": [
+        "error"
+      ]
+    },
+    {
+      "class": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "method": "failedTerminalOutboxRollsBackTheCorePaidDecisionWithoutReleasingThePayHold",
+      "cases": 1,
+      "statuses": [
+        "error"
+      ]
+    }
+  ],
+  "command": "mvn -o -B -fae -Dmaven.test.failure.ignore=true test"
+}

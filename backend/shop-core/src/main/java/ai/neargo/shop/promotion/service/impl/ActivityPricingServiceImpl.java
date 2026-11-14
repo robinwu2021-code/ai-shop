@@ -1,32 +1,439 @@
 package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtActivity;
-import ai.neargo.shop.promotion.entity.PmtApply;
+import ai.neargo.shop.promotion.entity.PmtActivityVersion;
+import ai.neargo.shop.promotion.entity.PmtActivityRule;
+import ai.neargo.shop.promotion.entity.PmtEnrollment;
+import ai.neargo.shop.promotion.entity.PmtEnrollmentGoods;
+import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
+import ai.neargo.shop.promotion.dto.UnifiedActivityDefinition;
+import ai.neargo.shop.promotion.policy.ActivityRuleValidator;
+import ai.neargo.shop.spi.marketing.CounterCampaignContract;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.core.StreamReadFeature;
+import java.time.Instant;
+import java.time.LocalTime;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
+import ai.neargo.shop.promotion.entity.PmtApply;
+import ai.neargo.shop.promotion.entity.PmtCoupon;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityAudienceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
+import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import javax.sql.DataSource;
+
 @Service
 public class ActivityPricingServiceImpl implements ActivityPricingService {
+
+    @Autowired
+    @Qualifier("sqlSessionFactory")
+    private SqlSessionFactory counterSessions;
+
+    private void currentCounterReads() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var session = SqlSessionUtils.getSqlSession(counterSessions);
+        try {
+            session.clearCache();
+        } finally {
+            SqlSessionUtils.closeSqlSession(session, counterSessions);
+        }
+    }
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Autowired
+    private PmtActivityVersionMapper counterVersions;
+    @Autowired
+    private ObjectMapper counterJson;
+
+    @Override
+    public void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices) {
+        rejectUnsupportedCounterChoices(groups, choices, System.currentTimeMillis());
+    }
+
+    @Override
+    public void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices, long ownerNowMillis) {
+        var canonical = CounterCampaignContract.canonicalGroups(groups);
+        var choice = CounterCampaignContract.resolveChoices(canonical, choices).getFirst();
+        probeCounter(canonical.getFirst(), choice.mode(), choice.activityNo(), ownerNowMillis, false);
+    }
+
+    @Override
+    public void rejectUnsupportedCounterPriceEffects(List<CampaignPort.MerchantAmount> groups, long ownerNowMillis) {
+        probeCounter(CounterCampaignContract.canonicalGroups(groups).getFirst(), "NONE", null,
+                ownerNowMillis, true);
+    }
+
+    private void probeCounter(CampaignPort.MerchantAmount group, String mode, String explicit,
+            long now, boolean mandatoryOnly) {
+        currentCounterReads();
+        try {
+            DataScopeContext.executeWithoutScope(() -> {
+                var heads = activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getEntityNo, group.merchantNo()));
+                var storeIds = new HashSet<>(activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getEntityNo, group.merchantNo())
+                        .eq(PmtActivity::getStoreNo, group.storeNo())).stream().map(PmtActivity::getId).toList());
+                for (var head : heads) {
+                    if (head.getStoreNo() != null && !head.getStoreNo().isBlank()
+                            && !storeIds.contains(head.getId())) {
+                        continue;
+                    }
+                    if (!mandatoryOnly && explicit != null && explicit.equals(head.getActivityNo())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    requireCounterEffect(head, group, now, mandatoryOnly || !"AUTO".equals(mode));
+                }
+                if (enrollmentMapper == null || enrollmentGoodsMapper == null) {
+                    throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                }
+                // Capacity and audience are not evidence of objective irrelevance.
+                var enrollments = enrollmentMapper.selectList(Wrappers.<PmtEnrollment>lambdaQuery()
+                        .eq(PmtEnrollment::getTenantNo, "MAIN").eq(PmtEnrollment::getDeleted, 0)
+                        .eq(PmtEnrollment::getEntityNo, group.merchantNo())
+                        .eq(PmtEnrollment::getStatus, PmtEnrollment.APPROVED));
+                for (var enrollment : enrollments) {
+                    var enrolled = enrollmentGoodsMapper.selectList(Wrappers.<PmtEnrollmentGoods>lambdaQuery()
+                            .eq(PmtEnrollmentGoods::getTenantNo, "MAIN").eq(PmtEnrollmentGoods::getDeleted, 0)
+                            .eq(PmtEnrollmentGoods::getEnrollmentNo, enrollment.getEnrollmentNo()))
+                            .stream().map(PmtEnrollmentGoods::getGoodsNo).toList();
+                    var lines = group.lines().stream().filter(l -> enrolled.contains(l.goodsNo())).toList();
+                    if (lines.isEmpty()) {
+                        continue;
+                    }
+                    long amount = 0;
+                    int qty = 0;
+                    for (var line : lines) {
+                        amount = Math.addExact(amount, line.amount());
+                        qty = Math.addExact(qty, line.qty());
+                    }
+                    var head = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                            .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                            .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
+                            .eq(PmtActivity::getActivityNo, enrollment.getActivityNo()));
+                    if (head == null) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    if (!mandatoryOnly && explicit != null && explicit.equals(head.getActivityNo())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    requireCounterEffect(head, new CampaignPort.MerchantAmount(group.merchantNo(), amount, qty,
+                            group.storeNo(), lines, false), now, mandatoryOnly || !"AUTO".equals(mode));
+                }
+                return null;
+            });
+        } catch (BizException failure) {
+            throw failure;
+        } catch (RuntimeException invalid) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+    }
+
+    private void requireCounterEffect(PmtActivity head, CampaignPort.MerchantAmount group,
+            long now, boolean mandatoryOnly) {
+        if (!PmtActivity.RUNNING.equals(head.getStatus()) || head.getArchivedAt() != null) {
+            return;
+        }
+        if (head.getCurrentVersionNo() != null && head.getDraftSnapshot() != null) {
+            var version = counterVersions.selectOne(Wrappers.<PmtActivityVersion>lambdaQuery()
+                    .eq(PmtActivityVersion::getTenantNo, "MAIN").eq(PmtActivityVersion::getDeleted, 0)
+                    .eq(PmtActivityVersion::getActivityNo, head.getActivityNo())
+                    .eq(PmtActivityVersion::getVersionNo, head.getCurrentVersionNo()));
+            if (version == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            ActivityVersionServiceImpl.PublishedSnapshot snapshot =
+                    counterJson.readerFor(ActivityVersionServiceImpl.PublishedSnapshot.class)
+                    .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readValue(version.getRuleSnapshot());
+            publishedCounterEffect(snapshot.definition(), group, now, mandatoryOnly);
+            return;
+        }
+        if (!head.isActiveAt(now, MARKET_ZONE)) {
+            return;
+        }
+        var scopeRows = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                .eq(PmtActivityGoods::getTenantNo, "MAIN").eq(PmtActivityGoods::getDeleted, 0)
+                .eq(PmtActivityGoods::getActivityNo, head.getActivityNo()));
+        boolean scopeHit = scopeRows.isEmpty() || scopeRows.stream().anyMatch(row ->
+                PmtActivityGoods.ALL.equals(row.getScopeType())
+                        || PmtActivityGoods.CATEGORY.equals(row.getScopeType())
+                        || PmtActivityGoods.GOODS.equals(row.getScopeType())
+                        && group.lines().stream().anyMatch(line -> row.getRefNo().equals(line.goodsNo())));
+        if (!scopeHit) {
+            return;
+        }
+        if (scopeRows.stream().anyMatch(row -> !List.of("ALL", "CATEGORY", "GOODS")
+                .contains(row.getScopeType()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        if (PmtActivity.BENEFIT_COMBO.equals(head.getBenefitType())) {
+            if (ruleMapper == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            if (counterComboEffect(head, group, mandatoryOnly)) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            return;
+        }
+        boolean mandatory = PmtActivity.BENEFIT_PRICE.equals(head.getBenefitType())
+                || PmtActivity.BENEFIT_GIFT.equals(head.getBenefitType());
+        if (mandatory && scopeRows.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        if (mandatory || !mandatoryOnly && (cutTriggerHits(head, group)
+                && (!PmtActivity.BENEFIT_CUT.equals(head.getBenefitType())
+                        || nz(head.getBenefitAmountMinor()) > 0)
+                || !List.of("NONE", "AMOUNT", "QTY").contains(head.getTriggerType() == null
+                        ? "NONE" : head.getTriggerType()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    private boolean counterComboEffect(PmtActivity head, CampaignPort.MerchantAmount group, boolean mandatoryOnly) {
+        var rows = ruleMapper.selectList(Wrappers.<PmtActivityRule>lambdaQuery()
+                .eq(PmtActivityRule::getTenantNo, "MAIN").eq(PmtActivityRule::getDeleted, 0)
+                .eq(PmtActivityRule::getActivityNo, head.getActivityNo()).orderByAsc(PmtActivityRule::getSeq));
+        if (rows.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var parameters = rows.stream().map(row -> counterJson.reader()
+                .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(row.getParams())).toList();
+        var lines = group.lines();
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if (!params.isObject()) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            if ("CONDITION".equals(row.getKind()) && "GOODS".equals(row.getRuleType())) {
+                var goods = params.get("goodsNos");
+                if (goods == null || !goods.isArray() || goods.isEmpty()) {
+                    throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                }
+                var refs = new HashSet<String>();
+                for (var value : goods) {
+                    if (!value.isString() || value.asString().isBlank()
+                            || !value.asString().equals(value.asString().strip())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    refs.add(value.asString());
+                }
+                lines = lines.stream().filter(line -> refs.contains(line.goodsNo())).toList();
+            }
+        }
+        if (lines.isEmpty()) {
+            return false;
+        }
+        long amount = 0;
+        int quantity = 0;
+        for (var line : lines) {
+            amount = Math.addExact(amount, line.amount());
+            quantity = Math.addExact(quantity, line.qty());
+        }
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if ("CONDITION".equals(row.getKind())) {
+                switch (row.getRuleType()) {
+                    case "GOODS" -> { }
+                    case "AMOUNT" -> {
+                        if (amount < counterPositive(params, "amountMinor")) {
+                            return false;
+                        }
+                    }
+                    case "QTY" -> {
+                        if (quantity < counterPositive(params, "n")) {
+                            return false;
+                        }
+                    }
+                    default -> throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            } else if (!"BENEFIT".equals(row.getKind())) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+        }
+        long off = 0;
+        boolean effect = false;
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if (!"BENEFIT".equals(row.getKind())) {
+                continue;
+            }
+            switch (row.getRuleType()) {
+                case "CUT" -> off = Math.addExact(off, Math.min(counterPositive(params, "amountMinor"), amount - off));
+                case "PERCENT" -> {
+                    var bp = params.get("bp");
+                    if (bp == null || !bp.isIntegralNumber() || bp.longValue() < 0 || bp.longValue() > 10000) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    long cut = Math.multiplyExact(amount - off, 10000 - bp.longValue()) / 10000;
+                    off = Math.addExact(off, Math.min(cut, counterPositive(params, "capMinor")));
+                }
+                case "POINTS" -> effect |= counterPositive(params, "n") > 0 && !mandatoryOnly;
+                case "PRICE", "GIFT" -> effect = true;
+                case "COUPON", "ENTITLEMENT" -> effect |= !mandatoryOnly;
+                default -> throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+        }
+        return effect || !mandatoryOnly && off > 0;
+    }
+
+    private static long counterPositive(JsonNode params, String field) {
+        var value = params.get(field);
+        if (value == null || !value.isIntegralNumber() || !value.canConvertToLong() || value.longValue() <= 0) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        return value.longValue();
+    }
+
+    private void publishedCounterEffect(UnifiedActivityDefinition definition, CampaignPort.MerchantAmount group,
+            long nowMillis, boolean mandatoryOnly) {
+        try {
+            new ActivityRuleValidator().validate(definition);
+        } catch (RuntimeException malformed) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var scope = definition.storeParticipationScope();
+        if (!"ALL".equals(scope.mode()) && !scope.refs().contains(group.storeNo())) {
+            return;
+        }
+        var now = Instant.ofEpochMilli(nowMillis);
+        var schedule = definition.schedule();
+        if (now.isBefore(schedule.startAt()) || schedule.endAt() != null && !now.isBefore(schedule.endAt())) {
+            return;
+        }
+        if ("RECURRING".equals(schedule.type())) {
+            var local = now.atZone(ZoneId.of(schedule.zone()));
+            if (!schedule.weekdays().contains(local.getDayOfWeek().getValue())
+                    || local.toLocalTime().isBefore(LocalTime.parse(schedule.from()))
+                    || !local.toLocalTime().isBefore(LocalTime.parse(schedule.to()))) {
+                return;
+            }
+        }
+        var trigger = definition.rule().trigger();
+        if ("AMOUNT".equals(trigger.type()) && group.goodsAmount() < trigger.amountMinor()
+                || "QTY".equals(trigger.type()) && group.goodsQty() < trigger.quantity()) {
+            return;
+        }
+        boolean effect = false;
+        for (var benefit : definition.rule().benefits()) {
+            boolean mandatory = List.of("PRICE", "GIFT").contains(benefit.kind());
+            if ((mandatory || !mandatoryOnly) && (!"CUT".equals(benefit.kind())
+                    || benefit.amountMinor() == null || benefit.amountMinor() > 0)) {
+                effect = true;
+            }
+        }
+        if (effect || !mandatoryOnly && !definition.rule().tiers().isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    @Override
+    public void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos) {
+        if (goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (goodsNos.isEmpty()) {
+            return;
+        }
+        DataScopeContext.executeWithoutScope(() -> {
+            long now = System.currentTimeMillis();
+            var references = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                    .eq(PmtActivityGoods::getTenantNo, "MAIN").eq(PmtActivityGoods::getDeleted, 0)
+                    .in(PmtActivityGoods::getRefNo, goodsNos));
+            for (var reference : references) {
+                var head = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getActivityNo, reference.getActivityNo()));
+                if (head != null && head.getArchivedAt() == null && head.isActiveAt(now, MARKET_ZONE)
+                        && (head.getCurrentVersionNo() != null
+                                || List.of("PRICE", "GIFT", "COMBO").contains(head.getBenefitType()))) {
+                    throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public void requireOrdinarySelection(String buyerNo, CampaignPort.Discount selected) {
+        boolean locked = TransactionSynchronizationManager.isActualTransactionActive();
+        if (locked && !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    for (var selectedRow :
+                            selected.applied().stream()
+                                    .sorted(
+                                            Comparator.comparing(
+                                                    CampaignPort.AppliedActivity::activityNo))
+                                    .toList()) {
+                        var row =
+                                activityMapper.selectOne(
+                                        Wrappers.<PmtActivity>lambdaQuery()
+                                                .eq(PmtActivity::getTenantNo, "MAIN")
+                                                .eq(
+                                                        PmtActivity::getActivityNo,
+                                                        selectedRow.activityNo())
+                                                .last(locked ? "FOR UPDATE" : ""));
+                        boolean ordinary =
+                                row != null
+                                        && (row.getCurrentVersionNo() == null
+                                                ? PmtActivity.BENEFIT_CUT.equals(
+                                                        row.getBenefitType())
+                                                : unifiedOrders != null
+                                                        && unifiedOrders.supportsOrdinarySelection(
+                                                                row.getActivityNo()));
+                        if (!ordinary) {
+                            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                        }
+                    }
+                });
+    }
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(ActivityPricingServiceImpl.class);
@@ -172,8 +579,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     ComboHit h = comboHit(a, g);
                     if (h != null && (g.pointsRewardsEnabled() || h.points() == 0)
                             && (h.off() > 0 || h.points() > 0)) {
+                        // 预算只剩一部分时按剩余封顶（理由见下面减钱那一支）
                         out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
-                                h.off(), 1, 0L, null, a.getName()).atStore(g.storeNo()));
+                                Math.min(h.off(), a.budgetLeft()), 1, 0L, null, a.getName()).atStore(g.storeNo()));
                     }
                     continue;
                 }
@@ -183,6 +591,12 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 }
                 // 减不能超过商品额：券那边同一条规矩，否则会减出负数
                 long off = Math.min(nz(a.getBenefitAmountMinor()), g.goodsAmount());
+                /*
+                 * 也不能超过剩余预算：预算剩 4 元时照减 6 元，扣预算那条带条件的 UPDATE 会拒掉这一单，
+                 * 而活动看起来还「有预算」—— 之后每一单都减、每一单都扣不进去，预算形同虚设。
+                 * 按剩余封顶，最后一单正好把预算用完，活动随之结束。
+                 */
+                off = Math.min(off, a.budgetLeft());
                 if (off > 0) {
                     out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
                             off, 1, 0L, null, a.getName()).atStore(g.storeNo()));
@@ -215,10 +629,40 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
                                 CampaignPort.AppliedDiscount.ACTIVITY)));
+        // 平台活动按出资方记两行，份数只跟平台那一行退（见 releasePlatform）：先记下哪些活动有平台那一行
+        java.util.Set<String> withPlatformRow = new java.util.HashSet<>();
+        for (var r : rows) {
+            if (ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder())) {
+                withPlatformRow.add(r.getPromoNo() + "|" + r.getEntityNo());
+            }
+        }
         for (var r : rows.stream().sorted(java.util.Comparator.comparing(PmtApply::getPromoNo)
                 .thenComparing(r -> r.getStoreNo() == null ? "" : r.getStoreNo())).toList()) {
             if (unifiedOrders != null && unifiedOrders.release(r)) continue;
-            long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
+            // Item commits take activity -> application locks; cancellation uses the same order.
+            PmtActivity itemActivity = r.getBudgetMinor() == null ? null
+                    : DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                            Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
+                                    .last("FOR UPDATE")));
+            /*
+             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次；
+             * 并且**先删、删中了才退** —— 两次关单并发撞在一起时，只有删中那一行的那次退量，
+             * 不会两边都退。不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
+             */
+            int claimed = DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+            // 超发那一行没占份数也没占预算（见 commit）：作废即可，退了就是退走别人的那一份
+            if (claimed != 1 || PmtApply.QUOTA_OVERRUN.equals(r.getRedeemMode())) {
+                continue;
+            }
+            long amount = r.getBudgetMinor() == null ? nz(r.getAmountMinor()) : r.getBudgetMinor();
+            PmtActivity a = itemActivity != null ? itemActivity
+                    : DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                    Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .last("limit 1")));
+            if (a != null && a.isPlatform()) {
+                releasePlatform(r, amount, withPlatformRow.contains(r.getPromoNo() + "|" + r.getEntityNo()));
+                continue;
+            }
             /*
              * 配额按「份」退，一单占一份（与 commit 那边的 qty 同一口径）。
              * **用 SQL 直接减并且不许减成负数** —— 并发下两次关单撞在一起时，
@@ -231,11 +675,41 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             .setSql("quota_used = quota_used - 1")
                             .setSql("budget_used_minor = GREATEST(budget_used_minor - "
                                     + amount + ", 0)")));
-            /*
-             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次。
-             * 不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
-             */
-            DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+        }
+    }
+
+    /**
+     * 平台活动这一单的退回：**与 {@link #commitPlatform} 扣的逐项对上**。
+     *
+     * <p>那边扣了两样：报名单上的一份（quota_used）、活动上平台出的那部分钱（budget_used_minor += platformMinor），
+     * 并按出资方记了两行 pmt_apply。此前这里按商家活动的口径去减<b>活动</b>的 quota_used —— 平台活动那一列恒为 0，
+     * 带条件的 UPDATE 一行不中，连同预算一起没退：每取消一单，报名永久少一份、平台预算永久少一笔。
+     *
+     * <ul>
+     *   <li>平台那一行：退预算（金额就是当时的 platformMinor），并退报名的那一份 —— 份数只跟这一行退，
+     *       一单只占一份，不能两行各退一次；</li>
+     *   <li>商家那一行：commitPlatform 没有为它扣过任何东西，作废即可。</li>
+     * </ul>
+     * 平台出资为 0 的单（全由商家出）只有商家那一行，份数跟它退。
+     */
+    private void releasePlatform(PmtApply r, long amount, boolean orderHasPlatformRow) {
+        boolean platformRow = ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder());
+        if (!platformRow && orderHasPlatformRow) {
+            return;
+        }
+        if (platformRow && amount > 0) {
+            DataScopeContext.executeWithoutScope(() -> activityMapper.update(null,
+                    Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .setSql("budget_used_minor = GREATEST(budget_used_minor - " + amount + ", 0)")));
+        }
+        if (enrollmentMapper != null) {
+            DataScopeContext.executeWithoutScope(() -> enrollmentMapper.update(null,
+                    Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollment>lambdaUpdate()
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getActivityNo, r.getPromoNo())
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getEntityNo, r.getEntityNo())
+                            .apply("quota_used > 0")
+                            .setSql("quota_used = quota_used - 1")));
         }
     }
 
@@ -321,8 +795,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         List<ai.neargo.shop.promotion.entity.PmtActivityRule> rules = DataScopeContext.executeWithoutScope(() ->
                 ruleMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
-                        .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, a.getActivityNo())
-                        .orderByAsc(ai.neargo.shop.promotion.entity.PmtActivityRule::getSeq)));
+                        .eq(PmtActivityRule::getActivityNo, a.getActivityNo())
+                        .orderByAsc(PmtActivityRule::getSeq)));
         var items = rules.stream().map(ActivityServiceImpl::readParams).toList();
         long amount = g.goodsAmount();
         int qty = g.goodsQty();
@@ -391,9 +865,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         for (String activityNo : promos) {
             total += DataScopeContext.executeWithoutScope(() -> ruleMapper.selectList(
                             Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, activityNo)
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getKind, "BENEFIT")
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getRuleType, "POINTS")))
+                                    .eq(PmtActivityRule::getActivityNo, activityNo)
+                                    .eq(PmtActivityRule::getKind, "BENEFIT")
+                                    .eq(PmtActivityRule::getRuleType, "POINTS")))
                     .stream().map(ActivityServiceImpl::readParams)
                     .mapToLong(r -> r.n() == null ? 0 : r.n()).sum();
         }
@@ -491,10 +965,52 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos) {
+        Map<String, Long> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, nz(a.getBenefitAmountMinor())));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> flashActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    @Override
+    public Map<String, CampaignPort.PriceOffer> flashOffers(String userNo, Collection<String> goodsNos,
+            Map<String, Long> competingPrices, boolean ordinary) {
+        Map<String, CampaignPort.PriceOffer> out = new HashMap<>();
+        flashWinners(userNo, goodsNos, competingPrices, ordinary).forEach((goodsNo, activity) ->
+                out.put(goodsNo, new CampaignPort.PriceOffer(
+                        activity.getActivityNo(), nz(activity.getBenefitAmountMinor()))));
+        return out;
+    }
+
+    @Override
+    public Map<String, Long> ordinaryFlashPrices(
+            String userNo, Collection<String> goodsNos, Map<String, Long> competingPrices) {
+        if (goodsNos == null || goodsNos.isEmpty()) return Map.of();
+        Map<String, Long> out = new HashMap<>(competingPrices);
+        flashWinners(userNo, goodsNos, competingPrices, true).forEach((goodsNo, activity) ->
+                out.merge(goodsNo, nz(activity.getBenefitAmountMinor()), Math::min));
+        return out;
+    }
+
+    /** 每件货此刻胜出的限时特价活动（取最低价）。价与「扣哪个活动的量」共用候选与归属判据。 */
+    private Map<String, PmtActivity> flashWinners(String userNo, Collection<String> goodsNos) {
+        return flashWinners(userNo, goodsNos, Map.of(), false);
+    }
+
+    private Map<String, PmtActivity> flashWinners(String userNo, Collection<String> goodsNos,
+            Map<String, Long> competingPrices, boolean ordinary) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, Long> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
+        Map<String, Long> lowestPrices = new HashMap<>(competingPrices);
+        var unsupportedWinners = new HashSet<String>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
             /*
              * ★ **团购的成团价不是限时特价**（2026-09-18）。
@@ -517,23 +1033,56 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                long price = nz(a.getBenefitAmountMinor());
                 // **取最低价**：与满减「取最优」同一侧 —— 都往对用户有利的方向走
-                out.merge(goodsNo, price, Math::min);
+                long price = nz(a.getBenefitAmountMinor());
+                long previous = lowestPrices.getOrDefault(goodsNo, Long.MAX_VALUE);
+                if (ordinary && price <= previous) {
+                    boolean supported =
+                            PmtActivity.TRIGGER_NONE.equals(a.getTriggerType())
+                                    || PmtActivity.TRIGGER_GOODS.equals(a.getTriggerType());
+                    if (!supported) {
+                        unsupportedWinners.add(goodsNo);
+                    } else if (price < previous) {
+                        unsupportedWinners.remove(goodsNo);
+                    }
+                }
+                lowestPrices.merge(goodsNo, price, Math::min);
+                out.merge(goodsNo, a, (current, candidate) ->
+                        nz(candidate.getBenefitAmountMinor()) < nz(current.getBenefitAmountMinor()) ? candidate : current);
             }
+        }
+        if (!unsupportedWinners.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         }
         return out;
     }
 
     @Override
     public Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos) {
+        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) ->
+                out.put(goodsNo, new CampaignPort.GiftRule(
+                        nz(a.getTriggerQty()), nz(a.getBenefitQty()), a.getActivityNo())));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> giftActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    /** 每件货此刻胜出的买赠活动（送得最多那个） */
+    private Map<String, PmtActivity> giftWinners(String userNo, Collection<String> goodsNos) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT)) {
             if (!audienceHits(a, a.getEntityNo(), userNo)) {
                 continue;
@@ -544,17 +1093,82 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                CampaignPort.GiftRule cur = out.get(goodsNo);
+                PmtActivity cur = out.get(goodsNo);
                 // 送得最多的那个赢 —— 同样往对用户有利的一侧走
-                if (cur == null || giftM > cur.giftM()) {
-                    out.put(goodsNo, new CampaignPort.GiftRule(buyN, giftM));
+                if (cur == null || giftM > nz(cur.getBenefitQty())) {
+                    out.put(goodsNo, a);
                 }
             }
         }
         return out;
+    }
+
+    @Override
+    @Transactional
+    public boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo,
+            int qty, long amountMinor) {
+        if (orderNo == null || activityNo == null || qty <= 0) {
+            return true;
+        }
+        PmtActivity activity = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo)
+                        .eq(PmtActivity::getEntityNo, merchantNo).last("FOR UPDATE")));
+        if (activity == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        CampaignPort.AppliedActivity it = new CampaignPort.AppliedActivity(activityNo, merchantNo, 0L, qty);
+        PmtApply receipt = applyRow(userNo, orderNo, it, 0L, PmtCoupon.BY_MERCHANT, PmtCoupon.REDEEM_ORDER, 0L);
+        receipt.setApplyNo(ActivityCommandDeduplicator.hash(
+                "ITEM_BENEFIT|" + activity.getTenantNo() + "|" + orderNo + "|" + activityNo));
+        try {
+            DataScopeContext.executeWithoutScope(() -> applyMapper.insert(receipt));
+        } catch (DuplicateKeyException replay) {
+            // Insert first uses the existing unique apply_no key, avoiding empty-receipt gap locks under RR.
+            PmtApply original = DataScopeContext.executeWithoutScope(() ->
+                    applyMapper.itemReceipt(activity.getTenantNo(), receipt.getApplyNo()));
+            return !PmtApply.QUOTA_OVERRUN.equals(original.getRedeemMode());
+        }
+        int affected = DataScopeContext.executeWithoutScope(() ->
+                activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                        .eq(PmtActivity::getActivityNo, activityNo)
+                        .in(PmtActivity::getBenefitType, PmtActivity.BENEFIT_PRICE, PmtActivity.BENEFIT_GIFT)
+                        .and(w -> w.isNull(PmtActivity::getQuota)
+                                .or().apply("quota_used + {0} <= quota", qty))
+                        .and(w -> w.isNull(PmtActivity::getBudgetMinor)
+                                .or().le(PmtActivity::getBudgetMinor, 0)
+                                .or().apply("budget_used_minor + {0} <= budget_minor", amountMinor))
+                        .setSql("quota_used = quota_used + " + qty)
+                        .setSql("budget_used_minor = budget_used_minor + " + amountMinor)));
+        if (affected == 0) {
+            log.warn("[活动] 特价/买赠限量或预算已满：活动 {} 订单 {} 份数 {}", activityNo, orderNo, qty);
+            receipt.setRedeemMode(PmtApply.QUOTA_OVERRUN);
+            DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(receipt));
+            return false;
+        }
+        // 一份一行：release 按行退，一行退一份（与 commit 那边「一单一份」同一口径）
+        for (int i = 0; i < qty; i++) {
+            long budget = amountMinor / qty + (i < amountMinor % qty ? 1 : 0);
+            if (i == 0) {
+                receipt.setBudgetMinor(budget);
+                DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(receipt));
+            } else {
+                insertApply(userNo, orderNo, it, 0L, PmtCoupon.BY_MERCHANT, PmtCoupon.REDEEM_ORDER, budget);
+            }
+        }
+        activity.setQuotaUsed(Math.addExact(nz(activity.getQuotaUsed()), qty));
+        activity.setBudgetUsedMinor(Math.addExact(nz(activity.getBudgetUsedMinor()), amountMinor));
+        String endedReason = !activity.hasQuotaLeft() ? PmtActivity.ENDED_QUOTA
+                : !activity.hasBudgetLeft() ? PmtActivity.ENDED_BUDGET : null;
+        if (endedReason != null) {
+            DataScopeContext.executeWithoutScope(() ->
+                    activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, activityNo)
+                            .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                            .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                            .set(PmtActivity::getEndedReason, endedReason)));
+        }
+        return true;
     }
 
     @Override
@@ -578,18 +1192,32 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             // 限量为空 = 不限；有限量时必须还装得下这一单
                             .and(w -> w.isNull(PmtActivity::getQuota)
                                     .or().apply("quota_used + {0} <= quota", it.qty()))
+                            /*
+                             * 预算同理：没设（空或 0）= 不限；设了就必须还装得下这一单的钱。
+                             * 此前这里无条件累加 —— 预算只是一个会一直涨的计数，从不拦任何一单。
+                             */
+                            .and(w -> w.isNull(PmtActivity::getBudgetMinor)
+                                    .or().le(PmtActivity::getBudgetMinor, 0)
+                                    .or().apply("budget_used_minor + {0} <= budget_minor", it.amountMinor()))
                             .setSql("quota_used = quota_used + " + it.qty())
                             .setSql("budget_used_minor = budget_used_minor + "
                                     + it.amountMinor())));
             if (affected == 0) {
                 /*
-                 * 没抢到最后一份。**不抛异常**：订单已经按算价时的金额落库了，
+                 * 没抢到最后一份（或预算装不下这一单）。**不抛异常**：订单已经按算价时的金额落库了，
                  * 这时候翻脸会让用户付了钱却下不成单 —— 那比多发一份的损失大得多。
                  * 记 WARN，让运营看到「超发了几份」：那是限量与并发之间必然存在的
                  * 一点点重叠，不是错误。
                  */
                 log.warn("[活动] 限量已满仍命中：活动 {} 订单 {} 多发 {} 份",
                         it.activityNo(), orderNo, it.qty());
+                /*
+                 * 只记 WARN 不够：这一单确实减了钱，活动效果、对账、订单详情的「优惠依据」却都查不到它，
+                 * 超发了几份只能翻日志。照样记一行，标明是超发（redeem_mode = QUOTA_OVERRUN）——
+                 * 份数与预算都没占，取消时 release 也不退。
+                 */
+                insertApply(userNo, orderNo, it, it.amountMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
                 continue;
             }
             /*
@@ -623,6 +1251,15 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                                 .set(PmtActivity::getStatus, PmtActivity.ENDED)
                                 .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
                 log.info("[活动] {} 到量自动结束", it.activityNo());
+            } else if (a != null && !a.hasBudgetLeft()) {
+                // 预算用完同样收尾，并说清是预算停的（ENDED_BUDGET 此前定义了却从没人写）
+                DataScopeContext.executeWithoutScope(() ->
+                        activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                                .eq(PmtActivity::getActivityNo, it.activityNo())
+                                .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                                .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                                .set(PmtActivity::getEndedReason, PmtActivity.ENDED_BUDGET)));
+                log.info("[活动] {} 预算用完自动结束", it.activityNo());
             }
         }
     }
@@ -643,6 +1280,16 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .setSql("quota_used = quota_used + " + it.qty())));
         if (affected == 0) {
             log.warn("[平台活动] 报名份数已满仍命中：报名 {} 订单 {}", it.enrollmentNo(), orderNo);
+            // 与商家活动同一处理：按出资方照样记账、标超发，份数与预算不占、取消不退
+            long merchantPart = it.amountMinor() - it.platformMinor();
+            if (it.platformMinor() > 0) {
+                insertApply(userNo, orderNo, it, it.platformMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM, PmtApply.QUOTA_OVERRUN);
+            }
+            if (merchantPart > 0) {
+                insertApply(userNo, orderNo, it, merchantPart,
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
+            }
             return;
         }
         DataScopeContext.executeWithoutScope(() -> activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
@@ -658,6 +1305,22 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     }
 
     private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder) {
+        insertApply(userNo, orderNo, it, amount, funder, ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode) {
+        insertApply(userNo, orderNo, it, amount, funder, redeemMode, null);
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode, Long budgetMinor) {
+        PmtApply row = applyRow(userNo, orderNo, it, amount, funder, redeemMode, budgetMinor);
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
+    }
+
+    private PmtApply applyRow(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode, Long budgetMinor) {
         PmtApply row = new PmtApply();
         row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
         row.setPromoType(PmtApply.ACTIVITY);
@@ -665,11 +1328,12 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         row.setUserNo(userNo);
         row.setEntityNo(it.merchantNo());
         row.setOrderNo(orderNo);
-        row.setRedeemMode(ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+        row.setRedeemMode(redeemMode);
         row.setAmountMinor(amount);
+        row.setBudgetMinor(budgetMinor);
         row.setFunder(funder);
         row.setAppliedAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
+        return row;
     }
 
     /**
@@ -694,7 +1358,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a.getStoreNo() != null && !a.getStoreNo().equals(storeNo)) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            // 预算与限量同等对待：用完的活动不再参与算价（只设预算的长期活动靠这一条才停得下来）
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
@@ -718,12 +1384,37 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !benefitType.equals(a.getBenefitType())) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
         }
         return out;
+    }
+
+    /** 货的归属（见 {@link #ownedBy}）。setter 注入：切片测试里没有它时不过滤，运行时恒在 */
+    private ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
+
+    /**
+     * 这件货是不是活动主体自己的。
+     *
+     * <p>保存时已经拦住了别家的货（ActivityServiceImpl#assertGoodsOwned），这里是<b>纵深防御</b>：
+     * 库里可能已有拦截之前存下的行，而按货号反查活动不看活动归属 —— A 店一个 ¥0.01 特价
+     * 就会改掉 B 店那件货在全平台的价。一次调用内按「主体|货号」缓存。
+     */
+    private boolean ownedBy(PmtActivity a, String goodsNo, Map<String, Boolean> cache) {
+        if (productFacts == null) {
+            return true;
+        }
+        String tenant = a.getTenantNo() == null || a.getTenantNo().isBlank() ? "MAIN" : a.getTenantNo();
+        return cache.computeIfAbsent(tenant + "|" + a.getEntityNo() + "|" + goodsNo, k -> a.getEntityNo() != null
+                && productFacts.goodsOwned(tenant, a.getEntityNo(), java.util.Set.of(goodsNo)));
     }
 
     private List<String> goodsOf(String activityNo) {

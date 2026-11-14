@@ -1,0 +1,8 @@
+{
+  "status": "NOT_ACCEPTED",
+  "reason": "Isolated Android emulator shared storage failed with Transport endpoint is not connected / Input-output error before native gallery acceptance; native build cancelled and temporary emulator stopped.",
+  "productionAppIssueIdentified": false,
+  "existingEmulatorAppReplaced": false,
+  "temporaryAppTestRemoved": true,
+  "privateSessionFileRemoved": true
+}

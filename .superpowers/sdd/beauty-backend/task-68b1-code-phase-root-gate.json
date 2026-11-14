@@ -1,0 +1,115 @@
+{
+  "task": "Task68B1",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "base": "63f4866e62709ac8b3c1df3fe66a64e53504f9c8",
+  "codeCommit": "419e9d94fa5618d8783abcdb847201c05fa1d525",
+  "sourcePins": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
+      "sha256": "364f3e07adc0fa713e490fd905dd3a065d6508e519691964662aabe889a5f7fc"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.java",
+      "sha256": "84ffbf1dc58e4ea34edbfa4fa3194d414461ed46fc3700e6c130f76e81ec1237"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java",
+      "sha256": "fea01078516e7c23434d54a609ffdd375b90705d06e08e8d0be61fe5cb99c6af"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
+      "sha256": "29a3b0360f77a852f33401ae1360ec683e05aaf981685d3e2863ef27288285a1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java",
+      "sha256": "188aa673d3d3481026b4547f86d07799d1c7bcf13e4bad6815dcab126472efd5"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
+      "sha256": "b645014f34ae17e4d6ddaa80f5b758350e916ba56eee86c224dfed2968631772"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCompatibilityTest.java",
+      "sha256": "0e1d1ef0f09a51d2bc6be14c742c703f59e598c059088079c1270ae8530236ac"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/marketing/campaign/CounterCampaignRulesTest.java",
+      "sha256": "f403ce14f7a754d2a01e12f98d3076e5b85ca1e500f320cc26e8809f82077f6d"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java",
+      "sha256": "5280a79001b8338e7ca9827bdf7d9b3aba8295405077aaf61018f56b4e57c48a"
+    }
+  ],
+  "report": {
+    "path": ".superpowers/sdd/beauty-backend/task-68b1-report.md",
+    "sha256": "781dfde78c79caf8e1c4e96a4451b02a7305b5c4b7b380bef781a7fb7370ad30"
+  },
+  "reviews": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b1-r0.md",
+      "sha256": "b897cb92db26749f9d32d3452a3e9ad479e5344525e148dad5b2f6a3c96d106a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b1-r1.md",
+      "sha256": "87ec674587d4275233c1aeadf720b6c42c64206ec0813e5985142a1a622e3786"
+    }
+  ],
+  "build": {
+    "modules": 24,
+    "baseMain": 313,
+    "baseTestSources": 21,
+    "coreMain": 1070,
+    "coreTestSources": 88,
+    "hostMain": 413,
+    "hostTestSources": 750,
+    "logs": [
+      {
+        "path": "/private/tmp/task-68b1-test-compile-1.log",
+        "sha256": "6b901c20553df54e73083666838501ec70293126fa76747b789197af8e315488",
+        "result": "BUILD_SUCCESS",
+        "testsExecuted": false
+      },
+      {
+        "path": "/private/tmp/task-68b1-test-compile-2.log",
+        "sha256": "6f35c2fcddfc106ce65cbf45d63219c0fe8182ce9798e6f39513efabc2b4119b",
+        "result": "BUILD_SUCCESS",
+        "testsExecuted": false
+      },
+      {
+        "path": "/private/tmp/task-68b1-test-compile-final.log",
+        "sha256": "081e12a6050f3c44badf8ad01577764e15d31b2bcc0e195ae9e82a3f5157e55d",
+        "result": "BUILD_SUCCESS",
+        "testsExecuted": false
+      },
+      {
+        "path": "/private/tmp/task-68b1-test-compile-freeze.log",
+        "sha256": "d69864961fded8e58dec19300ef62b755b09ea8698f55f60e572632d40cff7c7",
+        "result": "BUILD_SUCCESS",
+        "testsExecuted": false
+      },
+      {
+        "path": "/private/tmp/task-68b1-fix1-test-compile.log",
+        "sha256": "7ab14d0f219117153699c36331780dd89a4d8042596fcc70da55f7ede29994f5",
+        "result": "BUILD_SUCCESS",
+        "seconds": 6.193,
+        "coreTestSourcesCompiled": 88,
+        "testsExecuted": false
+      }
+    ],
+    "testsExecuted": false
+  },
+  "unexecuted": {
+    "compatibilityCases": 8,
+    "rulesCases": 10,
+    "goldenResources": 6,
+    "goldenProducerExecuted": false
+  },
+  "goldenStatus": "DEFERRED_GENUINE_BASELINE_BYTES_PHASE_B",
+  "runtimeConsumersChanged": false,
+  "pricingActivated": false,
+  "migrationExecuted": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false
+}

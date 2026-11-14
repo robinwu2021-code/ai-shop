@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.event.outbox.PublishReceipt;
+import ai.neargo.shop.spi.food.FoodOutboxRouting;
 import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -22,7 +24,9 @@ import tools.jackson.databind.ObjectMapper;
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
 public class FoodWriteGuardConfiguration {
     @Bean
-    @ConditionalOnMissingBean(SysIdempotentMapper.class)
+    // Platform MapperScan runs after configuration conditions; its configuration already owns this mapper.
+    @ConditionalOnMissingBean(value = SysIdempotentMapper.class,
+            type = "ai.neargo.shop.config.MybatisPlusConfig")
     MapperFactoryBean<SysIdempotentMapper> sysIdempotentMapper(
             @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
         var mapper = new MapperFactoryBean<>(SysIdempotentMapper.class);
@@ -45,6 +49,10 @@ public class FoodWriteGuardConfiguration {
         OutboxTransactions.register(manager);
         return (event, options) -> {
             UnifiedOutboxFacade facade = facades.getIfAvailable();
+            if (FoodOutboxRouting.ARCHIVE_ONLY.contains("PLATFORM:" + event.eventType())
+                    && (facade == null || !facade.hasDelivery("PLATFORM",event.eventType()))) {
+                return new PublishReceipt(null,false);
+            }
             if (facade == null || !facade.enabled("PLATFORM")) {
                 throw new IllegalStateException("Food requires a registered unified PLATFORM outbox source");
             }

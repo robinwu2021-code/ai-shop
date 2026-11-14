@@ -8,6 +8,7 @@ import java.util.List;
 public interface RefundSourceStore {
 
     List<OrdItem> items(String subOrderNo);
+    List<OrdItem> lockItems(String subOrderNo);
 
     /** 主单支付渠道；查不到为 null（按不支持部分退处理） */
     String payChannel(String orderNo);

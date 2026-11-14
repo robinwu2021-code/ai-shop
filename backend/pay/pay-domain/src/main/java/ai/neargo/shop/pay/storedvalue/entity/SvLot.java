@@ -10,10 +10,19 @@ import lombok.Setter;
 @Setter
 @TableName("sv_lot")
 public class SvLot extends BaseEntity {
+    private String issuerNo;
+    private String issuerVersionNo;
+    private String releaseNo;
+    private String tierNo;
+    private String collectionEntityNo;
+    private String settlementEntityNo;
+
     private String lotNo;
     private String accountNo;
     private String rechargeNo;
     private String activityVersionNo;
+    private String planVersionNo;
+    private String rechargeStoreNo;
     private Long principalMinor;
     private Long bonusMinor;
     private Long heldPrincipalMinor;

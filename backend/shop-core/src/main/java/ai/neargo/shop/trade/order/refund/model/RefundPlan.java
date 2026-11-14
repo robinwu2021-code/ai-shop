@@ -1,12 +1,22 @@
 package ai.neargo.shop.trade.order.refund.model;
 
 import java.util.List;
+import ai.neargo.shop.spi.product.StockPort;
 
 /** 一次退款的方案：退哪几行、各几件、货款多少、运费多少（值对象）。 */
-public record RefundPlan(String subOrderNo, List<RefundLine> lines, long freightMinor) {
+public record RefundPlan(String subOrderNo, List<RefundLine> lines, long freightMinor,
+                         List<OriginalPortion> originalPortions, List<StockPort.SkuQty> allocationReleaseTargets) {
+    public RefundPlan(String subOrderNo, List<RefundLine> lines, long freightMinor) {
+        this(subOrderNo, lines, freightMinor, List.of(), List.of());
+    }
+    public record OriginalPortion(long itemId, String sourceLineNo, String componentRef, int originalQty,
+                                  int fromQty, int throughQty, long netMinor, long taxMinor, long cashMinor,
+                                  String evidenceHash) { }
 
     public RefundPlan {
         lines = List.copyOf(lines);
+        originalPortions = originalPortions == null ? List.of() : List.copyOf(originalPortions);
+        allocationReleaseTargets = allocationReleaseTargets == null ? List.of() : List.copyOf(allocationReleaseTargets);
     }
 
     public long goodsMinor() {

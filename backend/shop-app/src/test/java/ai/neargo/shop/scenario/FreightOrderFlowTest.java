@@ -48,8 +48,8 @@ class FreightOrderFlowTest {
     @Test
     @DisplayName("★★★ 快递单：没填重量的货按首重收运费 ¥8，写进子单、算进实付；预览与下单同一个数")
     void expressOrderPaysTemplateFreight() throws Exception {
-        String goodsNo = onSaleGoods(merchant("12600390001", "寄快递的店"), "小米");
-        JsonNode created = place("12600390002", goodsNo, "浙江省");
+        String goodsNo = onSaleGoods(merchant("18600390001", "寄快递的店"), "小米");
+        JsonNode created = place("18600390002", goodsNo, "浙江省");
         assertThat(created.path("code").asInt()).isZero();
         String payOrderNo = created.path("data").path("payOrderNo").asString();
 
@@ -65,16 +65,16 @@ class FreightOrderFlowTest {
     @Test
     @DisplayName("★★ 收货地址命中「不配送」地区：下单即拒（20003），不让买家付完钱才发现寄不到")
     void rejectedRegionBlocksCreate() throws Exception {
-        String goodsNo = onSaleGoods(merchant("12600390003", "不送西藏的店"), "大米");
-        JsonNode created = place("12600390004", goodsNo, "西藏自治区");
+        String goodsNo = onSaleGoods(merchant("18600390003", "不送西藏的店"), "大米");
+        JsonNode created = place("18600390004", goodsNo, "西藏自治区");
         assertThat(created.path("code").asInt()).isEqualTo(20003);
     }
 
     @Test
     @DisplayName("★★★ 运费不进佣金基数 —— 此前平台对代收的运费也抽了佣金（§9 AC21）")
     void freightIsNotInCommissionBase() throws Exception {
-        String goodsNo = onSaleGoods(merchant("12600390005", "结算运费店"), "面粉");
-        JsonNode created = place("12600390006", goodsNo, "浙江省");
+        String goodsNo = onSaleGoods(merchant("18600390005", "结算运费店"), "面粉");
+        JsonNode created = place("18600390006", goodsNo, "浙江省");
         assertThat(created.path("code").asInt()).isZero();
         String payOrderNo = created.path("data").path("payOrderNo").asString();
 
@@ -126,23 +126,23 @@ class FreightOrderFlowTest {
     @Test
     @DisplayName("★★★ 商品级限购地区（#3/#4①）：收货地址省在 restricted_regions 里 → 下单拒(20003)")
     void restrictedRegionBlocksCreate() throws Exception {
-        String goodsNo = onSaleGoods(merchant("12600390021", "不卖新疆的店"), "坚果");
+        String goodsNo = onSaleGoods(merchant("18600390021", "不卖新疆的店"), "坚果");
         // 这件货限购新疆（省级码 65）—— 与运费模板无关，走商品级 restricted_regions
         jdbc.update("update prd_goods set restricted_regions=? where goods_no=?", "[\"65\"]", goodsNo);
 
         // 收货地址在新疆 → 命中限购，拒单（运费模板里新疆只是 SURCHARGE 不拒，这道才拦得住）
-        JsonNode blocked = place("12600390022", goodsNo, "新疆维吾尔自治区");
+        JsonNode blocked = place("18600390022", goodsNo, "新疆维吾尔自治区");
         assertThat(blocked.path("code").asInt()).as("新疆被该商品限购，应拒").isEqualTo(20003);
 
         // 收货地址在浙江（不在限购名单）→ 放行
-        JsonNode ok = place("12600390023", goodsNo, "浙江省");
+        JsonNode ok = place("18600390023", goodsNo, "浙江省");
         assertThat(ok.path("code").asInt()).as("浙江不在限购名单，应放行").isZero();
     }
 
     @Test
     @DisplayName("★★★ 门店经营范围排除了新疆：寄往新疆的快递单下单即拒(20003)，浙江照常（TDD-经营范围排除地区 AC3）")
     void storeExcludedProvinceBlocksCreate() throws Exception {
-        String goodsNo = onSaleGoods(merchant("12600390031", "门店不送新疆"), "核桃");
+        String goodsNo = onSaleGoods(merchant("18600390031", "门店不送新疆"), "核桃");
         Map<String, Object> st = jdbc.queryForMap(
                 "select s.entity_no, s.store_no from mch_store s join prd_goods g on g.entity_no = s.entity_no"
                         + " where g.goods_no = ? and s.is_default = 1 and s.deleted = 0", goodsNo);
@@ -151,10 +151,10 @@ class FreightOrderFlowTest {
                         + " created_at, updated_at) values (?, ?, ?, 'PROVINCE', '65', 'SELF', 'ACTIVE', 'EXCLUDE', now(), now())",
                 "SA-EXCL-" + goodsNo, st.get("entity_no"), st.get("store_no"));
 
-        JsonNode blocked = place("12600390032", goodsNo, "新疆维吾尔自治区");
+        JsonNode blocked = place("18600390032", goodsNo, "新疆维吾尔自治区");
         assertThat(blocked.path("code").asInt()).as("门店排除了新疆，应拒").isEqualTo(20003);
 
-        JsonNode ok = place("12600390033", goodsNo, "浙江省");
+        JsonNode ok = place("18600390033", goodsNo, "浙江省");
         assertThat(ok.path("code").asInt()).as("对照：浙江没被排除，应放行").isZero();
     }
 

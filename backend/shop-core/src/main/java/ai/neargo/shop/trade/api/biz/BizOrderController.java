@@ -55,6 +55,7 @@ public class BizOrderController {
                               @RequestParam(required = false) Boolean allStores,
                               @RequestParam(required = false) String from,
                               @RequestParam(required = false) String to,
+                              @RequestParam(required = false) String caller,
                               @RequestParam(defaultValue = "1") long page,
                               @RequestParam(defaultValue = "10") long size) {
         /*
@@ -71,7 +72,7 @@ public class BizOrderController {
                 ? ctx.allowedStoresOrAll()
                 : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
         PageData<OrderVO> full = merchantOrderService.list(ctx.requireMerchantNo(), storeNos,
-                status, fulfillments, parseDay(from, "from"), parseDay(to, "to"),
+                status, fulfillments, parseDay(from, "from"), parseDay(to, "to"), caller,
                 page, Math.min(size, 50));
         return ctx.courierOnlyOrderView() ? narrow(full) : full;
     }
@@ -136,6 +137,20 @@ public class BizOrderController {
         OrderVO full = merchantOrderService.detail(ctx.requireMerchantNo(),
                 ctx.currentStoreNo(), subOrderNo);
         return ctx.courierOnlyOrderView() ? CourierOrderVO.of(full) : full;
+    }
+
+    /**
+     * 完整详情（TDD-B端收款订单与商城接口对齐 P2）：详情原样 + 币种、顾客备注、付款列表、操作记录、发票。
+     * 配送员与 {@link #detail} 同一档次：只给裁剪档，金额、付款一概不给。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    @GetMapping("/biz/order/{subOrderNo}/full")
+    public Object full(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        if (ctx.courierOnlyOrderView()) {
+            return CourierOrderVO.of(merchantOrderService.detail(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo));
+        }
+        return merchantOrderService.full(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")

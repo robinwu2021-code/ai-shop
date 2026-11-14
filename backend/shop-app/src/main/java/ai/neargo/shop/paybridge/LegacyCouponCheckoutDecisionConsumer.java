@@ -13,6 +13,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Core decision and this outbox entry commit together. Retry never creates a replacement financial operation. */
 @Component
 public class LegacyCouponCheckoutDecisionConsumer implements OutboxConsumer {
+    @Override public String handlerId() { return "legacy-coupon-checkout-decision"; }
+    // Original owner/action ledgers provide replay safety across PAY calls and independent core writes.
+    @Override public boolean externalWorkflow() { return true; }
+
     private final LegacyCouponOrderCreationCoordinator coordinator;
     private final ObjectMapper json;
     public LegacyCouponCheckoutDecisionConsumer(LegacyCouponOrderCreationCoordinator coordinator,ObjectMapper json) {

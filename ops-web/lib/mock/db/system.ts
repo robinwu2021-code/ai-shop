@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts } from "@/lib/types";
+import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity, AppVersionPolicy } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -11,6 +11,11 @@ export const appearance: AppearanceConfig = {
   updatedAt: "2026-07-20T02:00:00Z",
   updatedBy: "admin",
 };
+
+export const storeIndustries: import("@/lib/types").StoreIndustry[] = [
+  { industryCode: "RETAIL", subIndustryCode: "", businessTypeCode: "RETAIL", nameZh: "零售", nameTw: "零售", nameEn: "Retail", sort: 10, enabled: true, version: 0 },
+  { industryCode: "RETAIL", subIndustryCode: "RETAIL_CVS", businessTypeCode: "RETAIL", nameZh: "便利店", nameTw: "便利商店", nameEn: "Convenience", sort: 10, enabled: true, version: 0 },
+];
 
 export const markets: MarketConfig[] = [
   { code: "CN", name: "中国", currency: "CNY", timezone: "Asia/Shanghai", rate: 1, enabled: true },
@@ -76,9 +81,30 @@ export const otpTestPhones: OtpTestPhone[] = [
   { id: 2, phone: "13900000001", code: "654321", enabled: false, remark: "上一轮回归用完已停用，留着是为了记住它被用过" },
 ];
 
+/** 测试身份白名单（mock）。与 166 第一批同口径 */
+export const testIdentities: TestIdentity[] = [
+  { id: 1, identityType: "PHONE", identityValue: "+886900000102", enabled: true, remark: "B 端联调测试号" },
+  { id: 2, identityType: "EMAIL", identityValue: "robin@neargo.ai", enabled: true, remark: "联调期，上线运营前移除" },
+];
+
 /** 经营范围三档（mock）。一期 PLATFORM 是关的 —— 没有商品形态支撑它。 */
 export const serviceScopes: ServiceScopeConfig[] = [
   { scope: "COMMUNITY", enabled: true, merchantCount: 5 },
   { scope: "CITY", enabled: true, merchantCount: 1 },
   { scope: "PLATFORM", enabled: false, merchantCount: 0 },
+];
+
+/** App 版本策略（mock）。iOS 没配过 —— 与首发状态一致 */
+export const appVersions: AppVersionPolicy[] = [
+  { appCode: "MERCHANT", platform: "ANDROID", latest: "0.2.0", minSupported: "0.1.0",
+    notes: { "zh-Hant": ["收款通知可以語音播報", "修正退款偶爾轉圈的問題"] },
+    storeUrl: "https://play.google.com/store/apps/details?id=ai.neargo.merchant",
+    updatedBy: "admin", updatedAt: Date.parse("2026-11-08T09:00:00Z"), revision: 1 },
+  { appCode: "MERCHANT", platform: "IOS", latest: "", minSupported: "", notes: {}, storeUrl: null,
+    updatedBy: null, updatedAt: null, revision: 0 },
+];
+
+export const marketPhonePolicies: import("@/lib/types").MarketPhonePolicy[] = [
+  { market: "CN", callingPrefix: "+86", recordOnly: false, smsVerificationEnabled: true, smsChannelReady: true, marketEnabled: true },
+  { market: "TW", callingPrefix: "+886", recordOnly: true, smsVerificationEnabled: false, smsChannelReady: false, marketEnabled: true },
 ];

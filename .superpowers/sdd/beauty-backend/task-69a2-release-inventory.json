@@ -1,0 +1,115 @@
+{
+  "status": "CODE_PHASE_RELEASED_AFTER_A1_SPEC_PASS_QUALITY_APPROVED",
+  "create": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyServiceExecutionFence.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionAccess.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionSchemaVerifier.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/ServiceTaskExecutionService.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskExecutionServiceImpl.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceExecutionFenceCoordinator.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/port/ServiceExecutionSourcePortImpl.java"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V10__beauty_service_execution_fence.sql"
+    },
+    {
+      "path": "docs/technical/design/schema/beauty-service-execution-fence-schema.json"
+    },
+    {
+      "path": "scripts/gen-beauty-service-execution-fence-schema.mjs"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-service-execution-fence-schema.json"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/ManualExecutionSourceIT.java"
+    },
+    {
+      "path": "scripts/tests/beauty-service-execution-fence-schema.test.mjs"
+    }
+  ],
+  "modify": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java",
+      "baselineSha256": "704b66e2becadd56ff81fb9c70d782ff93e9bb1fe1d985d0d1e5e87030f76614"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceBinding.java",
+      "baselineSha256": "796fb671119748fe82bb1ad79bb62ecd793eafd11943160608816336c0d20ec9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+      "baselineSha256": "331d6bb1535198d4e3cdfbdda37f19465f6a10e904c87fc80f9cce210d070377"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservation.java",
+      "baselineSha256": "4af632c6909714e8d8426f40f0d7e901db438c4f69b465595d4255f04dc78610"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySourceConfiguration.java",
+      "baselineSha256": "63fa5566513a2c0d19c45492c92536c505e513923c2670232a51e79c3d11bf6b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java",
+      "baselineSha256": "4575f4cb0a8dd3556da8908d87c540aadb5c94e9afa05eb3efd761645db6f720"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java",
+      "baselineSha256": "20554dad5279741e05ebeb9283689b129686ec24d5d594ac2ddff08a45e761d8"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java",
+      "baselineSha256": "514709de64b3b1ec2966b0595681adc579c15b7252c2878438c5b0b8a0789e7e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservationTest.java",
+      "baselineSha256": "a51b3ad907c110bfc3139bf608bd86407f2ed20f1684f33ac180df32a8278ac9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/ServiceSourceObservationIT.java",
+      "baselineSha256": "c851fd2baf8354aa7d9a9474e64ad01b0a6ccfdd87f9e9cf0c120cc759175f6b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautySchemaValidatorTest.java",
+      "baselineSha256": "a08c350a26c1389152df99d524b4de140e49c818d9d9a16e512ef3bc351ea3ee"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java",
+      "baselineSha256": "28d847daf80c4b1a8a79f21e9f97b58e752865a19237da9344bec8998890fcb0"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPlatformFlywayIT.java",
+      "baselineSha256": "645246db44621183c69a01c55139db40af333ac0fd583f4d216fe84a8b505ebc"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java",
+      "baselineSha256": "dea867123b12df3e20d255dd192d8e6485928e848099e68d617e1e0663a37631"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImplTest.java",
+      "baselineSha256": "4268b95d6d97cd07ea708af47ef0a4fadbe4995354bfcac4b289f0e50661ea04"
+    }
+  ],
+  "testsExecuted": false,
+  "note": "13 creates+15 modifies source-backed A2 draft. Platform entity/lineage parser excludes private beauty migrations: do not register absent bty table or edit global guards. Add specific paths only by visible root amendment if actual compile callers demand it. No coding release before A1 acceptance.",
+  "task": "Task69A2/C03",
+  "sourceHead": "bf8fe7688d5a02179726fc93a055ebc5907c6141",
+  "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
+  "a1Gate": ".superpowers/sdd/beauty-backend/task-69a1-code-phase-root-gate.json",
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "canStart": false
+}

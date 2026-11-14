@@ -1,8 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.inventory.service.InboundService;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.inventory.domain.service.InboundService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.support.InvEnums;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;

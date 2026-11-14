@@ -1,0 +1,11 @@
+package ai.neargo.shop.pay.client;
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
+public final class PayStoredValueIssuerRequests {
+    private PayStoredValueIssuerRequests() { }
+    public record Locate(String tenant,String issuer) {}
+    public record Check(AuthorizedScope scope,String issuer,Config config) {}
+    public record Options(StoreQuery query) {}
+    public record PrepareStore(StoreAuthority scope) { }
+    public record Find(AuthorizedScope scope) { }
+    public record Configure(AuthorizedScope scope, Config command, String key) { }
+}

@@ -37,8 +37,23 @@ public interface BizIdentityResolver {
     BizContext resolve(String userNo, String storeNo);
 
     /**
-     * 没有门店上下文时的解析 —— 登录接口用（那一刻请求上还没有 {@code X-Store-No}）。
+     * Default/switch scope for an authenticated merchant, using the session's subject kind.
+     *
+     * <p>Resolvers that only know the legacy {@link #resolve(String, String)} keep its behaviour
+     * (RetailStoreScopeCompatibilityTest). Subject-kind-aware resolvers override this; exact
+     * new-model selection stays opt-in through {@link #resolveStrict}.
      */
+    default BizContext resolveAuthenticated(LoginUser user, String storeNo) {
+        return resolve(user.userNo(), storeNo);
+    }
+
+    /** New-model identity is exact on subject kind, membership, merchant and selected store. */
+    default BizContext resolveStrict(LoginUser user, String storeNo) {
+        // Adapters must explicitly implement strict selection. A legacy resolver may fall back.
+        return BizContext.NONE;
+    }
+
+    /** Login has no selected store yet. */
     default BizContext resolve(String userNo) {
         return resolve(userNo, null);
     }

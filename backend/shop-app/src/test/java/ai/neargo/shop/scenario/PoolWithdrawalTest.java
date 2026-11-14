@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.EvidenceRef;
@@ -156,7 +157,7 @@ class PoolWithdrawalTest {
 
     private PoolRequest request(String type,PoolRequest.Action action,long amount) {
         String request="W:"+type+":"+amount;
-        var target=new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.AGGREGATED,"TEST",
+        var target=new PointsFundsGateway.FundsContext(FundsPath.AGGREGATED,"TEST",
                 "PLATFORM","PLATFORM","BANK-V1","PLATFORM-BANK",null,request,0);
         return new PoolRequest(request,type,action,amount,"maker",null,target);
     }

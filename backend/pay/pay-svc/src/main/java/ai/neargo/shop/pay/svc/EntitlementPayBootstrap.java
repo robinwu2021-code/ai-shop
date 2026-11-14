@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.svc;
 
+import org.springframework.beans.factory.ObjectProvider;
+
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
 import ai.neargo.shop.pay.entitlement.port.EntitlementCapabilityPortImpl;
@@ -99,8 +101,9 @@ public class EntitlementPayBootstrap {
         return new EntitlementSaleReservationPortImpl(service);
     }
     @Bean
-    StoredValueCapabilityPort storedValueCapabilityPort(PayEntitlementProperties properties) {
-        return new StoredValueCapabilityPortImpl(properties);
+    StoredValueCapabilityPort storedValueCapabilityPort(PayEntitlementProperties properties,
+            ObjectProvider<EntitlementUsePort> uses, ObjectProvider<StoredValueUseQuotePort> quotes) {
+        return new StoredValueCapabilityPortImpl(properties, uses, quotes);
     }
     @Bean
     EntitlementMarketingFactsPort entitlementMarketingFactsPort(EntitlementMarketingFactsService service) {
@@ -111,7 +114,8 @@ public class EntitlementPayBootstrap {
         return new EntitlementOwnerRegistryPortImpl(service);
     }
     @Bean
-    EntitlementCapabilityPort entitlementCapabilityPort(PayEntitlementProperties properties) {
-        return new EntitlementCapabilityPortImpl(properties);
+    EntitlementCapabilityPort entitlementCapabilityPort(PayEntitlementProperties properties,
+            ObjectProvider<EntitlementUsePort> uses) {
+        return new EntitlementCapabilityPortImpl(properties, uses);
     }
 }

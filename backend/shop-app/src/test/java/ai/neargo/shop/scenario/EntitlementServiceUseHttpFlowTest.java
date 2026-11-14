@@ -39,7 +39,7 @@ class EntitlementServiceUseHttpFlowTest {
     @Autowired TokenStores tokens;
     @Autowired OtpStore otp;
     private String id() { return UUID.randomUUID().toString(); }
-    private String phone() { return "126" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+    private String phone() { return "186" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
     private JsonNode postJson(MockMvc mvc, String path, String token, Object body, String key) throws Exception {
         return json.readTree(mvc.perform(post(path).header("Authorization", "Bearer " + token)

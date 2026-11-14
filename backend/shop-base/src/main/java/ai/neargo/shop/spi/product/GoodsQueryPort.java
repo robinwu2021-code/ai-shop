@@ -1,5 +1,9 @@
 package ai.neargo.shop.spi.product;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +14,16 @@ import java.util.Map;
  * 将来商品域改一列，交易域跟着炸。
  */
 public interface GoodsQueryPort {
+    default Map<String, SkuSnapshot> snapshotForCounter(
+            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Explicit buyer pricing; adapters without the local owner capability fail closed. */
+    default Map<String, SkuSnapshot> snapshotFor(
+            String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
 
     /**
      * 批量取 SKU 快照。
@@ -163,7 +177,20 @@ public interface GoodsQueryPort {
                         * 商品所属门店（V384，ADR-031）：这一行由哪家店卖、哪家店发。
                         * 空 = 没有归属（只有测试种子会这样），调用方按主体落店的老规则兜底。
                         */
-                       String storeNo) {
+                       String storeNo,
+                       /** Actual new-model flash benefit per paid unit; absent when no flash price took effect. */
+                       String priceActivityNo, long priceDiscountMinor) {
+
+        /** Callers without a selected flash benefit, including group-price replacements. */
+        public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
+                           String title, String cover, String spec, String categoryType, String categoryNo,
+                           long price, int available, boolean onSale, List<String> fulfillments,
+                           Long groupPriceMinor, Integer groupMinCount, String saleMode, Integer limitPerUser,
+                           Integer nominalGram, String storeNo) {
+            this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
+                    price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
+                    saleMode, limitPerUser, nominalGram, storeNo, null, 0);
+        }
 
         /** 不带归属门店的调用点（自己拼快照的，如团价重算会原样带过来） */
         public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,

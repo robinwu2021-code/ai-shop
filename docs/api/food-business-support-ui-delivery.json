@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "用户已确认 BIZ01..12 后端优先；仅共享费用配置、应收更正和原库存估值的页面后续接入，不执行支付。",
+  "plan": "docs/technical/TDD-餐饮系统-BIZ01-12-交付验证.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing/fee-rules/{ruleNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing/fee-rules/{ruleNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pricing/fee-scopes/{scopeNo}/adjustments"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/inventory/items/{item}/valuation"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/inventory/items/{item}/valuation"
+    }
+  ]
+}

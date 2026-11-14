@@ -30,6 +30,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { writePackedLocales } from "./pack-biz-locales.mjs";
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), "..");
 const B = join(HERE, "..", "b-app", "src");
@@ -74,7 +75,9 @@ const COPY_DIRS = readdirSync(B, { withFileTypes: true })
  * 而且主包 import 分包是小程序的硬禁忌。所以反过来：**构建期解引用，写成文案**。
  * 只做中文 —— pkg-biz 本来就不进版本库、不受 i18n 闸门管（占位页同策略）。
  */
-const BIZ_ZH = flattenMessages((await import(`file://${join(B, "i18n", "locale", "zh-CN.ts")}`)).default);
+const BIZ_LOCALES = {};
+for (const locale of ["zh-CN", "en", "ar"]) BIZ_LOCALES[locale] = (await import(`file://${join(B, "i18n", "locale", locale + ".ts")}`)).default;
+const BIZ_ZH = flattenMessages(BIZ_LOCALES["zh-CN"]);
 
 function flattenMessages(obj, prefix = "", out = {}) {
   for (const [k, v] of Object.entries(obj)) {
@@ -552,6 +555,8 @@ function prepare() {
 
   // 3) 生成 pkg-biz 专属文件（在改写之后写，避免被改写二次触碰）
   generated();
+  // One shared key tree keeps all three languages below the WeChat subpackage limit.
+  writePackedLocales(join(OUT, "i18n", "locale"), BIZ_LOCALES);
 
   /*
    * **两个 app 共用一个运行时，下面几条都是「编译期不报、真机才暴露」的。**

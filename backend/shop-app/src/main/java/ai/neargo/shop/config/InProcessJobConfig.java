@@ -16,6 +16,7 @@ import ai.neargo.job.store.JobDefinitionDao;
 import ai.neargo.job.store.JobLogDao;
 import ai.neargo.job.store.JobRunDao;
 import ai.neargo.shop.job.JobHandlerRegistry;
+import ai.neargo.shop.spi.pay.CallSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
@@ -97,7 +98,8 @@ public class InProcessJobConfig {
 
     private static InvokeOutcome invoke(JobHandler handler, JobInvocation invocation) {
         try {
-            JobResult r = handler.run(invocation);
+            // 任务里调支付，来源记成这个任务（CallSources.JOB，开发计划 M2.1）
+            JobResult r = CallSources.asJob(handler.name(), () -> handler.run(invocation));
             return InvokeOutcome.of(r.status(), r.detail(), r.error(), null);
         } catch (RuntimeException e) {
             // 抛异常与「返回 FAILED」在排查时是两件事，所以 error 里放异常类名。

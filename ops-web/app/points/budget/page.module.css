@@ -1,0 +1,21 @@
+.page :global(th), .page :global(td) { padding-block: 10px; }
+.drawerHead { padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--card); }
+.drawerHead h2 { font-size: 17px; }
+.drawerHead p { font-size: 12px; }
+.drawerBody { padding: 12px 14px 18px; background: var(--background); }
+.drawer > :last-child { border-top: 1px solid var(--border); }
+.summary, .form { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); box-shadow: 0 1px 3px #18181b08; }
+.summary { margin-bottom: 12px; overflow: hidden; }
+.summary h3 { margin: 0; padding: 7px 12px; border-bottom: 1px solid var(--border); background: var(--muted); font-size: 12px; font-weight: 600; }
+.context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; margin: 0; padding: 10px 12px; font-size: 13px; }
+.context > div { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 6px; align-items: baseline; }
+.context dt { color: var(--muted-foreground); font-size: 12px; }
+.context dd { margin: 0; overflow-wrap: anywhere; }
+.form { display: flex; flex-direction: column; gap: 12px; padding: 12px; min-width: 0; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; padding: 0; border: 0; margin: 0; min-width: 0; }
+.fields legend { padding: 0 0 12px; font-size: 12px; font-weight: 600; }
+.form label { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; font-size: 13px; }
+.form label input, .form label select { width: 100%; min-width: 0; }
+.form input[type="number"] { max-width: 180px; }
+.fullRow { grid-column: 1 / -1; }
+@media (max-width: 480px) { .context, .fields { grid-template-columns: minmax(0, 1fr); } .drawerBody { padding: 10px; } }

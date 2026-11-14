@@ -7,8 +7,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { RoleMatrix } from "./role-matrix";
 import { MenuOrderTree, ORDER_ROOT, type OrderNode } from "./menu-order-tree";
 import { api } from "@/lib/api";
+import { toBackendRole } from "@/lib/api/https/dashboard";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { fill, useCopy } from "@/lib/use-copy";
@@ -45,6 +47,7 @@ type Copy = (typeof IAM_COPY)["zh"];
 const TAB_KEYS = ["staffs", "roles", "menu", "audit"] as const;
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
+const isScopedRole = (code: string) => SCOPED_ROLES.some((role) => toBackendRole(role) === toBackendRole(code));
 
 const ENABLED_OPTIONS = (c: Copy) => [{ value: "1", label: c.enabledOn }, { value: "0", label: c.enabledOff }];
 const CRITICAL_OPTIONS = (c: Copy) => [{ value: "1", label: c.filterCriticalOnly }];
@@ -146,6 +149,8 @@ function IamInner() {
   const [checked, setChecked] = useState<string[]>([]);
 
   const canGrant = allow("iam:role:grant");
+  // 免二次验证白名单：与后端同一个码（iam:staff:update），不借用 role:grant
+  const canExempt = allow("iam:staff:update");
   const canReadAudit = allow("iam:audit:read");
 
   const staffQ = { keyword, role, enabled, page, size };
@@ -154,6 +159,11 @@ function IamInner() {
   // 第一版漏了这个，staffs tab 下点「编辑」，角色多选区一个按钮都没有，
   // 页面看着正常（没有报错），只是选项集合是空的。
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.listRoles(), enabled: tab === "roles" || tab === "staffs" });
+  const lookupRoleDef = (code: string) => roles.data?.find((r) => toBackendRole(r.roleCode) === toBackendRole(code));
+  const displayRole = (code: string) => {
+    const builtin = ROLES.find((role) => toBackendRole(role) === toBackendRole(code));
+    return builtin ? roleLabel(builtin) : lookupRoleDef(code)?.name ?? code;
+  };
   // 功能点全集。**不按人切片** —— 配角色时要看到全部，包括自己没有的
   const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" || tab === "menu" });
   const rolePts = useQuery({
@@ -169,6 +179,19 @@ function IamInner() {
     qc.invalidateQueries({ queryKey: ["roles"] });
     qc.invalidateQueries({ queryKey: ["audit-logs"] });
   };
+
+  /*
+   * 免二次验证：打开要写理由（进审计），关掉也要写 —— 两个方向都是安全配置的变更。
+   * 走 confirm 的 action：弹窗自己跑完请求，失败留在原地看得到原因。
+   */
+  const toggleExempt = (s: Staff, on: boolean) => confirm({
+    title: fill(on ? c.exemptOnTitle : c.exemptOffTitle, { name: s.name }),
+    desc: on ? c.exemptOnDesc : c.exemptOffDesc,
+    danger: on,
+    requireReason: true,
+    action: (reason) => api.setStaffSecondFactorExempt(s.staffNo, on, reason)
+      .then(() => { invalidate(); notify.success(on ? c.toastExemptOn : c.toastExemptOff); }),
+  });
 
   const setEnabledMut = useMutation({
     mutationFn: (v: { staffNo: string; enabled: boolean }) => api.setStaffEnabled(v.staffNo, v.enabled),
@@ -189,7 +212,7 @@ function IamInner() {
         || (scopeForm.communityNo || "") !== (s.communityNo ?? "")
         || (scopeForm.pickupNo || "") !== (s.pickupNo ?? "");
       // 只在受限角色下提交 scope —— 全量角色配 scope 后端直接拒
-      if (scopeChanged && rolesForm.some((r) => SCOPED_ROLES.includes(r as Role))) {
+      if (scopeChanged && rolesForm.some(isScopedRole)) {
         await api.setStaffScope(s.staffNo, scopeForm);
       }
     },
@@ -200,8 +223,11 @@ function IamInner() {
     onSuccess: (r) => {
       invalidate();
       setNewStaff(null);
-      // **先展示密码再关抽屉** —— 它只出现这一次
-      setCreatedPassword({ username: r.staff.username, password: r.initialPassword });
+      if (r.initialPassword) {
+        setCreatedPassword({ username: r.staff.username, password: r.initialPassword });
+      } else {
+        notify.success(r.deliveredTo ? fill(c.toastStaffMailQueued, { email: r.deliveredTo }) : c.toastStaffCreated);
+      }
     },
   });
   const renameRoleMut = useMutation({
@@ -393,7 +419,7 @@ function IamInner() {
       cell: (s) => (
         <span className="flex flex-wrap gap-1">
           {s.roles.length
-            ? s.roles.map((r) => <Badge key={r} tone={r === "SUPER_ADMIN" ? "danger" : "muted"}>{roleLabel(r as Role)}</Badge>)
+            ? s.roles.map((r) => <Badge key={r} tone={r === "SUPER_ADMIN" ? "danger" : "muted"}>{displayRole(r)}</Badge>)
             : <span className="text-[var(--warning)]">{c.roleNone}</span>}
         </span>
       ),
@@ -405,7 +431,7 @@ function IamInner() {
         // **持有任一受限角色就受限** —— 只要有一个身份受限，数据域就该生效。
         // 反过来（全部受限才算）会让「社区运营 + 某个全量角色」的人
         // 悄悄拿到全量数据，而界面上那一栏还写着社区号
-        if (!s.roles.some((r) => SCOPED_ROLES.includes(r as Role))) {
+        if (!s.roles.some(isScopedRole)) {
           return <span className="text-muted-foreground">{c.scopeAll}</span>;
         }
         const parts = [
@@ -418,6 +444,19 @@ function IamInner() {
       },
     },
     { header: c.colLastLogin, cell: (s) => fmtTime(s.lastLoginAt) },
+    {
+      header: c.colExempt,
+      cell: (s) => (
+        <Switch
+          checked={!!s.secondFactorExempt}
+          // 自己那行提前拦：后端会拒（10420），别让人填完理由才被告知
+          disabled={!canExempt || s.username === myUsername}
+          title={s.username === myUsername ? c.cannotExemptSelf : c.exemptHint}
+          aria-label={fill(c.ariaExemptSwitch, { name: s.name })}
+          onChange={(v) => { void toggleExempt(s, v); }}
+        />
+      ),
+    },
     {
       header: c.colEnabled,
       cell: (s) => (
@@ -587,6 +626,7 @@ function IamInner() {
       {tab === "roles" && (
         <>
           <HelpNote className="mb-3">{c.notice}</HelpNote>
+          <RoleMatrix roles={roles.data ?? []} functions={permFns.data ?? []} loading={roles.isPending || permFns.isPending} error={roles.error ?? permFns.error} />
           {canGrant && (
             <div className="mb-3">
               <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "", codeTouched: false })}>
@@ -822,7 +862,7 @@ function IamInner() {
               )}
             </Field>
 
-            {rolesForm.some((r) => SCOPED_ROLES.includes(r as Role)) ? (
+            {rolesForm.some(isScopedRole) ? (
               <>
                 <Notice>{c.scopeNotice}</Notice>
                 <div className="space-y-1">

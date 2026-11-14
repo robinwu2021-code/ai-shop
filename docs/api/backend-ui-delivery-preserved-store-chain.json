@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "The checker uses its legacy cross-repository delivery stage: these APIs are ALREADY consumed by the independent ai-shop-bapp Flutter app, not pending UI development. Store creation uses onboarding_api.dart accountRead; chain administration uses http_chain_repository.dart grant-options and grant-commands. Repository Vue b-app is not their consumer. Retained exact-source 166 hotfix routes.",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerStatus": "DELIVERED",
+  "consumerEvidence": [
+    "apps/merchant_app/lib/features/standard_onboarding/onboarding_api.dart:397",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:451",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:524"
+  ],
+  "plan": "docs/technical/TDD-主体额度包线下购买-2026-11-11.md",
+  "contract": "docs/api/preserved-store-chain-hotfix.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/merchant/store-creation-context"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/grant-options"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/spaces/{managementNo}/grant-commands/{action}"
+    }
+  ]
+}

@@ -1,7 +1,19 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.service.impl.CatalogCurrencyServiceImpl;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.service.StoreCalendarSourceService;
+import ai.neargo.shop.food.service.impl.StoreCalendarSourceServiceImpl;
+import ai.neargo.shop.food.service.MenuCatalogPriceService;
+import ai.neargo.shop.food.service.impl.MenuCatalogPriceServiceImpl;
+import ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl;
+import ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl;
+import ai.neargo.shop.food.port.LazyGoodsMetadataQueryPortImpl;
+import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
@@ -29,8 +41,46 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.policy.BundlePublicationSource;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.BundleService;
+import ai.neargo.shop.food.service.DiningBatchQueryService;
+import ai.neargo.shop.food.service.impl.DiningBatchQueryServiceImpl;
+import ai.neargo.shop.food.mapper.DiningBatchQueryMapper;
+import ai.neargo.shop.food.service.BusinessShareService;
+import ai.neargo.shop.food.service.BusinessReturnService;
+import ai.neargo.shop.food.service.impl.BusinessReturnServiceImpl;
+import ai.neargo.shop.food.service.impl.BusinessShareServiceImpl;
+import ai.neargo.shop.food.mapper.BusinessSharePlanMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.DiningPricingService;
+import ai.neargo.shop.food.service.impl.DiningPricingServiceImpl;
+import ai.neargo.shop.spi.trade.PricingCheckoutPort;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import ai.neargo.shop.spi.trade.IndustryAfterSalePort;
+import ai.neargo.shop.spi.trade.IndustryCheckoutPort;
+import ai.neargo.shop.food.service.DiningCheckoutService;
+import ai.neargo.shop.food.service.DiningTransactionRecoveryService;
+import ai.neargo.shop.food.service.impl.DiningTransactionRecoveryServiceImpl;
+import ai.neargo.shop.food.service.impl.DiningCheckoutServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ChargeIntentMapper;
+import ai.neargo.shop.food.service.DiningReturnService;
+import ai.neargo.shop.food.service.impl.DiningReturnServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.service.SalesQuotaClaimService;
+import ai.neargo.shop.food.service.impl.DiningOrderServiceImpl;
+import ai.neargo.shop.food.service.impl.SalesQuotaClaimServiceImpl;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.OrderModifierMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.SalesQuotaClaimMapper;
+import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.service.impl.DiningPricingFactsServiceImpl;
 import ai.neargo.shop.food.service.impl.CheckCartServiceImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartItemMapper;
@@ -58,7 +108,7 @@ import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.service.impl.MenuServiceImpl;
 import ai.neargo.shop.food.policy.MenuPublicationSource;
 import ai.neargo.shop.food.policy.StationPublicationSource;
-import ai.neargo.shop.food.policy.MenuWorkingDefinitionPort;
+import ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess;
 import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.food.policy.MenuCompositionSource;
@@ -109,22 +159,41 @@ import tools.jackson.databind.ObjectMapper;
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class})
+@Import({ai.neargo.shop.food.port.FoodStoreRelinkFactsPortImpl.class, FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class, FoodMaterialSourceConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(CatalogCurrencyService.class)
+    CatalogCurrencyService catalogCurrencyService(ObjectProvider<GoodsCatalogQueryPort> goods,
+            ObjectProvider<CatalogPriceSourcePort> markets,
+            @Value("${shop.food.commerce.catalog-currency.enabled:false}") boolean enabled) {
+        return new CatalogCurrencyServiceImpl(new LazyGoodsCatalogQueryPortImpl(goods), markets::getIfAvailable,
+                enabled, Clock.systemUTC());
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(StoreCalendarSourceService.class)
+    StoreCalendarSourceService storeCalendarSourceService(
+            StorePolicyMapper policies, ServiceCalendarMapper calendars,
+            ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new StoreCalendarSourceServiceImpl(
+                policies, calendars, stores::getIfAvailable, json, manager, Clock.systemUTC());
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(MenuCatalogPriceService.class)
+    MenuCatalogPriceService menuCatalogPriceService(ConfigRevisionService revisions,
+            ObjectProvider<CatalogPriceSourcePort> prices, ObjectMapper json) {
+        return new MenuCatalogPriceServiceImpl(revisions, prices::getIfAvailable, json, Clock.systemUTC());
+    }
+
     private static GoodsCatalogQueryPort lazyGoods(ObjectProvider<GoodsCatalogQueryPort> provider) {
-        return new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return provider.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return provider.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return provider.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        return new LazyGoodsCatalogQueryPortImpl(provider);
     }
 
     @Bean
@@ -139,32 +208,23 @@ public class FoodAutoConfiguration {
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs,
             @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled,
             RecipeMapper recipeHeads, RecipeLineMapper recipeLines, RecipeAdjustmentMapper recipeAdjustments,
-            DishOptionGroupMapper recipeBindings, ObjectProvider<MaterialCatalogQueryPort> materialCatalog,
+            DishOptionGroupMapper recipeBindings, ai.neargo.shop.food.spi.FoodMaterialSource materialCatalog,
             @Value("${shop.food.recipe-publication-enabled:false}") boolean recipePublicationEnabled,
-            ObjectProvider<MenuWorkingDefinitionPort> workingMenus, DishMapper dishes,
+            ObjectProvider<MenuWorkingDefinitionAccess> workingMenus, DishMapper dishes,
             MenuChannelBindingMapper channelBindings, StationMapper stationHeads, SkuStationMapper stationRoutes,
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             @Value("${shop.food.menu-publication-enabled:false}") boolean menuPublicationEnabled,
-            @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return goods.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return goods.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+            @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled,
+            CatalogCurrencyService currencies) {
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(goods);
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
                 Clock.systemUTC(), new BundlePublicationSource(bundles, bundleGroups, bundleChoices,
                         () -> bundlePublicationEnabled),
                 new RecipePublicationSource(recipeHeads, recipeLines, recipeAdjustments, items, groups,
                         recipeBindings, () -> recipePublicationEnabled, json),
-                (entity, numbers) -> materialCatalog.getObject().getMaterials(entity, numbers),
-                menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionPort() {
+                materialCatalog.port(),
+                menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionAccess() {
                     @Override
                     public MenuConfigResultVO capture(String entity, String store, String menu, boolean lock) {
                         return workingMenus.getObject().capture(entity, store, menu, lock);
@@ -179,7 +239,7 @@ public class FoodAutoConfiguration {
                 }, dishes, recipeBindings, groups, bundles, recipeHeads, channelBindings, json) : null,
                 stationPublicationEnabled
                         ? new StationPublicationSource(stationHeads, stationRoutes, () -> true) : null,
-                channelAuthority::getIfAvailable, channelBindings);
+                channelAuthority::getIfAvailable, channelBindings, currencies);
     }
 
     @Bean
@@ -190,14 +250,7 @@ public class FoodAutoConfiguration {
             SalesRestrictionService restrictions, ObjectProvider<StoreCardQueryPort> stores,
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<DishOfferQueryPort> offers, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                return goods.getObject().getGoods(entity, store, number);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(goods);
         return new CatalogServiceImpl(menus, bindings, calendars, sessions, revisions, operation, restrictions,
                 numbers -> stores.getObject().cards(numbers), catalog,
                 (entity, store, numbers) -> offers.getObject().getOffers(entity, store, numbers),
@@ -249,18 +302,12 @@ public class FoodAutoConfiguration {
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            CatalogCurrencyService currencies) {
         return new MenuServiceImpl(heads, bindings, policies, actions, idem, publisher, json, manager,
                 Clock.systemUTC(), weeks, exceptions, new MenuCompositionSource(categories, items, skus, itemGroups,
-                        new GoodsCatalogQueryPort() {
-                            @Override public GoodsFact getGoods(String entity, String store, String number) {
-                                return goods.getObject().getGoods(entity, store, number);
-                            }
-                            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store,
-                                    List<String> numbers) {
-                return goods.getObject().getGoodsBatch(entity, store, numbers);
-            }
-                        }), contexts, channels, channelAuthority::getIfAvailable);
+                        new LazyGoodsMetadataQueryPortImpl(goods)), contexts, channels,
+                channelAuthority::getIfAvailable, currencies);
     }
 
     @Bean
@@ -270,21 +317,12 @@ public class FoodAutoConfiguration {
             RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+            ObjectProvider<GoodsCatalogQueryPort> catalogs, ai.neargo.shop.food.spi.FoodMaterialSource materials,
+            CatalogCurrencyService currencies) {
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
-                (entity, ids) -> materials.getObject().getMaterials(entity, ids),
-                adjustments, optionItems, optionGroups);
+                materials.port(),
+                adjustments, optionItems, optionGroups, currencies);
     }
 
     @Bean
@@ -294,19 +332,11 @@ public class FoodAutoConfiguration {
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
-        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager, catalog);
+            ObjectProvider<GoodsCatalogQueryPort> catalogs,
+            CatalogCurrencyService currencies) {
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
+        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager,
+                catalog, currencies);
     }
 
     @Bean
@@ -316,19 +346,10 @@ public class FoodAutoConfiguration {
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public SkuIdentityFact getSku(String entity, String store, String sku) {
-                return catalogs.getObject().getSku(entity, store, sku);
-            }
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
-        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog);
+            ObjectProvider<GoodsCatalogQueryPort> catalogs,
+            CatalogCurrencyService currencies) {
+        GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
+        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog, currencies);
     }
 
     @Bean
@@ -339,18 +360,12 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager, DishMapper dishes,
             DishOptionGroupMapper bindings, ModifierMapper modifiers, ObjectProvider<GoodsCatalogQueryPort> catalogs,
-            ObjectProvider<SpecValueCatalogQueryPort> specs) {
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+            ObjectProvider<SpecValueCatalogQueryPort> specs,
+            CatalogCurrencyService currencies) {
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager,
                 dishes, bindings, modifiers, catalog,
-                (entity, numbers) -> specs.getObject().getValues(entity, numbers));
+                (entity, numbers) -> specs.getObject().getValues(entity, numbers), currencies);
     }
 
     @Bean
@@ -360,18 +375,12 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs, DishOptionGroupMapper bindings,
-            OptionGroupMapper groups, OptionGroupItemMapper items, ObjectProvider<MediaAssetQueryPort> media) {
+            OptionGroupMapper groups, OptionGroupItemMapper items, ObjectProvider<MediaAssetQueryPort> media,
+            CatalogCurrencyService currencies) {
         // Resolve on invocation so optional food-off/remote-client assembly never substitutes catalog facts.
-        GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
-            @Override public GoodsFact getGoods(String entity, String store, String goods) {
-                return catalogs.getObject().getGoods(entity, store, goods);
-            }
-            @Override public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
-                return catalogs.getObject().getGoodsBatch(entity, store, numbers);
-            }
-        };
+        GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new DishServiceImpl(dishes, actions, idem, publisher, json, manager, catalog, bindings, groups, items,
-                (entity, store, keys) -> media.getObject().getAssets(entity, store, keys));
+                (entity, store, keys) -> media.getObject().getAssets(entity, store, keys), currencies);
     }
 
     @Bean
@@ -388,10 +397,10 @@ public class FoodAutoConfiguration {
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(TableService.class)
     TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            IdempotencyService idem,
+            IdempotencyService idem, ReservationTableMapper reservationTables,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager);
+        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager, reservationTables);
     }
 
     @Bean
@@ -404,6 +413,82 @@ public class FoodAutoConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningSessionServiceImpl(
                 areas,tables,tokens,sessions,actions,idem,publisher,manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningTransactionRecoveryService.class)
+    DiningTransactionRecoveryService diningTransactionRecoveryService(OrderBatchMapper batches,
+            SettlementMapper settlements, ReturnMapper returns, DiningOrderService orders,
+            DiningCheckoutService checkout, DiningReturnService afterSales,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningTransactionRecoveryServiceImpl(batches, settlements, returns, orders, checkout,
+                afterSales, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningCheckoutService.class)
+    DiningCheckoutService diningCheckoutService(CheckCartService carts, OrderBatchMapper batches,
+            CoreOrderBindingMapper bindings, SettlementMapper settlements, SettlementItemMapper items,
+            ChargeIntentMapper intents, SalesQuotaClaimService quotas, ObjectProvider<IndustryCheckoutPort> core,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningCheckoutServiceImpl(carts, batches, bindings, settlements, items, intents, quotas,
+                core::getIfUnique, publisher, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningReturnService.class)
+    DiningReturnService diningReturnService(CheckCartService carts, OrderBatchMapper batches,
+            CoreOrderBindingMapper bindings, OrderLineMapper lines, CoreLineAllocationMapper allocations,
+            ReturnMapper returns, ReturnItemMapper items, ObjectProvider<IndustryAfterSalePort> core,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningReturnServiceImpl(carts, batches, bindings, lines, allocations, returns, items,
+                core::getIfUnique, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(SalesQuotaClaimService.class)
+    SalesQuotaClaimService salesQuotaClaimService(SalesRestrictionMapper restrictions, StorePolicyMapper policies,
+            SalesQuotaClaimMapper claims) {
+        return new SalesQuotaClaimServiceImpl(restrictions, policies, claims, Clock.systemUTC());
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningOrderService.class)
+    DiningOrderService diningOrderService(CheckCartService carts, DiningPricingFactsService facts,
+            StoreOperationService policies, SalesQuotaClaimService quotas, CheckCartMapper cartRows,
+            StorePolicyMapper policyRows, OrderBatchMapper batches, CoreOrderBindingMapper bindings,
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, OrderComponentMapper components,
+            OrderModifierMapper modifiers, ActionLogMapper actions,
+            ObjectProvider<IndustryOrderPort> orders,
+            ObjectProvider<PricingCheckoutPort> pricing, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            KitchenTaskService kitchen, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher) {
+        return new DiningOrderServiceImpl(carts, facts, policies, quotas, cartRows, policyRows, batches,
+                bindings, lines, allocations, orders::getIfUnique, pricing::getIfUnique, json, Clock.systemUTC(), manager,
+                kitchen, publisher, components, modifiers, actions);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningPricingService.class)
+    DiningPricingService diningPricingService(CheckCartService carts, ObjectProvider<PricingCheckoutPort> pricing) {
+        return new DiningPricingServiceImpl(carts, pricing::getIfUnique);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningPricingFactsService.class)
+    DiningPricingFactsService diningPricingFactsService(CheckCartService carts, CatalogService catalog,
+            ConfigRevisionService revisions, SalesRestrictionService restrictions,
+            ObjectProvider<DishOfferQueryPort> offers, ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json) {
+        return new DiningPricingFactsServiceImpl(carts, catalog, revisions,
+                (entity, store, numbers) -> offers.getObject().getOffers(entity, store, numbers), restrictions,
+                numbers -> stores.getObject().cards(numbers), json);
     }
 
     @Bean
@@ -430,15 +515,52 @@ public class FoodAutoConfiguration {
             GuestSessionMapper sessions,ActionLogMapper actions,
             StoreOperationService policies,IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager, ReservationTableMapper reservationTables) {
         return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
-                sessions,actions,policies,idem,publisher,json,manager);
+                sessions,actions,policies,idem,publisher,json,manager,reservationTables);
     }
 
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(ReservationService.class)
-    ReservationService reservationService(ReservationMapper mapper) { return new ReservationServiceImpl(mapper); }
+    ReservationService reservationService(ReservationMapper mapper, ReservationTableMapper reservationTables,
+            TableAreaMapper areas, TableMapper tables, TableOccupancyMapper occupancy, ActionLogMapper actions,
+            CheckService checks, StoreOperationService policies, IdempotencyService idem, ObjectMapper json,
+            ObjectProvider<StoreCardQueryPort> stores, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new ReservationServiceImpl(mapper, reservationTables, areas, tables, occupancy, actions,
+                checks, policies, idem, json, numbers -> stores.getObject().cards(numbers), publisher, manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(DiningBatchQueryService.class)
+    DiningBatchQueryService diningBatchQueryService(DiningBatchQueryMapper mapper,
+            ObjectProvider<StoreCardQueryPort> stores,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DiningBatchQueryServiceImpl(mapper, numbers -> stores.getObject().cards(numbers), manager);
+    }
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(BusinessReturnService.class)
+    BusinessReturnService businessReturnService(OrderBatchMapper batches, CoreOrderBindingMapper bindings,
+            OrderLineMapper lines, CoreLineAllocationMapper allocations, OrderComponentMapper components,
+            ReturnMapper returns, ReturnItemMapper items, ActionLogMapper actions,
+            ObjectProvider<IndustryOrderPort> orders, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new BusinessReturnServiceImpl(batches, bindings, lines, allocations, components, returns, items,
+                actions, orders::getIfAvailable, json, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(BusinessShareService.class)
+    BusinessShareService businessShareService(BusinessSharePlanMapper plans, CheckMapper checks,
+            OrderBatchMapper batches, OrderLineMapper lines, CoreOrderBindingMapper bindings,
+            CoreLineAllocationMapper allocations, IdempotencyService idem, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new BusinessShareServiceImpl(plans, checks, batches, lines, bindings, allocations, idem, json, manager);
+    }
 
     @Bean
     @ConditionalOnProperty(prefix = "shop.food.migration", name = "mode", havingValue = "off")

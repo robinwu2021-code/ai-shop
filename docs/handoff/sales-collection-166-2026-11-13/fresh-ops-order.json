@@ -1,0 +1,37 @@
+{
+  "orderNo": "b1d96a07a7494dfaba2f3816f298996d",
+  "store": {
+    "tenantNo": "MAIN",
+    "storeNo": "ST261113Y693VWBMKT"
+  },
+  "status": "AWAITING_PAYMENT",
+  "payable": {
+    "currency": "TWD",
+    "minor": "19900"
+  },
+  "components": [
+    {
+      "componentNo": "f6ff66d7c0c948628cb88c243129df69",
+      "kind": "PLAN",
+      "listAmount": {
+        "currency": "TWD",
+        "minor": "19900"
+      },
+      "dealAmount": {
+        "currency": "TWD",
+        "minor": "19900"
+      },
+      "creditAmount": {
+        "currency": "TWD",
+        "minor": "0"
+      },
+      "cashAmount": {
+        "currency": "TWD",
+        "minor": "19900"
+      },
+      "cycleDays": 30,
+      "quantity": 1
+    }
+  ],
+  "createdAt": "2026-11-13T13:05:55.219Z"
+}

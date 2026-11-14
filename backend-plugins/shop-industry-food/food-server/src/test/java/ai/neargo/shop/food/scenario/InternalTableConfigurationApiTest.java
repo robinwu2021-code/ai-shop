@@ -46,7 +46,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalTableConfigurationApiTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
             .withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                    "shop.services.internal-token=table-test");
+                    "shop.services.internal-token=table-test", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     @Test void allSixTypedRoutesReturnUnwrappedResponses() {
         runner.run(c -> {
             var mvc=mvc(c);
@@ -60,7 +60,7 @@ class InternalTableConfigurationApiTest {
                     new String[]{TableInternalApi.TABLE_SAVE_PATH,"{"+scope+id+actor+",\"table\":{\"areaNo\":\"AREA1\",\"name\":\"四人桌\",\"capacity\":4,\"sortNo\":0,\"version\":0}}","$.table.capacity"},
                     new String[]{TableInternalApi.TABLE_STATUS_PATH,"{"+scope+id+actor+",\"table\":{\"status\":\"DISABLED\",\"reason\":\"调整\",\"version\":0}}","$.table.capacity"},
                     new String[]{TableInternalApi.TABLE_ARCHIVE_PATH,"{"+scope+id+actor+",\"table\":{\"reason\":\"调整\",\"version\":0}}","$.operation.version"})) {
-                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"table-test")
+                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"table-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                 .contentType(MediaType.APPLICATION_JSON).content(spec[1]))
                         .andExpect(status().isOk()).andExpect(jsonPath(spec[2]).exists())
                         .andExpect(jsonPath("$.data").doesNotExist());
@@ -72,9 +72,9 @@ class InternalTableConfigurationApiTest {
             var mvc=mvc(c);String body="{\"entityNo\":\"E\",\"storeNo\":\"A\",\"tableNo\":\"FOREIGN\"}";
             mvc.perform(post(TableInternalApi.TABLE_GET_PATH).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(post(TableInternalApi.TABLE_GET_PATH).header(InternalHttp.TOKEN_HEADER,"table-test")
+            mvc.perform(post(TableInternalApi.TABLE_GET_PATH).header(InternalHttp.TOKEN_HEADER,"table-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isNotFound());
-            mvc.perform(post(TableInternalApi.TABLE_GET_PATH).header(InternalHttp.TOKEN_HEADER,"table-test")
+            mvc.perform(post(TableInternalApi.TABLE_GET_PATH).header(InternalHttp.TOKEN_HEADER,"table-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isBadRequest());
         });

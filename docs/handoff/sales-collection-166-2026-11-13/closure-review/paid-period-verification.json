@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "periodCount": 1,
+  "period": {
+    "tier": "PRO",
+    "state": "NORMAL",
+    "endsAt": 1826116583994,
+    "planNo": "RETAIL:PRO",
+    "currency": "TWD",
+    "periodNo": "7bdc52bad7ff474a95edbf8033537ebc",
+    "startsAt": 1794580583994,
+    "sourceType": "ORDER",
+    "amountMinor": 199000,
+    "sourceRefNo": "a4ccafa1-dfc0-4a71-b4fc-fb0be383205d:1",
+    "planVersionNo": "767966963c464b7ba6eb640328973e74",
+    "durationMillis": 31536000000
+  }
+}

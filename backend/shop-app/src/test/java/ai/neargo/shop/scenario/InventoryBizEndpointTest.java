@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.support.TestLogin;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -63,13 +63,13 @@ class InventoryBizEndpointTest {
     @Autowired
     private InventoryAclService acl;
     @Autowired
-    private ai.neargo.shop.inventory.service.LocationService locations;
+    private ai.neargo.inventory.domain.service.LocationService locations;
     @Autowired
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
     @Autowired
-    private ai.neargo.shop.inventory.service.StockQueryService query;
+    private ai.neargo.inventory.domain.service.StockQueryService query;
     @Autowired
     private ai.neargo.shop.invbridge.InventoryOrphanSweepService orphanSweep;
 
@@ -551,7 +551,7 @@ class InventoryBizEndpointTest {
          *
          * 两条支路只差一个自变量：退休时那件物料上有没有货。
          */
-        String token = merchant("12600288010", "退休上账·果蔬");
+        String token = merchant("18600288010", "退休上账·果蔬");
         String goodsNo = saveGoods(token, null, "[]", "[{\"optionValues\":[],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
         drainOutbox();
         String oldSku = onlyLiveSkuOf(goodsNo);
@@ -643,7 +643,7 @@ class InventoryBizEndpointTest {
     }
 
     private List<String> flagsIn(
-            List<ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO> rows, String itemId) {
+            List<ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO> rows, String itemId) {
         return rows.stream().filter(r -> itemId.equals(r.itemId())).findFirst()
                 .orElseThrow(() -> new AssertionError("这一份里没有 " + itemId + " —— 那是另一个缺陷"))
                 .flags();
@@ -659,7 +659,7 @@ class InventoryBizEndpointTest {
          * 商家在库存里看不到那件货、盘不着、进不了货，**而任何地方都不会报错**。
          * 跑批还要 worker profile，线上没有常驻调度。
          */
-        String token = merchant("12600288001", "建品上账·粮油");
+        String token = merchant("18600288001", "建品上账·粮油");
         TestStoreCategory.open(mvc(), json, token, "CAT110");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -990,7 +990,7 @@ class InventoryBizEndpointTest {
      */
     private Shop shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String phone = "126002%05d".formatted(seq % 100000);
+        String phone = "186002%05d".formatted(seq % 100000);
         String token = merchant(phone, "进销存接口测试店-" + seq);
 
         JsonNode ctx = ok(get("/biz/context"), token);

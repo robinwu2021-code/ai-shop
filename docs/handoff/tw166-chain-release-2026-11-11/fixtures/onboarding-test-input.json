@@ -1,0 +1,19 @@
+{
+  "entityNo": "M261106BF7GK8052W",
+  "storeNo": "ST2611100C2XNFCXRS",
+  "profile": {
+    "subject": "COMPANY",
+    "name": "【166 測試】餐飲套餐聯調",
+    "taxNo": "00000000",
+    "owner": "TEST FIXTURE",
+    "ownerPhone": "+12025550136",
+    "industry": "CATERING"
+  },
+  "licenses": [
+    {
+      "type": "COMPANY_REGISTRATION",
+      "assetKey": "UPLOAD_REQUIRED"
+    }
+  ],
+  "channels": []
+}

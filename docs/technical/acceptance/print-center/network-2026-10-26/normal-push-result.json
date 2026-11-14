@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "pushMode": "NORMAL_PRE_PUSH_NO_BYPASS",
+  "publishedAcceptanceSha": "06f7daf1a9e8a7a6dcf818ea48b3ca62126cf453",
+  "remoteRef": "refs/heads/codex/ai-shop-codex",
+  "remoteShaVerified": "06f7daf1a9e8a7a6dcf818ea48b3ca62126cf453",
+  "pushExitCode": 0,
+  "validatedBackendSha": "b929fb350fbe599caa5594b52458a98119e2c9ad",
+  "backendTests": 6582,
+  "backendFailures": 0,
+  "automaticallyReusedBackendReceipt": true,
+  "frontendAndGeneratorsRerun": true,
+  "recordedAtUtc": "2026-10-26T09:23:30.127791+00:00",
+  "subsequentReceiptOnlyCommits": "May update evidence without changing validated runtime code; final SHA appears in completion message.",
+  "sharedWorktreeNewDevelopmentPreserved": true
+}

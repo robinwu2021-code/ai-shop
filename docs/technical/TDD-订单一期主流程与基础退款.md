@@ -586,3 +586,45 @@ C/B `refundExecution` 与后端 `AfterSaleVO.RefundExecutionProgress` 同形；�
 5. 运营端查看执行进度；异常结果按权限核对原执行和恢复入口，未知资金结果不得直接判定已退款。
 
 真实微信支付、退款资金到账、实际物流与设备交互尚待人工验收；部署健康和上传成功不等同业务验收通过。旧全量回归与既有渠道查询限制仍保留前文结论。
+
+
+## R02 零售异常资金收口（2026-11-10）
+
+### §0 范围与已确认规则
+
+用户确认：取消/关单后到账进入运营人工队列，按原资金原路退款，不恢复订单；商家已打款后退款进入人工核对队列，保留原退款执行和真实冲销状态，追回另行处理。库存接入继续最后执行。本批不打开退款闭环开关、不扩建自动追回，不新增并发或旧全量回归。
+
+### §1 合同与数据
+
+- 订单侧 `ord_payment_resolution` 保留原支付事实，新增原渠道请求号及退款结果错误码。原支付回执补充可选 `outTradeNo`，兼容旧构造方法；历史缺失坐标只显示人工核对，不能猜当前支付或重建金额。
+- 运营支付异常页增加订单异常列表；GET `/ops/order-payment-resolutions`，POST `/ops/order-payment-resolutions/{payNo}/{paymentNo}/refund`。使用业务编号，分别要求支付查看、支付管理权限。父单资金仅对能看到全部原子单的运营人员开放；不能凭一店权限查看整笔跨店资金。
+- 操作只支持事实匹配、尚未承认付款的取消/关闭原单的 LATE_PAYMENT。冻结同一个退款执行号，渠道调用在本地事务外进行；重复点击先查原执行，只有明确未准备/未派发才继续同一请求。未知结果不能新建退款或直接标成功。原付款未绑定售后的异常退款使用 PAYRES 来源标记，仍校验原请求号、付款号、用户、订单、币种及全额金额。
+- 原分账回退队列纳入已有 `REVERSE_UNCONFIRMED` 执行的商家批准退款；仅同意退货但未收妥且未准备退款的单不入队。列表和执行响应回读真实售后/退款状态，不能因待办消失就假定 REFUNDED。
+
+### §2 实施清单
+
+- [x] 冻结原付款坐标和人工处置执行，提供带权限与数据范围的查询/原退款恢复入口。
+- [x] 补齐现有运营页面、API 合同与必要提示；修复分账队列漏单与虚假完成投影。
+- [x] 定向验证迟到款人工退回、重复操作、未知与成功、跨店数据范围及未收货排除；更新任务证据。
+
+### §5 验证与交付
+
+- 新增迁移 **V646__order_payment_resolution_refund.sql**（V645 已由同期登录迁移占用），只增两列，历史事实不回填猜测。变更内容由本机 MySQL **9.7.4 / 3308** 在独立临时库从 V412 建表后增量执行成功，临时库已删除；未改业务库。
+- 后端 Java21 reactor `compile -DskipTests` **BUILD SUCCESS**（`/tmp/ai-shop-r02-compile-final.log`）；最后的小幅真实标记调整已由受影响源码限定编译覆盖。首次 reactor 编译遇同期 AuthService 类型引用错误，随后对应会话已自行修复，未修改该会话文件。
+- 后端本批 **13项分别通过**：13项首次运行12项通过，队列夹具补齐既有必填字段后只重跑失败项 **1/1** 通过（`/tmp/ai-shop-r02-backend-tests.log`、`/tmp/ai-shop-r02-queue-tests.log`）。覆盖迟到款操作、原回执重放、跨店父单权限、历史缺坐标/不适用状态、队列等待收货排除、真实状态回读及原退款 Port，不增加并发或旧全量测试。
+- 运营 API 定向 **6/6** 通过、运营 TypeScript 检查通过；接口对账 **436 调用 / 428 已有 / 8 既有欠账**，无新增空接口。人工金融复核未发现需修复问题。
+- 运行测试复用已编译依赖，只在临时测试 classpath 排除既有 near-pay HTTP 夹具的普通 Configuration，不改原夹具；共享编译期间出现目标 class 短暂缺失后，仅为失败队列用例冻结 classpath 快照重跑。验证脚本空类路径曾误扩大临时复制范围，已修正并清理。
+- 未打开 `shop.refund.closure.enabled` 或迟到款自动退款开关，未改库存路由/数据；真实渠道、当前166部署及指定商家库存跨进程验收仍待执行，R02 登记继续保留库存后置余项。
+
+
+## R02 续批：确认收货事务边界（2026-11-10）
+
+档位0：沿现有消费者身份/完整claims读取与原收货Service，不变更HTTP、权限、DDL或开关。C06旧运行快照6条整单评价旅程在确认收货失败，定位为OrderServiceImpl外层事务内调用detail，其currentReadScope要求鉴权在事务外。
+
+修复将currentReadScope放到收货写入前，使用其中的真实buyer作为OrderActor；confirmCurrent仍由原收货Service事务锁定并原子完成包裹、订单和售后联动。外层协调入口去除多余事务，完成后按同一授权范围回读详情，不再在写事务内调用远程claims，不跳过鉴权或改成无归属详情。库存及退款开关保持不变。
+
+验证完成：13项、0跳过通过（`/tmp/ai-shop-r02-receipt.log`，退出0见`-run.log`）。新增`RetailReceiptAuthorizationTest`的`deniedCurrentBuyerCannotReachReceiptMutation`、`receiptUsesTheCanonicalAuthorizedBuyerBeforeAnyWrite`2项；此前`BizDashboardAndReviewFlowTest`失败的回复一次/跨主体拒绝/高分禁诉/低分一次申诉/支持裁决下架/驳回保留6条整单HTTP旅程全部通过。另有`M4FulfillmentFlowTest#confirmReceipt`及`M5AfterSaleFlowTest`的分账回退前置、整单退券、退货退款、不能超退4项，共5项兼容通过。没有新增并发、库存远程接入或无关全量回归。
+
+实现仅修改OrderServiceImpl的confirmReceipt协调入口，并新增上述2项测试；一次只读复核未发现新增问题。原收货Service的事务、锁、行业来源限制与售后联动均未修改。鉴权与真实buyer在事务前解析，响应详情沿同一readScope读取；响应读取失败仍以原收货状态查询恢复。
+
+验证边界：为保护共享工作区，限定编译已提交`13c494bb0`的OrderServiceImpl加本补丁，临时类置于既有隔离依赖快照前；没有编译或提交另一个会话的StoreOwnershipWritePort未提交片段。测试复用原test配置，不称MySQL9原生整单或当前全仓制品构建通过；本批无DDL，真实资金、166/库存和部署仍待各自验收。已验证的6条旧快照失败在本补丁覆盖下转为通过，C06评价批次当时失败记录保留为历史，不再当作当前未解问题。

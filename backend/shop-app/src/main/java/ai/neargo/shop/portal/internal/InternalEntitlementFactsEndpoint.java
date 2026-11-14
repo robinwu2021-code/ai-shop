@@ -12,11 +12,14 @@ import ai.neargo.shop.spi.entitlement.EntitlementCoreInternal.AudienceQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantSourcePort;
 import ai.neargo.shop.spi.entitlement.EntitlementIssueAudiencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourceInternal;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
 import java.util.List;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -34,11 +37,37 @@ public class InternalEntitlementFactsEndpoint {
     private final List<EntitlementGrantSourcePort> grantSources;
     private final String token;
     private final EntitlementEventReceiverService events;
+    private final BrandCouponSourcePort brandCoupons;
     public InternalEntitlementFactsEndpoint(ObjectProvider<EntitlementUseSourcePort> uses, SourceDecisionPort decisions,
             ObjectProvider<EntitlementIssueAudiencePort> audiences, List<EntitlementGrantSourcePort> grantSources,
-            EntitlementEventReceiverService events, @Value("${shop.services.internal-token:}") String token) {
+            EntitlementEventReceiverService events, BrandCouponSourcePort brandCoupons,
+            @Value("${shop.services.internal-token:}") String token) {
         this.uses = uses; this.decisions = decisions; this.audiences = audiences;
         this.grantSources = grantSources; this.token = token; this.events = events;
+        this.brandCoupons = brandCoupons;
+    }
+    @PostMapping(BrandCouponSourceInternal.TEMPLATE_VALIDATION)
+    public ResponseEntity<?> validateBrandCouponTemplate(
+            @RequestBody @Valid BrandCouponSourceInternal.TemplateValidation r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            brandCoupons.validateTemplate(r.tenantNo(), r.issuerEntityNo(), r.definition());
+            return new BrandCouponSourceInternal.ValidationReply(true);
+        });
+    }
+    @PostMapping(BrandCouponSourceInternal.USE_VALIDATION)
+    public ResponseEntity<?> validateBrandCouponUse(@RequestBody @Valid BrandCouponSourceInternal.UseValidation r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> new BrandCouponSourceInternal.UseReply(
+                brandCoupons.permitsUse(r.tenantNo(), r.issuerEntityNo(), r.definition(), r.templateVersionNo(),
+                        r.consumerEntityNo(), r.storeNo())));
+    }
+    @PostMapping(BrandCouponSourceInternal.AUDIENCE)
+    public ResponseEntity<?> brandCouponAudience(@RequestBody @Valid BrandCouponSourceInternal.AudienceQuery r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> brandCoupons.audience(r.tenantNo(),
+                r.issuerEntityNo(), r.definition(), r.templateVersionNo(), r.audienceFactRef(), r.actorNo(),
+                r.commandNo()));
     }
     @PostMapping(EntitlementCoreInternal.USE_SOURCE)
     public ResponseEntity<?> useSource(@RequestBody SourceQuery r,

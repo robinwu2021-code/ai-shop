@@ -10,6 +10,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.FileVisitResult;
+import java.nio.file.attribute.BasicFileAttributes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,13 +49,18 @@ class OrphanModuleTest {
      * 同一类 —— 由 Gradle 编，不归 Maven。它曾经只是「留档」、要人记得放回仓库外的离线工程，
      * 正是本测试要防的副本；现在 {@code b-app/offline/build-apk.sh} 每次打包先从这里同步过去，
      * 仓库这份就是被编译的那份，不会再分叉。
+     *
+     * <p>{@code ops-navigation}（2026-11-11）：166 运营导航发布工具 {@code deploy/ume/ops-navigation}。
+     * {@code MenuMigration}/{@code MenuSnapshot} 每次发布都从这个目录编译、在 ai-shop-ops 同镜像的一次性容器里执行
+     * （见该目录 README），与 {@code native-plugins} 同理 —— 仓库这份就是被执行的那份，不是留档副本。
      */
     private static final List<String> ALLOWED = List.of(
-            "node_modules", "target", ".git", "android-shell", "dist", "native-plugins");
+            "node_modules", "target", ".git", "android-shell", "dist", "native-plugins", "ops-navigation");
 
     @Test
     @DisplayName("★★ Maven 之外不得有 Java 源码目录 —— 不参与构建的代码不会有任何东西提醒你它已经过时")
     void noJavaOutsideTheMavenBuild() throws IOException {
+        Set<Path> registered = declaredMavenModuleRoots();
         List<String> orphans = new ArrayList<>();
         for (Path top : Files.list(REPO).filter(Files::isDirectory).toList()) {
             String name = top.getFileName().toString();
@@ -60,13 +70,16 @@ class OrphanModuleTest {
             try (var files = Files.walk(top)) {
                 files.filter(f -> f.toString().endsWith(".java"))
                         .filter(f -> ALLOWED.stream().noneMatch(a -> f.toString().contains("/" + a + "/")))
+                        .filter(f -> registered.stream().noneMatch(module ->
+                                f.startsWith(module.resolve("src/main/java"))
+                                        || f.startsWith(module.resolve("src/test/java"))))
                         .findFirst()
                         .ifPresent(f -> orphans.add(REPO.relativize(f).toString()));
             }
         }
         assertThat(orphans)
                 .as("""
-                        这些 Java 文件在 backend/ 之外，不参与 Maven 构建：%s
+                        这些 Java 文件在 backend/ 之外，且没有实际 Maven module 登记：%s
 
                           不参与构建的代码**不会编译失败、不会有测试变红**，
                           于是它会静静地跟真身分叉 —— 而搜索会命中它、读的人会把它当成现状。
@@ -75,6 +88,40 @@ class OrphanModuleTest {
                           要么删掉。**删之前先与真身逐个比对**：
                           上一个孤儿副本里有两行真身已经丢掉的注释。""", orphans)
                 .isEmpty();
+    }
+
+    /** Read actual module declarations, including profile modules and standalone plugin reactors. */
+    private static Set<Path> declaredMavenModuleRoots() throws IOException {
+        List<Path> poms = new ArrayList<>();
+        Files.walkFileTree(REPO, new SimpleFileVisitor<>() {
+            @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                String name = dir.getFileName().toString();
+                return !dir.equals(REPO) && (name.startsWith(".") || ALLOWED.contains(name))
+                        ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+            }
+            @Override public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (file.getFileName().toString().equals("pom.xml")) poms.add(file);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        Set<Path> registered = new LinkedHashSet<>();
+        try {
+            var factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            for (Path pom : poms) {
+                var document = factory.newDocumentBuilder().parse(pom.toFile());
+                var modules = document.getElementsByTagNameNS("*", "module");
+                for (int i = 0; i < modules.getLength(); i++) {
+                    Path module = pom.getParent().resolve(modules.item(i).getTextContent().trim()).normalize();
+                    if (module.startsWith(REPO) && Files.isRegularFile(module.resolve("pom.xml")))
+                        registered.add(module);
+                }
+            }
+        } catch (javax.xml.parsers.ParserConfigurationException | org.xml.sax.SAXException failure) {
+            throw new IOException("Cannot verify Maven module declarations", failure);
+        }
+        return registered;
     }
 
     @Test

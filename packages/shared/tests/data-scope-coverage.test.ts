@@ -17,6 +17,9 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// @ts-expect-error -- shared ES module scanner
+import { readScopeRegistrations } from "../../../scripts/lib/data-scope-registrations.mjs";
+
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
 const REGISTRATION = join(
@@ -56,6 +59,7 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  ord_payment_resolution: "原收款处置协调记录；运营列表及退款均经PaymentResolutionOpsService.visibleParents按真实子单数据域筛选/复核，user_no是原付款人而非运营SELF归属，不能以该列代替父单/子单授权。",
   pts_statement_build: "账单构建游标，仅内部恢复按构建号访问；对外经账单所属门店权限校验，不提供独立列表。",
   pts_statement_confirmation: "修订确认与通知状态，B仅按当前已授权门店账单访问，Ops先校验门店；后台恢复不能按请求数据域截断。",
   pts_user_account: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
@@ -348,11 +352,7 @@ function tableColumns(): Map<string, Set<string>> {
 
 /** 已登记进表册的表名 */
 function registered(): Set<string> {
-  if (!existsSync(REGISTRATION)) return new Set();
-  const src = readFileSync(REGISTRATION, "utf8");
-  return new Set(
-    [...src.matchAll(/registry\.register\(\s*"(\w+)"/g)].map((m) => m[1]!),
-  );
+  return new Set(readScopeRegistrations(ROOT).keys());
 }
 
 describe("数据域表册覆盖", () => {
@@ -413,7 +413,9 @@ describe("数据域表册覆盖", () => {
      * 同期我给 stl_settle_batch / mch_deposit / mch_debt 那五张登记了数据域，
      * PENDING 却一动不动 —— **数字对不上才查出来**。
      */
-    const PENDING = 41;
+    // 2026-11-06：41 → 63。推 codex/ai-shop-codex 时发现，多出的 22 张来自 10 月下旬美业 / 餐饮 / 进销存 / 商城合并
+    // （此前推送用了 --no-verify，棘轮没机会拦）。是登记欠账，不是放宽口径：补完一张照样减一。
+    const PENDING = 63;
 
     expect(
       missing.length,

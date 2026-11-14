@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchPage;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Terms;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TermsChange;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeRename;
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.payclient.PointsConfigurationAppService;
 
@@ -59,6 +60,12 @@ public class OpsPointsPolicyController {
         return configuration.transition(request, SecurityUtils.currentUserNo());
     }
 
+    @PostMapping("/ops/points/type-name")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult rename(@Valid @RequestBody TypeRename request) {
+        return configuration.rename(request, SecurityUtils.currentUserNo());
+    }
+
     @GetMapping("/ops/points/fallback-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public FallbackRule fallback(@RequestParam String typeCode) {
@@ -68,7 +75,7 @@ public class OpsPointsPolicyController {
     @PostMapping("/ops/points/fallback-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public ChangeResult saveFallback(@Valid @RequestBody FallbackChange request) {
-        return configuration.saveFallback(request, SecurityUtils.currentUserNo());
+        return ai.neargo.shop.payclient.PointsOpsErrors.call(() -> { throw new IllegalArgumentException("POINTS_EARN_USE_RULES_PAGE"); });
     }
 
     @GetMapping("/ops/points/switches")

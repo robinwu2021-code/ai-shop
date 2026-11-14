@@ -79,4 +79,10 @@ public class UsrAccount extends BaseEntity {
 
     /** NORMAL / RISK_LIMITED / BANNED */
     private String status;
+
+    /**
+     * 经营地区（V629，TDD-注册地区与三步建店）：<b>只在建号时写一次</b>，之后建店、方案都按它走。
+     * 存量账号为空 —— 读的一侧一律按部署默认回落（{@code AuthService#accountMarket}），不要直接读这一列。
+     */
+    private String market;
 }

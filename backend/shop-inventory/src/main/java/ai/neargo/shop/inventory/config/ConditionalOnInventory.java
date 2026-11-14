@@ -16,6 +16,10 @@ import java.lang.annotation.Target;
  * 报的是 NoSuchBeanDefinition，而真正的原因是这个域根本没打开。
  *
  * <p>这一条是 S0「零行为变化」的另一半：默认关闭不只是不建表，是**整个域一个 Bean 都不装**。
+ *
+ * <p><b>商城侧的开关</b>：领域搬进独立服务（ADR-046）后，领域 Bean 认 {@code inventory.enabled}；
+ * 商城侧的适配、桥接、控制器仍认 {@code shop.inventory.enabled} —— 部署配置与菜单门控
+ * （{@code sys_function_point.gated_by}）都是这个键。两者在 {@code application.yml} 一对一桥接。
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

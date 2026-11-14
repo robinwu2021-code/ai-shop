@@ -37,12 +37,12 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalPolicyApiTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
             .withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                    "shop.services.internal-token=internal-test");
+                    "shop.services.internal-token=internal-test", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     private static final String BODY = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"at\":\"2026-10-20T12:00:00Z\"}";
 
     @Test void trustedReadUsesPlainTypedResponse() {
         runner.run(context -> mvc(context).perform(post(StoreOperationInternalApi.POLICY_PATH)
-                        .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                        .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                         .content(BODY))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.policyNo").value("P1"))
                 .andExpect(jsonPath("$.data").doesNotExist()));
@@ -50,10 +50,10 @@ class InternalPolicyApiTest {
     @Test void businessFailureAndInvalidScopeHaveStableStatus() {
         runner.run(context -> {
             mvc(context).perform(post(StoreOperationInternalApi.POLICY_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                             .content(BODY.replace("\"E\"","\"FOREIGN\""))).andExpect(status().isNotFound());
             mvc(context).perform(post(StoreOperationInternalApi.POLICY_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                             .content("{\"storeNo\":\"A\"}")).andExpect(status().isBadRequest());
         });
     }
@@ -62,7 +62,7 @@ class InternalPolicyApiTest {
             mvc(context).perform(post(StoreOperationInternalApi.POLICY_PATH).contentType(MediaType.APPLICATION_JSON)
                     .content(BODY)).andExpect(status().isUnauthorized());
             mvc(context).perform(post(StoreOperationInternalApi.POLICY_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"wrong").contentType(MediaType.APPLICATION_JSON)
+                            .header(InternalHttp.TOKEN_HEADER,"wrong").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                         .content(BODY))
                     .andExpect(status().isUnauthorized());
         });
@@ -74,10 +74,10 @@ class InternalPolicyApiTest {
                 + "\"capabilities\":[],\"version\":7}}";
         runner.run(context -> {
             mvc(context).perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                             .content(command)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(8));
             mvc(context).perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                             .content(command.replace("\"version\":7", "\"version\":-1")))
                     .andExpect(status().isBadRequest());
         });
@@ -88,11 +88,11 @@ class InternalPolicyApiTest {
                 + "\"calendar\":{\"mode\":\"CLOSED\",\"intervals\":[],\"version\":0}}";
         runner.run(context -> {
             mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test")
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
             mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH)
-                            .header(InternalHttp.TOKEN_HEADER,"internal-test")
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content(body.replace("2026-10-20","bad-date")))
                     .andExpect(status().isBadRequest());
             mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH).contentType(MediaType.APPLICATION_JSON)

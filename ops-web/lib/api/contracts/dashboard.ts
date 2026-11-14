@@ -12,6 +12,9 @@ export interface DashboardApi {
    */
   login(username: string, password: string): Promise<LoginResp>;
 
+  /** 第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */
+  verifyLogin(challenge: string, code: string): Promise<LoginResp>;
+
   /**
    * 忘记密码：往登录名那个邮箱发一次性重置码。
    *
@@ -23,6 +26,14 @@ export interface DashboardApi {
 
   /** 用邮件里的重置码设新密码。至少 8 位。 */
   resetPassword(token: string, newPassword: string): Promise<void>;
+  /**
+   * 登录后改自己的密码（`POST /ops/staffs/me/password`）。新密码至少 8 位。
+   *
+   * - 旧密码不对：后端回 `code=10401`（HTTP 200），**不是会话失效** —— 页面要说成「旧密码不正确」，
+   *   不能按登录过期处理把人踢回登录页。
+   * - 成功后后端会吊销该账号的**全部**会话（含当前这一张），调用方随即登出。
+   */
+  changeOwnPassword(oldPassword: string, newPassword: string): Promise<void>;
   /**
    * 拿当前登录人的最新身份（`GET /ops/auth/me`）。
    *

@@ -16,7 +16,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -36,13 +37,40 @@ class EntitlementCommandDeduplicatorTest {
     @Autowired @Qualifier("payTxManager") private PlatformTransactionManager manager;
 
     @Test
-    void requiresAnExistingPayTransaction() {
+    void startsAPayTransactionAndCommitsOnlyCompletedCommands() {
         var scope = scope();
-        assertThatThrownBy(() -> commands.execute(scope, "ISSUE_TEST", "key1", "body", "r1",
-                String.class, () -> "success"))
-                .isInstanceOf(IllegalTransactionStateException.class);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE request_key=?",
-                Long.class, "key1")).isZero();
+        var paySource = ((DataSourceTransactionManager) manager).getDataSource();
+        var payJdbc = new JdbcTemplate(paySource);
+        String key = UUID.randomUUID().toString();
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        String result = commands.execute(scope, "ISSUE_TEST", key, "body", "r1", String.class, () -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            assertThat(TransactionSynchronizationManager.hasResource(paySource)).isTrue();
+            assertThat(payJdbc.queryForObject("SELECT result_status FROM pay_ent_command_dedup "
+                    + "WHERE tenant_no=? AND request_key=?", String.class, scope.tenantNo(), key)).isEqualTo("PENDING");
+            return "success";
+        });
+        assertThat(result).isEqualTo("success");
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        assertThat(payJdbc.queryForObject("SELECT result_status FROM pay_ent_command_dedup "
+                + "WHERE tenant_no=? AND request_key=?", String.class, scope.tenantNo(), key)).isEqualTo("COMPLETED");
+
+        String failedKey = UUID.randomUUID().toString();
+        String nestedKey = UUID.randomUUID().toString();
+        assertThatThrownBy(() -> commands.execute(scope, "GRANT_TEST", failedKey, "body", "r2",
+                TemplateView.class, () -> {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                    assertThat(TransactionSynchronizationManager.hasResource(paySource)).isTrue();
+                    catalog.create(scope, definition(), nestedKey);
+                    throw new IllegalStateException("abort the newly opened Pay transaction");
+                })).isInstanceOf(IllegalStateException.class);
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        assertThat(catalog.list(scope, null, null, 1, 20).total()).isZero();
+        assertThat(payJdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup "
+                + "WHERE tenant_no=? AND request_key IN (?,?)", Long.class,
+                scope.tenantNo(), failedKey, nestedKey)).isZero();
+        assertThat(payJdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup "
+                + "WHERE tenant_no=? AND result_status<>'COMPLETED'", Long.class, scope.tenantNo())).isZero();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package ai.neargo.shop.platform.mapper;
 
+import ai.neargo.shop.platform.entity.SysAppVersion;
 import ai.neargo.shop.platform.entity.SysAuditLog;
 import ai.neargo.shop.platform.entity.SysChannelCategoryRule;
 import ai.neargo.shop.platform.entity.SysIndustry;
@@ -55,5 +56,9 @@ public final class PlatformMappers {
     }
 
     public interface SettingMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysSetting> {
+    }
+
+    /** App 版本策略（V638）。一个 App 一个平台一行。 */
+    public interface AppVersionMapper extends BaseMapper<SysAppVersion> {
     }
 }

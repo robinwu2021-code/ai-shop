@@ -1,6 +1,11 @@
 package ai.neargo.shop.message.impl;
 
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.spi.notify.WxSubscribePort;
+import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.Perms;
@@ -8,8 +13,14 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.ratelimit.RateLimiter;
+import ai.neargo.shop.common.ratelimit.RateRule;
+import ai.neargo.shop.message.FeedbackDiagnostics;
+import ai.neargo.shop.message.dto.MessageVOs.DiagnosticVO;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
+import ai.neargo.shop.message.dto.MessageVOs.FeedbackVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
+import ai.neargo.shop.message.dto.MessageVOs.PaymentUnread;
 import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
 import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
@@ -30,7 +41,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class MessageServiceImpl implements MessageService {
@@ -46,7 +63,19 @@ public class MessageServiceImpl implements MessageService {
     /** 外发模板的发送量从这张表数 —— 它们不写 notify_message */
     private final ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
     private final FaqMapper faqMapper;
+    @Autowired
+    private WxSubscribePort wxSubscribePort;
     private final ai.neargo.shop.spi.platform.AuditLogPort auditLogPort;
+    private final RateLimiter rateLimiter;
+    private final ObjectMapper json;
+
+    /**
+     * 商户回报的频率闸：同一账号 10 分钟 5 条（已拍板 P3）。正常使用碰不到，刷单会被挡；
+     * 被拒的那次不计数（{@link RateLimiter} 只在放行时计数）。要运营可调再挪到配置项。
+     */
+    private static final RateRule FEEDBACK_RULE = RateRule.of("feedback-submit", Duration.ofMinutes(10), 5);
+    /** 「我的回报」只给最近这么多条：App 不分页，再旧的不在 App 里展示 */
+    private static final int MY_FEEDBACK_LIMIT = 50;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
                               SubscribeMapper subscribeMapper,
@@ -55,7 +84,8 @@ public class MessageServiceImpl implements MessageService {
                               ai.neargo.shop.spi.platform.OpsStaffPort opsStaffPort,
                               ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper,
                               FaqMapper faqMapper,
-                              ai.neargo.shop.spi.platform.AuditLogPort auditLogPort) {
+                              ai.neargo.shop.spi.platform.AuditLogPort auditLogPort,
+                              RateLimiter rateLimiter, ObjectMapper json) {
         this.templateMapper = templateMapper;
         this.settingPort = settingPort;
         this.opsStaffPort = opsStaffPort;
@@ -65,6 +95,8 @@ public class MessageServiceImpl implements MessageService {
         this.notifyLogMapper = notifyLogMapper;
         this.faqMapper = faqMapper;
         this.auditLogPort = auditLogPort;
+        this.rateLimiter = rateLimiter;
+        this.json = json;
     }
 
     @Override
@@ -256,6 +288,11 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public List<PaymentUnread> paymentUnreadScopes() {
+        return messageMapper.paymentUnreadScopes(SecurityUtils.currentUserNo());
+    }
+
+    @Override
     public long unreadCountOf(String receiverType, String receiverNo) {
         return messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
                 .eq(MsgMessage::getReceiverType, receiverType)
@@ -267,7 +304,13 @@ public class MessageServiceImpl implements MessageService {
     @Transactional
     public void subscribe(List<String> templateIds, boolean accepted) {
         String userNo = SecurityUtils.currentUserNo();
-        for (String templateId : templateIds == null ? List.<String>of() : templateIds) {
+        List<String> requested = templateIds == null ? List.of() : templateIds;
+        var allowed = WxSubscribePort.SCENES.stream()
+                .map(wxSubscribePort::templateId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (requested.size() > 3 || requested.stream().anyMatch(id -> id == null || !allowed.contains(id))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        for (String templateId : new LinkedHashSet<>(requested)) {
             MsgSubscribe existing = subscribeMapper.selectOne(Wrappers.<MsgSubscribe>lambdaQuery()
                     .eq(MsgSubscribe::getUserNo, userNo)
                     .eq(MsgSubscribe::getTemplateId, templateId).last("limit 1"));
@@ -301,25 +344,111 @@ public class MessageServiceImpl implements MessageService {
         t.setContent(content);
         t.setOrderNo(orderNo);
         t.setStatus(MsgTicket.OPEN);
+        t.setSource(MsgTicket.SOURCE_C_USER);
+        t.setStoreDropped(false);
         ticketMapper.insert(t);
+        notifyHandlers(t);
+        return toVO(t);
+    }
 
-        /*
-         * P-N-1：新工单进有权处理的客服的收件箱。同域直推，不绕 Outbox ——
-         * 工单和通知在同一个事务里，没有跨域一致性问题要解。
-         * 按权限码找人而不是按角色名：角色随时会被运营改组（见 OpsStaffPort）。
-         */
+    /*
+     * P-N-1：新工单进有权处理的客服的收件箱。同域直推，不绕 Outbox ——
+     * 工单和通知在同一个事务里，没有跨域一致性问题要解。
+     * 按权限码找人而不是按角色名：角色随时会被运营改组（见 OpsStaffPort）。
+     * 商户回报走同一条：客服在同一个工单池里处理两种来源。
+     */
+    private void notifyHandlers(MsgTicket t) {
         for (String staffNo : opsStaffPort.staffNosWithPerm(Perms.MESSAGE_TICKET_HANDLE)) {
             pushTo(MsgMessage.RECEIVER_OPS, staffNo, SYSTEM,
-                    "新工单", "「" + subject + "」等待处理",
+                    "新工单", "「" + t.getSubject() + "」等待处理",
                     "/messages?tab=tickets",   // ops-web 的工单池就在消息页的 tickets tab
                     "TICKET:" + t.getTicketNo() + ":" + staffNo);
         }
-        return toVO(t);
+    }
+
+    @Override
+    @Transactional
+    public FeedbackVO createMerchantFeedback(MerchantFeedbackCommand cmd) {
+        String userNo = SecurityUtils.currentUserNo();
+        if (!rateLimiter.tryAcquire("feedback:submit:" + userNo, FEEDBACK_RULE).allowed()) {
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
+        String description = cmd.description().strip();
+        MsgTicket t = new MsgTicket();
+        t.setTicketNo(BizKey.next(BizKey.TICKET));
+        t.setUserNo(userNo);
+        // 客服列表一眼能扫：[分类] + 描述前 40 字
+        t.setSubject("[" + cmd.category() + "] " + FeedbackDiagnostics.truncate(description, 40));
+        t.setContent(description);
+        t.setStatus(MsgTicket.OPEN);
+        t.setSource(MsgTicket.SOURCE_B_MERCHANT);
+        t.setCategory(cmd.category());
+        t.setStoreNo(cmd.storeNo());
+        t.setStoreDropped(cmd.storeDropped());
+        t.setClientVersion(FeedbackDiagnostics.truncate(cmd.appVersion().strip(), 32));
+        t.setClientPlatform(clientPlatform(cmd.platform()));
+        t.setErrorCode(FeedbackDiagnostics.truncate(cmd.errorCode(), 64));
+        t.setPage(FeedbackDiagnostics.truncate(cmd.page(), 128));
+        List<DiagnosticVO> diagnostics = FeedbackDiagnostics.sanitize(cmd.diagnostics());
+        t.setDiagnostics(diagnostics.isEmpty() ? null : json.writeValueAsString(diagnostics));
+        ticketMapper.insert(t);
+        notifyHandlers(t);
+        return toFeedbackVO(t);
+    }
+
+    /** App 送的是 Dart {@code TargetPlatform.name}：android / iOS；桌面与调试环境的值归 OTHER，不拒单 */
+    private static String clientPlatform(String platform) {
+        if (platform == null) {
+            return "OTHER";
+        }
+        return switch (platform.strip().toLowerCase(java.util.Locale.ROOT)) {
+            case "android" -> "ANDROID";
+            case "ios" -> "IOS";
+            default -> "OTHER";
+        };
+    }
+
+    @Override
+    public List<FeedbackVO> myMerchantFeedback() {
+        return ticketMapper.selectList(Wrappers.<MsgTicket>lambdaQuery()
+                        .eq(MsgTicket::getSource, MsgTicket.SOURCE_B_MERCHANT)
+                        .eq(MsgTicket::getUserNo, SecurityUtils.currentUserNo())
+                        .orderByDesc(MsgTicket::getId)
+                        .last("limit " + MY_FEEDBACK_LIMIT)).stream()
+                .map(this::toFeedbackVO).toList();
+    }
+
+    @Override
+    public List<DiagnosticVO> ticketDiagnostics(String ticketNo) {
+        MsgTicket t = requireTicket(ticketNo);
+        if (t.getDiagnostics() == null || t.getDiagnostics().isBlank()) {
+            return List.of();
+        }
+        return json.readValue(t.getDiagnostics(), new TypeReference<List<DiagnosticVO>>() { });
+    }
+
+    @Override
+    @Transactional
+    public int purgeTicketDiagnostics(LocalDateTime createdBefore) {
+        // update(null, wrapper)：显式 set null —— updateById 会跳过 null 字段，那句 set 根本不生成
+        return ticketMapper.update(null, Wrappers.<MsgTicket>lambdaUpdate()
+                .set(MsgTicket::getDiagnostics, null)
+                .isNotNull(MsgTicket::getDiagnostics)
+                .lt(MsgTicket::getCreatedAt, createdBefore));
+    }
+
+    private FeedbackVO toFeedbackVO(MsgTicket t) {
+        return new FeedbackVO(t.getTicketNo(), t.getCategory(), t.getContent(), t.getStatus(), t.getReply(),
+                t.getStoreNo(),
+                t.getCreatedAt() == null ? null : t.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toString(),
+                t.getRepliedAt() == null ? null : Instant.ofEpochMilli(t.getRepliedAt()).toString());
     }
 
     @Override
     public List<TicketVO> myTickets() {
+        // 只看 C 端来源：商户回报的提单人号段与 C 端账号只是恰好不撞，不能靠它隔离（F6）
         return ticketMapper.selectList(Wrappers.<MsgTicket>lambdaQuery()
+                        .eq(MsgTicket::getSource, MsgTicket.SOURCE_C_USER)
                         .eq(MsgTicket::getUserNo, SecurityUtils.currentUserNo())
                         .orderByDesc(MsgTicket::getId)).stream()
                 .map(this::toVO).toList();
@@ -329,6 +458,7 @@ public class MessageServiceImpl implements MessageService {
     public TicketVO ticket(String ticketNo) {
         MsgTicket t = ticketMapper.selectOne(Wrappers.<MsgTicket>lambdaQuery()
                 .eq(MsgTicket::getTicketNo, ticketNo)
+                .eq(MsgTicket::getSource, MsgTicket.SOURCE_C_USER)
                 .eq(MsgTicket::getUserNo, SecurityUtils.currentUserNo())
                 .last("limit 1"));
         if (t == null) {
@@ -350,12 +480,18 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public List<TicketVO> opsTickets(String status) {
+        return opsTickets(status, null);
+    }
+
+    @Override
+    public List<TicketVO> opsTickets(String status, String source) {
         /*
          * 不按 userNo 过滤 —— 这是平台视角，要看到所有人的单。
          * C 端的 myTickets() 才带 userNo 条件，两者的区别就在这一行。
          */
         return ticketMapper.selectList(Wrappers.<MsgTicket>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MsgTicket::getStatus, status)
+                        .eq(source != null && !source.isBlank(), MsgTicket::getSource, source)
                         // 未处理的排前面，同状态内新单在前：客服要先看没人管过的
                         .orderByAsc(MsgTicket::getStatus)
                         .orderByDesc(MsgTicket::getId)).stream()
@@ -381,6 +517,15 @@ public class MessageServiceImpl implements MessageService {
         t.setRepliedBy(operatorNo);
         t.setStatus(MsgTicket.REPLIED);
         ticketMapper.updateById(t);
+        if (MsgTicket.SOURCE_B_MERCHANT.equals(t.getSource())) {
+            /*
+             * F8：商户回报的回复要让他知道。推给提单的商户账号（RECEIVER_STAFF），**账号级、不带门店** ——
+             * GET /biz/message 只按收件人查，选哪家店都看得到。dedup 带回复时刻：同一张单可以回不止一次。
+             */
+            pushTo(MsgMessage.RECEIVER_STAFF, t.getUserNo(), SYSTEM, "问题回报有回复",
+                    "回报 " + t.getTicketNo() + "：" + FeedbackDiagnostics.truncate(reply.strip(), 120),
+                    null, "FEEDBACK_REPLY:" + t.getTicketNo() + ":" + t.getRepliedAt());
+        }
         return toVO(t);
     }
 
@@ -417,7 +562,8 @@ public class MessageServiceImpl implements MessageService {
 
     private MessageVO toVO(MsgMessage m) {
         return new MessageVO(m.getMessageNo(), m.getMsgType(), m.getTitle(), m.getBody(),
-                m.getLink(), Boolean.TRUE.equals(m.getIsRead()), m.getAt() == null ? 0L : m.getAt());
+                m.getLink(), Boolean.TRUE.equals(m.getIsRead()), m.getAt() == null ? 0L : m.getAt(),
+                m.getBizType(), m.getBizNo(), m.getStoreNo(), m.getEntityNo());
     }
 
     // ---------------------------------------------------------------- 运营侧 FAQ（P-14.2.4）
@@ -507,7 +653,9 @@ public class MessageServiceImpl implements MessageService {
                 t.getStatus(), t.getReply(),
                 t.getCreatedAt() == null ? 0L
                         : t.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                t.getRepliedAt());
+                t.getRepliedAt(),
+                t.getSource() == null ? MsgTicket.SOURCE_C_USER : t.getSource(), t.getCategory(), t.getStoreNo(),
+                Boolean.TRUE.equals(t.getStoreDropped()), t.getClientVersion(), t.getClientPlatform());
     }
     // ---------------------------------------------------------------- 平台侧 · 触达（P-14.1）
 

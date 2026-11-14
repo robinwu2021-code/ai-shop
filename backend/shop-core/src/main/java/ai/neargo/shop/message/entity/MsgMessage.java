@@ -28,6 +28,11 @@ public class MsgMessage extends BaseEntity {
     public static final String RECEIVER_OPS = "OPS";
 
     private String messageNo;
+    /** Structured payment association; global recipient/unread semantics stay unchanged. */
+    private String bizType;
+    private String bizNo;
+    private String storeNo;
+    private String entityNo;
     private String receiverType;
     private String receiverNo;
 

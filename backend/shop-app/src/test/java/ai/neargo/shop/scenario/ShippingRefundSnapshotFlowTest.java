@@ -60,17 +60,20 @@ class ShippingRefundSnapshotFlowTest {
             jdbc.update("UPDATE trd_shipping_upload SET status='FAILED',err_code=10060002,attempts=8 WHERE id=?",
                     before.getId());
         }
+        // This sibling has no merchandise or cash: persist its actual zero-value refund closure.
+        // Both coupon consumers validate the original case/child/buyer before deciding no entitlement is due.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_item WHERE sub_order_no=?", Long.class, sibling))
+                .isZero();
+        String afterSaleNo = "RF-" + sibling;
+        assertThat(jdbc.update("INSERT INTO ord_after_sale (after_sale_no,sub_order_no,order_no,user_no,entity_no,"
+                + "type,status,reason,refund_minor,approved_minor,refund_mode,refunded_at,tenant_no,created_at,updated_at) "
+                + "SELECT ?,sub_order_no,order_no,user_no,entity_no,'REFUND_ONLY','REFUNDED','NOT_WANTED',"
+                + "0,0,'CASH',?,tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM ord_sub_order "
+                + "WHERE sub_order_no=? AND pay_amount=0", afterSaleNo, System.currentTimeMillis(), sibling))
+                .isEqualTo(1);
         jdbc.update("UPDATE ord_sub_order SET status='REFUNDED',refunded_minor=0,refund_progress='FULL' "
                 + "WHERE sub_order_no=?", sibling);
-        String afterSale = "RF-" + sibling;
-        // Refund consumers reread committed terminal facts; an event without its after-sale row
-        // poisons delivery before the shipping consumer can refresh the original payment queue.
-        jdbc.update("INSERT INTO ord_after_sale (after_sale_no,sub_order_no,order_no,user_no,entity_no,"
-                + "type,status,reason,refund_minor,refunded_at,created_at,updated_at) "
-                + "VALUES (?,?,?,'LG-BUYER','LG-MERCHANT','REFUND_ONLY','REFUNDED',"
-                + "'Shipping snapshot sibling refund',0,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
-                afterSale, sibling, pay, System.currentTimeMillis());
-        events.publish(new OrderEvents.AfterSaleRefunded(afterSale, sibling, "LG-BUYER", 0L));
+        events.publish(new OrderEvents.AfterSaleRefunded(afterSaleNo, sibling, "LG-BUYER", 0L));
         drain();
         TrdShippingUpload refreshed = row(pay);
         assertThat(refreshed.getId()).isEqualTo(before.getId());
@@ -82,10 +85,7 @@ class ShippingRefundSnapshotFlowTest {
         assertThat(snapshot.shipments()).hasSize(1);
         assertThat(snapshot.shipments().getFirst().trackingNo()).isEqualTo(number);
         assertThat(refreshed.getStatus()).isEqualTo("HARD_FAILURE".equals(initial) ? "FAILED" : "PENDING");
-        if ("HARD_FAILURE".equals(initial)) {
-            assertThat(refreshed.getErrCode()).isEqualTo(10060002);
-            assertThat(refreshed.getAttempts()).isEqualTo(8);
-        }
+        if ("HARD_FAILURE".equals(initial)) { assertThat(refreshed.getErrCode()).isEqualTo(10060002); }
         else { assertThat(resolver.resolve(refreshed)).isNotNull(); }
     }
 

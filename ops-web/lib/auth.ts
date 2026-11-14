@@ -5,6 +5,7 @@
 //    商家账号走 B 端；不要在这里加商家角色。
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { clearOpsSessions, shareOpsToken } from "./auth/ops-bridge";
 import { MAIN_TENANT, type DataScope } from "./types/common";
 
 export type Role =
@@ -68,10 +69,21 @@ export const useAuth = create<AuthState>()(
       ...EMPTY_SCOPE,
       token: "",
       perms: [],
-      login: (v) => set({ ...EMPTY_SCOPE, perms: [], ...v, tenantNo: MAIN_TENANT }),
+      login: (v) => {
+        shareOpsToken(v.token);
+        set({ ...EMPTY_SCOPE, perms: [], ...v, tenantNo: MAIN_TENANT });
+      },
       // 退出要清 perms：留着的话，下一个人在同一台机器上登录、
       // 在 perms 拉回来之前的那一瞬看到的是上一个人的入口
-      logout: () => set({ username: "", token: "", perms: [], ...EMPTY_SCOPE }),
+      logout: () => {
+        clearOpsSessions();
+        set({ username: "", role: "ANALYST", token: "", perms: [], ...EMPTY_SCOPE });
+        // persist writes an empty snapshot; remove it as well.
+        if (typeof window !== "undefined") {
+          try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch { /* disabled storage */ }
+          window.dispatchEvent(new Event("shop-ops-session-cleared"));
+        }
+      },
       loggedIn: () => !!get().token,
     }),
     { name: AUTH_STORAGE_KEY },
@@ -96,9 +108,10 @@ export function refreshPerms(): Promise<void> {
     const { api } = await import("./api");
     const { useServerMenu } = await import("./stores/server-menu");
     try {
+      const token = useAuth.getState().token;
       const me = await api.me();
       // 期间退出登录：这时写回去等于把已登出的人的权限塞回来
-      if (!useAuth.getState().token) return;
+      if (!token || useAuth.getState().token !== token) return;
       useAuth.setState({ role: me.role, perms: me.perms ?? [] });
       // perms 到手之后再拉菜单 —— 菜单是后端按人算的，早拉一次拿到的是旧身份的
       await useServerMenu.getState().load();

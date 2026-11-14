@@ -40,4 +40,16 @@ public class ObsConfig {
         reg.addUrlPatterns("/*");
         return reg;
     }
+
+    /**
+     * 内部调用的来源识别与接力（ADR-045 G9，开发计划 M2.6）：紧挨着访问日志之内，整个 {@code /internal/**}。
+     * 同样全局注册 —— 内部端点不经 Spring Security 链。
+     */
+    @Bean
+    public FilterRegistrationBean<InternalCallFilter> internalCallFilter() {
+        var reg = new FilterRegistrationBean<>(new InternalCallFilter());
+        reg.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        reg.addUrlPatterns("/internal/*");
+        return reg;
+    }
 }

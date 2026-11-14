@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient;
 
+import org.springframework.beans.factory.ObjectProvider;
+
 import ai.neargo.shop.pay.entitlement.config.PayEntitlementProperties;
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementOutboxRelay;
 import ai.neargo.shop.pay.entitlement.port.EntitlementCapabilityPortImpl;
@@ -101,8 +103,9 @@ public class EntitlementRuntimeRouting {
         return new EntitlementSaleReservationPortImpl(service);
     }
     @Bean
-    StoredValueCapabilityPort storedValueCapabilityPort(PayEntitlementProperties properties) {
-        return new StoredValueCapabilityPortImpl(properties);
+    StoredValueCapabilityPort storedValueCapabilityPort(PayEntitlementProperties properties,
+            ObjectProvider<EntitlementUsePort> uses, ObjectProvider<StoredValueUseQuotePort> quotes) {
+        return new StoredValueCapabilityPortImpl(properties, uses, quotes);
     }
     @Bean
     EntitlementMarketingFactsPort entitlementMarketingFactsPort(EntitlementMarketingFactsService service) {
@@ -113,8 +116,9 @@ public class EntitlementRuntimeRouting {
         return new EntitlementOwnerRegistryPortImpl(service);
     }
     @Bean
-    EntitlementCapabilityPort entitlementCapabilityPort(PayEntitlementProperties properties) {
-        return new EntitlementCapabilityPortImpl(properties);
+    EntitlementCapabilityPort entitlementCapabilityPort(PayEntitlementProperties properties,
+            ObjectProvider<EntitlementUsePort> uses) {
+        return new EntitlementCapabilityPortImpl(properties, uses);
     }
     @Bean
     LegacyCouponUsePort legacyCouponUsePort(

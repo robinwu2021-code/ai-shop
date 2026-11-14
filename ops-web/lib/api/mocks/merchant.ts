@@ -1,13 +1,16 @@
+import { ApiError } from "../error";
 // 覆盖范围：商家治理（P-11.1）。写操作真改 db.merchants（重开能读回），状态机在此强制。
 import * as db from "@/lib/mock/db";
+import { storeIndustries, marketPhonePolicies } from "@/lib/mock/db/system";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
-import type { MerchantApi } from "../contracts/merchant";
+import type { MerchantApi, PayServiceStatus, PayServiceOnboardingRow } from "../contracts/merchant";
 import type { LegalForm, MerchantChainRow } from "@/lib/types";
 
 /** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
 /** 本次会话里已经提醒过的「商家 × 事由」。真实实现按日期落库，mock 只要能演出第二次 */
 const nudgedToday = new Set<string>();
+const payServiceProfiles = new Map<string, PayServiceStatus>();
 
 /** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
 const selfOperatedByPhone = new Map<string, string>();
@@ -123,6 +126,28 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  onBehalfStoreIndustries: async () => storeIndustries.filter(r=>r.enabled && storeIndustries.some(p=>p.enabled && p.industryCode===r.industryCode && !p.subIndustryCode))
+      .map(r=>({...r,subIndustryCode:r.subIndustryCode||null})),
+  entityCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  entityCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  requestEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  payoutEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  recoverEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  entityPlanAssistanceContext: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  assistedEntityPlanPurchase: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+
+  // Financial acceptance is never synthesized in the demo backend.
+  entityPlanOffers: async () => [], entityPlanPurchases: async () => [],
+  saveEntityPlanOffer: async () => { throw new ApiError(10400,"Real backend required"); },
+  entityPlanPurchase: async () => { throw new ApiError(10404,"Not found"); },
+  confirmEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  declineEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  recoverEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  cancelEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  reserveEntityPlanEvidence: async () => { throw new ApiError(10400,"Real backend required"); },
+  uploadEntityPlanEvidence: async () => { throw new ApiError(10400,"Real backend required"); },
+  entityPlanEvidenceUrl: async () => { throw new ApiError(10404,"Not found"); },
+
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
@@ -191,8 +216,18 @@ export const merchantMock: MerchantApi = {
    * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
    * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
    */
-  applyOnBehalf: async ({ phone, name, subject, qualificationItems }) => {
-    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+  onBehalfContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  listOnBehalfApplies: (q = {}) => {
+    const statuses=q.status?.split(",").filter(Boolean) ?? ["PENDING","REVIEWING"];
+    return wait(db.paginate(db.applies,q.page,q.size,a=>a.onBehalf===true && statuses.includes(a.status) && db.kwHit(q.keyword,a.name,a.contactName,a.contactPhone)));
+  },
+  applyOnBehalf: async (v) => {
+    const {phone,name,subject,qualificationItems,ownerEmail,storeProfile}=v;
+    const market=marketPhonePolicies.find(p=>p.market==="TW")!.market;
+    if(v.market && v.market!==market) fail("地区与系统配置不符", "Region differs from system configuration");
+    const policy=marketPhonePolicies.find(p=>p.market===market && p.marketEnabled);
+    if (!policy) fail("地区不可用", "Market unavailable");
+    if (!policy!.recordOnly && !/^1[3-9]\d{9}$/.test(phone ?? "")) {
       fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
     }
     if (!name?.trim()) {
@@ -202,16 +237,20 @@ export const merchantMock: MerchantApi = {
         && !qualificationItems.some((it) => it.type === "BUSINESS_LICENSE")) {
       fail("企业主体必须上传营业执照", "Business license is required for enterprises");
     }
-    return wait({
-      applyNo: `A9${String(Math.floor(Math.random() * 900) + 100)}`,
-      ownerUserNo: `U-${phone}`,
-    }, 500);
+    const phoneOwner=market==="CN" && !policy!.recordOnly;
+    if (!phoneOwner && ownerEmail!=="owner@example.test") fail("请选择已注册店主邮箱（mock: owner@example.test）", "Use the registered mock owner: owner@example.test");
+    const ownerUserNo=phoneOwner?`U-${phone}`:"U-OPS-OWNER";
+    const applyNo=`OPS-MOCK-${Date.now()}`;
+    db.applies.unshift({applyNo,ownerUserNo,marketCode:market,storeProfile,name,subject,
+      contactName:v.contactName??"",contactPhone:v.contactPhone??phone,category:v.category??"",desc:v.description??"",
+      serviceScope:v.serviceScope??"COMMUNITY",communityNos:v.communityNos??[],licenses:[],asPickupPoint:!!v.asPickupPoint,
+      industry:v.industry,qualificationItems:qualificationItems?.map(q=>({...q,code:q.code??"",imageUrl:q.imageUrl??"",expireAt:q.expireAt??null})),status:"PENDING",createdAt:Date.now(),onBehalf:true,agreedAt:0});
+    return wait({applyNo,ownerUserNo},500);
   },
 
-  createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
-    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
-      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
-    }
+  selfOperatedContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  createSelfOperated: async ({ ownerEmail, name, serviceScope, communityNos }) => {
+    if(ownerEmail!=="owner@example.test") fail("请选择已注册店主邮箱", "Use the registered owner email");
     if (!name?.trim()) {
       fail("主体名称不能为空", "Merchant name is required");
     }
@@ -221,12 +260,12 @@ export const merchantMock: MerchantApi = {
     if (scope === "COMMUNITY" && !communityNos?.length) {
       fail("必须至少选一个覆盖社区", "At least one covered community is required");
     }
-    const tail = phone.slice(-4);
-    const owned = selfOperatedByPhone.get(phone);
+    const ownerKey=ownerEmail!;
+    const owned = selfOperatedByPhone.get(ownerKey);
     if (owned) {
       return wait({
         merchantNo: owned, storeNo: `${owned}-S1`,
-        ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
+        ownerUserNo: `U-${ownerKey}`, fundsMode: "AGGREGATED" as const,
         businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
         selfOperated: true,
         reachableCommunities: reachOf(scope, communityNos),
@@ -236,16 +275,16 @@ export const merchantMock: MerchantApi = {
     db.merchants.unshift({
       merchantNo, name: name.trim(), legalForm: "ENTERPRISE", tier: "MEDIUM", status: "ACTIVE",
       communityNos: [...communityNos],
-      contactName: "平台自营", contactPhone: `${phone.slice(0, 3)}****${tail}`,
+      contactName: "平台自营", contactPhone: "",
       categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
       settleAccountReady: false, createdAt: new Date().toISOString(),
       fundsMode: "AGGREGATED",
       // 建出来的主体要带上这个标记，否则 mock 下「自营的类目授权不禁用」演不出来
       selfOperated: true,
     });
-    selfOperatedByPhone.set(phone, merchantNo);
+    selfOperatedByPhone.set(ownerKey, merchantNo);
     return wait({
-      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
+      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${ownerKey}`,
       fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
       serviceScope: scope, created: true, selfOperated: true,
       reachableCommunities: reachOf(scope, communityNos),
@@ -401,6 +440,7 @@ export const merchantMock: MerchantApi = {
 
   auditApply: async (applyNo, approved, reason, serviceScope, communityNos, grantCodes) => {
     const a = findApply(applyNo);
+    if (a.status==="APPROVED" && approved) return wait({...a});
     if (a.status === "APPROVED" || a.status === "REJECTED") {
       fail("这份申请已经审过了", "This application has already been decided");
     }
@@ -421,6 +461,7 @@ export const merchantMock: MerchantApi = {
       }
       a.status = "APPROVED";
       a.merchantNo = `M${applyNo.slice(1)}`;
+      if (a.storeProfile) a.storeNo=`ST-${applyNo}`;
       /*
        * **授码与通过同一步**（批 B2）。分两步做会留下「通过了但一个码都没授」的状态：
        * 商家收到通过通知、进去建品、上架被拒，而错误说的是「你还没有资质授权」。
@@ -437,7 +478,7 @@ export const merchantMock: MerchantApi = {
       a.rejectReason = reason;
     }
     a.auditedAt = Date.now();
-    await wait(undefined);
+    return wait({...a});
   },
 
   /*
@@ -479,7 +520,32 @@ export const merchantMock: MerchantApi = {
 
   getMerchant: async (merchantNo) => wait(find(merchantNo)),
 
-  // 进件看板（WS-C）：从商家派生只读行；status 支持逗号分隔多态，与后端同口径
+  // 显式只读样例：来源审核通过仍可能处于通道审核/交接中，不推导收款能力。
+  nearPayOnboardingBoard: (q = {}) => {
+    const rows: PayServiceOnboardingRow[] = db.merchants.map((merchant, index) => {
+      const state = index % 4;
+      const merchantRef = state === 0 ? null : `PM-${merchant.merchantNo}`;
+      return {
+        entityNo: merchant.merchantNo, entityName: merchant.name,
+        status: state === 0 ? "NONE" : "APPROVED", merchantRef,
+        linkStatus: merchantRef ? "VERIFIED" : null,
+        profileStatus: merchantRef ? "APPROVED" : null, reviewReason: null,
+        onboardings: state === 0 ? [] : [{
+          onboardingNo: `OB-${merchant.merchantNo}`, payChannel: "EZPAY",
+          status: state === 1 ? "CHANNEL_REVIEW" : state === 2 ? "CANCELLED" : "SUCCEEDED",
+          reviewStatus: "APPROVED", submitOutcome: "ACCEPTED",
+          resultCode: state === 1 ? "PENDING_REVIEW" : null,
+          handoffStatus: state === 3 ? "SUCCEEDED" : "WAITING",
+          ezpayBindingStatus: state === 3 ? "BOUND" : "UNBOUND",
+          reason: state === 2 ? "CANCELLED_BY_MERCHANT" : null, updatedAt: 1794384000000,
+        }],
+        // 开发样例没有真实 NearPay 地址，不提供伪造跳转。
+        onboardingOpsUrl: null,
+      };
+    });
+    return wait(db.paginate(rows, q.page, q.size, (r) => db.kwHit(q.keyword, r.entityNo, r.entityName)));
+  },
+  // 旧进件看板保留原筛选口径。
   onboardingBoard: (q = {}) =>
     wait(
       db.paginate(
@@ -526,6 +592,19 @@ export const merchantMock: MerchantApi = {
       m.communityNos = [...communityNos];
     }
     return wait(m, 400);
+  },
+
+  payServiceStatus: async (merchantNo) => {
+    find(merchantNo);
+    return wait(payServiceProfiles.get(merchantNo) ?? { status: "NONE", merchantRef: null, linkStatus: null, profileStatus: null,
+      reviewReason: null, merchantOpsUrl: null, onboardingOpsUrl: null });
+  },
+
+  applyPayService: async (merchantNo, form) => {
+    find(merchantNo);
+    if (!form.legalName?.trim() || !form.registrationNo?.trim()) fail("法定名称与统一编号必填", "Legal name and registration no. are required");
+    payServiceProfiles.set(merchantNo, { status: "PENDING", merchantRef: `PM-${merchantNo}`, linkStatus: "VERIFY_PENDING", profileStatus: "PENDING", reviewReason: null, merchantOpsUrl: null, onboardingOpsUrl: null });
+    return wait({ merchantRef: `PM-${merchantNo}`, applicationRef: `APP-${merchantNo}`, status: "VERIFY_PENDING", storeLinks: [] }, 400);
   },
 
   setMerchantVerified: async (merchantNo, verified) => {

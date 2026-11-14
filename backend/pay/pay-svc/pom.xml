@@ -13,6 +13,9 @@
 
     <artifactId>pay-svc</artifactId>
     <packaging>jar</packaging>
+    <properties>
+        <git.sha>unknown</git.sha>
+    </properties>
     <description>支付域 · 独立部署形态（形态 B）。不接前端流量，只暴露 /internal 与 /callback</description>
 
     <!-- ⚠️ **这个模块的依赖清单就是它的定义。**
@@ -38,6 +41,24 @@
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>pay-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 接入守卫（ADR-045）：/internal/pay/v1 的调用方识别在这里；只装 INTERNAL 入口（application.yml） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-guard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 对外入口的 controller（开放 API、POS 终端、渠道回调、收银台；开发计划 M7.1 / D1）：独立形态下由这个进程承接 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-portal</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 密钥模块：接入方 AppSecret / EncryptKey、终端设备密钥、渠道密钥都在支付库的 sec_* 表里，主密钥注入这个进程 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- 通道适配。独立形态下回调验签与向通道查单都在这个进程里做 -->
@@ -73,6 +94,15 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-info</id>
+                        <goals><goal>build-info</goal></goals>
+                        <configuration>
+                            <additionalProperties><gitSha>${git.sha}</gitSha></additionalProperties>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

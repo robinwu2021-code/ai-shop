@@ -6,13 +6,16 @@ import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,8 +50,25 @@ class PayChannelDefaultResolveTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    private static final String MARKET_ROWS =
+            "SELECT pay_channel, market FROM sys_pay_channel_market ORDER BY pay_channel, market";
     private static final String ENTITY = "E-PCD-TEST";
     private static final String STORE = "ST-PCD-TEST";
+
+    /** 用例前的原样：每个通道的开关、全部市场行（W2 S8：种子里有停用的新渠道，不能「一律还原成启用」） */
+    private Map<String, Boolean> enabledBefore;
+    private List<Map<String, Object>> marketsBefore;
+
+    @BeforeEach
+    void snapshotSeeds() {
+        enabledBefore = new LinkedHashMap<>();
+        DataScopeContext.executeWithoutScope(() -> {
+            channelMapper.selectList(Wrappers.emptyWrapper())
+                    .forEach(r -> enabledBefore.put(r.getPayChannel(), r.getEnabled()));
+            return null;
+        });
+        marketsBefore = jdbc.queryForList(MARKET_ROWS);
+    }
 
     @AfterEach
     void restoreSeeds() {
@@ -57,61 +77,40 @@ class PayChannelDefaultResolveTest {
          * SELECT 读出空集、UPDATE 静默 0 行，于是「还原」这一步<b>什么都没干</b>，
          * 而它不会报错。症状是本类单独跑绿、全量跑红，且红的是 StoreSettleFlowTest
          * 这种与支付通道毫无关系的用例（它拿不到可用通道，报 70045）。
+         *
+         * 还原成<b>用例前的原样</b>，不是「全部启用」：V12 起种子里有三条默认停用的新渠道（蓝新、LINE Pay、PayBy），
+         * 一律启用等于把它们在测试库里开出来；测试渠道 TEST 则由 schema-test-extra.sql 开着，原样还原它仍开着。
          */
         DataScopeContext.executeWithoutScope(() -> {
             channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
-                /*
-                 * **全部启用，包括测试渠道。**
-                 *
-                 * 上一版在这里跳过了 TEST，理由是「它默认关是刻意的」——
-                 * 那条理由说的是<b>生产</b>（V288 种的 enabled=0，
-                 * 不能让假通道出现在真实渠道列表里），而这里是<b>测试库</b>。
-                 *
-                 * S4 让下单走网关之后，测试库必须有一个通道既 enabled 又有网关实现，
-                 * 否则 30 个走支付链路的场景测试取不到可用通道。
-                 * 那个通道就是 TEST（schema-test-extra.sql 开的）——
-                 * 本类还原时把它关掉，等于把那 30 个测试的地基抽掉。
-                 */
-                r.setEnabled(true);
+                r.setEnabled(enabledBefore.get(r.getPayChannel()));
                 channelMapper.updateById(r);
             });
             return null;
         });
-        /*
-         * 市场行 V295 起在 sys_pay_channel_market，还原要按种子的原样回填 ——
-         * 而不是给每个通道都补一行 CN：TEST 在种子里<b>本来就没有行</b>
-         * （无行 = 不限市场，V288 刻意留空，它要能在任何市场的链路上验证）。
-         * 多补一行等于悄悄改掉那个通道的语义。
-         */
         jdbc.update("DELETE FROM sys_pay_channel_market");
-        jdbc.update("INSERT INTO sys_pay_channel_market"
-                + " (pay_channel, market, tenant_no, created_at, created_by,"
-                + "  updated_at, updated_by, version, deleted)"
-                + " VALUES ('WECHAT','CN','MAIN','2026-09-02 00:00:00','SYSTEM',"
-                + "         '2026-09-02 00:00:00','SYSTEM',0,0),"
-                + "        ('ALIPAY','CN','MAIN','2026-09-02 00:00:00','SYSTEM',"
-                + "         '2026-09-02 00:00:00','SYSTEM',0,0)");
+        for (Map<String, Object> row : marketsBefore) {
+            jdbc.update("INSERT INTO sys_pay_channel_market"
+                    + " (pay_channel, market, tenant_no, created_at, created_by,"
+                    + "  updated_at, updated_by, version, deleted)"
+                    + " VALUES (?, ?, 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0)",
+                    row.get("pay_channel"), row.get("market"));
+        }
         /*
          * **还原失败要当场变红。** 不断言的话，还原悄悄没生效 → 下一个测试类
          * 拿不到可用通道 → 报错落在一个与支付通道毫无关系的用例上
          * （实测就是 StoreSettleFlowTest 的 70045）。
          * 让噪音落在制造它的那个类里，别让下一个人去考古。
          */
-        List<SysPayChannel> after = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectList(Wrappers.emptyWrapper()));
-        assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
-        /*
-         * 自检也要认那个例外，否则「跳过 TEST」与「所有通道都得是启用」
-         * 两句话互相打架 —— 而打架的表现是这一条自检把整个类染红，
-         * 报错说「TEST 没被还原成启用」，<b>而它本来就不该被启用</b>。
-         */
-        assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
-        after.forEach(r -> {
-            assertThat(r.getEnabled()).as("通道 " + r.getPayChannel() + " 没被还原成启用").isTrue();
-            assertThat(marketsOf(r.getPayChannel()))
-                    .as("通道 " + r.getPayChannel() + " 的市场行没被还原")
-                    .isEqualTo("TEST".equals(r.getPayChannel()) ? List.of() : List.of("CN"));
+        Map<String, Boolean> enabledAfter = new LinkedHashMap<>();
+        DataScopeContext.executeWithoutScope(() -> {
+            channelMapper.selectList(Wrappers.emptyWrapper())
+                    .forEach(r -> enabledAfter.put(r.getPayChannel(), r.getEnabled()));
+            return null;
         });
+        assertThat(enabledAfter).as("还原之后必须还看得见通道行").isNotEmpty();
+        assertThat(enabledAfter).as("通道开关没被还原").isEqualTo(enabledBefore);
+        assertThat(jdbc.queryForList(MARKET_ROWS)).as("通道的市场行没被还原").isEqualTo(marketsBefore);
 
         // 自己造的行自己收拾：留在共享库里会让别的用例莫名其妙多出一个主体
         jdbc.update("DELETE FROM mch_payment_merchant WHERE entity_no = ?", ENTITY);
@@ -174,20 +173,20 @@ class PayChannelDefaultResolveTest {
     }
 
     @Test
-    @DisplayName("★★★ markets 为空按全市场可用 —— 存量行都是空的，按「空=不可用」会让通道一夜消失")
-    void blankMarketsMeansAllMarkets() {
+    @DisplayName("★★★ W2 S8 没有市场行 = 哪个市场都不可用 —— 新渠道没配市场就不该在大陆出现")
+    void noMarketRowsMeansUnavailable() {
         /*
-         * V295 之前这里踩过一次：用 updateById 置 null 时 MyBatis-Plus 默认跳过
-         * null 字段，那一行原样保留 ["CN"]，于是用例测的是「CN 的通道在 AE 不可见」——
-         * 它会通过，而通过的原因与用例名毫无关系。
+         * V12 之前的语义正相反（「无行 = 不限市场」）：那时存量通道的行是空的，按「空 = 不可用」会一夜消失。
+         * V12 把存量的「不限」搬成了显式行（TEST 每个市场一行），语义才能翻过来 ——
+         * 否则一个没配市场的新渠道（蓝新 / LINE Pay / PayBy）会在所有市场出现，包括大陆。
          *
-         * 关系表没有这个坑：<b>删掉行就是删掉行</b>，
-         * 「没配」与「配成空」在表结构上不再需要区分。
+         * 关系表没有 updateById 跳过 null 的坑：<b>删掉行就是删掉行</b>。
          */
         jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'WECHAT'");
         assertThat(marketsOf("WECHAT")).as("先确认真的删空了").isEmpty();
 
-        assertThat(masterData.enabledChannels("AE")).contains("WECHAT");
+        assertThat(masterData.enabledChannels("CN")).doesNotContain("WECHAT").contains("ALIPAY");
+        assertThat(masterData.enabledChannels("AE")).doesNotContain("WECHAT");
     }
 
     /** 从关系表读一个通道的市场，排序后返回 —— 断言要稳定 */

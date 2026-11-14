@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 920 个接口**：后端已实现 834（91%）· 前端在调 840
+**合计 1202 个接口**：后端已实现 952（79%）· 前端在调 1034
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **123** 个接口 ｜ 后端已实现 **122**（99%）｜ 前端在调 **123**
+共 **133** 个接口 ｜ 后端已实现 **131**（98%）｜ 前端在调 **133**
 
 ### after-sale（5）
 
@@ -64,6 +64,13 @@
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 | POST | `/mp/coupon/best` | 最优券试算（含不可用原因） | — | `CouponBestResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/coupon/mine` | 我领到的券 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### entitlement-service-orders（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/entitlement-service-orders` | My pending service confirmations | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/entitlement-service-orders/{orderNo}` | My service confirmation | — | `StoredValueService` | 🔒 | ⬜ | ✅ |
 
 ### favorite（4）
 
@@ -177,7 +184,7 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（15）
+### order（16）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -190,12 +197,19 @@
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `PayInit` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-result` | 支付结果 | — | `Order` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/points-earning` | 订单赠送积分进度 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/points-state` | 本人订单积分接线阶段 | — | `PointsOrderState` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/trace` | 物流页（查看物流） | — | `ShipmentTrace` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/capability` | 结算页能力提示（开票/支付方式/额度） | — | `CheckoutCapability` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/points-quote` | 按门店的积分抵扣报价 | — | `OrderPointsQuote` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
+
+### orders（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/mp/orders/{orderNo}/entitlement-authorizations` | Confirm frozen service and wallet | `StoredValueAuthorizeRequest` | `StoredValueAuthorization` | 🔒 | ✅ | ✅ |
 
 ### place（1）
 
@@ -250,6 +264,17 @@
 | GET | `/mp/store/mine` | 我的店：买过的 + 近期逛过的门店 | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/store/nearby` | 附近的门店（去掉我的店） | — | `object` | — | ✅ | ✅ |
 
+### stored-value（6）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/stored-value/issuer-records` | Owned issuer history | — | `StoredValueIssuerRecordsPage` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/issuers` | Owned funded wallets | — | `StoredValueIssuersPage` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/notification-capability` | 储值消费微信通知能力 | — | `StoredValueNotificationCapability` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/records/locate` | Locate owned wallet by durable document | — | `StoredValueIssuer` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/store/{storeNo}/records` | 本人门店储值与核销记录 | — | `StoredValueRecordsPage` | 🔒 | ✅ | ✅ |
+| GET | `/mp/stored-value/stores` | 本人有储值记录的门店 | — | `StoredValueStoresPage` | 🔒 | ✅ | ✅ |
+
 ### track（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -291,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **324** 个接口 ｜ 后端已实现 **306**（94%）｜ 前端在调 **324**
+共 **478** 个接口 ｜ 后端已实现 **372**（78%）｜ 前端在调 **476**
 
 ### activities（4）
 
@@ -435,6 +460,19 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/entity/{entityNo}` | 一张证照的详情与门店 | — | `EntityStores` | 🔒 | ✅ | ✅ |
 
+### express（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/express/companies` | 本店可选快递公司 | — | `ExpressCompanyList` | 🔒 | ✅ | ✅ |
+
+### feedback（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/feedback` | 提交问题回报（回报号即工单号） | `SubmitFeedbackReq` | `FeedbackReceipt` | 🔒 | ✅ | ✅ |
+| GET | `/biz/feedback/mine` | 我的回报（最近 50 条，带客服回复） | — | `数组` | 🔒 | ✅ | ✅ |
+
 ### freight-template（1）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -552,6 +590,85 @@
 | POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/void` | 作废调拨草稿 | — | — | 🔒 | ✅ | ✅ |
 
+### management（74）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/management/brand-changes/{c}` | 查询品牌变更 | — | `BrandChange` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brand-changes/{c}/decisions` | 决定品牌变更 | `ManagementBrandDecisionReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands` | 品牌列表 | — | `ManagementBrandPage` | 🔒 | ✅ | ✅ |
+| POST | `/biz/management/brands` | 创建品牌 | `ManagementBrandCreateReq` | `Brand` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/brands/{b}` | 品牌详情 | — | `Brand` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/management/brands/{b}` | 修改品牌 | `ManagementBrandEditReq` | `Brand` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{b}/audit-events` | 品牌操作记录 | — | `ManagementAuditPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{b}/status-changes` | 品牌启停 | `ManagementBrandStatusReq` | `Brand` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{b}/stores` | 品牌门店 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | Activate original brand snapshot | `SvBrandActivationRequest` | `SvBrandActivation` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/brands/{no}/stored-value/issuer` | 品牌储值发行设置 | — | `SvIssuerLookup` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{no}/stored-value/issuer` | 保存品牌发行草稿 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{no}/stored-value/store-breakdown` | mSvBrandStoreBreakdown | — | `SvFinanceStorePage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{no}/stored-value/summary` | mSvBrandSummary | — | `SvSummary` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activities` | 门店储值活动 | — | `SvGovernanceActivitiesPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities` | 保存储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activities/{no}` | 储值活动详情 | — | `SvGovernanceDetail` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/checks` | 检查储值活动 | `SvGovernanceCommand` | `SvActivityCheck` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/copies` | 复制储值活动 | `SvGovernanceCommand` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/management/brands/{store}/stored-value/activities/{no}/draft` | 修订储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/stop-issuance` | 停止新发行 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/brands/{store}/stored-value/activities/{no}/submissions` | 提交储值活动 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-context` | 储值活动门店市场上下文 | — | `SvGovernanceContext` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-presets` | 可用储值活动类型 | — | `SvGovernancePresetsPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{store}/stored-value/activity-schedules` | 按门店时区换算活动日期 | — | `SvGovernanceSchedule` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/context` | 管理空间上下文 | — | `ManagementContext` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/entities/{e}/payment-merchants` | 支付商户候选 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/entities/{entity}/stored-value/financial-permissions` | 准备所有人结算权限 | `SvFinanceManagementQuery` | `SvFinancialPermissionResult` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/spaces` | 创建管理空间 | `ManagementSpaceCreateReq` | `ManagementSpace` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/spaces/{m}/entities` | 管理主体列表 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/spaces/{m}/grants` | 授予资源能力 | `ManagementGrantReq` | `ManagementGrant` | 🔒 | ⬜ | ✅ |
+| DELETE | `/biz/management/spaces/{m}/grants/{g}` | 撤销资源授权 | — | `ManagementGrant` | 🔒 | ⬜ | ⬜ |
+| GET | `/biz/management/spaces/{m}/recipients` | 管理空间可授权人员 | — | `ManagementRecipientPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/spaces/{m}/resources` | 资源与授权列表 | — | `ManagementGrantPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/spaces/{m}/stores` | 管理门店列表 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/activities/{no}/summary` | mSvActivitySummary | — | `SvFinanceActivityPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/activity-approvals` | 储值活动审批列表 | — | `SvGovernanceApprovalsPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/activity-approvals/{no}` | 储值活动审批详情 | — | `SvApproval` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/activity-approvals/{no}/decisions` | 审批储值活动 | `SvGovernanceDecision` | `SvApproval` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/financial-brand-changes/{no}` | 金融品牌变更原单 | — | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/financial-brand-changes/{no}/resumptions` | 恢复金融品牌变更原单 | `SvFinanceManagementQuery` | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/financial-capability` | mSvFinanceCapability | — | `SvFinanceCapability` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/financial-resources` | mSvFinanceResources | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/issuers/{no}/collection-routes` | 已配置收款路由 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/issuers/{no}/configuration-checks` | 检查发行配置影响 | `IssuerConfigureRequest` | `IssuerImpact` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/issuers/{no}/configuration-versions` | 保存发行配置版本 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/policies` | 发行策略目录 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/management/stored-value/policies` | 创建发行策略 | `SvGovernancePolicyCreate` | `SvPolicy` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/management/stored-value/policies/{no}` | 修订发行策略 | `SvGovernancePolicyEdit` | `SvPolicy` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/policy-permissions/prepare` | 准备已有管控权限的授权项 | `SvGovernanceManagement` | `SvGovernancePrepared` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/policy-targets` | Authorized stored-value policy targets | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills` | mSvSettlementBills | — | `SvFinanceBillPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}` | mSvSettlementBill | — | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/actions` | mSvSettlementActions | — | `SvBillActions` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/adjustments` | mSvSettlementAdjust | `SvAdjustmentRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions` | mSvSettlementResolveDispute | `SvResolutionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/disputes` | mSvSettlementDispute | `SvDecisionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/events` | mSvSettlementEvents | — | `SvFinanceEventPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/items` | mSvSettlementItems | — | `SvFinanceItemPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/payment-resolutions` | mSvSettlementPaymentResolution | — | `SvPaymentResolution` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/payments` | mSvSettlementPayments | — | `SvFinancePaymentPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/payments` | mSvSettlementRegister | `SvPaymentRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations` | mSvSettlementReconcile | `SvDecisionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/generations` | mSvSettlementGenerate | `SvGenerationRequest` | `SvGenerated` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/settlement-entity-candidates` | 有授权的结算主体 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/management/stored-value/settlement-payments/{no}/receipt-confirmations` | mSvSettlementReceipt | `SvReceiptRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-payments/{no}/voids` | mSvSettlementVoid | `SvVoidRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/store-issuer-summary` | mSvLocalIssuerSummary | — | `SvFinanceSummaryPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stores/{no}/stored-value/issuer` | 门店发行设置 | — | `SvIssuerLookup` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stores/{no}/stored-value/issuer` | 保存门店发行配置 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stores/{no}/stored-value/issuer/access-refresh` | 同步原门店准入修订 | `SvIssuerManagementQuery` | `IssuerAccessAck` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stores/{no}/stored-value/issuer/prepare` | 准备门店发行元数据 | `SvIssuerManagementQuery` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stores/{store}/stored-value/financial-brand-change-original` | 核对金融品牌变更原请求 | — | `SvFinancialBrandOriginal` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stores/{store}/stored-value/financial-brand-changes` | 金融品牌门店变更 | `SvFinancialBrandRequest` | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
+
 ### marketing（1）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -562,7 +679,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/member-code/resolve` | 识别统一会员码 | — | `CustomerReference` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-code/resolve` | 识别统一会员码 | `ResolveMemberCodeReq` | `CustomerReference` | 🔒 | ✅ | ✅ |
 
 ### member-reach（4）
 
@@ -613,7 +730,7 @@
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags/batch` | 批量打/去一个标签（confirm=false 只试算） | — | `BatchTagResult` | 🔒 | ✅ | ✅ |
 
-### merchant（12）
+### merchant（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -623,6 +740,7 @@
 | GET | `/biz/merchant/debt` | 我的欠款与流水 | — | `MyDebt` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/display-name` | 改用户名 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/pay-channel` | 本店能开的收款通道（含没开的） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/pay-service` | 支付服务资料审核状态（属主） | — | `PayServiceStatus` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/payment` | 收款进件状态 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment/{payChannel}/refresh` | 回查进件结果 | — | `PaymentApplyment` | 🔒 | ✅ | ✅ |
@@ -659,7 +777,7 @@
 | PUT | `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
 | POST | `/biz/notify/wecom/test` | 往本店的企微群发一条测试 | — | `boolean` | 🔒 | ✅ | ✅ |
 
-### order（18）
+### order（19）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -675,12 +793,31 @@
 | GET | `/biz/order/{orderNo}/fulfillment-options` | 配送方式切换资格 | — | `MerchantFulfillmentOptions` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/inventory-trace` | 订单库存追溯 | — | `MerchantInventoryTrace` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/logistics-updates` | 物流更新记录 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/points-earning` | 订单赠送积分进度 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/order/{orderNo}/prepare` | 开始备货 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship/precheck` | 运单预检 | — | `ShipPrecheck` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/trace` | 物流轨迹 | — | `ShipmentTrace` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
+
+### payment（13）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/payment/app-grant` | 已授权的第三方 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
+| DELETE | `/biz/payment/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
+| POST | `/biz/payment/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/offline-records` | 记一笔 App 外收款 | `OfflineRecordCreateReq` | `OfflineRecord` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/offline-records` | App 外收款记录 | — | `OfflineRecordPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/offline-records/summary` | App 外收款合计 | — | `OfflineRecordSummary` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/payment/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
 
 ### payout-account（2）
 
@@ -940,15 +1077,82 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/store-spec-dims` | 本店货架类目各自能用的规格 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### stores（6）
+### stored-value（21）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/stored-value/account-directory` | 门店储值顾客 | — | `SvAccountPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/accounts/{accountRef}` | 门店储值账户 | — | `SvAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/brand-capability` | Brand readiness | — | `SvBrandCapability` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions` | Consume using existing consumer confirmation | `SvConsumptionSubmit` | `SvOperation` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/consumptions/orders/{orderNo}` | Merchant original service status | — | `SvServiceView` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/orders/{orderNo}/cancel` | Cancel original service without refund | `SvConsumptionStoreQuery` | `SvOperation` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/preview` | Selected wallet service preview | `SvConsumptionCreate` | `SvConsumptionPreview` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/resolve` | Resolve exact original preview without expired references | `SvConsumptionCreate` | `SvConsumptionResolution` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/context` | 储值上下文 | — | `SvContext` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/customer-candidates` | 查找可办理储值的会员 | — | `object` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/customer-selections` | 选用储值顾客 | `SvSelectCustomerReq` | `SvSelectedCustomer` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/governance-capability` | 储值管控能力 | — | `SvGovernanceCapability` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/plan-recharges` | 按方案办理储值 | `SvRechargeCreate` | `SvProgress` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | 独立储值进度 | — | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/plan-recharges/{rechargeNo}/cancel` | 取消未收款储值 | `SvCancelReq` | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/plan-recharges/{rechargeNo}/receive` | 确认储值收款 | `SvReceive` | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/plan-recharges/{rechargeNo}/submit` | 提交储值实收 | `SvReceipt` | `SvProgress` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/plans` | 门店储值方案 | — | `SvPlanPage` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/plans` | 创建门店储值方案 | `SvPlanCreate` | `SvPlan` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
+
+### stores（47）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/stores/{no}/stored-value/store-summary` | mSvStoreSummary | — | `SvSummary` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{s}/brand-changes` | 提交品牌变更 | `ManagementBrandChangeSubmitReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{s}/brand-changes/check` | 品牌变更影响检查 | `ManagementBrandCheckReq` | `BrandImpact` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{s}/operating-context` | 门店组织上下文 | — | `OperatingContext` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/members` | 在当前品牌或门店录入会员 | `ScopeMemberCreateReq` | `ScopeMemberSummary` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/activities` | 门店储值活动 | — | `SvGovernanceActivitiesPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/activities` | 保存储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/activities/{no}` | 储值活动详情 | — | `SvGovernanceDetail` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/activities/{no}/checks` | 检查储值活动 | `SvGovernanceCommand` | `SvActivityCheck` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/activities/{no}/copies` | 复制储值活动 | `SvGovernanceCommand` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/stores/{store}/stored-value/activities/{no}/draft` | 修订储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/activities/{no}/stop-issuance` | 停止新发行 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/activities/{no}/submissions` | 提交储值活动 | `SvGovernanceCommand` | `SvSubmission` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/activity-context` | 储值活动门店市场上下文 | — | `SvGovernanceContext` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/activity-presets` | 可用储值活动类型 | — | `SvGovernancePresetsPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/activity-schedules` | 按门店时区换算活动日期 | — | `SvGovernanceSchedule` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/customer-candidates` | 品牌或单店会员候选 | — | `ScopeCandidatePage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{store}/stored-value/customer-selections` | 识别当前运营范围会员 | `ScopeSelectCustomerReq` | `ScopeSelectedCustomer` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{store}/stored-value/effective-policy` | 门店有效策略 | — | `SvEffectivePolicy` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/appointment-slots` | 预约时段列表 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stores/{storeNo}/appointment-slots` | 开预约时段 | — | `AppointmentSlot` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/fulfillment` | 门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stores/{storeNo}/fulfillment` | 保存门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/fulfillment/{channel}/impact` | 关掉这一路会影响的在售商品 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims` | 平台商城：申报已转账 | `MallOfflineClaimRequest` | `MallOfflineClaim` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims` | 平台商城：本单的付款申报 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence` | 平台商城：预留一个转账凭证位 | — | `MallEvidenceTicket` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content` | 平台商城：上传转账凭证图片 | — | `MallEvidenceUploaded` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：发出付款指引（幂等） | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：查看付款指引 | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/quotes` | 平台商城：线下转账报价 | `MallQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/orders` | 平台商城：按报价下单 | `MallPlaceRequest` | `MallOrder` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/orders` | 平台商城：本店的商城订单 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/orders/{orderNo}` | 平台商城：订单详情 | — | `MallOrderDetail` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/products` | 平台商城：本店可买的商品 | — | `MallStorefront` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts` | Separate local and brand wallets | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records` | Current store records of selected wallet | — | `SvRecordPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}` | 查询本店原储值进度 | — | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}/cancel` | 取消本店未收款储值 | `SvCancelReq` | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create` | 取消未明确创建的原充值命令 | `SvRechargeCreate` | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline` | 确认商家线下储值 | `SvRechargeCreate` | `SvProgress` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve` | 查询原充值创建结果 | `SvRechargeCreate` | `SvRechargeResolve` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/issuer-records` | 门店储值收支 | — | `SvRecordPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}` | 储值收支详情 | — | `SvRecord` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/issuers` | 门店可用发行方 | — | `StoreIssuerOptions` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | 会员可用储值方案 | — | `SvIssuerRechargeOptions` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/mine` | 我能进的所有门店（按证照分组） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### upload（1）
@@ -959,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **473** 个接口 ｜ 后端已实现 **406**（86%）｜ 前端在调 **393**
+共 **591** 个接口 ｜ 后端已实现 **449**（76%）｜ 前端在调 **425**
 
 ### aftersale（5）
 
@@ -970,6 +1174,63 @@
 | POST | `/ops/after-sales/{afterSaleNo}/recover` | 仅恢复原执行，不确认资金成功、不新建退款 | — | `AfterSale` | — | ✅ | ✅ |
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
+
+### commerce（52）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/biz-mall/catalog` | 目录总览 | — | `MallCatalogOverview` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/categories` | 商品分类（扁平，按 level、sortOrder、编码） */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/categories` | 新建分类（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/categories/{code}` | 改分类：上级 / 名称 / 图标 / 排序 / 启停 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/cash-receipts` | mallCashReceipts | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | mallCashRefunds | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | requestMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout` | payoutMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover` | recoverMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}` | Read the durable original outcome without replaying the command. */ | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline` | 拒绝申报：不等于无款，不释放占用 */ | — | `MallOfflineClaimView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/confirmations` | confirmOfflinePayment | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence` | 预留一个运营凭证资产键 */ | — | `MallOfflineEvidenceTicket` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence/content` | 上传凭证字节（image/jpeg 或 image/png，≤10MB | — | `MallOfflineEvidenceUploaded` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/evidence/url` | 读凭证（5 分钟签名地址） */ | — | `MallOfflineSignedRead` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 代客发出付款指引（幂等） */ | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 读已发出的指引 | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/recover` | Recover the original offline order workflow without replaying bank/release commands. */ | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts` | 线下退款实际出款确认 */ | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/voids` | 对账作废：之后来款仍入账并走退款 */ | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/profile` | 收款档案（按币种） | — | `object` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/offline/profile` | 配置收款档案：每次修改生成新版本，已发出的指引按原版本 */ | — | `MallOfflineCollectionTerms` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/quotes` | 代客报价：买方为 STORE，发起人为真实运营 */ | — | `MallQuoteView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/orders` | 某门店的订单，按 orderNo 游标翻页 */ | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/orders/{orderNo}` | 订单详情：paymentStatus / fulfillmentStatus / refundStatus 三维独立 */ | — | `MallOrderDetailView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve` | 批准退款：绑定 reviewQuoteNo + approvalDigest，金额不超预览上限 */ | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/reject` | 拒绝退款：只改变审核请求 | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/review-quotes` | 退款审核报价：基于买家原请求摘要生成独立的 reviewQuoteNo */ | — | `MallRefundReviewQuoteView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/shipments` | 硬件发货（operationNo 幂等，组件/数量/承运/单号不可变） */ | — | `MallOrderDetailView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/products` | 商品列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/products` | 新建商品（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/products/{productNo}` | 改商品 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/products/{productNo}/skus` | 新建/编辑 SKU 草稿版本 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/sku-versions/{versionNo}` | 读一个 SKU 版本 */ | — | `MallSkuVersionView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/sku-versions/{versionNo}/publish` | 发布单个 SKU 版本 */ | — | `MallPublicationResult` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/skus/{skuNo}/off-sale` | SKU 停售（不改写已落单的快照） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/business-ends` | 业务端列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/business-ends` | 保存业务端 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/business-ends/deployment-options` | 部署验收清单（运营从这里选端，**不手填** client/route/acceptance） */ | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/business-types` | 经营类型列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/business-types` | 新建经营类型：expectedVersion=0、enabled=false | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/business-types/{typeCode}` | 改经营类型 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/business-types/{typeCode}/plan-publications` | 行业发布：三档 + 候选 SKU 一起冻结 */ | — | `MallPublicationResult` | — | ⬜ | ⬜ |
+| GET | `/ops/industry-plans` | Plan 定义（每个经营类型三条） */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/industry-plans/{planNo}/off-sale` | Plan 停售（不改写已落单的快照） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/industry-plans/{planNo}/versions` | 新建/编辑 Plan 草稿版本 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/stores/{storeNo}/subscription` | 门店权益来源与可访问时段 */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
+| POST | `/ops/stores/{storeNo}/subscription/grants` | 零金额独立端赠送（有期限 | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
+| POST | `/ops/stores/{storeNo}/subscription/sources/{sourceNo}/revoke` | 撤销零金额来源（付费来源必须走退款） */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
 
 ### community（33）
 
@@ -1026,12 +1287,13 @@
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
 
-### dashboard（10）
+### dashboard（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/ops/auth/forgot` | 忘记密码：往登录名那个邮箱发一次性重置码 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/auth/login` | 登录 | — | `LoginResp` | — | ✅ | ⬜ |
+| POST | `/ops/auth/login/verify` | 第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */ | — | `LoginResp` | — | ✅ | ⬜ |
 | GET | `/ops/auth/me` | 拿当前登录人的最新身份（`GET /ops/auth/me`） | — | `LoginResp` | — | ✅ | ⬜ |
 | POST | `/ops/auth/reset` | 用邮件里的重置码设新密码 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/funnel` | getAcquisitionFunnel | — | `数组` | — | ✅ | ✅ |
@@ -1040,8 +1302,9 @@
 | GET | `/ops/dashboard/stores` | 门店经营排行（门店③） | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/staffs/me/password` | 登录后改自己的密码（`POST /ops/staffs/me/password`） | — | `object` | — | ✅ | ✅ |
 
-### finance（96）
+### finance（103）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1075,6 +1338,11 @@
 | GET | `/ops/points/adjustments` | pointsAdjustments | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/adjustments` | submitPointsAdjustment | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/earning-context` | pointsEarningContext | — | `EarningContext` | — | ✅ | ✅ |
+| POST | `/ops/points/earning-preview` | previewPointsEarning | — | `EarningCalculation` | — | ✅ | ✅ |
+| GET | `/ops/points/earning-rule-history` | pointsEarningHistory | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/points/earning-rules` | pointsEarningRules | — | `EarningRulePage` | — | ✅ | ✅ |
+| POST | `/ops/points/earning-rules` | changePointsEarningRule | — | `EarningRule` | — | ✅ | ✅ |
 | GET | `/ops/points/entries` | pointsEntries | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/event-retry` | retryPointsEvent | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/events` | pointsEvents | — | `PointsEventPage` | — | ✅ | ✅ |
@@ -1083,6 +1351,7 @@
 | GET | `/ops/points/flows` | pointsFlows | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/funds` | pointsFunds | — | `PointsFundsView` | — | ✅ | ✅ |
 | POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
+| GET | `/ops/points/order-earning` | pointsOrderEarning | — | `OrderEarningInspection` | — | ✅ | ✅ |
 | GET | `/ops/points/order-integration` | orderPointsIntegration | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
 | POST | `/ops/points/order-integration` | 版本化接线变更，操作人和审计时间由服务端取得 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
 | GET | `/ops/points/order-integration/inspection` | inspectOrderPoints | — | `OrderPointsInspection` | — | ✅ | ✅ |
@@ -1110,7 +1379,7 @@
 | POST | `/ops/points/statement-draft` | draftPointsStatements | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/statements` | pointsStatements | — | `PointsStatementPage` | — | ✅ | ✅ |
 | GET | `/ops/points/stats` | pointsStats | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/points/stats-period` | pointsPeriodStats | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/stats-period` | pointsPeriodStats | — | `PointsStatsPeriod` | — | ✅ | ✅ |
 | POST | `/ops/points/stats-rebuild` | rebuildPointsStats | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
 | POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
@@ -1118,8 +1387,9 @@
 | POST | `/ops/points/terms` | publishPointsTerms | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/transactions` | pointsTransactions | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/transactions/{voucherNo}` | pointsTransaction | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/points/type-name` | renamePointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
 | POST | `/ops/points/type-state` | transitionPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
-| GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/points/types` | createPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/vouchers` | pointsVouchers | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/withdrawal-execute` | executePointsWithdrawal | — | `PointsExecution` | — | ✅ | ✅ |
@@ -1189,7 +1459,7 @@
 | POST | `/ops/fission-campaigns` | 邀请有礼（P-9.2.1） | — | `FissionCampaign` | — | ✅ | ✅ |
 | POST | `/ops/fission-campaigns/{no}/enabled` | setFissionEnabled | — | `FissionCampaign` | — | ⬜ | ✅ |
 
-### iam（18）
+### iam（19）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1207,10 +1477,11 @@
 | POST | `/ops/perm/roles/{roleCode}/points` | 改角色的功能点 | — | `RoleDef` | — | ✅ | ✅ |
 | POST | `/ops/perm/roles/{roleCode}/rename` | 改角色展示名 | — | `RoleDef` | — | ✅ | ✅ |
 | GET | `/ops/staffs` | listStaffs | — | `object` | — | ✅ | ⬜ |
-| POST | `/ops/staffs` | 新建员工 | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/staffs` | 新建员工 | — | `CreatedStaff` | — | ✅ | ⬜ |
 | POST | `/ops/staffs/{no}/enabled` | 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
+| POST | `/ops/staffs/{no}/second-factor-exempt` | 免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`） | — | `Staff` | — | ⬜ | ⬜ |
 
 ### inventory（14）
 
@@ -1289,7 +1560,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（44）
+### merchant（66）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1300,13 +1571,33 @@
 | PUT | `/ops/admission/pay-quotas/{merchantNo}` | 设置收款额度上限 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/admission/policies` | 三档准入策略 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/admission/policies/{legalForm}` | updateAdmissionPolicy | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/merchant-plan-purchases/{e}` | entityPlanPurchases | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}` | entityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/cancel` | cancelEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/confirm` | confirmEntityPlanPurchase | — | `EntityPlanAction` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/decline` | declineEntityPlanPurchase | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence` | reserveEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence/content` | uploadEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}/evidence/url` | entityPlanEvidenceUrl | — | `EntityPlanSignedRead` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/recover` | recoverEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/assistance-context` | entityPlanAssistanceContext | — | `EntityAssistanceContext` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/assisted` | assistedEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/offers` | entityPlanOffers | — | `数组` | — | ⬜ | ⬜ |
+| PUT | `/ops/merchant-plan-purchases/{e}/offers` | saveEntityPlanOffer | — | `EntityPlanOffer` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts` | entityCashReceipts | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds` | entityCashRefunds | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds` | requestEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/payout` | payoutEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/recover` | recoverEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plans` | 到期与降级看板 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/merchant-plans/{merchantNo}/grant` | 授予 / 延长 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | PUT | `/ops/merchant-plans/{merchantNo}/quota` | 单商家额度覆盖 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans/upgrade-signals` | 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchant/{entityNo}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ✅ | ⬜ |
+| GET | `/ops/merchant/{merchantNo}/pay-service` | payServiceStatus | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant/{merchantNo}/pay-service/apply` | 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联 | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/apply/{applyNo}/accept` | 受理：告诉商家「有人在看了」 | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `MerchantApply` | — | ✅ | ✅ |
 | GET | `/ops/merchant/apply/search` | 入驻申请检索 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant/chain` | 商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants` | listMerchants | — | `object` | — | ✅ | ✅ |
@@ -1328,9 +1619,11 @@
 | GET | `/ops/merchants/auth-codes` | 授权码目录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants/mode-risk` | 无照主体 × 自营门店的税务敞口清单 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/store-industries` | onBehalfStoreIndustries | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/onboarding` | 进件看板 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/onboarding` | 旧进件列表接口，保留给现有调用者 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/onboarding/refresh` | 人工回查：替卡在进件上的商家去通道问一次结果并落库 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payment-onboardings` | 按可见主体分页读取 NearPay 已存进件事实，不向通道回查 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/plan-defs` | 档位定义 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/plan-defs/{planCode}` | 改档位定义 | — | `PlanDef` | — | ✅ | ✅ |
 | POST | `/ops/qualifications/{qualNo}/revoke` | 撤销 | — | `Qualification` | — | ✅ | ✅ |
@@ -1338,7 +1631,7 @@
 | POST | `/ops/stores/{storeNo}/channels/{channel}/lock` | lockChannel | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/stores/{storeNo}/channels/{channel}/unlock` | unlockChannel | — | `object` | — | ✅ | ✅ |
 
-### message（36）
+### message（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1376,6 +1669,7 @@
 | GET | `/ops/tickets` | listTickets | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/tickets/{no}/assign` | 分派工单（P-14.2.1） | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/close` | closeTicket | — | `Ticket` | — | ⬜ | ✅ |
+| GET | `/ops/tickets/{no}/diagnostics` | 商户 App 回报附带的诊断资料（TDD-商户App问题回报与版本 F7） | — | `数组` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/proxy-actions` | 记录代客操作（P-14.2.3）：谁、对什么、做了什么 | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/reply` | 客服回复（P-14.2.2） | — | `Ticket` | — | ⬜ | ✅ |
 
@@ -1407,6 +1701,43 @@
 | GET | `/ops/payments/recon-diffs` | 对账差异列表（P-4.2.1） | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ⬜ |
+
+### payops（23）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/order-payment-resolutions` | orderPaymentResolutions | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/order-payment-resolutions/{payNo}/{paymentNo}/refund` | refundOrderPaymentResolution | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/payments/apps` | payOpsApps | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/apps/{appNo}/credentials` | payOpsAppCredentials | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke` | 吊销即时生效：下一次用这一版签的请求就 401 */ | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/payments/apps/{appNo}/grants` | payOpsAppGrants | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/payments/exceptions` | payOpsExceptions | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payments/exceptions/{id}/ignore` | payOpsIgnoreException | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/payments/exceptions/{id}/refund` | 原路退回那一笔多收的钱（不碰已关支付单的余额） */ | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payments/notifies` | payOpsNotifies | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payments/notifies/{id}/resend` | payOpsResendNotify | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payments/orders` | payOpsOrders | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/orders/{no}` | payOpsOrder | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/payments/platform-keys` | payOpsPlatformKeys | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/platform-keys/{keyId}/versions` | payOpsPlatformKeyVersions | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payments/platform-keys/{keyId}/versions/{version}/enable` | 两人：启用人不能是录入人（后端 70088） */ | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/payments/platform-keys/{keyId}/versions/{version}/revoke` | payOpsRevokePlatformKey | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payments/qr-codes` | payOpsQrCodes | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/payments/qr-codes/{qrCode}/disabled` | payOpsDisableQrCode | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/payments/refunds` | payOpsRefunds | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payments/refunds/{no}/review` | 两人复核：同一人不能通过两次 | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/payments/request-logs` | payOpsRequestLogs | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/request-logs/{id}` | payOpsRequestLog | — | `object` | — | ✅ | ✅ |
+
+### print（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/print/health` | Scoped fleet health from PrintMonitorDtos. */ | — | `PrintFleetHealth` | — | ✅ | ⬜ |
+| GET | `/ops/print/incidents` | Scoped incident page; backend status codes pass through unchanged. */ | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/print/operations/{operationNo}` | Read an operation only within the explicit target. */ | — | `PrintOperation` | — | ✅ | ⬜ |
+| POST | `/ops/print/reconciliations` | Audited maintenance; same key is retained for exact-intent error recovery. */ | — | `PrintOperation` | — | ✅ | ⬜ |
 
 ### product（49）
 
@@ -1505,10 +1836,12 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（34）
+### system（40）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/app-versions` | 每个平台一行，没配过的也列出来（revision=0） */ | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/app-versions/{appCode}/{platform}` | 改一行 | — | `AppVersionPolicy` | — | ✅ | ✅ |
 | GET | `/ops/appearance` | getAppearance | — | `AppearanceConfig` | — | ✅ | ✅ |
 | POST | `/ops/appearance` | 皮肤下发（P-17.1.1 / C-TH-05） | — | `AppearanceConfig` | — | ✅ | ✅ |
 | GET | `/ops/auth-codes` | <b>全量，含停用</b>，带商家数与类目引用数 | — | `数组` | — | ✅ | ✅ |
@@ -1520,6 +1853,8 @@
 | POST | `/ops/industries/{industry}/enabled` | 停用后入驻表单里不再出现这个行业 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/micro-allowed` | 改某通道的小微白名单 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/points-forced` | 强制开启积分：商家不可自行关闭 */ | — | `Industry` | — | ✅ | ✅ |
+| GET | `/ops/market-phone-policies` | marketPhonePolicies | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/market-phone-policies/{market}` | saveMarketPhonePolicy | — | `MarketPhonePolicy` | — | ✅ | ⬜ |
 | GET | `/ops/markets` | listMarkets | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/markets/{code}` | 市场与汇率（P-17.1.3） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/media/backfill` | 磁盘对账：把「磁盘上有、库里没有」的文件补录进来 | — | `MediaBackfillResult` | — | ✅ | ✅ |
@@ -1531,14 +1866,16 @@
 | GET | `/ops/media/reclaimable` | listMediaReclaimable | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/media/scan` | 重扫 | — | `MediaScanResult` | — | ✅ | ✅ |
 | GET | `/ops/media/stores` | 门店占用 | — | `数组` | — | ✅ | ✅ |
-| GET | `/ops/print/health` | printHealth | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/print/incidents` | printIncidents | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/print/operations/{no}` | printOperation | — | `object` | — | ⬜ | ⬜ |
-| POST | `/ops/print/reconciliations` | reconcilePrint | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/rule-texts` | getRuleTexts | — | `RuleTexts` | — | ✅ | ✅ |
 | POST | `/ops/rule-texts` | 规则文案（P-17.1.4） | — | `RuleTexts` | — | ✅ | ✅ |
 | GET | `/ops/service-scopes` | listServiceScopes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/service-scopes/{scope}/enabled` | 开关某一档，返回最新的三档全量 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/store-industries` | 门店行业配置全量，含停用项 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/store-industries` | expectedVersion=null 新建 | — | `StoreIndustry` | — | ✅ | ✅ |
+| GET | `/ops/test-identities` | listTestIdentities | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities` | 加一条或改备注（按 类型 + 规范化后的值 认） | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities/{id}/enabled` | setTestIdentityEnabled | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities/{id}/remove` | 物理删，删掉之后可以重新加 */ | — | `TestIdentityList` | — | ✅ | ✅ |
 | GET | `/ops/test-phones` | 全量，**含停用的** | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones` | 录一条或改一条（按手机号认，不按 id） | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones/{id}/enabled` | 开 / 关 | — | `数组` | — | ✅ | ✅ |

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** {@link SettleInvoiceService} 实现。 */
 @Service
 public class SettleInvoiceServiceImpl implements SettleInvoiceService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private final SettleInvoiceMapper mapper;
 
@@ -25,12 +29,24 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
 
     @Override
     public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size) {
+        return list(status, keyword, page, size, null);
+    }
+
+    @Override
+    public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size,
+                                          java.util.Set<String> merchantNos) {
         long p = Math.max(page, 1);
         long s = Math.max(size, 1);
+        if (merchantNos != null && merchantNos.isEmpty()) {
+            // 一个主体都不能看：不查库，直接空页（IN () 在 SQL 里也不合法）
+            return PageData.of(java.util.List.of(), 0, p, s);
+        }
         var w = Wrappers.<StlSettleInvoice>lambdaQuery()
-                .eq(status != null && !status.isBlank(), StlSettleInvoice::getStatus, status);
+                .eq(status != null && !status.isBlank(), StlSettleInvoice::getStatus, status)
+                // 显式收窄（独立形态）；内嵌形态传 null，由数据域拦截器按 entity_no 收窄
+                .in(merchantNos != null, StlSettleInvoice::getEntityNo, merchantNos);
         if (keyword != null && !keyword.isBlank()) {
-            String k = keyword.trim();
+            String k = documents.internal(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", keyword.trim());
             w.and(q -> q.like(StlSettleInvoice::getInvoiceNo, k)
                     .or().like(StlSettleInvoice::getMerchantName, k)
                     .or().like(StlSettleInvoice::getTitle, k));
@@ -39,7 +55,7 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         w.orderByAsc(StlSettleInvoice::getId);
         // 运营端全量开票队列 —— 不绕过（stl_settle_invoice 已登记 MERCHANT → entity_no）
         var pg = mapper.selectPage(new Page<>(p, s), w);
-        return PageData.of(pg.getRecords().stream().map(SettleInvoiceServiceImpl::toVO).toList(),
+        return PageData.of(documents.project(DocumentType.SETTLEMENT_INVOICE_REQUEST, pg.getRecords(), row -> "MAIN", StlSettleInvoice::getInvoiceNo, this::toVO),
                 pg.getTotal(), p, s);
     }
 
@@ -102,12 +118,12 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         return iv;
     }
 
-    private static SettleInvoiceVO toVO(StlSettleInvoice iv) {
+    private SettleInvoiceVO toVO(StlSettleInvoice iv) {
         return new SettleInvoiceVO(iv.getInvoiceNo(), iv.getEntityNo(), iv.getMerchantName(),
                 iv.getPeriod(), WithdrawServiceImpl.nz(iv.getAmountMinor()),
                 WithdrawServiceImpl.nz(iv.getSettledAmountMinor()),
                 iv.getTitleType(), iv.getTitle(), iv.getTaxNo(), iv.getStatus(), iv.getSerialNo(),
                 WithdrawServiceImpl.iso(iv.getAppliedAt()),
-                WithdrawServiceImpl.iso(iv.getDecidedAt()), iv.getRemark());
+                WithdrawServiceImpl.iso(iv.getDecidedAt()), iv.getRemark()).withDocumentNo(documents.find(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", iv.getInvoiceNo()));
     }
 }

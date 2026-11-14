@@ -725,3 +725,78 @@ c-app 店铺页回写与真机推送 → 进店 → 下单的闭环**未验**（
 | 2026-09-19 | 开始批 B |
 | 2026-09-19 | 批 B 后端随 C 端自营标识一起上线 `45d7bdfb`（部署方为「C端地址管理功能」会话；pre-push 全套绿，后端全量 2051 跑 / 0 红）。本会话复核：本分支提交均为其祖先；V339 success=1；health=200；AudienceResolver / MemberAudienceServiceImpl / AudienceRefPortImpl / MemberLevelRecomputeJob 均在运行中的 jar 里。**B 端界面随下一次打 APK 到店主手里；运营端口径卡（批 A）随下一次 ops-web 部署** |
 | 2026-09-19 | 草稿；基于代码盘点（`BizMemberController` · `MemberQueryPortImpl` · `ActivityPricingServiceImpl#audienceHits` · `PmtCouponServiceImpl#issue` · `MemberReachServiceImpl` · V224/V226/V230/V242/V243） |
+
+## §10 R04 会员资产本地合同接线（2026-11-10）
+
+### §0 范围与既有约束
+
+用户授权继续R04，库存接入最后。复用现有会员/人群/券/积分资产权威，不重建余额或扣返；不擅自开放台湾储值积分、旧无类型身份合同或跨店消费。真实资产扣返及地区开放依原MKT02条件单列，本批完成能独立验证的正式合同接线。
+
+### §1 合同和处理规则
+
+- 人群新增可选`idleDays`滚动条件，由服务端每次解析时计算截止时刻，不能在保存时固化成永久日期。保留`lastOrderBefore/After`旧条件；门店人群以该店往来为准。归一、标签替换、快照和去分页均保留滚动条件。
+- 受众项正式字段为`type/value`，App内部ref只作UI标识。券列表走`includeEnded`既有参数；定向发券只保留确认为ACTIVE的券，不依赖被忽略的status参数。
+- v20会员与券入口接入正式会员/券合同，不解除整个`/biz/ops/*`门禁；保留已有原型类兼容，实际经营入口合并到同一套正式页面。
+- 积分读取按正式类型/账户/协议/账单/流水结构，类型须匹配当前市场及币种；不假定NEARGO或NEWEBPAY。仅对已展示的条款version/hash签署；条款冲突刷新后重新确认，不自动同意新版。签署渠道须来自当前店真实可收款渠道；店/人/会话/权限变化后旧动作失效。账单按原号/revision/requestId确认，资金结果仍以资产owner为准。
+
+### §2 执行清单
+
+- [x] 会员滚动天数、门店范围和受众正式字段，覆盖保存/读取/解析与旧合同兼容。
+- [x] 统一会员/券真实入口和ACTIVE筛选，处理错误、分页与权限。
+- [x] 对齐积分读取、条款快照、原号账单确认，保留储值与地区开放门禁。
+- [x] 定向功能验证、一次复核及原清单证据更新；不运行并发/旧全量回归。
+
+### §5 证据
+
+| 验证 | 结果与范围 |
+|---|---|
+| 滚动人群新增场景 | `RetailMemberIdleRuleFlowTest` 1/1。JSON保存30天条件、归一/解析/快照/去分页保留；两位会员在其他店昨日消费，只有本店40天未消费的人命中，本店2天与主体口径均排除。先红后绿；日志`/tmp/ai-shop-r04-member.log`。 |
+| 既有边界兼容 | `MemberScopeFlowTest`名单/规则/标签交集3项、`MemberTagFlowTest`系统标签/打标幂等/不能强制激活3项、积分owner/权限/渠道5项，共11/11；日志`/tmp/ai-shop-r04-compat.log`。与新增1项分组记录，不累计重复运行。 |
+| MySQL9查询边界 | `127.0.0.1:3308` MySQL9.7.4独立临时库，门店30天只IDLE、主体30天0、重算后较晚截止两人命中，3条断言通过；排除其他主体。临时库已清理，业务库未改。仅SQL边界，不称真实资产链路。日志`/tmp/ai-shop-r04-mysql.log`。 |
+| App新增 | `member_asset_contract_test.dart`6项、`member_directory_test.dart`3项、`member_points_terms_test.dart`4项，共13/13。覆盖正式value/count/ACTIVE字段、cursor与错误owner、发送权限、作用域过期不发请求与弹层隐藏、展示条款签署、无匹配市场/渠道不猜默认值、账单未知结果复用原号/revision/UUID；日志`/tmp/ai-shop-r04-app-final.log`。 |
+| App既有旅程 | `v24_flows_test.dart`会员/标签/人群/券/触达等5项先通过；积分旅程补齐真实可签署的模拟收款渠道夹具后，失败项1/1通过（`/tmp/ai-shop-r04-v24-points-final.log`）。合计6个不同旅程分组通过，不把重复轮相加。mock按原店分别保存协议/账单与回执。 |
+| 源码/静态 | 5个受影响Java生产文件限定编译通过，相关测试源码限定编译通过；Flutter受影响文件及新增测试限定analyze通过。共享工作区测试运行使用冻结生产classpath并前置本批5文件，仅临时测试副本排除无关near-pay HTTP启动夹具；不是当前全仓重新编译/全量测试。 |
+| 一次复核 | 修复`/biz/member-reach/send`应为campaign而非customer；发送前/回读均守卫。详情sheet独立订阅作用域失效后隐藏旧手机/标签与保存动作。对应2项新增验证已包含在13项内。 |
+
+会员与券实际入口已统一，目录按正式分页和完整手机号检索；LEAD/ACTIVE/BLOCKED保留原语义，系统标签只读。积分账户仅展示PENDING/AVAILABLE/HELD的权威点数，不伪造折现金额或结算状态；正式账单与流水按cursor继续读取。条款展示、签署、终止及确认均冻结原店/主体/会话，变更后旧动作失效。mock的台湾类型/收款渠道均为虚构夹具，不能当上线开放证据。
+
+本批不新增迁移、不部署、不打开`standard_onboarding_live.dart`既有写合同白名单或地区门禁，不放宽`/biz/ops/*`。真实储值/积分原owner扣返、迁移/旧无类型身份、品牌跨店消费和台湾开放条款仍依MKT02另验；未调用真实收款、退款、短信/推送供应商。库存映射/期初/预留扣返及166链路仍在I01/I04最后执行。
+
+
+## §11 C06 营销结果与效果回看接线（2026-11-10）
+
+### §0 范围与需求对账
+
+用户继续零售补齐，库存最后；在R04本地合同后执行C06/MKT01的营销结果回看。沿用本文批C的m19/m20及AC-17和现有`BizMemberController`/`BizCouponController`，不改资产owner、触达频次或发送政策，不调用真实推送/短信，不触及库存或真实地区开放。
+
+### §1 现有合同与实现选择
+
+- `GET /biz/member-reach/task?page&size`返回数组，非PageData；按每页50条继续，短页才停止，重复页不能伪装读完。读取失败保留已加载记录并可重试原页，刷新重置分页。
+- 效果详情以正式`notOpened`为权威；不能按sent-opened推算（推送失败也可能有原批次明细）。下单者手机号只读`phoneMasked`。保存“没来的人”保持原taskNo/NOT_OPENED条件。
+- `POST /biz/coupons/{no}/issue`返回完整CouponIssueVO；保留这份原回执供结果页使用，即使后续记录查询失败仍展示已确认的实发/跳过结果，不因读失败重复发放。受众来自正式audiences/segmentNo，缺少自造audienceDesc不再显示空白或误报全部会员。
+- 消息读需要customer，券批次读需要campaign，各按自己的权限请求/展示；一项失败不能显示整页为空或掩盖另一项结果。仅有campaign能读券历史，只有customer不请求券数据；切店、换会话和权限撤回沿R04守卫隐藏旧资料。消息新建需同时具备试算customer与发送campaign权限。
+- 继续使用现有组件、OnboardingApi与MembersApi，不新增后端端点或通用分页抽象。券历史沿现有数组接口读取，不新增后端分页合同；不以触达的页大小截断券记录。
+
+### §2 内联执行清单
+
+- [x] `members_api.dart`对齐数组分页、正式效果字段与完整券回执；`members_pages.dart`补权限分流、续页/错误恢复和原回执结果展示。
+- [x] `mock_v24.dart`与上述正式结构一致，不用原型包装掩盖错接；新增`member_marketing_results_test.dart`固定数组/分页/不完整数据、权限、原回执与原批次人群条件。
+- [x] 执行受影响App测试/静态检查与已有营销旅程；后端只定向复用效果口径与原批次人群的场景，不重跑资产或库存全量。
+- [x] 一次只读review，修复必要问题后增量验证；回填本节与原总报告/清单，不提交部署。
+
+### §5 验证记录
+
+| AC/边界 | 验证与结果 |
+|---|---|
+| 数组/坐标/拒绝错包 | 新增`member_marketing_results_test.dart`前4项API/模型断言：数组页2、拒绝records包、权威notOpened与phoneMasked、完整券回执/audiences；通过。 |
+| 超50、失败恢复、重复页 | `messages load beyond first fifty...`与`a repeated page remains incomplete...`通过：页1/2失败/2重试，已加载记录保留；重复页仍可重试，不伪装读完。 |
+| 分来源/原回执 | 券专属权限、另一来源失败可独立重试、已确认回执在历史失败后仍展示三项通过；不重新POST。 |
+| 失效作用域/服务端失权 | 旧店未决请求返回后隐藏数据、不继续读券；70006复用现有角色刷新、10401复用会话退出，两项修复及旧店场景通过。 |
+| App本批计数 | 新增12个不同场景分组/增量通过：首轮6项通过，3项本地化/刷新夹具修正后通过，最后3项懒加载滚动/对话框等待夹具修正后通过。不把多轮执行相加。日志`/tmp/ai-shop-c06-marketing-final.log`、`/tmp/ai-shop-c06-marketing-retry2.log`、`/tmp/ai-shop-c06-marketing-retry3.log`；首日志含早一编译轮输出，只按对应已完成场景记证据。 |
+| 既有App旅程 | `v24_flows_test.dart --name 'U1/U7/U8|N1–N4'`2/2，完整选人/发券/回执与触达/效果/原批次人群走通；mock列表、原回执与初始受众已改为正式结构。日志`/tmp/ai-shop-c06-journeys.log`。 |
+| 后端权威口径 | `ReachEffectFlowTest#sentOpenedOrderedCounts`、`saveNotOpenedAsSegment`、`forgedReachNoIsNotCounted`3/3。验证已有原明细人数、原批次条件及本人归因边界，本批未改后端生产代码。日志`/tmp/ai-shop-c06-backend.log`。运行沿R04隔离classpath前置现有会员5文件，限定测试源码编译，不称全仓重新构建。 |
+| 静态与复核 | 受影响4个Dart文件限定analyze无问题，diff空白检查通过；一次只读review发现的分来源读绕过统一失权处理已修复，新增70006/10401验证包含在12项内。 |
+
+§6实现对账：仅改`members_api.dart`、`members_pages.dart`、`mock_v24.dart`及新增`member_marketing_results_test.dart`，另更新原TDD/总报告/两份清单与App交接。无新端点、DDL、权限码或i18n键。App曾被共享工作区未完成的storeVersion字段初始化挡住，原文件由该改动会话补齐后，在实际工作区通过验证；本批未修改该文件，未使用临时App副本作为通过证据。
+
+上一批R04验证不累计到本批。本批只完成C06的营销结果回看子批，仍有其他App模块接线、真实触达同意/供应商、资产扣返与部署准出；未调用真实推送/短信，未改live白名单、地区或库存开关，166接入保持最后。

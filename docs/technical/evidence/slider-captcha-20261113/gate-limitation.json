@@ -1,0 +1,9 @@
+{
+  "head": "caac75d533cc29a651520d4369172ca6a1ae7103",
+  "cleanHeadTestCompile": "PASS",
+  "normalPushChecks": "captcha orphan fixed by explicit legacy Vue deferred manifest, not baseline expansion",
+  "fullSuite": "cannot pass without existing Commerce MySQL integration environment",
+  "observedError": "Real MySQL required: set COMMERCE_MYSQL_URL",
+  "handling": "documented SKIP_TEST_GATE=1 retains clean HEAD compile and all other guards; captcha service/HTTP/native MySQL9 already verified",
+  "log": "head-test.Alc1xH"
+}

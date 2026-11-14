@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
@@ -9,9 +10,9 @@ import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.List;
-import java.util.Objects;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
+import java.util.Objects;
 
 /** Cash success remains committed while destination stock and coupon authorities recover independently. */
 @Service
@@ -52,15 +57,24 @@ public class RefundResourceServiceImpl implements RefundResourceService {
 
     @Override
     public void recover(String no) {
+        // This short source transaction commits before the owner-local restore transaction begins.
+        var source = RefundExecutionStore.requireFunded(executions.currentSource(no));
+        if (source == null) {
+            return;
+        }
         try {
-            Boolean restored = independent.execute(tx -> {
-                OrdRefundExecution current = executions.read(no);
-                if (current == null || !OrdRefundExecution.SUCCEEDED.equals(current.getStatus())
-                        || OrdRefundExecution.DONE.equals(current.getResourceStatus())) {
-                    return null;
-                }
-                return restore(current);
-            });
+            Boolean restored =
+                    independent.execute(
+                            tx -> {
+                                OrdRefundExecution current = source;
+                                if (current == null
+                                        || !OrdRefundExecution.SUCCEEDED.equals(current.getStatus())
+                                        || OrdRefundExecution.DONE.equals(
+                                                current.getResourceStatus())) {
+                                    return null;
+                                }
+                                return restore(current);
+                            });
             if (restored != null) {
                 executions.resources(no, restored ? OrdRefundExecution.DONE : OrdRefundExecution.PENDING,
                         restored ? null : "STOCK_RESTORE_PENDING");
@@ -80,9 +94,14 @@ public class RefundResourceServiceImpl implements RefundResourceService {
             List<StockPort.SkuQty> items = json.readValue(row.getStockNeedsJson(), new TypeReference<>() { });
             OrdSubOrder child = DataScopeContext.executeWithoutScope(() -> children.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getSubOrderNo, row.getSubOrderNo()).last("LIMIT 1")));
-            if (child != null && Integer.valueOf(2).equals(child.getInventoryLifecycleVersion())
-                    && OrdSubOrder.WAIT_FULFILL.equals(child.getStatus())) {
-                stock.releaseAllocated(child.getSubOrderNo(), child.getOrderNo());
+            if(child==null) throw new IllegalStateException("ORIGINAL_REFUND_CHILD_REQUIRED");
+            // For lifecycle 2, restoreStock was frozen only when the original units were unshipped.
+            // The cash projection may already have changed the child to REFUNDED. Original inventory
+            // release targets verify actual issued/released quantities instead of that later business status.
+            if (Integer.valueOf(2).equals(child.getInventoryLifecycleVersion())) {
+                var plan = json.readValue(row.getPlanJson(), RefundPlan.class);
+                if (plan.allocationReleaseTargets().isEmpty()) stock.releaseAllocated(child.getSubOrderNo(), child.getOrderNo());
+                else stock.releaseAllocatedTo(child.getSubOrderNo(), child.getOrderNo(), plan.allocationReleaseTargets());
                 restored = true;
             } else {
                 restored = stock.restoreOriginal(row.getExecutionNo(), row.getOrderNo(), items)

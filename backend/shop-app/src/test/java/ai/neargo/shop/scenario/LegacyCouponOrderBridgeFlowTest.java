@@ -3,7 +3,6 @@ package ai.neargo.shop.scenario;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.spi.marketing.CampaignPort;
@@ -41,6 +40,7 @@ class LegacyCouponOrderBridgeFlowTest {
     @MockitoBean ai.neargo.shop.spi.entitlement.LegacyCouponIdentityPort identities;
     @Autowired LegacyCouponOrderPricingService pricing;
     @Autowired JdbcTemplate jdbc;
+    @Autowired ai.neargo.shop.auth.TokenStores tokens;
     @Autowired org.springframework.context.ApplicationContext application;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean CouponPort coupons;
     @MockitoBean CampaignPort campaigns;
@@ -50,8 +50,12 @@ class LegacyCouponOrderBridgeFlowTest {
         payProperties.getEntitlement().getLegacyCoupon().setEnabled(true);
         user="U"+UUID.randomUUID();
         jdbc.update("INSERT INTO usr_account(user_no,status,tenant_no,created_at,updated_at) VALUES(?,'NORMAL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",user);
-        var login=new LoginUser(Realm.CONSUMER,SubjectKind.USR,user,"Buyer",List.of(),List.of(),null,null);
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login,null,List.of()));
+        // Order reads recheck the real consumer session (CheckoutAccessPolicy), so issue an actual token.
+        var login=LoginUser.consumer(user,"Buyer");
+        String token=tokens.of(Realm.CONSUMER).issue(ai.neargo.shop.auth.TokenStore.SessionData.of(login));
+        var authentication=new UsernamePasswordAuthenticationToken(login,null,List.of());
+        authentication.setDetails(token);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
         when(campaigns.autoDiscount(anyList(),any())).thenReturn(CampaignPort.Discount.none());
     }
     @AfterEach void clear() {SecurityContextHolder.clearContext();}

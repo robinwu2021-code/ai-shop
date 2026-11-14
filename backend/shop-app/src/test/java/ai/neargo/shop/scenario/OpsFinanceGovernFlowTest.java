@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>登录用 {@code finance/finance123} 而不是超管：这批端点的权限码是本轮新登记的，
  * 用超管跑等于跳过「FINANCE 角色到底拿没拿到这个码」这半个问题。
  *
- * <p>手机号段 {@code 126007xxxxx}（商户）/ {@code 130007xxxxx}（买家）。
+ * <p>手机号段 {@code 186007xxxxx}（商户）/ {@code 130007xxxxx}（买家）。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -104,7 +104,7 @@ class OpsFinanceGovernFlowTest {
     @Test
     @DisplayName("★ 退款回退分账走真链路：分账真的被回退、金额分毫不差、售后单走到 REFUNDED")
     void refundSplitBackReallyReversesTheSplit() throws Exception {
-        String biz = merchant("12600700001", "财务·回退分账店");
+        String biz = merchant("18600700001", "财务·回退分账店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 20);
         String skuNo = firstSku(goodsNo);
@@ -179,7 +179,7 @@ class OpsFinanceGovernFlowTest {
     @Test
     @DisplayName("★ 货还没寄回的退货退款不进队列 —— 只按状态取，财务会在收货前把钱退出去")
     void queueExcludesReturnRefundWaitingForGoods() throws Exception {
-        String biz = merchant("12600700010", "财务·待寄回不进队列店");
+        String biz = merchant("18600700010", "财务·待寄回不进队列店");
         String goodsNo = listedGoods(biz, 20);
         String skuNo = firstSku(goodsNo);
         Ordered o = placeAndPay("13000700021", goodsNo, skuNo, "fin-back-2");
@@ -218,7 +218,7 @@ class OpsFinanceGovernFlowTest {
     @Test
     @DisplayName("★ 结算发票开票/驳回状态机：企业票必须有税号 · 不得超已结算额 · 开过的不能再开")
     void settleInvoiceStateMachine() throws Exception {
-        String biz = merchant("12600700040", "财务·结算发票店");
+        String biz = merchant("18600700040", "财务·结算发票店");
         String merchantNo = merchantNoOf(biz);
 
         // 企业抬头没税号：对方入不了账，等于白开

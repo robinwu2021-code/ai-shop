@@ -5,7 +5,7 @@ import static ai.neargo.shop.print.channel.ReceiptSoftwareAcceptanceTest.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.print.api.*;
-import ai.neargo.shop.print.layout.PrintSystemSlotPolicy;
+import ai.neargo.shop.printing.center.layout.PrintSystemSlotPolicy;
 
 import org.junit.jupiter.api.Test;
 
@@ -261,7 +261,7 @@ class CompactReceiptAcceptanceTest {
     @Test
     void legacyFeieVerificationCannotAuthorizeCompactGeometry() {
         var adapter =
-                new ai.neargo.shop.print.channel.feie.FeiePrintAdapter(
+                new ai.neargo.shop.print.channel.port.feie.FeiePrintAdapter(
                         (operation, credentials, parameters) -> {
                             throw new AssertionError("No HTTP submission permitted");
                         },

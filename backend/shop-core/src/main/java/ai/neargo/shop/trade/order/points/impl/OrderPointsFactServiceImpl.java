@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.order.points.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.points.*;
@@ -17,6 +21,12 @@ import java.util.*;
 
 @Service
 public class OrderPointsFactServiceImpl implements OrderPointsFactService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     private final OrderPointsFactMapper mapper;
     private final OrderPointsBindingService bindings;
     private final OutboxEventBus outbox;
@@ -35,6 +45,7 @@ public class OrderPointsFactServiceImpl implements OrderPointsFactService {
     @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
     public PointsOrderEvent append(PointsOrderEvent draft) {
         require(draft != null && draft.fact().sequence() == 0, "POINTS_SOURCE_DRAFT_REQUIRED");
+        ownershipWrites.lockAndCheck("MAIN", draft.merchantNo(), draft.storeNo());
         var b = bindings.find(draft.subOrderNo());
         require(b != null, "POINTS_BINDING_UNKNOWN");
         var a = b.admission();

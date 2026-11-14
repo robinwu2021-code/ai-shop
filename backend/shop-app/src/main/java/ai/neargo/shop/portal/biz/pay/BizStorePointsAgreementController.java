@@ -7,7 +7,7 @@ import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.agreement.AgreementService;
 import ai.neargo.shop.pay.points.model.AgreementSnapshot;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
-import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;

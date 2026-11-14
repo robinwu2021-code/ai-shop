@@ -18,10 +18,10 @@ public class StoredValueStoreProjector {
     @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
     public void credit(EntitlementContext ctx, SvRecharge recharge, LocalDateTime at) {
         var claim = new SvUserStoreIndex(); StoredValueFacts.audit(claim, ctx, at);
-        claim.setUserNo(recharge.getUserNo()); claim.setEntityNo(recharge.getEntityNo());
+        claim.setUserNo(recharge.getUserNo());claim.setCustomerNo(recharge.customerIdentity()); claim.setEntityNo(recharge.getEntityNo());
         claim.setStoreNo(recharge.getStoreNo()); claim.setStoreName(recharge.getStoreName());
         claim.setLastRechargeAt(at); claim.setLastActivityAt(at); index.ensure(claim);
-        var row = index.lock(ctx.tenantNo(), recharge.getUserNo(), recharge.getStoreNo());
+        var row = index.lock(ctx.tenantNo(), recharge.customerIdentity(), recharge.getStoreNo());
         if (row == null || !row.getEntityNo().equals(recharge.getEntityNo())) StoredValueFacts.conflict();
         boolean newest = !at.isBefore(row.getLastActivityAt());
         row.setHasRecharge(1);

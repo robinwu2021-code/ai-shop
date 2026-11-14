@@ -69,8 +69,22 @@ public final class PricingConfigCompiler {
     /** Resets remove explicit override leaves before inheritance; null never means deletion. */
     public CompilationResult compile(String template, String override, Set<String> resetPaths,
             SystemConstraints constraints, PricingCapabilities capabilities) {
-        Objects.requireNonNull(constraints, "Trusted system constraints are required");
         Objects.requireNonNull(capabilities, "Trusted capability evidence is required");
+        return compileInternal(template, override, resetPaths, constraints, capabilities, false);
+    }
+
+    /**
+     * Compiles non-executable platform defaults against the deployed rule catalog and structural bounds only.
+     * This result is not merchant execution permission: every store publication and runtime resolution must
+     * call compile with actual owner capabilities and its explicit store override.
+     */
+    public CompilationResult compileDefinition(String template, SystemConstraints constraints) {
+        return compileInternal(template, "{}", Set.of(), constraints, null, true);
+    }
+
+    private CompilationResult compileInternal(String template, String override, Set<String> resetPaths,
+            SystemConstraints constraints, PricingCapabilities capabilities, boolean definitionOnly) {
+        Objects.requireNonNull(constraints, "Trusted system constraints are required");
         Objects.requireNonNull(resetPaths, "Explicit reset paths are required");
         try {
             JsonNode defaults = PricingJson.parse(template);
@@ -85,10 +99,17 @@ public final class PricingConfigCompiler {
             JsonNode merged = merge(defaults, patch);
             validateShape(merged, "");
             Definition definition = PricingJson.JSON.treeToValue(merged, Definition.class);
-            validateDefinition(definition, constraints, capabilities);
+            validateDefinition(definition, constraints, capabilities, definitionOnly);
+            if (definition.schemaVersion() == 3) {
+                check(!patch.has("taxBinding") || patch.path("taxBinding").isEmpty(),
+                        "taxBinding", "PROTECTED_OVERRIDE");
+            }
             String canonical = PricingJson.canonical(merged);
-            String hash = PricingJson.hash("PRICING_CONFIG_V4\n" + constraints.semanticHash() + "\n" + canonical);
-            return new CompilationResult(new EffectivePricingConfig(definition, constraints.rules(), canonical, hash),
+            int schema = definition.schemaVersion();
+            String namespace = schema == 2 ? "PRICING_CONFIG_V4" : "PRICING_CONFIG_V5";
+            String hash = PricingJson.hash(namespace + "\n" + constraints.semanticHash(schema) + "\n" + canonical);
+            return new CompilationResult(new EffectivePricingConfig(
+                    definition, constraints.rules(schema), canonical, hash),
                     List.of());
         } catch (InvalidConfig invalid) {
             return failure(invalid.code, invalid.path, invalid.getMessage());
@@ -191,8 +212,8 @@ public final class PricingConfigCompiler {
     }
 
     private static void validateDefinition(Definition config,
-            SystemConstraints constraints, PricingCapabilities capabilities) {
-        check(config.schemaVersion() == 2, "schemaVersion", "UNSUPPORTED_VERSION");
+            SystemConstraints constraints, PricingCapabilities capabilities, boolean definitionOnly) {
+        check(config.schemaVersion() == 2 || config.schemaVersion() == 3, "schemaVersion", "UNSUPPORTED_VERSION");
         check(config.formulaVersion() == 1 && FORMULAS.contains(config.formulaId()),
                 "formulaId", "UNSUPPORTED_FORMULA");
         check(config.ruleRefs().size() == constraints.mandatoryRuleNos().size()
@@ -212,19 +233,19 @@ public final class PricingConfigCompiler {
         if (policy.overlapMode() == OverlapMode.STACK) {
             check(policy.stackingEnabled() && policy.maxUsedPerItem() >= 2
                     && policy.maxUsedPerItem() <= policy.maxUsedPerOrder(), "discountCouponPolicy", "STACK_CONFLICT");
-            check(capabilities.stacking(), "discountCouponPolicy", "OWNER_CAPABILITY_UNSUPPORTED");
+            check(definitionOnly || capabilities.stacking(), "discountCouponPolicy", "OWNER_CAPABILITY_UNSUPPORTED");
         } else {
             check(!policy.stackingEnabled() && policy.maxUsedPerItem() == 1,
                     "discountCouponPolicy", "STACK_CONFLICT");
         }
-        check(limits.total() <= capabilities.maxCouponsPerOrder()
+        check(definitionOnly || limits.total() <= capabilities.maxCouponsPerOrder()
                 && limits.percent() <= capabilities.maxPercentCouponsPerOrder(),
                 "couponLimits", "OWNER_CAPABILITY_UNSUPPORTED");
         boolean combines = config.allowedCouponCombinations().stream()
                 .anyMatch(kinds -> kinds.contains(BenefitKind.PERCENT_COUPON));
         check(!combines || limits.total() < 2 || limits.percent() == 0 || limits.amountTotal() == 0
-                || capabilities.percentAndAmount(), "allowedCouponCombinations", "OWNER_CAPABILITY_UNSUPPORTED");
-        check(!config.storedValueEnabled() || capabilities.storedValue(),
+                || definitionOnly || capabilities.percentAndAmount(), "allowedCouponCombinations", "OWNER_CAPABILITY_UNSUPPORTED");
+        check(!config.storedValueEnabled() || definitionOnly || capabilities.storedValue(),
                 "storedValueEnabled", "OWNER_CAPABILITY_UNSUPPORTED");
         check(config.activityAndCoupons().equals("EXCLUSIVE"), "activityAndCoupons", "MANDATORY_POLICY");
         check(!config.pointsAutoApply() && config.pointsStage().equals("AFTER_STORED_VALUE")
@@ -240,8 +261,14 @@ public final class PricingConfigCompiler {
                 || manual.minPayableRateBp() >= 0 && manual.minPayableRateBp() <= 10000,
                 "manualOperations.minPayableRateBp", "RATE_RANGE");
         var tax = config.taxBinding();
-        check(tax.resolveFrom().equals("VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT")
-                && tax.missingPolicy().equals("BLOCK") && !tax.storeMayEditRate(), "taxBinding", "MANDATORY_POLICY");
+        if (config.schemaVersion() == 2) {
+            check(tax.resolveFrom().equals("VERIFIED_STORE_REGION_AND_TRANSACTION_CONTEXT")
+                    && tax.missingPolicy().equals("BLOCK") && !tax.storeMayEditRate(),
+                    "taxBinding", "MANDATORY_POLICY");
+        } else {
+            check(tax.taxProfileNo() == null && tax.resolveFrom().equals("MERCHANT_OR_PLATFORM_DEFAULT")
+                    && tax.missingPolicy().equals("BLOCK") && tax.storeMayEditRate(), "taxBinding", "MANDATORY_POLICY");
+        }
     }
 
     private static void requireText(JsonNode node, String path) {

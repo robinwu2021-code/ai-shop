@@ -14,7 +14,7 @@ export interface Staff {
   /** 姓名 */
   name: string;
   /**
-   * 角色（**可多个**）。权限码取所有角色的并集。
+   * 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。
    *
    * <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色
    * （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集），
@@ -38,10 +38,25 @@ export interface Staff {
    * 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。
    */
   mustChangePassword?: boolean;
+  /**
+   * 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。
+   * 理由必填、不能给自己勾，变更与每次免验证登录都进审计。
+   */
+  secondFactorExempt?: boolean;
   /** 最近登录时间。从未登录为空 */
   lastLoginAt?: string;
   /** 建档时间 */
   createdAt: string;
+}
+
+/** 新建员工回执；密码交付方式由服务端配置决定。 */
+export interface CreatedStaff {
+  /** 新建的员工资料 */
+  staff: Staff;
+  /** response 模式的一次性密码；mail 模式为 null */
+  initialPassword: string | null;
+  /** mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 */
+  deliveredTo: string | null;
 }
 
 /**

@@ -2,6 +2,7 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  internalSettlementNos: "内部结算标识（审计）",
   ppTitle: "积分范围开关",
   ppLoading: "加载中…",
   ppSave: "保存",
@@ -205,8 +206,10 @@ const zh = {
   filterStatusAll: "全部状态",
   emptySettle: "没有符合条件的结算单。结算单按商家 × 周期生成，本周期还没有成交就是空的。",
   emptySplit: "还没有分账明细。它按子订单生成，一个订单一条。",
+  refundExecutionState: "退款执行 / 冲销状态",
+  toastRefundPending: "原退款仍待确认，请核对原执行与真实冲销结果；已打款资金追回另行处理。",
   refundBackNotice:
-    "这里的每一条都来自售后裁决（P-6.1）打的待回退标记 —— 队列由售后单派生，不另建实体：另建就有两份真相，且一定会不同步。执行后标记清除，队列自然消掉。",
+    "此处显示待处理的原退款。商家已打款或冲销未确认时，先人工核对原执行和真实冲销结果；重试沿用原退款，不代表到账。追回另行处理，不自动抵扣后续结算。",
   emptyRefundBack: "没有待回退的分账。售后裁决完成后，需要回退的单会自动出现在这里。",
 
   frNotice:
@@ -244,7 +247,8 @@ const zh = {
   pcColState: "状态",
   pcColMarkets: "可用市场",
   pcMarketsEditHint: "点击修改可用市场",
-  pcMarketsPrompt: "可用市场（逗号分隔的市场码，如 CN,TW,HK）。\n\n留空 = 所有市场都可用，不是「谁都不能用」。",
+  pcMarketsPrompt: "可用市场（逗号分隔的市场码，如 CN,TW,HK）。\n\n只有填了的市场能用这个通道，至少填一个；要让它谁都用不了，请用启停开关。",
+  pcMarketsEmpty: "至少填一个市场。要停用这个通道，请用「停用」开关，不要清空市场。",
   pcTestChannelTag: "联调用 · 勿用于真实交易",
   pcColCurrency: "币种",
   pcColSettleCycle: "结算周期",
@@ -256,7 +260,7 @@ const zh = {
   /* 动作词与状态词分开：按钮上写「要做的事」，状态列写「现在是什么」 */
   pcActionEnable: "启用",
   pcActionDisable: "停用",
-  pcAllMarkets: "全部市场",
+  pcNoMarkets: "未开通任何市场",
   pcEmpty: "还没有配置支付通道。没有通道，商家进不了件，也收不了钱。",
 
   // ── 账期批次
@@ -537,6 +541,7 @@ const zh = {
 };
 
 const en: typeof zh = {
+  internalSettlementNos: "Internal settlement IDs (audit)",
   ppTitle: "Points availability switches",
   ppLoading: "Loading…",
   ppSave: "Save",
@@ -732,8 +737,10 @@ const en: typeof zh = {
   filterStatusAll: "All statuses",
   emptySettle: "No settlements match these filters. Settlements are generated per merchant × period, so an untraded period is empty.",
   emptySplit: "No split details yet. They are generated per sub-order, one row each.",
+  refundExecutionState: "Refund execution / reversal",
+  toastRefundPending: "The original refund still needs verification. Check its execution and reversal; recovery of paid funds is handled separately.",
   refundBackNotice:
-    "Every row here comes from a reversal flag set by an after-sales decision (P-6.1) — the queue is derived from after-sales tickets rather than stored separately: a separate store would mean two sources of truth, guaranteed to drift. Executing clears the flag and the row disappears.",
+    "Review original refunds and actual reversal results here. Retrying keeps the same refund and does not prove cash arrival. Recovery of funds already paid to merchants is handled separately, with no automatic offset against later settlements.",
   emptyRefundBack: "No splits awaiting reversal. Rows appear automatically once an after-sales decision requires one.",
 
   frNotice:
@@ -771,7 +778,8 @@ const en: typeof zh = {
   pcColState: "State",
   pcColMarkets: "Markets",
   pcMarketsEditHint: "Click to edit available markets",
-  pcMarketsPrompt: "Available markets (comma-separated codes, e.g. CN,TW,HK).\n\nLeave empty = available in ALL markets, not «none».",
+  pcMarketsPrompt: "Available markets (comma-separated codes, e.g. CN,TW,HK).\n\nOnly the markets listed can use this channel, so enter at least one. To make it unavailable everywhere, use the enable/disable switch.",
+  pcMarketsEmpty: "Enter at least one market. To turn this channel off, use Disable instead of clearing its markets.",
   pcTestChannelTag: "TEST ONLY · not for real transactions",
   pcColCurrency: "Currency",
   pcColSettleCycle: "Settlement cycle",
@@ -782,7 +790,7 @@ const en: typeof zh = {
   pcDisabled: "Disabled",
   pcActionEnable: "Enable",
   pcActionDisable: "Disable",
-  pcAllMarkets: "All markets",
+  pcNoMarkets: "Not open in any market",
   pcEmpty: "No payment channel is configured. Without one, merchants cannot onboard or take money.",
 
   sbNotice: "A batch decides whether money can be released; a bill decides whether the release succeeds. This page answers which batch the money is stuck in.",

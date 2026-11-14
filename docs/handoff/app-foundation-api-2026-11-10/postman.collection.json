@@ -1,0 +1,733 @@
+{
+  "info": {
+    "name": "ai-shop 基础能力166联调（手动逐条）",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API与PAY已部署，N1新建关闭；库存为宿主既有路径。无令牌/口令、无自动写入脚本。"
+  },
+  "item": [
+    {
+      "name": "01 公共目录",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/common/master-data",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "02 身份凭证验证",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/auth/identities",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"grantType\": \"PASSWORD\",\n  \"principal\": \"{{principal}}\",\n  \"credential\": \"{{credential}}\",\n  \"agreed\": true,\n  \"marketCode\": \"TW\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 进入返回的身份",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/auth/identities/enter",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ticket\": \"{{ticket}}\",\n  \"identityNo\": \"{{identityNo}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 我的身份",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/auth/identities/mine",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "05 我的门店",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/stores/mine",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "06 当前档案",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/merchant/profile",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "07 门店上下文",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/stores/{{storeNo}}/context",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "08 门店能力",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/stores/{{storeNo}}/features",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "09 平台资料提交（会写入）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/merchant/onboarding",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"entityNo\": \"{{entityNo}}\",\n  \"storeNo\": \"{{storeNo}}\",\n  \"profile\": {\n    \"subject\": \"PERSONAL\",\n    \"name\": \"{{legalName}}\",\n    \"owner\": \"{{ownerName}}\",\n    \"ownerPhone\": \"{{ownerPhone}}\",\n    \"industry\": \"{{industryCode}}\"\n  },\n  \"licenses\": [],\n  \"agreed\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10 平台主体详情",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/entity/{{entityNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "11 支付来源",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/merchant/pay-service",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "12 支付成员",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/memberships",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "13 N2清单",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "14 N2草稿（会写入）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestNo\": \"{{createRequestNo}}\",\n  \"payChannel\": \"NEWEBPAY\",\n  \"channelMerchantId\": \"{{channelMerchantId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "15 N2原创建回执",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/by-request/{{createRequestNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "16 N2详情",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/{{claimNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "16b N2私有证明上传（会写入）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/{{claimNo}}/files",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "requestNo",
+              "value": "{{uploadRequestNo}}",
+              "type": "text"
+            },
+            {
+              "key": "expectedVersion",
+              "value": "{{expectedVersion}}",
+              "type": "text"
+            },
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "description": "选择<=5MiB的允许证明文件；让Postman生成multipart boundary，勿手填Content-Type。上传回执的version要用于下一步。"
+      },
+      "response": []
+    },
+    {
+      "name": "16c N2私有证明读取",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/{{claimNo}}/files/{{fileNo}}",
+        "description": "二进制响应，保存/预览按Content-Type，不按JSON信封解析；不可缓存公开URL。"
+      },
+      "response": []
+    },
+    {
+      "name": "17 N2提交（会写入）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/{{claimNo}}/submit",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestNo\": \"{{submitRequestNo}}\",\n  \"expectedVersion\": {{expectedVersion}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "18 N2原命令回执",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          },
+          {
+            "key": "X-Merchant-No",
+            "value": "{{payMerchantNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/pay/v2/channel-account-claims/{{claimNo}}/commands/{{submitRequestNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "19 N1只读预检",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/store/{{storeNo}}/entity/relink-check?entityNo={{targetEntityNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "20 N1原单查询",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/merchant/store-claims/by-request/{{storeClaimRequestNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "21 连锁账号上下文",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/management/context",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "22 支付候选",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/management/entities/{{entityNo}}/payment-merchants?managementNo={{managementNo}}",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "23 既有宿主库存摘要",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "X-Store-No",
+            "value": "{{storeNo}}"
+          },
+          {
+            "key": "X-Entity-No",
+            "value": "{{entityNo}}"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/inventory/summary",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。"
+      },
+      "response": []
+    },
+    {
+      "name": "24 退出",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{hostOrigin}}/biz/auth/logout",
+        "description": "按README逐条手动执行。写请求使用固定原requestNo；不要整包运行，不使用动态随机变量替换恢复键。",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    }
+  ]
+}

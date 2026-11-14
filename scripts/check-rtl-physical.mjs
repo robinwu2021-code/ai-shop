@@ -30,7 +30,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DIRS = ["b-app/src", "c-app/src", "packages/ui/src"];
+// checkout-h5 是纯 CSS（不是 .vue）：整份文件当一个样式块（2026-10-26 收银台 H5 加入，F35 的 RTL 闸门）
+const DIRS = ["b-app/src", "c-app/src", "packages/ui/src", "checkout-h5/src"];
 const BASELINE = join(ROOT, "known-rtl-physical.txt");
 
 const RULES = [
@@ -50,7 +51,8 @@ function styleBlocks(src) {
 function scan(file) {
   const src = readFileSync(file, "utf8");
   const hits = [];
-  for (const blk of styleBlocks(src)) {
+  const blocks = file.endsWith(".css") ? [{ text: src, offset: 0 }] : styleBlocks(src);
+  for (const blk of blocks) {
     // 注释里提到 padding-left 是在讲道理，不是在写样式
     const text = blk.text.replace(/\/\*[\s\S]*?\*\//g, (s) => " ".repeat(s.length));
     for (const m of text.matchAll(/(^|[\s;{])((?:padding|margin|border)-(?:left|right)|text-align)\s*:\s*([^;\n]*)/g)) {
@@ -75,7 +77,7 @@ const walk = (d) => {
     if (n === "node_modules" || n === "dist" || n.startsWith(".")) continue;
     const p = join(d, n);
     if (statSync(p).isDirectory()) walk(p);
-    else if (n.endsWith(".vue")) files.push(p);
+    else if (n.endsWith(".vue") || n.endsWith(".css")) files.push(p);
   }
 };
 DIRS.forEach((d) => walk(join(ROOT, d)));
@@ -93,7 +95,7 @@ const known = existsSync(BASELINE)
 const id = (h) => `${h.file} ${h.prop}`;
 const fresh = hits.filter((h) => !known.has(id(h)));
 
-console.log(`.vue 样式里写死左右的 ${hits.length} 处（已知欠账 ${known.size}）　扫描：${files.length} 个组件/页面`);
+console.log(`样式里写死左右的 ${hits.length} 处（已知欠账 ${known.size}）　扫描：${files.length} 个组件/页面`);
 for (const h of hits) {
   console.log(`   ${fresh.includes(h) ? "★新增" : "     "} ${h.file}:${h.line}  ${h.prop} → ${h.fix}`);
 }

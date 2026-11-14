@@ -1,5 +1,7 @@
+import { marketPhonePolicies } from "@/lib/mock/db/system";
 // 覆盖范围：系统配置（P-17.1）。
 import * as db from "@/lib/mock/db";
+import { mall } from "@/lib/mock/db/commerce";
 import { C_END_THEMES } from "@/lib/stores/theme";
 import { BASE_CURRENCY } from "@/lib/types";
 import type { SystemApi } from "../contracts/system";
@@ -15,11 +17,110 @@ function findIndustry(industry: string) {
   return row;
 }
 
+const identityList = () => ({
+  switchOn: true,
+  items: db.testIdentities.map((r) => ({ ...r })),
+});
+
+function normIdentity(type: string, value: string): string | null {
+  if (type === "PHONE") {
+    const v = value.replace(/[\s-]/g, "");
+    return /^\+?\d{6,20}$/.test(v) ? v : null;
+  }
+  if (type === "EMAIL") {
+    const v = value.trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : null;
+  }
+  return null;
+}
+
 export const systemMock: SystemApi = {
-  printHealth: async () => { fail("演示没有打印监控事实", "No print monitoring facts in this demo"); },
-  printIncidents: async () => { fail("演示没有打印事件事实", "No print incidents in this demo"); },
-  printOperation: async () => { fail("演示没有打印操作记录", "No print operations in this demo"); },
-  reconcilePrint: async () => { fail("演示不执行打印对账", "Print reconciliation unavailable in demo"); },
+  marketPhonePolicies: async () => wait(structuredClone(marketPhonePolicies)),
+  saveMarketPhonePolicy: async (market, v) => {
+    const row=marketPhonePolicies.find((x)=>x.market===market);
+    if (!row) return notFound("市场", "Market", market);
+    if(v.smsVerificationEnabled && !row.smsChannelReady) return fail("该地区短信通道尚未开放", "SMS verification is not available in this region");
+    Object.assign(row,{recordOnly:v.recordOnly,smsVerificationEnabled:v.smsVerificationEnabled});
+    return wait(structuredClone(row));
+  },
+  listStoreIndustries: async () => wait(db.storeIndustries.map((r) => ({ ...r }))),
+  saveStoreIndustry: async (v) => {
+    const sub = v.subIndustryCode || "";
+    const parent = db.storeIndustries.find((r) => r.industryCode.toLowerCase() === v.industryCode.toLowerCase() && !r.subIndustryCode);
+    const industry = parent?.industryCode ?? v.industryCode;
+    const row = db.storeIndustries.find((r) => r.industryCode.toLowerCase() === industry.toLowerCase() && r.subIndustryCode.toLowerCase() === sub.toLowerCase());
+    if ((row && v.expectedVersion !== row.version) || (!row && v.expectedVersion !== null)) fail("配置版本冲突，请刷新后再编辑", "Version conflict — refresh before editing");
+    if (sub && !parent) fail("父行业不存在", "Parent industry not found");
+    if (!/^[A-Za-z0-9_.:-]{1,32}$/.test(v.industryCode) || !/^[A-Za-z0-9_.:-]{0,48}$/.test(sub)
+        || !v.businessTypeCode || !v.nameZh.trim() || v.nameZh.length > 32 || !v.nameTw.trim() || v.nameTw.length > 32
+        || (v.nameEn?.length ?? 0) > 64 || !v.reason.trim() || !Number.isInteger(v.sort) || v.sort < 0) fail("请检查行业资料", "Check industry fields");
+    if (!mall.s.types[v.businessTypeCode]) fail("经营类型不存在", "Business type not found");
+    const { expectedVersion, reason: _reason, ...fields } = v;
+    const next = { ...fields, industryCode: row?.industryCode ?? industry, subIndustryCode: row?.subIndustryCode ?? sub, version: expectedVersion === null ? 0 : expectedVersion + 1 };
+    if (row) Object.assign(row, next); else db.storeIndustries.push(next);
+    return wait({ ...next });
+  },
+
+  // ── App 版本策略 ── 与后端同一组护栏（版本前缀、min ≤ latest、两家商店、zh-Hant 必填、revision）
+  listAppVersions: async () => wait(db.appVersions.map((r) => ({ ...r, notes: { ...r.notes } }))),
+
+  saveAppVersion: async (appCode, platform, v) => {
+    const row = db.appVersions.find((r) => r.appCode === appCode && r.platform === platform);
+    if (!row) notFound("平台", "Platform", `${appCode}/${platform}`);
+    if (row.revision !== v.expectedRevision) fail("别人刚改过，请刷新后再改", "Someone changed it just now — refresh and try again");
+    const ver = (x: string) => x.trim().match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    const latest = v.latest.trim();
+    const min = v.minSupported.trim();
+    if ((latest && !ver(latest)) || (min && !ver(min))) fail("版本号要以数字开头，如 0.2.0", "Versions must start with digits, e.g. 0.2.0");
+    const num = (x: string) => (ver(x) ?? []).slice(1, 4).map((p) => Number(p ?? 0));
+    const cmp = (a: string, b: string) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+    if (min && (!latest || cmp(min, latest) > 0)) fail("最低支持版不能高于最新版", "The minimum version cannot be above the latest");
+    if (v.storeUrl && !/^https:\/\/(apps\.apple\.com|play\.google\.com)\//.test(v.storeUrl)) {
+      fail("商店地址只能是 App Store 或 Google Play 的 https 地址", "Store URL must be an https App Store or Google Play link");
+    }
+    if (latest && !(v.notes["zh-Hant"] ?? []).some((l) => l.trim())) fail("繁中更新说明必填", "Traditional Chinese release notes are required");
+    Object.assign(row, {
+      latest, minSupported: min, notes: v.notes, storeUrl: v.storeUrl || null,
+      updatedBy: "admin", updatedAt: Date.now(), revision: row.revision + 1,
+    });
+    return wait({ ...row, notes: { ...row.notes } });
+  },
+
+  // ── 测试身份白名单（与后端同口径：规范化、启用上限 10 条）──
+  listTestIdentities: async () => wait(identityList()),
+  saveTestIdentity: async (v) => {
+    const value = normIdentity(v.identityType, v.identityValue ?? "");
+    if (!value) fail("手机号（带国码）或邮箱格式不对", "Invalid phone (with country code) or email");
+    const row = db.testIdentities.find((x) => x.identityType === v.identityType && x.identityValue === value);
+    if (row) {
+      row.remark = v.remark || undefined;
+    } else {
+      if (db.testIdentities.filter((x) => x.enabled).length >= 10) {
+        fail("启用中的测试身份最多 10 条", "At most 10 active test identities");
+      }
+      db.testIdentities.push({
+        id: Math.max(0, ...db.testIdentities.map((x) => x.id)) + 1,
+        identityType: v.identityType, identityValue: value!, enabled: true, remark: v.remark || undefined,
+      });
+    }
+    return wait(identityList());
+  },
+  setTestIdentityEnabled: async (id, enabled) => {
+    const row = db.testIdentities.find((x) => x.id === id);
+    if (!row) notFound("测试身份", "Test identity", String(id));
+    if (enabled && !row.enabled && db.testIdentities.filter((x) => x.enabled).length >= 10) {
+      fail("启用中的测试身份最多 10 条", "At most 10 active test identities");
+    }
+    row.enabled = enabled;
+    return wait(identityList());
+  },
+  removeTestIdentity: async (id) => {
+    const i = db.testIdentities.findIndex((x) => x.id === id);
+    if (i < 0) notFound("测试身份", "Test identity", String(id));
+    db.testIdentities.splice(i, 1);
+    return wait(identityList());
+  },
+
   // ── 测试号固定验证码白名单 ──
   //
   // 后端那四条护栏里，**只有「已存在账号」这条 mock 演不出来**（mock 里没有账号表）。

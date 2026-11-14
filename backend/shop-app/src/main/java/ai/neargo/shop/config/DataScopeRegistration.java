@@ -31,6 +31,13 @@ public class DataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
 
+        // 支付资料原申请归属主体；actor_no是带realm的操作人，不能作为SELF归属。
+        registry.register("mch_pay_service_application", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("mch_plan_purchase", Map.of(ScopeDim.SELF,"buyer_no",ScopeDim.MERCHANT,"entity_no"));
+
+        registry.register("ord_industry_order_source", Map.of(
+                ScopeDim.SELF, "buyer_no", ScopeDim.MERCHANT, "entity_no"));
         registry.register("ent_code_token", Map.of(
                 ScopeDim.SELF, "user_no", ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_ent_order_use", Map.of(
@@ -253,6 +260,10 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 那边漏豁免会把货变成「没货」，这边最多是「没享受到本店价」。
          * 这个方向差别正是 prd_store_price 与 prd_store_stock 回退语义相反的延伸。
          */
+        registry.register("prd_store_catalog", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("prd_store_catalog_version", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("prd_store_price", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
@@ -584,6 +595,15 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_coupon_issue", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        // Pricing services authorize trusted owner contexts before their explicit scoped bypasses.
+        registry.register("ord_manual_price_adjustment", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_manual_price_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_price_quote", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_pricing_funding_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_store_pricing_config", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_store_pricing_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("prd_sku_pricing_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("pmt_apply", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));

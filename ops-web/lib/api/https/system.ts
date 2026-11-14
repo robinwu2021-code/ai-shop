@@ -3,17 +3,28 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
-  printHealth: (q) => client.get("/ops/print/health", q),
-  printIncidents: (q) => client.get("/ops/print/incidents", q),
-  printOperation: (no, q) => client.get(`/ops/print/operations/${encodeURIComponent(no)}`, q),
-  reconcilePrint: (v, key) => client.post("/ops/print/reconciliations", v, undefined, { "Idempotency-Key": key }),
+  marketPhonePolicies: () => client.get("/ops/market-phone-policies"),
+  saveMarketPhonePolicy: (market, v) => client.post(`/ops/market-phone-policies/${encodeURIComponent(market)}`, v),
+  // ── App 版本策略 ──
+  listAppVersions: () => client.get("/ops/app-versions"),
+  saveAppVersion: (appCode, platform, v) => client.put(`/ops/app-versions/${appCode}/${platform}`, v),
+
   // ── 测试号固定验证码白名单 ──
   listTestPhones: () => client.get("/ops/test-phones"),
   saveTestPhone: (v) => client.post("/ops/test-phones", v),
   setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),
   removeTestPhone: (id) => client.post(`/ops/test-phones/${id}/remove`, {}),
 
-  // 行业主数据是本文件里**唯一接了真后端**的一组（其余仍走 mock，见 Ops契约对账）
+  // ── 测试身份白名单 ──
+  listTestIdentities: () => client.get("/ops/test-identities"),
+  saveTestIdentity: (v) => client.post("/ops/test-identities", v),
+  setTestIdentityEnabled: (id, enabled) => client.post(`/ops/test-identities/${id}/enabled`, { enabled }),
+  removeTestIdentity: (id) => client.post(`/ops/test-identities/${id}/remove`, {}),
+
+  listStoreIndustries: () => client.get("/ops/store-industries"),
+  saveStoreIndustry: (v) => client.post("/ops/store-industries", v),
+
+  // 支付行业主数据（与门店行业分开，保持已有通道准入规则）
   listIndustries: () => client.get("/ops/industries"),
   setIndustryMicroAllowed: (industry, payChannel, allowed, remark) =>
     client.post(`/ops/industries/${industry}/micro-allowed`, { payChannel, allowed, remark }),

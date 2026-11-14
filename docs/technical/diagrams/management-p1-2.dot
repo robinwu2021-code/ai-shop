@@ -1,0 +1,96 @@
+digraph G {
+graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.7", fontname="Arial", label="品牌变更检查及审批时序", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#f3f7fc", color="#516781", fontname="Arial", fontsize=13, margin="0.18,0.12"];
+edge [fontname="Arial", fontsize=11, color="#516781", arrowsize=0.8];
+{rank=same; U_0 -> B_0 -> M_0 -> D_0 [style=invis,weight=100];U_0 [label="B端管理者"];B_0 [label="BFF"];M_0 [label="Merchant"];D_0 [label="Core数据库"];}
+{rank=same;U_1 [label="",shape=point,width=0.02];B_1 [label="",shape=point,width=0.02];M_1 [label="",shape=point,width=0.02];D_1 [label="",shape=point,width=0.02];}
+U_0 -> U_1 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_0 -> B_1 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_0 -> M_1 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_0 -> D_1 [style=dashed,arrowhead=none,color="#b0bac7"];
+U_1 -> B_1 [constraint=false,label="1. ST02 检查目标品牌"];
+{rank=same;U_2 [label="",shape=point,width=0.02];B_2 [label="",shape=point,width=0.02];M_2 [label="",shape=point,width=0.02];D_2 [label="",shape=point,width=0.02];}
+U_1 -> U_2 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_1 -> B_2 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_1 -> M_2 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_1 -> D_2 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_2 -> M_2 [constraint=false,label="2. 验证门店及品牌双方权限"];
+{rank=same;U_3 [label="",shape=point,width=0.02];B_3 [label="",shape=point,width=0.02];M_3 [label="",shape=point,width=0.02];D_3 [label="",shape=point,width=0.02];}
+U_2 -> U_3 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_2 -> B_3 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_2 -> M_3 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_2 -> D_3 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_3 -> B_3 [constraint=false,label="3. 汇总依赖影响与能力状态"];
+{rank=same;U_4 [label="",shape=point,width=0.02];B_4 [label="",shape=point,width=0.02];M_4 [label="",shape=point,width=0.02];D_4 [label="",shape=point,width=0.02];}
+U_3 -> U_4 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_3 -> B_4 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_3 -> M_4 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_3 -> D_4 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_4 -> U_4 [style=dashed,constraint=false,label="4. 影响/原因/短时检查凭据"];
+{rank=same;U_5 [label="",shape=point,width=0.02];B_5 [label="",shape=point,width=0.02];M_5 [label="",shape=point,width=0.02];D_5 [label="",shape=point,width=0.02];}
+U_4 -> U_5 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_4 -> B_5 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_4 -> M_5 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_4 -> D_5 [style=dashed,arrowhead=none,color="#b0bac7"];
+U_5 -> B_5 [constraint=false,label="5. ST03 提交 + 检查凭据 + 幂等键"];
+{rank=same;U_6 [label="",shape=point,width=0.02];B_6 [label="",shape=point,width=0.02];M_6 [label="",shape=point,width=0.02];D_6 [label="",shape=point,width=0.02];}
+U_5 -> U_6 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_5 -> B_6 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_5 -> M_6 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_5 -> D_6 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_6 -> M_6 [constraint=false,label="6. 重新校验权限及版本"];
+{rank=same;U_7 [label="",shape=point,width=0.02];B_7 [label="",shape=point,width=0.02];M_7 [label="",shape=point,width=0.02];D_7 [label="",shape=point,width=0.02];}
+U_6 -> U_7 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_6 -> B_7 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_6 -> M_7 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_6 -> D_7 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_7 -> D_7 [constraint=false,label="7. 保存CHECKED或BLOCKED变更"];
+{rank=same;U_8 [label="",shape=point,width=0.02];B_8 [label="",shape=point,width=0.02];M_8 [label="",shape=point,width=0.02];D_8 [label="",shape=point,width=0.02];}
+U_7 -> U_8 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_7 -> B_8 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_7 -> M_8 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_7 -> D_8 [style=dashed,arrowhead=none,color="#b0bac7"];
+U_8 -> B_8 [constraint=false,label="8. ST05 APPROVE/REJECT"];
+{rank=same;U_9 [label="",shape=point,width=0.02];B_9 [label="",shape=point,width=0.02];M_9 [label="",shape=point,width=0.02];D_9 [label="",shape=point,width=0.02];}
+U_8 -> U_9 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_8 -> B_9 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_8 -> M_9 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_8 -> D_9 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_9 -> B_9 [constraint=false,label="9. 重新取得依赖状态"];
+{rank=same;U_10 [label="",shape=point,width=0.02];B_10 [label="",shape=point,width=0.02];M_10 [label="",shape=point,width=0.02];D_10 [label="",shape=point,width=0.02];}
+U_9 -> U_10 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_9 -> B_10 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_9 -> M_10 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_9 -> D_10 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_10 -> M_10 [constraint=false,label="10. 确认最新范围与能力"];
+{rank=same;U_11 [label="",shape=point,width=0.02];B_11 [label="",shape=point,width=0.02];M_11 [label="",shape=point,width=0.02];D_11 [label="",shape=point,width=0.02];}
+U_10 -> U_11 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_10 -> B_11 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_10 -> M_11 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_10 -> D_11 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_11 -> D_11 [constraint=false,label="11. 原绑定ENDED + 新绑定ACTIVE + scope_revision递增 + outbox"];
+{rank=same;U_12 [label="",shape=point,width=0.02];B_12 [label="",shape=point,width=0.02];M_12 [label="",shape=point,width=0.02];D_12 [label="",shape=point,width=0.02];}
+U_11 -> U_12 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_11 -> B_12 [style=dashed,arrowhead=none,color="#b0bac7"];
+M_11 -> M_12 [style=dashed,arrowhead=none,color="#b0bac7"];
+D_11 -> D_12 [style=dashed,arrowhead=none,color="#b0bac7"];
+B_12 -> U_12 [style=dashed,constraint=false,label="12. COMPLETED或明确阻断原因"];
+}
+// Original diagram source, retained for provenance:
+// sequenceDiagram
+//     actor U as B端管理者
+//     participant B as BFF
+//     participant M as Merchant
+//     participant D as Core数据库
+//     U->>B: ST02 检查目标品牌
+//     B->>M: 验证门店及品牌双方权限
+//     B->>B: 汇总依赖影响与能力状态
+//     B-->>U: 影响/原因/短时检查凭据
+//     U->>B: ST03 提交 + 检查凭据 + 幂等键
+//     B->>M: 重新校验权限及版本
+//     M->>D: 保存CHECKED或BLOCKED变更
+//     U->>B: ST05 APPROVE/REJECT
+//     B->>B: 重新取得依赖状态
+//     B->>M: 确认最新范围与能力
+//     M->>D: 原绑定ENDED + 新绑定ACTIVE + scope_revision递增 + outbox
+//     B-->>U: COMPLETED或明确阻断原因

@@ -1,29 +1,46 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
+import ai.neargo.shop.pay.acquiring.service.PaymentOutcomeService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.pay.acquiring.service.PaymentService;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.pay.service.PlatformCollectionService;
+
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entity.StlPayment;
+import ai.neargo.shop.pay.mapper.PaymentOperationMapper;
+import ai.neargo.shop.pay.mapper.PaymentOrderGuardMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort.Attempt;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
+
 import tools.jackson.databind.ObjectMapper;
+
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private static final Logger log = LoggerFactory.getLogger(PaymentLedgerServiceImpl.class);
 
@@ -31,37 +48,55 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private final ObjectMapper json = new ObjectMapper();
 
     private final RefundCapacityLedger capacity;
-    public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper, RefundCapacityLedger capacity) {
+    private final PaymentOrderGuardMapper orderGuards;
+    private final PaymentOperationMapper operations;
+
+    public PaymentLedgerServiceImpl(
+            SettleMappers.PaymentMapper paymentMapper,
+            RefundCapacityLedger capacity,
+            PaymentOrderGuardMapper orderGuards,
+            PaymentOperationMapper operations) {
+        this.orderGuards = orderGuards;
+        this.operations = operations;
         this.capacity = capacity;
         this.paymentMapper = paymentMapper;
     }
 
     @Override
+    public String paymentBusiness(String id) {
+        if(id==null||id.isBlank())return "CONSUMER";
+        var row=DataScopeContext.executeWithoutScope(()->paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .and(q->q.eq(StlPayment::getPaymentNo,id).or().eq(StlPayment::getOutTradeNo,id)).last("LIMIT 1")));
+        return row!=null&&PlatformCollectionService.ownsScene(row.getPayScene())?row.getPayScene():"CONSUMER";
+    }
+
+    @Override
     @Transactional("payTxManager")
     public String open(SettlePort.PaymentOpen cmd) {
-        if (successPayment(cmd.orderNo()) != null) {
+        guard(cmd.orderNo());
+        // Current reads after the common guard also defeat an older caller's RR snapshot.
+        var attempts =
+                DataScopeContext.executeWithoutScope(
+                        () ->
+                                paymentMapper.selectList(
+                                        Wrappers.<StlPayment>lambdaQuery()
+                                                .eq(StlPayment::getOrderNo, cmd.orderNo())
+                                                .eq(StlPayment::getDirection, StlPayment.PAY)
+                                                .orderByAsc(StlPayment::getId)
+                                                .last("FOR UPDATE")));
+        if (attempts.stream().anyMatch(row -> StlPayment.SUCCESS.equals(row.getStatus()))) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        /*
-         * **幂等的粒度是「这个订单有没有未终态的收款」**，不是「这个单号落过没有」。
-         *
-         * 用户在收银台点两次「去支付」应当复用同一笔 ——
-         * 否则通道那边多出一个未支付单，而对账会把它当成掉单。
-         * 而前一笔失败或关闭之后重试，走的是**新的 out_trade_no**：
-         * 通道要求商户订单号唯一，关掉的号不能复用。
-         */
-        StlPayment open = openPaymentOf(cmd.orderNo());
+        StlPayment open =
+                attempts.stream()
+                        .filter(
+                                row ->
+                                        StlPayment.INIT.equals(row.getStatus())
+                                                || StlPayment.PENDING.equals(row.getStatus()))
+                        .findFirst()
+                        .orElse(null);
         if (open != null) {
-            var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
-                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
-            if (!Objects.equals(original.userNo(), cmd.userNo())
-                    || !Objects.equals(original.entityNo(), cmd.entityNo())
-                    || !Objects.equals(original.payChannel(), cmd.payChannel())
-                    || !Objects.equals(original.currency(), cmd.currency())
-                    || original.amountMinor() != cmd.amountMinor()) {
-                throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
-            }
-            return open.getOutTradeNo();
+            return reuse(open, cmd);
         }
         validateRequest(cmd);
         /*
@@ -81,8 +116,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          * 后缀从 -2 起：`ORD123`、`ORD123-2`、`ORD123-3`……
          * 用户报障时报的仍是自己看得到的订单号，客服按前缀就能找全这几次尝试。
          */
-        long attempts = countPayAttempts(cmd.orderNo());
-        String outTradeNo = attempts == 0 ? cmd.orderNo() : cmd.orderNo() + "-" + (attempts + 1);
+        String outTradeNo =
+                attempts.isEmpty() ? cmd.orderNo() : cmd.orderNo() + "-" + (attempts.size() + 1);
         StlPayment p = new StlPayment();
         p.setPaymentNo(BizKey.next(BizKey.PAYMENT));
         p.setDirection(StlPayment.PAY);
@@ -95,14 +130,86 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setAmountMinor(cmd.amountMinor());
         p.setCurrency(cmd.currency());
         p.setPaymentRequestJson(json.writeValueAsString(cmd));
-        DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        // 实际收款账户落到行上，退款按它找原交易（F08 · R08）。与下单时同一条规则
+        DirectAccounts.of(cmd).ifPresent(route -> {
+            p.setSubMerchantId(route.subMerchantId());
+            p.setPayMerchantNo(route.payMerchantNo());
+        });
+        try {
+            DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        } catch (org.springframework.dao.DuplicateKeyException race) {
+            /*
+             * 并发的另一次「去支付」先落了同号的行（F07 · Review R07）。上面的检查不加锁，两边都会过；
+             * 兜底的是 out_trade_no 唯一键。撞键的这一方读回那一行、按同一套快照比对，返回同一个单号 ——
+             * 对用户而言两次点击就是同一笔。
+             * 必须用加锁读：REPEATABLE READ 下普通读用的是本事务开头的快照，看不到对方刚提交的行。
+             */
+            StlPayment winner = lockPayment(outTradeNo);
+            if (winner == null) {
+                throw race;
+            }
+            return reuse(winner, cmd);
+        }
+        documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
+        if (payOrders != null) {
+            // 尝试挂到支付单上（I3 S3）；调用方没建支付单（开关关、存量单）时什么都不做
+            payOrders.ifAvailable(s -> s.attachAttempt(cmd.orderNo(), p.getId()));
+        }
         return outTradeNo;
+    }
+
+    /** 复用一笔未终态的收款：请求快照必须一致，否则是另一笔请求冒用了同一订单 */
+    private String reuse(StlPayment open, SettlePort.PaymentOpen cmd) {
+        if (open.getPaymentRequestJson() == null) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED");
+        }
+        var original = json.readValue(open.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
+        validateRequest(original);
+        if (!Objects.equals(open.getOrderNo(), original.orderNo())
+                || !Objects.equals(open.getUserNo(), original.userNo())
+                || !Objects.equals(open.getEntityNo(), original.entityNo())
+                || !Objects.equals(open.getPayChannel(), original.payChannel())
+                || !Objects.equals(open.getCurrency(), original.currency())
+                || open.getAmountMinor() == null || open.getAmountMinor() != original.amountMinor()
+                || !Objects.equals(original.userNo(), cmd.userNo())
+                || !Objects.equals(original.entityNo(), cmd.entityNo())
+                || !Objects.equals(original.payChannel(), cmd.payChannel())
+                || !Objects.equals(original.currency(), cmd.currency())
+                || original.amountMinor() != cmd.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return open.getOutTradeNo();
+    }
+
+    /** 支付单（I3 S3）；手工构造的单测里没有 */
+    private ObjectProvider<PaymentService> payOrders;
+    /** 结果唯一入口（I3 S4）；切片测试里没有 —— 调用时再取 */
+    private ObjectProvider<PaymentOutcomeService> outcomes;
+
+    @Autowired(required = false)
+    void setOutcomes(ObjectProvider<PaymentOutcomeService> outcomes) {
+        this.outcomes = outcomes;
+    }
+
+    @Autowired(required = false)
+    void setPayOrders(ObjectProvider<PaymentService> payOrders) {
+        this.payOrders = payOrders;
+    }
+
+    @Override
+    public Optional<String> paymentNoOf(String outTradeNo) {
+        if (outTradeNo == null || outTradeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                        Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getOutTradeNo, outTradeNo))))
+                .map(StlPayment::getPaymentNo);
     }
 
     @Override
     public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
         StlPayment row = byOutTradeNo(outTradeNo);
-        if (row == null || row.getPaymentRequestJson() == null) {
+        if (row == null || PlatformCollectionService.ownsScene(row.getPayScene()) || row.getPaymentRequestJson() == null) {
             return Optional.empty();
         }
         var request = json.readValue(row.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
@@ -144,7 +251,12 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             }
             path = route.fundsPath();
             if ("DIRECT".equals(path)) {
-                String account = route.payMerchantNo() + ":" + route.subMerchantId() + ":" + route.accountVersion();
+                String account =
+                        route.payMerchantNo()
+                                + ":"
+                                + route.subMerchantId()
+                                + ":"
+                                + route.accountVersion();
                 if (directAccount != null && !directAccount.equals(account)) {
                     throw new IllegalArgumentException("PAY_MULTIPLE_DIRECT_ACCOUNTS_UNSUPPORTED");
                 }
@@ -155,14 +267,6 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     private static boolean nonblank(String value) {
         return value != null && !value.isBlank();
-    }
-
-    /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */
-    private long countPayAttempts(String orderNo) {
-        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)));
     }
 
     @Override
@@ -180,15 +284,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         p.getOutTradeNo(), p.getPayerOpenid(), p.getWxAppid()));
     }
 
-    /** 这个订单未终态（INIT / PENDING）的收款 —— 有就复用，没有才开新的 */
-    private StlPayment openPaymentOf(String orderNo) {
-        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)
-                        .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)
-                        .orderByDesc(StlPayment::getId)
-                        .last("LIMIT 1")));
+    private static void requireConsumer(StlPayment row) {
+        if (row != null && PlatformCollectionService.ownsScene(row.getPayScene()))
+            throw new IllegalStateException("Platform cash requires its original intent and proof owner");
     }
 
     @Override
@@ -207,8 +305,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (origin == null) {
             return null;
         }
+        requireConsumer(origin);
         StlPayment exist = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundByAfterSale(afterSaleNo));
+        requireConsumer(exist);
         if (exist != null) {
             if (!orderNo.equals(exist.getOrderNo()) || !subOrderNo.equals(exist.getSubOrderNo())
                     || exist.getAmountMinor() == null || exist.getAmountMinor() != amountMinor) {
@@ -257,15 +357,20 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public boolean claimRefundDispatch(String refundPaymentNo) {
-        var origin = capacity.lockOriginal(byPaymentNo(refundPaymentNo));
+        var candidate = byPaymentNo(refundPaymentNo);
+        requireConsumer(candidate);
+        var origin = capacity.lockOriginal(candidate);
         if (origin != null && "FROZEN".equals(origin.getRefundCapacityState())) return false;
         StlPayment refund = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
         if (refund == null) {
             throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
         }
-        if (java.util.Set.of("PROCESSING","MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED")
-                .contains(refund.getRefundQueryState()==null?"":refund.getRefundQueryState())) return false;
+        if (java.util.Set.of("PROCESSING", "MANUAL_REQUIRED", "LATE_SUCCESS", "TERMINAL_FAILED")
+                .contains(
+                        refund.getRefundQueryState() == null ? "" : refund.getRefundQueryState())) {
+            return false;
+        }
         if (!StlPayment.PENDING.equals(refund.getStatus()) || refund.getRefundDispatchAt() != null) {
             return false;
         }
@@ -279,7 +384,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo) {
         StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
+        if (r == null || PlatformCollectionService.ownsScene(r.getPayScene()) || !StlPayment.REFUND.equals(r.getDirection())) {
             return java.util.Optional.empty();
         }
         if (r.getRefundRequestJson() == null) {
@@ -299,6 +404,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                                String providerNo, String reason) {
         StlPayment r = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        requireConsumer(r);
         if (r == null || !StlPayment.PENDING.equals(r.getStatus())) {
             return;
         }
@@ -347,6 +453,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     public void markRefundRejected(String paymentNo, String reason) {
         var row = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(paymentNo));
         if (row == null) throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        requireConsumer(row);
         if (StlPayment.SUCCESS.equals(row.getStatus())) return;
         capacity.rejected(row, reason);
         markRefundSent(paymentNo, false, false, null, reason);
@@ -356,6 +463,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor) {
         var candidate = byPaymentNo(refundPaymentNo);
+        requireConsumer(candidate);
         if (candidate != null) capacity.lockOriginal(candidate);
         StlPayment refund=DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(refundPaymentNo));
         if (refund==null) { throw new IllegalArgumentException("PAY_REFUND_UNKNOWN"); }
@@ -392,15 +500,44 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
+    public void freezePayer(String outTradeNo, String userNo, String payerId, String appId) {
+        if (!nonblank(userNo) || !nonblank(payerId) || !nonblank(appId)) {
+            throw new IllegalArgumentException("PAY_PAYER_IDENTITY_REQUIRED");
+        }
+        StlPayment payment = lockPayment(outTradeNo);
+        if (payment == null || !Objects.equals(payment.getUserNo(), userNo)) {
+            throw new IllegalArgumentException("PAY_PAYER_OWNER_CONFLICT");
+        }
+        if (nonblank(payment.getPayerOpenid()) || nonblank(payment.getWxAppid())) {
+            if (!Objects.equals(payment.getPayerOpenid(), payerId)
+                    || !Objects.equals(payment.getWxAppid(), appId)) {
+                throw new IllegalArgumentException("PAY_PAYER_IDENTITY_CONFLICT");
+            }
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(payment.getId());
+        patch.setPayerOpenid(payerId);
+        patch.setWxAppid(appId);
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public void recordPayer(String outTradeNo, String payerId, String appId) {
         if (payerId == null || payerId.isBlank()) {
             // 没有就不写。写一行空的等于把「没取到」和「没这个概念」混成一件事
             return;
         }
-        StlPayment p = byOutTradeNo(outTradeNo);
+        StlPayment p = lockPayment(outTradeNo);
         if (p == null) {
             log.warn("[payment-ledger] 记付款人时找不到流水 {}", outTradeNo);
             return;
+        }
+        requireConsumer(p);
+        if ((nonblank(p.getPayerOpenid()) && !Objects.equals(p.getPayerOpenid(), payerId))
+                || (nonblank(p.getWxAppid()) && nonblank(appId) && !Objects.equals(p.getWxAppid(), appId))) {
+            throw new IllegalArgumentException("PAY_PAYER_IDENTITY_CONFLICT");
         }
         StlPayment patch = new StlPayment();
         patch.setId(p.getId());
@@ -449,7 +586,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW,
             isolation = Isolation.READ_COMMITTED)
     public void close(String outTradeNo, String reason) {
+        StlPayment known = byOutTradeNo(outTradeNo);
+        if (known == null) {
+            return;
+        }
+        guard(known.getOrderNo());
+        var operation = operations.canonicalForPayment(outTradeNo);
+        if (operation != null
+                && Set.of("SENDING", "PAYABLE", "UNKNOWN").contains(operation.getPhase())) {
+            return;
+        }
         StlPayment p = lockPayment(outTradeNo);
+        if(p!=null&&PlatformCollectionService.ownsScene(p.getPayScene()))throw new IllegalStateException("PLATFORM_PAYMENT_OWNER_REQUIRED");
         if (p == null || StlPayment.SUCCESS.equals(p.getStatus())
                 || StlPayment.CLOSED.equals(p.getStatus())) {
             /*
@@ -471,8 +619,13 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
+        StlPayment known = byOutTradeNo(cmd.outTradeNo());
+        if (known == null) {
+            return null;
+        }
+        guard(known.getOrderNo());
         StlPayment existing = lockPayment(cmd.outTradeNo());
-        if (existing == null || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
+        if (existing == null || PlatformCollectionService.ownsScene(existing.getPayScene()) || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
                 || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0
                 || cmd.currency() == null || cmd.currency().isBlank()) {
             return null;
@@ -485,13 +638,58 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         StlPayment patch = new StlPayment();
         patch.setId(existing.getId());
         patch.setStatus(StlPayment.SUCCESS);
+        patch.setReceiptNo("RC" + UUID.randomUUID().toString().replace("-", ""));
         patch.setTradeNo(cmd.tradeNo());
         patch.setSucceededAt(cmd.succeededAt());
-        // Preserve the channel's actual money. Order projection independently compares its immutable amount.
+        // 尝试行记的是渠道事实（实收），全仓读成功收款的地方都按这个口径；渠道事实另在 channel_* 显式留一份。
+        // 应收以支付单 pay_order.amount_minor 为准（R20 的「原始值丢失」由支付单解决，见 TDD 偏差 5）
         patch.setAmountMinor(cmd.amountMinor());
         patch.setCurrency(cmd.currency());
+        patch.setChannelAmountMinor(cmd.amountMinor());
+        patch.setChannelCurrency(cmd.currency());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        if (outcomes != null && outcomes.getIfAvailable() != null) {
+            // 支付单这一层由结果唯一入口决定（I3 S4）：关单后到账、实收不符、重复支付都转异常，不进成功
+            outcomes.getObject().apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
+                    cmd.amountMinor(), cmd.currency(), cmd.succeededAt()));
+        }
         return existing.getOrderNo();
+    }
+
+    /**
+     * Same pay transaction only; the operation service has established a definitive unsent ticket.
+     */
+    @Override
+    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    public void closeUnsent(String outTradeNo, String canonicalOperationNo) {
+        var operation = operations.find(canonicalOperationNo);
+        if (operation == null
+                || !"SENDING".equals(operation.getPhase())
+                || !outTradeNo.equals(operation.getOutTradeNo())) {
+            throw new IllegalStateException("PAY_UNSENT_TICKET_REQUIRED");
+        }
+        guard(operation.getOrderNo());
+        var row = lockPayment(outTradeNo);
+        if (row == null || !canonicalOperationNo.equals(row.getInitiatingOperationNo())) {
+            throw new IllegalStateException("PAY_CANONICAL_MISMATCH");
+        }
+        if (StlPayment.SUCCESS.equals(row.getStatus())) {
+            return;
+        }
+        var patch = new StlPayment();
+        patch.setId(row.getId());
+        patch.setStatus(StlPayment.CLOSED);
+        patch.setClosedAt(System.currentTimeMillis());
+        patch.setErrCode("PAYMENT_NOT_SENT");
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+    }
+
+    private void guard(String orderNo) {
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    orderGuards.ensure(orderNo);
+                    return orderGuards.lock(orderNo);
+                });
     }
 
     @Override
@@ -519,10 +717,32 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         return receipt(byOutTradeNo(outTradeNo));
     }
 
+    @Override
+    public Attempt ordinaryPayment(String outTradeNo) {
+        return ordinaryReceipt(byOutTradeNo(outTradeNo));
+    }
+
+    @Override
+    public Attempt successfulOrdinaryPayment(String orderNo) {
+        StlPayment payment = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo).eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return ordinaryReceipt(payment);
+    }
+
+    private Attempt ordinaryReceipt(StlPayment payment) {
+        return payment == null ? null : new Attempt(payment.getPaymentNo(), payment.getOutTradeNo(),
+                payment.getOrderNo(), payment.getUserNo(), payment.getEntityNo(), payment.getPayChannel(),
+                payment.getTradeNo(), payment.getAmountMinor(), payment.getCurrency(), payment.getStatus(),
+                documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", payment.getPaymentNo()));
+    }
+
     private SettlePort.PaymentReceipt receipt(StlPayment p) {
         return p == null ? null : new SettlePort.PaymentReceipt(p.getPaymentNo(), p.getOrderNo(),
                 p.getUserNo(), p.getPayChannel(), p.getTradeNo(), nz(p.getAmountMinor()),
-                p.getCurrency(), p.getStatus());
+                p.getCurrency(), p.getStatus(), documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo()),
+                p.getOutTradeNo());
     }
 
     private StlPayment lockPayment(String outTradeNo) {
@@ -561,9 +781,16 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                 .eq(StlPayment::getDirection,StlPayment.REFUND).eq(StlPayment::getAfterSaleNo,no)))>0;
     }
     @Override public String paymentCurrency(String orderNo) {
-        var row=DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
-                .eq(StlPayment::getOrderNo,orderNo).eq(StlPayment::getDirection,StlPayment.PAY)
-                .eq(StlPayment::getStatus,StlPayment.SUCCESS).orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        var row =
+                DataScopeContext.executeWithoutScope(
+                        () ->
+                                paymentMapper.selectOne(
+                                        Wrappers.<StlPayment>lambdaQuery()
+                                                .eq(StlPayment::getOrderNo, orderNo)
+                                                .eq(StlPayment::getDirection, StlPayment.PAY)
+                                                .eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                                                .orderByDesc(StlPayment::getId)
+                                                .last("LIMIT 1")));
         return row==null?null:row.getCurrency();
     }
 }

@@ -22,6 +22,19 @@ class PricingConfigCompilerTest {
     }
 
     @Test
+    void definitionCompilationDoesNotGrantExecutableOwnerCapabilities() throws Exception {
+        var source = PricingConfigTestData.template();
+        var definition = compiler.compileDefinition(source, SystemConstraints.standard());
+        assertThat(definition.valid()).isTrue();
+        assertThat(definition.config().definition().couponLimits().total()).isEqualTo(2);
+        assertThat(compiler.compile(source, "{}", SystemConstraints.standard(),
+                new PricingCapabilities(0, 0, false, false, false)).valid()).isFalse();
+        var malformed = (ObjectNode) tools.jackson.databind.json.JsonMapper.builder().build().readTree(source);
+        malformed.put("activityAndCoupons", "ALLOW_ALL");
+        assertThat(compiler.compileDefinition(malformed.toString(), SystemConstraints.standard()).valid()).isFalse();
+    }
+
+    @Test
     void rejectsUnknownFieldsProtectedPathsAndNullOverrides() throws Exception {
         for (String override : new String[] {"{\"pointEnabled\":false}", "{\"pointsEnabled\":null}",
                 "{\"ruleRefs\":[]}", "{\"formulaId\":\"LEGACY_OWNER_COMPAT\"}",

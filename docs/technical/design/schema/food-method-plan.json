@@ -3541,7 +3541,7 @@
       "portConcepts": [],
       "customMethods": [],
       "transaction": "READ_ONLY",
-      "note": "PLANNED_NOT_IMPLEMENTED；权威单位/价格及渠道校验合同PENDING，不可据清单发布或交易",
+      "note": "CODED_PENDING_VERIFICATION；可信主体/门店/actor；from/to营业日区间最多93日，SQL同过滤COUNT与分页；共享PageData<ConsumptionVO>真实回执递归，BLOCKED/UNKNOWN/未知成本保真；只读不补扣库存。",
       "baseWriteOverrides": {}
     },
     "FOOD-API-154": {
@@ -3642,6 +3642,170 @@
           "name": "request",
           "source": "REQUEST_CONTEXT"
         }
+      ]
+    },
+    "FOOD-API-157": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "insert"
+        ]
+      }
+    },
+    "FOOD-API-158": {
+      "readTables": [
+        "fnb_queue_ticket"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-159": {
+      "readTables": [
+        "fnb_queue_ticket"
+      ],
+      "writeTables": [],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "READ_ONLY",
+      "note": "原排队票与可信当前门店范围。仅查持久票据，不补发通知/开台。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {}
+    },
+    "FOOD-API-160": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-161": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-162": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-163": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "原排队票与可信当前门店范围。锁定原门店策略及排队票，CAS/持久幂等操作与票状态同事务；排队号不作取餐号，未送通知不宣称成功。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      }
+    },
+    "FOOD-API-164": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "LOCAL_ATOMIC",
+      "note": "新就座锁定原票后，在同一food primary事务内调用CheckService.openQueuedCheck，仅限内部Java调用，不能经HTTP/remote；原开台、SEATED、queue动作与outbox同提交。冲突整体回滚，原CALLED票可重选；不把永久SEATING作为新流程。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      },
+      "localServiceCalls": [
+        "CheckService.openQueuedCheck"
+      ],
+      "delegatedOwnerWrites": "原CheckService在同primary事务内维护开台、容量/占用、审计与outbox；QueueService不复制其Mapper写入。"
+    },
+    "FOOD-API-165": {
+      "readTables": [
+        "fnb_queue_ticket",
+        "fnb_store_policy"
+      ],
+      "writeTables": [
+        "fnb_queue_ticket"
+      ],
+      "portConcepts": [],
+      "customMethods": [],
+      "transaction": "ORCHESTRATED",
+      "note": "旧SEATING仅兼容原冻结命令/OPEN_CHECK原键回执恢复；未知保持未知，不创建替代开台。新seat走同primary原子事务。",
+      "implementationStatus": "CODED_PENDING_VERIFICATION",
+      "baseWriteOverrides": {
+        "fnb_queue_ticket": [
+          "update"
+        ]
+      },
+      "localServiceCalls": [
+        "CheckService.getTableOperation"
       ]
     }
   },

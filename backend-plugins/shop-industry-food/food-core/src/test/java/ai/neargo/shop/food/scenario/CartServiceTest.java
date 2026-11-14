@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.scenario;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 
 import java.util.regex.Pattern;
 
@@ -87,7 +90,10 @@ class CartServiceTest extends FoodWriteGuardFixture {
     static final Instant NOW = Instant.parse("2026-10-22T04:00:00Z");
     record State(Fixture f, CheckCartServiceImpl service, AtomicBoolean outage, AtomicBoolean fail) { }
     void run(Consumer<State> test) {
-        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
+        runner()
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
+                .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f = prepare(c); var template = c.getBean(SqlSessionTemplate.class);
             for (var type : List.of(CheckCartMapper.class, CheckCartItemMapper.class, CheckMapper.class,
                     GuestSessionMapper.class, SeatMapper.class, TableOccupancyMapper.class,
@@ -97,6 +103,12 @@ class CartServiceTest extends FoodWriteGuardFixture {
                     FnbSeat.class, FnbTableOccupancy.class, FnbTableArea.class, FnbTable.class)) create(f.sql(), type);
             f.sql().execute("CREATE UNIQUE INDEX ux_cart_no ON fnb_check_cart(cart_no)");
             f.sql().execute("CREATE UNIQUE INDEX ux_cart_line ON fnb_check_cart_item(cart_no,source_line_ref)");
+            // Original placement guards and historical buyer reads use these durable source/binding facts.
+            f.sql().execute("CREATE TABLE fnb_order_batch (tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                    + "entity_no VARCHAR(32),store_no VARCHAR(32),cart_no VARCHAR(32),batch_no VARCHAR(32),"
+                    + "buyer_no VARCHAR(32),status VARCHAR(24),deleted INT DEFAULT 0)");
+            f.sql().execute("CREATE TABLE fnb_core_order_binding (tenant_no VARCHAR(32) DEFAULT 'MAIN',"
+                    + "entity_no VARCHAR(32),batch_no VARCHAR(32),status VARCHAR(24),deleted INT DEFAULT 0)");
             f.sql().update("INSERT INTO fnb_check(entity_no,store_no,check_no,status,version,deleted) "
                     + "VALUES('E','A','CHECK','OPEN',0,0)");
             f.sql().update("INSERT INTO fnb_table_area(entity_no,store_no,area_no,status,version,deleted) "
@@ -141,6 +153,48 @@ class CartServiceTest extends FoodWriteGuardFixture {
                             null,null,null,null,0,0)),c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class),Clock.fixed(NOW,ZoneOffset.UTC));
             test.accept(new State(f,service,outage,fail));
+        });
+    }
+    @Test void diningRoomAuthorityRequiresLiveOriginalPostpayCheckAndJoinsOwningTransaction() {
+        run(t -> {
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',service_state='OPEN' WHERE check_no='CHECK'");
+            var cart=t.service.createCart("E","A","staff",new CreateCartReq("CHECK",null,null,"POS","DINE_IN",null),
+                    "dining-cart").cart();
+            t.f.tx().execute(tx -> { t.service.requireDiningRoomCart("E","A",cart.cartNo()); return null; });
+            for(String state:List.of("SETTLING","RELEASED")) {
+                t.f.sql().update("UPDATE fnb_check SET service_state=? WHERE check_no='CHECK'",state);
+                assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                        .isInstanceOf(BizException.class);
+            }
+            t.f.sql().update("UPDATE fnb_check SET service_state='OPEN',pay_mode='PREPAY' WHERE check_no='CHECK'");
+            assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                    .isInstanceOf(BizException.class);
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',status='CLOSED' WHERE check_no='CHECK'");
+            assertThatThrownBy(() -> t.service.requireDiningRoomCart("E","A",cart.cartNo()))
+                    .isInstanceOf(BizException.class);
+            assertThat(t.f.sql().queryForObject("SELECT COUNT(*) FROM fnb_order_batch",Integer.class)).isZero();
+        });
+    }
+    @Test void diningRoomAuthorityKeepsOriginalCheckLockUntilPlacementTransactionCompletes() {
+        run(t -> {
+            t.f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY',service_state='OPEN' WHERE check_no='CHECK'");
+            var cart=t.service.createCart("E","A","staff",new CreateCartReq("CHECK",null,null,"POS","DINE_IN",null),
+                    "dining-cart").cart();
+            try(var writer=Executors.newSingleThreadExecutor()) {
+                var entered=new CountDownLatch(1);
+                var pending=new AtomicReference<Future<Integer>>();
+                t.f.tx().execute(tx -> {
+                    t.service.requireDiningRoomCart("E","A",cart.cartNo());
+                    pending.set(writer.submit(() -> { entered.countDown();
+                        return t.f.sql().update("UPDATE fnb_check SET status='CLOSED' WHERE check_no='CHECK'"); }));
+                    try { assertThat(entered.await(2,TimeUnit.SECONDS)).isTrue(); }
+                    catch(InterruptedException failure) { Thread.currentThread().interrupt(); throw new IllegalStateException(failure); }
+                    assertThatThrownBy(() -> pending.get().get(100,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                    return null;
+                });
+                try { assertThat(pending.get().get(2,TimeUnit.SECONDS)).isOne(); }
+                catch(Exception failure) { throw new IllegalStateException(failure); }
+            }
         });
     }
     private static void create(JdbcTemplate sql,Class<?> type) {

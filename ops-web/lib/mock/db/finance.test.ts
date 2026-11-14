@@ -33,17 +33,22 @@ describe("退款回退分账（P-12.1.5 / E4）—— 跨域收口", () => {
     expect(list.some((x) => x.afterSaleNo === "AS9001")).toBe(true);
   });
 
-  it("执行回退后清除标记，队列自然消掉（不清就会被反复执行）", async () => {
+  it("人工重试保留待核验标记与队列，不将未知银行结果写成已退款", async () => {
     const a0 = afterSales.find((x) => x.afterSaleNo === "AS9001")!;
     a0.liability = "MERCHANT";
     a0.share = { platform: 0, merchant: 100, pickup: 0 };
     a0.refundSplitPending = true;
-
+    // executeRefundSplitBack requests reversal; no verified bank completion is supplied.
     const a = await financeMock.executeRefundSplitBack("AS9001");
-    expect(a.refundSplitPending).toBe(false);
-    expect(a.status).toBe("REFUNDED");
+    expect(a.refundSplitPending).toBe(true);
+    expect(a.status).toBe("REFUNDING");
+    expect(a.refundExecution).toMatchObject({status:"UNKNOWN",phase:"REVERSAL",resourceStatus:"PENDING"});
+    const executionNo = a.refundExecution!.executionNo;
+    const retry = await financeMock.executeRefundSplitBack("AS9001");
+    expect(retry.refundExecution!.executionNo).toBe(executionNo);
+    expect(retry.refundSplitPending).toBe(true);
     const list = await financeMock.listRefundSplitBacks();
-    expect(list.some((x) => x.afterSaleNo === "AS9001")).toBe(false);
+    expect(list.filter((x) => x.afterSaleNo === "AS9001")).toHaveLength(1);
   });
 
   it("没有待回退标记的单不能执行", async () => {

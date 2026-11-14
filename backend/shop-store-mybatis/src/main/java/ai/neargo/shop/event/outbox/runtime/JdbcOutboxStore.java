@@ -29,6 +29,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 
 /** Source-bound SQL adapter. Table names come exclusively from the fixed Source enum. */
@@ -128,10 +129,35 @@ public final class JdbcOutboxStore implements OutboxStore {
 
     @Override
     public List<DeliveryRef> findDue(Instant now, int limit) {
+        return due(now, limit, null);
+    }
+
+    /** A heterogeneous host must filter by its executable handlers before LIMIT, never after fetching. */
+    public List<DeliveryRef> findDue(Instant now, int limit, Set<String> localHandlerIds) {
+        List<String> owned = handlers(localHandlerIds);
+        return owned.isEmpty() ? List.of() : due(now, limit, owned);
+    }
+
+    private List<DeliveryRef> due(Instant now, int limit, List<String> owned) {
+        var parameters = new ArrayList<Object>();
+        parameters.add(at(now));
+        if (owned != null) parameters.addAll(owned);
+        parameters.add(bounded(limit));
         return jdbc.query("SELECT d.id FROM " + deliveries + " d WHERE d.status='PENDING'"
-                        + " AND (d.next_retry_at IS NULL OR d.next_retry_at<=?)" + headPredicate()
-                        + " ORDER BY d.id LIMIT ?", (rs, n) -> new DeliveryRef(source(), rs.getLong(1)),
-                at(now), bounded(limit));
+                        + " AND (d.next_retry_at IS NULL OR d.next_retry_at<=?)"
+                        + handlerPredicate("d.", owned) + headPredicate() + " ORDER BY d.id LIMIT ?",
+                (rs, n) -> new DeliveryRef(source(), rs.getLong(1)), parameters.toArray());
+    }
+
+    private static List<String> handlers(Set<String> ids) {
+        if (ids == null || ids.stream().anyMatch(id -> id == null || id.isBlank() || id.length() > 128)) {
+            throw new IllegalArgumentException("Local executable handler IDs are required");
+        }
+        return ids.stream().sorted().toList();
+    }
+    private static String handlerPredicate(String prefix, List<String> owned) {
+        return owned == null ? "" : " AND " + prefix + "handler_id IN ("
+                + String.join(",", java.util.Collections.nCopies(owned.size(), "?")) + ")";
     }
 
     private String headPredicate() {
@@ -198,8 +224,23 @@ public final class JdbcOutboxStore implements OutboxStore {
 
     @Override
     public int recoverExpired(Instant now, int limit) {
+        return expired(now, limit, null);
+    }
+
+    /** Lease uncertainty is owned by the executable handler's host, including external-workflow failures. */
+    public int recoverExpired(Instant now, int limit, Set<String> localHandlerIds) {
+        List<String> owned = handlers(localHandlerIds);
+        return owned.isEmpty() ? 0 : expired(now, limit, owned);
+    }
+
+    private int expired(Instant now, int limit, List<String> owned) {
+        var parameters = new ArrayList<Object>();
+        parameters.add(at(now));
+        if (owned != null) parameters.addAll(owned);
+        parameters.add(bounded(limit));
         var rows = jdbc.queryForList("SELECT id,event_no FROM " + deliveries
-                + " WHERE status='PROCESSING' AND lease_until<=? ORDER BY id LIMIT ?", at(now), bounded(limit));
+                + " WHERE status='PROCESSING' AND lease_until<=?" + handlerPredicate("", owned)
+                + " ORDER BY id LIMIT ?", parameters.toArray());
         int recovered = 0;
         for (var row : rows) {
             recovered += transactions.execute(s -> {
@@ -404,8 +445,8 @@ public final class JdbcOutboxStore implements OutboxStore {
         }
         Instant created = rs.getTimestamp("created_at").toInstant();
         String eventType = rs.getString("event_type");
-        String checksum = digest(json.writeValueAsString(List.of(type, aggregate, eventType,
-                canonical(json.readValue(rs.getString("payload"), Object.class)), created.toString())));
+        String checksum = OutboxFingerprint.legacyChecksum(json, type, aggregate, eventType,
+                rs.getString("payload"), created);
         return new LegacyRecord(rs.getString("event_no"), eventType, type, aggregate, checksum, created);
     }
 
@@ -494,26 +535,7 @@ public final class JdbcOutboxStore implements OutboxStore {
     }
 
     private String fingerprint(OutboxEnvelope e) {
-        try {
-            Object value = canonical(json.readValue(e.payload(), Object.class));
-            String content = json.writeValueAsString(List.of(e.sourceSystem(), e.sourceEventNo(), e.eventType(),
-                    e.schemaVersion(), e.aggregateType(), e.aggregateId(), e.streamKey(), e.occurredAt().toString(), value));
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(content.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Invalid outbox JSON", ex);
-        }
-    }
-
-    private Object canonical(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> sorted = new TreeMap<>();
-            map.forEach((key, v) -> sorted.put(key.toString(), canonical(v)));
-            return sorted;
-        }
-        if (value instanceof List<?> list) { return list.stream().map(this::canonical).toList(); }
-        if (value instanceof Number n) { return new BigDecimal(n.toString()).stripTrailingZeros(); }
-        return value;
+        return OutboxFingerprint.fingerprint(json, e);
     }
 
     private OutboxEnvelope envelope(ResultSet rs) throws SQLException {

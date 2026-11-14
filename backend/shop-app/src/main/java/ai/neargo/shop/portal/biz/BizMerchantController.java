@@ -1,6 +1,15 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.commercebridge.FoundationTarget;
+import ai.neargo.shop.commercebridge.FoundationPaymentAccess;
+import jakarta.servlet.http.HttpServletRequest;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
@@ -12,14 +21,22 @@ import ai.neargo.shop.merchant.dto.PaymentApplymentVO;
 import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
+import ai.neargo.shop.merchant.service.LoginIdentityService;
+import org.springframework.context.i18n.LocaleContextHolder;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.platform.GeoPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import org.springframework.beans.factory.ObjectProvider;
+import java.util.Locale;
+import java.util.Objects;
 import ai.neargo.shop.spi.user.CommunityQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,12 +66,14 @@ import java.util.Map;
 @RestController
 public class BizMerchantController {
 
+    private final boolean typedCreation;
     private final MerchantService merchantService;
     private final OpsService opsService;
     private final UserService userService;
     private final BizIdentityResolver identityResolver;
     private final MerchantStoreService storeService;
     private final MerchantPaymentService paymentService;
+    private final FoundationPaymentAccess paymentAccess;
     private final StoreAdminService storeAdminService;
     /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
     private final StoreCategoryService storeCategoryService;
@@ -76,11 +95,25 @@ public class BizMerchantController {
     /** 「N 人收藏本店」（§8.2 批 2）。现算，内部绕数据域 —— B 端会话是 SELF 维度，不绕会恒 0 */
     private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
 
-    public BizMerchantController(ai.neargo.shop.merchant.service.DebtService debtService,
+    private LoginIdentityService loginIdentities;
+
+    @Autowired
+    public void setLoginIdentities(LoginIdentityService identities) {
+        this.loginIdentities = identities;
+    }
+
+    private final String defaultMarket;
+    private final ObjectProvider<MarketPort> markets;
+
+    public BizMerchantController(
+                                 @Value("${commerce.store-creation.enabled:false}") boolean typedCreation,
+                                 @Value("${shop.merchant.default-market:CN}") String defaultMarket,
+                                 ObjectProvider<MarketPort> markets,
+                                 ai.neargo.shop.merchant.service.DebtService debtService,
                                  MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
-                                 MerchantPaymentService paymentService,
+                                 MerchantPaymentService paymentService, FoundationPaymentAccess paymentAccess,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
                                  MerchantQueryPort merchantQueryPort,
@@ -91,6 +124,9 @@ public class BizMerchantController {
                                  MerchantAdminPort merchantAdminPort,
                                  ai.neargo.shop.merchant.service.MerchantEntityService entityService,
                                  ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
+        this.typedCreation = typedCreation;
+        this.defaultMarket = defaultMarket.trim().toUpperCase(Locale.ROOT);
+        this.markets = markets;
         this.storeFavoriteService = storeFavoriteService;
         this.entityService = entityService;
         this.categoryService = categoryService;
@@ -101,6 +137,7 @@ public class BizMerchantController {
         this.communityQueryPort = communityQueryPort;
         this.storeService = storeService;
         this.paymentService = paymentService;
+        this.paymentAccess = paymentAccess;
         this.storeAdminService = storeAdminService;
         this.staffService = staffService;
         this.debtService = debtService;
@@ -121,8 +158,9 @@ public class BizMerchantController {
     @GetMapping("/biz/merchant/profile")
     public MerchantProfileVO profile() {
         // 常规请求走 BizContext：过滤器已经按本次 token 解析过，不必再查一次库
-        String principal = SecurityUtils.currentUserNo();
-        return build(principal, BizContext.current(), phoneOf(principal));
+        var user = SecurityUtils.requireUser();
+        var consumer = user.subjectKind() == SubjectKind.USR ? userService.profileOrNull() : null;
+        return profile(user, BizContext.current(), consumer == null ? null : consumer.phone());
     }
 
     /**
@@ -139,25 +177,6 @@ public class BizMerchantController {
     }
 
     /**
-     * 展示用手机号 —— 取<b>你登录时用的那个身份</b>的号。
-     *
-     * <p>原先无条件走 {@code userService.profile()}，而那个方法查不到 {@code usr_account}
-     * 就抛 401。员工走 {@code /biz/auth/staff-login} 登录，principal 是
-     * {@code mch_account_no}，<b>他可能根本没有 C 端账号</b> —— 于是：
-     * 登录接口自己组装档案（{@link #profileOf}）时一切正常，
-     * 但只要刷新一次页面，这个端点就报「登录已失效」，
-     * b-app 拿不到 profile 便退回「还没有开店 · 去入驻」。
-     * 店员看到的是自己被踢出了一家其实在正常营业的店。
-     */
-    private String phoneOf(String principal) {
-        var me = userService.profileOrNull();
-        if (me != null && !nz(me.phone()).isBlank()) {
-            return nz(me.phone());
-        }
-        return nz(staffService.loginPhoneOf(principal));
-    }
-
-    /**
      * 本次操作作用在哪张证照上。
      *
      * <p>薄薄一层，只为把「当前登录人」这个参数锁死 —— 归属校验本身在
@@ -166,6 +185,7 @@ public class BizMerchantController {
      * 校验就等于没有。
      */
     private String ownedEntity(String entityNoParam) {
+        FoundationTarget.requireMatching(entityNoParam, null);
         return entityService.requireOwned(SecurityUtils.currentUserNo(), entityNoParam);
     }
 
@@ -176,14 +196,32 @@ public class BizMerchantController {
      * 那一刻请求上还没有任何凭据。所以这里用 {@link BizIdentityResolver} 现算一次作用域，
      * 与过滤器走的是同一段逻辑，不会两处口径分岔。
      */
-    MerchantProfileVO profileOf(String userNo, String phone) {
-        return build(userNo, identityResolver.resolve(userNo), nz(phone));
+    MerchantProfileVO profileOf(LoginUser user, String storeNo, String personalPhone) {
+        return profile(user, identityResolver.resolveAuthenticated(user, storeNo), personalPhone);
     }
 
-    private MerchantProfileVO build(String userNo, BizContext ctx, String phone) {
-        String displayName = staffService.displayNameOf(userNo);
+    private MerchantProfileVO profile(LoginUser user, BizContext ctx, String personalPhone) {
+        var staff = staffService.profileDetails(user);
+        var apply = user.subjectKind() == SubjectKind.USR ? opsService.myApply(user.userNo()) : null;
+        String phone = nz(personalPhone).isBlank() ? nz(staff.loginPhone()) : personalPhone;
+        return build(ctx, phone, nz(staff.displayName()), apply, loginAccountOf(user), user.subjectKind().name(), loginIdentities.current(user, LocaleContextHolder.getLocale()), user.userNo());
+    }
+
+    /**
+     * 个人账号的登录标识（AC12）：邮箱账号没有手机号，phone 是空的，App 重启后个人中心无从显示「账号」。
+     * 员工会话（MCH）背后不一定有个人账号，给 null。
+     */
+    private String loginAccountOf(LoginUser user) {
+        if (user.subjectKind() != SubjectKind.USR) return null;
+        var authService = auth == null ? null : auth.getIfAvailable();
+        return authService == null ? null : authService.loginIdentifier(user.userNo());
+    }
+
+    private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply,
+                                    String loginAccount, String subjectKind, LoginIdentityService.Identity currentIdentity, String authenticatedUserNo) {
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
-        MerchantApplyVO apply = opsService.myApply(userNo);
+        boolean pendingAgreement = agreementPending(apply)
+                && java.util.Objects.equals(ctx.merchantNo(), apply.merchantNo());
         // 自提点作用域与商家作用域正交（一家店可以不做自提点），所以读作用域而不是查商家
         List<String> pickups = List.copyOf(ctx.pickupNos());
 
@@ -201,8 +239,8 @@ public class BizMerchantController {
                     // 猜 AGGREGATED 的话，申请人会在入驻页看到「期望收购价」——
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
-                    agreementPending(apply),
-                    0, displayName);   // 还没进件，店都没有，谈不上收藏
+                    pendingAgreement,
+                    0, displayName, null, loginAccount, subjectKind, currentIdentity, authenticatedUserNo);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
@@ -210,8 +248,9 @@ public class BizMerchantController {
                 phone, !pickups.isEmpty(), pickups.isEmpty() ? null : pickups.get(0),
                 null, account.industry(), account.description(),
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
-                agreementPending(apply),
-                storeFavoriteService.countByMerchant(account.merchantNo()), displayName);
+                pendingAgreement,
+                storeFavoriteService.countByMerchant(account.merchantNo()), displayName, ctx.currentStoreNo(),
+                loginAccount, subjectKind, currentIdentity, authenticatedUserNo);
     }
 
     /**
@@ -239,7 +278,7 @@ public class BizMerchantController {
      */
     @GetMapping("/biz/merchant/apply")
     public MerchantApplyVO myApply() {
-        return opsService.myApply(SecurityUtils.currentUserNo());
+        return opsService.myApply(BizAuthController.personalUser().userNo());
     }
 
     /**
@@ -270,21 +309,28 @@ public class BizMerchantController {
      * @return 同意的时刻（毫秒）；没有申请单时 0
      */
     @PostMapping("/biz/merchant/agreement/accept")
-    public long acceptAgreement() {
-        return opsService.acceptAgreement(SecurityUtils.currentUserNo());
+    public long acceptAgreement(@RequestBody(required = false) Target target, HttpServletRequest request) {
+        var user = BizAuthController.personalUser();
+        String entity = FoundationTarget.agreementEntity(request, target == null ? null : target.entityNo(),
+                target == null ? null : target.storeNo());
+        return opsService.acceptAgreement(user.userNo(), entity);
     }
 
     @PostMapping("/biz/merchant/apply")
-    public MerchantProfileVO apply(@RequestBody ApplyReq req) {
-        opsService.createApply(new OpsService.SubmitApplyCommand(
-                SecurityUtils.currentUserNo(), req.name(), req.subject(),
+    public MerchantProfileVO apply(@RequestBody ApplyReq req, jakarta.servlet.http.HttpServletRequest request) {
+        String applicant = BizAuthController.personalUser().userNo();
+        String entity = FoundationTarget.applicationEntity(request, req.entityNo(), req.storeNo());
+        if (typedCreation && entity == null) throw BizException.of(ErrorCode.STORE_BUSINESS_TYPE_REQUIRED);
+        var cmd = new OpsService.SubmitApplyCommand(
+                applicant, req.name(), req.subject(),
                 // B 端没有推荐人入口（能进 b-app 的人已经是商家了），传 null
                 req.contactName(), req.contactPhone(), null, req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 // 手填行业只在 C 端那一屏问（V360）：进到 b-app 的人已经选过行业了
                 null,
-                req.qualificationItems()));
+                req.qualificationItems());
+        opsService.createMerchantApply(cmd, entity);
         return profile();
     }
 
@@ -304,9 +350,10 @@ public class BizMerchantController {
      */
     @PostMapping("/biz/merchant/quick-start")
     public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
-        String userNo = SecurityUtils.currentUserNo();
-        var created = merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
-                userNo, req.storeName(), req.address()));
+        var user = BizAuthController.personalUser();
+        String userNo = user.userNo();
+        // 校验先于建壳：市场或行业不对时什么都不建（TDD-注册地区与三步建店 AC6）
+        var created = merchantAdminPort.quickStart(quickStartCommand(userNo, marketFor(userNo, req), req, industries()));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
          * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
@@ -319,11 +366,215 @@ public class BizMerchantController {
          * （多证照，比如老板开第二门生意），不带门店号的话解析出来的是他的<b>默认主体</b>——
          * 端上会拿到一个「建成功了」的响应，里面却是上一家店的名字和状态。
          */
-        return build(userNo, identityResolver.resolve(userNo, created.storeNo()), phoneOf(userNo));
+        var consumer = userService.profileOrNull();
+        return profileOf(user, created.storeNo(), consumer == null ? null : consumer.phone());
     }
 
     /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
-    public record QuickStartReq(String storeName, String address) {
+    public record Target(String entityNo, String storeNo) {}
+
+    /**
+     * @param market          经营市场；省略 = 账号的经营地区（TDD-注册地区与三步建店）；传了就必须等于它
+     * @param industryCode    平台经营行业；默认映射下必须等于 businessTypeCode（见 store-setup），或为 {@code OTHER}
+     * @param subIndustryCode 子业态；同上，或为 {@code OTHER}
+     * @param industryText    行业选「其他」时自填（≤20 字）；其余情况忽略
+     * @param subIndustryText 子业态选「其他」时自填（≤20 字）；其余情况忽略
+     * @param addressDetail   楼层门牌（≤64 字），可空
+     * @param latE6           地图选点的纬度 ×1e6（TDD-双地图提供方与门店选点 AC5），可空；与 lngE6 要么都给要么都不给
+     * @param lngE6           经度 ×1e6，同上
+     * @param coordSys        坐标系：{@code gcj02}（高德）/ {@code wgs84}（Google）；给了坐标就必填，没给坐标时忽略
+     */
+    public record QuickStartReq(String storeName, String address, String businessTypeCode,
+                                String market, String industryCode, String subIndustryCode,
+                                String industryText, String subIndustryText, String addressDetail,
+                                Integer latE6, Integer lngE6, String coordSys) {
+
+        /** 双地图之前（三步建店）的请求形状：没有坐标 */
+        public QuickStartReq(String storeName, String address, String businessTypeCode,
+                             String market, String industryCode, String subIndustryCode,
+                             String industryText, String subIndustryText, String addressDetail) {
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode,
+                    industryText, subIndustryText, addressDetail, null, null, null);
+        }
+
+        /** 三步建店之前的旧请求形状 */
+        public QuickStartReq(String storeName, String address, String businessTypeCode,
+                             String market, String industryCode, String subIndustryCode) {
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode, null, null, null,
+                    null, null, null);
+        }
+    }
+
+    static final int MAX_INDUSTRY_TEXT = 20;
+    static final int MAX_ADDRESS_DETAIL = 64;
+
+    /** 顶层「其他」用的经营类型（{@code shop.merchant.other-business-type}）；空 = 不提供 */
+    private String otherBusinessType = "";
+    private ObjectProvider<AuthService> auth;
+
+    @Autowired
+    void setAuth(ObjectProvider<AuthService> auth) {
+        this.auth = auth;
+    }
+
+    @Value("${shop.merchant.other-business-type:}")
+    void setOtherBusinessType(String code) {
+        this.otherBusinessType = code == null ? "" : code.trim();
+    }
+
+    /**
+     * 经营市场取<b>账号</b>的地区（TDD-注册地区与三步建店 AC4/AC6）：注册时定下，请求只能显式确认它，不能换成别的；
+     * 存量账号没有地区时按部署默认，与改动前一致。市场未启用时不建壳。
+     */
+    private String marketFor(String userNo, QuickStartReq req) {
+        var authService = auth == null ? null : auth.getIfAvailable();
+        String accountMarket = authService == null ? defaultMarket
+                : authService.accountMarket(userNo).trim().toUpperCase(Locale.ROOT);
+        return resolveMarket(accountMarket, markets.getIfAvailable(), req, otherBusinessType, industries());
+    }
+
+    /** 行业表（V643）；未接入时为空，校验回落一对一默认映射 */
+    private List<MerchantQueryPort.IndustryRow> industries() {
+        return merchantQueryPort == null ? List.of() : merchantQueryPort.industries();
+    }
+
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req) {
+        return resolveMarket(accountMarket, markets, req, null);
+    }
+
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
+                                String otherBusinessType) {
+        return resolveMarket(accountMarket, markets, req, otherBusinessType, List.of());
+    }
+
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
+                                String otherBusinessType, List<MerchantQueryPort.IndustryRow> industries) {
+        String requested = req.market() == null || req.market().isBlank() ? accountMarket : req.market();
+        if (!accountMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireIndustry(req, otherBusinessType, industries);
+        if (tooLong(req.addressDetail(), MAX_ADDRESS_DETAIL)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireCoordinates(req);
+        if (markets != null && markets.find(requested).filter(MarketPort.MarketBrief::enabled).isEmpty())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        return requested;
+    }
+
+    /**
+     * 行业两级（TDD-注册地区与三步建店 AC7/AC8）。经营类型才是判定依据，自填文字只是说明：
+     * <ul>
+     *   <li>行业 {@code OTHER}：子业态也必须 {@code OTHER}、两段文字都要填，经营类型必须是配置的兜底类型 ——
+     *       没有可映射的行业，只能落到运营指定的那一个</li>
+     *   <li>已有行业 + 子业态 {@code OTHER}：子业态文字要填，经营类型仍按默认映射等于行业</li>
+     *   <li>两级都是已有项：默认一对一映射，都必须等于经营类型（改动前的规则）</li>
+     * </ul>
+     */
+    private static void requireIndustry(QuickStartReq req, String otherBusinessType,
+                                        List<MerchantQueryPort.IndustryRow> industries) {
+        String industry = req.industryCode();
+        String sub = req.subIndustryCode();
+        String type = req.businessTypeCode();
+        if (industry == null && sub == null) return;
+        // 已登记的停用项不能被旧的一对一兼容或子行业 OTHER 分支重新放行。
+        var configuredParent = industryRow(industries, industry, null);
+        var configuredSub = sub == null ? null : industryRow(industries, industry, sub);
+        if (configuredParent != null && !configuredParent.enabled()
+                || configuredSub != null && !configuredSub.enabled())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        boolean ok;
+        if (BizFoundationController.OTHER.equals(industry)) {
+            ok = BizFoundationController.OTHER.equals(sub)
+                    && filled(req.industryText(), MAX_INDUSTRY_TEXT)
+                    && filled(req.subIndustryText(), MAX_INDUSTRY_TEXT)
+                    && otherBusinessType != null && !otherBusinessType.isBlank()
+                    && otherBusinessType.equals(type);
+        } else if (BizFoundationController.OTHER.equals(sub)) {
+            // 已登记行业：经营类型取行业表；未登记（旧形状）：行业即经营类型
+            var row = industryRow(industries, industry, null);
+            ok = industry != null && (row != null ? row.businessTypeCode() : industry).equals(type)
+                    && filled(req.subIndustryText(), MAX_INDUSTRY_TEXT);
+        } else {
+            // 登记过的子行业（TDD-子行业与能力端验收 B4）：须属于该行业，经营类型须是子行业的；
+            // 未登记的按旧一对一形状（B5）：行业 = 子行业 = 经营类型
+            var row = industryRow(industries, industry, sub);
+            ok = row != null ? row.businessTypeCode().equals(type)
+                    : Objects.equals(industry, type) && Objects.equals(sub, type);
+        }
+        if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    private static MerchantQueryPort.IndustryRow industryRow(List<MerchantQueryPort.IndustryRow> industries,
+                                                             String industry, String sub) {
+        if (industries == null || industry == null) return null;
+        return industries.stream()
+                .filter(r -> industry.equals(r.industryCode()) && Objects.equals(sub, r.subIndustryCode()))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * 门店要存的行业码（TDD-子行业与能力端验收 B4/B5）：登记过的两级都存；子行业「其他」只存行业；
+     * 旧一对一形状、顶层「其他」、没选都不存（回显时回落经营类型）。请求须已通过 {@link #requireIndustry}。
+     */
+    static List<String> storedIndustry(QuickStartReq req, List<MerchantQueryPort.IndustryRow> industries) {
+        String industry = req.industryCode();
+        String sub = req.subIndustryCode();
+        if (industry == null || BizFoundationController.OTHER.equals(industry)) return java.util.Arrays.asList(null, null);
+        if (BizFoundationController.OTHER.equals(sub)) {
+            return industryRow(industries, industry, null) != null ? java.util.Arrays.asList(industry, null)
+                    : java.util.Arrays.asList(null, null);
+        }
+        return industryRow(industries, industry, sub) != null ? java.util.Arrays.asList(industry, sub)
+                : java.util.Arrays.asList(null, null);
+    }
+
+    static final int MAX_LAT_E6 = 90_000_000;
+    static final int MAX_LNG_E6 = 180_000_000;
+
+    /**
+     * 地图选点坐标（TDD-双地图提供方与门店选点 AC5）：经纬度要么都给要么都不给；给了就要在范围内，
+     * 且坐标系必须是两家之一 —— 不知道坐标系的点存下来只会让距离与导航静默偏几百米。
+     * 不做坐标系转换：高德 gcj02、Google wgs84 原样存，门店记 {@code coord_sys}。
+     */
+    private static void requireCoordinates(QuickStartReq req) {
+        Integer lat = req.latE6();
+        Integer lng = req.lngE6();
+        if (lat == null && lng == null) return;
+        boolean ok = lat != null && lng != null
+                && Math.abs((long) lat) <= MAX_LAT_E6 && Math.abs((long) lng) <= MAX_LNG_E6
+                && (GeoPort.GCJ02.equals(req.coordSys()) || GeoPort.WGS84.equals(req.coordSys()));
+        if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    /** 已校验的请求 → 建店命令。自填文字只在对应那一级是「其他」时才带上，其余情况不存 */
+    static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req) {
+        return quickStartCommand(userNo, market, req, List.of());
+    }
+
+    static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req,
+                                                                 List<MerchantQueryPort.IndustryRow> industries) {
+        var stored = storedIndustry(req, industries);
+        String industryText = BizFoundationController.OTHER.equals(req.industryCode()) ? trimmed(req.industryText())
+                : null;
+        String subText = BizFoundationController.OTHER.equals(req.subIndustryCode()) ? trimmed(req.subIndustryText())
+                : null;
+        boolean located = req.latE6() != null && req.lngE6() != null;
+        return new MerchantAdminPort.QuickStartCommand(userNo, req.storeName(), req.address(),
+                req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()),
+                located ? req.latE6() : null, located ? req.lngE6() : null, located ? req.coordSys() : null,
+                stored.get(0), stored.get(1));
+    }
+
+    private static boolean filled(String text, int max) {
+        return trimmed(text) != null && !tooLong(text, max);
+    }
+
+    /** 按字符（码点）计，与库里 utf8mb4 VARCHAR 的口径一致 */
+    private static boolean tooLong(String text, int max) {
+        String t = trimmed(text);
+        return t != null && t.codePointCount(0, t.length()) > max;
+    }
+
+    private static String trimmed(String text) {
+        return text == null || text.isBlank() ? null : text.trim();
     }
 
     // ---------------------------------------------------------------- 店铺资料
@@ -392,6 +643,7 @@ public class BizMerchantController {
     @PostMapping("/biz/qualifications/save")
     public ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO saveQualification(
             @RequestBody SaveQualReq req) {
+        FoundationTarget.requireMatching(req.entityNo(), req.storeNo());
         String merchantNo = ownedEntity(req.entityNo());
         return governService.saveQualification(merchantNo,
                 new ai.neargo.shop.merchant.service.MerchantGovernService.SaveQualificationCommand(req.qualNo(), req.qualType(),
@@ -411,7 +663,7 @@ public class BizMerchantController {
 
     /** @param entityNo 传给哪张证照，可空 = 当前证照（存量单证照账号永远不传） */
     public record SaveQualReq(String qualNo, String qualType, String qualName,
-                              String qualNumber, String imageUrl, Long expireAt, String entityNo) {
+                              String qualNumber, String imageUrl, Long expireAt, String entityNo, String storeNo) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
@@ -463,7 +715,7 @@ public class BizMerchantController {
         String merchantNo = BizContext.requireMerchantNo();
         var next = req.areas() == null ? java.util.List.<String[]>of()
                 : req.areas().stream()
-                        .map(a -> new String[]{a.level(), a.refCode(), a.mode()})
+                        .map(a -> new String[]{a.level(), a.refCode(), a.mode(), a.geometry()})
                         .toList();
         /*
          * 两个数都按**当前门店**算（V381 经营范围改门店级）：店主改的是这家店的范围，
@@ -482,8 +734,12 @@ public class BizMerchantController {
     }
 
     public record ScopePreviewReq(java.util.List<AreaItem> areas) {
-        /** @param mode INCLUDE / EXCLUDE，空按 INCLUDE */
-        public record AreaItem(String level, String refCode, String mode) {
+        /**
+         * @param mode     INCLUDE / EXCLUDE，空按 INCLUDE
+         * @param geometry 仅 {@code level=POLYGON}：顶点 JSON 字符串 {@code [[lngE6,latE6],…]}（经度在前、整数 E6），
+         *                 与保存、回读同一格式；不合法回 10473
+         */
+        public record AreaItem(String level, String refCode, String mode, String geometry) {
         }
     }
 
@@ -543,8 +799,11 @@ public class BizMerchantController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/payment")
-    public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo) {
-        return paymentService.list(ownedEntity(entityNo));
+    public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
+        var target = paymentAccess.require(request, ownedEntity(entityNo), null);
+        return paymentService.list(target.entityNo()).stream()
+                .filter(row -> nz(row.storeNo()).isBlank() || target.storeNo().equals(row.storeNo()))
+                .toList();
     }
 
     /**
@@ -582,8 +841,8 @@ public class BizMerchantController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/pay-channel")
-    public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo) {
-        return paymentService.availableChannels(ownedEntity(entityNo));
+    public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
+        return paymentService.availableChannels(paymentAccess.require(request, ownedEntity(entityNo), null).entityNo());
     }
 
     /**
@@ -594,11 +853,14 @@ public class BizMerchantController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment")
-    public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req) {
-        return paymentService.submit(ownedEntity(req.entityNo()),
+    public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req,
+            @RequestParam(required = false) String storeNo, HttpServletRequest request) {
+        String rowStore = nz(req.storeNo()).isBlank() ? storeNo : req.storeNo();
+        var target = paymentAccess.require(request, ownedEntity(req.entityNo()), rowStore);
+        return paymentService.submit(target.entityNo(),
                 new MerchantPaymentService.SubmitCommand(
                         req.payChannel(), req.settleAccountType(), req.settleAccount(),
-                        req.licenses(), req.contactName(), req.contactPhone(), req.storeNo()));
+                        req.licenses(), req.contactName(), req.contactPhone(), rowStore));
     }
 
     /**
@@ -610,8 +872,10 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment/store/{storeNo}")
     public PaymentApplymentVO openStorePayment(@PathVariable String storeNo,
-                                               @RequestBody(required = false) PaymentReq req) {
-        return paymentService.openForStore(BizContext.requireMerchantNo(), storeNo,
+                                               @RequestBody(required = false) PaymentReq req, HttpServletRequest request) {
+        var target = paymentAccess.require(request, null, storeNo);
+        if (req != null) target.check(req.entityNo(), req.storeNo());
+        return paymentService.openForStore(target.entityNo(), storeNo,
                 req == null ? null : req.payChannel());
     }
 
@@ -624,8 +888,12 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment/{payChannel}/refresh")
     public PaymentApplymentVO refreshPayment(@PathVariable String payChannel,
-                                             @RequestParam(required = false) String storeNo) {
-        return paymentService.refresh(BizContext.requireMerchantNo(), payChannel, storeNo);
+                                             @RequestParam(required = false) String storeNo,
+                                             @RequestBody(required = false) Target target,
+                                             HttpServletRequest request) {
+        String rowStore = target == null || nz(target.storeNo()).isBlank() ? storeNo : target.storeNo();
+        var selected = paymentAccess.require(request, target == null ? null : target.entityNo(), rowStore);
+        return paymentService.refresh(selected.entityNo(), payChannel, rowStore);
     }
 
     /**
@@ -671,20 +939,11 @@ public class BizMerchantController {
          * 注意额度是**按证照**算的（mch_entity_plan 挂在 entity_no 上），所以挂到
          * 另一张证照下时，撞的是那张的额度 —— 这正是应该的：额度是那张证照买的。
          */
+        FoundationTarget.requireMatching(req.entityNo(), req.storeNo());
         String merchantNo = ownedEntity(req.entityNo());
-        StoreVO store = storeAdminService.create(merchantNo, req.name(), req.address());
-        /*
-         * 建店时把货架也摆上（TDD-品类约束全链路 §3.2）。
-         *
-         * **一个都不选是合法的** —— 这家店还没想好卖什么，建品时会自动加入。
-         * 不勾时复制默认店的：多门店商家开分店卖的多半是同一批货，从零勾选是纯负担。
-         */
-        String defaultStore = storeAdminService.list(merchantNo).stream()
-                .filter(s -> !s.storeNo().equals(store.storeNo()))
-                .findFirst().map(StoreVO::storeNo).orElse(null);
-        storeCategoryService.initForNewStore(merchantNo, store.storeNo(),
-                req.categoryNos(), defaultStore);
-        return store;
+        return storeAdminService.create(merchantNo, new StoreAdminService.CreateCommand(
+                req.name(), req.address(), req.businessTypeCode(), req.operationNo(),
+                req.categoryNos() == null ? List.of() : req.categoryNos()));
     }
 
     /**
@@ -793,7 +1052,7 @@ public class BizMerchantController {
      *                 <b>可空 = 当前证照</b> —— 只有一张证照的账号端上整个不渲染这一步
      */
     public record StoreCreateReq(String name, String address, List<String> categoryNos,
-                                 String entityNo) {
+                                 String entityNo, String businessTypeCode, String operationNo, String storeNo) {
     }
 
     public record StoreCategoriesReq(List<StoreCategoryItemReq> items) {
@@ -892,7 +1151,8 @@ public class BizMerchantController {
                             * {@code mch_qualification}** —— 而上架的两个闸门读的就是那张表。
                             * 可空：存量端上还在只传 licenses。
                             */
-                           List<OpsService.QualificationItem> qualificationItems) {
+                           List<OpsService.QualificationItem> qualificationItems,
+                           String entityNo, String storeNo) {
     }
 
     /** 对齐 shared {@code MerchantProfile}。 */
@@ -937,6 +1197,60 @@ public class BizMerchantController {
                                      */
                                     int favoriteCount,
                                     /** 当前登录账号的显示名（用户名，§账号管理）。空=没设过，端上显示「未设置」 */
-                                    String displayName) {
+                                    String displayName, String currentStoreNo,
+                                    /**
+                                     * 当前登录个人账号的已验证登录标识（TDD-注册地区与三步建店 AC12）：
+                                     * 有手机号给手机号（与 phone 同格式），没有给归一化邮箱；员工会话或取不到为 null
+                                     */
+                                    String account,
+                                    /** 已认证会话类型，登录和冷启动一致；不是按手机号推测角色。 */
+                                    String subjectKind,
+                                    LoginIdentityService.Identity currentIdentity, String userNo) {
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount, String displayName,
+                                 String currentStoreNo, String account, String subjectKind,
+                                 LoginIdentityService.Identity currentIdentity) {
+            this(merchantNo,name,logo,status,subject,tier,phone,isPickupPoint,pickupNo,rejectReason,
+                    industry,description,fundsMode,agreementPending,favoriteCount,displayName,currentStoreNo,
+                    account,subjectKind,currentIdentity,null);
+        }
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo, String account, String subjectKind) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    account, subjectKind, null);
+        }
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo, String account) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    account, null);
+        }
+
+        /** 不带登录标识的旧构造 */
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    null);
+        }
     }
 }
