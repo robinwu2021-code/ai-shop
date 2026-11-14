@@ -184,7 +184,8 @@ class CommerceStoreCreationFlowTest {
             context.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,()->marketPolicy);
             context.registerBean(SysStoreIndustryMapper.class,()->sessions.getMapper(SysStoreIndustryMapper.class));
             context.registerBean(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class,()->org.mockito.Mockito.mock(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class));
-            context.register(Transactions.class);
+            context.register(Transactions.class,
+                    ai.neargo.shop.platform.port.MarketContactPolicyPortImpl.class);
             context.registerBean(DataSourceTransactionManager.class, () -> txManager);
             context.registerBean(
                     MerchantPortImpl.class,
@@ -518,10 +519,9 @@ class CommerceStoreCreationFlowTest {
             String application=ops.createApplyOnBehalf(operatorCommand,"maker");
             assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM mch_entity_apply WHERE apply_no=?",String.class,application));
             assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mch_entity WHERE owner_user_no='operator-owner'",Integer.class));
-            assertEquals(ErrorCode.FORBIDDEN,assertThrows(BizException.class,()->ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of())).errorCode());
-            setOperator("reviewer");
-            assertEquals(ErrorCode.FORBIDDEN,assertThrows(BizException.class,()->ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of())).errorCode());
-            setOperator("reviewer",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
+            // Review permissions are covered at the Controller boundary by OnBehalfMerchantFlowTest.
+            // A submitter with audit permission may approve their own application.
+            setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
             jdbc.update("UPDATE sys_store_industry SET enabled=0 WHERE sub_industry_code='SHOP'");
             assertEquals(ErrorCode.BAD_REQUEST,assertThrows(BizException.class,()->ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of())).errorCode());
             assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM mch_entity_apply WHERE apply_no=?",String.class,application));
@@ -529,7 +529,7 @@ class CommerceStoreCreationFlowTest {
             jdbc.update("UPDATE sys_store_industry SET enabled=1 WHERE sub_industry_code='SHOP'");
             try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
                 java.util.concurrent.Callable<ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO> approve=()->{
-                    setOperator("reviewer","merchant:apply:*");
+                    setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
                     try { return ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of()); }
                     finally { SecurityContextHolder.clearContext(); }
                 };
@@ -546,7 +546,8 @@ class CommerceStoreCreationFlowTest {
                 assertEquals("operator-owner",jdbc.queryForObject("SELECT owner_user_no FROM mch_entity WHERE entity_no=?",String.class,receipt.merchantNo()));
                 assertEquals("TW",jdbc.queryForObject("SELECT market FROM mch_entity WHERE entity_no=?",String.class,receipt.merchantNo()));
                 assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=? AND source_type='FREE' AND currency='TWD'",Integer.class,receipt.storeNo()));
-                assertEquals("reviewer",jdbc.queryForObject("SELECT created_by FROM mch_subscription_period WHERE store_no=?",String.class,receipt.storeNo()));
+                assertEquals("maker",jdbc.queryForObject("SELECT created_by FROM mch_subscription_period WHERE store_no=?",String.class,receipt.storeNo()));
+                assertTrue(jdbc.queryForObject("SELECT detail FROM sys_audit_log WHERE op_action='MERCHANT_AUDIT' AND target=?",String.class,application).contains("sameActor=true"));
                 assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM mch_account WHERE entity_no=? AND user_no='operator-owner' AND is_owner=1",Integer.class,receipt.merchantNo()));
                 setOperator("reviewer",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
                 assertEquals(receipt.storeNo(),ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of()).storeNo());
@@ -580,7 +581,8 @@ class CommerceStoreCreationFlowTest {
             var previousPeriods=jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo());
             setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_ONBEHALF);
             var legacyCommand=new ai.neargo.shop.platform.OpsService.SubmitApplyCommand("owner","Legacy certification","NATURAL_PERSON",null,null,null,null,null,"PLATFORM",List.of(),List.of(),false,null,null,List.of(),"CN",draft);
-            String legacyApplication=ops.createApplyOnBehalf(legacyCommand,"maker");
+            login("owner");
+            String legacyApplication=ops.createMerchantApply(legacyCommand,store.entityNo());
             setOperator("reviewer","merchant:*");
             var certified=ops.auditApply(legacyApplication,true,null,"PLATFORM",List.of(),List.of());
             assertEquals(store.storeNo(),certified.storeNo());

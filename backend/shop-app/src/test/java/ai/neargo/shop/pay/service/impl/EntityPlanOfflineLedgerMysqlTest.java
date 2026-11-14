@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.commerce.api.common.*;
@@ -21,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Real canonical stl_payment + real entity purchase SQL; no gateway or real bank accounts. */
 @EnabledIfEnvironmentVariable(named = "COMMERCE_MYSQL_URL", matches = ".+")
 class EntityPlanOfflineLedgerMysqlTest {
-  @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+  @TestConfiguration(proxyBeanMethods = false)
   @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
   static class MethodSecurity {}
 

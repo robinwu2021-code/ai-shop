@@ -1,4 +1,6 @@
 package ai.neargo.shop.scenario;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -69,7 +71,7 @@ class RefundReconPersistenceTest {
         recon.checkStalePayments(System.currentTimeMillis());
         assertThat(jdbc.queryForObject("select count(*) from stl_recon_diff where payment_no=? and status='PENDING' and note like '%LATE_SUCCESS%'",Integer.class,payment)).isEqualTo(1);
     }
-    @Configuration @org.springframework.transaction.annotation.EnableTransactionManagement(proxyTargetClass=true)
+    @TestConfiguration @org.springframework.transaction.annotation.EnableTransactionManagement(proxyTargetClass=true)
     @Import({RefundCapacityDatabaseTest.Config.class,ReconServiceImpl.class})
     static class Config { @Bean PayQueryPort query() { return mock(PayQueryPort.class); } }
 }

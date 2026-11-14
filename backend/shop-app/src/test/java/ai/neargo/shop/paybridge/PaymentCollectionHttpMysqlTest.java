@@ -1,5 +1,7 @@
 package ai.neargo.shop.paybridge;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.auth.LoginUser;
@@ -72,7 +74,7 @@ class PaymentCollectionHttpMysqlTest {
                 HttpResponse.BodyHandlers.ofString());
     }
 
-    @org.springframework.context.annotation.Configuration
+    @TestConfiguration
     @org.springframework.web.servlet.config.annotation.EnableWebMvc
     @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
     @org.springframework.context.annotation.Import({

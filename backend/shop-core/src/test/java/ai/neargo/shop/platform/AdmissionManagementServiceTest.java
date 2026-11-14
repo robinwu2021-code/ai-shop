@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.platform.impl.AdmissionManagementServiceImpl;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.spi.user.SelfOperatedAdmissionPort;
 import java.util.List;
@@ -14,7 +15,7 @@ class AdmissionManagementServiceTest {
     private final OpsService applications = mock(OpsService.class);
     private final SelfOperatedAdmissionPort entities = mock(SelfOperatedAdmissionPort.class);
     private final MarketPhonePolicyService markets = mock(MarketPhonePolicyService.class);
-    private final AdmissionManagementService service = new AdmissionManagementService(applications,entities,markets);
+    private final AdmissionManagementService service = new AdmissionManagementServiceImpl(applications,entities,markets);
 
     AdmissionManagementServiceTest() {
         when(markets.instancePolicy()).thenReturn(new MarketPhonePolicyService.Policy("TW","+886",true,false,false,true));

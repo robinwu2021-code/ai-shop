@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
 import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
 
@@ -40,7 +42,6 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -299,7 +300,7 @@ class ScheduleMaintenanceIT {
             assertThat(sql.queryForObject("SELECT version FROM mch_personnel", Long.class)).isZero();
         });
     }
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @MapperScan(basePackageClasses = MerchantMappers.class)
     static class Mappers {
         @Bean

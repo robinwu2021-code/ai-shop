@@ -1,5 +1,7 @@
 package ai.neargo.shop.reportbridge;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -19,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.jdbc.datasource.AbstractDataSource;
@@ -61,7 +62,7 @@ class ReportFeatureWiringNativeTest {
                 FoodReportConfiguration.class,ReportExportConfiguration.class,FoodReportDailyJob.class);
         context.refresh();return context;
     }
-    @Configuration(proxyBeanMethods=false) static class PrimaryOnly {
+    @TestConfiguration(proxyBeanMethods=false) static class PrimaryOnly {
         @Bean @Primary DataSource dataSource() {
             return new AbstractDataSource() {
                 public Connection getConnection() throws SQLException {PRIMARY_READS.incrementAndGet();throw new SQLException("PRIMARY_MUST_NOT_BE_USED");}

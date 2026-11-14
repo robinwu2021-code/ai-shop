@@ -512,6 +512,8 @@ class CommerceAccessSecurityFlowTest {
                                     SpuStdService.class,
                                     OpsService.class,
                                     ai.neargo.shop.user.service.AuthService.class,
+                                    ai.neargo.shop.auth.captcha.BizCaptchaService.class,
+                                    ai.neargo.shop.common.otp.service.OtpSendService.class,
                                     LoginIdentityService.class,
                                     LoginAuditor.class,
                                     UserService.class,

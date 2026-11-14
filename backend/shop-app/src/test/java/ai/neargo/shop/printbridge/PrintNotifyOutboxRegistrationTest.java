@@ -1,5 +1,7 @@
 package ai.neargo.shop.printbridge;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.spi.printing.*;
 
 import ai.neargo.shop.config.OutboxConfiguration;
@@ -12,7 +14,6 @@ import ai.neargo.shop.print.api.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -60,7 +61,7 @@ class PrintNotifyOutboxRegistrationTest {
                 });
     }
 
-    @Configuration static class Dependencies {
+    @TestConfiguration static class Dependencies {
         @Bean ObjectMapper json() { return JsonMapper.builder().build(); }
         @Bean MessageService messages() { return mock(MessageService.class); }
         @Bean PushSender push() { return mock(PushSender.class); }

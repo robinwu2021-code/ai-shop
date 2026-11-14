@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.inventory.domain.config.InventoryDomainAutoConfiguration;
 import ai.neargo.inventory.domain.service.InboundService;
 import ai.neargo.inventory.domain.service.InventoryAclService;
@@ -29,7 +31,6 @@ import org.springframework.boot.webmvc.autoconfigure.DispatcherServletAutoConfig
 import org.springframework.boot.webmvc.autoconfigure.WebMvcAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -89,7 +90,7 @@ class InventoryStandaloneCutoverE2ETest {
      * 库存服务的最小装配：关掉自动装配（商城 classpath 上的安全、缓存、MyBatis 等不该进服务），
      * 只导入服务真正要的 —— 占位符解析、Web 容器、MVC、JSON、库存领域。
      */
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @ImportAutoConfiguration({PropertyPlaceholderAutoConfiguration.class, TomcatServletWebServerAutoConfiguration.class, DispatcherServletAutoConfiguration.class,
             WebMvcAutoConfiguration.class, HttpMessageConvertersAutoConfiguration.class,
             JacksonAutoConfiguration.class, InventoryDomainAutoConfiguration.class})

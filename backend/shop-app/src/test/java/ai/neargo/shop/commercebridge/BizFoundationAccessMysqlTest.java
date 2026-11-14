@@ -595,7 +595,8 @@ class BizFoundationAccessMysqlTest {
 
         // Use real transactions + actual application/membership/store rows. The dictionary,
         // operator recipients and notification hook are independent of target selection.
-        services.register(ApplyTransactions.class);
+        services.register(ApplyTransactions.class,
+                ai.neargo.shop.platform.port.MarketContactPolicyPortImpl.class);
         services.registerBean("dataSource", DataSource.class, () -> f.ds);
         services.registerBean(StoreOwnershipWritePort.class, () -> new StoreOwnershipWritePortImpl(f.jdbc));
         services.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,

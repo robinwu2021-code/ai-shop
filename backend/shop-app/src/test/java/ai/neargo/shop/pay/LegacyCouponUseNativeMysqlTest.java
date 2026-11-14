@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import ai.neargo.shop.pay.migration.service.impl.LegacyCouponUseServiceImpl;
 
 
@@ -31,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
@@ -44,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Production pay service/writer/ledger on MySQL; only authoritative core facts and routing are fixtures. */
 @EnabledIfEnvironmentVariable(named="LEGACY_USE_NATIVE_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:.*")
 class LegacyCouponUseNativeMysqlTest {
-    @Configuration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions {}
+    @TestConfiguration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions {}
     static final class Facts implements LegacyCouponCheckoutSourcePort {
         final Map<String,CheckoutFact> facts=new ConcurrentHashMap<>();
         final Map<String,Decision> decisions=new ConcurrentHashMap<>();

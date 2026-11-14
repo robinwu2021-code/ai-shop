@@ -24,6 +24,8 @@ import javax.sql.DataSource;
 import org.apache.catalina.startup.Tomcat;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.context.TestComponent;
 import org.springframework.context.annotation.*;
 import org.springframework.core.io.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -46,7 +48,7 @@ import static org.mockito.Mockito.mock;
 /** Test-classpath ONLY: actual credentials, live permissions and customer SQL on disposable native MySQL9. */
 public final class PlatformCustomerBrowserLauncher {
   private PlatformCustomerBrowserLauncher() {}
-  @Configuration @EnableWebMvc @EnableWebSecurity @EnableMethodSecurity @EnableTransactionManagement
+  @TestConfiguration @EnableWebMvc @EnableWebSecurity @EnableMethodSecurity @EnableTransactionManagement
   static class Web {
     @Bean SecurityFilterChain chain(HttpSecurity http,TokenStore tokens,ObjectProvider<LiveIdentityResolver> identities)throws Exception {
       return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -55,7 +57,7 @@ public final class PlatformCustomerBrowserLauncher {
         .exceptionHandling(e->e.authenticationEntryPoint(new ApiAuthEntryPoint())).build();
     }
   }
-  @RestController static class Authentication {
+  @TestComponent @RestController static class Authentication {
     final OpsService ops; final JdbcTemplate jdbc;
     Authentication(OpsService ops,JdbcTemplate jdbc){this.ops=ops;this.jdbc=jdbc;}
     record Login(String username,String password) {}

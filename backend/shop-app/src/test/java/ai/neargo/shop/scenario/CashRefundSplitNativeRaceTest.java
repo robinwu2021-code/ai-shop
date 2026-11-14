@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.pay.SplitGateway;
 import ai.neargo.shop.pay.mapper.*;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
@@ -105,7 +107,7 @@ class CashRefundSplitNativeRaceTest {
         assertThat(jdbc.queryForObject("SELECT reversed_minor FROM stl_bill WHERE sub_order_no=?",Long.class,sub)).isEqualTo(180);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_bill_refund WHERE after_sale_no=?",Long.class,as)).isEqualTo(1);
     }
-    @Configuration(proxyBeanMethods=false)
+    @TestConfiguration(proxyBeanMethods=false)
     @MapperScan("ai.neargo.shop.pay.mapper")
     @Import({CashRefundSplitServiceImpl.class,DefaultSettlementRefundPolicy.class,BillRefundJournal.class})
     static class Config {

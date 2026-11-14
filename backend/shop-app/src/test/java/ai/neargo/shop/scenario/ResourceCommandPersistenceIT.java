@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
 import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
 
@@ -27,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -50,7 +51,7 @@ class ResourceCommandPersistenceIT {
     private JdbcTemplate sql;
     private String url;
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @MapperScan("ai.neargo.shop.merchant.mapper")
     static class Mappers {
     }

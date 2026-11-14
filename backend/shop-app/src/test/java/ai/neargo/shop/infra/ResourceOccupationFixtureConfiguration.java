@@ -1,12 +1,13 @@
 package ai.neargo.shop.infra;
 
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.context.TestConfiguration;
+
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ImportSelector;
 import org.springframework.core.type.AnnotationMetadata;
 
 /** Owner-local dependencies loaded reflectively in the same module profile as the real resource services. */
-@Configuration(proxyBeanMethods = false)
+@TestConfiguration(proxyBeanMethods = false)
 @Import(ResourceOccupationFixtureConfiguration.Imports.class)
 public class ResourceOccupationFixtureConfiguration {
     static class Imports implements ImportSelector {

@@ -1,4 +1,6 @@
 package ai.neargo.shop.scenario;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import ai.neargo.shop.pay.points.statement.*;
 import ai.neargo.shop.pay.points.store.StatementConfirmationStore;
 import ai.neargo.shop.pay.points.statement.impl.StatementConfirmationServiceImpl;
@@ -20,7 +22,7 @@ import static org.assertj.core.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties={"spring.datasource.url=jdbc:h2:mem:points_statement_confirm;MODE=MySQL;DATABASE_TO_LOWER=TRUE","spring.datasource.username=sa","spring.datasource.password=","spring.datasource.driver-class-name=org.h2.Driver"})
 class PointsStatementConfirmationDatabaseTest {
- @Configuration @Import(PointsPayoutPreparationTest.Config.class)
+ @TestConfiguration @Import(PointsPayoutPreparationTest.Config.class)
  static class Config {
   @Bean @Primary StoreStatementService autoConfirmTarget(){return mock(StoreStatementService.class);}
  }

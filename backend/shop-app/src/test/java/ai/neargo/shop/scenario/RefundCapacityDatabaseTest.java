@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.*;
 import ai.neargo.shop.config.PayDataSourceConfig;
 import ai.neargo.shop.pay.numbering.PayDocumentNumberConfiguration;
@@ -125,7 +127,7 @@ class RefundCapacityDatabaseTest {
     private RefundRecoveryStatus proof(String origin,String payment) {
         return new RefundRecoveryStatus("PREP","A:"+origin+"A","S:"+origin,"ABORTED",100,payment,false,false);
     }
-    @Configuration @EnableTransactionManagement
+    @TestConfiguration @EnableTransactionManagement
     @Import({PayDataSourceConfig.class, PayDocumentNumberConfiguration.class, PayOperationsDocuments.class,
         RefundPaymentStore.class, RefundCapacityLedger.class, PaymentLedgerServiceImpl.class,
         MybatisPointsCashRefundReadStore.class})
