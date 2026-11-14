@@ -5842,7 +5842,7 @@
     "/biz/merchant/store-openings": {
       "post": {
         "operationId": "openStoreWithReceipt",
-        "x-implementation-status": "implemented-local-not-deployed",
+        "x-implementation-status": "deployed-166",
         "x-permission": "merchantAccount",
         "security": [
           {
@@ -5890,7 +5890,7 @@
     "/biz/merchant/store-openings/{requestNo}": {
       "get": {
         "operationId": "storeOpeningResult",
-        "x-implementation-status": "implemented-local-not-deployed",
+        "x-implementation-status": "deployed-166",
         "x-permission": "merchantAccount",
         "security": [
           {
@@ -5939,7 +5939,7 @@
     "/biz/store/settings": {
       "get": {
         "operationId": "storeSettings",
-        "x-implementation-status": "implemented-local-not-deployed",
+        "x-implementation-status": "deployed-166",
         "x-permission": "merchantAccount",
         "security": [
           {
@@ -5977,7 +5977,7 @@
     "/biz/store/settings/basic": {
       "post": {
         "operationId": "storeSettingsBasic",
-        "x-implementation-status": "implemented-local-not-deployed",
+        "x-implementation-status": "deployed-166",
         "x-permission": "biz:store:admin",
         "security": [
           {
@@ -6025,7 +6025,7 @@
     "/biz/store/settings/hours": {
       "post": {
         "operationId": "storeSettingsHours",
-        "x-implementation-status": "implemented-local-not-deployed",
+        "x-implementation-status": "deployed-166",
         "x-permission": "biz:store",
         "security": [
           {
