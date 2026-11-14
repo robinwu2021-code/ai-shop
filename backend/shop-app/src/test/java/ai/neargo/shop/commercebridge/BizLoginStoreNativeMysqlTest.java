@@ -83,6 +83,12 @@ class BizLoginStoreNativeMysqlTest {
                     Realm.OPERATOR, new MemoryTokenStore(Duration.ofHours(1))));
             var guard = new OtpSendGuard(limiter, true, 60, 10, 20, 15);
             var otpService = mock(ai.neargo.shop.common.otp.service.OtpSendService.class);
+            when(otpService.send(any(), any())).thenAnswer(inv -> {
+                ai.neargo.shop.common.otp.service.OtpSendService.SendCommand c = inv.getArgument(0);
+                String recipient = ai.neargo.shop.common.otp.OtpKeys.normalize(c.channel(), c.recipient());
+                otp.save(ai.neargo.shop.common.otp.OtpKeys.storageKey(c.scene(), c.channel(), recipient, c.businessKey()), "123456");
+                return new ai.neargo.shop.common.otp.service.OtpSendService.OtpSendResult(300, 60);
+            });
             when(otpService.verifyAndConsume(any(), any())).thenAnswer(inv -> {
                 ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand c = inv.getArgument(0);
                 String recipient = ai.neargo.shop.common.otp.OtpKeys.normalize(c.channel(), c.recipient());
@@ -107,7 +113,8 @@ class BizLoginStoreNativeMysqlTest {
                     mock(StoreLinkService.class), null, null);
             stores.setOwnership(new ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl(db.jdbc));
             realServices.putAll(Map.of(AuthService.class, auth, OtpStore.class, otp,
-                    StoreAdminService.class, stores, TokenStore.class, tokens));
+                    StoreAdminService.class, stores, TokenStore.class, tokens,
+                    ai.neargo.shop.common.otp.service.OtpSendService.class, otpService));
             try {
                 beforeMvc.accept(this);
                 mvc = CommerceAccessSecurityFlowTest.merchantMvc(db, web, true, realServices);
