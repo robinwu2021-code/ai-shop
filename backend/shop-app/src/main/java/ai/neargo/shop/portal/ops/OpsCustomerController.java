@@ -23,11 +23,6 @@ public class OpsCustomerController {
   private final CustomerReadAccess access;
   private final CustomerReportingService reporting;
   public OpsCustomerController(CustomerReadAccess access, CustomerReportingService reporting) {this.access=access;this.reporting=reporting;}
-  @GetMapping("/operating-entities/{id}")
-  @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
-  public OperatingEntity operatingEntity(@PathVariable @Size(min=1,max=64) String id) {
-    return reporting.operatingEntity(access.require(Perms.MERCHANT_READ),id);
-  }
   @GetMapping("/users")
   @PreAuthorize("@perm.can('" + Perms.CUSTOMER_USER_READ + "')")
   public Registrations users(@RequestParam(required=false) @Size(max=64) String keyword,

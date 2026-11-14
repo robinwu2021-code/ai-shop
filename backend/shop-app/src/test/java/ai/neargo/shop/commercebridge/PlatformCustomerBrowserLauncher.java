@@ -9,6 +9,7 @@ import ai.neargo.shop.platform.mapper.PlatformMappers.*;
 import ai.neargo.shop.platform.perm.*;
 import ai.neargo.shop.platform.perm.mapper.PermMappers.*;
 import ai.neargo.shop.portal.ops.OpsCustomerController;
+import ai.neargo.shop.portal.ops.OpsOperatingEntityController;
 import ai.neargo.shop.portal.service.*;
 import ai.neargo.shop.portal.service.impl.CustomerReportingServiceImpl;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
@@ -115,7 +116,7 @@ public final class PlatformCustomerBrowserLauncher {
         b.registerSingleton("dataSource",ds);b.registerSingleton("jdbc",jdbc);b.registerSingleton("transactionManager",new DataSourceTransactionManager(ds));
         b.registerSingleton("tokens",tokens);b.registerSingleton("livePerms",perms);b.registerSingleton("liveIdentity",identitiesResolver);b.registerSingleton("ops",ops);
       });
-      web.register(Web.class,Authentication.class,OpsCustomerController.class,CustomerReadAccess.class,CustomerReportingServiceImpl.class,
+      web.register(Web.class,Authentication.class,OpsCustomerController.class,OpsOperatingEntityController.class,CustomerReadAccess.class,CustomerReportingServiceImpl.class,
         PermChecker.class,ApiResponseWrapper.class,GlobalExceptionHandler.class);
       Path scratch=Files.createTempDirectory("customer-browser-http-");
       tomcat.setBaseDir(scratch.toString());tomcat.setPort(34111);tomcat.getConnector().setProperty("address","127.0.0.1");
