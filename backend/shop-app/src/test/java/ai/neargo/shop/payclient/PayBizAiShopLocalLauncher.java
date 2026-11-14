@@ -9,6 +9,7 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
 import ai.neargo.shop.config.SecurityConfig;
+import ai.neargo.shop.portal.biz.BizPayCollectionController;
 import ai.neargo.shop.portal.biz.BizPayOnboardingController;
 import ai.neargo.shop.portal.biz.BizPaySessionController;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -110,6 +111,7 @@ public final class PayBizAiShopLocalLauncher {
         PayBizOnboardingConfiguration.class,
         BizPaySessionController.class,
         BizPayOnboardingController.class,
+        BizPayCollectionController.class,
         PayBizExceptionHandler.class,
         ApiResponseWrapper.class,
         GlobalExceptionHandler.class);

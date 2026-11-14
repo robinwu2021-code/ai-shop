@@ -19,6 +19,7 @@ import ai.neargo.shop.pay.api.guard.core.GuardFilter;
 import ai.neargo.shop.pay.api.guard.core.GuardFilters;
 import ai.neargo.shop.pay.api.guard.core.RequestLogWriter;
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
+import ai.neargo.shop.portal.biz.BizPayCollectionController;
 import ai.neargo.shop.portal.biz.BizPayOnboardingController;
 import ai.neargo.shop.portal.biz.BizPaySessionController;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -117,6 +118,7 @@ class PayBizOnboardingHttpTest {
         PayBizOnboardingConfiguration.class,
         BizPaySessionController.class,
         BizPayOnboardingController.class,
+        BizPayCollectionController.class,
         PayBizExceptionHandler.class,
         ApiResponseWrapper.class,
         GlobalExceptionHandler.class);

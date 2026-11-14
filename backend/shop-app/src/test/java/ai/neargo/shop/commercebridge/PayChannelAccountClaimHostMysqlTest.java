@@ -64,7 +64,7 @@ class PayChannelAccountClaimHostMysqlTest {
         web.getEnvironment().getPropertySources().addFirst(new MapPropertySource("claimsTest",properties));
         when(sources.status("MAIN","M")).thenReturn(new PaySourceLinkApi.Status("PENDING","PM","VERIFY_PENDING","PENDING",null));
         web.register(PayChannelAccountClaimConfiguration.class,PayBizOnboardingConfiguration.class,
-                BizChannelAccountClaimController.class,BizPayOnboardingController.class,
+                BizChannelAccountClaimController.class,BizPayOnboardingController.class,BizPayCollectionController.class,
                 PayBizExceptionHandler.class,ApiResponseWrapper.class);
         web.addBeanFactoryPostProcessor(beans->{
             beans.registerSingleton("claimJdbc",f.jdbc);beans.registerSingleton("authJdbcClient",JdbcClient.create(f.ds));beans.registerSingleton("claimSources",sources);
@@ -85,6 +85,7 @@ class PayChannelAccountClaimHostMysqlTest {
     @Test void claimsHaveOwnDbAuthenticationAndMultipartResolverWhenLegacyBridgeIsDisabled() throws Exception {
         close();initialize(false);
         assertTrue(web.getBeansOfType(BizPayOnboardingController.class).isEmpty());
+        assertTrue(web.getBeansOfType(BizPayCollectionController.class).isEmpty());
         assertNotNull(web.getBean("multipartResolver"));
         mvc.perform(selected(get(BASE))).andExpect(status().isOk());
         assertEquals(1,calls.get());

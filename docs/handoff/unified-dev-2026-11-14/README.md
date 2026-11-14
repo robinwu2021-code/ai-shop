@@ -79,7 +79,7 @@
 | 服务执行相关测试（`ServiceExecution*`、`PayServiceApplication*`） | 全过 |
 | `BackendI18nParityTest` | 全过 |
 | `ArchitectureTest` | 3 条规则红，违例全部来自单条线、合并未新增（见 §5「基线红灯」） |
-| `BizEndpointPermTest` | 1 条红（2 个端点未定权限），同上 |
+| `BizEndpointPermTest` | 1 条红（3 个端点未定权限），同上 |
 | 脚本测试 `scripts/tests/*.mjs` | 失败项全部在运营线或餐饮线基线中已存在，合并新增 0 |
 | 餐饮插件全量测试（后端 reactor 内 `-P food-embedded`） | food-api 56、food-core 766（跳过 60 个需一次性 MySQL 的）、food-web 268，失败 0 |
 | `gen-ui-catalog.py --check` | 最新（333 个界面） |
@@ -141,7 +141,7 @@
 | `ArchitectureTest.implsMustLiveInDedicatedPackage` | 餐饮线 3（`ServiceWorkOrderUseFactsService`、`TaskRuntimeAuthorityConfiguration$RemoteTaskRuntimeAuthorityPort`、`LocalStockControlServiceImpl`）+ 运营线 1（`MarketPhonePolicyServiceImpl`） | Port 实现不在 `.port` 包 |
 | `ArchitectureTest.noFullyQualifiedReferences` | 两条线共有（`BizEntitlementUseController`、`EntitlementServiceUseCoordinator*`） | 全限定名改 import |
 | `ArchitectureTest.serviceMustBeInterface` | 运营线（`AdmissionManagementService`） | 具体类以 Service 结尾 |
-| `BizEndpointPermTest.everyBizEndpointHasADecision` | `/biz/entitlement-uses/work-order-money-previews`、`/biz/pay/v2/collections` | 端点未定权限 |
+| `BizEndpointPermTest.everyBizEndpointHasADecision` | `/biz/entitlement-uses/work-order-intents`、`/biz/entitlement-uses/work-order-money-previews`、`/biz/pay/v2/collections` | 端点未定权限 |
 | `b-app/scripts/gen-openapi.mjs` | 餐饮 / 零售线 | 端点 `mRpState` 路径资源段 `commands` 违反命名空间约定；生成文档闸门因此跑不完 |
 | `-P food-embedded` 测试编译 | 餐饮线 | `food-embedded-test` 下 `FoodChannelVertical*` 依赖 commerce 模块，单开 food-embedded 编不过；加 commerce 相关 profile 后 `FoodInventoryDirectSyncNativeMysqlTest` 又缺 food-channel |
 | pre-push 第 6 道「app-backend orphan」 | 基线 | 推送时会挡，需逐次批准跳过 |

@@ -195,6 +195,7 @@ public final class CommerceChainLocalLauncher {
         fixture.web.register(ai.neargo.shop.config.PayBizOnboardingConfiguration.class,
                 ai.neargo.shop.portal.biz.BizPaySessionController.class,
                 ai.neargo.shop.portal.biz.BizPayOnboardingController.class,
+                ai.neargo.shop.portal.biz.BizPayCollectionController.class,
                 ai.neargo.shop.payclient.PayBizExceptionHandler.class);
         fixture.web.addBeanFactoryPostProcessor(beans -> beans.registerSingleton("authJdbcClient",
                 org.springframework.jdbc.core.simple.JdbcClient.create(fixture.db.ds)));

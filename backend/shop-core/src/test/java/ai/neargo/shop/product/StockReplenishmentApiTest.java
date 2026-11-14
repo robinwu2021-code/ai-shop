@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.product.api.biz.BizStockReplenishmentConnectionController;
 import ai.neargo.shop.product.api.biz.BizStockReplenishmentController;
 import ai.neargo.shop.product.policy.LocalStockAccessPolicy;
 import ai.neargo.shop.product.service.StockReplenishmentService;
@@ -30,6 +31,7 @@ class StockReplenishmentApiTest {
     private StockReplenishmentService service;
     private StoreDirectoryPort stores;
     private BizStockReplenishmentController api;
+    private BizStockReplenishmentConnectionController connectionApi;
     private static final String WIRE = """
             {"documentNo":"OUT","lineNo":1,"mapping":{"itemNo":"RAW","baseUnit":"G","factor":1}}
             """;
@@ -37,6 +39,7 @@ class StockReplenishmentApiTest {
         context = new AnnotationConfigApplicationContext(Config.class);
         service = context.getBean(StockReplenishmentService.class); stores = context.getBean(StoreDirectoryPort.class);
         api = context.getBean(BizStockReplenishmentController.class);
+        connectionApi = context.getBean(BizStockReplenishmentConnectionController.class);
         when(stores.cards(List.of("S"))).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard(
                 "S", "Store", "E", "", "ACTIVE", true, "", "", null, null, 0, 0)));
     }
@@ -72,7 +75,7 @@ class StockReplenishmentApiTest {
         merchant(BizPerms.STOCK);assertThatThrownBy(()->api.get("S","OLD_ENTITY","R")).isInstanceOf(BizException.class);verifyNoInteractions(service);
     }
     @Test void decimalTextFromAppAndConnectionInputsUseFrameworkValidation()throws Exception {
-        merchant(BizPerms.STOCK);var mvc=MockMvcBuilders.standaloneSetup(api).build();
+        merchant(BizPerms.STOCK);var mvc=MockMvcBuilders.standaloneSetup(api,connectionApi).build();
         mvc.perform(post("/biz/stock-control/replenishments/R/receive").header("Idempotency-Key","K").header("X-Stock-Entity-No","E")
                 .contentType(MediaType.APPLICATION_JSON).content("{\"cumulativeQuantity\":\"0.125000\"}")).andExpect(status().isOk());
         verify(service).receive(any(),eq("ACT"),eq("K"),eq("R"),eq(new java.math.BigDecimal("0.125000")));
@@ -96,6 +99,9 @@ class StockReplenishmentApiTest {
         @Bean public LocalStockAccessPolicy access(StoreDirectoryPort stores) { return new LocalStockAccessPolicy(stores); }
         @Bean public BizStockReplenishmentController api(StockReplenishmentService service, LocalStockAccessPolicy access) {
             return new BizStockReplenishmentController(service, access);
+        }
+        @Bean public BizStockReplenishmentConnectionController connectionApi(StockReplenishmentService service, LocalStockAccessPolicy access) {
+            return new BizStockReplenishmentConnectionController(service, access);
         }
     }
 }

@@ -50,7 +50,6 @@ public class BizStockReplenishmentController {
     public record CancelRequest(@NotBlank @Size(max=128) String key,@NotBlank @Size(max=256) String reason) {
         @JsonAnySetter public void unknown(String key,Object value){throw new IllegalArgumentException("Unknown field: "+key);}
     }
-    public record Context(String entityNo,String storeNo,String actorNo,Connection connection) {}
     private final StockReplenishmentService service;
     private final LocalStockAccessPolicy access;
     public BizStockReplenishmentController(StockReplenishmentService service,LocalStockAccessPolicy access){this.service=service;this.access=access;}
@@ -59,18 +58,6 @@ public class BizStockReplenishmentController {
         if(expectedEntity!=null&&!actual.entityNo().equals(expectedEntity))throw BizException.of(ErrorCode.FORBIDDEN);
         return actual;
     }
-    @GetMapping("/context") public Context context(@RequestHeader(value=BizContextFilter.STORE_HEADER,required=false) String store,@RequestHeader(value="X-Stock-Entity-No",required=false) @Size(max=32) String expectedEntity){
-        var scope=scope(store,expectedEntity);return new Context(scope.entityNo(),scope.storeNo(),SecurityUtils.currentUserNo(),service.connection(scope));
-    }
-    @GetMapping("/connection") public Connection connection(@RequestHeader(value=BizContextFilter.STORE_HEADER,required=false) String store,@RequestHeader(value="X-Stock-Entity-No",required=false) @Size(max=32) String expectedEntity){return service.connection(scope(store,expectedEntity));}
-    @PostMapping("/connection") public Connection configure(@RequestHeader(value=BizContextFilter.STORE_HEADER,required=false) String store,
-            @RequestHeader(value="X-Stock-Entity-No",required=false) @Size(max=32) String expectedEntity,
-            @RequestHeader("Idempotency-Key") @NotBlank @Size(max=128) String key,@RequestBody @Valid ConnectionChange change){
-        return service.configure(scope(store,expectedEntity),SecurityUtils.currentUserNo(),key,change);
-    }
-    @GetMapping("/connection/command") public Connection configurationCommand(@RequestHeader(value=BizContextFilter.STORE_HEADER,required=false) String store,
-            @RequestHeader(value="X-Stock-Entity-No",required=false) @Size(max=32) String expectedEntity,
-            @RequestParam @NotBlank @Size(max=128) String key){return service.findConfigurationCommand(scope(store,expectedEntity),key);}
     @GetMapping public Page list(@RequestHeader(value=BizContextFilter.STORE_HEADER,required=false) String store,
             @RequestHeader(value="X-Stock-Entity-No",required=false) @Size(max=32) String expectedEntity,
             @RequestParam(defaultValue="0") @Min(0) long after,@RequestParam(required=false) @Min(0) Long through,

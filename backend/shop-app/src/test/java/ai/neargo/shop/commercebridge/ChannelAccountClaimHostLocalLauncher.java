@@ -122,7 +122,7 @@ public final class ChannelAccountClaimHostLocalLauncher {
             settings.put("shop.auth.token-store-by-realm.merchant","db");settings.put("shop.auth.token-store-by-realm.operator","db");
             f.web.getEnvironment().getPropertySources().addFirst(new MapPropertySource("n2LocalOnly",settings));
             f.web.register(PayChannelAccountClaimConfiguration.class,PayBizOnboardingConfiguration.class,
-                    BizChannelAccountClaimController.class,BizPaySessionController.class,BizPayOnboardingController.class,
+                    BizChannelAccountClaimController.class,BizPaySessionController.class,BizPayOnboardingController.class,BizPayCollectionController.class,
                     BizPayServiceController.class,PayBizExceptionHandler.class,LocalOperatorIdentity.class);
             f.web.addBeanFactoryPostProcessor(beans->{
                 beans.registerSingleton("authJdbcClient",JdbcClient.create(f.db.ds));
