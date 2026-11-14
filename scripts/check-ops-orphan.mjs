@@ -60,6 +60,12 @@ function calledPaths() {
   return out;
 }
 
+// Source-authority reads consumed by the independently deployed PAY service, not an OPS page.
+// AiShopBizIdentityClient.operatorEntity forwards the authenticated STAFF session to this exact GET.
+// Covered by CustomerReportingMysqlTest and the actual two-main browser recovery acceptance.
+const SERVICE_CONSUMERS = new Set(["GET /ops/customers/operating-entities/*"]);
+export const hasServiceConsumer = ({method, path}) => SERVICE_CONSUMERS.has(`${method} ${norm(path)}`);
+
 export function orphans() {
   const called = new Set(calledPaths());
   /*
@@ -80,7 +86,7 @@ export function orphans() {
    * 收紧之后当场露出 8 条一直藏着的：闸门此前报「无出口 1」，实际是 9。
    * 它们逐条登记进基线（那是这道闸自己给的出口），**债因此可见了**。
    */
-  return scanEndpoints().filter((e) => !called.has(norm(e.path)));
+  return scanEndpoints().filter((e) => !called.has(norm(e.path)) && !hasServiceConsumer(e));
 }
 
 const allRows = orphans();
