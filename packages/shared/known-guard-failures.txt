@@ -42,9 +42,8 @@
 #
 
 
-biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=42
+biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=41
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=16
-doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=1
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=44
 enum-alignment.test.ts::枚举对账 KNOWN_SHARED 里不留已经修好的条目（名单本身也会过期） @<=10
 enum-fields.test.ts::枚举对账 · 按字段 ★★ 未判定的取值域列只准变少 —— 新出现的要点名 @<=17
@@ -54,5 +53,4 @@ inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 《数据库表
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 文档正文里逐张列出的表 = 迁移里的表（多一张少一张都算） @<=10
 message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话 @<=7
 retired-state-words.test.ts::退役状态词 ★★ 出现次数只降不升 —— 更正记述要引用它们，新写的活断言会让计数变大 @<=1
-schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=26
-wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上 @<=1
+schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=25
