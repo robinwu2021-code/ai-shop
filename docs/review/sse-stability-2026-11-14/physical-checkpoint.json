@@ -1,0 +1,10 @@
+{
+  "state": "BUSINESS_CASES_VERIFIED",
+  "result": "physical-final-result.json",
+  "foreground": "PASS",
+  "backgroundNormalApk": "PASS",
+  "managedIntegrationFixture": "DID_NOT_COMPLETE, not whole suite PASS",
+  "normalPackageRestored": true,
+  "restartUserStorePreserved": true,
+  "paymentBatchUsed": "2 of 2 official sandbox payments, NT$1 each"
+}
