@@ -157,3 +157,13 @@
 18. **I3 偏差 10 转来的 `PaymentPort#startPayment` 与独立的 `RouteSelectionPolicy` 本迭代没做，再转 I5**：今天交易下单冻结路由走 `MerchantQueryPort#paymentRouteOf`
     （商城 `OrderServiceImpl`、行业结账 `IndustryCheckoutServiceImpl`、积分目标），S6 已把它切到门店绑定 —— 读切后「选路由」事实上由 `PayMerchantQueryPort` 回答；
     缺的是「支付域自己选方式 → 选路由 → 冻结快照」这一个入口，它与开放 API 建单同形，随 I5 一起做。
+
+
+## 2026-11-15 附件转发故障定位（档位 1，未宣称修复）
+
+| 需求／AC | 设计与影响范围 | 验证 |
+|---|---|---|
+| App 正常上传 NearGo 虚构附件 | 原进件／身份／字节转发不变，仅在失败上传记录请求包装类型、捕获及声明字节数和上游状态；不记录正文或认证头 | 真实模拟器与 Python 经 Shop 均 HTTP400，PAY 提示缺少 requestNo；同一水印附件直达 PAY HTTP200、draftVersion=5 |
+| 收敛到具体边界 | PayBizOnboardingRelay 一处安全传输日志，不改权限、校验、数据库或支付配置 | Java21 按 166 原包依赖编译；小 multipart 字节保留单例通过，排除单纯小文件读取问题 |
+
+实现对账：PayBizOnboardingRelay.java 增加失败元数据日志；PayBizRequestBodyTest.java 增加小 multipart 包含命令和附件的检查。现有原生传输测试已有 2MiB 原样转发覆盖，但与当前线上完整过滤链存在差异。继续按节点取证，不将诊断上传当成 App 上传通过，不改变真实实体／渠道配置。
