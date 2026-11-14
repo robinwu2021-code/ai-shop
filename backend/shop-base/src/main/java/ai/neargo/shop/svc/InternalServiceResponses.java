@@ -76,7 +76,14 @@ public final class InternalServiceResponses {
                     CHECKOUT_QUOTE_STALE,
                     CHECKOUT_CONFIRMATION_REQUIRED,
                     MANAGED_SERVICE_COMPLETION_BLOCKED,
-                    CHECKOUT_OPERATION_REJECTED ->
+                    CHECKOUT_OPERATION_REJECTED,
+                    POSTPAY_RECEIPT_UNDERPAID,
+                    POSTPAY_RECEIPT_OVERPAID_NON_CASH,
+                    POSTPAY_RECEIPT_RECORD_INVALID,
+                    POSTPAY_RECEIPT_ORDER_CHANGED,
+                    COUNTER_SETTLEMENT_NOT_READY,
+                    COUNTER_SETTLEMENT_SPLIT_LINES,
+                    COUNTER_SETTLEMENT_CONFIRMED ->
                     409;
             case CHECKOUT_UNSUPPORTED_SELECTION, BEAUTY_SEARCH_INCOMPLETE -> 422;
             case RESOURCE_DEPENDENCY_UNAVAILABLE,

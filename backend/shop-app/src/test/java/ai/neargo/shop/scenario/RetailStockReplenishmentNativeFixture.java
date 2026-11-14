@@ -199,11 +199,11 @@ abstract class RetailStockReplenishmentNativeFixture {
         commands=new StockReplenishmentCommands(sessions.getMapper(StockReplenishmentCommandMapper.class),guard,json,manager);
         var ledger=proxy(new RetailStockReplenishmentLedger(target,sessions.getMapper(SkuMapper.class),sessions.getMapper(StoreStockMapper.class),
                 sessions.getMapper(StockReplenishmentMovementMapper.class),json),RetailStockReplenishmentLedger.class);
-        effects=new RetailStockReplenishmentServiceImpl(sessions.getMapper(StockReplenishmentMapper.class),sessions.getMapper(StockReplenishmentMovementMapper.class),
-                sessions.getMapper(StockReplenishmentManualMapper.class),sessions.getMapper(StockReplenishmentReturnMapper.class),commands,ledger,target,json,manager);
         admissions=new StockReplenishmentAdmissionServiceImpl(sessions.getMapper(StockReplenishmentMapper.class),
                 sessions.getMapper(StockReplenishmentConnectionMapper.class),commands,
                 guard,target,beans.getBeanProvider(StockPort.class),merchants,beans.getBeanProvider(FoodStockReplenishmentPort.class),beans.getBeanProvider(FoodLocalStockPort.class),JsonMapper.builder().build(),manager);
+        effects=new RetailStockReplenishmentServiceImpl(sessions.getMapper(StockReplenishmentMapper.class),sessions.getMapper(StockReplenishmentMovementMapper.class),
+                sessions.getMapper(StockReplenishmentManualMapper.class),sessions.getMapper(StockReplenishmentReturnMapper.class),commands,ledger,target,admissions,beans.getBeanProvider(StockReplenishmentSourcePort.class),json,manager);
         sync=proxy(new StockSyncServiceImpl(sessions.getMapper(SellRuleMapper.class),sessions.getMapper(StoreStockSyncMapper.class),
                 sessions.getMapper(StockSyncLogMapper.class),sessions.getMapper(StoreStockMapper.class),sessions.getMapper(SkuMapper.class),
                 merchants,sessions.getMapper(GoodsMapper.class),guard,reader),StockSyncService.class);

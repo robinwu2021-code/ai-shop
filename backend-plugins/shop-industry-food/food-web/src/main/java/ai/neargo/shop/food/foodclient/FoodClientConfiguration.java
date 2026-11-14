@@ -1,6 +1,10 @@
 package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.food.service.QueueService;
+import ai.neargo.shop.food.service.CounterSettlementService;
+import ai.neargo.shop.food.service.CashShiftService;
+import ai.neargo.shop.food.spi.CashShiftInternalApi;
+import ai.neargo.shop.food.spi.CounterSettlementInternalApi;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.food.spi.StoreCalendarSourceInternalApi;
 import ai.neargo.shop.food.service.MenuCatalogPriceService;
@@ -200,6 +204,18 @@ public class FoodClientConfiguration {
                 FoodMaintenanceInternalApi.class, Duration.ofSeconds(50)));
     }
 
+    @Bean
+    @ConditionalOnMissingBean(CashShiftService.class)
+    CashShiftService remoteCashShiftService(InternalHttp http) {
+        return new RemoteCashShiftService(http.client(ServiceName.FOOD, CashShiftInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(CounterSettlementService.class)
+    CounterSettlementService remoteCounterSettlementService(InternalHttp http) {
+        return new RemoteCounterSettlementService(http.client(ServiceName.FOOD,
+                CounterSettlementInternalApi.class, Duration.ofSeconds(5)));
+    }
     @Bean
     @ConditionalOnMissingBean(DiningCheckoutService.class)
     DiningCheckoutService remoteDiningCheckoutService(InternalHttp http) {

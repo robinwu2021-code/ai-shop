@@ -27,8 +27,12 @@ import java.util.function.Supplier;
 @Service
 public class IdempotencyService {
 
-    /** 24h：足够覆盖用户手滑重提交与端侧重试，又不会让表无限膨胀。 */
-    private static final int TTL_HOURS = 24;
+    /**
+     * 记录在 {@code expire_at} 里的保留期。**当前没有任何清理任务，重放也不看 {@code expire_at}**，
+     * 所以记录实际是永久的：离线终端（POS 允许离线 72 小时）用同一个键回放，永远拿回首次结果。
+     * 以后若加清理任务，保留期**不得短于这里的 7 天**——短于离线窗口会让回放重复执行（POS 需求 B16）。
+     */
+    static final int RETENTION_DAYS = 7;
 
     private final SysIdempotentMapper mapper;
     private final ObjectMapper json;
@@ -54,7 +58,7 @@ public class IdempotencyService {
         row.setUserNo(userNo);
         row.setRequestHash(requestHash);
         row.setCreatedAt(LocalDateTime.now());
-        row.setExpireAt(LocalDateTime.now().plusHours(TTL_HOURS));
+        row.setExpireAt(LocalDateTime.now().plusDays(RETENTION_DAYS));
         try {
             mapper.insert(row);
         } catch (DuplicateKeyException e) {

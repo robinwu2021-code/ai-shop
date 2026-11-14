@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.event.SysOutbox;
+import org.mockito.ArgumentCaptor;
 import ai.neargo.shop.report.dto.ReportRows.CursorRow;
 import ai.neargo.shop.report.service.ReportStorageService;
 import ai.neargo.shop.spi.report.ReportAffectedDaysPort;
@@ -173,6 +174,44 @@ class ReportCorrectionConsumerTest {
                         any());
         verify(storage, times(4)).scopes(scope);
         verifyNoMoreInteractions(storage);
+    }
+
+    /** 柜台后付实收：整桌多张后付单推到已付后，每张单的营业日都标记重算；接管原只归档路由（ADR-059）。 */
+    @Test
+    void postpayReceiptMarksEveryCoveredOrderDayAndTakesOverTheArchiveRoute() {
+        var storage = mock(ReportStorageService.class);
+        var owner = mock(ReportAffectedDaysPort.class);
+        var factory = new StaticListableBeanFactory();
+        factory.addBean("owner", owner);
+        var scope = new Scope("MAIN", "E1", "S1");
+        var day = LocalDate.of(2026, 11, 13);
+        when(owner.affectedDays(any())).thenReturn(List.of(new ReportAffectedDaysPort.AffectedDay(scope, day)));
+        var cursor = mock(CursorRow.class);
+        when(cursor.enabled()).thenReturn(true);
+        when(cursor.firstDate()).thenReturn(day);
+        when(cursor.partition()).thenReturn(new Partition(scope, day, 1));
+        when(storage.scopes(scope)).thenReturn(List.of(cursor));
+        var consumer = new ReportCorrectionConsumer(storage,
+                factory.getBeanProvider(ReportAffectedDaysPort.class), JsonMapper.builder().build());
+        assertThat(consumer.supports("POSTPAY_RECEIPT_RECORDED")).isTrue();
+        assertThat(consumer.consumedArchiveRoutes()).containsExactly("PLATFORM:POSTPAY_RECEIPT_RECORDED");
+        var event = new SysOutbox();
+        event.setEventNo("EVR1");
+        event.setEventType("POSTPAY_RECEIPT_RECORDED");
+        event.setPayload("{\"receiptNo\":\"PPR1\",\"orderNos\":[\"O1\",\"O2\"]}");
+        event.setCreatedAt(day.atTime(12, 0));
+        consumer.consume(event);
+        var changes = ArgumentCaptor.forClass(ReportAffectedDaysPort.Change.class);
+        verify(owner, times(2)).affectedDays(changes.capture());
+        assertThat(changes.getAllValues()).extracting(ReportAffectedDaysPort.Change::orderNo)
+                .containsExactly("O1", "O2");
+        verify(storage, times(2)).markDirty(eq(new Partition(scope, day, 1)), eq("EVR1"), eq("SOURCE_EVENT"), any());
+        var empty = new SysOutbox();
+        empty.setEventType("POSTPAY_RECEIPT_RECORDED");
+        empty.setPayload("{\"receiptNo\":\"PPR2\"}");
+        empty.setCreatedAt(day.atTime(12, 0));
+        assertThatThrownBy(() -> consumer.consume(empty))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

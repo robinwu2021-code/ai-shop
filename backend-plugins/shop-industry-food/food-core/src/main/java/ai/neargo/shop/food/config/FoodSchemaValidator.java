@@ -33,7 +33,7 @@ public final class FoodSchemaValidator {
      * 餐饮迁移的目标版本：必须等于 db/industry/food 下最高的 V 号。
      * 新增迁移时同步改这里（FoodSchemaVersionGuardTest 会对账）。
      */
-    public static final String EXPECTED_VERSION = "39";
+    public static final String EXPECTED_VERSION = "40";
     private static final String RESOURCE = "db/industry/food/V1__food_business_tables.sql";
     private static final String SHA256 =
             "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9";
@@ -527,6 +527,9 @@ public final class FoodSchemaValidator {
             expected.put("fnb_menu_channel_binding", channel);
             expected.get("fnb_order_batch").add("next_recovery_at");
             expected.get("fnb_settlement").add("next_recovery_at");
+            expected.get("fnb_settlement").add("kind");
+            expected.get("fnb_settlement").add("received_minor");
+            expected.get("fnb_settlement").add("change_minor");
             expected.get("fnb_return").add("next_recovery_at");
             expected.get("fnb_core_line_allocation").add("source_component_ref");
             expected.get("fnb_return")

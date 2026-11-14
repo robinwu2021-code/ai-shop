@@ -70,6 +70,19 @@ class KitchenQueueApiTest {
         });
     }
 
+    @Test void batchQueryReturnsTasksWithCartLineRefAndOneFilterIsRequired() {
+        runner.run(c -> {
+            var mvc = mvc(c); var auth = token(c, "staff");
+            mvc.perform(get(PATH).header("Authorization", auth).param("batchNo", "B1"))
+                    .andExpect(jsonPath("$.code").value(0)).andExpect(jsonPath("$.data.total").value(1))
+                    .andExpect(jsonPath("$.data.records[0].batchNo").value("B1"))
+                    .andExpect(jsonPath("$.data.records[0].sourceLineRef").value("L1"));
+            mvc.perform(get(PATH).header("Authorization", auth))
+                    .andExpect(jsonPath("$.code").value(10400));
+            assertThat(c.getBean(Calls.class).reads).hasValue(1);
+        });
+    }
+
     @Test void permissionScopeAndUnknownOrRepeatedParametersAreRejectedWithoutReadingTasks() {
         runner.run(c -> {
             var mvc = mvc(c); var auth = token(c, "staff");
@@ -110,9 +123,17 @@ class KitchenQueueApiTest {
             when(service.queue(any(), any(), any(), any())).thenAnswer(invocation -> {
                 assertThat((String) invocation.getArgument(0)).isEqualTo("E");
                 assertThat((String) invocation.getArgument(1)).isEqualTo("A");
-                assertThat((String) invocation.getArgument(2)).isEqualTo("HOT");
-                assertThat((String) invocation.getArgument(3)).isNull();
                 calls.reads.incrementAndGet();
+                if (invocation.getArgument(3) != null) {
+                    // 按批次：不限出品站，返回带购物车行号的任务（POS B17）
+                    assertThat((String) invocation.getArgument(2)).isNull();
+                    assertThat((String) invocation.getArgument(3)).isEqualTo("B1");
+                    var made = task("T1", "MAKING");
+                    return List.of(new TaskVO(made.taskNo(), made.ticketNo(), "B1", made.foodLineNo(), null,
+                            "HOT", "MAKE", 1L, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO,
+                            BigDecimal.ZERO, "MAKING", null, null, 0L, "MAKE", null, "L1"));
+                }
+                assertThat((String) invocation.getArgument(2)).isEqualTo("HOT");
                 return List.of(task("HELD1", "HELD"), task("READY1", "READY"), task("MAKING1", "MAKING"));
             });
             return service;

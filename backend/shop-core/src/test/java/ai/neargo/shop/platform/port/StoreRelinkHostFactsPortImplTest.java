@@ -31,9 +31,33 @@ class StoreRelinkHostFactsPortImplTest {
             jdbc.execute("CREATE TABLE " + table + "(store_no VARCHAR(64))");
         for (String table : java.util.List.of("prd_goods", "prd_store_stock", "prd_store_goods", "prd_store_price"))
             jdbc.execute("CREATE TABLE " + table + "(tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),deleted INT)");
-        for (String table : java.util.List.of("prd_sku", "prd_goods_draft"))
+        for (String table : java.util.List.of("prd_stock_replenishment", "prd_stock_replenishment_connection",
+                "prd_stock_replenishment_command", "prd_stock_replenishment_movement", "prd_stock_replenishment_manual",
+                "prd_stock_replenishment_return"))
+            jdbc.execute("CREATE TABLE " + table + "(tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),deleted INT)");
+        for (String table : java.util.List.of("prd_sku", "prd_goods_draft", "prd_stock_writer"))
             jdbc.execute("CREATE TABLE " + table + "(tenant_no VARCHAR(32),entity_no VARCHAR(64),deleted INT)");
         facts = new StoreRelinkHostFactsPortImpl(jdbc);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"prd_stock_replenishment", "prd_stock_replenishment_connection", "prd_stock_replenishment_command",
+            "prd_stock_replenishment_movement", "prd_stock_replenishment_manual", "prd_stock_replenishment_return"})
+    void replenishmentHistoryBlocksRelinkEvenWithAnEmptyCatalog(String table) {
+        jdbc.update("INSERT INTO " + table + " VALUES('OTHER','M','S',0)");
+        assertFalse(facts.inspect("MAIN", "M", "S").hasTrades());
+        jdbc.update("INSERT INTO " + table + " VALUES('MAIN','OTHER','S',0)");
+        assertTrue(facts.inspect("MAIN", "M", "S").hasTrades());
+        jdbc.update("DELETE FROM " + table);
+        jdbc.update("INSERT INTO " + table + " VALUES('MAIN','M','SIBLING',0)");
+        assertTrue(facts.inspect("MAIN", "M", "S").hasTrades());
+    }
+
+    @Test void replenishmentWriterFenceIsEntityHistory() {
+        jdbc.update("INSERT INTO prd_stock_writer VALUES('MAIN','OTHER',0)");
+        assertFalse(facts.inspect("MAIN", "M", "S").hasTrades());
+        jdbc.update("INSERT INTO prd_stock_writer VALUES('MAIN','M',0)");
+        assertTrue(facts.inspect("MAIN", "M", "S").hasTrades());
     }
 
     @Test void emptyHostFactsDoNotInventFinancialEvidence() {

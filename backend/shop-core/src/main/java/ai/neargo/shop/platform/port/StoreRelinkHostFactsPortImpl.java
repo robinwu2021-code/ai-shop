@@ -86,7 +86,15 @@ public class StoreRelinkHostFactsPortImpl implements StoreRelinkHostFactsPort {
             trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
                     + " WHERE tenant_no=:tenant AND (entity_no=:entity OR store_no=:store))", scope, Boolean.class));
         }
-        for (String table : List.of("prd_sku", "prd_goods_draft")) {
+        // Replenishment originals, connections, receipts and evidence keep their frozen pool/source claim;
+        // an empty catalog must not hide them. The writer fence is entity-wide.
+        for (String table : List.of("prd_stock_replenishment", "prd_stock_replenishment_connection",
+                "prd_stock_replenishment_command", "prd_stock_replenishment_movement",
+                "prd_stock_replenishment_manual", "prd_stock_replenishment_return")) {
+            trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
+                    + " WHERE tenant_no=:tenant AND (entity_no=:entity OR store_no=:store))", scope, Boolean.class));
+        }
+        for (String table : List.of("prd_sku", "prd_goods_draft", "prd_stock_writer")) {
             trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
                     + " WHERE tenant_no=:tenant AND entity_no=:entity)", scope, Boolean.class));
         }

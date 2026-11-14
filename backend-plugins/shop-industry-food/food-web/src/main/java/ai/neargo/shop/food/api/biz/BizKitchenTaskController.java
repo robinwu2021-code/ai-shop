@@ -52,13 +52,16 @@ public class BizKitchenTaskController {
     @GetMapping("/biz/x/food/stores/{storeNo}/kitchen/tasks")
     @PreAuthorize("@perm.canBiz('"+BizPerms.RECEIVE+"')")
     public PageData<TaskVO> queue(@PathVariable @NotBlank @Size(max=32) String storeNo,
-            @RequestParam @NotBlank @Size(max=32) String stationNo,
+            @RequestParam(required=false) @Size(max=32) String stationNo,
+            @RequestParam(required=false) @Size(max=32) String batchNo,
             @RequestParam(required=false) String status,@RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="20") int size,HttpServletRequest request) {
-        var c=requireStore(storeNo,request,Set.of("stationNo","status","page","size"));
+        var c=requireStore(storeNo,request,Set.of("stationNo","batchNo","status","page","size"));
+        // 按出品站看队列，或按批次看这一单的全部任务（POS 结账后推进上菜、催菜；B17）：两者至少给一个
+        if ((stationNo==null||stationNo.isBlank())&&(batchNo==null||batchNo.isBlank())) throw bad();
         if (page<1 || size<1 || size>100 || status!=null
                 && !Set.of("HELD","QUEUED","MAKING","READY").contains(status)) throw bad();
-        var rows=service.queue(c.merchantNo(),storeNo,stationNo,null).stream()
+        var rows=service.queue(c.merchantNo(),storeNo,blankToNull(stationNo),blankToNull(batchNo)).stream()
                 .filter(t -> status==null?!Set.of("SERVED","VOIDED").contains(t.status()):status.equals(t.status()))
                 .toList();
         long skip=(long)(page-1)*size;
@@ -163,4 +166,5 @@ public class BizKitchenTaskController {
                 request.getHeader(BizContextFilter.STORE_HEADER),c.storeNos()); return c;
     }
     private static BizException bad() { return BizException.of(ErrorCode.BAD_REQUEST); }
+    private static String blankToNull(String value) { return value==null||value.isBlank()?null:value; }
 }
