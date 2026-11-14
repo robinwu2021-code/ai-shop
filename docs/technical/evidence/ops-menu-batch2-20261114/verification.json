@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-14",
+  "scope": "BATCH2_LOCAL_IMPLEMENTATION",
+  "sourceCommit": "4148e159adf33b012c7fdfd9ee9f0dbb39c6ef01",
+  "status": "LOCAL_CHECKS_PASS_ROLLOUT_GATES_PENDING",
+  "tests": {
+    "suites": 10,
+    "passed": 121
+  },
+  "typecheck": "PASS",
+  "webpackStaticBuild": "PASS",
+  "defaultTurbopackBuild": "BLOCKED_BY_EXTERNAL_DEPENDENCY_SYMLINK",
+  "mysql9RehearsalExecuted": false,
+  "rollbackRehearsalExecuted": false,
+  "runtimeRoleVerificationExecuted": false,
+  "deployed": false,
+  "pushed": false,
+  "preservedPreexistingDirtyFiles": 23,
+  "historicalSqlFilesVerifiedUnchanged": 575,
+  "pointCodesFrozen": true,
+  "diffCheck": "PASS",
+  "independentReview": {
+    "agent": "review_platform_settings_batch2",
+    "P2Findings": 2,
+    "fixed": 2,
+    "verification": "8 review-regression failures reproduced then fixed; final121 tests passed"
+  },
+  "fileHashes": [
+    {
+      "path": "ops-web/lib/nav.ts",
+      "sha256": "6e9fbb84464a80a2cb0a20c8839ba796e344f5c165a53a505a5bf1ed279a6f41"
+    },
+    {
+      "path": "ops-web/lib/use-page-tab.ts",
+      "sha256": "a6611fcf4469847eb1a7f82e881ef0601b954f920ff2c8c9548784e9e9d9752d"
+    },
+    {
+      "path": "ops-web/components/layout/secondary-nav.tsx",
+      "sha256": "467e554f28036f0532cc1bd6e2cfc979632cf791fa866541436a28f497aad5f5"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-labels.ts",
+      "sha256": "b039eeea6e52e14d5e80938a7a6fb3aac9cfbcb209a538170ec1dc95f54b63b0"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-zh-TW.ts",
+      "sha256": "4e48fe690386d9180c67f4f55982499fe9aff1ea75623884f180e8d2c350302a"
+    },
+    {
+      "path": "ops-web/scripts/gen-perm-seed.mjs",
+      "sha256": "6ad285fb88c8263335109e54df7e4a9a0fff2399d7bdfa9c08ed7b424b41d600"
+    },
+    {
+      "path": "ops-web/lib/nav-platform-settings.test.ts",
+      "sha256": "b413248be2bd0bc68fba36bd48ee4621a8e0131d28ce7038c263ea52749f1f34"
+    },
+    {
+      "path": "ops-web/lib/use-page-tab.test.ts",
+      "sha256": "670997074d6449597bb229f481491373b810767a816bbf61552cd3c1c3bc4549"
+    },
+    {
+      "path": "ops-web/lib/nav-migration.test.ts",
+      "sha256": "aca00cbcfaba80a1492cfc677c002daac817109b1e8bfc3fd36e6cf7ecd50578"
+    },
+    {
+      "path": "ops-web/lib/nav.test.ts",
+      "sha256": "dd87f1525f1f319c686a20d9ec1b83206fc9ec1c804b494620003c366d05731e"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V668__ops_platform_settings_navigation.sql",
+      "sha256": "8b618d49b5c08f7d0aae472e0b819c2415c43db68ea964fc9f21b9785b814198"
+    }
+  ]
+}

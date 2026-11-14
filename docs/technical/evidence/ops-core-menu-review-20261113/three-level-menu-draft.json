@@ -1,0 +1,2019 @@
+{
+  "status": "SUPERSEDED_UNAPPROVED_DRAFT",
+  "aiShop": [
+    {
+      "label": "工作台",
+      "en": "Home",
+      "groups": [
+        {
+          "label": "业务概览",
+          "en": "Overview",
+          "entries": [
+            {
+              "label": "经营概览",
+              "href": "/",
+              "status": "已有首页",
+              "en": "Overview"
+            }
+          ]
+        },
+        {
+          "label": "经营诊断",
+          "en": "Diagnostics",
+          "entries": [
+            {
+              "sourceLabel": "链条画像",
+              "permission": "merchant:merchant:read",
+              "href": "/merchants?tab=chain",
+              "label": "经营链路",
+              "en": "Business Journey"
+            }
+          ]
+        },
+        {
+          "label": "审核工作",
+          "en": "Approvals",
+          "entries": [
+            {
+              "label": "审核待办",
+              "status": "待聚合",
+              "en": "Pending Reviews"
+            },
+            {
+              "label": "审核记录",
+              "status": "待聚合",
+              "en": "Review History"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "账号管理",
+      "en": "Accounts",
+      "groups": [
+        {
+          "label": "应用账号",
+          "en": "Application Accounts",
+          "entries": [
+            {
+              "label": "注册账号",
+              "status": "待补",
+              "en": "Accounts"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "经营主体",
+      "en": "Entities",
+      "groups": [
+        {
+          "label": "主体资料",
+          "en": "Entities",
+          "entries": [
+            {
+              "sourceLabel": "商家档案",
+              "permission": "merchant:merchant:read",
+              "href": "/merchants?tab=list",
+              "label": "主体档案",
+              "en": "Entities"
+            },
+            {
+              "href": "/merchants?tab=qualifications",
+              "label": "资质档案",
+              "permission": "merchant:category:read",
+              "en": "Qualifications"
+            },
+            {
+              "href": "/merchants?tab=categories",
+              "label": "类目授权",
+              "permission": "merchant:category:grant",
+              "en": "Category Grants"
+            },
+            {
+              "href": "/merchants?tab=verify",
+              "label": "认证管理",
+              "permission": "merchant:verify:grant",
+              "en": "Verification"
+            }
+          ]
+        },
+        {
+          "label": "入驻办理",
+          "en": "Applications",
+          "entries": [
+            {
+              "href": "/merchants",
+              "label": "入驻审核",
+              "permission": "merchant:apply:audit",
+              "en": "Application Review"
+            },
+            {
+              "href": "/merchants?tab=on-behalf",
+              "label": "代办入驻",
+              "permission": "merchant:apply:onbehalf",
+              "en": "Assisted Entry"
+            },
+            {
+              "href": "/merchants?tab=self-operated",
+              "label": "自营建档",
+              "permission": "merchant:selfop:create",
+              "en": "Self-operated"
+            }
+          ]
+        },
+        {
+          "label": "准入配置",
+          "en": "Admission Rules",
+          "entries": [
+            {
+              "href": "/system?tab=storeIndustry",
+              "label": "门店行业",
+              "permission": "commerce:catalog:read",
+              "en": "Store Industries"
+            },
+            {
+              "sourceLabel": "经营授权",
+              "permission": "product:category:read",
+              "href": "/system?tab=authCode",
+              "label": "授权字典",
+              "en": "Authorizations"
+            },
+            {
+              "href": "/system?tab=scope",
+              "label": "范围开关",
+              "permission": "system:industry:read",
+              "en": "Scope Switches"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "门店管理",
+      "en": "Stores",
+      "groups": [
+        {
+          "label": "经营档案",
+          "en": "Store Profiles",
+          "entries": [
+            {
+              "href": "/merchants?tab=stores",
+              "label": "门店档案",
+              "permission": "merchant:merchant:read",
+              "en": "Stores"
+            }
+          ]
+        },
+        {
+          "label": "经营设置",
+          "en": "Store Settings",
+          "entries": [
+            {
+              "label": "门店设置",
+              "en": "Store Settings",
+              "status": "待聚合"
+            },
+            {
+              "label": "履约方式",
+              "en": "Fulfillment",
+              "status": "待聚合"
+            }
+          ]
+        },
+        {
+          "label": "展示获客",
+          "en": "Storefronts",
+          "entries": [
+            {
+              "href": "/stores",
+              "label": "店招审核",
+              "permission": "store:page:audit",
+              "en": "Banner Review"
+            },
+            {
+              "href": "/stores?tab=template",
+              "label": "主页模板",
+              "permission": "store:page:read",
+              "en": "Templates"
+            },
+            {
+              "href": "/stores?tab=qrcode",
+              "label": "门店码",
+              "permission": "store:qrcode:export",
+              "en": "Store Codes"
+            },
+            {
+              "href": "/stores?tab=effect",
+              "label": "获客效果",
+              "permission": "store:page:audit",
+              "en": "Acquisition"
+            }
+          ]
+        },
+        {
+          "label": "收款关联",
+          "en": "Payment Links",
+          "entries": [
+            {
+              "label": "收款状态",
+              "en": "Collection Status",
+              "status": "待聚合"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "品牌连锁",
+      "en": "Brands & Chains",
+      "groups": [
+        {
+          "label": "品牌运营",
+          "en": "Brands",
+          "entries": [
+            {
+              "label": "品牌管理",
+              "en": "Brands",
+              "status": "待补"
+            },
+            {
+              "label": "品牌门店",
+              "en": "Brand Stores",
+              "status": "待补"
+            }
+          ]
+        },
+        {
+          "label": "连锁组织",
+          "en": "Chains",
+          "entries": [
+            {
+              "label": "连锁管理",
+              "en": "Chains",
+              "status": "待补"
+            },
+            {
+              "label": "组织门店",
+              "en": "Chain Stores",
+              "status": "待补"
+            }
+          ]
+        },
+        {
+          "label": "组织授权",
+          "en": "Organization Access",
+          "entries": [
+            {
+              "label": "成员授权",
+              "en": "Members",
+              "status": "待补"
+            },
+            {
+              "label": "管理范围",
+              "en": "Access Scope",
+              "status": "待补"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "商品管理",
+      "en": "Products",
+      "groups": [
+        {
+          "label": "商品运营",
+          "en": "Product Operations",
+          "entries": [
+            {
+              "sourceLabel": "商品管理",
+              "permission": "product:sku:read",
+              "href": "/products?tab=skus",
+              "label": "经营商品",
+              "en": "Products"
+            },
+            {
+              "href": "/products?tab=audit",
+              "label": "商品审核",
+              "permission": "product:sku:audit",
+              "en": "Product Review"
+            },
+            {
+              "href": "/products?tab=stock",
+              "label": "预售额度",
+              "permission": "product:stock:update",
+              "en": "Presale Quotas"
+            },
+            {
+              "href": "/products?tab=stats",
+              "label": "商品统计",
+              "permission": "product:sku:read",
+              "en": "Product Analytics"
+            }
+          ]
+        },
+        {
+          "label": "分类资料",
+          "en": "Catalog",
+          "entries": [
+            {
+              "href": "/products",
+              "label": "商品分类",
+              "permission": "product:category:read",
+              "en": "Categories"
+            },
+            {
+              "href": "/products?tab=topics",
+              "label": "主题分类",
+              "permission": "product:topic:read",
+              "en": "Collections"
+            },
+            {
+              "href": "/products?tab=spu-std",
+              "label": "标准品库",
+              "permission": "product:std:read",
+              "en": "Standard Products"
+            },
+            {
+              "href": "/products?tab=banned-word",
+              "label": "建品规则",
+              "permission": "product:category:read",
+              "en": "Product Rules"
+            },
+            {
+              "href": "/products?tab=category-pay-mode",
+              "label": "限付类目",
+              "permission": "product:category:read",
+              "en": "Pay-restricted categories"
+            }
+          ]
+        },
+        {
+          "label": "规格属性",
+          "en": "Attributes",
+          "entries": [
+            {
+              "href": "/products?tab=templates",
+              "label": "规格模板",
+              "permission": "product:category:read",
+              "en": "Specification Templates"
+            },
+            {
+              "href": "/products?tab=spec-common",
+              "label": "通用规格",
+              "permission": "product:spec:read",
+              "en": "Common Specs"
+            },
+            {
+              "href": "/products?tab=spec-special",
+              "label": "专用规格",
+              "permission": "product:spec:read",
+              "en": "Custom Specs"
+            },
+            {
+              "href": "/products?tab=category-spec",
+              "label": "类目规格",
+              "permission": "product:spec:read",
+              "en": "Category Specs"
+            }
+          ]
+        },
+        {
+          "label": "业态工作",
+          "en": "Industry Workspaces",
+          "entries": [
+            {
+              "label": "零售运营",
+              "status": "待补",
+              "en": "Retail"
+            },
+            {
+              "label": "餐饮运营",
+              "status": "待补",
+              "en": "Dining"
+            },
+            {
+              "label": "服务运营",
+              "status": "待补",
+              "en": "Services"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "订单履约",
+      "en": "Orders",
+      "groups": [
+        {
+          "label": "经营订单",
+          "en": "Orders",
+          "entries": [
+            {
+              "href": "/orders",
+              "label": "订单检索",
+              "permission": "order:order:read",
+              "en": "Order Search"
+            },
+            {
+              "href": "/orders?tab=exception",
+              "label": "异常订单",
+              "permission": "order:order:modify",
+              "en": "Exceptions"
+            },
+            {
+              "href": "/orders?tab=proxy",
+              "label": "代客下单",
+              "permission": "order:order:proxy",
+              "en": "Assisted Orders"
+            }
+          ]
+        },
+        {
+          "label": "交易核对",
+          "en": "Reconciliation",
+          "entries": [
+            {
+              "sourceLabel": "收款核对",
+              "permission": "order:pay:read",
+              "href": "/orders?tab=pay",
+              "label": "订单对账",
+              "en": "Reconciliation"
+            },
+            {
+              "href": "/orders?tab=repair",
+              "label": "掉单补偿",
+              "permission": "order:pay:repair",
+              "en": "Payment Recovery"
+            }
+          ]
+        },
+        {
+          "label": "订单规则",
+          "en": "Order Rules",
+          "entries": [
+            {
+              "href": "/orders?tab=close",
+              "label": "关单规则",
+              "permission": "order:pay:repair",
+              "en": "Closing Rules"
+            }
+          ]
+        },
+        {
+          "label": "到货分拣",
+          "en": "Sorting",
+          "entries": [
+            {
+              "href": "/fulfillment",
+              "label": "批次配车",
+              "permission": "fulfillment:batch:read",
+              "en": "Dispatch"
+            },
+            {
+              "href": "/fulfillment?tab=sorting",
+              "label": "自提分拣",
+              "permission": "fulfillment:batch:read",
+              "en": "Pickup Sorting"
+            }
+          ]
+        },
+        {
+          "label": "履约核销",
+          "en": "Redemption",
+          "entries": [
+            {
+              "href": "/fulfillment?tab=redeem",
+              "label": "核销监控",
+              "permission": "fulfillment:redeem:read",
+              "en": "Redemptions"
+            },
+            {
+              "href": "/fulfillment?tab=overdue",
+              "label": "逾期规则",
+              "permission": "fulfillment:rule:update",
+              "en": "Overdue Rules"
+            }
+          ]
+        },
+        {
+          "label": "物流配送",
+          "en": "Delivery",
+          "entries": [
+            {
+              "href": "/fulfillment?tab=express",
+              "label": "物流轨迹",
+              "permission": "fulfillment:logistics:read",
+              "en": "Tracking"
+            },
+            {
+              "href": "/fulfillment?tab=freight",
+              "label": "运费模板",
+              "permission": "fulfillment:rule:update",
+              "en": "Shipping Rules"
+            },
+            {
+              "href": "/fulfillment?tab=carrier",
+              "label": "运力配置",
+              "permission": "fulfillment:logistics:read",
+              "en": "Carriers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "售后治理",
+      "en": "After-sales",
+      "groups": [
+        {
+          "label": "售后处置",
+          "en": "Cases",
+          "entries": [
+            {
+              "href": "/after-sales",
+              "label": "售后工单",
+              "permission": "aftersale:ticket:read",
+              "en": "Tickets"
+            },
+            {
+              "href": "/after-sales?tab=intervene",
+              "label": "平台裁决",
+              "permission": "aftersale:ticket:handle",
+              "en": "Adjudication"
+            }
+          ]
+        },
+        {
+          "label": "售后配置",
+          "en": "Policies",
+          "entries": [
+            {
+              "href": "/after-sales?tab=fastrefund",
+              "label": "售后规则",
+              "permission": "aftersale:refund:approve",
+              "en": "After-sales Policies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "经营服务",
+      "en": "Business Services",
+      "groups": [
+        {
+          "label": "主体套餐",
+          "en": "Entity Plans",
+          "entries": [
+            {
+              "sourceLabel": "套餐授予",
+              "permission": "merchant:merchant:read",
+              "href": "/merchants?tab=plans",
+              "label": "套餐权益",
+              "en": "Plan Entitlements"
+            },
+            {
+              "sourceLabel": "档位定义",
+              "permission": "merchant:merchant:read",
+              "href": "/merchants?tab=plan-defs",
+              "label": "套餐档位",
+              "en": "Plan Tiers"
+            }
+          ]
+        },
+        {
+          "label": "门店套餐",
+          "en": "Store Plans",
+          "entries": [
+            {
+              "sourceLabel": "套餐管理",
+              "permission": "commerce:catalog:read",
+              "href": "/mall",
+              "label": "套餐目录",
+              "en": "Plans"
+            }
+          ]
+        },
+        {
+          "label": "服务目录",
+          "en": "Service Catalog",
+          "entries": [
+            {
+              "href": "/mall?tab=products",
+              "label": "服务商品",
+              "permission": "commerce:catalog:read",
+              "en": "Products"
+            },
+            {
+              "href": "/mall?tab=categories",
+              "label": "服务分类",
+              "permission": "commerce:catalog:read",
+              "en": "Service categories"
+            }
+          ]
+        },
+        {
+          "label": "购买履约",
+          "en": "Purchases",
+          "entries": [
+            {
+              "href": "/mall?tab=orders",
+              "label": "购买订单",
+              "permission": "commerce:mall:order:read",
+              "en": "Orders"
+            },
+            {
+              "href": "/mall?tab=assisted",
+              "label": "运营代购",
+              "permission": "commerce:mall:assisted:purchase",
+              "en": "Assisted Sales"
+            },
+            {
+              "sourceLabel": "线下核款",
+              "permission": "commerce:mall:offline:review",
+              "href": "/mall?tab=claims",
+              "label": "套餐核款",
+              "en": "Verification"
+            },
+            {
+              "label": "异常退款",
+              "status": "待聚合",
+              "en": "Refunds"
+            },
+            {
+              "href": "/mall?tab=sources",
+              "label": "订阅权益",
+              "permission": "commerce:subscription:read",
+              "en": "Entitlements"
+            }
+          ]
+        },
+        {
+          "label": "平台收款",
+          "en": "Collection",
+          "entries": [
+            {
+              "href": "/mall?tab=collection",
+              "label": "收款配置",
+              "permission": "commerce:collection:profile:read",
+              "en": "Collection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "进销存",
+      "en": "Inventory",
+      "groups": [
+        {
+          "label": "库存治理",
+          "en": "Stock",
+          "entries": [
+            {
+              "href": "/inventory",
+              "label": "库存概览",
+              "permission": "inventory:stock:read",
+              "en": "Stock Overview"
+            },
+            {
+              "href": "/inventory?tab=ledger",
+              "label": "库存流水",
+              "permission": "inventory:stock:read",
+              "en": "Stock Ledger"
+            },
+            {
+              "href": "/inventory?tab=recon",
+              "label": "库存对差",
+              "permission": "inventory:stock:read",
+              "en": "Stock Reconciliation"
+            }
+          ]
+        },
+        {
+          "label": "仓储作业",
+          "en": "Operations",
+          "entries": [
+            {
+              "label": "仓库管理",
+              "status": "待接",
+              "en": "Warehouses"
+            },
+            {
+              "label": "供应商",
+              "status": "待接",
+              "en": "Suppliers"
+            },
+            {
+              "label": "采购管理",
+              "status": "待接",
+              "en": "Purchasing"
+            },
+            {
+              "label": "出入库",
+              "status": "待接",
+              "en": "Stock Movements"
+            },
+            {
+              "label": "库存调拨",
+              "status": "待接",
+              "en": "Transfers"
+            },
+            {
+              "label": "库存盘点",
+              "status": "待接",
+              "en": "Stock Counts"
+            }
+          ]
+        },
+        {
+          "label": "对接监控",
+          "en": "Integration",
+          "entries": [
+            {
+              "href": "/inventory?tab=link-health",
+              "label": "链路健康",
+              "permission": "inventory:stock:read",
+              "en": "Integration Health"
+            },
+            {
+              "href": "/inventory?tab=credentials",
+              "label": "开放对接",
+              "permission": "inventory:credential:read",
+              "en": "API Access"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "会员营销",
+      "en": "Marketing",
+      "groups": [
+        {
+          "label": "会员运营",
+          "en": "Members",
+          "entries": [
+            {
+              "href": "/members",
+              "label": "会员名单",
+              "permission": "member:member:read",
+              "en": "Members"
+            },
+            {
+              "sourceLabel": "人档",
+              "permission": "member:person:read",
+              "href": "/members?tab=persons",
+              "label": "个人档案",
+              "en": "Person Profiles"
+            },
+            {
+              "href": "/members?tab=reach",
+              "label": "触达概览",
+              "permission": "member:member:read",
+              "en": "Delivery Health"
+            },
+            {
+              "href": "/marketing?tab=member",
+              "label": "会员权益",
+              "permission": "marketing:member:update",
+              "en": "Benefits"
+            }
+          ]
+        },
+        {
+          "label": "积分运营",
+          "en": "Points",
+          "entries": [
+            {
+              "href": "/points/types",
+              "label": "积分设置",
+              "permission": "finance:settle:read",
+              "en": "Point Settings"
+            },
+            {
+              "href": "/points/earning-rules",
+              "label": "赠送规则",
+              "permission": "finance:settle:read",
+              "en": "Earning Rules"
+            },
+            {
+              "href": "/points/budget",
+              "label": "平台预算",
+              "permission": "finance:settle:read",
+              "en": "Platform Budgets"
+            },
+            {
+              "href": "/points/accounts",
+              "label": "积分账户",
+              "permission": "finance:settle:read",
+              "en": "Point Accounts"
+            },
+            {
+              "href": "/points/transactions",
+              "label": "发放核销",
+              "permission": "finance:settle:read",
+              "en": "Redemptions"
+            }
+          ]
+        },
+        {
+          "label": "优惠券",
+          "en": "Coupons",
+          "entries": [
+            {
+              "href": "/marketing",
+              "label": "券模板",
+              "permission": "marketing:coupon:read",
+              "en": "Coupon Templates"
+            },
+            {
+              "href": "/marketing?tab=issues",
+              "label": "发放记录",
+              "permission": "marketing:coupon:read",
+              "en": "Issue Records"
+            },
+            {
+              "href": "/marketing?tab=promoCoupons",
+              "label": "券敞口",
+              "permission": "marketing:coupon:read",
+              "en": "Coupon Exposure"
+            }
+          ]
+        },
+        {
+          "label": "营销活动",
+          "en": "Campaigns",
+          "entries": [
+            {
+              "href": "/marketing?tab=campaigns",
+              "label": "活动",
+              "permission": "marketing:campaign:update",
+              "en": "Campaigns"
+            },
+            {
+              "href": "/marketing?tab=promoActivities",
+              "label": "活动敞口",
+              "permission": "marketing:campaign:read",
+              "en": "Campaign Exposure"
+            },
+            {
+              "href": "/marketing?tab=platform",
+              "label": "平台活动",
+              "permission": "marketing:campaign:read",
+              "en": "Platform Campaigns"
+            },
+            {
+              "href": "/marketing?tab=platformAudit",
+              "label": "报名审核",
+              "permission": "marketing:campaign:read",
+              "en": "Enrollment Review"
+            },
+            {
+              "href": "/marketing?tab=slots",
+              "label": "首页推荐",
+              "permission": "marketing:slot:update",
+              "en": "Featured"
+            },
+            {
+              "href": "/messages?tab=broadcast",
+              "label": "营销广播",
+              "permission": "message:template:read",
+              "en": "Marketing Broadcasts"
+            }
+          ]
+        },
+        {
+          "label": "拼团运营",
+          "en": "Group Buying",
+          "entries": [
+            {
+              "href": "/groups",
+              "label": "经营拼团",
+              "permission": "group:campaign:audit",
+              "en": "Business Groups",
+              "sourceLabel": "商家团"
+            },
+            {
+              "href": "/groups?tab=demands",
+              "label": "需求指派",
+              "permission": "group:demand:read",
+              "en": "Assignments"
+            },
+            {
+              "href": "/groups?tab=quotes",
+              "label": "改价记录",
+              "permission": "group:demand:read",
+              "en": "Price Changes"
+            }
+          ]
+        },
+        {
+          "label": "增长运营",
+          "en": "Growth",
+          "entries": [
+            {
+              "href": "/growth",
+              "label": "归因规则",
+              "permission": "growth:attribution:read",
+              "en": "Attribution Rules"
+            },
+            {
+              "href": "/growth?tab=traces",
+              "label": "归因审计",
+              "permission": "growth:attribution:read",
+              "en": "Attribution Audit"
+            },
+            {
+              "href": "/growth?tab=fission",
+              "label": "邀请有礼",
+              "permission": "growth:fission:update",
+              "en": "Referrals"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "内容客服",
+      "en": "Support",
+      "groups": [
+        {
+          "label": "评价治理",
+          "en": "Reviews",
+          "entries": [
+            {
+              "href": "/reviews",
+              "label": "评价审核",
+              "permission": "review:review:audit",
+              "en": "Review Moderation"
+            },
+            {
+              "href": "/reviews?tab=appeals",
+              "label": "评价申诉",
+              "permission": "review:review:audit",
+              "en": "Review Appeals"
+            },
+            {
+              "href": "/reviews?tab=score",
+              "label": "评分参数",
+              "permission": "review:score:update",
+              "en": "Rating Rules"
+            }
+          ]
+        },
+        {
+          "label": "内容管理",
+          "en": "Content",
+          "entries": [
+            {
+              "href": "/contents",
+              "label": "素材管理",
+              "permission": "content:material:read",
+              "en": "Materials"
+            },
+            {
+              "href": "/contents?tab=audit",
+              "label": "内容审核",
+              "permission": "content:material:audit",
+              "en": "Moderation"
+            },
+            {
+              "href": "/contents?tab=rank",
+              "label": "榜单问答",
+              "permission": "content:material:update",
+              "en": "Rankings"
+            }
+          ]
+        },
+        {
+          "label": "消息通道",
+          "en": "Messaging",
+          "entries": [
+            {
+              "href": "/messages",
+              "label": "通道总览",
+              "permission": "message:template:read",
+              "en": "Messaging Overview"
+            },
+            {
+              "href": "/messages?tab=sms",
+              "label": "短信",
+              "permission": "message:template:read",
+              "en": "SMS"
+            },
+            {
+              "href": "/messages?tab=mail",
+              "label": "邮件",
+              "permission": "message:template:read",
+              "en": "Email"
+            },
+            {
+              "href": "/messages?tab=wxsub",
+              "label": "微信订阅",
+              "permission": "message:template:read",
+              "en": "WeChat"
+            },
+            {
+              "href": "/messages?tab=apppush",
+              "label": "应用推送",
+              "permission": "message:template:read",
+              "en": "Push"
+            },
+            {
+              "href": "/messages?tab=inapp",
+              "label": "站内模板",
+              "permission": "message:template:read",
+              "en": "Inbox Templates"
+            },
+            {
+              "href": "/messages?tab=routing",
+              "label": "场景通道",
+              "permission": "message:template:read",
+              "en": "Channels"
+            },
+            {
+              "href": "/messages?tab=notifyLog",
+              "label": "发送记录",
+              "permission": "message:template:read",
+              "en": "Send Records"
+            }
+          ]
+        },
+        {
+          "label": "客户服务",
+          "en": "Support",
+          "entries": [
+            {
+              "href": "/messages?tab=tickets",
+              "label": "客服工单",
+              "permission": "message:ticket:read",
+              "en": "Tickets"
+            },
+            {
+              "href": "/messages?tab=faq",
+              "label": "帮助中心",
+              "permission": "message:faq:update",
+              "en": "Help"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "经营财务",
+      "en": "Finance",
+      "groups": [
+        {
+          "label": "经营结算",
+          "en": "Statements",
+          "entries": [
+            {
+              "href": "/finance",
+              "label": "结算分账",
+              "permission": "finance:settle:read",
+              "en": "Settlements"
+            },
+            {
+              "href": "/finance?tab=splits",
+              "label": "分账明细",
+              "permission": "finance:settle:read",
+              "en": "Split Details"
+            },
+            {
+              "href": "/finance?tab=settle-stats",
+              "label": "经营统计",
+              "permission": "finance:settle:read",
+              "en": "Business Analytics"
+            },
+            {
+              "href": "/finance?tab=refund-back",
+              "label": "退款分账",
+              "permission": "finance:settle:execute",
+              "en": "Split Reversal"
+            },
+            {
+              "href": "/finance?tab=settle-batches",
+              "label": "批次放款",
+              "permission": "finance:settle:read",
+              "en": "Payout Batches"
+            },
+            {
+              "href": "/finance?tab=debts",
+              "label": "经营欠款",
+              "permission": "finance:settle:read",
+              "en": "Business Debts",
+              "sourceLabel": "商家欠款"
+            }
+          ]
+        },
+        {
+          "label": "应付发票",
+          "en": "Billing",
+          "entries": [
+            {
+              "href": "/finance?tab=payables",
+              "label": "自营应付",
+              "permission": "finance:settle:read",
+              "en": "Payables"
+            },
+            {
+              "href": "/finance?tab=payout-accounts",
+              "label": "供应账户",
+              "permission": "finance:payout:execute",
+              "en": "Supplier Accounts"
+            },
+            {
+              "href": "/finance?tab=purchase-invoices",
+              "label": "进项票",
+              "permission": "finance:invoice:read",
+              "en": "Purchase Invoices"
+            },
+            {
+              "href": "/finance?tab=buyer-invoices",
+              "label": "开票申请",
+              "permission": "finance:invoice:read",
+              "en": "Invoice Requests"
+            },
+            {
+              "href": "/finance?tab=invoice",
+              "label": "发票个税",
+              "permission": "finance:invoice:read",
+              "en": "Tax"
+            }
+          ]
+        },
+        {
+          "label": "费率对账",
+          "en": "Pricing & Reconciliation",
+          "entries": [
+            {
+              "href": "/finance?tab=rates",
+              "label": "服务费率",
+              "permission": "finance:rate:update",
+              "en": "Service Fees"
+            },
+            {
+              "sourceLabel": "渠道费率",
+              "permission": "finance:rate:update",
+              "href": "/finance?tab=pay-channels",
+              "label": "渠道费率",
+              "status": "兼容",
+              "en": "Channel Fees"
+            },
+            {
+              "sourceLabel": "渠道报文",
+              "permission": "finance:recon:read",
+              "href": "/finance?tab=channel-messages",
+              "label": "渠道报文",
+              "status": "兼容",
+              "en": "Channel Messages"
+            }
+          ]
+        },
+        {
+          "label": "支付协作",
+          "en": "Payment Services",
+          "entries": [
+            {
+              "sourceLabel": "进件看板",
+              "permission": "merchant:admission:read",
+              "href": "/merchants?tab=onboarding",
+              "label": "收款进度",
+              "status": "摘要",
+              "en": "Collection Progress"
+            }
+          ]
+        },
+        {
+          "label": "保证金",
+          "en": "Deposits",
+          "entries": [
+            {
+              "href": "/merchants?tab=admission",
+              "label": "准入押金",
+              "permission": "merchant:admission:read",
+              "en": "Admission"
+            }
+          ]
+        },
+        {
+          "label": "兼容支付",
+          "en": "Legacy Payments",
+          "entries": [
+            {
+              "href": "/pay-ops/orders",
+              "label": "支付单",
+              "permission": "pay:order:view",
+              "en": "Payments"
+            },
+            {
+              "href": "/pay-ops/exceptions",
+              "label": "支付异常",
+              "permission": "pay:order:view",
+              "en": "Payment Exceptions"
+            },
+            {
+              "href": "/pay-ops/refunds",
+              "label": "退款复核",
+              "permission": "pay:refund:view",
+              "en": "Refund Review"
+            },
+            {
+              "href": "/pay-ops/notifies",
+              "label": "业务通知",
+              "permission": "pay:log:view",
+              "en": "Business Notifications"
+            },
+            {
+              "href": "/pay-ops/request-logs",
+              "label": "请求记录",
+              "permission": "pay:log:view",
+              "en": "Request Logs"
+            },
+            {
+              "href": "/pay-ops/qr-codes",
+              "label": "收款码",
+              "permission": "pay:qr:manage",
+              "en": "QR Codes"
+            },
+            {
+              "href": "/pay-ops/apps",
+              "label": "应用授权",
+              "permission": "pay:app:manage",
+              "en": "App Grants"
+            },
+            {
+              "href": "/pay-ops/platform-keys",
+              "label": "平台密钥",
+              "permission": "sec:key:view",
+              "en": "Platform Keys"
+            },
+            {
+              "sourceLabel": "行业准入",
+              "permission": "system:industry:read",
+              "href": "/system?tab=industry",
+              "label": "行业准入",
+              "status": "兼容",
+              "en": "Industry Access"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "社区网点",
+      "en": "Community",
+      "groups": [
+        {
+          "label": "社区管理",
+          "en": "Communities",
+          "entries": [
+            {
+              "href": "/communities",
+              "label": "社区网格",
+              "permission": "community:community:read",
+              "en": "Communities"
+            },
+            {
+              "href": "/communities?tab=applies",
+              "label": "经营提报",
+              "permission": "community:community:read",
+              "en": "Business Submissions",
+              "sourceLabel": "商家提报"
+            },
+            {
+              "href": "/communities?tab=regions",
+              "label": "区划维护",
+              "permission": "community:region:read",
+              "en": "Region Maintenance"
+            },
+            {
+              "href": "/communities?tab=health",
+              "label": "坐标健康",
+              "permission": "community:community:read",
+              "en": "Coordinate Health"
+            },
+            {
+              "href": "/communities?tab=distribution",
+              "label": "位置分布",
+              "permission": "community:community:read",
+              "en": "Location Map"
+            },
+            {
+              "href": "/communities?tab=places",
+              "label": "地址库",
+              "permission": "community:community:read",
+              "en": "Places"
+            }
+          ]
+        },
+        {
+          "label": "自提网点",
+          "en": "Pickup Locations",
+          "entries": [
+            {
+              "href": "/communities?tab=pickups",
+              "label": "自提点",
+              "permission": "community:pickup:read",
+              "en": "Pickup Points"
+            },
+            {
+              "href": "/communities?tab=neighbor",
+              "label": "临时点",
+              "permission": "community:pickup:read",
+              "en": "Temporary Sites"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "风控",
+      "en": "Risk",
+      "groups": [
+        {
+          "label": "风险识别",
+          "en": "Detection",
+          "entries": [
+            {
+              "href": "/risk",
+              "label": "风险事件",
+              "permission": "risk:rule:read",
+              "en": "Risk Events"
+            }
+          ]
+        },
+        {
+          "label": "风险处置",
+          "en": "Actions",
+          "entries": [
+            {
+              "href": "/risk?tab=blacklist",
+              "label": "名单申诉",
+              "permission": "risk:blacklist:update",
+              "en": "Blocklist"
+            },
+            {
+              "href": "/risk?tab=rules",
+              "label": "拦截规则",
+              "permission": "risk:rule:update",
+              "en": "Risk Rules"
+            }
+          ]
+        },
+        {
+          "label": "经营治理",
+          "en": "Business Compliance",
+          "entries": [
+            {
+              "href": "/merchants?tab=credit",
+              "label": "信用档案",
+              "permission": "merchant:merchant:read",
+              "en": "Credit Profiles"
+            },
+            {
+              "href": "/merchants?tab=ban",
+              "label": "违规处置",
+              "permission": "merchant:merchant:ban",
+              "en": "Enforcement"
+            },
+            {
+              "href": "/merchants?tab=mode-risk",
+              "label": "自营风险",
+              "permission": "merchant:mode:read",
+              "en": "Operating Risks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "系统设置",
+      "en": "Settings",
+      "groups": [
+        {
+          "label": "账号权限",
+          "en": "Access Control",
+          "entries": [
+            {
+              "href": "/iam",
+              "label": "运营账号",
+              "permission": "iam:staff:read",
+              "en": "Staff"
+            },
+            {
+              "href": "/iam?tab=roles",
+              "label": "角色权限",
+              "permission": "iam:role:grant",
+              "en": "Roles"
+            },
+            {
+              "href": "/iam?tab=menu",
+              "label": "菜单顺序",
+              "permission": "iam:role:grant",
+              "en": "Menu Ordering"
+            }
+          ]
+        },
+        {
+          "label": "操作审计",
+          "en": "Audit",
+          "entries": [
+            {
+              "href": "/iam?tab=audit",
+              "label": "审计日志",
+              "permission": "iam:audit:read",
+              "en": "Audit Logs"
+            }
+          ]
+        },
+        {
+          "label": "外观语言",
+          "en": "Appearance",
+          "entries": [
+            {
+              "href": "/system",
+              "label": "外观文案",
+              "permission": "system:theme:update",
+              "en": "Appearance"
+            },
+            {
+              "href": "/system?tab=market",
+              "label": "市场货币",
+              "permission": "system:param:read",
+              "en": "Markets"
+            }
+          ]
+        },
+        {
+          "label": "运行配置",
+          "en": "Configuration",
+          "entries": [
+            {
+              "href": "/system?tab=flags",
+              "label": "开关灰度",
+              "permission": "system:param:read",
+              "en": "Rollouts"
+            },
+            {
+              "href": "/system?tab=storage",
+              "label": "存储管理",
+              "permission": "system:media:read",
+              "en": "Storage"
+            },
+            {
+              "href": "/system?tab=testPhone",
+              "label": "测试账号",
+              "permission": "system:testphone:read",
+              "en": "Test Accounts"
+            },
+            {
+              "href": "/system?tab=appVersion",
+              "label": "应用版本",
+              "permission": "system:param:read",
+              "en": "App Versions"
+            }
+          ]
+        },
+        {
+          "label": "运行任务",
+          "en": "Operations",
+          "entries": [
+            {
+              "href": "/jobs",
+              "label": "任务日志",
+              "permission": "system:job:read",
+              "en": "Job Logs"
+            },
+            {
+              "href": "/printing",
+              "label": "打印运营",
+              "permission": "ops:print:read",
+              "en": "Print Operations"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nearPay": [
+    {
+      "code": "MP01",
+      "section": "系统设置",
+      "group": "测试工具",
+      "sourceGroup": "测试工具",
+      "label": "测试渠道",
+      "en": "Test Channel",
+      "href": "/ops/mockpay",
+      "live": false
+    },
+    {
+      "code": "OP01",
+      "section": "系统设置",
+      "group": "地区管理",
+      "sourceGroup": "地区管理",
+      "label": "经营设置",
+      "en": "Markets",
+      "href": "/ops/regions",
+      "live": false
+    },
+    {
+      "code": "OP03",
+      "section": "渠道管理",
+      "group": "收款渠道",
+      "sourceGroup": "渠道管理",
+      "label": "支付渠道",
+      "en": "Channels",
+      "href": "/ops/channels",
+      "live": true
+    },
+    {
+      "code": "OP04",
+      "section": "渠道管理",
+      "group": "收款渠道",
+      "sourceGroup": "渠道管理",
+      "label": "支付产品",
+      "en": "Products",
+      "href": "/ops/products",
+      "live": false
+    },
+    {
+      "code": "OP05",
+      "section": "渠道管理",
+      "group": "费率管理",
+      "sourceGroup": "费率管理",
+      "label": "渠道成本",
+      "en": "Channel Costs",
+      "href": "/ops/channel-costs",
+      "live": false
+    },
+    {
+      "code": "OP06",
+      "section": "渠道管理",
+      "group": "费率管理",
+      "sourceGroup": "费率管理",
+      "label": "商户费率",
+      "en": "Merchant Fees",
+      "href": "/ops/fee-plans",
+      "live": false
+    },
+    {
+      "code": "OP07",
+      "section": "审核风控",
+      "group": "风控配置",
+      "sourceGroup": "风控配置",
+      "label": "风控等级",
+      "en": "Risk Tiers",
+      "href": "/ops/risk-tiers",
+      "live": false
+    },
+    {
+      "code": "OP08",
+      "section": "渠道管理",
+      "group": "收款渠道",
+      "sourceGroup": "渠道管理",
+      "label": "支付终端",
+      "en": "Terminals",
+      "href": "/ops/terminals",
+      "live": false
+    },
+    {
+      "code": "OP09",
+      "section": "渠道管理",
+      "group": "收款渠道",
+      "sourceGroup": "渠道管理",
+      "label": "收款接入",
+      "en": "Integration",
+      "href": "/ops/access-configs",
+      "live": false
+    },
+    {
+      "code": "ME01",
+      "section": "平台商户",
+      "group": "商户资料",
+      "sourceGroup": "商户运营",
+      "label": "商户档案",
+      "en": "Merchants",
+      "href": "/merchants",
+      "live": true,
+      "sourceLabel": "商户管理"
+    },
+    {
+      "code": "ME02",
+      "section": "平台商户",
+      "group": "门店收款",
+      "sourceGroup": "商户运营",
+      "label": "收款门店",
+      "en": "Collection Stores",
+      "href": "/merchants/stores",
+      "live": true,
+      "sourceLabel": "支付门店"
+    },
+    {
+      "code": "ME03",
+      "section": "进件审核",
+      "group": "业务审核",
+      "sourceGroup": "业务审核",
+      "label": "开通审核",
+      "en": "Onboarding",
+      "href": "/merchants/onboarding-review",
+      "live": true
+    },
+    {
+      "code": "ME04",
+      "section": "进件审核",
+      "group": "业务审核",
+      "sourceGroup": "业务审核",
+      "label": "商户变更",
+      "en": "Changes",
+      "href": "/merchants/change-review",
+      "live": false
+    },
+    {
+      "code": "TR01",
+      "section": "支付交易",
+      "group": "交易管理",
+      "sourceGroup": "交易管理",
+      "label": "支付订单",
+      "en": "Payments",
+      "href": "/trade/payments",
+      "live": true
+    },
+    {
+      "code": "TR08",
+      "section": "支付交易",
+      "group": "交易管理",
+      "sourceGroup": "交易管理",
+      "label": "异常交易",
+      "en": "Exceptions",
+      "href": "/trade/exceptions",
+      "live": true
+    },
+    {
+      "code": "TR02",
+      "section": "支付交易",
+      "group": "交易管理",
+      "sourceGroup": "交易管理",
+      "label": "交易流水",
+      "en": "Attempts",
+      "href": "/trade/attempts",
+      "live": false
+    },
+    {
+      "code": "TR03",
+      "section": "支付交易",
+      "group": "交易管理",
+      "sourceGroup": "交易管理",
+      "label": "退款订单",
+      "en": "Refunds",
+      "href": "/trade/refunds",
+      "live": false
+    },
+    {
+      "code": "TR04",
+      "section": "支付交易",
+      "group": "会员资产",
+      "sourceGroup": "会员资产",
+      "label": "积分账户",
+      "en": "Point Accounts",
+      "href": "/trade/points/accounts",
+      "live": false
+    },
+    {
+      "code": "TR05",
+      "section": "支付交易",
+      "group": "会员资产",
+      "sourceGroup": "会员资产",
+      "label": "积分流水",
+      "en": "Point Ledger",
+      "href": "/trade/points/entries",
+      "live": false
+    },
+    {
+      "code": "TR06",
+      "section": "支付交易",
+      "group": "会员资产",
+      "sourceGroup": "会员资产",
+      "label": "储值账户",
+      "en": "Wallets",
+      "href": "/trade/stored-value/accounts",
+      "live": false
+    },
+    {
+      "code": "TR07",
+      "section": "支付交易",
+      "group": "会员资产",
+      "sourceGroup": "会员资产",
+      "label": "储值交易",
+      "en": "Wallet Transactions",
+      "href": "/trade/stored-value/transactions",
+      "live": false
+    },
+    {
+      "code": "FI01",
+      "section": "资金结算",
+      "group": "资金查询",
+      "sourceGroup": "资金查询",
+      "label": "资金概览",
+      "en": "Overview",
+      "href": "/finance/summary",
+      "live": false
+    },
+    {
+      "code": "FI02",
+      "section": "资金结算",
+      "group": "资金查询",
+      "sourceGroup": "资金查询",
+      "label": "资金账户",
+      "en": "Accounts",
+      "href": "/finance/accounts",
+      "live": false
+    },
+    {
+      "code": "FI03",
+      "section": "资金结算",
+      "group": "资金查询",
+      "sourceGroup": "资金查询",
+      "label": "资金流水",
+      "en": "Ledger",
+      "href": "/finance/ledger-entries",
+      "live": false
+    },
+    {
+      "code": "FI04",
+      "section": "资金结算",
+      "group": "清算结算",
+      "sourceGroup": "清算结算",
+      "label": "清分明细",
+      "en": "Clearing",
+      "href": "/finance/clearing-details",
+      "live": false
+    },
+    {
+      "code": "FI05",
+      "section": "资金结算",
+      "group": "清算结算",
+      "sourceGroup": "清算结算",
+      "label": "结算规则",
+      "en": "Rules",
+      "href": "/finance/settlement-rules",
+      "live": false
+    },
+    {
+      "code": "FI06",
+      "section": "资金结算",
+      "group": "清算结算",
+      "sourceGroup": "清算结算",
+      "label": "结算记录",
+      "en": "Settlements",
+      "href": "/finance/settlements",
+      "live": false
+    },
+    {
+      "code": "FI07",
+      "section": "资金结算",
+      "group": "提现出款",
+      "sourceGroup": "提现出款",
+      "label": "提现申请",
+      "en": "Withdrawals",
+      "href": "/finance/withdrawals",
+      "live": false
+    },
+    {
+      "code": "FI08",
+      "section": "资金结算",
+      "group": "提现出款",
+      "sourceGroup": "提现出款",
+      "label": "出款记录",
+      "en": "Payouts",
+      "href": "/finance/payouts",
+      "live": false
+    },
+    {
+      "code": "FI09",
+      "section": "资金结算",
+      "group": "对账中心",
+      "sourceGroup": "对账中心",
+      "label": "渠道账单",
+      "en": "Statements",
+      "href": "/finance/channel-bills",
+      "live": false
+    },
+    {
+      "code": "FI10",
+      "section": "资金结算",
+      "group": "对账中心",
+      "sourceGroup": "对账中心",
+      "label": "对账任务",
+      "en": "Reconciliation",
+      "href": "/finance/reconciliation-jobs",
+      "live": false
+    },
+    {
+      "code": "FI11",
+      "section": "资金结算",
+      "group": "对账中心",
+      "sourceGroup": "对账中心",
+      "label": "对账差异",
+      "en": "Differences",
+      "href": "/finance/reconciliation-differences",
+      "live": false
+    },
+    {
+      "code": "RC01",
+      "section": "审核风控",
+      "group": "风控配置",
+      "sourceGroup": "风控配置",
+      "label": "风控规则",
+      "en": "Risk Rules",
+      "href": "/risk/rules",
+      "live": false
+    },
+    {
+      "code": "RC02",
+      "section": "审核风控",
+      "group": "风控配置",
+      "sourceGroup": "风控配置",
+      "label": "黑白名单",
+      "en": "Lists",
+      "href": "/risk/lists",
+      "live": false
+    },
+    {
+      "code": "RC03",
+      "section": "审核风控",
+      "group": "风险处置",
+      "sourceGroup": "风险处置",
+      "label": "风险事件",
+      "en": "Risk Events",
+      "href": "/risk/events",
+      "live": false
+    },
+    {
+      "code": "RC04",
+      "section": "审核风控",
+      "group": "风险处置",
+      "sourceGroup": "风险处置",
+      "label": "风险限制",
+      "en": "Restrictions",
+      "href": "/risk/restrictions",
+      "live": false
+    },
+    {
+      "code": "RC05",
+      "section": "审核风控",
+      "group": "合规管理",
+      "sourceGroup": "合规管理",
+      "label": "合规审查",
+      "en": "Reviews",
+      "href": "/compliance/reviews",
+      "live": false
+    },
+    {
+      "code": "RC06",
+      "section": "审核风控",
+      "group": "合规管理",
+      "sourceGroup": "合规管理",
+      "label": "合规事件",
+      "en": "Incidents",
+      "href": "/compliance/incidents",
+      "live": false
+    },
+    {
+      "code": "RC07",
+      "section": "审核风控",
+      "group": "争议管理",
+      "sourceGroup": "争议管理",
+      "label": "争议案件",
+      "en": "Disputes",
+      "href": "/compliance/disputes",
+      "live": false
+    },
+    {
+      "code": "SY01",
+      "section": "审核风控",
+      "group": "审批管理",
+      "sourceGroup": "审批管理",
+      "label": "审核待办",
+      "en": "Approvals",
+      "href": "/system/approvals",
+      "live": true
+    },
+    {
+      "code": "SY02",
+      "section": "系统设置",
+      "group": "审批管理",
+      "sourceGroup": "审批管理",
+      "label": "审批流程",
+      "en": "Workflows",
+      "href": "/system/approval-flows",
+      "live": false
+    },
+    {
+      "code": "SY03",
+      "section": "系统设置",
+      "group": "权限管理",
+      "sourceGroup": "权限管理",
+      "label": "角色权限",
+      "en": "Permissions",
+      "href": "/system/permission-mapping",
+      "live": false
+    },
+    {
+      "code": "SY04",
+      "section": "系统设置",
+      "group": "权限管理",
+      "sourceGroup": "权限管理",
+      "label": "数据范围",
+      "en": "Data Scope",
+      "href": "/system/data-scope",
+      "live": true
+    },
+    {
+      "code": "SY05",
+      "section": "渠道管理",
+      "group": "开放平台",
+      "sourceGroup": "开放平台",
+      "label": "接入应用",
+      "en": "Applications",
+      "href": "/system/apps",
+      "live": false
+    },
+    {
+      "code": "SY06",
+      "section": "渠道管理",
+      "group": "开放平台",
+      "sourceGroup": "开放平台",
+      "label": "请求日志",
+      "en": "Request Logs",
+      "href": "/system/api-logs",
+      "live": false
+    },
+    {
+      "code": "SY07",
+      "section": "系统设置",
+      "group": "运行审计",
+      "sourceGroup": "运行审计",
+      "label": "渠道调用",
+      "en": "Channel Calls",
+      "href": "/system/channel-calls",
+      "live": false
+    },
+    {
+      "code": "SY08",
+      "section": "系统设置",
+      "group": "运行审计",
+      "sourceGroup": "运行审计",
+      "label": "异步任务",
+      "en": "Jobs",
+      "href": "/system/jobs",
+      "live": false
+    },
+    {
+      "code": "SY09",
+      "section": "系统设置",
+      "group": "运行审计",
+      "sourceGroup": "运行审计",
+      "label": "审计日志",
+      "en": "Audit Logs",
+      "href": "/system/audit",
+      "live": false
+    },
+    {
+      "code": "SY10",
+      "section": "系统设置",
+      "group": "运行审计",
+      "sourceGroup": "运行审计",
+      "label": "监控告警",
+      "en": "Alerts",
+      "href": "/system/alerts",
+      "live": false
+    }
+  ],
+  "validation": {
+    "existingAiShopEntriesCovered": 151,
+    "existingAiShopEntriesOmitted": 0,
+    "existingAiShopEntriesDuplicated": 0,
+    "aiShopTopLevelCount": 16,
+    "nearPayCatalogEntries": 49,
+    "nearPaySourceLiveEntries": 8,
+    "targetAiShopLeaves": 174,
+    "existingPermissionsUnchanged": true,
+    "shopMerchantLabelsRemaining": 0
+  },
+  "terminology": {
+    "merchant": "Payment platform merchant only; near-pay is authoritative",
+    "businessEntity": "Operating legal/responsible entity; ai-shop",
+    "store": "Operating location; ai-shop",
+    "brandAndChain": "Operating identity and organization; ai-shop",
+    "legacyCodeNames": "Historical merchantNo/mch/MERCHANT_* names are not renamed by this menu draft"
+  },
+  "implementationAuthorized": false,
+  "supersededAiShopProposal": "ai-shop-full-menu-proposal.json",
+  "supersededBy": "ops-platform-menu-proposal-20261114/platform-ops-menu-proposal.json"
+}

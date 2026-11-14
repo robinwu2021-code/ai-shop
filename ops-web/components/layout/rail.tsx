@@ -11,11 +11,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 import * as Icons from "lucide-react";
 import {
   RAIL_WIDTH, RAIL_EXPANDED_WIDTH, type NavSection,
-  visibleSections, findActiveSection, sectionDefaultHref, normPath,
+  findActiveSection, normPath,
 } from "@/lib/nav";
+import { platformSections, platformDefaultHref } from "@/lib/platform-nav";
+import { CompatibilityCatalog } from "./compatibility-catalog";
 import { useAuth } from "@/lib/auth";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
-import { useServerMenu, useNavTree } from "@/lib/stores/server-menu";
+import { useServerMenu, usePlatformNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -90,8 +92,8 @@ export function Rail() {
   const { t } = useI18n();
 
   const serverHrefs = useServerMenu((s) => s.hrefSet);
-  const nav = useNavTree();
-  const sections = visibleSections(perms, serverHrefs, nav);
+  const nav = usePlatformNavTree();
+  const sections = platformSections(perms, serverHrefs, nav);
   const activeKey = findActiveSection(pathname, perms, serverHrefs, nav, search.get("tab"), search.get("view"))?.key;
   const top = sections.filter((s) => !s.pinBottom);
   const bottom = sections.filter((s) => s.pinBottom);
@@ -102,7 +104,7 @@ export function Rail() {
       section={s}
       active={s.key === activeKey}
       soon={!!s.soon}
-      href={sectionDefaultHref(s, perms)}
+      href={platformDefaultHref(s, perms, serverHrefs)}
       expanded={railExpanded}
     />
   );
@@ -136,6 +138,7 @@ export function Rail() {
         <ScrollHint side="top" show={hint.top} />
         <ScrollHint side="bottom" show={hint.bottom} />
       </div>
+      <CompatibilityCatalog expanded={railExpanded} />
       <button
         type="button"
         onClick={toggleRail}

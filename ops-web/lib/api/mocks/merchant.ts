@@ -138,6 +138,7 @@ export const merchantMock: MerchantApi = {
 
   // Financial acceptance is never synthesized in the demo backend.
   entityPlanOffers: async () => [], entityPlanPurchases: async () => [],
+  entityPlanPurchasePage: async () => { throw new ApiError(10400,"Real backend required"); },
   saveEntityPlanOffer: async () => { throw new ApiError(10400,"Real backend required"); },
   entityPlanPurchase: async () => { throw new ApiError(10404,"Not found"); },
   confirmEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },

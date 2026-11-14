@@ -169,9 +169,15 @@ final class ShopMallAuthority
 
     public AuthorizationDecision authorize(ActorContext expected, StoreRef ref, String capability) {
         if (expected.subjectKind() == SubjectKind.OPERATOR) {
-            boolean permitted = "MAIN".equals(ref.tenantNo()) && allowed(expected, capability);
-            return new AuthorizationDecision(
-                    permitted, "OPS", permitted ? Optional.empty() : Optional.of("FORBIDDEN"));
+            return fresh(Realm.OPERATOR, session -> {
+                var user = session.user();
+                boolean permitted = "MAIN".equals(ref.tenantNo())
+                        && actor(user, session.sessionFingerprint()).equals(expected)
+                        && opsPermission(user, capability)
+                        && operatorTarget(user, ref);
+                return new AuthorizationDecision(
+                        permitted, "OPS", permitted ? Optional.empty() : Optional.of("FORBIDDEN"));
+            });
         }
         return fresh(
                 Realm.MERCHANT,
@@ -180,6 +186,16 @@ final class ShopMallAuthority
                         throw denied(AccessStatus.FORBIDDEN);
                     return buyerDecision(session.user(), ref, capability);
                 });
+    }
+
+    private boolean operatorTarget(LoginUser user, StoreRef ref) {
+        var scope = user.dataScope();
+        if (scope == null) return false;
+        // The old tenant-wide offline queue has no row-level scope predicate.
+        if ("_TENANT".equals(ref.storeNo())) return scope.all();
+        return stores.financialOwner(ref).filter(entity -> scope.all()
+                || scope.rules() != null && scope.rules().stream().anyMatch(rule -> ScopeDim.MERCHANT.equals(rule.dim())
+                        && rule.refs() != null && rule.refs().contains(entity))).isPresent();
     }
 
     public String payerReference(String channel, String method) {

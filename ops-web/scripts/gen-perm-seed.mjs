@@ -29,6 +29,8 @@ const FROZEN = (() => {
   } catch { return {}; }
 })();
 const nav = readFileSync(AT('../lib/nav.ts'), 'utf8');
+const platformAliases = JSON.parse(readFileSync(AT('../lib/platform-menu-aliases.json'), 'utf8'));
+const aliasByHref = new Map(platformAliases.map(a => [a.href, a]));
 const pmSrc = readFileSync(AT('../lib/perm-map.ts'), 'utf8');
 const permsJava = readFileSync(
   AT('../../backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java'), 'utf8');
@@ -118,6 +120,13 @@ for (const m of nav.matchAll(/key:\s*"(\w+)",\s*label:\s*"([^"]+)"([\s\S]*?)(?=k
               modules: modules ? [...modules.matchAll(/"([^"]+)"/g)].map(x => x[1]) : [m[1]] });
 }
 
+// Aliases extend the grant catalog without changing established NAV point identities.
+for (const alias of platformAliases) {
+  const section = secs.find(s => s.key === alias.functionKey);
+  if (!section) throw new Error(`Unknown alias function ${alias.functionKey}`);
+  section.leaves.push(alias);
+}
+
 // ── 角色 → 后端码（从 Java 源码抽，与 BizEndpointPermTest 同一手法）
 const consts = {};
 for (const m of permsJava.matchAll(/String\s+([A-Z_]+)\s*=\s*"([^"]+)"/g)) consts[m[1]] = m[2];
@@ -149,8 +158,8 @@ secs.forEach((s, si) => {
   s.leaves.forEach((l, li) => {
     const back = map[l.perm];
     const status = back === undefined ? 'UNMAPPED' : back === null ? 'NOT_IMPLEMENTED' : 'IMPLEMENTED';
-    const pc = pointCodeOf(fc, l.href);
-    points.push({ pc, perm: back || null, status });
+    const pc = aliasByHref.get(l.href)?.pointCode ?? pointCodeOf(fc, l.href);
+    points.push({ pc, perm: back || null, status, sourcePoint: aliasByHref.get(l.href)?.sourcePoint, alias: aliasByHref.has(l.href) });
     out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(l.label)}, ${q(l.group)}, ${q(l.href)}, ${q(l.perm)}, ${q(back)}, ${q(status)}, ${l.ready ? 1 : 0}, ${q(l.matrix)}, 'MENU', ${q(l.gated)}, ${(li + 1) * 10}, NOW(), NOW());`);
   });
 });
@@ -165,7 +174,9 @@ secs.forEach((s, si) => {
  * COMMUNITY_OPS 有 industry:manage，而没有任何功能点带这个码。
  * 一致性守卫第一次跑就是这么红的。
  */
+// Existing ACTION identities survive when a new alias begins using their permission.
 const menuPerms = new Set(secs.flatMap(s => s.leaves.map(l => l.perm)));
+menuPerms.delete('dashboard:overview:read');
 /*
  * 权限码模块前缀 → function_code。
  *
@@ -188,6 +199,11 @@ secs.forEach(s => {
 secs.forEach(s => {
   if (s.modules.includes(s.key)) prefixToFn[s.key] = `OPS_${s.key.toUpperCase()}`;
 });
+// system/ops 没有同名 section；设置移到首位后也不能被后面的跨域模块抢走 ACTION。
+// 它们的既有权威归属是 iam，与侧栏显示顺序无关。
+for (const prefix of ['system', 'ops']) prefixToFn[prefix] = prefixToFn.iam;
+for (const alias of platformAliases) prefixToFn[alias.perm.split(':')[0]] ??= `OPS_${alias.functionKey.toUpperCase()}`;
+
 let actionSeq = 0;
 for (const ui of Object.keys(map)) {
   if (menuPerms.has(ui)) continue;
@@ -255,7 +271,9 @@ Object.entries(roles).forEach(([code, granted], i) => {
      * 而超管本来就该看到全部 —— 其余角色等那天按真实权限码重算。
      */
     const free = p.perm === null && p.status === 'IMPLEMENTED';
-    const ok = granted.includes('*') || (p.perm && granted.includes(p.perm)) || free;
+    const source = p.sourcePoint ? points.find(source => source.pc === p.sourcePoint) : undefined;
+    const existing = !p.alias || !!source;
+    const ok = granted.includes('*') || (existing && p.perm && granted.includes(p.perm)) || (existing && free);
     if (ok) out.push(`INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at) VALUES (${q(code)}, ${q(p.pc)}, 'OPS', NOW(), NOW());`);
   }
 });
@@ -298,6 +316,8 @@ function renderMarkdown(sql) {
   L.push('');
   L.push(`**${fns.length} 个功能 · ${P.length} 个功能点**（菜单项 ${menu.length} · 页面内操作 ${P.length - menu.length}）`
        + ` · 其中后端未实现 ${notImpl.length} · 二级分组 ${new Set(menu.map((x) => x.group).filter(Boolean)).size} 个`);
+  L.push('');
+  L.push('主导航固定为 **平台设置 → 平台商城 → 客户管理 → 商户管理（支付商户） → 订单中心**。以下是完整授权目录，保留原13功能及155菜单；另有10个明确的新路由别名。原业务入口由布局常驻的「完整功能目录」和全局搜索访问，不作为主侧栏一级。');
   L.push('');
   L.push('### `point_code` 是 href 派生的，不是序号');
   L.push('');
@@ -377,6 +397,14 @@ function renderMatrix() {
 
   const L = [];
   L.push('<!-- BEGIN:generated · 由 `node ops-web/scripts/gen-perm-seed.mjs --matrix` 产出，**请勿手改** -->');
+  L.push('');
+  L.push('主导航固定为 **平台设置 → 平台商城 → 客户管理 → 商户管理（支付商户） → 订单中心**。本表描述完整授权目录（原155项 + 10个规范别名），不是主侧栏一级清单。原业务授权与深链通过常驻完整功能目录保留。');
+  L.push('');
+  L.push('规范别名仅复用明确的原功能点授权；没有来源点的新能力只默认授给超级管理员。客户数据与会员、经营商家与支付商户保持独立权限。');
+  L.push('');
+  L.push('| 规范入口 | 冻结标识 | 授权来源点（无来源仅超管） |');
+  L.push('|---|---|---|');
+  for (const alias of platformAliases) L.push(`| \`${alias.href}\` | \`${alias.pointCode}\` | ${alias.sourcePoint ? '\`' + alias.sourcePoint + '\`' : '仅 SUPER_ADMIN'} |`);
   L.push('');
   L.push('## 1. 一眼看到的三件事');
   L.push('');
@@ -459,10 +487,10 @@ if (args.includes('--emit-point-codes')) {
   lines.push('// 删除叶子：**先确认库里没有指向它的授权**，再从表里删。');
   lines.push('export const POINT_CODES: Record<string, string> = {');
   const seen = {};
-  for (const s2 of secs) for (const l of s2.leaves) seen[l.href] = (seen[l.href] || 0) + 1;
+  for (const s2 of secs) for (const l of s2.leaves.filter(l => !aliasByHref.has(l.href))) seen[l.href] = (seen[l.href] || 0) + 1;
   for (const s2 of secs) {
     const fc = `OPS_${s2.key.toUpperCase()}`;
-    for (const l of s2.leaves) {
+    for (const l of s2.leaves.filter(l => !aliasByHref.has(l.href))) {
       // href 唯一 → 只按 href 做键，这样 section 合并/改名都不影响它
       const key = seen[l.href] > 1 ? `${fc}\t${l.href}` : l.href;
       lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(pointCodeOf(fc, l.href))},`);
@@ -471,7 +499,7 @@ if (args.includes('--emit-point-codes')) {
   lines.push('};');
   lines.push('');
   writeFileSync(AT('../lib/point-codes.ts'), lines.join('\n'));
-  console.error(`已写出 ${Object.values(secs).reduce((n, s2) => n + s2.leaves.length, 0)} 条 point_code`);
+  console.error(`已写出 ${Object.values(secs).reduce((n, s2) => n + s2.leaves.filter(l => !aliasByHref.has(l.href)).length, 0)} 条 point_code`);
 } else if (args.includes('--matrix')) {
   writeBack('../../docs/technical/design/运营端-动态菜单×角色矩阵.md', renderMatrix());
 } else if (args.includes('--markdown') || args.includes('--doc')) {

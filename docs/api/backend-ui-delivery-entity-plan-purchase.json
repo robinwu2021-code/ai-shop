@@ -55,6 +55,11 @@
       "app": "b-app",
       "method": "GET",
       "path": "/biz/plan/purchases/{orderNo}/cash-refunds"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/merchant-plan-purchases/{entityNo}"
     }
   ]
 }

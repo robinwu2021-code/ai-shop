@@ -62,6 +62,9 @@ async function blobUrl(file: Blob): Promise<string> {
 }
 
 export const commerceMock: CommerceApi = {
+  platformMallOrders: async () => { throw new Error("Platform order reporting requires the real backend"); },
+  platformMallClaims: async () => { throw new Error("Platform verification reporting requires the real backend"); },
+  platformMallCash: async () => { throw new Error("Platform cash reporting requires the real backend"); },
   mallCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   mallCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   requestMallCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },

@@ -28,6 +28,7 @@ import { ChainTab } from "./chain-tab";
 import { MerchantChainLine } from "./chain-line";
 import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
+import { PaymentOpsEntry } from "@/components/payment-ops-entry";
 import { OnboardingTab } from "./onboarding-tab";
 import { SelfOperatedTab } from "./self-operated-tab";
 import { OnBehalfTab } from "./on-behalf-tab";
@@ -55,7 +56,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "on-behalf", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "payment", "payment-channels", "payment-onboarding", "onboarding", "self-operated", "on-behalf", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -107,6 +108,7 @@ function MerchantsInner() {
   const list = useQuery({
     queryKey: ["merchants", q],
     queryFn: () => api.listMerchants(q),
+    enabled: tab === "audit" || tab === "list",
   });
 
   // 写操作统一走这里：失败的 toast 由 Providers 的 mutationCache 兜住，不用逐处 catch。
@@ -116,6 +118,7 @@ function MerchantsInner() {
   const communities = useQuery({
     queryKey: ["communities", "for-audit"],
     queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+    enabled: tab === "audit",
   });
 
   const setStatusMut = useMutation({
@@ -265,7 +268,10 @@ function MerchantsInner() {
       {tab === "admission" && <AdmissionTab c={c} />}
       {tab === "qualifications" && <QualificationTab c={c} />}
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
-      {tab === "onboarding" && <OnboardingTab c={c} />}
+      {tab === "payment-channels" && <PaymentOpsEntry workspace="channels" />}
+      {tab === "payment" && <PaymentOpsEntry workspace="merchants" />}
+      {tab === "payment-onboarding" && <PaymentOpsEntry workspace="onboarding" />}
+      {tab === "onboarding" && <><PaymentOpsEntry workspace="onboarding" /><OnboardingTab c={c} /></>}
 
       {tab === "self-operated" && (
         <>

@@ -31,3 +31,13 @@ it("entity cash refund writes preserve original refund/action and external bank 
  await merchantHttp.entityCashReceipts("E/1","O/1");await merchantHttp.entityCashRefunds("E/1","O/1");await merchantHttp.requestEntityCashRefund("E/1","O/1",request);await merchantHttp.payoutEntityCashRefund("E/1","O/1","cash-R1",payout);await merchantHttp.recoverEntityCashRefund("E/1","O/1","cash-R1");
  expect(fetch.mock.calls[0][0]).toContain("/E%2F1/O%2F1/cash-receipts");expect(fetch.mock.calls[1][1].body).toBeUndefined();expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual(request);expect(JSON.parse(fetch.mock.calls[3][1].body)).toEqual(payout);expect(fetch.mock.calls[4][0]).toContain("/cash-refunds/cash-R1/recover");expect(JSON.parse(fetch.mock.calls[4][1].body)).toEqual({});
 });
+it("pages one exact entity without falling back to the legacy capped list", async () => {
+ const fetch=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({code:0,data:[]})});vi.stubGlobal("fetch",fetch);
+ await merchantHttp.entityPlanPurchasePage("E/1",{afterOrderNo:"EQ/20",limit:20});
+ expect(fetch.mock.calls[0][0]).toContain("/ops/merchant-plan-purchases/E%2F1");
+ expect(fetch.mock.calls[0][0]).toContain("afterOrderNo=EQ%2F20");expect(fetch.mock.calls[0][0]).toContain("limit=20");
+});
+it("keeps paged entity purchase errors visible instead of returning a mock empty list", async () => {
+ const fetch=vi.fn().mockResolvedValue({ok:false,status:403,json:async()=>({code:10403,msg:"Forbidden"})});vi.stubGlobal("fetch",fetch);
+ await expect(merchantHttp.entityPlanPurchasePage("E1")).rejects.toThrow();expect(fetch).toHaveBeenCalledTimes(1);
+});

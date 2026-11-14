@@ -15,6 +15,9 @@ import type {
 const seg = encodeURIComponent;
 
 export const commerceHttp: CommerceApi = {
+  platformMallOrders: (filter) => client.get("/ops/platform-mall/orders", filter),
+  platformMallClaims: (filter) => client.get("/ops/platform-mall/claims", filter),
+  platformMallCash: (filter) => client.get("/ops/platform-mall/cash", filter),
   mallCashReceipts: (store,order) => client.get(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-receipts`, {storeNo:store}),
   mallCashRefunds: (store,order) => client.get(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds`, {storeNo:store}),
   requestMallCashRefund: (store,order,v) => client.post(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds`,v, {storeNo:store}),

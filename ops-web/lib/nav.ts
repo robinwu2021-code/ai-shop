@@ -91,6 +91,64 @@ export interface NavSection {
 }
 
 export const NAV: NavSection[] = [
+  // 第2批：先归并已有配置入口；原深链、权限与运行门禁逐项保留。
+  {
+    key: "iam", label: "平台设置", icon: "UserCog", modules: ["iam", "system", "ops", "product", "commerce", "message", "inventory"], href: "/iam",
+    match: ["/iam", "/jobs", "/system", "/printing", "/messages"],
+    children: [
+      // 基础配置：保留现有细项，不创建尚未接通的聚合页面。
+      { href: "/system?tab=market", label: "地区配置", perm: "system:param:read", group: "基础配置", matrix: "P-17.1", ready: true },
+      { href: "/system", label: "外观文案", perm: "system:theme:update", group: "基础配置", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=storeIndustry", label: "门店行业", perm: "commerce:catalog:read", group: "基础配置", matrix: "P-17.1", ready: true, gated: "commerce.catalog.enabled" },
+      { href: "/system?tab=industry", label: "行业准入", perm: "system:industry:read", group: "基础配置", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=authCode", label: "经营授权", perm: "product:category:read", group: "基础配置", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=scope", label: "范围开关", perm: "system:industry:read", group: "基础配置", matrix: "P-17.1", ready: true },
+      // 权限管理：保留现有细项，不创建尚未接通的聚合页面。
+      { href: "/iam", label: "运营账号", perm: "iam:staff:read", group: "权限管理", matrix: "P-1.1", ready: true },
+      { href: "/iam?tab=roles", label: "角色权限", perm: "iam:role:grant", group: "权限管理", matrix: "P-1.1", ready: true },
+      { href: "/iam?tab=menu", label: "菜单配置", perm: "iam:role:grant", group: "权限管理", matrix: "P-1.1", ready: true },
+      // 系统维护：保留现有细项，不创建尚未接通的聚合页面。
+      { href: "/system?tab=flags", label: "系统参数", perm: "system:param:read", group: "系统维护", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=storage", label: "存储管理", perm: "system:media:read", group: "系统维护", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=testPhone", label: "测试账号", perm: "system:testphone:read", group: "系统维护", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=appVersion", label: "应用版本", perm: "system:param:read", group: "系统维护", matrix: "P-17.1", ready: true },
+      { href: "/messages", label: "消息配置", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=sms", label: "短信", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=mail", label: "邮件", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=wxsub", label: "微信订阅", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=apppush", label: "应用推送", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=inapp", label: "站内模板", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=routing", label: "场景通道", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "系统维护", matrix: "P-14.1", ready: true },
+      { href: "/iam?tab=audit", label: "审计日志", perm: "iam:audit:read", group: "系统维护", matrix: "P-1.1", ready: true },
+      { href: "/jobs", label: "运行监控", perm: "system:job:read", group: "系统维护", matrix: "P-17.1", ready: true, gated: "shop.job.enabled" },
+      { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "系统维护", matrix: "P-18.5", ready: true, gated: "shop.inventory.enabled" },
+      { href: "/printing", label: "打印运营", perm: "ops:print:read", group: "系统维护", matrix: "P-17.1", ready: true, gated: "shop.print.enabled" },
+    ],
+  },
+
+  // 第3批第一步：平台销售入口归并；两套套餐保持原模型和动作权限。
+  {
+    key: "commerce", label: "平台商城", icon: "ShoppingBag", modules: ["commerce", "merchant"], href: "/mall",
+    match: ["/mall"],
+    children: [
+      { href: "/merchants?tab=plans", label: "主体套餐", perm: "merchant:merchant:read", group: "套餐方案", matrix: "P-11.2", ready: true },
+      { href: "/mall", label: "门店套餐", perm: "commerce:catalog:read", group: "套餐方案", matrix: "P-11.2", ready: true },
+      { href: "/merchants?tab=plan-defs", label: "档位定义", perm: "merchant:merchant:read", group: "套餐方案", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=products", label: "平台商品", perm: "commerce:catalog:read", group: "商品目录", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=categories", label: "商品分类", perm: "commerce:catalog:read", group: "商品目录", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=sources", label: "订阅权益", perm: "commerce:subscription:read", group: "权益管理", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=orders", label: "购买订单", perm: "commerce:mall:order:read", group: "商城订单", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=assisted", label: "运营代购", perm: "commerce:mall:assisted:purchase", group: "商城订单", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=claims", label: "核款审核", perm: "commerce:mall:offline:review", group: "商城订单", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=global-orders", label: "全局订单", perm: "commerce:platform:orders:read", group: "商城订单", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=global-claims", label: "核款队列", perm: "commerce:platform:claims:read", group: "商城订单", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=cash-summary", label: "收入概况", perm: "commerce:platform:cash:read", group: "收入统计", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=cash-details", label: "收入明细", perm: "commerce:platform:cash:read", group: "收入统计", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=collection", label: "收款配置", perm: "commerce:collection:profile:read", group: "销售设置", matrix: "P-11.2", ready: true },
+    ],
+  },
+
   // ── P-16.1 数据看板：无子功能，内容区全宽 ────────────────────────────────
   {
     key: "dashboard", label: "工作台", icon: "LayoutDashboard", modules: ["dashboard"], href: "/",
@@ -201,14 +259,6 @@ export const NAV: NavSection[] = [
       // 路由 `category-pay-mode` **没跟着改**：它是内部键，改它要动 TAB_KEYS、
       // 迁移里的 href、清单产物，还会让已有的链接失效，而这些换不来任何东西。
       { href: "/products?tab=category-pay-mode", label: "限付类目", perm: "product:category:read", group: "基础资料", matrix: "P-3.1", ready: true },
-      // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
-      // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
-      // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。
-      // 用写码的话，有权查看配置但无权改的人在菜单里根本找不到这一页。
-      { href: "/system?tab=storeIndustry", label: "门店行业", perm: "commerce:catalog:read", group: "经营范围", matrix: "P-17.1", ready: true, gated: "commerce.catalog.enabled" },
-      { href: "/system?tab=industry", label: "行业准入", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=authCode", label: "经营授权", perm: "product:category:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=scope", label: "范围开关", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
       // 商品审核（3.2.2）= 商品池按「待审核」筛；多语言文案审核（3.2.5）与多市场定价（3.2.6）
       // 都在商品抽屉里 —— 审文案时看不到商品本身是没法审的。
       { href: "/products?tab=skus", label: "商品管理", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },
@@ -227,23 +277,6 @@ export const NAV: NavSection[] = [
 
 
 
-  // 独立经营服务：主体额度包和门店商城并存，原深链与权限不变。
-  {
-    key: "commerce", label: "经营服务", icon: "ShoppingBag", modules: ["commerce", "merchant"], href: "/mall",
-    match: ["/mall"],
-    children: [
-      { href: "/merchants?tab=plans", label: "套餐授予", perm: "merchant:merchant:read", group: "主体套餐", matrix: "P-11.2" , ready: true },
-      { href: "/merchants?tab=plan-defs", label: "档位定义", perm: "merchant:merchant:read", group: "主体套餐", matrix: "P-11.2" , ready: true },
-      { href: "/mall", label: "套餐管理", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=categories", label: "服务分类", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=products", label: "服务商品", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=orders", label: "购买订单", perm: "commerce:mall:order:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=claims", label: "线下核款", perm: "commerce:mall:offline:review", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=collection", label: "收款配置", perm: "commerce:collection:profile:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=assisted", label: "运营代购", perm: "commerce:mall:assisted:purchase", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=sources", label: "订阅权益", perm: "commerce:subscription:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-    ],
-  },
   // 库存保持独立边界，运行时门禁和读写权限沿用原实现。
   {
     key: "inventory", label: "进销存", icon: "Warehouse", modules: ["inventory"], href: "/inventory",
@@ -251,7 +284,7 @@ export const NAV: NavSection[] = [
       { href: "/inventory", label: "库存概览", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true , gated: "shop.inventory.enabled"},
       { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true , gated: "shop.inventory.enabled"},
       { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true , gated: "shop.inventory.enabled"},
-      { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "链路", matrix: "P-18.5", ready: true , gated: "shop.inventory.enabled"},
+
       { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true , gated: "shop.inventory.enabled"},
     ],
   },
@@ -429,14 +462,7 @@ export const NAV: NavSection[] = [
        * 频控（14.1.4）与模板同页：它是发送前的闸门，单独成页就没人看了。
        * 代客留痕（14.2.3）在工单抽屉里 —— 它是工单处理的一部分，不是独立台账。
        */
-      { href: "/messages", label: "通道总览", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=sms", label: "短信", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=mail", label: "邮件", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=wxsub", label: "微信订阅", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=apppush", label: "应用推送", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=inapp", label: "站内模板", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=routing", label: "场景通道", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+
       { href: "/messages?tab=tickets", label: "客服工单", perm: "message:ticket:read", group: "客服", matrix: "P-14.2", ready: true },
       { href: "/messages?tab=faq", label: "帮助中心", perm: "message:faq:update", group: "客服", matrix: "P-14.2", ready: true },
     ],
@@ -483,64 +509,7 @@ export const NAV: NavSection[] = [
     ],
   },
 
-  // ── P-1 账号与权限 ──────────────────────────────────────────────────────
-  {
-    key: "iam", label: "系统设置", icon: "UserCog", modules: ["iam", "system", "ops"], href: "/iam",
-    match: ["/iam", "/jobs", "/system", "/printing"],
-    children: [
-      // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
-      // 两者都不单独成页：拆出去就会出现"改完角色忘了配数据域"的空档。
-      { href: "/iam", label: "运营账号", perm: "iam:staff:read", group: "账号", matrix: "P-1.1", ready: true },
-      { href: "/iam?tab=roles", label: "角色权限", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
-      // 菜单顺序单独成页，而不是塞在角色抽屉里 —— **调序是全局的，与角色无关**。
-      // 放在抽屉里等于暗示「这个顺序属于这个角色」，而且预置角色的抽屉写着「只读」，
-      // 旁边却有能点的上移下移，自相矛盾。
-      // 复用 iam:role:grant：能配权限的人才该动菜单结构，不为它新增一个码。
-      { href: "/iam?tab=menu", label: "菜单顺序", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
-      { href: "/iam?tab=audit", label: "审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
-      // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
-      //
-      // 系统配置那七个 tab 回答的是「平台怎么配」，而这一页回答的是「后台此刻在不在跑」——
-      // 一个是配置，一个是运行时监控。塞进那七个 tab 里，出事时没人会想到去那儿翻。
-      //
-      // perm 用 read 而不是 manage：叶子的 perm 决定能不能**看见入口**，
-      // 而「能看任务跑没跑」的人比「能停任务」的人多得多 ——
-      // 一个任务出事时，先来看的往往是被它影响到的那条业务线的人。
-      // 开关/改频率/立即执行由页面内部按 system:job:manage 显隐。
-      // 组名用「定时任务」而不是「运行配置」：系统配置那边已经有一个同名组，
-      // 而 groupedLeaves 会把同名组并成一段 —— 并进去之后「任务与执行日志」
-      // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
-      { href: "/printing", label: "打印运营", perm: "ops:print:read", group: "打印运营", matrix: "P-17.1", ready: true, gated: "shop.print.enabled" },
-      { href: "/jobs", label: "任务日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true , gated: "shop.job.enabled"},
-      // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
-      // 皮肤/回落语言/规则文案都是"下发给 C 端的东西"，放同一页；市场与开关各自成 tab
-      { href: "/system", label: "外观文案", perm: "system:theme:update", group: "外观语言", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=market", label: "市场货币", perm: "system:param:read", group: "外观语言", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=flags", label: "开关灰度", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
-      // 存储空间治理：门店占用 / 待回收 / 回收记录三个页签。
-      // perm 用 read 而不是 purge —— 叶子的 perm 决定能不能看见入口，
-      // 而「能看占用」的人比「能删」的人多；删的权限由页面内部按 system:media:purge 判，
-      // 没有它就隐藏勾选框与批量操作条（TDD-图片存储与空间回收 §L3-7）
-      { href: "/system?tab=storage", label: "存储管理", perm: "system:media:read", group: "运行配置", matrix: "P-17.1", ready: true },
-      /*
-       * 测试号固定验证码白名单（TDD-测试号固定验证码）。
-       *
-       * **perm 用的是它自己的读码，不是 system:param:read** —— 与旁边几条相反。
-       * 别的 tab 用 param:read 是因为「能看配置」比「能改」宽；这一页不是那个形状：
-       * 它把固定验证码明文显示出来，能看这一页就等于知道那几个号的登录码。
-       * 用 param:read 的话，持有它的 TECH_OPS 立刻就能看到那几把钥匙。
-       *
-       * 两个码都不配给任何角色，只有超管的通配能到（Perms.SYSTEM_TESTPHONE_UPDATE）。
-       */
-      { href: "/system?tab=testPhone", label: "测试账号", perm: "system:testphone:read", group: "运行配置", matrix: "P-17.1", ready: true },
-      /*
-       * App 版本策略（TDD-商户App问题回报与版本 V6；菜单点 V639）。perm 用 param:read：能看策略的人比能改的多；
-       * 改用单独的 system:app-version:update（一个角色都不配，超管通配），页面内部判 ——
-       * 抬高最低支持版会让低于它的所有旧包立刻停写，不跟 param:update 一起发给技术运维。
-       */
-      { href: "/system?tab=appVersion", label: "应用版本", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
-    ],
-  },
+
 
 
 ];
@@ -577,7 +546,9 @@ export function visibleSections(perms: string[] | undefined,
     return nav.filter((s) => !(s.children?.length)
         || s.children.some((l) => serverHrefs.has(l.href)));
   }
-  return nav.filter((s) => s.modules.some((m) => canModule(perms, m)));
+  return nav.filter((s) => s.modules.some((m) => canModule(perms, m))
+      // 设置与商城跨多个模块；只有动作权限时不能出现没有可用叶子的入口。
+      && (!["iam", "commerce"].includes(s.key) || visibleLeaves(s, perms).length > 0));
 }
 
 /** L3 可见性 = leaf.perm ? can() : 跟随 section。phase-locked 叶子保留（灰显）。 */

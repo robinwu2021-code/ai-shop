@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-14",
+  "status": "LOCAL_IMPLEMENTATION_AND_BROWSER_ACCEPTANCE_PASS",
+  "primary": {
+    "roots": 5,
+    "leaves": 53,
+    "legacyCatalogRoots": 13,
+    "legacyLeaves": 155,
+    "newAliases": 10,
+    "labels": "zh/en/zh-TW verified in browser"
+  },
+  "scope": [
+    "stores and chains",
+    "platform-person membership and source stores",
+    "operator-assisted standalone payment merchant creation/profile draft/submission",
+    "business vs payment order partition",
+    "all12 roles actual HTTP login/native MySQL browser menu acceptance"
+  ],
+  "backend": [
+    {
+      "suite": "ai.neargo.shop.portal.service.CustomerReadAccessTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "ai.neargo.shop.portal.service.CustomerReportingMysqlTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "ai.neargo.shop.arch.OpsEndpointPermTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "frontend": {
+    "focusedSuites": 17,
+    "focusedTests": 189,
+    "afterTranslationFix": {
+      "suites": 2,
+      "tests": 29
+    },
+    "groupsOverlap": true,
+    "typecheck": "passed",
+    "webpackBuild": "passed",
+    "buildBasePath": "/ops-shop (local same-origin verification)"
+  },
+  "nativeMysql": "9.7.4",
+  "migrationEvidence": "mysql-v671.json",
+  "browser": {
+    "roleEvidence": "browser/roles.json",
+    "nativeRoleCount": 12,
+    "actualLogin": "real OpsService password login, live DB permission resolution, production token filter and customer read service in test-classpath native fixture",
+    "customerData": [
+      "3 registered identities, including1 without a store",
+      "distinct PS1/PS2 despite same phone suffix",
+      "immutable original source with multiple entity/store relationships",
+      "real brand/store bindings"
+    ],
+    "sharedLogin": "ai-shop -> standalone NearPay -> ai-shop without credentials in URLs",
+    "merchant": "OE0 -> PMC5D187D8EE7D4555 -> encrypted draft -> R1 SUBMITTED, OPS:LOCAL_admin",
+    "maskedPrivateFields": true,
+    "paymentOrderRead": "HTTP200 authoritative empty test ledger",
+    "channelOnboardingRead": "HTTP200; no external channels configured or submitted",
+    "images": [
+      "browser/order-partition-en.png",
+      "browser/merchant-submitted.png",
+      "browser/order-partition.png",
+      "browser/payment-orders-live.png"
+    ],
+    "limitations": [
+      "Controlled local credentials/data; not166 or production channel acceptance",
+      "Old business dashboard/orders/inventory were not installed in this narrow browser fixture and are not claimed as end-to-end retested",
+      "Unresolved merchant commands are retained in session QueryClient memory across route remount, not durable browser-restart storage"
+    ]
+  },
+  "independentReview": {
+    "p1Remaining": 0,
+    "p2Remaining": 0,
+    "resolved": [
+      "customer production-column conformance",
+      "historical membership/current-store scope isolation",
+      "locked merchant current-state check",
+      "unresolved merchant command auth isolation and original-key remount recovery",
+      "primary-context tabs and i18n"
+    ]
+  },
+  "standalonePaymentEvidence": "/tmp/nearpay-config-release-20261113/docs/technical/evidence/ops-merchant-assistance-20261114/local-verification.json",
+  "preservation": {
+    "baselineFiles": 154,
+    "missing": [],
+    "byteIdentical": 131,
+    "incrementallyExtended": [
+      "backend/shop-app/src/main/java/ai/neargo/shop/portal/ops/OpsCustomerController.java",
+      "backend/shop-app/src/main/java/ai/neargo/shop/portal/service/CustomerReportingService.java",
+      "backend/shop-app/src/main/java/ai/neargo/shop/portal/service/impl/CustomerReportingServiceImpl.java",
+      "docs/technical/reference/ai-shop平台运营端-菜单方案-2026-11-14.md",
+      "ops-web/app/mall/purchase-workspace.tsx",
+      "ops-web/components/payment-ops-entry.tsx",
+      "ops-web/lib/auth/payment-workspace.test.ts",
+      "ops-web/lib/platform-nav.test.ts",
+      "ops-web/lib/platform-nav.ts",
+      "ops-web/lib/purchase-workspace.test.ts",
+      "ops-web/lib/use-page-tab.test.ts",
+      "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java",
+      "docs/technical/design/权限配置落库-数据库设计与数据清单.md",
+      "docs/technical/design/运营端-动态菜单×角色矩阵.md",
+      "ops-web/app/merchants/page.tsx",
+      "ops-web/components/layout/secondary-nav.tsx",
+      "ops-web/lib/auth/ops-bridge.ts",
+      "ops-web/lib/i18n/nav-labels.ts",
+      "ops-web/lib/i18n/nav-zh-TW.ts",
+      "ops-web/lib/nav.test.ts",
+      "ops-web/lib/perm-map.ts",
+      "ops-web/lib/use-page-tab.ts",
+      "ops-web/scripts/gen-perm-seed.mjs"
+    ],
+    "previousMilestoneFilesRetained": 125,
+    "historicalTrackedSqlUnchanged": 737,
+    "legacyPointsAndGrantsUnchanged": true
+  },
+  "cleanup": {
+    "ownedHostGatewayPayProcessesStopped": true,
+    "ownedDisposableDatabasesDropped": true,
+    "sharedMySQLServerUntouched": true
+  },
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "environment166Changed": false
+}

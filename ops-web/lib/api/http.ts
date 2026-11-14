@@ -1,3 +1,4 @@
+import { customerHttp } from "./https/customer";
 import { printHttp } from "./https/print";
 // 真实后端实现（组合根）。按域切片在 lib/api/https/*.ts，端点前缀统一 /ops/**。
 // 切片之间方法名不得重叠（后者会静默覆盖前者），由 contract.test.ts 断言。
@@ -29,6 +30,7 @@ import { commerceHttp } from "./https/commerce";
 
 /** 各域 http 切片。contract.test.ts 用它逐片校验 key 集合、检测重复实现。 */
 export const HTTP_SLICES = {
+  customer: customerHttp,
   print: printHttp,
   dashboard: dashboardHttp,
   merchant: merchantHttp,
@@ -57,7 +59,7 @@ export const HTTP_SLICES = {
 } as const;
 
 export const httpApi: Api = {
-  ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp, ...payOpsHttp,
+  ...customerHttp, ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp, ...payOpsHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
   ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp, ...commerceHttp,
 };

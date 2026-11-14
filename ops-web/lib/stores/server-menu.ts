@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { NAV, overlayNav, type NavOverlay, type NavSection } from "@/lib/nav";
+import { platformCatalog, platformNav } from "@/lib/platform-nav";
 import { normalizeLegacyPointsMenu } from "@/lib/points-ops-routes";
 import type { MenuPoint } from "@/lib/types";
 
@@ -101,4 +102,18 @@ export function isPointUnimplemented(byHref: Record<string, MenuPoint>, href: st
 export function useNavTree(): NavSection[] {
   const overlay = useServerMenu((s) => s.overlay);
   return useMemo(() => overlayNav(NAV, overlay), [overlay]);
+}
+
+/** Five primary roots; backend state may disable leaves, never restore old root labels/order. */
+export function usePlatformNavTree(): NavSection[] {
+  const overlay = useServerMenu((s) => s.overlay);
+  return useMemo(() => platformNav().map(s => ({ ...s, children: s.children?.map(l => ({
+    ...l, soon: l.soon || overlay.leaves?.[l.href]?.soon,
+  })) })), [overlay]);
+}
+
+/** Complete browse/search catalog, including aliases. */
+export function useCatalogNavTree(): NavSection[] {
+  const overlay = useServerMenu((s) => s.overlay);
+  return useMemo(() => overlayNav(platformCatalog(), overlay), [overlay]);
 }

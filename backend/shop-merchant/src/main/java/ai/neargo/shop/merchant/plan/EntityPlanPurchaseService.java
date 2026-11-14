@@ -1,6 +1,8 @@
 package ai.neargo.shop.merchant.plan;
 
 import ai.neargo.commerce.api.common.Money;
+import ai.neargo.commerce.api.mall.reporting.PurchaseReporting.Query;
+import ai.neargo.commerce.api.mall.reporting.PurchaseReporting.Row;
 import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
 import ai.neargo.commerce.api.port.PrivateEvidencePort;
 import jakarta.validation.constraints.*;
@@ -99,6 +101,16 @@ public interface EntityPlanPurchaseService {
   Offer saveOffer(Actor operator, OfferEdit edit);
 
   List<OrderView> orders(Actor actor);
+
+  /** Bounded operator reads for one authorized entity; legacy buyer list remains unchanged. */
+  List<OrderView> operatorOrders(Actor operator, String afterOrderNo, int limit);
+
+  List<Row> searchOperatorOrders(
+      Actor operator, Query query);
+
+  /** Trusted internal attribution; tenant constrained and capped at 500 identifiers. */
+  List<Row> findOperatorOrderOwners(
+      Actor operator, String tenantNo, List<String> orderNos);
 
   OrderView buy(Actor buyer, Buy command);
 

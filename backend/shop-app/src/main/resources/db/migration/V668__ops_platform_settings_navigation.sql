@@ -1,0 +1,27 @@
+-- 第2批：平台设置既有入口归并；仅更新菜单展示列，保留路由、权限、授权和运行门禁。
+UPDATE sys_function SET name='平台设置',sort=5,updated_at=NOW() WHERE function_code='OPS_IAM' AND end_code='OPS';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='地区配置',group_name='基础配置',sort=10,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_MARKET' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='外观文案',group_name='基础配置',sort=20,updated_at=NOW() WHERE point_code='OPS_SYSTEM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='门店行业',group_name='基础配置',sort=30,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='行业准入',group_name='基础配置',sort=40,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_INDUSTRY' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='经营授权',group_name='基础配置',sort=50,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_AUTHCODE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='范围开关',group_name='基础配置',sort=60,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_SCOPE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='运营账号',group_name='权限管理',sort=70,updated_at=NOW() WHERE point_code='OPS_IAM' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='角色权限',group_name='权限管理',sort=80,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_ROLES' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='菜单配置',group_name='权限管理',sort=90,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_MENU' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='系统参数',group_name='系统维护',sort=100,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_FLAGS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='存储管理',group_name='系统维护',sort=110,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_STORAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='测试账号',group_name='系统维护',sort=120,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_TESTPHONE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='应用版本',group_name='系统维护',sort=130,updated_at=NOW() WHERE point_code='OPS_SYSTEM__TAB_APPVERSION' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='消息配置',group_name='系统维护',sort=140,updated_at=NOW() WHERE point_code='OPS_MESSAGE' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='短信',group_name='系统维护',sort=150,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_SMS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='邮件',group_name='系统维护',sort=160,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_MAIL' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='微信订阅',group_name='系统维护',sort=170,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_WXSUB' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='应用推送',group_name='系统维护',sort=180,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_APPPUSH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='站内模板',group_name='系统维护',sort=190,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_INAPP' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='场景通道',group_name='系统维护',sort=200,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_ROUTING' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='发送记录',group_name='系统维护',sort=210,updated_at=NOW() WHERE point_code='OPS_MESSAGE__TAB_NOTIFYLOG' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='审计日志',group_name='系统维护',sort=220,updated_at=NOW() WHERE point_code='OPS_IAM__TAB_AUDIT' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='运行监控',group_name='系统维护',sort=230,updated_at=NOW() WHERE point_code='OPS_JOBS' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='链路健康',group_name='系统维护',sort=240,updated_at=NOW() WHERE point_code='OPS_INVENTORY__TAB_LINK_HEALTH' AND point_type='MENU';
+UPDATE sys_function_point SET function_code='OPS_IAM',name='打印运营',group_name='系统维护',sort=250,updated_at=NOW() WHERE point_code='OPS_PRINTING' AND point_type='MENU';

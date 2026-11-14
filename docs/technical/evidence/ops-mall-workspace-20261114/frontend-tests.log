@@ -1,0 +1,19 @@
+
+> ai-shop-ops-web@0.1.0 test
+> vitest run lib/nav-platform-mall.test.ts lib/nav-platform-settings.test.ts lib/nav-migration.test.ts lib/nav.test.ts lib/nav-alignment.test.ts lib/nav-group.test.ts lib/stores/server-menu.test.ts lib/permissions.test.ts lib/perm-map.test.ts lib/i18n/i18n.test.ts lib/use-page-tab.test.ts lib/mall-maintenance-page.test.ts lib/mall-offline-review.test.ts lib/api/https/commerce.test.ts lib/api/https/entity-plan-purchase.test.ts lib/purchase-workspace.test.ts lib/entity-assisted-navigation.test.ts
+
+
+ RUN  v4.1.11 /private/tmp/ai-shop-config-release-20261113/ops-web
+
+(node:83401) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83398) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:83399) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  17 passed (17)
+      Tests  170 passed (170)
+   Start at  02:59:47
+   Duration  2.72s (transform 2.02s, setup 0ms, import 4.75s, tests 3.08s, environment 1.46s)
+

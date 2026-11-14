@@ -1,0 +1,34 @@
+{
+  "aiShopBaseline": "4148e159adf33b012c7fdfd9ee9f0dbb39c6ef01",
+  "nearPayBaseline": "90895ac4daf183a9d51cf4835da2b43b4ded31b3",
+  "aiShopSections": [
+    "工作台",
+    "商户中心",
+    "商品资料",
+    "经营服务",
+    "进销存",
+    "订单履约",
+    "售后治理",
+    "会员营销",
+    "经营财务",
+    "内容客服",
+    "社区网点",
+    "风控",
+    "系统设置"
+  ],
+  "staticLeafCount": 151,
+  "labelsOverFourCharacters": [],
+  "duplicateHrefs": [],
+  "nearPaySourceLivePageCodes": [
+    "ME01",
+    "ME03",
+    "ME02",
+    "TR01",
+    "TR08",
+    "SY01",
+    "SY04",
+    "OP03"
+  ],
+  "scope": "Read-only source review; no live menu/role snapshot or runtime acceptance in this task.",
+  "nearPaySourceFullCatalogCount": 49
+}

@@ -1,0 +1,102 @@
+[
+  {
+    "functionKey": "iam",
+    "pointCode": "OPS_CUSTOMERS__TAB_OVERVIEW",
+    "href": "/customers?tab=overview",
+    "label": "经营概况",
+    "perm": "dashboard:overview:read",
+    "group": "数据概览",
+    "ready": true,
+    "sourcePoint": "ACT__DASHBOARD_OVERVIEW_READ"
+  },
+  {
+    "functionKey": "merchant",
+    "pointCode": "OPS_CUSTOMERS__TAB_USERS",
+    "href": "/customers?tab=users",
+    "label": "用户数据",
+    "perm": "customer:user:read",
+    "group": "用户会员",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "marketing",
+    "pointCode": "OPS_CUSTOMERS__TAB_MEMBERS",
+    "href": "/customers?tab=members",
+    "label": "会员列表",
+    "perm": "member:member:read",
+    "group": "用户会员",
+    "ready": true,
+    "sourcePoint": "OPS_MEMBER"
+  },
+  {
+    "functionKey": "merchant",
+    "pointCode": "OPS_CUSTOMERS__TAB_STORES",
+    "href": "/customers?tab=stores",
+    "label": "门店列表",
+    "perm": "merchant:merchant:read",
+    "group": "门店连锁",
+    "ready": true,
+    "sourcePoint": "OPS_MERCHANT__TAB_STORES"
+  },
+  {
+    "functionKey": "merchant",
+    "pointCode": "OPS_CUSTOMERS__TAB_CHAINS",
+    "href": "/customers?tab=chains",
+    "label": "连锁数据",
+    "perm": "merchant:merchant:read",
+    "group": "门店连锁",
+    "ready": true,
+    "sourcePoint": "OPS_MERCHANT__TAB_STORES"
+  },
+  {
+    "functionKey": "merchant",
+    "pointCode": "OPS_MERCHANT__TAB_PAYMENT",
+    "href": "/merchants?tab=payment",
+    "label": "商户列表",
+    "perm": "pay:merchant:view",
+    "group": "商户资料",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "merchant",
+    "pointCode": "OPS_MERCHANT__TAB_PAYMENT_ONBOARDING",
+    "href": "/merchants?tab=payment-onboarding",
+    "label": "渠道进件",
+    "perm": "pay:onboarding:view",
+    "group": "收款开通",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "iam",
+    "pointCode": "OPS_IAM__TAB_PAYMENT_CHANNELS",
+    "href": "/merchants?tab=payment-channels",
+    "label": "支付渠道",
+    "perm": "pay:channel:view",
+    "group": "渠道费率",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "order",
+    "pointCode": "OPS_ORDER__TAB_PAYMENTS",
+    "href": "/orders?tab=payments",
+    "label": "支付订单",
+    "perm": "pay:order:view",
+    "group": "支付记录",
+    "ready": true,
+    "sourcePoint": "OPS_FINANCE__PAY_ORDERS"
+  },
+  {
+    "functionKey": "order",
+    "pointCode": "OPS_ORDER__TAB_PAYMENT_EXCEPTIONS",
+    "href": "/orders?tab=payment-exceptions",
+    "label": "支付异常",
+    "perm": "pay:order:view",
+    "group": "支付记录",
+    "ready": true,
+    "sourcePoint": "OPS_FINANCE__PAY_EXCEPTIONS"
+  }
+]

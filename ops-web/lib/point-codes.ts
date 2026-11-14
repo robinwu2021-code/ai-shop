@@ -161,4 +161,8 @@ export const POINT_CODES: Record<string, string> = {
   "/system?tab=industry": "OPS_SYSTEM__TAB_INDUSTRY",
   "/system?tab=authCode": "OPS_SYSTEM__TAB_AUTHCODE",
   "/system?tab=scope": "OPS_SYSTEM__TAB_SCOPE",
+  "/mall?tab=global-orders": "OPS_COMMERCE__TAB_GLOBAL_ORDERS",
+  "/mall?tab=global-claims": "OPS_COMMERCE__TAB_GLOBAL_CLAIMS",
+  "/mall?tab=cash-summary": "OPS_COMMERCE__TAB_CASH_SUMMARY",
+  "/mall?tab=cash-details": "OPS_COMMERCE__TAB_CASH_DETAILS",
 };

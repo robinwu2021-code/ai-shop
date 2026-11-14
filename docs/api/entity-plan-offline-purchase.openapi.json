@@ -1282,6 +1282,78 @@
         },
         "x-required-capability": "merchant:merchant:ban + (commerce:mall:offline:confirm or commerce:mall:offline:void or commerce:mall:offline:refund:confirm)"
       }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}": {
+      "get": {
+        "operationId": "get_ops_entity_plan_purchase_page",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "merchant:merchant:read plus current authorized entity scope. Supplying either query parameter enables order_no ascending operator pagination; limit defaults to20 in pagination mode. Omit both to preserve the legacy recent100 list. No financial mutation.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterOrderNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exclusive last orderNo from prior page."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Use20 for standard pages. Omit both pagination parameters for legacy behavior."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrderView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

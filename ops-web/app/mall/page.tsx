@@ -16,13 +16,15 @@ import { MALL_COPY } from "./copy";
 import { CatalogTab } from "./catalog-tab";
 import { ProductsTab } from "./products-tab";
 import { CategoriesTab } from "./categories-tab";
-import { OrdersTab } from "./orders-tab";
+import { PurchaseWorkspace } from "./purchase-workspace";
 import { ClaimsTab } from "./claims-tab";
 import { CollectionTab } from "./collection-tab";
 import { AssistedTab } from "./assisted-tab";
 import { SourcesTab } from "./sources-tab";
+import { PlatformOrderList } from "./platform-order-list";
+import { PlatformCashReport } from "./platform-cash-report";
 
-const TAB_KEYS = ["catalog", "categories", "products", "orders", "claims", "collection", "assisted", "sources"] as const;
+const TAB_KEYS = ["catalog", "categories", "products", "orders", "claims", "collection", "assisted", "sources", "global-orders", "global-claims", "cash-summary", "cash-details"] as const;
 
 export default function MallPage() {
   return <Suspense fallback={null}><MallInner /></Suspense>;
@@ -44,7 +46,11 @@ function MallInner() {
       {tab === "products" && (
         <ProductsTab c={c} canEdit={allow("commerce:catalog:edit")} canPublish={allow("commerce:catalog:publish")} />
       )}
-      {tab === "orders" && <OrdersTab c={c} />}
+      {tab === "global-orders" && <PlatformOrderList />}
+      {tab === "global-claims" && <PlatformOrderList pendingOnly />}
+      {tab === "cash-summary" && <PlatformCashReport />}
+      {tab === "cash-details" && <PlatformCashReport details />}
+      {tab === "orders" && <PurchaseWorkspace initialKind="STORE" />}
       {tab === "claims" && <ClaimsTab c={c} />}
       {tab === "collection" && <CollectionTab c={c} canWrite={allow("commerce:collection:profile:write")} />}
       {tab === "assisted" && <AssistedTab c={c} canReadSubscription={allow("commerce:subscription:read")} />}

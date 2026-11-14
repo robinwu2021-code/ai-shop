@@ -1,0 +1,15 @@
+
+> ai-shop-ops-web@0.1.0 test
+> vitest run lib/entity-assisted-navigation.test.ts
+
+
+ RUN  v4.1.11 /private/tmp/ai-shop-config-release-20261113/ops-web
+
+(node:84028) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  03:04:59
+   Duration  1.31s (transform 69ms, setup 0ms, import 575ms, tests 363ms, environment 237ms)
+

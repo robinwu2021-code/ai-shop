@@ -1,0 +1,152 @@
+{
+  "date": "2026-11-14",
+  "status": "BATCH3A_LOCAL_IMPLEMENTATION_PASS",
+  "batch3Complete": false,
+  "remainingBatch3Steps": [
+    "3B统一查询及办理工作区",
+    "3C平台收退款统计"
+  ],
+  "rootOrderFirstTwo": [
+    "平台设置",
+    "平台商城"
+  ],
+  "existingMallMenus": 10,
+  "totalExistingLeavesPreserved": 151,
+  "tests": {
+    "suites": 15,
+    "passed": 158
+  },
+  "typecheck": "PASS",
+  "webpackStaticBuild": "PASS",
+  "defaultTurbopackBuild": "PREEXISTING_WORKTREE_DEPENDENCY_SYMLINK_LIMITATION",
+  "independentReview": {
+    "agent": "review_platform_mall_batch3a",
+    "P2Findings": 1,
+    "fixed": 1,
+    "regression": "static/server-granted merchant default:2 failures reproduced, fixed and included in158 tests"
+  },
+  "preexistingDirtyFiles": 44,
+  "unrelatedFilesUnchanged": 35,
+  "sharedFilesIncrementallyUpdated": [
+    "ops-web/lib/use-page-tab.test.ts",
+    "docs/technical/design/权限配置落库-数据库设计与数据清单.md",
+    "docs/technical/design/运营端-动态菜单×角色矩阵.md",
+    "ops-web/components/layout/secondary-nav.tsx",
+    "ops-web/lib/i18n/nav-labels.ts",
+    "ops-web/lib/i18n/nav-zh-TW.ts",
+    "ops-web/lib/nav-migration.test.ts",
+    "ops-web/lib/nav.ts",
+    "ops-web/lib/use-page-tab.ts"
+  ],
+  "previousSettingsContentUnchanged": true,
+  "V668Unchanged": true,
+  "frozenPointCodesUnchanged": true,
+  "historicalMigrationsUnchanged": true,
+  "businessApiAndFinancialOperationCodeChanged": false,
+  "runtimeRoleVerificationExecuted": false,
+  "mysql9RehearsalExecuted": false,
+  "rollbackRehearsalExecuted": false,
+  "deployed": false,
+  "committed": false,
+  "pushed": false,
+  "fileHashes": [
+    {
+      "path": "ops-web/lib/use-page-tab.test.ts",
+      "sha256": "a5284b1c64ccbf606b89fdd2cbf2489a46417b6ceb9ef033056b63a47f764813"
+    },
+    {
+      "path": "docs/technical/design/权限配置落库-数据库设计与数据清单.md",
+      "sha256": "bcdbc5a8108db559e7314df48828f215a212c6eb534c5b33f9bed11ae41d64f3"
+    },
+    {
+      "path": "docs/technical/design/运营端-动态菜单×角色矩阵.md",
+      "sha256": "a7bf172a65c357d038897c1289c9d74a5db75abcee9abbd27c58bd6cfc9cd13e"
+    },
+    {
+      "path": "ops-web/components/layout/secondary-nav.tsx",
+      "sha256": "cf722d6d06d676579d3b66774a11f600c055f71a5aa5683fe59379ef4d6277cb"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-labels.ts",
+      "sha256": "d575b347ab23e62e48fe311ca6883d9e9001cb7199efd3331ac2dbf4dc216a9e"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-zh-TW.ts",
+      "sha256": "18ee74a40947bf103174fff973cf5740bec77454e1a3e537d676d64475c75752"
+    },
+    {
+      "path": "ops-web/lib/nav-migration.test.ts",
+      "sha256": "a3684163942fb790fbaf2a04dbe783d3275cb2099d308bdd044925dcfc612207"
+    },
+    {
+      "path": "ops-web/lib/nav.ts",
+      "sha256": "7f891cc390eade0370802eff61436dc031c9ffff56d47fbf29a653d0cd3cd11b"
+    },
+    {
+      "path": "ops-web/lib/use-page-tab.ts",
+      "sha256": "dc5b93656c8d9da8b18454e322067f0c21eda78ab77e91cf4b89aa07fc6e8341"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V669__ops_platform_mall_navigation.sql",
+      "sha256": "241881cc6feef961374262044ae3c9a639fb23c6f56c8ee2d77b6a83ba6aa424"
+    },
+    {
+      "path": "ops-web/lib/nav-platform-mall.test.ts",
+      "sha256": "2e965e1ae856039b49f3a8723c9005ae0ceb8f5a4be47ac0ae0627d5209030cd"
+    },
+    {
+      "path": "docs/technical/TDD-平台商城入口归并.md",
+      "sha256": "12669c1fecd71163ee0d0d1f7ac645b5fa4dcf7ad37aaf32060447e7bf576f83"
+    },
+    {
+      "path": "docs/technical/reference/平台商城-两套套餐办理对齐-2026-11-14.md",
+      "sha256": "ab8a5c704bbb21a4c50fbdd5c0bba1775bf5cc492c108161923fca08a095c228"
+    }
+  ],
+  "reviewedOperationSources": [
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "sha256": "426d9de752f217324db06f3dd284786ace8af01b848795e89302cf10f15d4c59"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsEntityPlanRefundController.java",
+      "sha256": "becdc49fdabcdf0d2a750a57084188bd681ccafd9b56f73e8a99d9e6b2d20bef"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsMerchantPlanController.java",
+      "sha256": "0a7139f41470695a7220ec72385759771f2fe596b3e1024cb8f3f80d33644d3f"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+      "sha256": "94e983ce7d8803782830cdab9856e82f3eae1a1877a7f67217be83d90a4f6d41"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOpsMallHttpController.java",
+      "sha256": "dcd6635e505d1e18a15ee6bda46368d0346c991b35ab9a321c2b45d74f3d0e17"
+    },
+    {
+      "path": "ops-web/lib/api/contracts/commerce.ts",
+      "sha256": "2a3db9d815d4b00b3d05faf353c0a147540f0525ff15b42ae97e835adae3d8c3"
+    },
+    {
+      "path": "ops-web/lib/api/https/commerce.ts",
+      "sha256": "e3fe7cb7bca18fe381558d9e23585eed702cf2f5ce9800f2bacf13522cbbe2fa"
+    },
+    {
+      "path": "ops-web/lib/api/https/merchant.ts",
+      "sha256": "14141848c4b4d7169f1551bb6a0379a1fe17a2d98f58e7b73c7c2c68117496fd"
+    },
+    {
+      "path": "ops-web/app/mall/order-drawer.tsx",
+      "sha256": "10db05baedadf1f2ad4f464a0ec4737c554243c0fd427d96e321ed4f87904ac6"
+    },
+    {
+      "path": "ops-web/app/merchants/plan-purchases.tsx",
+      "sha256": "a7bceea89dc0ff137e783feb3a90753ffbe5b125850b5371ebc29ad8ffd13231"
+    },
+    {
+      "path": "ops-web/components/offline/cash-refunds.tsx",
+      "sha256": "1e00c9f7267ad887f4d4375f17d1c08a22f0826dc45ed3ffbc7a306bddad524b"
+    }
+  ]
+}

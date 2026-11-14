@@ -1,0 +1,646 @@
+{
+  "date": "2026-11-14",
+  "status": "LOCAL_VALIDATION_PASS",
+  "backendFocused": [
+    {
+      "class": "ai.neargo.shop.merchant.plan.EntityPlanOperatorPagingTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.merchant.plan.EntityPlanReportingTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.commercebridge.PlatformMallReportingTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.portal.ops.OpsPlatformMallControllerTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.pay.service.impl.PlatformCashReportingMysqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.commercebridge.PlatformMallReportingMysqlTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.commercebridge.MallOperatorFinancialScopeTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.commercebridge.PlatformMallAccessTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.commercebridge.PlatformMallReportingWiringTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.pay.service.impl.PlatformCashReportingTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.commerce.persistence.PurchaseOrderQueryTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "backendFocusedTotal": 46,
+  "nativeMysql": {
+    "version": "9.7.4",
+    "passed": 5,
+    "disposableSchemasRemaining": 0,
+    "temporaryServerStopped": true
+  },
+  "frontend": {
+    "menuPermissionAdapterRegression": {
+      "suites": 14,
+      "tests": 155
+    },
+    "pageAndCommerceRegression": {
+      "suites": 7,
+      "tests": 113
+    },
+    "groupsOverlap": true,
+    "typecheck": true,
+    "webpackBuild": true,
+    "productionArtifactCheck": true
+  },
+  "independentReview": {
+    "remainingP1P2": 0,
+    "fixed": [
+      "real permission bean type",
+      "reporting HTTP/profile conditions",
+      "explicit claim route",
+      "auth/permission cache isolation",
+      "nested cash refund close lock"
+    ]
+  },
+  "preservation": {
+    "olderDirtyBaselineCount": 53,
+    "byteIdentical": 44,
+    "incrementallyExtendedFiles": [
+      "ops-web/lib/nav-platform-mall.test.ts",
+      "ops-web/lib/nav-platform-settings.test.ts",
+      "docs/technical/design/权限配置落库-数据库设计与数据清单.md",
+      "docs/technical/design/运营端-动态菜单×角色矩阵.md",
+      "ops-web/lib/i18n/nav-labels.ts",
+      "ops-web/lib/i18n/nav-zh-TW.ts",
+      "ops-web/lib/nav-migration.test.ts",
+      "ops-web/lib/nav.test.ts",
+      "ops-web/lib/nav.ts"
+    ],
+    "missing": [],
+    "trackedHistoricalSqlUnchanged": 737,
+    "V668V669Unchanged": true,
+    "newPermissionDefaults": "SUPER_ADMIN only; existing grants unchanged",
+    "pointCodes": "4 appended; existing values preserved by frozen fixture tests"
+  },
+  "limitations": [
+    "No real browser login/security end-to-end acceptance",
+    "No cross-request persistent cash snapshot",
+    "Deleted/transferred historical stores may not open original operational detail",
+    "Missing cash owner returns10500, never zero summary"
+  ],
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "environment166Changed": false,
+  "workspaceDirtySnapshot": [
+    {
+      "path": "backend/commerce/commerce-api/src/main/java/ai/neargo/commerce/api/mall/reporting/PurchaseOrderQueryPort.java",
+      "sha256": "bf26345a743db2e3ad7ce2273dd64b60a763c3ad319f167f7aa82f8228ee7f18"
+    },
+    {
+      "path": "backend/commerce/commerce-api/src/main/java/ai/neargo/commerce/api/mall/reporting/PurchaseReporting.java",
+      "sha256": "614ae73d2ee6e111bdd48123549ff6f64024bf0b050c6a872f0b221aab22b6f4"
+    },
+    {
+      "path": "backend/commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcPurchaseOrderQuery.java",
+      "sha256": "5ade7d4502081c57bc23353916e0b46c62e3b5bc8dd6c77baef509d8546822e9"
+    },
+    {
+      "path": "backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/PurchaseOrderQueryTest.java",
+      "sha256": "be7e8239270306873baeeef2f5a3a7fc009888b8d37fb5a5d5a86e57a3ae42c9"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/PlatformCashReporting.java",
+      "sha256": "a7ee0e5155c1ebe66c8cfad38c51cb402dee746320d75484ca82f06e89ac116b"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PlatformCashAuthority.java",
+      "sha256": "5a374a7fbc782f8507cd9f07020f2b118afcf8c698fe228926cabc69427d511d"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PlatformCashReportingImpl.java",
+      "sha256": "d3e99d870973ec84ecf97312caed535c073352bc7aa8c7e2d70f12b846183e00"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/service/impl/PlatformCashReportingTest.java",
+      "sha256": "40f7919d9e7a199d27c91f68e4f23820cf3c6f60041b9ab4f21079eb41c01671"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/PlatformMallAccess.java",
+      "sha256": "84d1935a8bc0f44538ea5d1cfad833a1dbe0cc0209e8bd7abe941e0674612820"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/PlatformMallReporting.java",
+      "sha256": "e3f780476798902d5fcd972de914e41a46982562de358f5c7bd39b5b3dfc8d68"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/ops/OpsPlatformMallController.java",
+      "sha256": "dd3012908068a328afb47fecfa475fa8dff13e984dd88cd2d8c627e291dc4e2b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V668__ops_platform_settings_navigation.sql",
+      "sha256": "8b618d49b5c08f7d0aae472e0b819c2415c43db68ea964fc9f21b9785b814198"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V669__ops_platform_mall_navigation.sql",
+      "sha256": "241881cc6feef961374262044ae3c9a639fb23c6f56c8ee2d77b6a83ba6aa424"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V670__ops_platform_purchase_reporting.sql",
+      "sha256": "710bbd24fe1287138fd26b981d4c39659c2343d44791b1bc50b03d8a26ae74b9"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/MallOperatorFinancialScopeTest.java",
+      "sha256": "7c41b88c638a75b0a47664a7a6257751e1bb537258d3c9cd4173bc89d12ef9d1"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/PlatformMallAccessTest.java",
+      "sha256": "fa8022e41ac7f196fefe8e88c613c67e88ba983ecb14d07e829b264ed512e0f2"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/PlatformMallReportingMysqlTest.java",
+      "sha256": "e726801792c64d1b1e462481cfa38bf256afd28441ef67d45e0a488931dccae9"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/PlatformMallReportingTest.java",
+      "sha256": "915e212e7c004864ed0b7b384fb4fcc26d4647f6e83deee7b47cff11bf62afa3"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/PlatformMallReportingWiringTest.java",
+      "sha256": "f832b03fc5e8a612c6f9138ec1906989b70cfb930815dee91ea5cff3a323d34d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/pay/service/impl/PlatformCashReportingMysqlTest.java",
+      "sha256": "242c986774f89c0714875e0ab03d74f71ce139127139c1fe8b0ea96b12370fc6"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/portal/ops/OpsPlatformMallControllerTest.java",
+      "sha256": "bbcc9b5521f7ad7140910d1311f0da2ee8ad7faddd600dcbfc5dd5a41bf37288"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/plan/EntityPlanOperatorPagingControllerTest.java",
+      "sha256": "f9e6c29d7e14198345f0cadb53e9dda4387c30005f3942ef5fbd20b99a9f43a4"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/plan/EntityPlanOperatorPagingTest.java",
+      "sha256": "5442b12810ebebd519a998ab4bf79753bcb6f5ae20e3717b261e102c8ccfe4cc"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/plan/EntityPlanReportingTest.java",
+      "sha256": "13c6ccf68eac30b927fcb76ef5de8184dc46c72dbde01837cabc580bce598078"
+    },
+    {
+      "path": "docs/api/platform-mall-reporting.md",
+      "sha256": "d0ca50792710b3bbeb7db845dd5ee2f427257ab7d778f4a26dc6a40eea986111"
+    },
+    {
+      "path": "docs/api/platform-mall-reporting.openapi.json",
+      "sha256": "199ecf03925c998133317e64b49c6da1ba5ccc7ad571b9ca830c63a83f10a6ec"
+    },
+    {
+      "path": "docs/technical/TDD-平台商城入口归并.md",
+      "sha256": "12669c1fecd71163ee0d0d1f7ac645b5fa4dcf7ad37aaf32060447e7bf576f83"
+    },
+    {
+      "path": "docs/technical/TDD-平台商城全局订单与收退款统计.md",
+      "sha256": "20e14dc5bfce5449b0ea4ff8bfb1093078122f85368fb37fbf6c1d1dd3b5fe43"
+    },
+    {
+      "path": "docs/technical/TDD-平台商城购买工作区.md",
+      "sha256": "193b1fafe50ac6556c11a13e84e78da028be31d179a07763fe7d7d3ad0301d9a"
+    },
+    {
+      "path": "docs/technical/TDD-平台设置入口归并.md",
+      "sha256": "d3cb2c2acac3d01048357d7e2b075bff16e2001a8d37efb4fd5df12b506f7855"
+    },
+    {
+      "path": "docs/technical/TDD-平台运营菜单渐进调整.md",
+      "sha256": "9d619958dc891709d900a87962da5e50e2de608419784a55a70ca3b9c3269864"
+    },
+    {
+      "path": "docs/technical/evidence/ops-core-menu-review-20261113/ai-shop-full-menu-proposal.json",
+      "sha256": "d00d39dfedfc4261ca67fc665d6f061bb294ffd2b895f8789027868a13907613"
+    },
+    {
+      "path": "docs/technical/evidence/ops-core-menu-review-20261113/source-audit.json",
+      "sha256": "2ed37c7e07d463af28afd7d276acf0ae0febdb20f49888456bbd1750784bf534"
+    },
+    {
+      "path": "docs/technical/evidence/ops-core-menu-review-20261113/three-level-menu-draft.json",
+      "sha256": "eb829fc6f76548abfb743f02d0a5124c871652675a63aeaaccc5fbe374ef105f"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/actor-isolation-tests.log",
+      "sha256": "c4eb065ea884bbaaaee0ccf85d9d49a7e60a760d4f3326e5cda8b28eeb52b116"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/backend-tests.log",
+      "sha256": "7119f2006ff9d7b7cd8919907eca4f5d3d0ccc2dd4167f5b6eb4d14497eae6a8"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/frontend-tests.log",
+      "sha256": "b10ee8bc20e4dcd585b9e91d0adcc28daa7b3888f53bfb39e53200fa8fcbbb06"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/typecheck.log",
+      "sha256": "f87c8c938039efe314d49f052253256902028f65cf8b5993408f753fcea6d207"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/verification.json",
+      "sha256": "cc3b4d85cd89ed7a84be7591f0c09f229e0a516e897ce7d71e7e944345310d1f"
+    },
+    {
+      "path": "docs/technical/evidence/ops-mall-workspace-20261114/webpack-build.log",
+      "sha256": "6219a3db963ae2ff239258e34e6240cee4f4403e03c5c7df11ad4be579629770"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/audit.json",
+      "sha256": "79b3314a52cc8d413a3d10fc182d36de653fc9ebc506ea24d0bedfd5cc94474b"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/menu-migration.csv",
+      "sha256": "dc59dcf1405c1535357bd4351b7b74075efb4f32434860dad68ad088f2f84267"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/menu-migration.json",
+      "sha256": "29a186bfc7fb2fac6c3e148446256c1998677cfae57acebc9b61934fcfa3faed"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/role-source-matrix.json",
+      "sha256": "bf804df718514f98dc2a9c0619a62fb6ba6c97f48714e5bb6866f470533669c2"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/target-menus.csv",
+      "sha256": "fb030067892d80cea067414139587b65a6eca6f44b614e91a68d23f2c1362db8"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch1-20261114/verification.json",
+      "sha256": "b6e5e9402bacca7c4eac111928ed0a7852746e68f91df239a889dd6801d01cc6"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch2-20261114/build.log",
+      "sha256": "32db3370a78115facc87fc0014776f187472b7f19ee20278bef66ff54e9ec154"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch2-20261114/settings-menu-diff.json",
+      "sha256": "97d75e5d0cc6790acf7d7dd81ee06d9ebd39baa8d4817f946a21e026369466a0"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch2-20261114/tests.log",
+      "sha256": "577ea025c946757228e6f3daf34af0ff67ddc8b1bcabfeffca0cbfb7f7a3c80e"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch2-20261114/typecheck.log",
+      "sha256": "f87c8c938039efe314d49f052253256902028f65cf8b5993408f753fcea6d207"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch2-20261114/verification.json",
+      "sha256": "56e831451d483e38522aedf35cffc706c413683b0f18ff03b5c04d0d7d09b4c4"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch3-20261114/build.log",
+      "sha256": "75b52511c84d421228ea7721f66efde0da8d91eefa766eabee60ebed867f10f7"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch3-20261114/mall-menu-diff.json",
+      "sha256": "889bccf5ee80c9c558b5782b1aea868844d2609a46e6eb1a17d7421b3b2b2ed5"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch3-20261114/tests.log",
+      "sha256": "2b886d23cfbe470ff248a7c02b9da153fc857859b1d7c3475e751c712fa01653"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch3-20261114/typecheck.log",
+      "sha256": "f87c8c938039efe314d49f052253256902028f65cf8b5993408f753fcea6d207"
+    },
+    {
+      "path": "docs/technical/evidence/ops-menu-batch3-20261114/verification.json",
+      "sha256": "c6f5d4e091a1e4bc9e86564b367afe2aabacd692ee3d1b8284d801110e7aba29"
+    },
+    {
+      "path": "docs/technical/evidence/ops-platform-menu-proposal-20261114/live-menu-correspondence-20261114.json",
+      "sha256": "bcef7c73769d88095e037d7ac469334a9537b4e59af8aecda0d2d44540ac005c"
+    },
+    {
+      "path": "docs/technical/evidence/ops-platform-menu-proposal-20261114/live-menu-registry-and-static-20261114.json",
+      "sha256": "b788332b87d4a5034ae27a0a4ace2196b996d954036a5972cbcccf2d03d2048c"
+    },
+    {
+      "path": "docs/technical/evidence/ops-platform-menu-proposal-20261114/platform-ops-menu-proposal.json",
+      "sha256": "459119da74a91698e950358c13f84270b7a691107e8694b522706578201f9b22"
+    },
+    {
+      "path": "docs/technical/reference/ai-shop平台运营端-现网菜单对照-2026-11-14.md",
+      "sha256": "085e0ae5c150391057e0801a4f4be93ce0eb75a2927cf6d7b7dadd421d8644e2"
+    },
+    {
+      "path": "docs/technical/reference/ai-shop平台运营端-菜单方案-2026-11-14.md",
+      "sha256": "17bc12698114e99a6876bbb07ab1fb828e838b0d5340179bbecd5cd1406f1f4d"
+    },
+    {
+      "path": "docs/technical/reference/ai-shop运营端-全量菜单方案-2026-11-13.md",
+      "sha256": "2b5f688ca5503436e9007c2d8694af359c993ad690c8ad8620e9cbc1211fe581"
+    },
+    {
+      "path": "docs/technical/reference/平台商城-两套套餐办理对齐-2026-11-14.md",
+      "sha256": "ab8a5c704bbb21a4c50fbdd5c0bba1775bf5cc492c108161923fca08a095c228"
+    },
+    {
+      "path": "docs/technical/reference/平台运营菜单第1批-回退方案-2026-11-14.md",
+      "sha256": "900eb97090dad9822b6713baeb863ec4c97cc11dd9a01c12f973ea3e13632275"
+    },
+    {
+      "path": "docs/technical/reference/平台运营菜单第1批-菜单迁移表-2026-11-14.md",
+      "sha256": "a798b96cf1a9036cefe9690bf1beef90552239e03cdedd184255b136e16c344f"
+    },
+    {
+      "path": "docs/technical/reference/平台运营菜单第1批-角色矩阵-2026-11-14.md",
+      "sha256": "801a7ab3c27404e82db2324c94df3c88763a436f4e49f60fefa25e7982377e9b"
+    },
+    {
+      "path": "docs/technical/reference/运营端-八项核心菜单规范-review-2026-11-13.md",
+      "sha256": "cce2bae163d7097d591c26f22f69b9a95f4b076e29f3509a36469f43ff904d39"
+    },
+    {
+      "path": "docs/technical/reference/运营端-完整三级菜单-2026-11-13.md",
+      "sha256": "ff9246a8beb5fafd68f8da836223a11b6102971f9c941be02961701bf538ce39"
+    },
+    {
+      "path": "ops-web/app/mall/entity-orders-tab.tsx",
+      "sha256": "a543b93a1fb30eb0938df928ac587ceb98964a28b333365cd2f049a9d1894847"
+    },
+    {
+      "path": "ops-web/app/mall/platform-cash-report.tsx",
+      "sha256": "fb56783d2cc1f4b6d999be476bcb1f2ea3b20c58498d81b479300a8e0730222a"
+    },
+    {
+      "path": "ops-web/app/mall/platform-order-list.tsx",
+      "sha256": "5a2445f7de994052c3f84574792780f9a9bdc8e17d54cfc909b831863f60d53a"
+    },
+    {
+      "path": "ops-web/app/mall/purchase-workspace-copy.ts",
+      "sha256": "fbe61c971cb4c4d1bdd718be6d13c656d5d42bd53ebeff74b34833cb7962d538"
+    },
+    {
+      "path": "ops-web/app/mall/purchase-workspace.tsx",
+      "sha256": "ea2c4684ccfea24bcda30afcf4b53b9d5a19f25e85e410166aa81fd24636d631"
+    },
+    {
+      "path": "ops-web/app/mall/reporting-copy.ts",
+      "sha256": "d8e56a8cf62953b414f916c865207a2aeac5a3e5568b73df48990c86672d187b"
+    },
+    {
+      "path": "ops-web/lib/__fixtures__/platform-reporting-before-point-codes.json",
+      "sha256": "b79f1c248b5b9a140a9b1c148c575efa2e764d3a62ce49c3307ed873677b8ddf"
+    },
+    {
+      "path": "ops-web/lib/__fixtures__/platform-settings-action-owners.json",
+      "sha256": "a78faeefea93229fb747987f7b190ead6e57572f42bf0795aa28b08556fd3149"
+    },
+    {
+      "path": "ops-web/lib/__fixtures__/platform-settings-before.json",
+      "sha256": "11e94280c3eeff3fa3b6d764eea831a693f9531656eb94a5d629bea0b1b71aeb"
+    },
+    {
+      "path": "ops-web/lib/api/contracts/platform-mall-reporting.ts",
+      "sha256": "b0d498959193162a09613a525f3c3202223cf256feeb579c49145c15576c9b5f"
+    },
+    {
+      "path": "ops-web/lib/api/https/platform-mall-reporting.test.ts",
+      "sha256": "a3baed4e042178bd57c7e0e89dd7c38d49f0cd4d2727a1ea8ed6d67f7dbb05a9"
+    },
+    {
+      "path": "ops-web/lib/entity-assisted-navigation.test.ts",
+      "sha256": "7d0963574f6336303e5bcbe2c968b1e8c3ef8283be83ad9640e1413e95f8f7a6"
+    },
+    {
+      "path": "ops-web/lib/nav-platform-mall.test.ts",
+      "sha256": "71e62556b346dab3f3a72b8dd4877a3d7da25d5513520fc2bf28233e29f7a24d"
+    },
+    {
+      "path": "ops-web/lib/nav-platform-settings.test.ts",
+      "sha256": "d192d4fb39b85be78aab0ff5147798b1c25db0b533565066c0ef588f75c615f7"
+    },
+    {
+      "path": "ops-web/lib/platform-mall-reporting.test.ts",
+      "sha256": "d5d0d3e779fff00af4dba8996831dcf1302588e151ee619c09ba28026a2a8aef"
+    },
+    {
+      "path": "ops-web/lib/platform-mall-reporting.ts",
+      "sha256": "7506273692c41689de56cad00f06fe21c33edd6b741ddcd0b8b87325a7bd2ac5"
+    },
+    {
+      "path": "ops-web/lib/purchase-workspace.test.ts",
+      "sha256": "4510211a7eea898a2713c72f15704b65e422c5f1f144e6f2c3dcfe8de58d4724"
+    },
+    {
+      "path": "ops-web/lib/use-page-tab.test.ts",
+      "sha256": "a5284b1c64ccbf606b89fdd2cbf2489a46417b6ceb9ef033056b63a47f764813"
+    },
+    {
+      "path": "ops-web/lib/use-reporting-identity.ts",
+      "sha256": "cac0f400522b7d072efa3b544f5ca9d60a82c1bc3ba7ee84c4779591fff3f6e7"
+    },
+    {
+      "path": "backend/commerce/commerce-persistence/pom.xml",
+      "sha256": "93d41e49956244b0b4f3f796be709595cbbd9e46098aa8f7306d80e54d0e922d"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/CommerceMallQueryAutoConfiguration.java",
+      "sha256": "03bc7b0c6337ad8650c5fed94817a3a07f1f0a470c5cdbaf4c367cc57a8c2fb9"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PlatformOfflineLedger.java",
+      "sha256": "883f36b9258cbe39849874b90732800ab332a54b30a453b63ff4a82873d45431"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopCommerceStoreAdapter.java",
+      "sha256": "a8388ffc5da4bc0f858adf69bbec4c04ae0efa61ce788b03bb479b01a3af4b37"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopMallAuthority.java",
+      "sha256": "ea026e76ff3df29ddb50cbb0c47c52c2a27352a2059de40bfb24e6846dfa97e7"
+    },
+    {
+      "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java",
+      "sha256": "469f61c63cc3386d5cf562728f63211d07abc5e461cd2a39ed5107b924fe742d"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "sha256": "b411675f56e2ac0fe2324739f3b8d7f8370ce84936576dfd4acd654c1ac96994"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/EntityPlanPurchaseService.java",
+      "sha256": "7f1e175173cb170fa4a7e1a80786af8d5dc700e6ac26ea9b3478dcc965c04284"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/impl/EntityPlanPurchaseServiceImpl.java",
+      "sha256": "aa687d8fcd552400ce233ca0c37e6c6e41d2c39e4097b16d46d196703c4b6b7b"
+    },
+    {
+      "path": "docs/api/backend-ui-delivery-entity-plan-purchase.json",
+      "sha256": "845ed801fd3bc480f418b279f76aae8b8271b9d961c72aa60cf8c0da032b4583"
+    },
+    {
+      "path": "docs/api/entity-plan-offline-purchase.md",
+      "sha256": "b9fa3d5b55690f9d081e8156d9abf80aa3893ce31af4914f2cf1fa0d55a677a7"
+    },
+    {
+      "path": "docs/api/entity-plan-offline-purchase.openapi.json",
+      "sha256": "916382d6caa01fb3ff92bf220d7abb091058826c962e9afb5d4e989c6aa06470"
+    },
+    {
+      "path": "docs/technical/design/权限配置落库-数据库设计与数据清单.md",
+      "sha256": "e0ade81cc84d29d42a73ad5a6c5960367e07f24f209b28ffbafceaf766e2ea4f"
+    },
+    {
+      "path": "docs/technical/design/运营端-动态菜单×角色矩阵.md",
+      "sha256": "3d176c4eae680e6f3dd52aa0b33d758e9791eab63560c029cd4dd60911ef91bd"
+    },
+    {
+      "path": "docs/technical/reference/运营端-双语菜单与角色矩阵.md",
+      "sha256": "2789a38c3f10e486645852ca28206c9be3e9feeb65fa5c26ed07c234e05be26f"
+    },
+    {
+      "path": "docs/technical/reference/运营端-商户门店开店收款目录与域边界.md",
+      "sha256": "0a127df604ccc16d64c75f2651d3135cb68bb05d120a2920e4572057c3546e07"
+    },
+    {
+      "path": "ops-web/app/mall/orders-tab.tsx",
+      "sha256": "874f8816ffdc995b16cf2b9f9a04f8b3943b47dd47639f3c532f272f9ca6ddbe"
+    },
+    {
+      "path": "ops-web/app/mall/page.tsx",
+      "sha256": "45137328676ef6640250bc89c5c98af5a0838be323495e75bec4c938a6193f9e"
+    },
+    {
+      "path": "ops-web/app/merchants/plan-assisted-purchase.tsx",
+      "sha256": "0e0be1b96c51482a8d3ffe6ca01f669643865ac8475a3fa59e5620316ef4fcad"
+    },
+    {
+      "path": "ops-web/app/merchants/plan-purchases.tsx",
+      "sha256": "b9678085d05fe08c7679da8e71e8f00aca1e0212fe80a06fd1e33aa699ae7883"
+    },
+    {
+      "path": "ops-web/app/merchants/plans-tab.tsx",
+      "sha256": "a719983fdb0f126f086c1ede0a520bbc3a6b2fb11097895bc5eee821d8a3197d"
+    },
+    {
+      "path": "ops-web/components/layout/secondary-nav.tsx",
+      "sha256": "cf722d6d06d676579d3b66774a11f600c055f71a5aa5683fe59379ef4d6277cb"
+    },
+    {
+      "path": "ops-web/lib/api/contracts/commerce.ts",
+      "sha256": "6d926bd66a029be1af5b1830aabcc7bdb903943a600b7cb12eaf84cdb6e35f77"
+    },
+    {
+      "path": "ops-web/lib/api/contracts/entity-plan-purchase.ts",
+      "sha256": "d0835ecfbd88b339dc12438b5b678ea93895ca8269a3531f1ce6a01b6d79f9da"
+    },
+    {
+      "path": "ops-web/lib/api/https/commerce.ts",
+      "sha256": "b6abfa20eb9eb6e81f066be60f128c152a4743ffce0ece2caa96e4dd57fa99ec"
+    },
+    {
+      "path": "ops-web/lib/api/https/entity-plan-purchase.test.ts",
+      "sha256": "0dd4e9dcdf2b8bf9472c771e81b217c6247bbebffe91c2553befadb2efb024c6"
+    },
+    {
+      "path": "ops-web/lib/api/https/merchant.ts",
+      "sha256": "3fee8581d7d391bb691e490242951b64f8a3a085e911075ada240263b2ceebf4"
+    },
+    {
+      "path": "ops-web/lib/api/mocks/commerce.ts",
+      "sha256": "d0d1c6d04169a90afa298856d999d665c801cc9fa28e9233bdd1d744b4bfed49"
+    },
+    {
+      "path": "ops-web/lib/api/mocks/merchant.ts",
+      "sha256": "39b90a5b4400223f4bdcbacce59a650e4df6f3017d213c2ad2bf5c513f379b62"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-labels.ts",
+      "sha256": "14eaf1b27a2335046b4d0edfeafa537b40916717ab404ee9660f6745a263850a"
+    },
+    {
+      "path": "ops-web/lib/i18n/nav-zh-TW.ts",
+      "sha256": "5c1441058323d46dcab5ee093814cb861e15abe7cc01f8bb64989dd646a7d60a"
+    },
+    {
+      "path": "ops-web/lib/nav-migration.test.ts",
+      "sha256": "62051704652f792bbeb323b735ff500200e03fbab45e174363528e7cf4d45937"
+    },
+    {
+      "path": "ops-web/lib/nav.test.ts",
+      "sha256": "e3eda3cd3a29b29a988454dd6f9bf078628ebbf3d5ed726fe6046d717c109609"
+    },
+    {
+      "path": "ops-web/lib/nav.ts",
+      "sha256": "d419cac283c8a821ef1b1c3b4b16bdcc206a84694b10cd36eb871845f85cdcc9"
+    },
+    {
+      "path": "ops-web/lib/perm-map.ts",
+      "sha256": "034c845c4f1ac35b4e2f98689aa46c032a3b131636868f347148afca014f4aea"
+    },
+    {
+      "path": "ops-web/lib/point-codes.ts",
+      "sha256": "227473d72339e92a6c2826a71372d0e66d16b059b8c47a221d7ed23cc0db3b55"
+    },
+    {
+      "path": "ops-web/lib/use-page-tab.ts",
+      "sha256": "dc5b93656c8d9da8b18454e322067f0c21eda78ab77e91cf4b89aa07fc6e8341"
+    },
+    {
+      "path": "ops-web/scripts/gen-perm-seed.mjs",
+      "sha256": "6ad285fb88c8263335109e54df7e4a9a0fff2399d7bdfa9c08ed7b424b41d600"
+    }
+  ]
+}

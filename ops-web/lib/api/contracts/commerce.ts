@@ -1,3 +1,4 @@
+import type { PlatformMallReportingApi } from "./platform-mall-reporting";
 import type {CashRefundApi} from "./offline-cash";
 // 覆盖范围：套餐商城（commerce）—— 目录、商城订单、门店权益来源、线下银行转账核款。
 //
@@ -24,7 +25,7 @@ import type {
 /** 线下待审队列的游标：按 (orderNo, claimNo) 翻页 */
 export type OfflineClaimCursor = { afterOrderNo?: string; afterClaimNo?: string; limit?: number };
 
-export interface CommerceApi extends Pick<CashRefundApi, "mallCashReceipts"|"mallCashRefunds"|"requestMallCashRefund"|"payoutMallCashRefund"|"recoverMallCashRefund"> {
+export interface CommerceApi extends PlatformMallReportingApi, Pick<CashRefundApi, "mallCashReceipts"|"mallCashRefunds"|"requestMallCashRefund"|"payoutMallCashRefund"|"recoverMallCashRefund"> {
   // ── 目录（读 commerce:catalog:read；写 :edit；发布/停售/启用 :publish）──
   /** 目录总览。空目录也返回结构（各数组为空），不是 404 */
   mallCatalog(): Promise<MallCatalogOverview>;

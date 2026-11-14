@@ -167,6 +167,13 @@ WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND ? IN (%s) AND a.st
 
     record StoreFacts(StoreSnapshot snapshot, String storeStatus, String entityStatus) {}
 
+    /** Financial authorization retains persisted ownership after store/entity soft deletion. */
+    Optional<String> financialOwner(StoreRef store) {
+        return jdbc.queryForList(
+                "SELECT entity_no FROM mch_store WHERE tenant_no=? AND store_no=?",
+                String.class, store.tenantNo(), store.storeNo()).stream().findFirst();
+    }
+
     public Optional<StoreSnapshot> find(StoreRef store) {
         return details(store).map(StoreFacts::snapshot);
     }

@@ -12,6 +12,9 @@
 import { useEffect, useState, useCallback } from "react";
 import {FinancialLockContext} from "@/components/offline/financial-lock";
 import { EntityPlanPurchasesPanel } from "./plan-purchases";
+import { PurchaseWorkspace } from "@/app/mall/purchase-workspace";
+import { PURCHASE_WORKSPACE_COPY } from "@/app/mall/purchase-workspace-copy";
+import { useCopy } from "@/lib/use-copy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -54,6 +57,7 @@ const FILTER_OPTIONS = (c: Copy) => [
 const day = (ms?: number | null) => (ms == null ? null : new Date(ms).toLocaleDateString());
 
 export function PlansTab({ c }: { c: Copy }) {
+  const purchaseCopy = useCopy(PURCHASE_WORKSPACE_COPY);
   const qc = useQueryClient();
   const allow = useCan();
   const statusMap = useStatusMap(c);
@@ -114,6 +118,7 @@ export function PlansTab({ c }: { c: Copy }) {
 
   return (
     <>
+      <details className="mb-3 rounded-card border p-3"><summary className="cursor-pointer txt-strong">{purchaseCopy.title}</summary><div className="mt-3"><PurchaseWorkspace initialKind="ENTITY" /></div></details>
       <HelpNote className="mb-3">{c.plNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.plSearchPh}>

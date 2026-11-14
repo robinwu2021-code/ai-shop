@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-14",
+  "scope": "BATCH1_DOCUMENTATION_AND_SOURCE_AUDIT",
+  "sourceCommit": "4148e159adf33b012c7fdfd9ee9f0dbb39c6ef01",
+  "nearPaySourceCommit": "90895ac4daf183a9d51cf4835da2b43b4ded31b3",
+  "liveMenuEvidence": "../ops-platform-menu-proposal-20261114/live-menu-registry-and-static-20261114.json",
+  "liveMenuEvidenceReused": true,
+  "newLiveQueriesExecuted": false,
+  "roleMatrixBasis": "SOURCE_FALLBACK_ONLY_NOT_CURRENT_DB_GRANTS",
+  "runtimeRoleGrantAndScopeVerification": "REQUIRED_BEFORE_ROLLOUT",
+  "runtimeChanged": false,
+  "deploymentExecuted": false,
+  "sourceFiles": [
+    {
+      "path": "ops-web/lib/nav.ts",
+      "sha256": "d293a33fea131dbd0d57292d59965a7c04ac9de545f2fc8930238204b26f4b90"
+    },
+    {
+      "path": "ops-web/lib/permissions.ts",
+      "sha256": "2bc9764afc5d0e25f2a3822e370f4e29c815d01f0697012a2627e42cf2f3695b"
+    },
+    {
+      "path": "ops-web/lib/perm-map.ts",
+      "sha256": "4d64f08383900101300f4aeb90932806bd5db236474b2cb41a140a4f4e3d083c"
+    },
+    {
+      "path": "ops-web/lib/stores/server-menu.ts",
+      "sha256": "7c4abab37b60f88ca005b0d7d4b6d1aae225be77b045495933c870c5a4811943"
+    },
+    {
+      "path": "ops-web/lib/api/https/dashboard.ts",
+      "sha256": "826c9bcc6d1c812f99702672c8834c47cbea54fee17e4082dbb6bb4a490ed3f9"
+    },
+    {
+      "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java",
+      "sha256": "4a1ee6b54ea4b90091007f091bb1d6f0e4996fccf06e8ba8e4b25041c682bb59"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/perm/RolePermResolver.java",
+      "sha256": "cb5673cfe9e914871bd8ccd7f0af1e969a8803848e22eae67811d04cd86e3785"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/perm/impl/PermConfigServiceImpl.java",
+      "sha256": "b0de2334a9942a60852856eac56c9d2201656341e4942b4e3495fdbc4077fd2c"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V625__commerce_mall_permissions.sql",
+      "sha256": "a7ab2f2a67c4272c346518be8140ebdb42b3a6443f9429f518b82239e88272cb"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V627__commerce_offline_permissions.sql",
+      "sha256": "12842e6b4babb3e96f95d0a55d107040852bb14446a7c3110924fd62d56ee7a3"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsMerchantPlanController.java",
+      "sha256": "0a7139f41470695a7220ec72385759771f2fe596b3e1024cb8f3f80d33644d3f"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+      "sha256": "94e983ce7d8803782830cdab9856e82f3eae1a1877a7f67217be83d90a4f6d41"
+    },
+    {
+      "path": "scripts/perm-endpoint-map.mjs",
+      "sha256": "88297d1c8b91f823d4396123ad3bd8df34c690758b160aaad82d3ea3d3bf94b8"
+    },
+    {
+      "path": "deploy/ume/ops-navigation/verify_menu_migration.py",
+      "sha256": "be46f1ef6f65e482fea5ceb5349a83985ac042345a13b5d4e6d05b895e5294b5"
+    },
+    {
+      "path": "ops-web/lib/points-ops-routes.ts",
+      "sha256": "fa1fe495f1645b9d3bd788e351e7b7cd62b6efc57597a8b60b9704e40851acf9"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "sha256": "426d9de752f217324db06f3dd284786ace8af01b848795e89302cf10f15d4c59"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsEntityPlanRefundController.java",
+      "sha256": "becdc49fdabcdf0d2a750a57084188bd681ccafd9b56f73e8a99d9e6b2d20bef"
+    }
+  ],
+  "oldMenuCount": 158,
+  "targetCount": 41,
+  "dispositionCounts": {
+    "DETAIL_CANDIDATE": 16,
+    "REUSE_SOURCE": 34,
+    "KEEP_PENDING_SCOPE": 83,
+    "SETTINGS_CANDIDATE": 8,
+    "ORDER_DETAIL_CANDIDATE": 5,
+    "KEEP_PAYMENT_COMPAT": 8,
+    "KEEP_DISABLED": 4
+  },
+  "nearPaySourceFiles": [
+    {
+      "path": "ops-web/lib/catalog.ts",
+      "sha256": "20d9c8731090c3d73904d96d9752f016950e3732cb2ef38a6fbcdcc82666c8e0"
+    },
+    {
+      "path": "backend/pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/access/PayPermissionEvaluator.java",
+      "sha256": "c88d0364d13e15245d9f74be5cd4fdedd3e978cda2d4f00e39bf28d0a1d98448"
+    },
+    {
+      "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsMerchantController.java",
+      "sha256": "e4e62cb62849d6a34f7837e87dcc6d242047a6a72fd801982aa8f6028fb82e1f"
+    },
+    {
+      "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsStoreBindingController.java",
+      "sha256": "da32e11aa81fd139ef311c6c1f286f741693977d61facd0a4b5b33e3936cf425"
+    },
+    {
+      "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsV2.java",
+      "sha256": "c0a48272b991b70527299bea33037a83f8bde6ef7951f7b072227b15e39ff22f"
+    }
+  ]
+}

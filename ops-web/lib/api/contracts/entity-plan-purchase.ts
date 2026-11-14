@@ -12,6 +12,8 @@ export interface EntityPlanPurchaseApi {
   entityPlanOffers(entityNo:string):Promise<EntityPlanOffer[]>;
   saveEntityPlanOffer(entityNo:string,command:EntityPlanOfferEdit):Promise<EntityPlanOffer>;
   entityPlanPurchases(entityNo:string):Promise<EntityPlanPurchase[]>;
+  /** Authorized operator page; orderNo cursor, limit1..100. No legacy100-row fallback. */
+  entityPlanPurchasePage(entityNo:string,q?:{afterOrderNo?:string;limit?:number}):Promise<EntityPlanPurchase[]>;
   entityPlanPurchase(entityNo:string,orderNo:string):Promise<EntityPlanPurchase>;
   confirmEntityPlanPurchase(entityNo:string,orderNo:string,command:EntityPlanConfirm):Promise<EntityPlanAction>;
   declineEntityPlanPurchase(entityNo:string,orderNo:string,claimNo:string,reason:string):Promise<unknown>;

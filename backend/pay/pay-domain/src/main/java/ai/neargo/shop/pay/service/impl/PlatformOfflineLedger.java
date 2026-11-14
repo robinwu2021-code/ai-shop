@@ -22,7 +22,7 @@ final class PlatformOfflineLedger {
     }
     private static void require(boolean b, String reason) { if (!b) throw new IllegalArgumentException(reason); }
     private static void text(String s, int max) { require(s != null && !s.isBlank() && s.length() <= max, "OFFLINE_REQUIRED_FIELD"); }
-    private static String hash(String... fields) {
+    static String hash(String... fields) {
         try {
             var digest = MessageDigest.getInstance("SHA-256");
             for (String field : fields) {
@@ -94,7 +94,7 @@ final class PlatformOfflineLedger {
                 Long issued = jdbc.queryForObject("SELECT platform_dispatch_at FROM stl_payment WHERE payment_no=?",Long.class,original.paymentNo());
                 require(issued!=null,"OFFLINE_INSTRUCTIONS_NOT_ISSUED");
                 require("HISTORICAL".equals(p.mode()) || Math.addExact(p.actualPaidAt(),999)>=r.preparedAt(),"OFFLINE_HISTORICAL_MODE_REQUIRED");
-                String referenceKey = hash("platform-bank-reference:v1",r.key().tenantNo(),r.offline().receivingAccountKey(),p.bankReference().trim().toUpperCase(Locale.ROOT));
+                String referenceKey = PlatformCashAuthority.bankReferenceKey(r,p.bankReference());
                 var prior = jdbc.queryForList("SELECT payment_no,platform_manual_proof FROM stl_payment WHERE platform_bank_ref_key=? FOR UPDATE",referenceKey);
                 if (!prior.isEmpty()) {
                     require(p.equals(json.readValue((String)prior.getFirst().get("platform_manual_proof"),OfflineProof.class)),"OFFLINE_BANK_REFERENCE_CONFLICT");
@@ -124,23 +124,12 @@ final class PlatformOfflineLedger {
         if (tenant == null || tenant.isBlank() || order == null || order.isBlank()) return List.of();
         return jdbc.query("SELECT * FROM stl_payment WHERE tenant_no=? AND order_no=? AND direction='PAY' AND status='SUCCESS' AND pay_scene IN ('PLATFORM_MALL','MALL_UNMATCHED') AND deleted=0 ORDER BY payment_no FOR UPDATE",
                 (rs,n) -> {
-                    var frozen = json.readValue(rs.getString("payment_request_json"), PlatformCollectionServiceImpl.Frozen.class);
-                    var r = frozen.request();
+                    var r = PlatformCashAuthority.receiptMetadata(json, new org.springframework.jdbc.core.ColumnMapRowMapper().mapRow(rs,n));
                     String no = rs.getString("payment_no");
-                    require(tenant.equals(r.key().tenantNo()) && order.equals(r.key().orderNo())
-                            && no.equals(PlatformCollectionServiceImpl.paymentNo(r.key()))
-                            && frozen.business().equals(rs.getString("pay_scene"))
-                            && r.merchantNo().equals(rs.getString("entity_no"))
-                            && r.amountMinor() == rs.getLong("amount_minor") && r.amountMinor() > 0
-                            && r.currency().equals(rs.getString("currency"))
-                            && r.channel().equals(rs.getString("pay_channel"))
-                            && r.method().equals(rs.getString("pay_method"))
-                            && (r.offline() == null || r.offline().merchantNo().equals(r.merchantNo())),
-                            "OFFLINE_CASH_METADATA_MISMATCH");
                     var refunded = refundAuthority(r, no);
                     boolean closed = rs.getString("platform_close_fence") != null;
                     return new CashReceipt(no,r.key().attemptNo(),r.merchantNo(),r.amountMinor(),r.currency(),
-                            refunded.minor(),refunded.pending(),UNMATCHED.equals(frozen.business()) || closed,closed);
+                            refunded.minor(),refunded.pending(),UNMATCHED.equals(rs.getString("pay_scene")) || closed,closed);
                 },tenant,order);
     }
 
@@ -155,50 +144,8 @@ final class PlatformOfflineLedger {
             if ("RELEASED".equals(row.get("refund_capacity_state"))) continue;
             if (!"SUCCESS".equals(row.get("status"))) { pending = true; continue; }
             try {
-                var frozen = json.readValue((String)row.get("refund_request_json"), PlatformRefundServiceImpl.Frozen.class);
-                var r = frozen.request();
                 long amount = ((Number)row.get("amount_minor")).longValue();
-                boolean valid = PlatformRefundServiceImpl.paymentNo(r.key()).equals(row.get("payment_no"))
-                        && original.channel().equals(frozen.channel())
-                        && "PLATFORM_MALL".equals(row.get("pay_scene")) && "PLATFORM_MALL".equals(frozen.business())
-                        && original.key().tenantNo().equals(r.key().tenantNo())
-                        && original.key().orderNo().equals(row.get("order_no"))
-                        && original.key().orderNo().equals(r.key().orderNo())
-                        && original.key().attemptNo().equals(r.originalAttemptNo()) && no.equals(r.originalPaymentNo())
-                        && original.merchantNo().equals(r.merchantNo()) && r.merchantNo().equals(row.get("entity_no"))
-                        && original.currency().equals(r.currency()) && r.currency().equals(row.get("currency"))
-                        && original.amountMinor() == r.originalPaidMinor() && amount == r.refundMinor() && amount > 0
-                        && "CONSUMED".equals(row.get("refund_capacity_state")) && "SUCCEEDED".equals(row.get("refund_query_state"))
-                        && row.get("refund_verified_minor") instanceof Number verified && verified.longValue() == amount
-                        && row.get("refund_verified_at") instanceof Number at && at.longValue() > 0
-                        && row.get("refund_verified_provider_no") instanceof String provider && !provider.isBlank();
-                if ("OFFLINE".equals(original.channel())) {
-                    var proof = json.readValue((String)row.get("platform_manual_proof"), ai.neargo.shop.pay.service.PlatformRefundService.OfflinePayout.class);
-                    valid &= r.key().equals(proof.key()) && amount == proof.actualMinor()
-                            && r.currency().equals(proof.currency()) && proof.paidOutAt() > 0
-                            && proof.confirmedAt() >= proof.paidOutAt()
-                            && proof.bankReference().equals(row.get("refund_verified_provider_no"))
-                            && proof.bankReference().equals(row.get("trade_no"))
-                            && row.get("refund_verified_at") instanceof Number verifiedAt && verifiedAt.longValue() == proof.paidOutAt()
-                            && row.get("succeeded_at") instanceof Number succeeded && succeeded.longValue() == proof.paidOutAt()
-                            && proof.evidenceReference() != null && !proof.evidenceReference().isBlank()
-                            && proof.payeeReference() != null && !proof.payeeReference().isBlank()
-                            && PlatformRefundServiceImpl.bankKey(r.key().tenantNo(),proof.bankReference()).equals(row.get("platform_bank_ref_key"));
-                } else {
-                    var proof = json.readValue((String)row.get("platform_receipt_json"), ai.neargo.shop.spi.pay.RefundQueryResult.class);
-                    valid &= proof.status() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
-                            && amount == proof.amountMinor() && r.currency().equals(proof.currency())
-                            && row.get("out_trade_no").equals(proof.outRefundNo())
-                            && Objects.equals(frozen.originalExternal(),proof.originalOutTradeNo())
-                            && Objects.equals(frozen.originalProvider(),proof.originalTradeNo())
-                            && Objects.equals(r.originalPaidMinor(),proof.originalTotalMinor())
-                            && r.merchantNo().equals(proof.receiverNo())
-                            && Objects.equals(row.get("refund_verified_provider_no"),proof.providerNo())
-                            && proof.actualRefundAt() != null && proof.actualRefundAt() > 0
-                            && proof.observedAt() >= proof.actualRefundAt()
-                            && row.get("refund_verified_at") instanceof Number verifiedAt && verifiedAt.longValue() == proof.observedAt()
-                            && row.get("succeeded_at") instanceof Number succeeded && succeeded.longValue() == proof.actualRefundAt();
-                }
+                boolean valid = PlatformCashAuthority.refundVerified(json, original, no, row);
                 if (valid) total = Math.addExact(total, amount); else pending = true;
             } catch (RuntimeException invalid) { pending = true; }
         }

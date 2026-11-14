@@ -1,0 +1,834 @@
+{
+  "date": "2026-11-14",
+  "status": "AWAITING_USER_CONFIRMATION",
+  "implementationAuthorized": false,
+  "scope": "Platform operator console for SaaS configuration, monitoring, review, maintenance and assisted actions; not tenant daily operating software.",
+  "sections": [
+    {
+      "label": "平台设置",
+      "en": "Settings",
+      "groups": [
+        {
+          "label": "基础配置",
+          "entries": [
+            {
+              "label": "地区配置",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/system?tab=market",
+                "shop:/system"
+              ],
+              "correspondenceNote": "有市场货币/外观语言页面；方案中的地区、默认语言和单位需核对字段并整合。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "外观文案",
+                "市场货币"
+              ]
+            },
+            {
+              "label": "业务配置",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/system?tab=storeIndustry",
+                "shop:/system?tab=authCode",
+                "shop:/system?tab=scope",
+                "shop:/products"
+              ],
+              "correspondenceNote": "行业、授权字典、经营范围及商品规则分散；无同名统一入口。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "商品分类",
+                "门店行业",
+                "经营授权",
+                "范围开关"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "渠道费率",
+          "entries": [
+            {
+              "label": "支付渠道",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/ops/channels"
+              ],
+              "correspondenceNote": "独立支付OP03已部署；尚不是ai-shop设置下的统一入口。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·支付渠道"
+              ]
+            },
+            {
+              "label": "费率配置",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/finance?tab=rates",
+                "shop:/finance?tab=pay-channels",
+                "pay:/ops/channel-costs",
+                "pay:/ops/fee-plans"
+              ],
+              "correspondenceNote": "经营服务费率和旧通道费率有入口；独立支付OP05/OP06不在当前live页面中，不能当完整费率配置已上线。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "服务费率",
+                "渠道费率"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "权限管理",
+          "entries": [
+            {
+              "label": "运营账号",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/iam"
+              ],
+              "correspondenceNote": "线上已有运营账号。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "运营账号"
+              ]
+            },
+            {
+              "label": "角色权限",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/iam?tab=roles"
+              ],
+              "correspondenceNote": "线上已有角色权限。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "角色权限"
+              ]
+            },
+            {
+              "label": "数据范围",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/iam",
+                "pay:/system/data-scope"
+              ],
+              "correspondenceNote": "员工范围配置与独立支付SY04均有相关能力；没有统一覆盖两域的同名ai-shop页面。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "运营账号"
+              ]
+            },
+            {
+              "label": "菜单配置",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/iam?tab=menu"
+              ],
+              "correspondenceNote": "已有菜单顺序/文案等配置；新五模块三级结构仍未实现。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "菜单顺序"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "系统维护",
+          "entries": [
+            {
+              "label": "系统参数",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/system",
+                "shop:/system?tab=flags",
+                "shop:/system?tab=storage",
+                "shop:/system?tab=appVersion"
+              ],
+              "correspondenceNote": "多个已有配置页需聚合，不是一项已存在的统一入口。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "外观文案",
+                "开关灰度",
+                "存储管理",
+                "应用版本"
+              ]
+            },
+            {
+              "label": "消息配置",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/messages"
+              ],
+              "correspondenceNote": "已有通道总览及短信/邮件等分散页；目标为平台消息配置聚合。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "通道总览"
+              ]
+            },
+            {
+              "label": "审计日志",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/iam?tab=audit"
+              ],
+              "correspondenceNote": "线上已有审计日志。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "审计日志"
+              ]
+            },
+            {
+              "label": "运行监控",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/jobs",
+                "shop:/inventory?tab=link-health"
+              ],
+              "correspondenceNote": "已有任务日志、库存链路等局部监控，无统一平台运行监控页。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "链路健康",
+                "任务日志"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "平台商城",
+      "en": "Platform Store",
+      "groups": [
+        {
+          "label": "套餐方案",
+          "entries": [
+            {
+              "label": "主体套餐",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/merchants?tab=plans",
+                "shop:/merchants?tab=plan-defs"
+              ],
+              "correspondenceNote": "可对应套餐授予/档位定义及现有主体套餐工作区，不代表新导航已改名。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "套餐授予",
+                "档位定义"
+              ]
+            },
+            {
+              "label": "门店套餐",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall"
+              ],
+              "correspondenceNote": "可对应现有套餐管理。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "套餐管理"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "商品目录",
+          "entries": [
+            {
+              "label": "平台商品",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall?tab=products"
+              ],
+              "correspondenceNote": "可对应服务商品；不是经营门店商品。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "服务商品"
+              ]
+            },
+            {
+              "label": "商品分类",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall?tab=categories"
+              ],
+              "correspondenceNote": "可对应服务分类；不是/products中的经营商品分类。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "服务分类"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "权益管理",
+          "entries": [
+            {
+              "label": "权益定义",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/merchants?tab=plan-defs",
+                "shop:/mall?tab=products"
+              ],
+              "correspondenceNote": "权益定义分布在套餐档位/商品等配置中，未见独立统一菜单。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "档位定义",
+                "服务商品"
+              ]
+            },
+            {
+              "label": "订阅权益",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall?tab=sources"
+              ],
+              "correspondenceNote": "线上已有订阅权益。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "订阅权益"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "商城订单",
+          "entries": [
+            {
+              "label": "购买订单",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall?tab=orders"
+              ],
+              "correspondenceNote": "线上已有购买订单；主体套餐订单仍在对应主体套餐工作区。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "购买订单"
+              ]
+            },
+            {
+              "label": "运营代购",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/mall?tab=assisted",
+                "shop:/merchants?tab=plans"
+              ],
+              "correspondenceNote": "门店套餐有运营代购入口，主体套餐也有对应办理；两套统一入口仍需整合。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "套餐授予",
+                "运营代购"
+              ]
+            },
+            {
+              "label": "核款审核",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/mall?tab=claims",
+                "shop:/merchants?tab=plans"
+              ],
+              "correspondenceNote": "商城线下核款已有，主体套餐确认在对应工作区；不能当成新统一核款页已完成。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "套餐授予",
+                "线下核款"
+              ]
+            },
+            {
+              "label": "退款处理",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "currentReferences": [
+                "shop:/mall?tab=orders",
+                "shop:/merchants?tab=plans"
+              ],
+              "correspondenceNote": "对应订单详情已有退款等办理；目标全局退款入口待聚合。",
+              "alignmentMark": "整合",
+              "currentEntryNames": [
+                "套餐授予",
+                "购买订单"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "收入统计",
+          "entries": [
+            {
+              "label": "收入概况",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "alignmentMark": "整合",
+              "currentReferences": [
+                "shop:/mall?tab=orders",
+                "shop:/mall?tab=claims",
+                "shop:/merchants?tab=plans"
+              ],
+              "correspondenceNote": "聚合平台套餐/商品销售的收款、退款、净收款；现有商城/主体套餐订单可作来源，独立收入概况尚未核对上线。",
+              "currentEntryNames": [
+                "购买订单",
+                "线下核款",
+                "主体套餐购买记录"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            },
+            {
+              "label": "收入明细",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "alignmentMark": "整合",
+              "currentReferences": [
+                "shop:/mall?tab=orders",
+                "shop:/mall?tab=claims",
+                "shop:/merchants?tab=plans"
+              ],
+              "correspondenceNote": "按平台商城订单追溯收款及退款，不能以门店营业额或全部支付交易金额替代；新收入明细需整合。",
+              "currentEntryNames": [
+                "商城及主体套餐购买/核款/退款事实"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            }
+          ]
+        },
+        {
+          "label": "销售设置",
+          "entries": [
+            {
+              "label": "收款配置",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/mall?tab=collection"
+              ],
+              "correspondenceNote": "线上已有平台商城收款配置；本轮未核查收款资料或资金流程。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "收款配置"
+              ]
+            }
+          ]
+        }
+      ],
+      "responsibility": "PLATFORM_CATALOG_SALES_PURCHASE_FULFILLMENT_AND_PLATFORM_REVENUE",
+      "revenueScope": {
+        "included": [
+          "平台套餐销售",
+          "平台软件/硬件/服务商品销售"
+        ],
+        "excluded": [
+          "SaaS门店经营营业额",
+          "门店顾客支付交易总额"
+        ],
+        "metrics": [
+          "已收款",
+          "退款",
+          "净收款"
+        ],
+        "unpaidOrdersNotCountedAsReceived": true,
+        "aggregateByCurrency": true
+      }
+    },
+    {
+      "label": "客户管理",
+      "en": "Customers",
+      "groups": [
+        {
+          "label": "数据概览",
+          "entries": [
+            {
+              "label": "经营概况",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "alignmentMark": "整合",
+              "currentReferences": [
+                "shop:/"
+              ],
+              "correspondenceNote": "旧首页有概览；新用户/门店/连锁只读统计范围和口径需整合，不能把整项标成现成。",
+              "currentEntryNames": [
+                "现有首页概览"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            }
+          ]
+        },
+        {
+          "label": "用户会员",
+          "entries": [
+            {
+              "label": "用户数据",
+              "availability": "MISSING_OPS_ENTRY",
+              "alignmentMark": "待建",
+              "currentReferences": [],
+              "correspondenceNote": "需覆盖未建店SaaS账号的只读统计与明细；会员、测试身份或运营员工不能代替。",
+              "currentEntryNames": [
+                "无全量注册账号OPS查询入口"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            },
+            {
+              "label": "会员列表",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "alignmentMark": "整合",
+              "currentReferences": [
+                "shop:/members"
+              ],
+              "correspondenceNote": "复用现有会员名单来源；用户已确认门店/连锁会员统一属于平台会员，需展示真实来源门店及关联关系，字段、去重及筛选尚未验收。",
+              "currentEntryNames": [
+                "现有会员名单"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            }
+          ]
+        },
+        {
+          "label": "门店连锁",
+          "entries": [
+            {
+              "label": "门店列表",
+              "availability": "PARTIAL_OR_AGGREGATE",
+              "alignmentMark": "整合",
+              "currentReferences": [
+                "shop:/merchants?tab=stores"
+              ],
+              "correspondenceNote": "可复用门店档案来源，需整合审核、套餐代购及经营详情。业务规则已确认：套餐购买并履约成功后自动通过对应门店审核并开通；实现和验收尚未进行。",
+              "currentEntryNames": [
+                "门店档案"
+              ],
+              "accessMode": "READ_WITH_AUTHORIZED_REVIEW_AND_SUBSCRIPTION_ACTIONS",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            },
+            {
+              "label": "连锁数据",
+              "availability": "MISSING_OPS_ENTRY",
+              "alignmentMark": "待建",
+              "currentReferences": [],
+              "correspondenceNote": "需补平台只读连锁/品牌/关联门店统计接口与页面，不建设连锁运营写入功能。",
+              "currentEntryNames": [
+                "无对应只读连锁OPS入口"
+              ],
+              "accessMode": "READ_ONLY",
+              "acceptanceStatus": "PROPOSAL_NOT_ACCEPTED"
+            }
+          ]
+        }
+      ],
+      "responsibility": "SAAS_USERS_PLATFORM_MEMBERS_STORES_AND_CHAINS",
+      "excludedActions": [
+        "门店日常商品编辑",
+        "门店日常库存作业",
+        "门店日常营销",
+        "门店日常排班/履约",
+        "品牌/连锁组织日常维护"
+      ],
+      "storeDetail": {
+        "tabs": [
+          "基本资料",
+          "审核记录",
+          "套餐权益",
+          "经营概况"
+        ],
+        "businessOverviewIncludes": [
+          "订单记录",
+          "营业统计"
+        ],
+        "actions": [
+          "门店审核",
+          "代购套餐",
+          "查看套餐/权益",
+          "查看经营数据"
+        ],
+        "subscriptionActivation": "After package purchase and fulfillment succeed, automatically approve the corresponding store review and activate that store. Offline payment follows existing verification and fulfillment.",
+        "autoReviewRule": {
+          "status": "USER_CONFIRMED_POLICY",
+          "confirmedClientDate": "2026-11-14",
+          "trigger": "PACKAGE_PURCHASE_AND_FULFILLMENT_SUCCEEDED",
+          "actions": [
+            "AUTO_APPROVE_TARGET_STORE_REVIEW",
+            "ACTIVATE_TARGET_STORE"
+          ],
+          "appliesTo": [
+            "MERCHANT_SELF_PURCHASE",
+            "OPERATOR_ASSISTED_PURCHASE"
+          ],
+          "target": "Store explicitly associated with the fulfilled purchase; no implicit activation of all stores under an entity.",
+          "notTriggeredBy": [
+            "ORDER_CREATED",
+            "PAYMENT_AWAITING_VERIFICATION",
+            "FULFILLMENT_FAILED"
+          ],
+          "paymentMerchantReviewUnaffected": true
+        },
+        "paymentOnboardingSeparate": true,
+        "manualReviewActionRetained": true
+      },
+      "nameStatus": "SUGGESTED_AWAITING_CONFIRMATION",
+      "membershipPolicy": {
+        "status": "USER_CONFIRMED_SCOPE",
+        "owner": "PLATFORM",
+        "scope": "Members acquired through stores/chains are platform members.",
+        "list": "会员列表",
+        "requiredFields": [
+          "平台会员标识",
+          "会员基础信息",
+          "来源门店",
+          "关联连锁/品牌（有真实关联时）",
+          "入会时间"
+        ],
+        "requiredFilters": [
+          "来源门店",
+          "连锁（有真实关联时）",
+          "时间"
+        ],
+        "relationHandling": "Preserve source and associated-store records; do not merge identities by matching names or phone numbers, or replace source with last transaction store.",
+        "dataVisibility": "Existing authorized scopes and masking remain applicable."
+      }
+    },
+    {
+      "label": "商户管理",
+      "en": "Merchants",
+      "groups": [
+        {
+          "label": "商户资料",
+          "entries": [
+            {
+              "label": "商户列表",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/merchants"
+              ],
+              "correspondenceNote": "支付端现有商户工作区可作入口来源；新方案还需核对平台代建、代填、草稿、提交和补件动作的API及权限，不宣称动作已全接通。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·商户管理"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "审核办理",
+          "entries": [
+            {
+              "label": "商户审核",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/merchants/onboarding-review"
+              ],
+              "correspondenceNote": "独立支付ME03开通审核工作区已部署；统一平台入口尚需接入。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·开通审核"
+              ]
+            },
+            {
+              "label": "资料变更",
+              "availability": "SOURCE_ONLY_NOT_LIVE",
+              "currentReferences": [
+                "pay:/merchants/change-review"
+              ],
+              "correspondenceNote": "ME04敏感变更审核页不在当前live部署中；不否认现有商户工作区可有资料修订操作。",
+              "alignmentMark": "未开放",
+              "currentEntryNames": [
+                "源码商户变更审核页，未进live"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "收款开通",
+          "entries": [
+            {
+              "label": "渠道进件",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/merchants",
+                "pay:/merchants/onboarding-review"
+              ],
+              "correspondenceNote": "已部署支付工作区有相关进件办理，不是独立ai-shop子菜单；本轮未重验全流程。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·商户/开通审核工作区"
+              ]
+            },
+            {
+              "label": "收款绑定",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/merchants/stores"
+              ],
+              "correspondenceNote": "可对应支付门店ME02工作区内收款/绑定内容，不是独立ai-shop子菜单；本轮未验收全部渠道绑定。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·支付门店工作区"
+              ]
+            }
+          ]
+        }
+      ],
+      "assistedMerchantOnboarding": {
+        "status": "REQUESTED_NOT_IMPLEMENTED_OR_ACCEPTED",
+        "entry": "商户列表内的新建/资料办理按钮，不新增独立三级菜单",
+        "actions": [
+          "新建商户",
+          "代填资料",
+          "保存草稿",
+          "提交审核",
+          "补充资料",
+          "提交渠道进件"
+        ],
+        "rules": [
+          "通过正式来源关联选择已有经营资料；支付平台商户与经营主体保持独立。",
+          "代建/代填/提交保留真实操作人与来源，不把代理操作伪装成经营方本人。",
+          "平台资料审核、渠道送件、签约/绑定分别按支付域真实流程办理。",
+          "新建与提交动作的可用性和授权需在实施前逐项核对，当前待接标识不证明全部动作已存在。"
+        ]
+      }
+    },
+    {
+      "label": "订单中心",
+      "en": "Orders",
+      "groups": [
+        {
+          "label": "经营订单",
+          "entries": [
+            {
+              "label": "订单监控",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/orders"
+              ],
+              "correspondenceNote": "可对应订单检索；全业态和数据范围不在本轮验收范围。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "订单检索"
+              ]
+            },
+            {
+              "label": "异常处置",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/orders?tab=exception"
+              ],
+              "correspondenceNote": "可对应异常订单入口；本轮未执行处置动作。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "异常订单"
+              ]
+            },
+            {
+              "label": "售后处理",
+              "availability": "EXISTING_PAGE",
+              "currentReferences": [
+                "shop:/after-sales",
+                "shop:/after-sales?tab=intervene"
+              ],
+              "correspondenceNote": "可对应售后工单及平台裁决；本轮未执行售后动作。",
+              "alignmentMark": "已有",
+              "currentEntryNames": [
+                "售后工单",
+                "平台裁决"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "支付记录",
+          "entries": [
+            {
+              "label": "支付订单",
+              "availability": "PAY_PORTAL_NEEDS_INTEGRATION",
+              "currentReferences": [
+                "pay:/trade/payments"
+              ],
+              "correspondenceNote": "独立支付TR01已部署；ai-shop/pay-ops/orders仍是旧兼容入口，不能混同。",
+              "alignmentMark": "待接",
+              "currentEntryNames": [
+                "支付端·支付订单"
+              ]
+            },
+            {
+              "label": "交易流水",
+              "availability": "SOURCE_ONLY_NOT_LIVE",
+              "currentReferences": [
+                "pay:/trade/attempts"
+              ],
+              "correspondenceNote": "TR02已登记源码，但当前live静态页面未开放；旧请求日志不能代替交易流水。",
+              "alignmentMark": "未开放",
+              "currentEntryNames": [
+                "源码交易流水页，未进live"
+              ]
+            },
+            {
+              "label": "退款记录",
+              "availability": "SOURCE_ONLY_NOT_LIVE",
+              "currentReferences": [
+                "pay:/trade/refunds"
+              ],
+              "correspondenceNote": "TR03独立页未进入当前live静态部署；支付订单内可能已有退款相关操作，不等于独立退款记录页已开放。",
+              "alignmentMark": "未开放",
+              "currentEntryNames": [
+                "源码退款订单页，未进live"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "proposedEntryCount": 41,
+  "runtimeCapabilityClaimed": false,
+  "factsRemainOwnedByTheirServices": true,
+  "legacyRoutesOrPermissionsDeleted": false,
+  "correspondenceAuditDate": "2026-11-14",
+  "correspondenceAuditScope": "Earlier 46-entry live registry/page audit is historical source evidence; revised store workbench and confirmed automatic approval/activation rule are not implemented or workflow-accepted.",
+  "alignmentLegend": {
+    "已有": "166已有对应菜单/页面，可作为复用来源；不代表新菜单结构已实施或完整功能已验收。",
+    "整合": "已有部分能力或分散页面，需合并、调整入口或补齐范围。",
+    "待接": "独立支付端已有部署页面/工作区，ai-shop统一入口尚待接入。",
+    "未开放": "有源码目录，但对应独立页面不在已核对的支付live部署中。",
+    "待建": "未找到目标所需的OPS菜单/页面，需补齐；不否认其他端已有相关业务能力。"
+  },
+  "alignmentBasis": "166 read-only menu/static-deployment correspondence audit, 2026-11-14; no fresh workflow acceptance in this annotation task.",
+  "scopeRevisions": [
+    {
+      "clientDate": "2026-11-14",
+      "reason": "用户明确门店连锁由SaaS经营方运营，平台只统计数据",
+      "section": "门店连锁",
+      "previousEntryCount": 12,
+      "newEntryCount": 4,
+      "implementationPerformed": false
+    },
+    {
+      "clientDate": "2026-11-14",
+      "reason": "用户进一步明确门店数据以列表为中心，包含审核、套餐代购/自动开通，以及经营概况、订单和营业统计。",
+      "section": "门店连锁",
+      "entryCount": 4,
+      "implementationPerformed": false,
+      "pendingAutoReviewTrigger": true
+    },
+    {
+      "clientDate": "2026-11-14",
+      "reason": "商城订单与平台收入归平台商城；商户补代建与资料提交；门店/连锁会员统一平台会员，来源门店可追溯；第三个父菜单建议改为客户管理。",
+      "implementationPerformed": false
+    }
+  ],
+  "alignmentCounts": {
+    "整合": 17,
+    "待接": 6,
+    "已有": 13,
+    "待建": 2,
+    "未开放": 3
+  },
+  "deferredAssistedActions": [
+    {
+      "label": "开店协助",
+      "status": "SCOPE_AND_ENTRY_TO_CONFIRM",
+      "reason": "Earlier request retained as an assisted-operation exception, not a default read-only store statistics function."
+    }
+  ],
+  "confirmedBusinessRules": [
+    {
+      "clientDate": "2026-11-14",
+      "rule": "套餐购买并履约成功后，同时自动通过对应门店审核并开通；平台代购复用同一链路。",
+      "implementationAuthorized": false
+    }
+  ]
+}

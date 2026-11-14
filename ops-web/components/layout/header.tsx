@@ -7,7 +7,7 @@ import { paymentOpsHref } from "@/lib/auth/ops-bridge";
 import { IS_MOCK } from "@/lib/api";
 import { breadcrumb } from "@/lib/nav";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
-import { useServerMenu, useNavTree } from "@/lib/stores/server-menu";
+import { useServerMenu, usePlatformNavTree, useCatalogNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ function Breadcrumb() {
   const perms = useAuth((s) => s.perms);
   const { tNav } = useI18n();
   const serverHrefs = useServerMenu((s) => s.hrefSet);
-  const nav = useNavTree();
-  const crumbs = breadcrumb(pathname, sp.get("tab"), sp.get("view"), perms, serverHrefs, nav);
+  const nav = usePlatformNavTree();
+  const catalog = useCatalogNavTree();
+  const primary = breadcrumb(pathname, sp.get("tab"), sp.get("view"), perms, serverHrefs, nav);
+  const crumbs = primary.length ? primary : breadcrumb(pathname, sp.get("tab"), sp.get("view"), perms, serverHrefs, catalog);
   if (!crumbs.length) return null;
   return (
     <nav aria-label="breadcrumb" className="flex items-center gap-1 txt-body text-muted-foreground">

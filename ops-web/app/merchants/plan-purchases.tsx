@@ -25,7 +25,7 @@ export function EntityPlanPurchasesPanel({entityNo}:{entityNo:string}) {
   {q.error&&<p role="alert">{c.error}</p>}
   {q.data?.length===0&&<p>{c.empty}</p>}
   {allow("commerce:mall:assisted:purchase")&&allow("merchant:merchant:ban")&&<EntityAssistedPurchase key={entityNo} entityNo={entityNo} offers={offers.data??[]} onChanged={()=>q.refetch()}/>}
-  {q.data?.map(o=><Purchase key={`${entityNo}:${o.orderNo}`} order={o} onChanged={()=>q.refetch()}/>)}
+  {q.data?.map(o=><EntityPlanPurchaseDetail key={`${entityNo}:${o.orderNo}`} order={o} onChanged={()=>q.refetch()}/>)}
   {allow("system:param:update")&&<OfferEditor entityNo={entityNo} offers={offers.data??[]} onSaved={()=>offers.refetch()}/>}
  </DrawerSection>;
 }
@@ -43,7 +43,7 @@ function OfferEditor({entityNo,offers,onSaved}:{entityNo:string;offers:EntityPla
   <fieldset disabled={busy} className="space-y-2">{field("offerNo",c.offerNo)}{field("name",c.name)}<Select value={form.planCode} onChange={v=>set({...form,planCode:v.target.value})}><option>PRO</option><option>CHAIN</option></Select>{field("days",c.days)}<Select value={form.currency} onChange={v=>set({...form,currency:v.target.value})}><option>TWD</option><option>CNY</option></Select>{field("price",c.price)}<Button onClick={()=>save(true)}>{c.save}</Button>{selected&&<Button variant="outline" onClick={()=>save(false)}>{c.disable}</Button>}</fieldset>{error&&<p role="alert">{error}</p>}
  </div>;
 }
-function Purchase({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>unknown}) {
+export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>unknown}) {
  const c=useCopy(PLAN_PURCHASES_COPY),allow=useCan();
  const [busy,b]=useState(false),[error,e]=useState(""),[evidence,k]=useState("");
  const [f,set]=useState({amount:"",at:"",reference:"",reason:""});

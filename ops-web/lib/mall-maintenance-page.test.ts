@@ -4,7 +4,8 @@ import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { MallCatalogOverview } from "./types";
-const s = vi.hoisted(() => ({ catalog: vi.fn(), publish: vi.fn(), profile: vi.fn(), configure: vi.fn(), subscription: vi.fn(), quote: vi.fn(), place: vi.fn(), confirm: vi.fn(), dismiss: vi.fn(), realConfirm: false }));
+const s = vi.hoisted(() => ({ catalog: vi.fn(), publish: vi.fn(), profile: vi.fn(), configure: vi.fn(), subscription: vi.fn(), quote: vi.fn(), place: vi.fn(), confirm: vi.fn(), dismiss: vi.fn(), realConfirm: false, query: "" }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(s.query) }));
 vi.mock("@/lib/api", () => ({ api: { mallCatalog: s.catalog, mallBusinessTypes: async () => [], mallPlanDefinitions: async () => [], mallBusinessEnds: async () => [], mallDeploymentOptions: async () => [], publishMallIndustry: s.publish, offlineProfile: s.profile, configureOfflineProfile: s.configure, mallSubscription: s.subscription, offlineAssistedQuote: s.quote, mallOrders: async () => [], offlineAssistedPlace: s.place } }));
 vi.mock("@/lib/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/ui/confirm-dialog", async (original) => {
@@ -21,7 +22,7 @@ const c = MALL_COPY.zh;
 let host: HTMLDivElement, root: Root, query: QueryClient, catalog: MallCatalogOverview;
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  vi.clearAllMocks(); s.realConfirm = false;
+  vi.clearAllMocks(); s.realConfirm = false; s.query = "";
   catalog = { businessTypes: [{ draft: { typeCode: "RETAIL", name: "Retail" }, catalogVersion: 7 }], planDefinitions: ["FREE", "PRO", "CHAIN"].map((tier) => ({ planNo: tier, tier, typeCode: "RETAIL", currentVersionNo: tier + "-7", version: 3 })) as never,
     planVersions: ["FREE", "PRO", "CHAIN"].map((tier) => ({ status: "PUBLISHED", version: 2, draft: { planNo: tier, tier, typeCode: "RETAIL", planVersionNo: tier + "-7", displayName: tier + " current" } })) as never,
     skuDefinitions: [{ skuNo: "HW", title: "Hardware", saleStatus: "ON_SALE", currentVersionNo: "HW-1" }, { skuNo: "OTHER", title: "Wrong business", saleStatus: "ON_SALE", currentVersionNo: "OTHER-1" }],
@@ -95,4 +96,9 @@ it("a real conflict confirmation closes and the next explicit confirmation uses 
   expect(s.publish).toHaveBeenCalledTimes(2);
   expect(s.publish.mock.calls[0]![1].expectedCatalogVersion).toBe(7);
   expect(s.publish.mock.calls[1]![1].expectedCatalogVersion).toBe(9);
+});
+
+it("prefills an assisted purchase from the actual customer store deep link without creating an order", async()=>{
+ s.query="tab=assisted&store=S%2F1";await mount(h(AssistedTab,{c,canReadSubscription:true}));await settle();
+ expect((host.querySelector("#assist-store") as HTMLInputElement).value).toBe("S/1");expect(s.subscription).toHaveBeenCalledWith("S/1");expect(s.place).not.toHaveBeenCalled();expect(s.quote).not.toHaveBeenCalled();
 });

@@ -54,6 +54,22 @@ export function paymentOpsHref(origin: string, locale: string, configured = PAYM
   return `${paymentBasePath(origin, configured)}/?${params}`;
 }
 
+/** Fixed live payment workspaces; no caller-supplied route or credentials. */
+export const PAYMENT_WORKSPACES = {
+  channels: { path: "/ops/channels", permission: "pay:channel:view" },
+  merchants: { path: "/merchants", permission: "pay:merchant:view" },
+  onboarding: { path: "/merchants/onboarding-review", permission: "pay:onboarding:view" },
+  payments: { path: "/trade/payments", permission: "pay:order:view" },
+  "payment-exceptions": { path: "/trade/exceptions", permission: "pay:order:view" },
+} as const;
+export type PaymentWorkspace = keyof typeof PAYMENT_WORKSPACES;
+
+export function paymentWorkspaceHref(origin: string, locale: string, workspace: PaymentWorkspace, configured = PAYMENT_OPS_URL): string {
+  const url = new URL(paymentOpsHref(origin, locale, configured), origin);
+  url.pathname = `${paymentBasePath(origin, configured)}${PAYMENT_WORKSPACES[workspace].path}/`;
+  return `${url.pathname}${url.search}`;
+}
+
 export function loginReturnHref(location: Pick<Location, "pathname" | "search" | "hash">): string {
   return `/login/?${new URLSearchParams({ returnTo: `${location.pathname}${location.search}${location.hash}` })}`;
 }

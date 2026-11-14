@@ -1,0 +1,1056 @@
+{
+  "clientDate": "2026-11-14",
+  "scope": "Read-only global menu registry and deployed page correspondence, not operator-effective permissions or end-to-end functionality.",
+  "shopStaticRoot": "/data/www/ai-shop-ops/releases/ops-admission-detail-20261113-30a794f8c/ops-shop",
+  "payStaticRoot": "/data/www/nearpay-oms-releases/seed-sandbox-entry-20261114-42a0670a",
+  "payLiveBusinessPageCodes": [
+    "ME01",
+    "ME03",
+    "ME02",
+    "TR01",
+    "TR08",
+    "SY01",
+    "SY04",
+    "OP03",
+    "OP04"
+  ],
+  "summary": {
+    "PARTIAL_OR_AGGREGATE": 15,
+    "PAY_PORTAL_NEEDS_INTEGRATION": 6,
+    "EXISTING_PAGE": 18,
+    "MISSING_OPS_ENTRY": 4,
+    "SOURCE_ONLY_NOT_LIVE": 3
+  },
+  "rows": [
+    {
+      "proposedMenu": "地区配置",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/system?tab=market",
+        "shop:/system"
+      ],
+      "note": "有市场货币/外观语言页面；方案中的地区、默认语言和单位需核对字段并整合。",
+      "section": "平台设置",
+      "group": "基础配置",
+      "deployedPageReferences": [
+        "shop:/system?tab=market",
+        "shop:/system"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "外观文案",
+          "href": "/system",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "市场货币",
+          "href": "/system?tab=market",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "业务配置",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/system?tab=storeIndustry",
+        "shop:/system?tab=authCode",
+        "shop:/system?tab=scope",
+        "shop:/products"
+      ],
+      "note": "行业、授权字典、经营范围及商品规则分散；无同名统一入口。",
+      "section": "平台设置",
+      "group": "基础配置",
+      "deployedPageReferences": [
+        "shop:/system?tab=storeIndustry",
+        "shop:/system?tab=authCode",
+        "shop:/system?tab=scope",
+        "shop:/products"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "商品分类",
+          "href": "/products",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "门店行业",
+          "href": "/system?tab=storeIndustry",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": "commerce.catalog.enabled"
+        },
+        {
+          "name": "经营授权",
+          "href": "/system?tab=authCode",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "范围开关",
+          "href": "/system?tab=scope",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "支付渠道",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/ops/channels"
+      ],
+      "note": "独立支付OP03已部署；尚不是ai-shop设置下的统一入口。",
+      "section": "平台设置",
+      "group": "渠道费率",
+      "deployedPageReferences": [
+        "pay:/ops/channels"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "费率配置",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/finance?tab=rates",
+        "shop:/finance?tab=pay-channels",
+        "pay:/ops/channel-costs",
+        "pay:/ops/fee-plans"
+      ],
+      "note": "经营服务费率和旧通道费率有入口；独立支付OP05/OP06不在当前live页面中，不能当完整费率配置已上线。",
+      "section": "平台设置",
+      "group": "渠道费率",
+      "deployedPageReferences": [
+        "shop:/finance?tab=rates",
+        "shop:/finance?tab=pay-channels"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "服务费率",
+          "href": "/finance?tab=rates",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "渠道费率",
+          "href": "/finance?tab=pay-channels",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "运营账号",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/iam"
+      ],
+      "note": "线上已有运营账号。",
+      "section": "平台设置",
+      "group": "权限管理",
+      "deployedPageReferences": [
+        "shop:/iam"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "运营账号",
+          "href": "/iam",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "角色权限",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/iam?tab=roles"
+      ],
+      "note": "线上已有角色权限。",
+      "section": "平台设置",
+      "group": "权限管理",
+      "deployedPageReferences": [
+        "shop:/iam?tab=roles"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "角色权限",
+          "href": "/iam?tab=roles",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "数据范围",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/iam",
+        "pay:/system/data-scope"
+      ],
+      "note": "员工范围配置与独立支付SY04均有相关能力；没有统一覆盖两域的同名ai-shop页面。",
+      "section": "平台设置",
+      "group": "权限管理",
+      "deployedPageReferences": [
+        "shop:/iam",
+        "pay:/system/data-scope"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "运营账号",
+          "href": "/iam",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "菜单配置",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/iam?tab=menu"
+      ],
+      "note": "已有菜单顺序/文案等配置；新五模块三级结构仍未实现。",
+      "section": "平台设置",
+      "group": "权限管理",
+      "deployedPageReferences": [
+        "shop:/iam?tab=menu"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "菜单顺序",
+          "href": "/iam?tab=menu",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "系统参数",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/system",
+        "shop:/system?tab=flags",
+        "shop:/system?tab=storage",
+        "shop:/system?tab=appVersion"
+      ],
+      "note": "多个已有配置页需聚合，不是一项已存在的统一入口。",
+      "section": "平台设置",
+      "group": "系统维护",
+      "deployedPageReferences": [
+        "shop:/system",
+        "shop:/system?tab=flags",
+        "shop:/system?tab=storage",
+        "shop:/system?tab=appVersion"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "外观文案",
+          "href": "/system",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "开关灰度",
+          "href": "/system?tab=flags",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "存储管理",
+          "href": "/system?tab=storage",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "应用版本",
+          "href": "/system?tab=appVersion",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "消息配置",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/messages"
+      ],
+      "note": "已有通道总览及短信/邮件等分散页；目标为平台消息配置聚合。",
+      "section": "平台设置",
+      "group": "系统维护",
+      "deployedPageReferences": [
+        "shop:/messages"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "通道总览",
+          "href": "/messages",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "审计日志",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/iam?tab=audit"
+      ],
+      "note": "线上已有审计日志。",
+      "section": "平台设置",
+      "group": "系统维护",
+      "deployedPageReferences": [
+        "shop:/iam?tab=audit"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "审计日志",
+          "href": "/iam?tab=audit",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "运行监控",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/jobs",
+        "shop:/inventory?tab=link-health"
+      ],
+      "note": "已有任务日志、库存链路等局部监控，无统一平台运行监控页。",
+      "section": "平台设置",
+      "group": "系统维护",
+      "deployedPageReferences": [
+        "shop:/jobs",
+        "shop:/inventory?tab=link-health"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "链路健康",
+          "href": "/inventory?tab=link-health",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": "shop.inventory.enabled"
+        },
+        {
+          "name": "任务日志",
+          "href": "/jobs",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": "shop.job.enabled"
+        }
+      ]
+    },
+    {
+      "proposedMenu": "主体套餐",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/merchants?tab=plans",
+        "shop:/merchants?tab=plan-defs"
+      ],
+      "note": "可对应套餐授予/档位定义及现有主体套餐工作区，不代表新导航已改名。",
+      "section": "平台商城",
+      "group": "套餐方案",
+      "deployedPageReferences": [
+        "shop:/merchants?tab=plans",
+        "shop:/merchants?tab=plan-defs"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "套餐授予",
+          "href": "/merchants?tab=plans",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "档位定义",
+          "href": "/merchants?tab=plan-defs",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "门店套餐",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall"
+      ],
+      "note": "可对应现有套餐管理。",
+      "section": "平台商城",
+      "group": "套餐方案",
+      "deployedPageReferences": [
+        "shop:/mall"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "套餐管理",
+          "href": "/mall",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "平台商品",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall?tab=products"
+      ],
+      "note": "可对应服务商品；不是经营门店商品。",
+      "section": "平台商城",
+      "group": "商品目录",
+      "deployedPageReferences": [
+        "shop:/mall?tab=products"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "服务商品",
+          "href": "/mall?tab=products",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "商品分类",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall?tab=categories"
+      ],
+      "note": "可对应服务分类；不是/products中的经营商品分类。",
+      "section": "平台商城",
+      "group": "商品目录",
+      "deployedPageReferences": [
+        "shop:/mall?tab=categories"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "服务分类",
+          "href": "/mall?tab=categories",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "权益定义",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/merchants?tab=plan-defs",
+        "shop:/mall?tab=products"
+      ],
+      "note": "权益定义分布在套餐档位/商品等配置中，未见独立统一菜单。",
+      "section": "平台商城",
+      "group": "权益管理",
+      "deployedPageReferences": [
+        "shop:/merchants?tab=plan-defs",
+        "shop:/mall?tab=products"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "档位定义",
+          "href": "/merchants?tab=plan-defs",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "服务商品",
+          "href": "/mall?tab=products",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "订阅权益",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall?tab=sources"
+      ],
+      "note": "线上已有订阅权益。",
+      "section": "平台商城",
+      "group": "权益管理",
+      "deployedPageReferences": [
+        "shop:/mall?tab=sources"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "订阅权益",
+          "href": "/mall?tab=sources",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "收款配置",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall?tab=collection"
+      ],
+      "note": "线上已有平台商城收款配置；本轮未核查收款资料或资金流程。",
+      "section": "平台商城",
+      "group": "销售设置",
+      "deployedPageReferences": [
+        "shop:/mall?tab=collection"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "收款配置",
+          "href": "/mall?tab=collection",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "注册账号",
+      "status": "MISSING_OPS_ENTRY",
+      "references": [],
+      "note": "未见全量注册账号OPS入口/API；会员、人档、运营员工及测试身份均不能代替。",
+      "section": "门店连锁",
+      "group": "用户资料",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "门店列表",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/merchants?tab=stores"
+      ],
+      "note": "可对应门店档案。",
+      "section": "门店连锁",
+      "group": "门店维护",
+      "deployedPageReferences": [
+        "shop:/merchants?tab=stores"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "门店档案",
+          "href": "/merchants?tab=stores",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "开店协助",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/merchants"
+      ],
+      "note": "现网已是统一入驻管理，含代办入驻/自营建档及店铺资料；新方案仍需核对账号选择、已有主体及帮助建店的完整范围。",
+      "section": "门店连锁",
+      "group": "门店维护",
+      "deployedPageReferences": [
+        "shop:/merchants"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "资料审核",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/merchants",
+        "shop:/merchants?tab=qualifications",
+        "shop:/stores"
+      ],
+      "note": "经营入驻、资质、店招等审核对象不同；不能把它们直接当成已统一的门店资料审核。",
+      "section": "门店连锁",
+      "group": "门店维护",
+      "deployedPageReferences": [
+        "shop:/merchants",
+        "shop:/merchants?tab=qualifications",
+        "shop:/stores"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "入驻管理",
+          "href": "/merchants",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "资质档案",
+          "href": "/merchants?tab=qualifications",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "店招审核",
+          "href": "/stores",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "经营资质",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/merchants?tab=qualifications"
+      ],
+      "note": "可对应资质档案；具体办理仍按原授权。",
+      "section": "门店连锁",
+      "group": "门店维护",
+      "deployedPageReferences": [
+        "shop:/merchants?tab=qualifications"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "资质档案",
+          "href": "/merchants?tab=qualifications",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "连锁列表",
+      "status": "MISSING_OPS_ENTRY",
+      "references": [],
+      "note": "未见连锁组织OPS列表；原链条画像是经营诊断，不是连锁管理。",
+      "section": "门店连锁",
+      "group": "连锁维护",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "品牌资料",
+      "status": "MISSING_OPS_ENTRY",
+      "references": [],
+      "note": "未见品牌经营主档的OPS菜单；不能用商品主题/分类替代。",
+      "section": "门店连锁",
+      "group": "连锁维护",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "成员授权",
+      "status": "MISSING_OPS_ENTRY",
+      "references": [],
+      "note": "缺连锁组织成员授权OPS入口；原主体员工维护及运营员工权限不是同一对象。",
+      "section": "门店连锁",
+      "group": "连锁维护",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "经营概况",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/"
+      ],
+      "note": "可复用现有首页概览；不是已存在的独立三级菜单，全SaaS数据覆盖未验收。",
+      "section": "门店连锁",
+      "group": "经营监控",
+      "deployedPageReferences": [
+        "shop:/"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "商品监控",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/products?tab=skus"
+      ],
+      "note": "可复用商品管理页；平台只读职责、跨业态数据覆盖和范围仍需核对。",
+      "section": "门店连锁",
+      "group": "经营监控",
+      "deployedPageReferences": [
+        "shop:/products?tab=skus"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "商品管理",
+          "href": "/products?tab=skus",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "库存监控",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/inventory"
+      ],
+      "note": "可复用库存概览；受shop.inventory.enabled及权限约束，不代表独立进销存所有数据都已贯通。",
+      "section": "门店连锁",
+      "group": "经营监控",
+      "deployedPageReferences": [
+        "shop:/inventory"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "库存概览",
+          "href": "/inventory",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": "shop.inventory.enabled"
+        }
+      ]
+    },
+    {
+      "proposedMenu": "异常监控",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/orders?tab=exception",
+        "shop:/risk",
+        "shop:/inventory?tab=link-health"
+      ],
+      "note": "订单、风险、库存异常分散，不是统一监控页。",
+      "section": "门店连锁",
+      "group": "经营监控",
+      "deployedPageReferences": [
+        "shop:/orders?tab=exception",
+        "shop:/risk",
+        "shop:/inventory?tab=link-health"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "链路健康",
+          "href": "/inventory?tab=link-health",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": "shop.inventory.enabled"
+        },
+        {
+          "name": "异常订单",
+          "href": "/orders?tab=exception",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "风险事件",
+          "href": "/risk",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "商户列表",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/merchants"
+      ],
+      "note": "独立支付ME01已部署；ai-shop旧商家档案属于经营主体，不能拿来匹配。",
+      "section": "商户管理",
+      "group": "商户资料",
+      "deployedPageReferences": [
+        "pay:/merchants"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "商户审核",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/merchants/onboarding-review"
+      ],
+      "note": "独立支付ME03开通审核工作区已部署；统一平台入口尚需接入。",
+      "section": "商户管理",
+      "group": "审核办理",
+      "deployedPageReferences": [
+        "pay:/merchants/onboarding-review"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "资料变更",
+      "status": "SOURCE_ONLY_NOT_LIVE",
+      "references": [
+        "pay:/merchants/change-review"
+      ],
+      "note": "ME04敏感变更审核页不在当前live部署中；不否认现有商户工作区可有资料修订操作。",
+      "section": "商户管理",
+      "group": "审核办理",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "渠道进件",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/merchants",
+        "pay:/merchants/onboarding-review"
+      ],
+      "note": "已部署支付工作区有相关进件办理，不是独立ai-shop子菜单；本轮未重验全流程。",
+      "section": "商户管理",
+      "group": "收款开通",
+      "deployedPageReferences": [
+        "pay:/merchants",
+        "pay:/merchants/onboarding-review"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "收款绑定",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/merchants/stores"
+      ],
+      "note": "可对应支付门店ME02工作区内收款/绑定内容，不是独立ai-shop子菜单；本轮未验收全部渠道绑定。",
+      "section": "商户管理",
+      "group": "收款开通",
+      "deployedPageReferences": [
+        "pay:/merchants/stores"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "购买订单",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/mall?tab=orders"
+      ],
+      "note": "线上已有购买订单；主体套餐订单仍在对应主体套餐工作区。",
+      "section": "订单中心",
+      "group": "商城订单",
+      "deployedPageReferences": [
+        "shop:/mall?tab=orders"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "购买订单",
+          "href": "/mall?tab=orders",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "运营代购",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/mall?tab=assisted",
+        "shop:/merchants?tab=plans"
+      ],
+      "note": "门店套餐有运营代购入口，主体套餐也有对应办理；两套统一入口仍需整合。",
+      "section": "订单中心",
+      "group": "商城订单",
+      "deployedPageReferences": [
+        "shop:/mall?tab=assisted",
+        "shop:/merchants?tab=plans"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "套餐授予",
+          "href": "/merchants?tab=plans",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "运营代购",
+          "href": "/mall?tab=assisted",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "核款审核",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/mall?tab=claims",
+        "shop:/merchants?tab=plans"
+      ],
+      "note": "商城线下核款已有，主体套餐确认在对应工作区；不能当成新统一核款页已完成。",
+      "section": "订单中心",
+      "group": "商城订单",
+      "deployedPageReferences": [
+        "shop:/mall?tab=claims",
+        "shop:/merchants?tab=plans"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "套餐授予",
+          "href": "/merchants?tab=plans",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "线下核款",
+          "href": "/mall?tab=claims",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "退款处理",
+      "status": "PARTIAL_OR_AGGREGATE",
+      "references": [
+        "shop:/mall?tab=orders",
+        "shop:/merchants?tab=plans"
+      ],
+      "note": "对应订单详情已有退款等办理；目标全局退款入口待聚合。",
+      "section": "订单中心",
+      "group": "商城订单",
+      "deployedPageReferences": [
+        "shop:/mall?tab=orders",
+        "shop:/merchants?tab=plans"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "套餐授予",
+          "href": "/merchants?tab=plans",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "购买订单",
+          "href": "/mall?tab=orders",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "订单监控",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/orders"
+      ],
+      "note": "可对应订单检索；全业态和数据范围不在本轮验收范围。",
+      "section": "订单中心",
+      "group": "经营订单",
+      "deployedPageReferences": [
+        "shop:/orders"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "订单检索",
+          "href": "/orders",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "异常处置",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/orders?tab=exception"
+      ],
+      "note": "可对应异常订单入口；本轮未执行处置动作。",
+      "section": "订单中心",
+      "group": "经营订单",
+      "deployedPageReferences": [
+        "shop:/orders?tab=exception"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "异常订单",
+          "href": "/orders?tab=exception",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "售后处理",
+      "status": "EXISTING_PAGE",
+      "references": [
+        "shop:/after-sales",
+        "shop:/after-sales?tab=intervene"
+      ],
+      "note": "可对应售后工单及平台裁决；本轮未执行售后动作。",
+      "section": "订单中心",
+      "group": "经营订单",
+      "deployedPageReferences": [
+        "shop:/after-sales",
+        "shop:/after-sales?tab=intervene"
+      ],
+      "liveMenuMatches": [
+        {
+          "name": "售后工单",
+          "href": "/after-sales",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        },
+        {
+          "name": "平台裁决",
+          "href": "/after-sales?tab=intervene",
+          "backendStatus": "IMPLEMENTED",
+          "gatedBy": ""
+        }
+      ]
+    },
+    {
+      "proposedMenu": "支付订单",
+      "status": "PAY_PORTAL_NEEDS_INTEGRATION",
+      "references": [
+        "pay:/trade/payments"
+      ],
+      "note": "独立支付TR01已部署；ai-shop/pay-ops/orders仍是旧兼容入口，不能混同。",
+      "section": "订单中心",
+      "group": "支付记录",
+      "deployedPageReferences": [
+        "pay:/trade/payments"
+      ],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "交易流水",
+      "status": "SOURCE_ONLY_NOT_LIVE",
+      "references": [
+        "pay:/trade/attempts"
+      ],
+      "note": "TR02已登记源码，但当前live静态页面未开放；旧请求日志不能代替交易流水。",
+      "section": "订单中心",
+      "group": "支付记录",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    },
+    {
+      "proposedMenu": "退款记录",
+      "status": "SOURCE_ONLY_NOT_LIVE",
+      "references": [
+        "pay:/trade/refunds"
+      ],
+      "note": "TR03独立页未进入当前live静态部署；支付订单内可能已有退款相关操作，不等于独立退款记录页已开放。",
+      "section": "订单中心",
+      "group": "支付记录",
+      "deployedPageReferences": [],
+      "liveMenuMatches": []
+    }
+  ],
+  "changesMadeToRuntime": false,
+  "businessActionsExecuted": false
+}

@@ -10,7 +10,7 @@
 // **只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」，
 // 不替商家运营。唯一的写动作是解除强制下线；压下那一侧在「违规处置与封禁」，
 // 因为处置动作与它的留痕必须是同一次提交。
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,7 +50,7 @@ const MODE_OPTIONS = (c: Copy) => [
   { value: "THIRD_PARTY", label: c.stModeThird },
 ];
 
-export function StoresTab({ c }: { c: Copy }) {
+export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (store: StoreGovern) => ReactNode }) {
   const qc = useQueryClient();
   const allow = useCan();
   const statusMap = useStatusMap(c);
@@ -347,6 +347,8 @@ export function StoresTab({ c }: { c: Copy }) {
                 </Button>
               </div>
             </DrawerSection>
+
+            {detailActions?.(current)}
 
             <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>
               {current.status !== "SUSPENDED"

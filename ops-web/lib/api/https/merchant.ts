@@ -15,6 +15,7 @@ export const merchantHttp: MerchantApi = {
   entityPlanOffers: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`),
   saveEntityPlanOffer: (e,c) => client.put(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`,c),
   entityPlanPurchases: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`),
+  entityPlanPurchasePage: (e,q) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`, {...q,limit:q?.limit??20}),
   entityPlanPurchase: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}`),
   confirmEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/confirm`,c),
   declineEntityPlanPurchase: (e,o,claimNo,reason) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/decline`,{claimNo,reason}),

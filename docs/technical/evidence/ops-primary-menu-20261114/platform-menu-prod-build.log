@@ -1,0 +1,69 @@
+
+> ai-shop-ops-web@0.1.0 build
+> next build --webpack
+
+▲ Next.js 16.3.1 (webpack)
+✓ Running next.config.ts took 472ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 8.8s
+  Running TypeScript ...
+  Finished TypeScript in 1672ms ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/45) ...
+  Generating static pages using 9 workers (11/45) 
+  Generating static pages using 9 workers (22/45) 
+  Generating static pages using 9 workers (33/45) 
+✓ Generating static pages using 9 workers (45/45) in 898ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /after-sales
+├ ○ /communities
+├ ○ /contents
+├ ○ /customers
+├ ○ /dev/pages
+├ ○ /dev/perms
+├ ○ /dev/ui
+├ ○ /finance
+├ ○ /fulfillment
+├ ○ /groups
+├ ○ /growth
+├ ○ /iam
+├ ○ /inventory
+├ ○ /jobs
+├ ○ /login
+├ ○ /mall
+├ ○ /marketing
+├ ○ /members
+├ ○ /merchants
+├ ○ /messages
+├ ○ /orders
+├ ○ /pay-ops/apps
+├ ○ /pay-ops/exceptions
+├ ○ /pay-ops/notifies
+├ ○ /pay-ops/orders
+├ ○ /pay-ops/platform-keys
+├ ○ /pay-ops/qr-codes
+├ ○ /pay-ops/refunds
+├ ○ /pay-ops/request-logs
+├ ○ /points
+├ ○ /points/accounts
+├ ○ /points/budget
+├ ○ /points/earning-rules
+├ ○ /points/store-access
+├ ○ /points/transactions
+├ ○ /points/types
+├ ○ /printing
+├ ○ /products
+├ ○ /reviews
+├ ○ /risk
+├ ○ /stores
+└ ○ /system
+
+
+○  (Static)  prerendered as static content
+
