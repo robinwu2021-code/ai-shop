@@ -32841,6 +32841,12 @@
           "ar": "لديك طلبات أو مرتجعات قيد التنفيذ — أنهِها أولاً"
         },
         {
+          "key": "err.user.owner_account_unavailable",
+          "zh-CN": "店主账号不存在或状态不可用，请填写已注册且正常的账号邮箱",
+          "en": "Owner account not found or unavailable. Enter the email of an active registered account.",
+          "ar": "حساب المالك غير موجود أو غير متاح. أدخل البريد الإلكتروني لحساب مسجل ونشط."
+        },
+        {
           "key": "err.user.person_phone_taken",
           "zh-CN": "这个手机号已绑定其它账号，请联系客服处理",
           "en": "This phone number is already linked to another account — contact support",
@@ -37977,6 +37983,13 @@
         "module": "shop-app"
       },
       {
+        "host": "PaymentCollectionWork",
+        "name": "TYPE",
+        "value": "MERCHANT_COLLECTION_RECEIVED",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
         "host": "WxShippingUploadRequested",
         "name": "TYPE",
         "value": "WX_SHIPPING_UPLOAD_REQUESTED",
@@ -39024,6 +39037,55 @@
         "name": "PLATFORM",
         "value": "PLATFORM",
         "zh": "全平台 —— 无履约半径的：虚拟商品、卡券、平台自营的快递品",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpEntries",
+        "name": "BIZ_LOGIN",
+        "value": "BIZ_LOGIN",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpEntries",
+        "name": "LEGACY_AUTH",
+        "value": "LEGACY_AUTH",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "LOGIN",
+        "value": "LOGIN",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "PASSWORD_RESET",
+        "value": "PASSWORD_RESET",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "PHONE_CHANGE",
+        "value": "PHONE_CHANGE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "EMAIL_CHANGE",
+        "value": "EMAIL_CHANGE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "ORDER_PICKUP_CONFIRM",
+        "value": "ORDER_PICKUP_CONFIRM",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -43801,6 +43863,13 @@
         "module": "shop-merchant"
       },
       {
+        "host": "MchStore",
+        "name": "PENDING_OPEN",
+        "value": "PENDING_OPEN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
         "host": "MchStoreAudit",
         "name": "PENDING",
         "value": "PENDING",
@@ -44564,6 +44633,16 @@
         "module": "logistics"
       },
       {
+        "name": "CaptchaMode",
+        "values": [
+          "ADAPTIVE",
+          "ALWAYS",
+          "RATE_ONLY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "CatalogErrorCode",
         "values": [
           "INVALID_ARGUMENT",
@@ -44599,6 +44678,15 @@
         ],
         "zh": "矩阵的一格。",
         "module": "shop-merchant"
+      },
+      {
+        "name": "Channel",
+        "values": [
+          "SMS",
+          "EMAIL"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "ChannelOperation",
@@ -44950,6 +45038,7 @@
           "TOKEN_EXPIRED",
           "FORBIDDEN",
           "NOT_FOUND",
+          "OWNER_ACCOUNT_UNAVAILABLE",
           "CONFLICT",
           "TOO_MANY_REQUESTS",
           "CLIENT_UPGRADE_REQUIRED",
@@ -46095,6 +46184,15 @@
         ],
         "zh": "",
         "module": "shop-store-mybatis"
+      },
+      {
+        "name": "Model",
+        "values": [
+          "ENTITY",
+          "STORE"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "MoveDirection",
@@ -47650,6 +47748,7 @@
         "name": "StoreStatus",
         "values": [
           "ACTIVE",
+          "SETUP",
           "DISABLED",
           "CLOSED"
         ],
@@ -48956,6 +49055,15 @@
         "zh": "分类状态"
       },
       {
+        "name": "MallCollectionMethod",
+        "client": "ops-web",
+        "values": [
+          "BANK_TRANSFER",
+          "SALES_COLLECTION"
+        ],
+        "zh": "报价（服务器冻结）"
+      },
+      {
         "name": "MallComponentKind",
         "client": "b-app",
         "values": [
@@ -50110,6 +50218,15 @@
         "zh": "种草内容状态。"
       },
       {
+        "name": "PurchaseModel",
+        "client": "ops-web",
+        "values": [
+          "ENTITY",
+          "STORE"
+        ],
+        "zh": "Money is an exact decimal string in minor units, including aggregate values beyond int64."
+      },
+      {
         "name": "PushPlatform",
         "client": "shared",
         "values": [
@@ -50893,7 +51010,8 @@
         "values": [
           "ACTIVE",
           "READONLY",
-          "SUSPENDED"
+          "SUSPENDED",
+          "PENDING_OPEN"
         ],
         "zh": "门店经营状态。"
       },
@@ -51127,6 +51245,14 @@
     ]
   },
   "constants": [
+    {
+      "host": "PurchaseReporting",
+      "name": "ORDER",
+      "type": "Comparator<Row>",
+      "value": "Comparator.comparingLong(Row::createdAt).reversed() .thenComparing(Row::model).thenComparing(Row::orderNo, Comparator.reverseOrder())",
+      "zh": "",
+      "module": "commerce"
+    },
     {
       "host": "CategoryService",
       "name": "MAX_DEPTH",
@@ -53768,6 +53894,14 @@
       "module": "shop-app"
     },
     {
+      "host": "PaymentReadRouter",
+      "name": "HEADER",
+      "type": "String",
+      "value": "\"X-Pay-Read-Environment\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
       "host": "BizFoundationController",
       "name": "OTHER",
       "type": "String",
@@ -53973,6 +54107,14 @@
       "type": "int",
       "value": "4",
       "zh": "用户自提",
+      "module": "shop-base"
+    },
+    {
+      "host": "OtpScenes",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM)",
+      "zh": "",
       "module": "shop-base"
     },
     {
@@ -55065,10 +55207,42 @@
     },
     {
       "host": "Perms",
+      "name": "CUSTOMER_USER_READ",
+      "type": "String",
+      "value": "\"customer:user:read\"",
+      "zh": "平台客户数据。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_VIEW",
+      "type": "String",
+      "value": "\"pay:merchant:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_VIEW",
+      "type": "String",
+      "value": "\"pay:onboarding:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_VIEW",
+      "type": "String",
+      "value": "\"pay:channel:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "PAY_ORDER_VIEW",
       "type": "String",
       "value": "\"pay:order:view\"",
-      "zh": "支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -55861,6 +56035,30 @@
       "type": "String",
       "value": "\"system:testphone:update\"",
       "zh": "测试号固定验证码白名单 —— 增 / 改 / 删 / 启停。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_ORDERS_READ",
+      "type": "String",
+      "value": "\"commerce:platform:orders:read\"",
+      "zh": "Platform purchase reporting; source reads and financial actions retain their separate grants.",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_CLAIMS_READ",
+      "type": "String",
+      "value": "\"commerce:platform:claims:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_CASH_READ",
+      "type": "String",
+      "value": "\"commerce:platform:cash:read\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

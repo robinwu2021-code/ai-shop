@@ -266,6 +266,19 @@ _无字段_
 类型：[`MallOfflinePendingClaim`](#mallofflinependingclaim)\[\]
 
 
+#### GET `/ops/biz-mall/offline/collectors`
+
+offlineCollectors
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/biz-mall/offline/orders`
 
 代客下单 */
@@ -427,6 +440,46 @@ _无字段_
 | `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
 | `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
 | `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
+
+
+#### GET `/ops/biz-mall/offline/orders/{order}/receipt-documentation`
+
+offlineReceiptDocumentation
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/biz-mall/offline/orders/{order}/receipt-documentation`
+
+supplementOfflineReceipt
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineActionView`](#mallofflineactionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | 动作号 |
+| `status` | [`MallOfflineActionStatus`](#mallofflineactionstatus) | 是 | 结果 |
+| `paymentNo` | `string,null` | 是 | 产生的支付号 |
 
 
 #### GET `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}`
@@ -597,6 +650,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -624,6 +678,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -753,6 +808,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
@@ -1240,6 +1296,45 @@ _无字段_
 | `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
 | `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
 | `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### GET `/ops/platform-mall/cash`
+
+platformMallCash
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/platform-mall/claims`
+
+platformMallClaims
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/platform-mall/orders`
+
+platformMallOrders
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/stores/{storeNo}/subscription`
@@ -2535,6 +2630,95 @@ _无字段_
 | `published` | `boolean` | 是 | 是否已发布。未发布的素材商家看不到 |
 | `downloads` | `number` | 是 | 被下载次数，衡量素材有没有人用 |
 | `createdAt` | `string` | 是 | 创建时间 |
+
+
+### customer
+
+#### GET `/ops/customers/chains`
+
+customerBrands
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | `object`\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/customers/members`
+
+platformMembers
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | `object`\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/customers/members/{personNo}`
+
+platformMember
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `personNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/customers/users`
+
+customerRegistrations
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/customers/users/{userNo}/stores`
+
+customerRegistrationStores
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `userNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
 
 
 ### dashboard
@@ -7870,7 +8054,7 @@ _无字段_
 
 #### GET `/ops/merchant-plan-purchases/{e}`
 
-entityPlanPurchases
+Authorized operator page; orderNo cursor, limit1..100. No legacy100-row fallback. */
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -9078,6 +9262,19 @@ _无字段_
 | `at` | `string` | 是 | 处置时间 |
 
 
+#### GET `/ops/merchants/admissions`
+
+System-region admission list, trimmed by existing application/self-operation permissions. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/merchants/apply-on-behalf`
 
 **代商家提交入驻申请**（三期）
@@ -9094,6 +9291,39 @@ _无字段_
 |---|---|:---:|---|
 | `applyNo` | `string` | 是 | 落库的申请单号。队列里就是这一张 |
 | `ownerUserNo` | `string` | 是 | 商户本人的 userNo。**可能是这一刻新建的** —— 界面上要据此提示「这个号是新开的，本人还不知道」。 |
+
+
+#### GET `/ops/merchants/apply-on-behalf/context`
+
+当前登录环境统一配置的入驻地区与电话策略
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/merchants/apply-on-behalf/search`
+
+仅运营代办申请，服务端过滤后分页
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantApply`](#merchantapply)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/merchants/auth-codes`
@@ -9124,7 +9354,7 @@ _无字段_
 
 #### POST `/ops/merchants/self-operated`
 
-建**平台自营商家**（跳过进件与审核）
+自营建档：台湾使用已注册邮箱，大陆保留手机号身份
 
 **入参**
 
@@ -9145,6 +9375,19 @@ _无字段_
 | `selfOperated` | `boolean` | 是 | 回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。 |
 | `reachableCommunities` | `number` | 是 | **这家店现在对多少个小区可见。** 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。 |
 | `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
+
+
+#### GET `/ops/merchants/self-operated/context`
+
+当前系统地区的自营建档账号策略
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/merchants/store-industries`
@@ -12728,6 +12971,87 @@ _无字段_
 | `scanCount30d` | `number` | 是 | 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 |
 
 
+#### GET `/ops/stores/{storeNo}/operational-review`
+
+Read explicit store operating admission; historic unsubmitted review stays null. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreOperationalReview`](#storeoperationalreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
+| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
+| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
+| `orderNo` | `string,null` | 是 | — |
+| `decidedAt` | `number,null` | 是 | — |
+| `submittedAt` | `number,null` | 是 | — |
+
+
+#### POST `/ops/stores/{storeNo}/operational-review/decide`
+
+Decide explicit operating admission with the existing application audit authority. */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`StoreOperationalReview`](#storeoperationalreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
+| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
+| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
+| `orderNo` | `string,null` | 是 | — |
+| `decidedAt` | `number,null` | 是 | — |
+| `submittedAt` | `number,null` | 是 | — |
+
+
+#### POST `/ops/stores/{storeNo}/operational-review/submit`
+
+Submit this store for operating admission without changing legal or payment review. */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`StoreOperationalReview`](#storeoperationalreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
+| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
+| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
+| `orderNo` | `string,null` | 是 | — |
+| `decidedAt` | `number,null` | 是 | — |
+| `submittedAt` | `number,null` | 是 | — |
+
+
 #### POST `/ops/stores/{storeNo}/restore`
 
 解除门店强制下线，恢复被平台压下的货架行
@@ -15920,6 +16244,15 @@ Delivery state of an inventory/order synchronization event.
 | `status` | [`MallCategoryStatus`](#mallcategorystatus) | 是 | 启用状态 |
 | `version` | `number` | 是 | 乐观锁版本，改分类时作为 expectedVersion 传回 |
 
+### MallCollectionMethod
+
+报价（服务器冻结）
+
+枚举取值：
+
+- `BANK_TRANSFER`
+- `SALES_COLLECTION`
+
 ### MallComponentKind
 
 组件种类
@@ -16075,6 +16408,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -16300,10 +16634,9 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 ### MallQuoteView
 
-报价（服务器冻结）
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
@@ -16746,8 +17079,6 @@ Region-specific contact recording. SMS can open only after the deployment declar
 | `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 ### MerchantApply
-
-入驻申请单（后端 `mch_entity_apply`）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
@@ -19579,6 +19910,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 - `ACTIVE`
 - `READONLY`
 - `SUSPENDED`
+- `PENDING_OPEN`
 
 ### StoreIndustry
 
@@ -19605,6 +19937,20 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `merchantNo` | `string` | 是 | 所属商家主体 |
 | `businessMode` | [`BusinessMode`](#businessmode) \| `null` | 是 | 自营 / 第三方；空 = 尚未设置 |
 | `payMerchantNo` | `string,null` | 是 | 该店实际可用的收款号（本店专属号优先，回落到主体默认号）。**空 = 不能切第三方** |
+
+### StoreOperationalReview
+
+Store operating admission, independent of entity/legal and payment review.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
+| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
+| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
+| `orderNo` | `string,null` | 是 | — |
+| `decidedAt` | `number,null` | 是 | — |
+| `submittedAt` | `number,null` | 是 | — |
 
 ### StorePageAudit
 
