@@ -2,6 +2,7 @@ package ai.neargo.shop.reportbridge;
 
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.outbox.OutboxRouteContribution;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.report.service.ReportStorageService;
 import ai.neargo.shop.spi.report.ReportAffectedDaysPort;
@@ -34,7 +35,10 @@ import java.util.Set;
         name = "access-role",
         havingValue = "WRITER",
         matchIfMissing = true)
-public class ReportCorrectionConsumer implements OutboxConsumer {
+public class ReportCorrectionConsumer implements OutboxConsumer, OutboxRouteContribution {
+    /** 柜台后付实收（ADR-059）：报表开启时由这里消费，关闭时仍按 application.yml 只归档。 */
+    static final String POSTPAY_RECEIPT_RECORDED = "POSTPAY_RECEIPT_RECORDED";
+
     private static final Set<String> TYPES =
             Set.of(
                     "ORDER_PAID",
@@ -45,7 +49,8 @@ public class ReportCorrectionConsumer implements OutboxConsumer {
                     "AFTER_SALE_REJECTED",
                     "AFTER_SALE_RETURN_WAIT",
                     "AFTER_SALE_REFUNDED",
-                    "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER");
+                    "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER",
+                    POSTPAY_RECEIPT_RECORDED);
     private final ReportStorageService storage;
     private final ObjectProvider<ReportAffectedDaysPort> owners;
     private final ObjectMapper json;
@@ -68,6 +73,11 @@ public class ReportCorrectionConsumer implements OutboxConsumer {
         this.owners = owners;
         this.json = json;
         this.kitchenOwners = kitchenOwners;
+    }
+
+    @Override
+    public Set<String> consumedArchiveRoutes() {
+        return Set.of("PLATFORM:" + POSTPAY_RECEIPT_RECORDED);
     }
 
     @Override
@@ -138,8 +148,18 @@ public class ReportCorrectionConsumer implements OutboxConsumer {
             }
             return;
         }
-        String root = body.path("orderNo").asString("");
-        String sub = body.path("subOrderNo").asString("");
+        if (POSTPAY_RECEIPT_RECORDED.equals(event.getEventType())) {
+            // 一笔实收把整桌多张后付单推到已付：每张单所在的营业日都要重算
+            var orders = body.path("orderNos");
+            if (!orders.isArray() || orders.isEmpty())
+                throw new IllegalArgumentException("REPORT_CHANGE_REFERENCE_REQUIRED");
+            for (var order : orders) markDays(event, order.asString(""), "");
+            return;
+        }
+        markDays(event, body.path("orderNo").asString(""), body.path("subOrderNo").asString(""));
+    }
+
+    private void markDays(SysOutbox event, String root, String sub) {
         if (root.isBlank() && sub.isBlank())
             throw new IllegalArgumentException("REPORT_CHANGE_REFERENCE_REQUIRED");
         var at = event.getOccurredAt() != null ? event.getOccurredAt() : event.getCreatedAt();

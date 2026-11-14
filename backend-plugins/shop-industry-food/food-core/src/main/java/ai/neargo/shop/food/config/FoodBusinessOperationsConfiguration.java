@@ -2,7 +2,9 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.mapper.FoodMappers;
+import ai.neargo.shop.food.service.CashShiftService;
 import ai.neargo.shop.food.service.CounterSettlementService;
+import ai.neargo.shop.food.service.impl.CashShiftServiceImpl;
 import ai.neargo.shop.food.service.impl.CounterSettlementServiceImpl;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.PostpayReceiptPort;
@@ -191,5 +193,12 @@ public class FoodBusinessOperationsConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new CounterSettlementServiceImpl(settlements, items, checks, operations, guard, collaboration,
                 orders::getIfUnique, receipts::getIfUnique, Clock.systemUTC(), manager);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CashShiftService.class)
+    CashShiftService cashShiftService(@Qualifier("dataSource") DataSource source, IdempotencyService idem,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new CashShiftServiceImpl(source, manager, idem, json, Clock.systemUTC());
     }
 }

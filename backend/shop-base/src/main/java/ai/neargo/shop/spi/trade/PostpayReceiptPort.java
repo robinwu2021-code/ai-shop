@@ -93,7 +93,8 @@ public interface PostpayReceiptPort {
     }
 
     /** 实收已记录。只带编号，不带金额与付款人；只归档，不进平台结算。 */
-    record Recorded(String receiptNo, String entityNo, String storeNo, String bizNo) implements DomainEvent {
+    record Recorded(String receiptNo, String entityNo, String storeNo, String bizNo, List<String> orderNos)
+            implements DomainEvent {
         @Override
         public String aggregateType() {
             return "POSTPAY_RECEIPT";

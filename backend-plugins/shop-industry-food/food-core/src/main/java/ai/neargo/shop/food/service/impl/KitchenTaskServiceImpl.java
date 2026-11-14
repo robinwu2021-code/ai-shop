@@ -1712,7 +1712,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 line.getCourseNo(),
                 t.getVersion(),
                 head.getKind(),
-                head.getOriginalTicketNo());
+                head.getOriginalTicketNo(),
+                line.getSourceLineRef());
     }
 
     private static EventVO event(FnbServiceEvent e) {
