@@ -7,6 +7,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.PreviewView;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
 import ai.neargo.shop.trade.dto.ServiceOrderCreate;
 import ai.neargo.shop.trade.dto.ServiceOrderIdentifiedCreate;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
@@ -16,6 +17,13 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface EntitlementServiceOrderService {
+
+    ServiceOrderSnapshot bindWorkOrderClaim(EntitlementContext context, String entityNo, String storeNo,
+            String serviceOrderNo, ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding claim);
+    ServiceOrderSnapshot createForWorkOrder(EntitlementContext context, String entityNo, String storeNo,
+            ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin origin, String key, boolean monetary);
+    ServiceOrderSnapshot createForWorkOrder(EntitlementContext context, String entityNo, String storeNo,
+                                            Origin origin, String key);
     String operationNoForKey(EntitlementContext context, String entityNo, String key);
     ServiceOrderSnapshot create(EntitlementContext context, String entityNo, ServiceOrderCreate command, String key);
     ServiceOrderSnapshot createMonetary(EntitlementContext context, String entityNo, ServiceOrderCreate command,

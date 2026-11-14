@@ -1,5 +1,26 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.product.ExecutionStockRetentionPort;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionPreparationObservation;
+import ai.neargo.shop.spi.resource.ResourceExecutionEvidencePort;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.ActualOriginal;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.OriginalResult;
+import ai.neargo.shop.spi.trade.ExecutionStartContract;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.AcknowledgeResourceStart;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.StartAckProof;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.StartAcknowledgement;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.AcknowledgementOutcome;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.resource.ResourceOccupationLifecyclePort;
+import ai.neargo.shop.spi.resource.ResourceOccupationLifecycleContract.Result;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.CompleteExecution;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.CompletionProof;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.CompletionReceipt;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.Outcome;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BaseEntity;
@@ -80,6 +101,25 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
     private final ObjectProvider<ServiceExecutionSourcePort> sources;
     private final ObjectProvider<PersonnelOperatorFactsPort> personnel;
     private final StockDispositionPort stock;
+    private ObjectProvider<ResourceExecutionEvidencePort> resourceEvidence;
+    private ObjectProvider<ExecutionStockRetentionPort> retention;
+
+    /** Resolve optional actual owners only for ACK, leaving preparation and default retail independent. */
+    @Autowired
+    public void setStartEvidenceOwners(ObjectProvider<ResourceExecutionEvidencePort> resourceEvidence,
+            ObjectProvider<ExecutionStockRetentionPort> retention) {
+        this.resourceEvidence = resourceEvidence;
+        this.retention = retention;
+    }
+
+    private ObjectProvider<ResourceOccupationLifecyclePort> lifecycle;
+
+    /** Completion observes the real END owner without adding a constructor dependency to legacy preparation. */
+    @Autowired
+    public void setCompletionEvidenceOwner(ObjectProvider<ResourceOccupationLifecyclePort> lifecycle) {
+        this.lifecycle = lifecycle;
+    }
+
     private final ServiceExecutionSchemaVerifier schema;
     private final ObjectMapper json;
     private final CheckoutClock clock;
@@ -256,7 +296,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
         action.setObservationEpoch(0L);
         one(actions.insertPending(action));
         one(actions.finalizeResult(b.scope(), b.executionNo(), request.actionNo(), request.actionHash(),
-                0, 0, "PREPARED", 1));
+                action.getVersion(), 0, "PREPARED", 1));
         return grant(row, b);
     }
 
@@ -479,6 +519,272 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
     }
 
     @Override
+    public StartAcknowledgement markStarted(AcknowledgeResourceStart request) {
+        DelegatedIdentityContext.outside();
+        request.validate();
+        schema.requireStartAvailable();
+        var ref = request.reference();
+        var before = unscoped(() -> reads.execute(tx -> evidenceSnapshot(ref.scope(), ref.executionNo())));
+        require(before != null && ref.equals(before.reference()));
+        var replay = unscoped(() -> reads.execute(tx -> readStartAck(ref)));
+        if (replay != null) {
+            requireSameStart(replay, request);
+            return acknowledged(replay);
+        }
+        // Native independently validates the immutable accepted result and every persisted initial effect.
+        var resourceOwner = resourceEvidence == null ? null : resourceEvidence.getIfAvailable();
+        var retentionOwner = retention == null ? null : retention.getIfAvailable();
+        if (resourceOwner == null || retentionOwner == null) {
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+        }
+        var resource = resourceOwner.queryOriginal(request.resourceOriginal());
+        resource.validate();
+        require(resource.original().equals(request.resourceOriginal())
+                && resource.outcome() == ResourceOccupationContract.Outcome.APPLIED);
+        var accepted = resource.accepted();
+        require(ref.equals(accepted.request().reference())
+                && before.bindingJson().equals(accepted.coreOriginal().facts().originalBindingJson())
+                && before.prepare().equals(accepted.coreOriginal().facts().prepareResult())
+                && before.original().equals(accepted.retentionLookup().stockOriginal())
+                && before.stockOperation().equals(accepted.retentionLookup().confirmationOperationNo()));
+        var retained = new ExecutionStockRetentionPreparationObservation(
+                ExecutionStockRetentionPreparationObservation.SCHEMA,
+                retentionOwner.queryOriginalV2(accepted.retentionLookup()), accepted.source().retentionRoster());
+        retained.validate(accepted.retentionLookup());
+        require(retained.receipt().outcome() == ExecutionStockRetentionPort.Outcome.RETAINED);
+        StartIntent observed = null;
+        try {
+            observed = source().inspectOriginal(new StartIntentLookup(before.binding()));
+        } catch (RuntimeException unavailable) {
+            // Applied effects remain real; unknown current source is recorded and retried without releasing anything.
+        }
+        if (observed != null) requireEvidenceIntent(before, observed);
+        var sourceObservation = observed;
+        return unscoped(() -> writes.execute(tx -> acknowledgeLocked(request, before, resource, retained,
+                sourceObservation)));
+    }
+
+    private StartAcknowledgement acknowledgeLocked(AcknowledgeResourceStart request, EvidenceSnapshot before,
+            OriginalResult resource, ExecutionStockRetentionPreparationObservation retained, StartIntent observed) {
+        var b = before.binding();
+        var row = lockOriginalExecution(b);
+        var replay = readStartAck(request.reference());
+        if (replay != null) {
+            requireSameStart(replay, request);
+            return acknowledged(replay);
+        }
+        require(before.equals(evidenceSnapshot(b.scope(), b.executionNo()))
+                && before.unitState() == UnitState.RESERVED
+                && b.executionNo().equals(before.currentExecutionNo()) && b.attemptNo() == before.unitAttempt()
+                && List.of("PREPARED", "SUSPEND_REQUESTED").contains(row.getState()));
+        if (observed != null && observed.suspension() != null) {
+            applySourceSuspensionLocked(b, observed.suspension());
+            row = executions.find(b.scope(), b.executionNo());
+        }
+        boolean suspended = "SUSPEND_REQUESTED".equals(row.getState())
+                || resource.stopRequired() || resource.conflictRequired();
+        String reason = row.getReasonCode();
+        if (suspended && reason == null) reason = "SOURCE_SUSPENDED";
+        if (!suspended) {
+            reason = observed != null && "READY_UNCHANGED".equals(observed.continuity().state())
+                    ? null : "SOURCE_UNKNOWN";
+        }
+        String state = suspended ? "STARTED_SUSPENDED" : "STARTED";
+        var proof = new StartAckProof(ExecutionStartContract.PROOF_SCHEMA, request, before.bindingJson(),
+                before.prepare(), resource, retained, row.getVersion(), row.getObservationEpoch(),
+                state, Math.addExact(row.getVersion(), 2), reason, null).signed();
+        String proofJson = ExecutionStartContract.proofJson(proof);
+        var action = new OrdServiceExecutionAction();
+        stamp(action, "EXECUTION_START_ACK");
+        action.setActionNo(request.ackActionNo());
+        action.setExecutionNo(b.executionNo());
+        action.setEntityNo(b.scope().entityNo());
+        action.setStoreNo(b.scope().storeNo());
+        action.setKind("START_ACK");
+        action.setRequestKeyHash(request.keyHash());
+        action.setActionHash(ExecutionStartContract.actionHash(request));
+        action.setExpectedRevision(row.getVersion());
+        action.setObservationEpoch(row.getObservationEpoch());
+        action.setProofJson(proofJson);
+        action.setProofHash(proof.proofHash());
+        one(actions.insertPending(action));
+        one(executions.markResourceStarted(b, row.getBindingHash(), row.getVersion(), row.getObservationEpoch(),
+                resource.actual(), resource.applied().resultNo(), resource.applied().resultHash(),
+                request.ackActionNo(), state, reason,
+                reason == null ? null : LocalDateTime.ofInstant(clock.now().plusSeconds(30), ZoneOffset.UTC)));
+        one(actions.finalizeResult(b.scope(), b.executionNo(), request.ackActionNo(), action.getActionHash(),
+                action.getVersion(), row.getObservationEpoch(), state, proof.resultRevision()));
+        return acknowledged(proof);
+    }
+
+    @Override
+    public StartAcknowledgement queryStartOriginal(ExecutionEvidenceLookup request) {
+        DelegatedIdentityContext.outside();
+        schema.requireStartAvailable();
+        var ref = request.reference();
+        return unscoped(() -> reads.execute(tx -> {
+            var snapshot = evidenceSnapshot(ref.scope(), ref.executionNo());
+            require(snapshot != null && ref.equals(snapshot.reference()));
+            var proof = readStartAck(ref);
+            return proof == null ? new StartAcknowledgement(ExecutionStartContract.RESULT_SCHEMA, ref,
+                    AcknowledgementOutcome.UNKNOWN, null, null).signed() : acknowledged(proof);
+        }));
+    }
+
+    private StartAckProof readStartAck(ExecutionReference ref) {
+        var originals = actions.findStartAck(ref.scope(), ref.executionNo());
+        require(originals.size() <= 1);
+        if (originals.isEmpty()) return null;
+        var action = originals.getFirst();
+        var proof = ExecutionStartContract.readProof(action.getProofJson());
+        require(ref.equals(proof.request().reference()) && Integer.valueOf(0).equals(action.getDeleted())
+                && action.getActionNo().equals(proof.request().ackActionNo())
+                && action.getRequestKeyHash().equals(proof.request().keyHash())
+                && action.getActionHash().equals(ExecutionStartContract.actionHash(proof.request()))
+                && action.getExpectedRevision() == proof.expectedVersion()
+                && action.getObservationEpoch() == proof.observationEpoch()
+                && action.getResultRevision() != null && action.getResultRevision() == proof.resultRevision()
+                && action.getResultState().equals(proof.resultState())
+                && action.getProofHash().equals(proof.proofHash()));
+        var row = executions.find(ref.scope(), ref.executionNo());
+        require(row != null && actual(row).equals(proof.resource().actual())
+                && row.getResourceOutcomeNo().equals(proof.resource().applied().resultNo())
+                && row.getResourceOutcomeHash().equals(proof.resource().applied().resultHash()));
+        return proof;
+    }
+
+    private static ActualOriginal actual(OrdServiceExecution row) {
+        return new ActualOriginal(row.getActualResourceOwnerNo(), row.getActualResourceCommandNo(),
+                row.getActualResourcePayloadSchema(), row.getActualResourcePayloadHash());
+    }
+
+    private static void requireSameStart(StartAckProof proof, AcknowledgeResourceStart request) {
+        var original = proof.request();
+        var a = original.resourceOriginal();
+        var b = request.resourceOriginal();
+        require(original.reference().equals(request.reference()) && a.source().equals(b.source())
+                && a.requestKey().equals(b.requestKey()) && a.requestHash().equals(b.requestHash()));
+        if (b.actual() != null) require(proof.resource().actual().equals(b.actual()));
+    }
+
+    private static StartAcknowledgement acknowledged(StartAckProof proof) {
+        return new StartAcknowledgement(ExecutionStartContract.RESULT_SCHEMA, proof.request().reference(),
+                AcknowledgementOutcome.ACKNOWLEDGED, proof, null).signed();
+    }
+
+    @Override
+    public CompletionReceipt completeExecution(CompleteExecution request) {
+        DelegatedIdentityContext.outside();
+        request.validate();
+        schema.requireCompletionAvailable();
+        var ref = request.reference();
+        var before = unscoped(() -> reads.execute(tx -> evidenceSnapshot(ref.scope(), ref.executionNo())));
+        require(before != null && ref.equals(before.reference()));
+        var replay = unscoped(() -> reads.execute(tx -> readCompletion(ref)));
+        if (replay != null) {
+            require(replay.request().equals(request));
+            return completionReceipt(ref, replay);
+        }
+        var start = unscoped(() -> reads.execute(tx -> readStartAck(ref)));
+        require(start != null && request.resourceEndOriginal().startOriginal().equals(start.request().resourceOriginal()));
+        var provider = lifecycle == null ? null : lifecycle.getIfAvailable();
+        if (provider == null) throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+        var ended = provider.queryOriginal(request.resourceEndOriginal()).orElseThrow(ServiceExecutionServiceImpl::conflict);
+        ExecutionCompletionContract.requireCompletedEnd(request, ended);
+        StartIntent observed = null;
+        try { observed = source().inspectOriginal(new StartIntentLookup(before.binding())); }
+        catch (RuntimeException unavailable) {
+            // Physical completion survives an unavailable source; uncertainty never restores a performed unit.
+        }
+        if (observed != null) requireEvidenceIntent(before, observed);
+        var sourceObservation = observed;
+        return unscoped(() -> writes.execute(tx -> completeLocked(request, before, start, ended, sourceObservation)));
+    }
+
+    private CompletionReceipt completeLocked(CompleteExecution request, EvidenceSnapshot before, StartAckProof start,
+            Result ended, StartIntent observed) {
+        var b = before.binding();
+        var row = lockOriginalExecution(b);
+        var replay = readCompletion(request.reference());
+        if (replay != null) {
+            require(replay.request().equals(request));
+            return completionReceipt(request.reference(), replay);
+        }
+        var current = evidenceSnapshot(b.scope(), b.executionNo());
+        require(current != null && request.reference().equals(current.reference())
+                && current.unitState() == UnitState.RESERVED && b.executionNo().equals(current.currentExecutionNo())
+                && b.attemptNo() == current.unitAttempt()
+                && List.of("STARTED", "STARTED_SUSPENDED").contains(row.getState())
+                && start.equals(readStartAck(request.reference())));
+        if (observed != null && observed.suspension() != null) {
+            applySourceSuspensionLocked(b, observed.suspension());
+            row = executions.find(b.scope(), b.executionNo());
+        }
+        String sourceState = "STARTED_SUSPENDED".equals(row.getState()) ? "SUSPENDED"
+                : observed == null ? "PENDING" : observed.continuity().state();
+        String reason = "SUSPENDED".equals(sourceState) ? row.getReasonCode()
+                : "PENDING".equals(sourceState) ? "SOURCE_UNKNOWN" : null;
+        var proof = new CompletionProof(ExecutionCompletionContract.PROOF_SCHEMA, request, start, ended,
+                row.getState(), sourceState, reason, row.getVersion(), row.getObservationEpoch(),
+                Math.addExact(row.getVersion(), 2), null).signed();
+        var action = new OrdServiceExecutionAction();
+        stamp(action, "EXECUTION_COMPLETE");
+        action.setActionNo(request.actionNo()); action.setExecutionNo(b.executionNo());
+        action.setEntityNo(b.scope().entityNo()); action.setStoreNo(b.scope().storeNo());
+        action.setKind("FULFILL"); action.setRequestKeyHash(request.keyHash());
+        action.setActionHash(ExecutionCompletionContract.actionHash(request));
+        action.setExpectedRevision(row.getVersion()); action.setObservationEpoch(row.getObservationEpoch());
+        action.setProofJson(ExecutionCompletionContract.proofJson(proof)); action.setProofHash(proof.proofHash());
+        one(actions.insertPending(action));
+        one(executions.markFulfilled(b, row.getBindingHash(), row.getVersion(), row.getObservationEpoch(),
+                request.actionNo(), action.getActionHash(), reason));
+        one(units.markPerformed(b, row.getUnitNo(), current.unitVersion(), request.actionNo(), action.getActionHash()));
+        one(actions.finalizeResult(b.scope(), b.executionNo(), request.actionNo(), action.getActionHash(),
+                action.getVersion(), row.getObservationEpoch(), "FULFILLED", proof.resultRevision()));
+        return completionReceipt(request.reference(), proof);
+    }
+
+    @Override
+    public CompletionReceipt queryCompletionOriginal(ExecutionEvidenceLookup request) {
+        DelegatedIdentityContext.outside();
+        schema.requireCompletionAvailable();
+        var ref = request.reference();
+        return unscoped(() -> reads.execute(tx -> {
+            var snapshot = evidenceSnapshot(ref.scope(), ref.executionNo());
+            require(snapshot != null && ref.equals(snapshot.reference()));
+            return completionReceipt(ref, readCompletion(ref));
+        }));
+    }
+
+    private CompletionProof readCompletion(ExecutionReference ref) {
+        var rows = actions.findCompletion(ref.scope(), ref.executionNo());
+        require(rows.size() <= 1);
+        if (rows.isEmpty()) return null;
+        var action = rows.getFirst();
+        var proof = ExecutionCompletionContract.readProof(action.getProofJson());
+        require(ref.equals(proof.request().reference()) && Integer.valueOf(0).equals(action.getDeleted())
+                && action.getActionNo().equals(proof.request().actionNo())
+                && action.getActionHash().equals(ExecutionCompletionContract.actionHash(proof.request()))
+                && action.getRequestKeyHash().equals(proof.request().keyHash())
+                && action.getExpectedRevision() == proof.expectedVersion()
+                && action.getObservationEpoch() == proof.observationEpoch()
+                && "FULFILLED".equals(action.getResultState())
+                && action.getResultRevision() != null && action.getResultRevision() == proof.resultRevision()
+                && action.getProofHash().equals(proof.proofHash()));
+        var row = executions.find(ref.scope(), ref.executionNo());
+        var unit = units.findUnit(ref.scope(), ref.unitNo());
+        require(row != null && "FULFILLED".equals(row.getState()) && unit != null
+                && "PERFORMED".equals(unit.getState()) && unit.getCurrentExecutionNo() == null
+                && unit.getAttemptNo() == ref.attemptNo() && proof.start().equals(readStartAck(ref)));
+        return proof;
+    }
+
+    private static CompletionReceipt completionReceipt(ExecutionReference ref, CompletionProof proof) {
+        return new CompletionReceipt(ExecutionCompletionContract.RESULT_SCHEMA, ref,
+                proof == null ? Outcome.UNKNOWN : Outcome.FULFILLED, proof, null).signed();
+    }
+
+    @Override
     public int recoverPending(int limit) {
         DelegatedIdentityContext.outside();
         if (limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -525,7 +831,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
         action.setObservationEpoch(row.getObservationEpoch());
         one(actions.insertPending(action));
         return new RecoveryClaim(b, row.getVersion(), row.getObservationEpoch(),
-                action.getActionNo(), action.getActionHash());
+                action.getActionNo(), action.getActionHash(), action.getVersion());
     }
 
     private boolean applyRecovery(RecoveryClaim claim, StartIntent observed) {
@@ -557,7 +863,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
         row.setVersion(Math.addExact(row.getVersion(), 1));
         if (observed != null && observed.suspension() != null) applySourceSuspensionLocked(b, observed.suspension());
         var current = executions.find(b.scope(), b.executionNo());
-        one(actions.finalizeResult(b.scope(), b.executionNo(), claim.actionNo(), claim.actionHash(), 0, claim.epoch(),
+        one(actions.finalizeResult(b.scope(), b.executionNo(), claim.actionNo(), claim.actionHash(), claim.actionVersion(), claim.epoch(),
                 current.getState(), Math.addExact(current.getVersion(), 1)));
         return true;
     }
@@ -612,7 +918,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
                     LocalDateTime.ofInstant(clock.now(), ZoneOffset.UTC)));
         }
         var current = executions.find(b.scope(), b.executionNo());
-        one(actions.finalizeResult(b.scope(), b.executionNo(), action.getActionNo(), action.getActionHash(), 0,
+        one(actions.finalizeResult(b.scope(), b.executionNo(), action.getActionNo(), action.getActionHash(), action.getVersion(),
                 row.getObservationEpoch(), current.getState(), Math.addExact(current.getVersion(), 1)));
         return true;
     }
@@ -640,7 +946,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
     }
 
     private record RecoveryClaim(ExecutionBinding binding, long version, long epoch,
-            String actionNo, String actionHash) {}
+            String actionNo, String actionHash, long actionVersion) {}
 
     @Override
     public void lockSourceLocked(ExecutionCoordinates coordinates) {
@@ -799,7 +1105,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
         row.setUpdatedBy(actor);
         row.setCreatedAt(LocalDateTime.ofInstant(clock.now(), ZoneOffset.UTC));
         row.setUpdatedAt(row.getCreatedAt());
-        row.setVersion(0L);
+        row.setVersion(1L);
         row.setDeleted(0);
     }
 

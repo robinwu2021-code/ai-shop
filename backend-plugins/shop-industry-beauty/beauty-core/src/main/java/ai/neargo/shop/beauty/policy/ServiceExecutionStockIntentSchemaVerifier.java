@@ -27,8 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
@@ -257,7 +255,10 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
                         .replaceAll("\\b(bigint|int)\\([0-9]+\\)", "$1");
         String expectedCollation = nullable(expected.get("collation"));
         String expectedCharset = nullable(expected.get("charset"));
-        if ("OWNER_TENANT".equals(expectedCollation)) {
+        // Frozen V11 LONGTEXT declarations inherit the table charset/collation in SQL.
+        if ("OWNER_TENANT".equals(expectedCollation)
+                || "longtext".equals(expected.path("type").asString())
+                        && expectedCharset == null && expectedCollation == null) {
             expectedCollation = tenantCollation;
             expectedCharset = "utf8mb4";
         }
@@ -447,142 +448,11 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
         }
     }
 
-    // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers
-    // normalize.
     private static List<String> tokens(String sql) {
-        Pattern token =
-                Pattern.compile(
-                        "\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
-        Matcher matcher = token.matcher(sql);
-        List<String> result = new ArrayList<>();
-        int offset = 0;
-        while (offset < sql.length()) {
-            matcher.region(offset, sql.length());
-            require(matcher.lookingAt());
-            String value = matcher.group();
-            offset = matcher.end();
-            if (value.isBlank() || value.matches("_(utf8mb4|utf8|ascii|latin1|binary)")) {
-                continue;
-            }
-            if (value.startsWith("`")) {
-                value = value.substring(1, value.length() - 1);
-            }
-            result.add(value.startsWith("'") ? value : value.toLowerCase(Locale.ROOT));
-        }
-        return result;
+        return ServiceExecutionSchemaVerifier.tokens(sql);
     }
 
     private static String expression(String sql) {
-        Expression parser = new Expression(tokens(sql));
-        String value = parser.or();
-        require(parser.at == parser.input.size());
-        return value;
-    }
-
-    /**
-     * Finite expression grammar retains AND/OR/BETWEEN precedence while accepting server-added
-     * parentheses.
-     */
-    private static final class Expression {
-        private final List<String> input;
-        private int at;
-
-        private Expression(List<String> input) {
-            this.input = input;
-        }
-
-        private String or() {
-            List<String> values = new ArrayList<>();
-            values.add(and());
-            while (take("or")) {
-                values.add(and());
-            }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
-        }
-
-        private String and() {
-            List<String> values = new ArrayList<>();
-            values.add(comparison());
-            while (take("and")) {
-                values.add(comparison());
-            }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
-        }
-
-        private String comparison() {
-            if (take("not")) {
-                return "not(" + comparison() + ")";
-            }
-            String left = atom();
-            if (take("is")) {
-                boolean negated = take("not");
-                expect("null");
-                return (negated ? "notnull(" : "isnull(") + left + ")";
-            }
-            if (take("between")) {
-                String lower = atom();
-                expect("and");
-                return "between(" + left + "," + lower + "," + atom() + ")";
-            }
-            boolean not = take("not");
-            if (take("in")) {
-                expect("(");
-                List<String> args = arguments();
-                return (not ? "notin(" : "in(") + left + "," + String.join(",", args) + ")";
-            }
-            require(!not);
-            if (at < input.size()
-                    && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
-                            .contains(input.get(at))) {
-                String operation = input.get(at++);
-                return ("!=".equals(operation) ? "<>" : operation)
-                        + "("
-                        + left
-                        + ","
-                        + atom()
-                        + ")";
-            }
-            return left;
-        }
-
-        private String atom() {
-            if (take("(")) {
-                String value = or();
-                expect(")");
-                return value;
-            }
-            require(at < input.size());
-            String value = input.get(at++);
-            require(!List.of(")", ",", "and", "or").contains(value));
-            if (take("(")) {
-                return value + "(" + String.join(",", arguments()) + ")";
-            }
-            return value;
-        }
-
-        private List<String> arguments() {
-            List<String> args = new ArrayList<>();
-            if (!take(")")) {
-                args.add(or());
-                while (take(",")) {
-                    args.add(or());
-                }
-                expect(")");
-            }
-            return args;
-        }
-
-        private boolean take(String value) {
-            if (at < input.size() && input.get(at).equals(value)) {
-                at++;
-                return true;
-            }
-            return false;
-        }
-
-        private void expect(String value) {
-            require(take(value));
-        }
+        return ServiceExecutionSchemaVerifier.expression(sql);
     }
 }

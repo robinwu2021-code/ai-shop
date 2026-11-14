@@ -45,7 +45,8 @@ public final class EntitlementServiceViews {
                 && (!Instant.now().isBefore(s.deadline()) || s.preview() != null
                 && !Instant.now().isBefore(s.preview().expiresAt()))) return "EXPIRED";
         return switch (s.status()) {
-            case "CREATED", "PREVIEWED" -> "WAIT_AUTH";
+            case "CREATED" -> s.workOrderOrigin() == null ? "WAIT_AUTH" : "CREATED";
+            case "PREVIEWED" -> "WAIT_AUTH";
             case "AUTHORIZED" -> "WAIT_SUBMIT";
             case "PENDING", "COMMIT_DECIDED", "CANCEL_DECIDED" -> "PROCESSING";
             default -> s.status();

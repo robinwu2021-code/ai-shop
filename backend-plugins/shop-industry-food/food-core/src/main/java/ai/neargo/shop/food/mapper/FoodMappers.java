@@ -1,5 +1,9 @@
 package ai.neargo.shop.food.mapper;
 import ai.neargo.shop.food.dto.ProductionContracts.ListQuery;
+import ai.neargo.shop.food.entity.FnbStockReplenishment;
+import ai.neargo.shop.food.entity.FnbStockReplenishmentConnection;
+import ai.neargo.shop.food.entity.FnbStockReplenishmentManual;
+import ai.neargo.shop.food.entity.FnbStockReplenishmentReturn;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
 import ai.neargo.shop.food.entity.FnbProductionConsumption;
 import ai.neargo.shop.food.entity.FnbBusinessDay;
@@ -380,6 +384,16 @@ public final class FoodMappers {
     }
     public interface StockSyncReconciliationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncReconciliation> { }
     public interface StockSyncDifferenceMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDifference> { }
+    public interface StockReplenishmentConnectionMapper extends BaseMapper<FnbStockReplenishmentConnection> { }
+    public interface StockReplenishmentManualMapper extends BaseMapper<FnbStockReplenishmentManual> { }
+    public interface StockReplenishmentMapper extends BaseMapper<FnbStockReplenishment> {
+        /** Historical source identities stay claimed even if their presentation row was archived. */
+        @Select("SELECT * FROM fnb_stock_replenishment WHERE tenant_no='MAIN' AND source_system=#{system} "
+                + "AND source_owner=#{owner} AND source_document=#{document} AND source_line=#{line}")
+        FnbStockReplenishment findSourceIdentity(@Param("system") String system,@Param("owner") String owner,
+                @Param("document") String document,@Param("line") int line);
+    }
+    public interface StockReplenishmentReturnMapper extends BaseMapper<FnbStockReplenishmentReturn> { }
     public interface StockItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockItem> { }
     public interface StockReservationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservation> { }
     public interface StockReservationItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservationItem> { }

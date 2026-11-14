@@ -996,6 +996,7 @@ class BizEndpointPermTest {
                     // 这里登记最外层的那个；完整条件见各方法的 @PreAuthorize
                     put("/biz/service-orders/counter-quotes", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW
                     put("/biz/service-orders/counter-quotes/{operationNo}", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW
+                    put("/biz/service-orders/counter-quotes/{operationNo}/state", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW; same controller authority
                     put("/biz/service-orders/counter-quotes/{operationNo}/acceptances", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW + CASH_RECEIVE + MANUAL_CONFIRM
                     put("/biz/service-orders/counter-quotes/{operationNo}/orders", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW + CASH_RECEIVE + MANUAL_CONFIRM
                     put("/biz/service-orders/manual-quotes", BizPerms.CHECKOUT_PREPARE);

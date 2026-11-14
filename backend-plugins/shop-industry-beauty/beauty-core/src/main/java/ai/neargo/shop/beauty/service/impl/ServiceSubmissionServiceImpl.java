@@ -324,6 +324,9 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                 selectedParty == null
                         ? access.buyer(root.context(), req.source().customerRef())
                         : access.manualBuyer(root.context(), selectedParty);
+        if ("MANUAL_PREPARE".equals(req.source().mode())) {
+            access.verifyManualSelector(root.context(), req.source().counterCustomer(), selectedParty);
+        }
         var preparedScope =
                 req.additions().isEmpty()
                         ? null
@@ -414,6 +417,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                                     && task.getBindingRevision()
                                                             == selection.expectedBindingRevision());
                                     firstBinding(task);
+                                    bindingService.requireTaskMutableLocked(entity, store, task.getTaskNo());
                                     selected.add(task);
                                     selectionRefs.put(task.getTaskNo(), task.getTaskNo());
                                 }
@@ -1374,6 +1378,10 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                 }
                 verifyManualQuote(intent, c, quote);
             }
+            if (quote != null && List.of("REJECTED", "REQUOTE_REQUIRED").contains(quote.quote().phase())) {
+                return manualView(completeLease(leased, actor, "REJECTED", "OWNER_" + quote.quote().phase(), null),
+                        c, quote, null);
+            }
             var facts = manualFacts(intent, c, actor);
             if (facts.orderNo() == null)
                 return manualView(pending(leased, actor, "AWAITING_CUSTOMER"), c, quote, null);
@@ -1626,15 +1634,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
     }
 
     private void firstBinding(BtyServiceTask task) {
-        AppointmentPersistence.require(
-                "PENDING".equals(task.getStatus())
-                        && task.getStartedAt() == null
-                        && task.getDoneQty().signum() == 0
-                        && task.getVoidedQty().signum() == 0
-                        && task.getBindingRevision() == 0
-                        && "COUNT".equals(task.getUom())
-                        && task.getQty().intValueExact() > 0
-                        && task.getQty().intValueExact() <= 10);
+        AppointmentPersistence.require(ServiceSubmissionQuery.canFirstBind(task));
     }
 
     private CheckoutPort.CheckoutScope scope(String entity, String store, String actor) {

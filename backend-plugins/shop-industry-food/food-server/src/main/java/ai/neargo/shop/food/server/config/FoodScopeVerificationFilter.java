@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.function.LongSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public final class FoodScopeVerificationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(FoodScopeVerificationFilter.class);
-    private static final String PREFIX = "/internal/food/";
+    /**
+     * 唯一免验签的入口：健康检查。反过来列白名单，而不是按 {@code /internal/food/} 前缀列黑名单 ——
+     * 原始 URI 可以百分号编码（{@code /internal/%66ood/...}），而令牌匹配与 MVC 路由比的是解码后的路径，
+     * 前缀判断会被绕开。白名单路径被编码时只会多验一次签、被拒，不会放行。
+     */
+    private static final Set<String> UNSIGNED =
+            Set.of("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness");
 
     private final List<byte[]> keys;
     private final LongSupplier nowEpochSeconds;
@@ -41,7 +48,7 @@ public final class FoodScopeVerificationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(PREFIX);
+        return UNSIGNED.contains(request.getRequestURI());
     }
 
     @Override

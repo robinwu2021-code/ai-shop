@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceStartAccess;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
@@ -52,6 +54,13 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final StaffAuditLogger audit;
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
+    private ResourceStartAccess resourceStartAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setResourceStartAccess(ResourceStartAccess resourceStartAccess) {
+        this.resourceStartAccess=resourceStartAccess;
+    }
+
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -268,6 +277,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Override
     @Transactional
     public StaffVO setStatus(String merchantNo, String mchAccountNo, boolean active) {
+        boolean nativeInstalled=DataScopeContext.executeWithoutScope(() -> resourceStartAccess.beginSecurityMutation(merchantNo));
         ownership.lockEntityAndCheck("MAIN", merchantNo);
         MchAccount a = require(merchantNo, mchAccountNo);
         /*
@@ -280,6 +290,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         a.setStatus(active ? MchAccount.ACTIVE : MchAccount.DISABLED);
         DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
         if (!active) {
+            DataScopeContext.executeWithoutScope(() -> resourceStartAccess.stopAccount(merchantNo,null,mchAccountNo,nativeInstalled));
             /*
              * **停用要踢掉在线会话。**
              *
@@ -329,6 +340,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Transactional
     public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
                               String role, boolean granted) {
+        boolean nativeInstalled=DataScopeContext.executeWithoutScope(() -> resourceStartAccess.beginSecurityMutation(merchantNo));
         ownership.lockAndCheck("MAIN", merchantNo, storeNo);
         MchAccount a = require(merchantNo, mchAccountNo);
         // 只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工
@@ -378,6 +390,10 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             // 撤销。**撤到一个不剩 = 从这家店移除他** —— 不留空壳行
             if (row != null) {
                 DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(row.getId()));
+                DataScopeContext.executeWithoutScope(() -> {
+                    if(!resourceStartAccess.currentSelfAllowed(merchantNo,storeNo,mchAccountNo))
+                        resourceStartAccess.stopAccount(merchantNo,storeNo,mchAccountNo,nativeInstalled);
+                });
                 // 只有真删了才记。撤销一个他本来就没有的角色是空操作，
                 // 记下来会让日志里出现一串「撤销了店长」而他从来不是店长
                 log(merchantNo, mchAccountNo, MchStaffLog.ROLE_REVOKE, storeNo, role,

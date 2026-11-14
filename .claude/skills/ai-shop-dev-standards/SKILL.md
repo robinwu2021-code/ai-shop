@@ -94,6 +94,8 @@ docs/technical/ADR/ADR-*.md     ← 只为不可逆决策
 
 包规划、完整类名及命名的统一入口是 [references/java.md §七](references/java.md#七包规划类名与业务边界)，各业务清单只引用，不另立规范。
 
+新增或修改有副作用的链路，按[幂等设计规范](../../../docs/technical/reference/幂等设计规范.md)选择既有执行器/原件日志，在原TDD登记幂等设计卡；通用机制及业务差异的验证分工也以该正文为准，不逐域复制一套方案。
+
 Java 见 [references/java.md](references/java.md)：Google Java Style + 本仓库两处有意偏离 + 十几条这里反复出事的工程约束。
 
 ---

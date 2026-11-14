@@ -1,0 +1,158 @@
+{
+  "date": "2026-11-11",
+  "base": "aa5ce5e9f01c2108dacad6d92763a6104601772e",
+  "integrationTarget": "codex/food-next01",
+  "status": "committed_and_fast_forwarded_to_unified_development",
+  "backendFeatureAlreadyPresent": {
+    "source": "771182c023a800f8cb2cdc61bfab54e2b77fdf68",
+    "stablePatchId": "3725b327ab8cd335614f4cb65112736563ca8e96"
+  },
+  "inheritedResourceDependencies": {
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/ResourcePhysicalOriginalRow.java": "7d42dc80e4f473f7cbcb8ae19664c949f210e34a7d81bda3a890f161b6325676",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceOccupationSchemaVerifier.java": "3c34a1f7cb911bf0a53b4c9cb1d7b6f850642a835f854ee6c1bbf12a3340b12a",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourcePhysicalProtectionPlan.java": "00c4b7928586fced7f466e2e8261a3157f1a161c6a6d32301bb98250eb5e02f2",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceExecutionEvidencePortImpl.java": "5b2fbc09990b7235e7473a28f5b7ca874266a6667c0d8822b9117d6c06f3a116",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceOccupationPortImpl.java": "896a1628c616acc3de0e66ce54bb0bc519a187ab36557de1cf4d01af6d40d055",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/ResourceCommandService.java": "e534ee51fad9f21e85a1ebfba20f7b2218b6da1716c1b48f28c577a4ee1a2acf",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/ResourceOccupationService.java": "fd1d76ac234eadacdfa0124a1fcd27a533746a2c0cd0f8e8b08076c915f80833",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceOccupationServiceImpl.java": "40761c527146fb2004701798d17290b968909ea29a179010a941f85ba49e50ad"
+  },
+  "sharedDocumentExcluded": "docs/technical/README.md",
+  "compile": {
+    "result": "BUILD SUCCESS",
+    "log": "/private/tmp/svc-b03-integration-compile2.log",
+    "scope": [
+      "shop-app",
+      "beauty-server",
+      "required reactor dependencies"
+    ]
+  },
+  "tests": {
+    "result": "BUILD SUCCESS",
+    "log": "/private/tmp/svc-b03-integration-tests.log",
+    "cases": [
+      {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.trade.ServiceExecutionCompletionPersistenceTest"
+      },
+      {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.trade.RetailPricingCompatibilityTest"
+      },
+      {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.trade.service.impl.CounterStateTest"
+      },
+      {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.trade.service.impl.ServiceExecutionLifecycleIntegrationTest"
+      },
+      {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.merchant.port.ResourceBookingExecutionEvidencePortImplTest"
+      },
+      {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.merchant.policy.ResourceOccupationGuardTest"
+      },
+      {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.scenario.RetailStandardBarcodeFlowTest"
+      },
+      {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchSqlTest"
+      },
+      {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.scenario.TaskStartWiringTest"
+      },
+      {
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.service.impl.TaskWorkflowObservationTest"
+      },
+      {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.service.impl.TaskStartCoordinatorBoundaryTest"
+      },
+      {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.port.ExecutionRuntimeHttpTest"
+      },
+      {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.client.TaskWorkflowHttpTest"
+      },
+      {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowAssemblyTest"
+      },
+      {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowInternalTest"
+      }
+    ],
+    "total": 60
+  },
+  "deliveryRegistrationTestsPassed": 5,
+  "orphanGuard": {
+    "passed": false,
+    "log": "/private/tmp/service-store-received-orphans.log",
+    "reason": "Inherited identity/merchant/payment NEW endpoints; new counter-state staged entry recognized; baseline unchanged"
+  },
+  "mainDirtyFilesProtected": 187,
+  "appSourceModified": false,
+  "deployment": false,
+  "push": false,
+  "next": [
+    "App B02/B03 formal integration",
+    "SVC-B04 original-key collection recovery"
+  ],
+  "functionalCommit": "dc1d10b9ee5d42cde7ba862771678350b8b03a27",
+  "mainDirtyFilesPreserved": 187
+}

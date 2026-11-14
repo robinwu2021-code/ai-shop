@@ -296,13 +296,20 @@ class ServiceTaskStockPreparationCoordinatorTest {
         when(submissions.selectSubmission("E", "S", "submission")).thenReturn(submission);
         doAnswer(
                         call ->
-                                ((Function<ServiceTaskExecutionServiceImpl.StockOriginal, ?>)
+                                ((Function<ServiceTaskExecutionServiceImpl.ExecutionOriginal, ?>)
                                                 call.getArgument(1))
                                         .apply(
-                                                new ServiceTaskExecutionServiceImpl.StockOriginal(
-                                                        fence, submission, command, intent)))
+                                                new ServiceTaskExecutionServiceImpl
+                                                        .ExecutionOriginal(
+                                                        fence,
+                                                        submission,
+                                                        command,
+                                                        intent,
+                                                        null,
+                                                        null,
+                                                        null)))
                 .when(quantity)
-                .withStockOriginal(any(), any());
+                .withExecutionOriginal(any(), any());
         when(rows.find(anyString(), anyString(), anyString()))
                 .thenAnswer(call -> copy(stored.get()));
         when(rows.lock(anyString(), anyString(), anyString()))

@@ -6,6 +6,8 @@ import ai.neargo.shop.food.spi.FoodStockSyncInternalApi;
 import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.spi.food.FoodLocalStockInternalApi;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
+import ai.neargo.shop.spi.food.FoodStockReplenishmentPort;
+import ai.neargo.shop.spi.food.FoodStockReplenishmentInternalApi;
 import ai.neargo.shop.food.service.*;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
@@ -31,6 +33,10 @@ public class FoodStockClientConfiguration {
         @Bean @ConditionalOnMissingBean(FoodReturnStockService.class)
         FoodReturnStockService remoteFoodReturnStockService(InternalHttp http) {
             return new RemoteFoodReturnStockService(http.client(ServiceName.FOOD,ai.neargo.shop.food.spi.FoodReturnStockInternalApi.class,Duration.ofSeconds(5)));
+        }
+        @Bean @ConditionalOnMissingBean(FoodStockReplenishmentPort.class)
+        FoodStockReplenishmentPort remoteFoodStockReplenishmentPort(InternalHttp http){
+            return new RemoteFoodStockReplenishmentPort(http.client(ServiceName.FOOD,FoodStockReplenishmentInternalApi.class,Duration.ofSeconds(5)));
         }
         @Bean @ConditionalOnMissingBean(FoodLocalStockPort.class)
         FoodLocalStockPort remoteFoodLocalStockPort(InternalHttp http) {

@@ -9,6 +9,12 @@ import org.apache.ibatis.annotations.Select;
 
 /** Bound to the pay SqlSessionFactory only. */
 public interface EntUsageMapper extends BaseMapper<EntUsage> {
+    @Select("""
+            SELECT * FROM ent_usage WHERE tenant_no=#{tenant} AND usage_no=#{usageNo}
+              AND protocol='STANDARD' AND status='COMMITTED' AND deleted=0
+            """)
+    EntUsage findCommittedStandard(@Param("tenant") String tenant, @Param("usageNo") String usageNo);
+
     @Select("SELECT * FROM ent_usage WHERE tenant_no=#{tenant} AND user_no=#{user} AND entity_no=#{entity} "
             + "AND (#{store} IS NULL OR store_no=#{store}) AND asset_kind='STORED_VALUE' AND status='COMMITTED' AND deleted=0 "
             + "ORDER BY occurred_at DESC,usage_no DESC LIMIT #{limit}")

@@ -90,6 +90,20 @@ class FoodScopeVerificationApiTest {
         });
     }
 
+    /** 百分号编码的路径同样路由到内部 Controller，验签不能只看原始 URI 前缀。 */
+    @Test void percentEncodedInternalPathStillRequiresScopeCredential() {
+        runner.withPropertyValues(FoodScopeTestSigning.KEY_PROPERTY).run(c -> {
+            var mvc = mvc(c);
+            var encoded = java.net.URI.create(CartInternalApi.GET_PATH.replaceFirst("/food/", "/%66ood/"));
+            assertThat(encoded.getRawPath()).doesNotStartWith("/internal/food/");
+            mvc.perform(post(encoded).header(InternalHttp.TOKEN_HEADER, "wire")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"entityNo\":\"OTHER\",\"storeNo\":\"Z\",\"cartNo\":\"C\"}"))
+                    .andExpect(status().isUnauthorized());
+            assertThat(c.getBean(AtomicInteger.class)).hasValue(0);
+        });
+    }
+
     @Test void ac7NoKeyOrShortKeyRejectsEverything() {
         runner.run(c -> mvc(c).perform(get().with(FoodScopeTestSigning.system())).andExpect(status().isUnauthorized()));
         runner.withPropertyValues("shop.food.scope-key=short").run(c ->

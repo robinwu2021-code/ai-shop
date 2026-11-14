@@ -173,6 +173,9 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
             if (manifest.root().tasks().stream().anyMatch(task -> task.getBindingRevision() == 0)) {
                 blockers.add("UNBOUND_TASKS");
             }
+            if (manifest.bindings().stream().anyMatch(binding -> "SERVICE_USE".equals(binding.getSourceKind()))) {
+                blockers.add("ASSET_SOURCE_SETTLEMENT_PENDING");
+            }
             if (sources.isEmpty()) {
                 blockers.add("NO_SOURCE");
             }

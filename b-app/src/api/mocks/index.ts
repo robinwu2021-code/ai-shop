@@ -1,3 +1,4 @@
+import {replenishmentMock} from "./replenishment";
 import {managementMock} from "./management";
 import { storedValueMock } from './stored-value';
 import { payMock } from './pay';
@@ -52,6 +53,7 @@ mSvFinancialBrandResume:async()=>{throw Error("Financial operations require the 
   mSvSettlementVoid:async()=>{throw Error("Financial operations require the real backend")},
 
   ...managementMock,
+  ...replenishmentMock,
   mSvStoreIssuerConfiguration:async()=>{throw Error('Issuer operations require the real backend')},
   mSvConfigureStoreIssuer:async()=>{throw Error('Issuer operations require the real backend')},
   mSvPreparePolicyPermissions:async()=>{throw Error("Stored-value governance requires the real backend")},

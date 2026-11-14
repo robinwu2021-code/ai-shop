@@ -536,6 +536,32 @@ public class OrderOperationsAcceptanceTest {
         }
     }
 
+    /**
+     * 计划：3 份共 2KG（每份 0.666…，下单时已向上取整为 2）。分三次各开做 1 份：
+     * 旧实现按 2×1/3 反算除不尽直接冲突、这份料永远不扣；现在按累计份额扣，三次之和恰好 2KG。
+     */
+    @Test
+    void partialStartsConsumeCumulativeShareThatSumsToPlannedQuantity() {
+        var expected = List.of(new BigDecimal("0.666667"), new BigDecimal("0.666667"), new BigDecimal("0.666666"));
+        var prior = new ArrayList<FnbServiceEvent>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < 3; i++) {
+            var f = new NewAdjustment(new BigDecimal("3"), new BigDecimal("2"), new BigDecimal("3"));
+            var start = new FnbServiceEvent();
+            start.setId(100L + i); start.setEntityNo("E"); start.setEventNo("START" + i); start.setTaskNo("TASK");
+            start.setAction("START"); start.setQty(BigDecimal.ONE);
+            start.setCreatedAt(java.time.LocalDateTime.of(2026, 10, 24, 12, i));
+            f.created.set(start);
+            when(f.events.selectList(any())).thenReturn(List.copyOf(prior));
+            f.service.consume("E", "S", "A", start.getEventNo());
+            var issued = f.command.get().lines().getFirst().quantity();
+            assertThat(issued).isEqualByComparingTo(expected.get(i));
+            total = total.add(issued);
+            prior.add(start);
+        }
+        assertThat(total).isEqualByComparingTo("2");
+    }
+
     private static final class NewAdjustment {
         final ObjectMapper json = new ObjectMapper();
         final AtomicReference<FnbServiceEvent> created = new AtomicReference<>();
@@ -544,7 +570,9 @@ public class OrderOperationsAcceptanceTest {
         final AtomicReference<Command> command = new AtomicReference<>();
         final InventoryProductionPort inventory = mock(InventoryProductionPort.class);
         final ProductionConsumptionServiceImpl service;
-        NewAdjustment() {
+        final ServiceEventMapper events = mock(ServiceEventMapper.class);
+        NewAdjustment() { this(new BigDecimal("2"), new BigDecimal("3"), new BigDecimal("2")); }
+        NewAdjustment(BigDecimal planServings, BigDecimal planLeafQty, BigDecimal taskQty) {
             var heads = mock(ProductionConsumptionMapper.class);
             var stored = new AtomicReference<FnbProductionConsumption>();
             when(heads.selectList(any())).thenAnswer(i -> stored.get()==null ? List.of() : List.of(stored.get()));
@@ -555,11 +583,10 @@ public class OrderOperationsAcceptanceTest {
             when(children.selectList(any())).thenAnswer(i -> List.copyOf(storedLines));
             when(children.insert(any(FnbProductionConsumptionLine.class))).thenAnswer(i -> { storedLines.add(i.getArgument(0)); return 1; });
             when(children.updateById(any(FnbProductionConsumptionLine.class))).thenReturn(1);
-            var events = mock(ServiceEventMapper.class);
             when(events.selectOne(any())).thenAnswer(i -> created.get());
             when(events.insert(any(FnbServiceEvent.class))).thenAnswer(i -> { created.set(i.getArgument(0)); createdEvents.add(created.get()); return 1; });
             var task = new FnbKitchenTask();
-            task.setEntityNo("E"); task.setTaskNo("TASK"); task.setTicketNo("TICKET"); task.setFoodLineNo("FL"); task.setStationNo("STATION"); task.setRouteVersion(1L); task.setTaskRole("MAKE"); task.setQty(new BigDecimal("2")); task.setVersion(0L);
+            task.setEntityNo("E"); task.setTaskNo("TASK"); task.setTicketNo("TICKET"); task.setFoodLineNo("FL"); task.setStationNo("STATION"); task.setRouteVersion(1L); task.setTaskRole("MAKE"); task.setQty(taskQty); task.setVersion(0L);
             var tasks = mock(KitchenTaskMapper.class);
             when(tasks.selectOne(any())).thenReturn(task);
             when(tasks.updateById(any(FnbKitchenTask.class))).thenAnswer(i -> { task.setVersion(task.getVersion()+1); return 1; });
@@ -567,7 +594,7 @@ public class OrderOperationsAcceptanceTest {
             var tickets = mock(KitchenTicketMapper.class); when(tickets.selectOne(any())).thenReturn(ticket);
             var facts = frozenFacts();
             var scope = new InventoryReservationPort.Scope("MAIN","E","B1");
-            var branches = List.of(new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Branch(facts.payload().units().getFirst().componentRef(),"FULFILL","S","RECIPE_MATERIAL",new BigDecimal("2"),"EA",List.of(new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Leaf("LEAF","MATERIAL",new BigDecimal("3"),"KG",HASH)),"RECIPE_REV"));
+            var branches = List.of(new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Branch(facts.payload().units().getFirst().componentRef(),"FULFILL","S","RECIPE_MATERIAL",planServings,"EA",List.of(new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Leaf("LEAF","MATERIAL",planLeafQty,"KG",HASH)),"RECIPE_REV"));
             var unhashed = new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan(scope,"PLAN",null,branches);
             var plan = new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan(scope,"PLAN",ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.hash(unhashed),branches);
             var batch = new FnbOrderBatch(); batch.setEntityNo("E"); batch.setStoreNo("S"); batch.setBatchNo("B1"); batch.setStatus("ACCEPTED");
@@ -582,7 +609,7 @@ public class OrderOperationsAcceptanceTest {
             });
             when(inventory.consume(any())).thenAnswer(i -> {
                 Command c=i.getArgument(0); command.set(c);
-                return new Receipt(c.eventNo(),ProductionConsumptionServiceImpl.fingerprint(c),"CONFIRMED","DOC",c.lines(),null,null,List.of(new IssuedLine("LEAF","MATERIAL",new BigDecimal("0.75"),"KG","DOC","LEDGER",null,null,null,"UNKNOWN")));
+                return new Receipt(c.eventNo(),ProductionConsumptionServiceImpl.fingerprint(c),"CONFIRMED","DOC",c.lines(),null,null,List.of(new IssuedLine("LEAF","MATERIAL",c.lines().getFirst().quantity(),"KG","DOC","LEDGER",null,null,null,"UNKNOWN")));
             });
             service = new ProductionConsumptionServiceImpl(heads,children,batches,lines,tickets,tasks,events,mock(ConfigRevisionMapper.class),stores,inventory,json,new Transactions());
             var outbox = mock(ai.neargo.shop.event.outbox.OutboxPublisher.class);

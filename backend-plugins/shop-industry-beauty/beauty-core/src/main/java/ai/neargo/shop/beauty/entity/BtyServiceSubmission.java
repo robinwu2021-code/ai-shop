@@ -1,10 +1,14 @@
 package ai.neargo.shop.beauty.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.time.LocalDateTime;
+import com.baomidou.mybatisplus.annotation.TableField;
+
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
 
 /** 业务提交与跨域恢复意图；保存本域意图与引用，不复制外部资产权威。 */
 @Getter
@@ -13,24 +17,53 @@ import lombok.Setter;
 public class BtyServiceSubmission extends BaseEntity {
     /** 可信经营主体数据域。 */
     private String entityNo;
+
     /** 提交号。 */
     private String submissionNo;
+
     /** 门店。 */
     private String storeNo;
+
     /** 工单。 */
     private String workOrderNo;
+
     /** OPEN或ADD或BIND等。 */
     private String action;
+
     /** 幂等键摘要。 */
     private String requestKeyHash;
+
     /** 参数摘要。 */
     private String payloadHash;
+
     /** RECEIVED或SOURCE_PENDING或BOUND或RECOVERING或REJECTED。 */
     private String status;
+
     /** 受控冻结命令。 */
     private String frozenCommand;
+
     /** 恢复时刻。 */
     private LocalDateTime nextRetryAt;
+
     /** 安全错误码。 */
     private String failureCode;
+
+    /** TASK_START-only immutable natural relation; historical families remain NULL. */
+    private String executionNo;
+
+    /** TASK_START-only mutable finite observation, distinct from frozen original bytes. */
+    private String actionObservationJson;
+    /** Finite actual-workflow observation; frozen command is immutable. */
+    private String workflowObservationJson;
+    /** Original member-asset allocation, owned by this submission family. */
+    @TableField(select = false)
+    private String entitlementTaskNo;
+    @TableField(select = false)
+    private String entitlementOperationNo;
+    @TableField(select = false)
+    private String entitlementActiveTaskNo;
+    @TableField(select = false)
+    private String entitlementUsageNo;
+    @TableField(select = false)
+    private String entitlementReceiptJson;
 }

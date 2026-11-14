@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "platformVersion": 12,
+  "owner": "beauty-core/primary",
+  "table": "bty_service_task",
+  "columns": [
+    {
+      "name": "direct_plan_no",
+      "type": "varchar(32)",
+      "collation": "utf8mb4_bin"
+    },
+    {
+      "name": "direct_plan_revision",
+      "type": "bigint",
+      "collation": null
+    },
+    {
+      "name": "direct_plan_hash",
+      "type": "char(64)",
+      "collation": "utf8mb4_bin"
+    }
+  ],
+  "checkName": "ck_bty_task_direct_plan",
+  "check": "(direct_plan_no IS NULL AND direct_plan_revision IS NULL AND direct_plan_hash IS NULL) OR (direct_plan_no IS NOT NULL AND LENGTH(TRIM(direct_plan_no))>0 AND direct_plan_revision IS NOT NULL AND direct_plan_revision>0 AND direct_plan_hash IS NOT NULL AND direct_plan_hash REGEXP '^[0-9a-f]{64}$')",
+  "triggers": [
+    {
+      "name": "trg_bty_direct_plan_immutable",
+      "table": "bty_service_submission",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.action='DIRECT_PLAN' OR NEW.action='DIRECT_PLAN' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='direct planning original is immutable';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bty_direct_plan_no_delete",
+      "table": "bty_service_submission",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.action='DIRECT_PLAN' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='direct planning original is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bty_task_direct_plan_fence",
+      "table": "bty_service_task",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (NEW.direct_plan_no <=> OLD.direct_plan_no) OR NOT (NEW.direct_plan_revision <=> OLD.direct_plan_revision)\n        OR NOT (NEW.direct_plan_hash <=> OLD.direct_plan_hash) THEN\n        IF NEW.direct_plan_no IS NULL OR NEW.direct_plan_revision IS NULL OR NEW.direct_plan_hash IS NULL\n            OR NEW.direct_plan_revision<>COALESCE(OLD.direct_plan_revision,0)+1 OR NEW.version<>OLD.version+1\n            OR OLD.deleted<>0 OR NEW.deleted<>0 OR OLD.status<>'PENDING' OR NEW.status<>'PENDING'\n            OR OLD.started_at IS NOT NULL OR NEW.started_at IS NOT NULL OR OLD.appointment_item_no IS NOT NULL\n            OR NEW.appointment_item_no IS NOT NULL OR OLD.qty<>1 OR NEW.qty<>1\n            OR OLD.done_qty<>0 OR NEW.done_qty<>0 OR OLD.voided_qty<>0 OR NEW.voided_qty<>0\n            OR NOT (NEW.tenant_no <=> OLD.tenant_no) OR NOT (NEW.entity_no <=> OLD.entity_no)\n            OR NOT (NEW.task_no <=> OLD.task_no) OR NOT (NEW.work_order_no <=> OLD.work_order_no)\n            OR NOT (NEW.execution_snapshot <=> OLD.execution_snapshot)\n            OR NEW.binding_revision<>OLD.binding_revision OR NEW.scope_revision<>OLD.scope_revision\n            OR EXISTS (SELECT 1 FROM bty_service_execution_fence f WHERE f.tenant_no=OLD.tenant_no\n                AND f.entity_no=OLD.entity_no AND f.task_no=OLD.task_no)\n            OR NOT EXISTS (SELECT 1 FROM bty_service_submission s JOIN bty_work_order w\n                ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no\n                AND w.work_order_no=s.work_order_no WHERE s.tenant_no=NEW.tenant_no\n                AND s.entity_no=NEW.entity_no AND s.submission_no=NEW.direct_plan_no AND s.deleted=0\n                AND s.action='DIRECT_PLAN' AND s.status='BOUND' AND s.payload_hash=NEW.direct_plan_hash\n                AND s.work_order_no=NEW.work_order_no AND w.deleted=0 AND w.appointment_no IS NULL\n                AND w.scope_frozen=0 AND w.status IN ('OPEN','IN_SERVICE')\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.schema'))='DIRECT_PLAN_V1',0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.planHash'))=NEW.direct_plan_hash,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.planNo'))=NEW.direct_plan_no,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.taskNo'))=NEW.task_no,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.workOrderNo'))=NEW.work_order_no,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.scope.tenantNo'))=NEW.tenant_no,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.scope.entityNo'))=NEW.entity_no,0)\n                AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.plan.scope.storeNo'))=w.store_no,0)\n                AND COALESCE(JSON_EXTRACT(s.frozen_command,'$.plan.planRevision')=NEW.direct_plan_revision,0)\n                AND COALESCE(JSON_EXTRACT(s.frozen_command,'$.plan.publishedTaskRevision')=NEW.version,0)\n                AND COALESCE(JSON_EXTRACT(s.frozen_command,'$.plan.bindingRevision')=NEW.binding_revision,0)\n                AND COALESCE(JSON_EXTRACT(s.frozen_command,'$.plan.scopeRevision')=w.scope_revision,0)) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='direct plan requires unfenced atomic publication';\n        END IF;\n    END IF;\nEND"
+    }
+  ],
+  "migrationScript": "V12__beauty_direct_task_plan.sql",
+  "migrationSha256": "ca2afe6ee031f9e8c6ce2fa8fbc108ffc2127740abc60427211a709117a9ccfc",
+  "flywayChecksum": 758856179
+}

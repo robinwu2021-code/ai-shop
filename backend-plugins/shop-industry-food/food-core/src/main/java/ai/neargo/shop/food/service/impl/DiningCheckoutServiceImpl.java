@@ -552,8 +552,13 @@ public class DiningCheckoutServiceImpl implements DiningCheckoutService {
                     } else {
                         for (var charge : charges)
                             if (!"CONFIRMED".equals(charge.getStatus())) {
-                                if (actual.payment() != null
-                                        && actual.payment().outTradeNo() != null) {
+                                boolean ownerStarted =
+                                        actual.payment() != null
+                                                && actual.payment().outTradeNo() != null;
+                                // PREPARED = 从未发给核心。核心也没有支付流水时，它不是「结果未知」：
+                                // 保持 PREPARED，同 key 重试才会真正发出（customerPay 只在 PREPARED 时发送）。
+                                if ("PREPARED".equals(charge.getStatus()) && !ownerStarted) continue;
+                                if (ownerStarted) {
                                     if (charge.getCoreReference() != null
                                             && !charge.getCoreReference()
                                                     .equals(actual.payment().outTradeNo()))

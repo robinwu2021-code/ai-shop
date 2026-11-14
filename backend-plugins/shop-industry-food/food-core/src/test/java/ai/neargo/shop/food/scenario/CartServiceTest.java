@@ -275,6 +275,17 @@ class CartServiceTest extends FoodWriteGuardFixture {
             assertThat(t.service.getCart("E","A",cart).cart().lines()).hasSize(1);
         });
     }
+    /** 移单/移行把台账上 OPEN 的车改成 ARCHIVED（FoodBusinessOperationsMapper.checkCollaborationUpdateCheckCart2/3）后，台账要能开新车。 */
+    @Test void cartArchivedByCheckMoveDoesNotBlockNextCart() {
+        run(t -> {
+            String archived=cart(t);
+            t.f.sql().update("UPDATE fnb_check_cart SET status='ARCHIVED',version=version+1 WHERE check_no='CHECK' AND status='OPEN'");
+            var next=t.service.createCart("E","A","staff",new CreateCartReq("CHECK",null,null,"POS","DINE_IN",null),
+                    "after-move").cart();
+            assertThat(next.cartNo()).isNotEqualTo(archived);
+            assertThat(next.status()).isEqualTo("OPEN");
+        });
+    }
     @Test void archivePreservesLineIdentityAndClosingPreservesRows() {
         run(t -> {
             String cart=cart(t);

@@ -740,6 +740,7 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                "sql", // Shared native SQL metadata verification; no business state or domain dependency.
                 // Shared document identities and reservations, independent of business eligibility.
                 "numbering",
                 // App-level adapters compose existing merchant and member domains through their contracts.

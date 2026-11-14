@@ -1,1 +1,3 @@
 ai.neargo.shop.beauty.config.BeautyChannelAutoConfiguration
+ai.neargo.shop.beauty.config.BeautySettlementClientConfiguration
+ai.neargo.shop.beauty.config.BeautyEntitlementUseClientConfiguration

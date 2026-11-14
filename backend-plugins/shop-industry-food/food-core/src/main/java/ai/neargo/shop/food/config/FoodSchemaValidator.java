@@ -28,6 +28,12 @@ import javax.sql.DataSource;
 /** 餐饮私有历史校验；只在显式 MIGRATE 模式执行餐饮迁移，从不接管平台 Flyway。 */
 public final class FoodSchemaValidator {
     public static final String HISTORY = "fnb_flyway_history";
+
+    /**
+     * 餐饮迁移的目标版本：必须等于 db/industry/food 下最高的 V 号。
+     * 新增迁移时同步改这里（FoodSchemaVersionGuardTest 会对账）。
+     */
+    public static final String EXPECTED_VERSION = "39";
     private static final String RESOURCE = "db/industry/food/V1__food_business_tables.sql";
     private static final String SHA256 =
             "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9";
@@ -77,8 +83,8 @@ public final class FoodSchemaValidator {
         }
         var current = flyway.info().current();
         require(
-                current != null && "37".equals(current.getVersion().getVersion()),
-                "food migration version must be 37");
+                current != null && EXPECTED_VERSION.equals(current.getVersion().getVersion()),
+                "food migration version must be " + EXPECTED_VERSION);
         try (var connection = source.getConnection();
                 var column =
                         connection
@@ -1517,6 +1523,11 @@ public final class FoodSchemaValidator {
             expected.put("fnb_stock_sync_delivery", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "sync_no", "event_no", "item_no", "generation", "source_version", "payload_hash", "operation_key", "payload_snapshot", "status", "attempts", "next_attempt_at", "last_error_code", "ack_ref")));
             expected.put("fnb_stock_sync_reconciliation", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "reconciliation_no", "generation", "operation_key", "request_hash", "status", "cursor_id", "end_id", "request_snapshot", "checked_count", "difference_count", "started_at", "finished_at", "last_error_code")));
             expected.put("fnb_stock_sync_difference", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "difference_no", "reconciliation_no", "item_no", "generation", "source_version", "target_version", "difference_type", "source_snapshot", "target_snapshot", "resolution_status")));
+            expected.put("fnb_stock_replenishment", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "replenishment_no", "source_system", "source_owner", "source_document", "source_line", "source_item", "source_unit", "source_quantity", "item_no", "base_unit", "factor", "expected_quantity", "received_quantity", "difference_quantity", "returned_quantity", "return_accepted_quantity", "status", "close_reason")));
+            expected.put("fnb_stock_replenishment_return", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "replenishment_no", "source_system", "source_owner", "source_document", "source_line", "accepted_quantity")));
+            expected.put("fnb_stock_replenishment_connection", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "status", "generation", "source_system", "source_owner", "posting_watermark")));
+            expected.put("fnb_stock_replenishment_manual", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "replenishment_no", "movement_no", "quantity")));
+            expected.get("fnb_stock_replenishment").addAll(List.of("admission_generation", "admission_mode", "source_posting_sequence"));
             return expected;
         } catch (IllegalStateException ex) {
             throw ex;

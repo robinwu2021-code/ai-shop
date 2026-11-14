@@ -1,0 +1,139 @@
+{
+  "task": "SVC-B07",
+  "status": "accepted_supported_rules",
+  "overallTaskComplete": true,
+  "baseHead": "98003ef50bb3d73d45666b9e680cc000af0061ac",
+  "integrationTarget": "codex/food-next01",
+  "supportedAssetKinds": [
+    "PAID_CARD",
+    "STORE_EXCHANGE",
+    "STORED_VALUE"
+  ],
+  "supported": [
+    "Frozen original work-order task and holder consent",
+    "Human-authorized exclusive reservation before Pay stage",
+    "Verified original usage binding and whole-task quantity allocation exactly once",
+    "Original-number query, submission replay and existing Outbox recovery",
+    "Confirmed Pay cancellation releases only the original uncommitted local reservation",
+    "Same owner in embedded mode and scoped typed transport in standalone mode"
+  ],
+  "policyClosed": [
+    "Committed service-asset returns and refunds without an owner rule",
+    "Partial fulfillment refunds and stored-value principal/gift return allocation without an owner rule"
+  ],
+  "separateTasks": [
+    "B03 SERVICE_USE actual-work source admission; allocation does not change doneQty or startedAt",
+    "B05.3 split receipt attribution, exclusive deposit allocation and combined settlement",
+    "B09 App write-chain integration"
+  ],
+  "validation": {
+    "uniqueExecutedCases": 66,
+    "testsByClass": {
+      "ai.neargo.shop.beauty.client.WorkOrderEntitlementHttpTest": 1,
+      "ai.neargo.shop.beauty.config.BeautyEntitlementOriginConfigurationTest": 1,
+      "ai.neargo.shop.beauty.config.WorkOrderEntitlementClientWiringTest": 1,
+      "ai.neargo.shop.beauty.scenario.BeautySchemaMigrationIT": 4,
+      "ai.neargo.shop.beauty.scenario.ServiceSubmissionIT": 1,
+      "ai.neargo.shop.beauty.scenario.WorkOrderEntitlementIT": 6,
+      "ai.neargo.shop.beauty.scenario.WorkOrderEntitlementInternalTest": 1,
+      "ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImplTest": 3,
+      "ai.neargo.shop.beauty.service.impl.WorkOrderSettlementServiceImplTest": 6,
+      "ai.neargo.shop.paybridge.impl.EntitlementServiceUseCoordinatorTest": 2,
+      "ai.neargo.shop.portal.biz.WorkOrderEntitlementPermissionTest": 3,
+      "ai.neargo.shop.portal.internal.WorkOrderEntitlementFactsIngressTest": 1,
+      "ai.neargo.shop.scenario.BrandStoredValueRedemptionTest": 7,
+      "ai.neargo.shop.scenario.EntitlementApiContractCoverageTest": 3,
+      "ai.neargo.shop.scenario.EntitlementReversalFlowTest": 4,
+      "ai.neargo.shop.scenario.EntitlementServiceUseHttpFlowTest": 6,
+      "ai.neargo.shop.scenario.RetailItemBenefitFlowTest": 9,
+      "ai.neargo.shop.scenario.RetailStandardBarcodeFlowTest": 2,
+      "ai.neargo.shop.scenario.WorkOrderEntitlementEmbeddedMysqlTest": 1,
+      "ai.neargo.shop.unit.EntitlementServiceSnapshotJsonTest": 4
+    },
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "mysqlVersion": "9.7.4",
+    "mysqlRunner": "scripts/test-service-work-order-entitlement-mysql.sh",
+    "nativeFixtureScope": "Platform native structural projection, not full platform historical Flyway. Beauty uses actual Flyway V1-V17 and explicit V16 predecessor. Catalog is a stable fixture; only reception notifications use an exact test archive route.",
+    "publicContract": {
+      "operations": 140,
+      "dtoSchemas": 198
+    },
+    "logs": [
+      {
+        "name": "svc-b07-final-native.log",
+        "sha256": "fc000de945a46b8890b97318d873f0bb21eaf9dc6c3be7ac27bc225dca1813f0"
+      },
+      {
+        "name": "svc-b07-final-regression.log",
+        "sha256": "9515257cd46dec170e7cc8d7fa374d039a9674a1e1050aa844248460b14986ca"
+      },
+      {
+        "name": "svc-b07-permission-contract.log",
+        "sha256": "c890a30dc867a3b76265c9b62af056f0c4b400470e297e27b2236d67c1d1a354"
+      }
+    ]
+  },
+  "migrations": [
+    "backend/shop-app/src/main/resources/db/migration/V657__service_work_order_claim_evidence.sql",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V17__beauty_entitlement_use_binding.sql"
+  ],
+  "sourceFingerprints": {
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/EntitlementAllocationVO.java": "044b9c8b770fa2dc9e193f7357b4d42987bcf3df5dc500dd7b0636bd6acef3a3",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/WorkOrderDetailVO.java": "e30229aa7f353efd0a0267e4652bfdf4828ff7095ba5da2641f664c9fbf0f749",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java": "1a685f92109c4f43349957dd5aaa1824032f7d4398adc6c4e6e465bab95a08e1",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderEntitlementUses.java": "d0ba0c7bdd82838ac96083f6f45ca6c38249877f1d0343fd7a19ffb39fefb0c7",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyEntitlementUseClientConfiguration.java": "27831d040c68bfe1a6fb69fe477abc31cae6079b1eb7bd497c22722267497058",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/client/WorkOrderEntitlementHttpTest.java": "c3f7095a64ed9b8c260ad5ce569ef4a090edd32877dca24175b0588a78f27239",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyBusinessAutoConfiguration.java": "9d666058888ad6245b899c51911b0ec06673fff11de0862fc09c1caf402799b3",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyEntitlementUseConfiguration.java": "2d9ebbfabfe2b709dbd5f30600f96333c95cdc29f50dbaccc80345fa2c29b1aa",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java": "bfce84e8e2c35e84dd4a41a7e6cba93e7e2ef1a4059f780682b39ae217eb98c2",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyServiceSubmission.java": "052002c848d1d1e4d5dc2b76cba0b03355fbd5ba9520c41997ffcbb67655b284",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java": "10addd9dc39a1a9d665fde53103adf9347e1f795ca7bd6d2a15a87dd19693d09",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/EntitlementUseSchemaContract.java": "c22e9c4932b99a2b2eadafde6059dab977694a8405f31e9b67cf681fb492148b",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskAcceptanceSchemaVerifier.java": "ce3313eaf947ead0fc064aa32c89052e4058abb08896d7f8e71a788da2a669b1",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskStartSchemaExtension.java": "a0176bba2bcdba0945700fbdef296349476452df19b812e3b10e43f1c4db8744",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceExecutionFenceCoordinator.java": "51413538575549e177694080ed96846bb4813241403edfaedd8c5e705f6ce053",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java": "272bdccb9eb0bf1dbc5355e61442f9ec525811461a335388501c808893801306",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImpl.java": "7d1d74ef7fe6cd2f6aa63d012f86457456921e96c056751119f5354f65cafda5",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderEntitlementService.java": "925bf286195ddb4f55f947d772474fcef6aac7aa2a781f6798577fba8a1124a8",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderQuery.java": "4354b7a540804957f79f8550fe575beeca77b60536dab782b08c2a712636dc8b",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V17__beauty_entitlement_use_binding.sql": "160e1f308b08b78dc6fbac8cd6efa9756de3ff622afed6beb1fd52fae45efe5f",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java": "47036387b5c5f8a84b62fad267fb45004df7305186e9e6a2e5633eeca4364e99",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/ReceptionFixture.java": "7541ff0a7d571a8386e0e69b9ac008d7219bee299312da079edd5c447587e819",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderEntitlementIT.java": "d554c6e5157c8bd75122f122e1ac8ece7af4f8ca830fefbdb4de6d28a20290d1",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalWorkOrderEntitlementController.java": "6e810050e0523bc845985e99abaa53731411517a4fbe2f3d63eb483c85af9cf9",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderEntitlementInternalTest.java": "e5bd9576f156dca5fc3a6967ebf70718ec13c45375eeb0392b991d99b3234f7e",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/config/BeautyEntitlementOriginConfiguration.java": "8d60f4da104113a000085f563ef37c17f56b6e781061ae482031e16ff0e0492e",
+    "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/EntitlementServiceUseCoordinator.java": "aa880bc77d2ee5d38d70b49f7617e90fcca90dbb1d881bd0e9a76ffe5a4152ce",
+    "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/impl/EntitlementServiceUseCoordinatorImpl.java": "9b5f9ef344c7822dcca7e218c0d83999a06ffc2d943e79f261bc33e8d38a392d",
+    "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/impl/ServiceWorkOrderUseFactsService.java": "e78dfe43f47eff100d2da120211831f62336cdac4b30955ba9f95e7ef2410dc7",
+    "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizEntitlementUseController.java": "287bc6cd53151826912b11db1362ca6970461606a9fdbc5222931d6462feeb6c",
+    "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalWorkOrderEntitlementFactsController.java": "13ae45f55cde34199983b4a453fb91f4f4b8754d1edc8a93f206cb32c44791d7",
+    "backend/shop-app/src/main/resources/db/migration/V657__service_work_order_claim_evidence.sql": "05b6becc164c3275d5a2836f8542bbbd2f86ba783a043de9bbce0e351b121e30",
+    "backend/shop-app/src/test/java/ai/neargo/shop/portal/internal/WorkOrderEntitlementFactsIngressTest.java": "03fcd96adc461efcd80f9e4471d40a048cf03444233b80775edc751284c97ab1",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/BrandStoredValueRedemptionTest.java": "8c1e208fcb31fdcaabb9eb01bde6a18603e506b5512754a695267b5aaebc3f70",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/EntitlementServiceUseHttpFlowTest.java": "2b2f87fa251ff8fd72b1c6551630e2ca7a97ac5575b43b4f044fec608457c079",
+    "backend/shop-app/src/test/java/ai/neargo/shop/support/WorkOrderUseFixtureOwner.java": "593f8abb23db95bad0bc7f4b695ab018220f20261e2d4d573137a95d7b4b8572",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/entitlement/ServiceWorkOrderUseFactsInternalApi.java": "7fdc27ec1cfa98816d25bfb393e6a05cb56e94d2d7243efa5a49b16437530b5e",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/entitlement/ServiceWorkOrderUseFactsPort.java": "162802f33be3ac6cf84c0f6e09db542cc6fe6304ecffb61a879e861e94c94644",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/entitlement/ServiceWorkOrderUseInternalApi.java": "0889ceed10161bfa72bb1fc48b74c57ca5920c30d81858f4139225e9bef766cd",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/entitlement/ServiceWorkOrderUsePort.java": "ff3f91e551dea9f26f5bc30a39d99710a1186945fb80cfb7c2f4815e356b593e",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/ServiceOrderSnapshot.java": "5ecb1cb4583761709ffb6bd16aad8baa7f3ac4e1c225119d605ab0fa8997dfb8",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/entitlement/EntitlementServiceSnapshotPolicy.java": "ac800313add219ad41b7ded1b049721b4cde208012876318738df4bd614e15da",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/entitlement/entity/OrdEntServiceOrder.java": "82a646ba450297265dea8f6705500dc5bc0fef0957c9bd3f69f1b075fe52d2eb",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/EntitlementServiceOrderService.java": "03711eb041427d4fd194dd0517b14cb702acec5b76f9f4210afb381fef077561",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/EntitlementServiceOrderServiceImpl.java": "10325f60747916ed2119f77ba42b3a3e58c35b84cc49739284d9c1869b8842b0",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java": "37fbb298dc192bde7d636ea79a04a189e5bdcb1523024045297d1815f04a189f",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/WorkOrderEntitlementEmbeddedMysqlTest.java": "b28e21a908f5c52d631a9f48f687612e6eb43ac85366e64230ce682c69220506",
+    "backend/scripts/gen-service-entitlement-native-fixture.py": "aabe3ef2db251da0db2aceee9243df57a84c6c03be31e56f930cad27a4e991ab",
+    "scripts/test-service-work-order-entitlement-mysql.sh": "0b84b6c40222c1a6212877b1bf66af9efd056ccf35eb7bde4cb11d52efbbbf6c",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/config/WorkOrderEntitlementClientWiringTest.java": "76c3d80260ad67ca3d324d699315690071b9e632228a7b18a5d73543f7b45dca",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderServiceImpl.java": "7b2b4d17195944898eba5326e90ea9740bdbd9957d6d116309377333da6ab57f",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/test/java/ai/neargo/shop/beauty/config/BeautyEntitlementOriginConfigurationTest.java": "562a78caa71c3ffc3206df311b50baea826bb491ff0e5978c1d93a70af9ae8aa",
+    "backend/shop-app/src/test/java/ai/neargo/shop/portal/biz/WorkOrderEntitlementPermissionTest.java": "8b1a40330c5ec23c7029c7cd764d9071c1e7367ea31d5e18c29012f3e8f1ec60"
+  },
+  "pushed": false,
+  "deployed": false
+}

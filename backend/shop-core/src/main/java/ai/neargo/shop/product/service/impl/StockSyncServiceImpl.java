@@ -16,6 +16,8 @@ import ai.neargo.shop.product.mapper.ProductMappers.StockSyncLogMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockSyncMapper;
 import ai.neargo.shop.product.service.StockSyncService;
+import ai.neargo.shop.product.service.StoreStockReader;
+import ai.neargo.shop.product.policy.StockReplenishmentWriterGuard;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -40,10 +42,15 @@ public class StockSyncServiceImpl implements StockSyncService {
     private final SkuMapper skuMapper;
     private final MerchantQueryPort merchants;
     private final GoodsMapper goodsMapper;
+    private final StockReplenishmentWriterGuard writers;
+    private final StoreStockReader stocks;
 
     public StockSyncServiceImpl(SellRuleMapper ruleMapper, StoreStockSyncMapper syncMapper,
                                 StockSyncLogMapper logMapper, StoreStockMapper storeStockMapper,
-                                SkuMapper skuMapper, MerchantQueryPort merchants, GoodsMapper goodsMapper) {
+                                SkuMapper skuMapper, MerchantQueryPort merchants, GoodsMapper goodsMapper,
+                                StockReplenishmentWriterGuard writers, StoreStockReader stocks) {
+        this.writers = writers;
+        this.stocks = stocks;
         this.goodsMapper = goodsMapper;
         this.ruleMapper = ruleMapper;
         this.syncMapper = syncMapper;
@@ -146,6 +153,8 @@ public class StockSyncServiceImpl implements StockSyncService {
     @Override
     @Transactional
     public PrdStoreStockSync setEnabled(String entityNo, String storeNo, boolean enabled, String operator) {
+        if (enabled) writers.requireLegacy(entityNo);
+        else writers.lock(entityNo);
         PrdStoreStockSync s = ensure(entityNo, storeNo, operator);
         if (enabled && s.getAlignedAt() == null) {
             throw BizException.of(ErrorCode.STOCK_SYNC_NOT_ALIGNED);
@@ -244,6 +253,13 @@ public class StockSyncServiceImpl implements StockSyncService {
      */
     private Result write(String entityNo, String storeNo, String skuNo, int u, int target, boolean capOnly,
                          String ruleType, String sourceRef, String operator) {
+        if (!writers.legacyAllowed(entityNo)) {
+            var state = stocks.lockPool(skuNo, storeNo).observation();
+            if (state == null || state.onHand() == null || state.reserved() == null)
+                throw BizException.of(ErrorCode.CONFLICT);
+            int observed = Math.max(0, state.onHand() - state.reserved());
+            return new Result(false, "LOCAL_STOCK_MANAGED", ruleType, u, observed, observed);
+        }
         if (done(sourceRef, storeNo, skuNo)) {
             return new Result(false, "DONE_BEFORE", null, u, 0, 0);
         }

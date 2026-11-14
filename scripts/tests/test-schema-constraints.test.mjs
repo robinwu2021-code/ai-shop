@@ -366,3 +366,87 @@ test('invalid delimiter directives fail and comments cannot join SQL tokens', ()
     assert.match(statements[0], /^SELECT\s+1$/);
     assert.match(statements[1], /^SELECT 2\s+\+3$/);
 });
+
+function nativeUpgradeFixture(change = () => {}) {
+    const root = mkdtempSync(join(tmpdir(), 'native-upgrade-projection-'));
+    try {
+        const real = JSON.parse(readFileSync(join(repository, 'backend/scripts/h2-fixture-policy.json'), 'utf8'));
+        const entries = structuredClone(real.entries.filter(entry => /\/V(604|649|651)__/.test(entry.migration)));
+        for (const entry of entries) {
+            for (const name of [entry.migration, entry.descriptor]) {
+                const target = join(root, name);
+                mkdirSync(dirname(target), {recursive: true});
+                writeFileSync(target, readFileSync(join(repository, name)));
+            }
+        }
+        change(root, entries);
+        const policy = join(root, 'backend/scripts/h2-fixture-policy.json');
+        mkdirSync(dirname(policy), {recursive: true});
+        writeFileSync(policy, JSON.stringify({schemaVersion: 1, purpose: real.purpose, entries}));
+        const code = [
+            'import json, pathlib, runpy, sys',
+            "module = runpy.run_path('backend/scripts/gen-test-schema.py')",
+            'root = pathlib.Path(sys.argv[1])',
+            "source = root / 'backend/shop-app/src/main/resources/db/migration'",
+            "policies = module['load_projection_policy'](source, root=root)",
+            "print(json.dumps([len(module['project_migration'](path, policies)) for path in policies]))",
+        ].join('\n');
+        return JSON.parse(execFileSync('python3', ['-c', code, root], {encoding: 'utf8'}));
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+}
+
+function changeNativeUpgrade(root, entries, transform) {
+    const entry = entries.find(value => value.migration.includes('/V651__'));
+    const migration = join(root, entry.migration);
+    const original = readFileSync(migration, 'utf8');
+    const sql = transform(original);
+    assert.notEqual(sql, original, 'negative fixture must change its migration');
+    writeFileSync(migration, sql);
+    entry.sourceSha256 = sha256(sql);
+    const descriptorPath = join(root, entry.descriptor);
+    const descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'));
+    descriptor.migrationSha256 = entry.sourceSha256;
+    const text = JSON.stringify(descriptor);
+    writeFileSync(descriptorPath, text);
+    entry.descriptorSha256 = sha256(text);
+}
+
+test('native execution upgrades retain the exact absent owner chain', () => {
+    assert.deepEqual(nativeUpgradeFixture(), [0, 0, 0]);
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        entries.splice(entries.findIndex(entry => entry.migration.includes('/V649__')), 1);
+    }), /native upgrade requires its declared parent/);
+});
+
+test('native execution upgrade cannot omit changes to an ordinary table', () => {
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        changeNativeUpgrade(root, entries, sql => sql.replace(
+            'ALTER TABLE ord_service_execution_action', 'ALTER TABLE ord_order'));
+    }), /native upgrade must alter a declared absent table/);
+});
+
+test('native execution upgrade cannot introduce another table', () => {
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        changeNativeUpgrade(root, entries, sql => sql + '\nCREATE TABLE unrelated_owner (id BIGINT);\n');
+    }), /native upgrade cannot create another owner/);
+});
+
+test('native execution upgrade cannot omit a trigger on an ordinary table', () => {
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        changeNativeUpgrade(root, entries, sql => sql.replace(
+            /ON ord_service_execution\b/, 'ON ord_order'));
+    }), /native upgrade trigger must target its absent owner/);
+});
+
+test('refreshed source hashes preserve the declared native upgrade ALTER sequence', () => {
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        changeNativeUpgrade(root, entries, sql => sql.replace(
+            'DROP CHECK ck_sea_kind', 'DROP CHECK ck_sea_proof'));
+    }), /changed native upgrade ALTER/);
+    assert.throws(() => nativeUpgradeFixture((root, entries) => {
+        changeNativeUpgrade(root, entries, sql => sql.replace(
+            'ALTER TABLE ord_service_execution_action DROP CHECK ck_sea_kind;', ''));
+    }), /changed native upgrade ALTER|incomplete native upgrade ALTER set/);
+});

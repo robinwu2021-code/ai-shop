@@ -67,7 +67,8 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
             String key) { return coordinator.open(entity, store, actor, req, key); }
     @Override public WorkOrderDetailVO getWorkOrder(String entity, String store, String actor, String number) {
         access.merchant(entity, store, actor, false);
-        return query.detail(require(db.read(() -> orders.selectScoped(entity, store, number))));
+        // Every child query carries this authorized root's explicit entity/store/parent chain.
+        return db.read(() -> query.detail(require(orders.selectScoped(entity, store, number))));
     }
     @Override public MyWorkOrderVO getMyWorkOrder(String user, String number) {
         access.consumer(user);

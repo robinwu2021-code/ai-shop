@@ -1,5 +1,12 @@
 package ai.neargo.shop.product.mapper;
 
+import ai.neargo.shop.product.entity.PrdStockWriter;
+import ai.neargo.shop.product.entity.PrdStockReplenishmentMovement;
+import ai.neargo.shop.product.entity.PrdStockReplenishmentManual;
+import ai.neargo.shop.product.entity.PrdStockReplenishmentReturn;
+import ai.neargo.shop.product.entity.PrdStockReplenishmentConnection;
+import ai.neargo.shop.product.entity.PrdStockReplenishmentCommand;
+import ai.neargo.shop.product.entity.PrdStockReplenishment;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.entity.PrdGoods;
@@ -12,6 +19,7 @@ import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.entity.PrdStoreStock;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
@@ -22,6 +30,34 @@ import org.apache.ibatis.annotations.Update;
 public final class ProductMappers {
 
     private ProductMappers() {
+    }
+
+    public interface StockReplenishmentMapper extends BaseMapper<PrdStockReplenishment> { }
+    public interface StockReplenishmentConnectionMapper extends BaseMapper<PrdStockReplenishmentConnection> { }
+    public interface StockReplenishmentCommandMapper extends BaseMapper<PrdStockReplenishmentCommand> { }
+    public interface StockReplenishmentMovementMapper extends BaseMapper<PrdStockReplenishmentMovement> {
+        @Select("SELECT COALESCE(SUM(delta),0) FROM prd_stock_replenishment_movement WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND original_no=#{original} AND kind=#{kind} AND deleted=0")
+        BigDecimal total(@Param("entity") String entity,@Param("store") String store,
+                @Param("original") String original,@Param("kind") String kind);
+    }
+    public interface StockReplenishmentManualMapper extends BaseMapper<PrdStockReplenishmentManual> {
+        @Select("SELECT COALESCE(SUM(quantity),0) FROM prd_stock_replenishment_manual WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND original_no=#{original} AND deleted=0")
+        BigDecimal total(@Param("entity") String entity,@Param("store") String store,@Param("original") String original);
+    }
+    public interface StockReplenishmentReturnMapper extends BaseMapper<PrdStockReplenishmentReturn> {
+        @Select("SELECT COALESCE(SUM(accepted_quantity),0) FROM prd_stock_replenishment_return WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND original_no=#{original} AND deleted=0")
+        BigDecimal total(@Param("entity") String entity,@Param("store") String store,@Param("original") String original);
+    }
+    public interface StockWriterMapper extends BaseMapper<PrdStockWriter> {
+        @Insert("INSERT INTO prd_stock_writer(tenant_no,entity_no,mode,created_at,created_by,updated_at,updated_by) "
+                + "VALUES('MAIN',#{entity},'LEGACY',NOW(3),'SYSTEM',NOW(3),'SYSTEM') "
+                + "ON DUPLICATE KEY UPDATE entity_no=entity_no")
+        int ensure(@Param("entity") String entity);
+        @Select("SELECT * FROM prd_stock_writer WHERE tenant_no='MAIN' AND entity_no=#{entity} FOR UPDATE")
+        PrdStockWriter lock(@Param("entity") String entity);
     }
 
     public interface SkuPricingPolicyMapper extends BaseMapper<PrdSkuPricingPolicy> {
@@ -169,6 +205,12 @@ public final class ProductMappers {
     }
 
     public interface SkuMapper extends BaseMapper<PrdSku> {
+        @Update("UPDATE prd_sku SET stock=stock+#{delta},version=version+1,updated_at=NOW(3),updated_by=#{actor} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND sku_no=#{sku} AND market=#{market} "
+                + "AND deleted=0 AND stock=#{before} AND locked_stock=#{reserved}")
+        int changeLocalStock(@Param("entity") String entity,@Param("sku") String sku,@Param("market") String market,
+                @Param("delta") int delta,@Param("before") int before,@Param("reserved") int reserved,
+                @Param("actor") String actor);
 
         /** Current complete accounting identities, including every market and retired identity. */
         @Select("SELECT * FROM prd_sku WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
@@ -316,6 +358,12 @@ public final class ProductMappers {
      * 一个泛化的 updateStock(table, key...) 读起来永远要先想「这次走的是哪张表」。
      */
     public interface StoreStockMapper extends BaseMapper<PrdStoreStock> {
+        @Update("UPDATE prd_store_stock SET stock=stock+#{delta},version=version+1,updated_at=NOW(3),updated_by=#{actor} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND store_no=#{store} AND sku_no=#{sku} "
+                + "AND deleted=0 AND stock=#{before} AND locked_stock=#{reserved}")
+        int changeLocalStock(@Param("entity") String entity,@Param("store") String store,@Param("sku") String sku,
+                @Param("delta") int delta,@Param("before") int before,@Param("reserved") int reserved,
+                @Param("actor") String actor);
         @Select("SELECT * FROM prd_store_stock WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
         List<PrdStoreStock> lockSkuStoresCurrent(@Param("skuNo") String skuNo);
 

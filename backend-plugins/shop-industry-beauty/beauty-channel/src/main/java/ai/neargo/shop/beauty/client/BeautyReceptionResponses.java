@@ -12,14 +12,24 @@ import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
 import ai.neargo.shop.beauty.dto.RecoveryRequestVO;
 import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SourceObservationVO;
+import ai.neargo.shop.beauty.dto.TaskActionResultVO;
+import ai.neargo.shop.beauty.dto.TaskWorkflowVO;
 import ai.neargo.shop.beauty.dto.WalkInVO;
 import ai.neargo.shop.beauty.dto.WorkOrderBillVO;
 import ai.neargo.shop.beauty.dto.WorkOrderDetailVO;
+import ai.neargo.shop.beauty.dto.WorkOrderQueryReq;
+import ai.neargo.shop.beauty.dto.WorkOrderSummaryVO;
 import ai.neargo.shop.beauty.dto.WorkOrderTaskVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
+import ai.neargo.shop.beauty.dto.WorkOrderSettlementVO;
+import ai.neargo.shop.beauty.dto.WorkOrderSettlementPreviewVO;
+import ai.neargo.shop.beauty.spi.BeautySettlementInternalApi;
+import ai.neargo.shop.beauty.spi.BeautyTaskWorkflowInternalApi;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.security.InternalCall;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -31,7 +41,87 @@ final class BeautyReceptionResponses {
     static <T> T require(InternalCall<?> call, T result) {
         check(call != null && result != null);
         String target = call.binding().targetNo();
+        if (BeautyTaskWorkflowInternalApi.ENDPOINT.equals(call.binding().endpoint())) {
+            check(call.request() instanceof BeautyTaskWorkflowInternalApi.Target);
+            var requested = (BeautyTaskWorkflowInternalApi.Target) call.request();
+            same(target, requested.taskNo());
+            switch (call.binding().action()) {
+                case "ACCEPT" -> {
+                    check(result instanceof TaskActionResultVO);
+                    var value = (TaskActionResultVO) result;
+                    same(target, value.taskNo());
+                    text(value.operationNo());
+                    check(!value.canStart() && value.slots() != null && !value.slots().isEmpty());
+                }
+                case "PROPOSE_HANDOVER" -> {
+                    check(result instanceof String);
+                    text((String) result);
+                    check(((String) result).length() <= 32);
+                }
+                case "START", "ACT", "QUERY", "RECOVER", "CANCEL_PENDING" -> {
+                    check(result instanceof TaskWorkflowVO);
+                    var value = (TaskWorkflowVO) result;
+                    same(target, value.taskNo());
+                    same(requested.workOrderNo(), value.workOrderNo());
+                    check(
+                            value.taskRevision() >= 0
+                                    && value.occupationRevision() >= 0
+                                    && value.segments() != null);
+                    text(value.taskStatus());
+                    var segments = new HashSet<String>();
+                    for (var segment : value.segments()) {
+                        text(segment.segmentNo());
+                        text(segment.resourceNo());
+                        check(
+                                segments.add(segment.segmentNo())
+                                        && segment.startedAt() != null
+                                        && (segment.endedAt() == null
+                                                || !segment.endedAt().isBefore(segment.startedAt()))
+                                        && (segment.cleaningCompletedAt() == null
+                                                || segment.endedAt() != null
+                                                        && !segment.cleaningCompletedAt()
+                                                                .isBefore(segment.endedAt())));
+                    }
+                }
+                default -> check(false);
+            }
+            return result;
+        }
         switch (result) {
+            case ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding value -> {
+                same(ai.neargo.shop.spi.entitlement.ServiceWorkOrderUseInternalApi.ENDPOINT,
+                        call.binding().endpoint());
+                same("RESERVE", call.binding().action());
+                check(call.request() instanceof ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Lookup);
+                check(value.lookup().equals(call.request()));
+                same(target, value.lookup().operationNo());
+                check(value.state() != ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.State.NOT_FOUND);
+            }
+
+            case PageData<?> page -> {
+                check(call.request() instanceof WorkOrderQueryReq);
+                var query = (WorkOrderQueryReq) call.request();
+                check(
+                        page.records() != null
+                                && page.total() >= 0
+                                && page.page() == query.page()
+                                && page.size() == query.size()
+                                && page.records().size() <= query.size());
+                var numbers = new HashSet<String>();
+                for (Object row : page.records()) {
+                    check(row instanceof WorkOrderSummaryVO);
+                    var summary = (WorkOrderSummaryVO) row;
+                    same(call.binding().entityNo(), summary.entityNo());
+                    same(call.binding().storeNo(), summary.storeNo());
+                    text(summary.workOrderNo());
+                    text(summary.status());
+                    check(
+                            numbers.add(summary.workOrderNo())
+                                    && summary.scopeRevision() > 0
+                                    && summary.revision() >= 0
+                                    && summary.createdAt() != null);
+                }
+            }
             case GuestRegistrationVO value -> registration(value);
             case GuestClaimVO value -> {
                 same(target, value.guestNo());
@@ -108,6 +198,24 @@ final class BeautyReceptionResponses {
                 } else {
                     same(target, value.submissionNo());
                 }
+            }
+            case WorkOrderSettlementVO value -> {
+                same(BeautySettlementInternalApi.ENDPOINT, call.binding().endpoint());
+                same(BeautySettlementInternalApi.READ, call.binding().action());
+                settlement(target, value);
+            }
+            case WorkOrderSettlementPreviewVO value -> {
+                same(BeautySettlementInternalApi.ENDPOINT, call.binding().endpoint());
+                same(BeautySettlementInternalApi.PREVIEW, call.binding().action());
+                check(call.request() instanceof BeautySettlementInternalApi.PreviewReq);
+                var request = ((BeautySettlementInternalApi.PreviewReq) call.request()).preview();
+                settlement(target, value.settlement());
+                same(request.expectedFingerprint(), value.settlement().fingerprint());
+                same(request.currency(), value.currency());
+                same(request.method(), value.method());
+                check(value.walletMinor() == request.walletMinor()
+                        && value.externalMinor() == request.externalMinor()
+                        && !value.executable() && !value.blockingReasons().isEmpty());
             }
             case WorkOrderBillVO value -> {
                 same(target, value.workOrderNo());
@@ -244,6 +352,24 @@ final class BeautyReceptionResponses {
             check(value.quote().operation() != null);
             same(value.checkoutOperationNo(), value.quote().operation().operationNo());
             check(value.quote().expiresAt() != null && value.quote().quoteRevision() > 0);
+        }
+    }
+
+    private static void settlement(String target, WorkOrderSettlementVO value) {
+        bill(value.bill());
+        same(target, value.bill().workOrderNo());
+        check(value.fingerprint() != null && value.fingerprint().matches("[a-f0-9]{64}")
+                && !value.canSettle() && value.methods().isEmpty() && !value.blockingReasons().isEmpty()
+                && value.sources().size() == value.bill().sources().size());
+        var originals = new HashSet<String>();
+        for (var source : value.sources()) {
+            check(!source.canCollect() && originals.add(source.checkoutOperationNo())
+                    && Set.of("MANUAL_DECLARED", "PREPAID", "REFUND_RECOLLECTION_CLOSED",
+                            "COLLECTION_CONSENT_REQUIRED", "INCOMPLETE", "UNSUPPORTED").contains(source.state()));
+            check(value.bill().sources().stream().anyMatch(original ->
+                    Objects.equals(original.checkoutOperationNo(), source.checkoutOperationNo())
+                            && Objects.equals(original.orderNo(), source.orderNo())
+                            && Objects.equals(original.sourceNo(), source.sourceNo())));
         }
     }
 

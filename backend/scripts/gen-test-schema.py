@@ -270,7 +270,7 @@ def load_projection_policy(src_dir, *, root=None, policy_path=None):
             _policy_require(isinstance(entry[field], str) and re.fullmatch(r"[a-f0-9]{64}", entry[field]),
                             "invalid " + field)
             _policy_require(hashlib.sha256(path.read_bytes()).hexdigest() == entry[field], "changed " + field)
-        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}, "unknown mode")
+        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS", "NATIVE_OWNER_ABSENT_UPGRADE"}, "unknown mode")
         _policy_require(isinstance(entry["capability"], str) and entry["capability"], "missing capability")
         _policy_require(isinstance(entry["guardClass"], str)
                         and re.fullmatch(r"(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*", entry["guardClass"]), "guard class")
@@ -293,6 +293,23 @@ def load_projection_policy(src_dir, *, root=None, policy_path=None):
             _policy_require(version is not None and descriptor[version_field] == int(version.group(1)),
                             "descriptor migration version")
         selected[migration] = MigrationProjection(entry, descriptor)
+    for projection in selected.values():
+        entry, descriptor = projection
+        if entry["mode"] != "NATIVE_OWNER_ABSENT_UPGRADE":
+            continue
+        parents = [parent for parent in selected.values()
+                   if parent.entry["sourceSha256"] == descriptor.get("baseMigrationSha256")]
+        _policy_require(len(parents) == 1, "native upgrade requires its declared parent")
+        parent = parents[0]
+        version_field = "platformVersion" if entry["datasource"] == "PRIMARY" else "inventoryVersion"
+        version = descriptor.get(version_field)
+        parent_version = parent.descriptor.get(version_field)
+        _policy_require(type(version) is int and type(parent_version) is int
+                        and parent.entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_UPGRADE"}
+                        and set(parent.entry["absentTables"]) == set(entry["absentTables"])
+                        and parent.entry["guardClass"] == entry["guardClass"]
+                        and parent_version < version,
+                        "native upgrade must follow the same absent owner")
     return selected
 
 
@@ -311,7 +328,9 @@ def project_migration(path, policies):
     _policy_require(all(isinstance(name, str) for name in names) and len(set(names)) == len(names),
                     "descriptor table identities")
     hybrid = entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"
-    absent = entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}
+    upgrade = entry["mode"] == "NATIVE_OWNER_ABSENT_UPGRADE"
+    absent = entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS",
+                               "NATIVE_OWNER_ABSENT_UPGRADE"}
     common = descriptor.get("commonTables", [])
     if hybrid:
         _policy_require(isinstance(common, list) and {t["name"] for t in common} == {
@@ -319,7 +338,12 @@ def project_migration(path, policies):
             "hybrid common target set")
         _policy_require(descriptor.get("retainedStatementHashes") == entry["retainedStatementHashes"]
                         and entry["retainedStatementHashes"], "hybrid descriptor retained hashes")
-    expected_alters = []
+    expected_alters = descriptor.get("alterStatements") if upgrade else []
+    if upgrade:
+        _policy_require(isinstance(expected_alters, list) and expected_alters
+                        and all(isinstance(statement, str) for statement in expected_alters)
+                        and [hashlib.sha256(statement.encode()).hexdigest() for statement in expected_alters]
+                        == descriptor.get("statementHashes"), "native upgrade ALTER descriptor")
     if hybrid:
         for table in common:
             name = table["name"]
@@ -345,6 +369,7 @@ def project_migration(path, policies):
     _policy_require(len(expected) == len(trigger_specs), "duplicate descriptor trigger")
     seen_tables = []
     seen_triggers = set()
+    seen_alters = []
     kept = []
     for statement in statements:
         trigger = re.fullmatch(
@@ -354,6 +379,7 @@ def project_migration(path, policies):
             name, timing, event, table, body = trigger.groups()
             _policy_require(name in expected and name not in seen_triggers, "unlisted/duplicate trigger " + name)
             spec = expected[name]
+            _policy_require(not upgrade or table in names, "native upgrade trigger must target its absent owner")
             _policy_require(table == spec["table"] and timing.upper() == spec["timing"]
                             and event.upper() == spec["event"] and body.strip() == spec["body"].strip(),
                             "changed trigger definition " + name)
@@ -361,10 +387,20 @@ def project_migration(path, policies):
             continue
         create = re.match(r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(", statement, re.I)
         if create is not None:
+            _policy_require(not upgrade, "native upgrade cannot create another owner")
             _policy_require(create.group(1) in names, "undeclared table")
             seen_tables.append(create.group(1))
             if not absent:
                 kept.append(statement)
+            continue
+        if upgrade:
+            alter = re.match(r"ALTER\s+TABLE\s+(\w+)\b", statement, re.I)
+            _policy_require(alter is not None and alter.group(1) in names,
+                            "native upgrade must alter a declared absent table")
+            _policy_require(len(seen_alters) < len(expected_alters)
+                            and statement == expected_alters[len(seen_alters)],
+                            "changed native upgrade ALTER")
+            seen_alters.append(statement)
             continue
         if hybrid:
             _policy_require(len(kept) < len(expected_alters) and statement == expected_alters[len(kept)],
@@ -375,7 +411,10 @@ def project_migration(path, policies):
         _policy_require(any(re.match(r"INSERT(?:\s+IGNORE)?\s+INTO\s+" + re.escape(name) + r"\b",
                                      statement, re.I) for name in names), "unlisted projected statement")
         kept.append(statement)
-    _policy_require(len(seen_tables) == len(names) and set(seen_tables) == set(names), "incomplete table set")
+    _policy_require(not upgrade or seen_alters == expected_alters, "incomplete native upgrade ALTER set")
+    expected_tables = [] if upgrade else names
+    _policy_require(len(seen_tables) == len(expected_tables)
+                    and set(seen_tables) == set(expected_tables), "incomplete table set")
     _policy_require(seen_triggers == set(expected), "incomplete trigger set")
     hashes = [hashlib.sha256(statement.encode()).hexdigest() for statement in kept]
     _policy_require(hashes == entry["retainedStatementHashes"], "changed retained statements")
@@ -442,7 +481,7 @@ def main():
             out.append("-- Native capability unavailable; common contract retained: " + entry["migration"]
                        + " | source=" + entry["sourceSha256"] + " | descriptor=" + entry["descriptorSha256"]
                        + " | retained=" + ",".join(entry["retainedStatementHashes"]) + "\n")
-        elif entry["mode"] == "NATIVE_OWNER_ABSENT":
+        elif entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_UPGRADE"}:
             out.append("-- Native capability absent: " + entry["migration"] + " | "
                        + ",".join(entry["absentTables"]) + "\n")
         else:

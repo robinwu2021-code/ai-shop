@@ -1,0 +1,24 @@
+{
+  "repository": "/Users/robin/work/ai/ai-shop-bapp",
+  "head": "de57567effcb2872328d349d6177483cb4b1715a",
+  "branch": "codex/ui-review-p2-fixes",
+  "sources": [
+    {
+      "path": "/Users/robin/work/ai/ai-shop-bapp/docs/implementation/服务业接口对接清单与服务端待办-2026-11-10.md",
+      "sha256": "e4c6a148625da3f6da053c128984d82914ce8415d20442cf2c6619fbbabdb7df"
+    },
+    {
+      "path": "/Users/robin/work/ai/ai-shop-bapp/docs/implementation/服务业功能补齐-2026-11-10.md",
+      "sha256": "a6978a048d52896ffe9192c3b3a0f718ba6383623c8ec3595669a9c8a628769f"
+    },
+    {
+      "path": "/Users/robin/work/ai/ai-shop-bapp/docs/review/service-pages-complete-2026-11-10/page-matrix.csv",
+      "sha256": "8f7c00bc9f721445534d7298a4dd875643140b2b65c25adb70a6a4db923b4cac"
+    },
+    {
+      "path": "/Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/lib/features/service_store/service_workbench_page.dart",
+      "sha256": "4f68220cc28385877de146ee24ffffb5d49d7cc84310b1cc68eb53763db21fac"
+    }
+  ],
+  "appFilesModifiedByThisTask": false
+}

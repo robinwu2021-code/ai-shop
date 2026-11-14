@@ -22,6 +22,8 @@ import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl;
 import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
+import ai.neargo.shop.spi.food.FoodStockReplenishmentPort;
+import ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl;
 import ai.neargo.shop.spi.food.FoodStockReportFactsPort;
 import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -83,6 +85,12 @@ public class FoodStockAutoConfiguration {
             StockSyncDeliveryMapper deliveries,FoodStockSyncDispatchServiceImpl dispatcher,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager){
         return new FoodStockSyncWorker(deliveries,dispatcher,json,manager);
+    }
+    @Bean FoodStockReplenishmentPort foodStockReplenishmentPort(
+            StockItemMapper items,StockBalanceMapper balances,StockCommandMapper commands,StockMovementMapper movements,
+            StockReplenishmentMapper replenishments,StockReplenishmentReturnMapper returns,StockReplenishmentConnectionMapper connections,StockReplenishmentManualMapper manuals,ObjectMapper json,
+            FoodStockSyncPublisher sync,@Qualifier("transactionManager") PlatformTransactionManager manager){
+        return new FoodStockReplenishmentPortImpl(items,balances,commands,movements,replenishments,returns,connections,manuals,json,manager,sync);
     }
     @Bean FoodLocalStockPort foodLocalStockPort(StockItemMapper items,
             StockBalanceMapper balances,StockReservationMapper heads,StockReservationItemMapper leaves,

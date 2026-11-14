@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-labelledby="title desc">
+  <title id="title">餐饮简单库存与可选进销存的补货联动</title>
+  <desc id="desc">进销存管理源仓，出库后形成门店待收货，实际确认后增加餐饮本地库存。餐饮下单、制作、取消和退餐只处理本地库存。可选异步镜像向进销存展示来源数量，不再扣源仓。接入和断开保留同一本地账与历史回执。</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <rect width="1200" height="750" rx="18" fill="#f8fafc"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#0f172a">
+    <text x="600" y="40" text-anchor="middle" font-size="25" font-weight="700">餐饮本地库存独立营业，进销存按需接入</text>
+    <rect x="40" y="95" width="420" height="155" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text x="250" y="134" text-anchor="middle" font-size="23" font-weight="600">进销存：源仓实物账（选配）</text>
+    <text x="250" y="171" text-anchor="middle" font-size="18">采购 · 仓储 · 补货出库 · 仓库盘点</text>
+    <text x="250" y="207" text-anchor="middle" font-size="18">发20：源仓100 → 80</text>
+    <rect x="740" y="95" width="420" height="155" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="950" y="134" text-anchor="middle" font-size="23" font-weight="600">餐饮：门店本地简单库存</text>
+    <text x="950" y="171" text-anchor="middle" font-size="18">实际收货 · 门店物料 · 预留 · 消耗</text>
+    <text x="950" y="207" text-anchor="middle" font-size="18">收20：本地0 → 20</text>
+    <path d="M460 172H735" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="600" y="140" text-anchor="middle" font-size="18">出库 → 待收 → 确认入账</text>
+    <text x="600" y="205" text-anchor="middle" font-size="16" fill="#475569">同一出库来源，收货只记一次</text>
+    <path d="M950 250V310" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="740" y="315" width="420" height="155" rx="12" fill="#fff" stroke="#0284c7" stroke-width="2"/>
+    <text x="950" y="356" text-anchor="middle" font-size="22" font-weight="600">营业始终扣本地库存</text>
+    <text x="950" y="391" text-anchor="middle" font-size="18">下单锁定 → 制作消耗 → 原号恢复</text>
+    <text x="950" y="427" text-anchor="middle" font-size="18">耗3：本地20 → 17，源仓仍80</text>
+    <rect x="40" y="315" width="420" height="155" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="250" y="356" text-anchor="middle" font-size="22" font-weight="600">本地来源镜像 / 消耗报表（选配）</text>
+    <text x="250" y="391" text-anchor="middle" font-size="18">独立展示门店17，不再扣源仓</text>
+    <text x="250" y="427" text-anchor="middle" font-size="18">积压可恢复；远端失败不回滚营业</text>
+    <path d="M740 400H465" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+    <text x="600" y="367" text-anchor="middle" font-size="17">异步事实 / 版本快照</text>
+    <rect x="40" y="530" width="1120" height="145" rx="12" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
+    <text x="600" y="568" text-anchor="middle" font-size="21" font-weight="600">切换的是“补货与同步接入”，营业账本保留</text>
+    <text x="600" y="606" text-anchor="middle" font-size="19">未接入：人工确认到货 → 本地库存；已接入：源仓补货 → 本地确认收货</text>
+    <text x="600" y="642" text-anchor="middle" font-size="18">保留余额、预留、原单与在途回执；不清零、不重灌、不因开关改变历史归属</text>
+    <text x="600" y="717" text-anchor="middle" font-size="18" fill="#475569">有运输就先记在途；同场领料可出库后立即确认。本地镜像不计作第二份库存。</text>
+  </g>
+</svg>

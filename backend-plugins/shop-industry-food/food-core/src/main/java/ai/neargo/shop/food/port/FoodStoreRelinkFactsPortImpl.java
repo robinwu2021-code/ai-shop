@@ -3,12 +3,11 @@ package ai.neargo.shop.food.port;
 import ai.neargo.shop.spi.user.StoreRelinkIndustryFactsPort;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 
-/** All original rows count, including cancelled and archived business history. */
-@Component
-// Reads food history through foodSqlSessionTemplate, which exists only when food persistence is enabled.
-@org.springframework.context.annotation.Conditional(ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled.class)
+/**
+ * All original rows count, including cancelled and archived business history.
+ * 由 FoodPersistenceConfiguration 导入，不走组件扫描：宿主全包扫描时不能绕过餐饮开关与持久化条件。
+ */
 public final class FoodStoreRelinkFactsPortImpl implements StoreRelinkIndustryFactsPort {
     private final JdbcTemplate jdbc;
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownershipWrites;

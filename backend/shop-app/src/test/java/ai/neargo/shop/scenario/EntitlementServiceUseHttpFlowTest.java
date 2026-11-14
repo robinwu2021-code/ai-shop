@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import ai.neargo.shop.auth.Realm;
@@ -8,19 +9,26 @@ import ai.neargo.shop.auth.TokenStores;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.WorkOrderUseFixtureOwner;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUseFactsPort;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -38,6 +46,24 @@ class EntitlementServiceUseHttpFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired TokenStores tokens;
     @Autowired OtpStore otp;
+    @MockitoBean ServiceWorkOrderOriginPort workOrderOrigins;
+    @MockitoBean ServiceWorkOrderUsePort workOrderUses;
+    @Autowired ServiceWorkOrderUseFactsPort workOrderFacts;
+    @Autowired ai.neargo.shop.trade.service.EntitlementServiceOrderService serviceOrders;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    ai.neargo.shop.spi.entitlement.EntitlementUsePort payUses;
+    private WorkOrderUseFixtureOwner workOrderOwner;
+
+    @BeforeEach
+    void originalWorkOrderOwner() {
+        workOrderOwner = new WorkOrderUseFixtureOwner(workOrderFacts);
+        when(workOrderUses.reserve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(call -> workOrderOwner.reserve(call.getArgument(0), call.getArgument(1)));
+        when(workOrderUses.inspect(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(call -> workOrderOwner.inspect(call.getArgument(0)));
+        when(workOrderUses.reconcile(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(call -> workOrderOwner.reconcile(call.getArgument(0)));
+    }
     private String id() { return UUID.randomUUID().toString(); }
     private String phone() { return "186" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
@@ -50,15 +76,17 @@ class EntitlementServiceUseHttpFlowTest {
         return json.readTree(mvc.perform(get(path).header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString());
     }
-    @ParameterizedTest @ValueSource(booleans = {false, true})
-    void memberOrOptionalLocatorStillRequiresConsentAndProducesOneRecord(boolean locator) throws Exception {
+    @ParameterizedTest @CsvSource({"false,false,false", "true,false,false", "false,true,false", "true,true,false",
+            "false,true,true", "true,true,true"})
+    void memberOrOptionalLocatorStillRequiresConsentAndProducesOneRecord(boolean locator, boolean workOrder,
+            boolean cancellation) throws Exception {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
         String ownerPhone = phone(), buyerPhone = phone();
         String ownerConsumer = TestLogin.consumer(mvc, json, otp, ownerPhone);
         String owner = tokens.of(Realm.CONSUMER).get(ownerConsumer).orElseThrow().user().userNo();
         String buyer = TestLogin.consumer(mvc, json, otp, buyerPhone);
         String user = tokens.of(Realm.CONSUMER).get(buyer).orElseThrow().user().userNo();
-        String entity = id(), store = id(), goods = id(), sku = id(), instance = id();
+        String entity = id(), store = id().replace("-", ""), goods = id(), sku = id(), instance = id();
         jdbc.update("INSERT INTO mch_entity(entity_no,owner_user_no,name,status,market,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'beauty','ACTIVE','CN','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity, owner);
         jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
@@ -72,6 +100,58 @@ class EntitlementServiceUseHttpFlowTest {
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
         jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,price,stock,locked_stock,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,?,1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
+        var workOrderRequest = Map.of("storeNo", store, "workOrderNo", "WO1", "taskNo", "TASK1");
+        var origin = new Origin("WO1", "TASK1", 2, 3, user, sku, 1);
+        when(workOrderOrigins.resolve(entity, store, owner, "WO1", "TASK1")).thenReturn(origin);
+        String draftKey = id();
+        String intentPath = "/biz/entitlement-uses/work-order-intents";
+        var draftReply = postJson(mvc, intentPath, merchant, workOrderRequest, draftKey);
+        assertThat(draftReply.path("code").asInt()).isZero();
+        var draft = draftReply.path("data");
+        assertThat(draft.path("status").asString()).isEqualTo("CREATED");
+        assertThat(draft.path("scopeRevision").asLong()).isEqualTo(2);
+        assertThat(draft.path("taskRevision").asLong()).isEqualTo(3);
+        var storedOrigin = json.readTree(jdbc.queryForObject(
+                "SELECT source_snapshot FROM ord_ent_service_order WHERE service_order_no=?", String.class,
+                draft.path("serviceOrderNo").asString())).path("workOrderOrigin");
+        assertThat(storedOrigin.path("userNo").asString()).isEqualTo(user);
+        assertThat(storedOrigin.path("skuNo").asString()).isEqualTo(sku);
+        assertThat(storedOrigin.path("quantity").asInt()).isEqualTo(1);
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey).path("data"))
+                .isEqualTo(draft);
+        jdbc.update("DELETE FROM ord_ent_service_task_claim WHERE tenant_no='MAIN' AND entity_no=?", entity);
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey).path("data"))
+                .isEqualTo(draft);
+        assertThat(jdbc.queryForObject("SELECT service_order_no FROM ord_ent_service_task_claim "
+                + "WHERE tenant_no='MAIN' AND entity_no=? AND work_order_no='WO1' AND task_no='TASK1'",
+                String.class, entity)).isEqualTo(draft.path("serviceOrderNo").asString());
+        long draftCount = jdbc.queryForObject("SELECT COUNT(*) FROM ord_ent_service_order WHERE entity_no=?",
+                Long.class, entity);
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, id()).path("code").asInt())
+                .isEqualTo(10409);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_ent_service_order WHERE entity_no=?",
+                Long.class, entity)).isEqualTo(draftCount);
+        assertThat(postJson(mvc, intentPath, merchant,
+                Map.of("storeNo", store, "workOrderNo", "WO1", "taskNo", "TASK2"), draftKey)
+                .path("code").asInt()).isEqualTo(10409);
+        assertThat(getJson(mvc, "/biz/entitlement-uses/" + draft.path("operationNo").asString(), merchant)
+                .path("data").path("status").asString()).isEqualTo("CREATED");
+        assertThat(postJson(mvc, "/biz/entitlement-uses/preview", merchant, Map.of("storeNo", store,
+                "orderRef", draft.path("serviceOrderNo").asString(), "instanceNo", instance), id())
+                .path("code").asInt()).isNotZero();
+        assertThat(postJson(mvc, "/biz/entitlement-uses/" + draft.path("operationNo").asString() + "/cancel",
+                merchant, Map.of("reason", "Release the original unsubmitted intent"), id())
+                .path("data").path("status").asString()).isEqualTo("RELEASED");
+        var replacement = postJson(mvc, intentPath, merchant, workOrderRequest, id());
+        assertThat(replacement.path("code").asInt()).isZero();
+        var replacementDraft = replacement.path("data");
+        assertThat(replacementDraft.path("serviceOrderNo").asString())
+                .isNotEqualTo(draft.path("serviceOrderNo").asString());
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey)
+                .path("data").path("status").asString()).isEqualTo("RELEASED");
+        assertThat(jdbc.queryForObject("SELECT service_order_no FROM ord_ent_service_task_claim "
+                + "WHERE tenant_no='MAIN' AND entity_no=? AND work_order_no='WO1' AND task_no='TASK1'",
+                String.class, entity)).isEqualTo(replacementDraft.path("serviceOrderNo").asString());
         String kind = locator ? "STORE_EXCHANGE" : "PAID_CARD";
         var rule = new EntitlementDefinition("30 times", kind, "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,
@@ -90,15 +170,18 @@ class EntitlementServiceUseHttpFlowTest {
         String key = id();
         String credential = locator ? postJson(mvc, "/mp/entitlements/" + instance + "/redeem-codes", buyer,
                 Map.of("useContext", "STORE_EXCHANGE"), id()).path("data").path("token").asString() : reference;
-        var request = Map.of(locator ? "code" : "customerRef", credential, "storeNo", store, "instanceNo", instance,
-                "items", List.of(Map.of("skuNo", sku, "quantity", 1)));
+        var request = workOrder
+                ? Map.of("orderRef", replacementDraft.path("serviceOrderNo").asString(),
+                        "storeNo", store, "instanceNo", instance)
+                : Map.of(locator ? "code" : "customerRef", credential, "storeNo", store, "instanceNo", instance,
+                        "items", List.of(Map.of("skuNo", sku, "quantity", 1)));
         var previewReply = postJson(mvc, "/biz/entitlement-uses/preview", merchant, request, key);
         assertThat(previewReply.has("code")).isTrue();
         assertThat(previewReply.path("code").asInt()).isZero();
         assertThat(previewReply.path("data").isObject()).isTrue();
         var preview = previewReply.path("data"); String operation = preview.path("operationNo").asString();
         String order = preview.path("orderRef").asString();
-        if (locator) {
+        if (locator && !workOrder) {
             jdbc.update("UPDATE ent_code_token SET expires_at=? WHERE instance_no=?",
                     LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1), instance);
             var changed = Map.of("code", "ec1_" + "x".repeat(43), "storeNo", store, "instanceNo", instance,
@@ -120,19 +203,96 @@ class EntitlementServiceUseHttpFlowTest {
         assertThat(postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data").path("status").asString())
                 .isEqualTo("WAIT_AUTH");
         var confirmation = own.path("confirmation");
+        assertThat(postJson(mvc, "/mp/orders/" + order + "/entitlement-authorizations", ownerConsumer,
+                Map.of("orderRevision", 0, "quoteRef", confirmation.path("quoteRef").asString(),
+                        "selectionDigest", confirmation.path("selectionDigest").asString(), "requestKey", id()), id())
+                .path("code").asInt()).isNotZero();
         assertThat(postJson(mvc, "/mp/orders/" + order + "/entitlement-authorizations", buyer,
                 Map.of("orderRevision", 0, "quoteRef", confirmation.path("quoteRef").asString(),
                         "selectionDigest", confirmation.path("selectionDigest").asString(), "requestKey", id()), id())
                 .path("code").asInt()).isZero();
         assertThat(getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data").path("status").asString())
                 .isEqualTo("WAIT_SUBMIT");
+        if (cancellation) {
+            var originalOrder = serviceOrders.findOperation("MAIN", entity, operation);
+            var lookup = new ServiceWorkOrderUsePort.Lookup("MAIN", entity, store, operation);
+            var claim = workOrderOwner.reserve(originalOrder.context(), lookup);
+            serviceOrders.bindWorkOrderClaim(originalOrder.context(), entity, store, order, claim);
+            var staged = serviceOrders.stage(originalOrder.context(), entity, store,
+                    new ai.neargo.shop.trade.dto.ServiceUseSubmit(order,
+                            preview.path("preview").path("previewRef").asString(), null,
+                            preview.path("preview").path("assetRevision").asLong()));
+            var held = payUses.prepare(staged.context(), staged.command());
+            assertThat(held.status().name()).isEqualTo("HELD");
+            assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, instance)).isEqualTo(1);
+            var lostRelease = new java.util.concurrent.atomic.AtomicBoolean(true);
+            org.mockito.Mockito.doAnswer(call -> {
+                var released = call.callRealMethod();
+                if (lostRelease.getAndSet(false)) throw new IllegalStateException("Lost original release reply");
+                return released;
+            }).when(payUses).release(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+            var cancelPath = "/biz/entitlement-uses/" + operation + "/cancel";
+            assertThat(postJson(mvc, cancelPath, merchant, Map.of("reason", "Cancel original hold"), id())
+                    .path("data").path("status").asString()).isEqualTo("PROCESSING");
+            assertThat(getJson(mvc, "/biz/entitlement-uses/" + operation, merchant)
+                    .path("data").path("status").asString()).isEqualTo("PROCESSING");
+            assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, id()).path("code").asInt())
+                    .isEqualTo(10409);
+            assertThat(postJson(mvc, cancelPath, merchant, Map.of("reason", "Cancel original hold"), id())
+                    .path("data").path("status").asString()).isEqualTo("RELEASED");
+            assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, instance)).isZero();
+            assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, instance)).isEqualTo(30);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage WHERE operation_no=?",
+                    Integer.class, operation)).isZero();
+            assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, id()).path("code").asInt()).isZero();
+            return;
+        }
+        if (workOrder) {
+            workOrderOwner.loseReserveReply.set(true);
+            workOrderOwner.loseBindingReply.set(true);
+            assertThat(postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("code").asInt())
+                    .isNotZero();
+            assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, instance)).isEqualTo(30);
+            var pendingBinding = postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data");
+            assertThat(pendingBinding.path("status").asString()).isEqualTo("PROCESSING");
+            assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, instance)).isEqualTo(29);
+        }
         var completed = postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data");
         assertThat(completed.path("status").asString()).isEqualTo("COMMITTED");
         assertThat(postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data")).isEqualTo(completed);
+        var cancelled = postJson(mvc, "/biz/entitlement-uses/" + operation + "/cancel", merchant,
+                Map.of("reason", "Cancel committed service use"), id());
+        assertThat(cancelled.path("code").asInt()).isEqualTo(10409);
+        var original = getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data");
+        assertThat(original.path("status").asString()).isEqualTo("COMMITTED");
+        assertThat(original.path("usageNo").asString()).isEqualTo(completed.path("usageNo").asString());
         var detail = getJson(mvc, "/mp/entitlement-usage/" + completed.path("usageNo").asString(), buyer).path("data");
         assertThat(detail.path("usage").path("units").asInt()).isEqualTo(1);
         assertThat(detail.path("remainingUnits").asInt()).isEqualTo(29);
         assertThat(detail.toString()).doesNotContain("principal", "bonus", "authorizationRef", "commandSnapshot");
+        if (workOrder) {
+            assertThat(workOrderOwner.reservations).hasValue(1);
+            assertThat(workOrderOwner.bindings).hasValue(1);
+            assertThat(jdbc.queryForObject("SELECT work_order_claim_snapshot FROM ord_ent_service_order "
+                    + "WHERE service_order_no=?", String.class, order)).contains("TASK1", "RESERVED");
+        }
+        String usageNo = completed.path("usageNo").asString();
+        assertThat(jdbc.update("UPDATE ent_usage SET source_order_no='UNRELATED' WHERE usage_no=?", usageNo))
+                .isEqualTo(1);
+        try {
+            var unresolved = getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data");
+            assertThat(unresolved.path("status").asString()).isEqualTo("PROCESSING");
+            assertThat(unresolved.hasNonNull("usageNo")).isFalse();
+        } finally {
+            jdbc.update("UPDATE ent_usage SET source_order_no=? WHERE usage_no=?", order, usageNo);
+        }
+        assertThat(getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data"))
+                .isEqualTo(original);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE order_no=?", Integer.class, order)).isZero();
     }
 }

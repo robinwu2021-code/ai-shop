@@ -14,6 +14,7 @@ import ai.neargo.shop.spi.trade.CheckoutPort;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 
 import java.math.BigDecimal;
@@ -29,6 +30,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * contract fixtures.
  */
 class WorkOrderBillIT extends SourceFixture {
+    @Override
+    ApplicationContextRunner business() {
+        return super.business().withUserConfiguration(BillReadExecutionBoundaryFixture.class);
+    }
+
     @Test
     void canonicalReceiptAliasesCountOnceAndUnknownNeverBecomesZero() {
         business()

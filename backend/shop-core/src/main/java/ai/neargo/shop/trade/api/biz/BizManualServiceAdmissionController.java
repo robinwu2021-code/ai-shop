@@ -21,6 +21,8 @@ import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualAdmissionView;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualLookup;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
 import ai.neargo.shop.trade.service.ManualServiceAdmissionService;
+import ai.neargo.shop.trade.service.CheckoutService;
+import ai.neargo.shop.trade.service.CheckoutService.CounterState;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -44,9 +46,11 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class BizManualServiceAdmissionController {
     private final ManualServiceAdmissionService manual;
+    private final CheckoutService checkout;
 
-    public BizManualServiceAdmissionController(ManualServiceAdmissionService manual) {
+    public BizManualServiceAdmissionController(ManualServiceAdmissionService manual, CheckoutService checkout) {
         this.manual = manual;
+        this.checkout = checkout;
     }
 
     @PostMapping("/biz/service-orders/counter-quotes")
@@ -72,6 +76,13 @@ public class BizManualServiceAdmissionController {
                     + "')")
     public CounterCheckoutQuote readCounterQuote(@PathVariable String operationNo) {
         return manual.readCounterQuote(scope(), new OperationRef("BEAUTY", operationNo));
+    }
+
+    /** Recover original receipts under the same scoped read authority as their quote. */
+    @GetMapping("/biz/service-orders/counter-quotes/{operationNo}/state")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CHECKOUT_PREPARE + "') and @perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    public CounterState readCounterState(@PathVariable String operationNo) {
+        return checkout.readCounterState(scope(), new OperationRef("BEAUTY", operationNo));
     }
 
     @PostMapping("/biz/service-orders/counter-quotes/{operationNo}/acceptances")

@@ -498,6 +498,7 @@ onShow(load);
         三个数都摆出来（在售 / 缺货 / 滞销），点哪儿都进库存；
         下面三个是他每天真正要做的动作，直达，不用先进库存页再找。
       -->
+      <view v-if="merchant.can('biz:stock')" class="sh-card sh-row sh-row--between" @tap="open(ROUTES.stockReplenishments)"><text class="txt-title">{{$t('replenishment.title')}}</text><sh-go/></view>
       <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
         <!-- 「全部」是按钮不是一行字：药丸底 + 箭头，与卡里其他可点的东西同一个长相 -->
         <view class="sh-card__head" @tap="open(ROUTES.stock)">

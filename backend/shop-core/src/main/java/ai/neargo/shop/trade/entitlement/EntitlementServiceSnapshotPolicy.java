@@ -8,6 +8,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot.PreviewBinding;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntServiceOrder;
@@ -30,7 +32,15 @@ public final class EntitlementServiceSnapshotPolicy {
     private EntitlementServiceSnapshotPolicy() { }
     public record FrozenSource(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
             String currency, List<UseItem> items, String storeName, String staffName,
-            Map<String, List<String>> categories, Instant performedAt) { }
+            Map<String, List<String>> categories, Instant performedAt,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Origin workOrderOrigin) {
+        public FrozenSource(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
+                String currency, List<UseItem> items, String storeName, String staffName,
+                Map<String, List<String>> categories, Instant performedAt) {
+            this(tenantNo, source, userNo, entityNo, storeNo, currency, items, storeName, staffName, categories,
+                    performedAt, null);
+        }
+    }
     public static ServiceOrderSnapshot snapshot(OrdEntServiceOrder row, ObjectMapper json) {
         // Retain exact-text legacy snapshots; new writes use the database-independent content hash.
         if (!hash(row.getSourceSnapshot()).equals(row.getSourceHash())
@@ -58,7 +68,9 @@ public final class EntitlementServiceSnapshotPolicy {
                         : json.readValue(row.getCommandSnapshot(), UseCommand.class),
                 row.getDecisionSnapshot() == null ? null
                         : json.readValue(row.getDecisionSnapshot(), DecisionRef.class),
-                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason());
+                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason(), source.workOrderOrigin(),
+                row.getWorkOrderClaimSnapshot() == null ? null : json.readValue(row.getWorkOrderClaimSnapshot(),
+                        ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding.class));
     }
     public static String sourceHash(String snapshot, ObjectMapper json) {
         return hash(json.writeValueAsString(normalize(json.readTree(snapshot))));

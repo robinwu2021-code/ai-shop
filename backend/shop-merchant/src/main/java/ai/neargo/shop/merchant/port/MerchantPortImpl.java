@@ -1193,6 +1193,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<String> storeBusinessTypeOf(String storeNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo));
+            return store == null ? Optional.empty() : Optional.ofNullable(store.getBusinessTypeCode());
+        });
+    }
+
+    @Override
     public Optional<StoreProfile> storeProfileOf(String storeNo) {
         if (storeNo == null || storeNo.isBlank()) {
             return Optional.empty();

@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.policy;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.sql.NativeCheckMetadata;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +9,7 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.sql.Connection;
@@ -35,6 +37,10 @@ import javax.sql.DataSource;
 public final class ServiceExecutionSchemaVerifier {
     private static final String DESCRIPTOR = "META-INF/shop/manual-service-execution-schema.json";
     private static final String MIGRATION = "db/migration/V604__manual_service_execution_authority.sql";
+    private static final String START_DESCRIPTOR = "META-INF/shop/service-execution-start-schema.json";
+    private static final String START_MIGRATION = "db/migration/V649__service_execution_start_ack.sql";
+    private static final String COMPLETION_DESCRIPTOR = "META-INF/shop/service-execution-completion-schema.json";
+    private static final String COMPLETION_MIGRATION = "db/migration/V651__service_execution_completion.sql";
     private static final Set<String> TABLES = Set.of(
             "ord_service_execution_unit", "ord_service_execution", "ord_service_execution_action");
     private final DataSource source;
@@ -57,6 +63,14 @@ public final class ServiceExecutionSchemaVerifier {
 
     /** Reinspect on every affected use; a previously valid installation never masks later physical drift. */
     public Installation installation() {
+        return installation(false);
+    }
+
+    private Installation installation(boolean startRequired) {
+        return installation(startRequired, false);
+    }
+
+    private Installation installation(boolean startRequired, boolean completionRequired) {
         Connection connection = null;
         try {
             identifier(historyTable);
@@ -79,10 +93,14 @@ public final class ServiceExecutionSchemaVerifier {
                 }
             }
             List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
-                    ? query(connection, "SELECT version, script, type, checksum, success FROM "
-                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "604")
+                    ? history(connection, schema, historyTable, "604")
                     : List.of();
-            if (present == 0 && markers.isEmpty()) {
+            List<Map<String, Object>> startMarkers = tableExists(connection, schema, historyTable)
+                    ? history(connection, schema, historyTable, "649")
+                    : List.of();
+            List<Map<String, Object>> completionMarkers = tableExists(connection, schema, historyTable)
+                    ? history(connection, schema, historyTable, "651") : List.of();
+            if (present == 0 && markers.isEmpty() && startMarkers.isEmpty() && completionMarkers.isEmpty()) {
                 return Installation.ABSENT;
             }
             require(present == 3 && markers.size() == 1);
@@ -92,6 +110,24 @@ public final class ServiceExecutionSchemaVerifier {
                     && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
                     && marker.get("checksum") instanceof Number checksum
                     && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            if (!startMarkers.isEmpty()) {
+                require(startMarkers.size() == 1);
+                contract = startDescriptor(contract);
+                var startMarker = startMarkers.getFirst();
+                require("V649__service_execution_start_ack.sql".equals(text(startMarker, "script"))
+                        && "SQL".equals(text(startMarker, "type")) && success(startMarker.get("success"))
+                        && startMarker.get("checksum") instanceof Number checksum
+                        && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            } else require(!startRequired);
+            if (!completionMarkers.isEmpty()) {
+                require(startMarkers.size() == 1 && completionMarkers.size() == 1);
+                contract = completionDescriptor(contract);
+                var completionMarker = completionMarkers.getFirst();
+                require("V651__service_execution_completion.sql".equals(text(completionMarker, "script"))
+                        && "SQL".equals(text(completionMarker, "type")) && success(completionMarker.get("success"))
+                        && completionMarker.get("checksum") instanceof Number checksum
+                        && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            } else require(!completionRequired);
             inspect(connection, schema, contract);
             return Installation.INSTALLED;
         } catch (Exception failure) {
@@ -108,6 +144,64 @@ public final class ServiceExecutionSchemaVerifier {
         if (installation() != Installation.INSTALLED) {
             throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
         }
+    }
+
+    /** Base-only installations remain valid for old consumers, but cannot acknowledge actual effects. */
+    public void requireStartAvailable() {
+        if (installation(true) != Installation.INSTALLED) {
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
+        }
+    }
+
+    /** A base/ACK installation cannot write completed quantity without the forward completion constraints. */
+    public void requireCompletionAvailable() {
+        if (installation(true, true) != Installation.INSTALLED) {
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
+        }
+    }
+
+    private JsonNode completionDescriptor(JsonNode base) throws Exception {
+        var loader = getClass().getClassLoader();
+        var descriptors = Collections.list(loader.getResources(COMPLETION_DESCRIPTOR));
+        var migrations = Collections.list(loader.getResources(COMPLETION_MIGRATION));
+        require(descriptors.size() == 1 && migrations.size() == 1);
+        JsonNode contract;
+        try (InputStream stream = descriptors.getFirst().openStream()) {
+            contract = JsonMapper.builder().build().readTree(stream);
+        }
+        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 651
+                && "shop-core/primary".equals(contract.path("owner").asString())
+                && contract.path("baseMigrationSha256").asString().equals(base.path("migrationSha256").asString())
+                && contract.path("tables").size() == 3 && contract.path("postTriggers").size() == 9);
+        try (InputStream stream = migrations.getFirst().openStream()) {
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(stream.readAllBytes()));
+            require(hash.equals(contract.path("migrationSha256").asString()));
+        }
+        var successor = ((ObjectNode) contract).deepCopy();
+        successor.set("triggers", contract.path("postTriggers"));
+        return successor;
+    }
+
+    private JsonNode startDescriptor(JsonNode base) throws Exception {
+        var loader = getClass().getClassLoader();
+        var descriptors = Collections.list(loader.getResources(START_DESCRIPTOR));
+        var migrations = Collections.list(loader.getResources(START_MIGRATION));
+        require(descriptors.size() == 1 && migrations.size() == 1);
+        JsonNode contract;
+        try (InputStream stream = descriptors.getFirst().openStream()) {
+            contract = JsonMapper.builder().build().readTree(stream);
+        }
+        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 649
+                && "shop-core/primary".equals(contract.path("owner").asString())
+                && contract.path("baseMigrationSha256").asString().equals(base.path("migrationSha256").asString())
+                && contract.path("tables").size() == 3 && contract.path("postTriggers").size() == 7);
+        try (InputStream stream = migrations.getFirst().openStream()) {
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(stream.readAllBytes()));
+            require(hash.equals(contract.path("migrationSha256").asString()));
+        }
+        var successor = ((ObjectNode) contract).deepCopy();
+        successor.set("triggers", contract.path("postTriggers"));
+        return successor;
     }
 
     private JsonNode descriptor() throws Exception {
@@ -241,7 +335,7 @@ public final class ServiceExecutionSchemaVerifier {
                         + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
                         + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
                 schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
+            require(actual.put(text(row, "constraint_name"), expression(NativeCheckMetadata.decode(text(row, "check_clause")))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
         table.path("checks").properties().forEach(entry ->
@@ -268,9 +362,24 @@ public final class ServiceExecutionSchemaVerifier {
                 schema, table);
     }
 
+    private static List<Map<String, Object>> history(Connection connection, String schema,
+            String table, String version) throws SQLException {
+        String columns = historyQuote(connection, "version") + "," + historyQuote(connection, "script")
+                + "," + historyQuote(connection, "type") + "," + historyQuote(connection, "checksum")
+                + "," + historyQuote(connection, "success");
+        return query(connection, "SELECT " + columns + " FROM " + historyQuote(connection, schema)
+                + "." + historyQuote(connection, table) + " WHERE " + historyQuote(connection, "version") + "=?", version);
+    }
+
+    private static String historyQuote(Connection connection, String value) throws SQLException {
+        String quote = connection.getMetaData().getIdentifierQuoteString().strip();
+        require(Set.of("`", "\"").contains(quote));
+        return quote + identifier(value).replace(quote, quote + quote) + quote;
+    }
+
     private static boolean tableExists(Connection connection, String schema, String name) throws SQLException {
         return !query(connection,
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND LOWER(TABLE_NAME)=LOWER(?)",
                 schema, name).isEmpty();
     }
 
@@ -383,7 +492,7 @@ public final class ServiceExecutionSchemaVerifier {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return NativeCheckMetadata.combine("or", values);
         }
 
         private String and() {
@@ -392,23 +501,23 @@ public final class ServiceExecutionSchemaVerifier {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return NativeCheckMetadata.combine("and", values);
         }
 
         private String comparison() {
             if (take("not")) {
                 return "not(" + comparison() + ")";
             }
-            String left = atom();
+            String left = sum();
             if (take("is")) {
                 boolean negated = take("not");
                 expect("null");
                 return (negated ? "notnull(" : "isnull(") + left + ")";
             }
             if (take("between")) {
-                String lower = atom();
+                String lower = sum();
                 expect("and");
-                return "between(" + left + "," + lower + "," + atom() + ")";
+                return "between(" + left + "," + lower + "," + sum() + ")";
             }
             boolean not = take("not");
             if (take("in")) {
@@ -420,9 +529,18 @@ public final class ServiceExecutionSchemaVerifier {
             if (at < input.size() && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
                     .contains(input.get(at))) {
                 String operation = input.get(at++);
-                return ("!=".equals(operation) ? "<>" : operation) + "(" + left + "," + atom() + ")";
+                return ("!=".equals(operation) ? "<>" : operation) + "(" + left + "," + sum() + ")";
             }
             return left;
+        }
+
+        private String sum() {
+            String value = atom();
+            while (at < input.size() && Set.of("+", "-").contains(input.get(at))) {
+                String operation = input.get(at++);
+                value = operation + "(" + value + "," + atom() + ")";
+            }
+            return value;
         }
 
         private String atom() {
@@ -437,6 +555,7 @@ public final class ServiceExecutionSchemaVerifier {
             if (take("(")) {
                 var args = arguments();
                 // Only the no-flags two-argument native spelling is equivalent to the REGEXP operator.
+                if ("octet_length".equals(value)) value = "length";
                 String function = "regexp_like".equals(value) && args.size() == 2 ? "regexp" : value;
                 return function + "(" + String.join(",", args) + ")";
             }

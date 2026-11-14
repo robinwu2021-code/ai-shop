@@ -28,6 +28,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding;
 import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
 import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Selection;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
@@ -49,6 +52,7 @@ import ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.FrozenS
 import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntServiceOrder;
 import ai.neargo.shop.trade.mapper.EntitlementServiceOrderMapper;
+import ai.neargo.shop.trade.mapper.EntitlementServiceOrderMapper.TaskClaim;
 import ai.neargo.shop.trade.mapper.TradeMappers.EntitlementAuthorizationMapper;
 import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
 import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
@@ -127,8 +131,59 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
                 c::userNo);
     }
+    @Override @Transactional
+    public ServiceOrderSnapshot createForWorkOrder(EntitlementContext ctx, String entity, String storeNo,
+                                                   Origin origin, String key) {
+        return createForWorkOrder(ctx, entity, storeNo, origin, key, false);
+    }
+    @Override @Transactional
+    public ServiceOrderSnapshot createForWorkOrder(EntitlementContext ctx, String entity, String storeNo,
+                                                   Origin origin, String key, boolean monetary) {
+        var items = List.of(new ServiceOrderCreate.Line(origin.skuNo(), origin.quantity()));
+        var order = createInternal(ctx, entity, storeNo, items, key,
+                hash(json.writeValueAsString(List.of(monetary ? "WORK_ORDER_MONEY" : "WORK_ORDER", origin))),
+                monetary, origin::userNo, origin);
+        claimWorkOrderTask(ctx, entity, order);
+        return order;
+    }
+    private void claimWorkOrderTask(EntitlementContext ctx, String entity, ServiceOrderSnapshot order) {
+        if ("RELEASED".equals(order.status())) return;
+        var origin = order.workOrderOrigin();
+        var claim = new TaskClaim(ctx.tenantNo(), entity, origin.workOrderNo(), origin.taskNo(),
+                order.serviceOrderNo());
+        orders.insertTaskClaim(claim);
+        orders.replaceReleasedTaskClaim(claim);
+        if (!order.serviceOrderNo().equals(orders.lockTaskClaim(claim))) conflict();
+    }
+    @Override @Transactional
+    public ServiceOrderSnapshot bindWorkOrderClaim(EntitlementContext ctx, String entity, String store, String no,
+                                                   Binding claim) {
+        ownershipWrites.lockAndCheck(ctx.tenantNo(), entity, store);
+        var row = lock(ctx.tenantNo(), no);
+        merchant(row, ctx, entity, store);
+        var order = snapshot(row, json);
+        if (order.workOrderOrigin() == null || claim.state() != ServiceWorkOrderUsePort.State.RESERVED
+                || !new ServiceWorkOrderUsePort.Lookup(ctx.tenantNo(), entity, store, order.operationNo())
+                        .equals(claim.lookup())
+                || !order.workOrderOrigin().equals(claim.origin())
+                || !order.fact().orderSnapshotHash().equals(claim.sourceHash())) conflict();
+        if (order.workOrderClaim() != null) {
+            if (!order.workOrderClaim().equals(claim)) conflict();
+            return order;
+        }
+        if (!"AUTHORIZED".equals(order.status())) conflict();
+        claimWorkOrderTask(ctx, entity, order);
+        row.setWorkOrderClaimSnapshot(json.writeValueAsString(claim));
+        update(row, ctx.actorNo());
+        return snapshot(row, json);
+    }
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
             List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
+        return createInternal(ctx, entity, storeNo, items, key, payload, monetary, holder, null);
+    }
+    private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
+            List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder,
+            Origin origin) {
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
         ownershipWrites.lockAndCheck(ctx.tenantNo(), entity, storeNo);
         String no = orderNo(ctx, entity, key, json);
@@ -166,7 +221,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         String staff = users.findActive(ctx.tenantNo(), ctx.actorNo()).map(UserScopeFactsPort.ActiveUser::nickname)
                 .orElse(null);
         var frozen = new FrozenSource(ctx.tenantNo(), reference(no), userNo, entity, storeNo,
-                market.currency(), lines, store.storeName(), staff, categories, at);
+                market.currency(), lines, store.storeName(), staff, categories, at, origin);
         var row = new OrdEntServiceOrder(); row.setTenantNo(ctx.tenantNo()); row.setServiceOrderNo(no);
         row.setOperationNo(operationNo(no)); row.setEntityNo(entity); row.setStoreNo(storeNo);
         row.setUserNo(userNo); row.setOperatorNo(ctx.actorNo()); row.setRequestKeyHash(hash(key));
@@ -258,7 +313,9 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     @Override @Transactional
     public ServiceOrderSnapshot stage(EntitlementContext ctx, String entity, String store, ServiceUseSubmit c) {
         var row = lock(ctx.tenantNo(), c.serviceOrderNo()); merchant(row, ctx, entity, store);
-        var view = snapshot(row, json); var binding = view.preview();
+        var view = snapshot(row, json);
+        if (view.workOrderOrigin() != null && view.workOrderClaim() == null) unavailable();
+        var binding = view.preview();
         if (binding == null || !binding.ref().equals(c.previewRef())
                 || binding.assetRevision() != c.expectedAssetRevision()) conflict();
         if (view.command() != null) {

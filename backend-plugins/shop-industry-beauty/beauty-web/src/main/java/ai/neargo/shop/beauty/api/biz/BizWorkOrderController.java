@@ -4,25 +4,33 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.config.ConditionalOnBeautyWebEnabled;
+import ai.neargo.shop.beauty.dto.AssignServiceTaskReq;
 import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PrepareServiceTaskReq;
-import ai.neargo.shop.beauty.dto.ServiceTaskPreparationVO;
-import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
+import ai.neargo.shop.beauty.dto.ServiceTaskAssignmentVO;
+import ai.neargo.shop.beauty.dto.ServiceTaskPreparationVO;
 import ai.neargo.shop.beauty.dto.SubmitServicesReq;
 import ai.neargo.shop.beauty.dto.WorkOrderBillVO;
 import ai.neargo.shop.beauty.dto.WorkOrderDetailVO;
+import ai.neargo.shop.beauty.dto.WorkOrderQueryReq;
+import ai.neargo.shop.beauty.dto.WorkOrderSummaryVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
+import ai.neargo.shop.beauty.service.ServiceTaskAssignmentService;
+import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
 import ai.neargo.shop.beauty.service.WorkOrderService;
+import ai.neargo.shop.beauty.service.WorkOrderWorkbenchService;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,8 +47,40 @@ import org.springframework.web.bind.annotation.RestController;
 @Profile("api")
 @RequestMapping("/biz/x/beauty/work-orders")
 public class BizWorkOrderController {
+    private ObjectProvider<WorkOrderWorkbenchService> workbench;
+
+    @Autowired
+    void setWorkbench(ObjectProvider<WorkOrderWorkbenchService> workbench) {
+        this.workbench = workbench;
+    }
+
+    /**
+     * Lists current authorized store roots rather than a client-maintained list of recent numbers.
+     */
+    @GetMapping
+    public PageData<WorkOrderSummaryVO> list(
+            @Valid @ModelAttribute WorkOrderQueryReq query,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.require(directories, requestedStore);
+        return workbench
+                .getObject()
+                .list(
+                        BizContext.requireMerchantNo(),
+                        BizContext.requireStoreNo(),
+                        SecurityUtils.currentUserNo(),
+                        query);
+    }
+
     private final ObjectProvider<WorkOrderService> workOrderService;
     private ObjectProvider<ServiceTaskPreparationService> taskPreparations;
+
+    private ObjectProvider<ServiceTaskAssignmentService> taskAssignments;
+
+    @Autowired
+    void setTaskAssignments(ObjectProvider<ServiceTaskAssignmentService> taskAssignments) {
+        this.taskAssignments = taskAssignments;
+    }
 
     @Autowired
     void setTaskPreparations(ObjectProvider<ServiceTaskPreparationService> taskPreparations) {
@@ -113,6 +153,31 @@ public class BizWorkOrderController {
                         SecurityUtils.currentUserNo(),
                         workOrderNo,
                         req,
+                        idempotencyKey);
+    }
+
+    /** Publishes a real PENDING task assignment; planning creates neither a booking nor a start. */
+    @PostMapping("/{workOrderNo}/tasks/{taskNo}/assignments")
+    public ServiceTaskAssignmentVO assignTask(
+            @PathVariable("workOrderNo") String workOrderNo,
+            @PathVariable("taskNo") String taskNo,
+            @Valid @RequestBody AssignServiceTaskReq request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.requireResourceNo(workOrderNo);
+        BookingStoreScope.requireResourceNo(taskNo);
+        BookingStoreScope.require(directories, requestedStore);
+        BookingStoreScope.requireKey(idempotencyKey);
+        return taskAssignments
+                .getObject()
+                .assignTask(
+                        BizContext.requireMerchantNo(),
+                        BizContext.requireStoreNo(),
+                        SecurityUtils.currentUserNo(),
+                        workOrderNo,
+                        taskNo,
+                        request,
                         idempotencyKey);
     }
 

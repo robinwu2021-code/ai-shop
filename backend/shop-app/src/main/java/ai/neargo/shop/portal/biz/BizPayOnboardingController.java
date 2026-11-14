@@ -102,6 +102,17 @@ public class BizPayOnboardingController {
     return relay(request);
   }
 
+  /** Actual PAY owner retains request identity, membership, store scope and token policy. */
+  @PostMapping("/collections")
+  public ResponseEntity<byte[]> collect(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
+  @GetMapping("/collections")
+  public ResponseEntity<byte[]> collection(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
   private ResponseEntity<byte[]> relay(HttpServletRequest request) throws IOException {
     return PayBizOnboardingRelay.forward(forwarder, request);
   }

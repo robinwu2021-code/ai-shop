@@ -1,6 +1,17 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.beauty.policy.TaskStartSchemaVerifier;
+import ai.neargo.shop.beauty.policy.EntitlementUseSchemaContract;
+
+import ai.neargo.shop.beauty.policy.TaskAcceptanceSchemaVerifier;
+import ai.neargo.shop.beauty.policy.TaskWorkflowSchemaVerifier;
+
+import ai.neargo.shop.beauty.policy.TaskActionSchemaVerifier;
+
+import ai.neargo.shop.beauty.policy.DirectTaskPlanSchemaVerifier;
+
 import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.output.ValidateResult;
@@ -30,7 +41,18 @@ import javax.sql.DataSource;
 public final class BeautySchemaValidator {
     private static final String HISTORY = "bty_flyway_history";
     private static final String EXTENSION_TABLE = "bty_service_execution_fence";
-    private static final String EXTENSION_SCRIPT = "V10__beauty_service_execution_fence.sql";
+    private static final Map<String, String> EXTENSION_SCRIPTS = Map.of(
+            "10", "V10__beauty_service_execution_fence.sql",
+            "11", "V11__beauty_service_execution_stock_intent.sql",
+            "12", "V12__beauty_direct_task_plan.sql",
+            "13", "V13__beauty_task_action.sql",
+            "14", "V14__beauty_task_acceptance.sql",
+            "15", "V15__beauty_task_start.sql",
+            "16", "V16__beauty_task_workflow.sql",
+            "17", "V17__beauty_entitlement_use_binding.sql");
+    private static final Set<String> EXTENSION_TABLES = Set.of(
+            EXTENSION_TABLE, "bty_service_execution_stock_intent", "bty_task_assignment_slot");
+    private static final Set<String> DIRECT_COLUMNS = Set.of("direct_plan_no", "direct_plan_revision", "direct_plan_hash");
     private static final String RESOURCE = "db/industry/beauty/V1__beauty_p1_tables.sql";
     private static final String SHA256 =
             "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4";
@@ -69,6 +91,9 @@ public final class BeautySchemaValidator {
     private static final String V9_SHA256 =
             "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7";
 
+    private static final String V17 = EntitlementUseSchemaContract.MIGRATION;
+    private static final String V17_SHA256 = EntitlementUseSchemaContract.SHA256;
+
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
         require(
@@ -85,12 +110,12 @@ public final class BeautySchemaValidator {
                 actual.contains(HISTORY) || "migrate".equals(mode),
                 "Beauty history missing; publish migration first");
         require(
-                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXTENSION_TABLE.equals(table)),
+                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXTENSION_TABLES.contains(table)),
                 "Unknown beauty tables; inspect migration ownership");
         // Not a Spring bean: the platform's Flyway and locations remain untouched.
         Flyway flyway =
                 Flyway.configure()
-                        .dataSource(source)
+                        .dataSource("migrate".equals(mode) ? new BeautyMigrationDataSource(source) : source)
                         .locations("classpath:db/industry/beauty")
                         .table(HISTORY)
                         .baselineOnMigrate("migrate".equals(mode))
@@ -111,7 +136,7 @@ public final class BeautySchemaValidator {
         Map<String, String> base = Map.of("1", RESOURCE, "2", V2, "3", V3, "4", V4, "5", V5,
                 "6", V6, "7", V7, "8", V8, "9", V9);
         Set<String> baseSeen = new HashSet<>();
-        MigrationInfo extension = null;
+        Map<String, MigrationInfo> extensions = new HashMap<>();
         boolean baselineSeen = false;
         for (MigrationInfo migration : migrations) {
             require(migration.getVersion() != null, "Versionless beauty history/resolution is unsupported");
@@ -127,44 +152,66 @@ public final class BeautySchemaValidator {
                                 && base.get(version).endsWith("/" + migration.getScript()),
                         "Missing, duplicate or changed base beauty migration: " + version);
             } else {
-                require("10".equals(version) && extension == null
-                                && EXTENSION_SCRIPT.equals(migration.getScript())
+                require(EXTENSION_SCRIPTS.containsKey(version) && !extensions.containsKey(version)
+                                && EXTENSION_SCRIPTS.get(version).equals(migration.getScript())
                                 && Set.of("SUCCESS", "PENDING", "FAILED", "MISSING_SUCCESS", "MISSING_FAILED",
                                         "FUTURE_SUCCESS", "FUTURE_FAILED").contains(state),
                         "Unknown beauty migration identity/state: " + version + "/" + state);
-                extension = migration;
+                extensions.put(version, migration);
             }
         }
         require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 history");
-        classifyValidation(validation, extension);
-        // The optional extension never weakens any of the frozen 28 physical base contracts or V9 trigger.
-        validateStructure(source, expected);
-        validateManualTrigger(source);
-        var installation = new ServiceExecutionSchemaVerifier(source).installation();
-        if ("migrate".equals(mode)) {
-            require(validation.validationSuccessful && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED,
-                    "Explicit beauty migration requires the full valid V1-V10 sequence");
-        } else if (extension == null || "PENDING".equals(extension.getState().name())) {
-            // A table without an applied/failed marker is recognized known extension damage, never legacy absence.
-            require(extension != null || !actual.contains(EXTENSION_TABLE)
-                            || installation == ServiceExecutionSchemaVerifier.Installation.CORRUPT,
-                    "Unclassified beauty execution installation");
+        classifyValidation(validation, extensions);
+        var entitlement = extensions.get("17");
+        boolean entitlementInstalled = entitlement != null && "SUCCESS".equals(entitlement.getState().name());
+        if (entitlementInstalled) {
+            require(entitlement.getChecksum() != null && entitlement.getChecksum() == EntitlementUseSchemaContract.CHECKSUM,
+                    "Beauty entitlement migration checksum differs");
+            addEntitlementDomain(expected);
+            validateEntitlementTriggers(source);
         }
+        var installation = new ServiceExecutionSchemaVerifier(source).installation();
+        var stockInstallation = new ServiceExecutionStockIntentSchemaVerifier(source).installation();
+        var direct = new DirectTaskPlanSchemaVerifier(source).installation();
+        var action = new TaskActionSchemaVerifier(source).installation();
+        var acceptance = new TaskAcceptanceSchemaVerifier(source).installation();
+        var start = new TaskStartSchemaVerifier(source).installation();
+        boolean directInstalled = direct == DirectTaskPlanSchemaVerifier.Installation.INSTALLED;
+        boolean actionInstalled = action == TaskActionSchemaVerifier.Installation.INSTALLED;
+        boolean acceptanceInstalled = acceptance == TaskAcceptanceSchemaVerifier.Installation.INSTALLED;
+        boolean startInstalled = start == TaskStartSchemaVerifier.Installation.INSTALLED;
+        boolean workflowInstalled = TaskWorkflowSchemaVerifier.installed(source);
+        // Each finite successor is fully verified before removing its exact objects from the frozen base comparison.
+        validateStructure(source, expected, directInstalled, actionInstalled, acceptanceInstalled, startInstalled);
+        validateManualTrigger(source, stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
+                directInstalled, actionInstalled, acceptanceInstalled, startInstalled, entitlementInstalled);
+        if ("migrate".equals(mode)) {
+            require(validation.validationSuccessful
+                            && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED
+                            && stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED
+                            && directInstalled && actionInstalled && acceptanceInstalled && startInstalled && workflowInstalled
+                            && entitlementInstalled,
+                    "Explicit beauty migration requires the full valid V1-V17 sequence");
+        }
+        // In validate mode each known optional owner diagnoses its own ABSENT/CORRUPT state.
+        // Its damage cannot authorize execution, nor weaken the mandatory V1-V9 base inspection.
     }
 
-    /** Every isolated Flyway diagnostic maps to the one exact known V10 identity inspected above. */
-    private static void classifyValidation(ValidateResult result, MigrationInfo extension) {
+    /** Every optional diagnostic must match an exact known resolved migration; unknowns still fail. */
+    private static void classifyValidation(ValidateResult result, Map<String, MigrationInfo> extensions) {
         require(result != null, "Beauty Flyway validation returned no result");
         if (result.validationSuccessful) return;
         require(result.errorDetails != null && "VALIDATE_ERROR".equals(result.errorDetails.errorCode.toString()),
                 "Unclassified beauty Flyway summary diagnostic");
-        require(extension != null && result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
+        require(result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
                 "Unclassified beauty Flyway validation failure");
         for (var diagnostic : result.invalidMigrations) {
             String path = diagnostic.filepath;
-            require("10".equals(diagnostic.version) && EXTENSION_SCRIPT.equals(extension.getScript())
-                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + EXTENSION_SCRIPT)
-                                    || EXTENSION_SCRIPT.equals(path)),
+            var extension = extensions.get(diagnostic.version);
+            String script = EXTENSION_SCRIPTS.get(diagnostic.version);
+            require(extension != null && script != null && script.equals(extension.getScript())
+                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + script)
+                                    || script.equals(path)),
                     "Base or unknown beauty migration validation diagnostic");
         }
     }
@@ -386,7 +433,9 @@ public final class BeautySchemaValidator {
         return String.join(" ", tokens);
     }
 
-    private static void validateManualTrigger(DataSource source) {
+    private static void validateManualTrigger(DataSource source, boolean stockInstalled, boolean directInstalled,
+            boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled,
+            boolean entitlementInstalled) {
         String sql = frozenText(V9, V9_SHA256);
         String expected =
                 sql.substring(sql.indexOf("\nBEGIN\n") + 1, sql.lastIndexOf("$$\nDELIMITER"));
@@ -403,6 +452,17 @@ public final class BeautySchemaValidator {
             int count = 0;
             try (var rows = statement.executeQuery()) {
                 while (rows.next()) {
+                    String name = rows.getString(1);
+                    if (stockInstalled && Set.of("trg_bsesi_immutable", "trg_bsesi_no_delete").contains(name)) continue;
+                    if (directInstalled && Set.of("trg_bty_direct_plan_immutable", "trg_bty_direct_plan_no_delete",
+                            "trg_bty_task_direct_plan_fence").contains(name)) continue;
+                    if (actionInstalled && Set.of("trg_bty_task_action_immutable",
+                            "trg_bty_task_action_no_delete").contains(name)) continue;
+                    if (acceptanceInstalled && Set.of("trg_bty_task_accept_immutable",
+                            "trg_bty_task_accept_no_delete").contains(name)) continue;
+                    if (startInstalled && Set.of("trg_bty_task_start_immutable","trg_bty_task_start_no_delete","trg_bty_task_flow_immutable","trg_bty_task_flow_no_delete").contains(name)) continue;
+                    if (entitlementInstalled && Set.of("trg_bty_entitlement_original",
+                            "trg_bty_entitlement_no_delete").contains(name)) continue;
                     count++;
                     require(
                             "trg_bty_source_observation_domain_guard".equals(rows.getString(1))
@@ -415,6 +475,78 @@ public final class BeautySchemaValidator {
                 }
             }
             require(count == 1, "Beauty V9 domain trigger missing or unexpected");
+        } catch (SQLException failure) {
+            throw inspectionFailure(failure);
+        }
+    }
+
+    /** The successor changes only this journal family and the two typed source-domain checks. */
+    private static void addEntitlementDomain(Map<String, TableContract> contracts) {
+        String sql = frozenText(V17, V17_SHA256);
+        var prior = contracts.get("bty_service_submission");
+        var columns = new TreeSet<>(prior.columns());
+        var definitions = new TreeMap<>(prior.columnDefinitions());
+        var modifiers = new TreeMap<>(prior.modifiers());
+        var indexes = new TreeMap<>(prior.indexes());
+        var unique = new HashSet<>(prior.uniqueKeys());
+        var fields = Map.of("entitlement_task_no", "varchar(32):NULL:utf8mb4_bin",
+                "entitlement_operation_no", "varchar(64):NULL:utf8mb4_bin",
+                "entitlement_active_task_no", "varchar(32):NULL:utf8mb4_bin",
+                "entitlement_usage_no", "varchar(64):NULL:utf8mb4_bin",
+                "entitlement_receipt_json", "json:NULL:");
+        fields.forEach((name, definition) -> {
+            require(columns.add(name), "Duplicate entitlement journal column");
+            definitions.put(name, definition); modifiers.put(name, ":false");
+        });
+        var keys = Map.of("uk_bty_entitlement_operation", List.of("tenant_no", "entity_no", "entitlement_operation_no"),
+                "uk_bty_entitlement_active_task", List.of("tenant_no", "entity_no", "entitlement_active_task_no"),
+                "uk_bty_entitlement_usage", List.of("tenant_no", "entitlement_usage_no"));
+        keys.forEach((name, key) -> {
+            unique.add(key);
+            indexes.put(name, indexSignature("`" + String.join("`,`", key) + "`", true));
+        });
+        contracts.put("bty_service_submission", new TableContract(columns, unique, definitions,
+                prior.checks(), modifiers, indexes));
+        var checks = Pattern.compile("ADD CONSTRAINT (\\w+) CHECK \\((.*?)\\);", Pattern.DOTALL).matcher(sql);
+        int count = 0;
+        var targets = Map.of("ck_bty_entitlement_journal", "bty_service_submission",
+                "ck_bty_trade_binding_manual_domain", "bty_trade_binding",
+                "ck_bty_source_allocation_guard_manual_domain", "bty_source_allocation_guard");
+        while (checks.find()) {
+            String table = targets.get(checks.group(1));
+            require(table != null, "Unknown entitlement check target");
+            var contract = contracts.get(table);
+            var expected = new TreeMap<>(contract.checks());
+            expected.put(checks.group(1), normalizeCheck(checks.group(2)));
+            contracts.put(table, new TableContract(contract.columns(), contract.uniqueKeys(),
+                    contract.columnDefinitions(), expected, contract.modifiers(), contract.indexes()));
+            count++;
+        }
+        require(count == 3, "Incomplete entitlement journal checks");
+    }
+
+    private static void validateEntitlementTriggers(DataSource source) {
+        String sql = frozenText(V17, V17_SHA256);
+        var expected = Pattern.compile("CREATE TRIGGER (\\w+) BEFORE (UPDATE|DELETE) ON bty_service_submission"
+                + " FOR EACH ROW\\s+(BEGIN.*?END)\\$\\$", Pattern.DOTALL).matcher(sql);
+        int count = 0;
+        try (var connection = source.getConnection();
+                var statement = connection.prepareStatement("SELECT EVENT_MANIPULATION,ACTION_TIMING,"
+                        + "EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.TRIGGERS"
+                        + " WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME=?")) {
+            connection.setReadOnly(true);
+            while (expected.find()) {
+                statement.setString(1, expected.group(1));
+                try (var row = statement.executeQuery()) {
+                    require(row.next() && expected.group(2).equals(row.getString(1))
+                            && "BEFORE".equals(row.getString(2))
+                            && "bty_service_submission".equals(row.getString(3))
+                            && normalizeTrigger(expected.group(3)).equals(normalizeTrigger(row.getString(4)))
+                            && !row.next(), "Entitlement journal trigger differs");
+                }
+                count++;
+            }
+            require(count == 2, "Incomplete entitlement journal trigger contract");
         } catch (SQLException failure) {
             throw inspectionFailure(failure);
         }
@@ -550,7 +682,8 @@ public final class BeautySchemaValidator {
         }
     }
 
-    private static void validateStructure(DataSource source, Map<String, TableContract> expected) {
+    private static void validateStructure(DataSource source, Map<String, TableContract> expected,
+            boolean directInstalled, boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled) {
         try (Connection connection = source.getConnection()) {
             connection.setReadOnly(true);
             for (var entry : expected.entrySet()) {
@@ -567,12 +700,15 @@ public final class BeautySchemaValidator {
                         }
                     }
                 }
+                if (directInstalled && "bty_service_task".equals(table)) columns.removeAll(DIRECT_COLUMNS);
+                if (startInstalled && "bty_service_submission".equals(table)) columns.removeAll(Set.of("execution_no","action_observation_json","workflow_observation_json"));
                 require(
                         columns.equals(entry.getValue().columns()),
                         "Beauty columns differ: " + table);
-                validateColumnDefinitions(connection, table, entry.getValue());
-                validateChecks(connection, table, entry.getValue());
-                validateIndexes(connection, table, entry.getValue());
+                validateColumnDefinitions(connection, table, entry.getValue(), directInstalled, startInstalled);
+                validateChecks(connection, table, entry.getValue(), directInstalled, actionInstalled,
+                        acceptanceInstalled, startInstalled);
+                validateIndexes(connection, table, entry.getValue(), startInstalled);
                 Map<String, Map<Integer, String>> indexes = new HashMap<>();
                 try (var rows = connection.getMetaData().getIndexInfo(
                         connection.getCatalog(), null, table, true, false)) {
@@ -597,7 +733,8 @@ public final class BeautySchemaValidator {
         }
     }
 
-    private static void validateColumnDefinitions(Connection connection, String table, TableContract contract)
+    private static void validateColumnDefinitions(Connection connection, String table, TableContract contract,
+            boolean directInstalled, boolean startInstalled)
             throws SQLException {
         Map<String, String> actual = new TreeMap<>();
         Map<String, String> modifiers = new TreeMap<>();
@@ -628,6 +765,12 @@ public final class BeautySchemaValidator {
                 }
             }
         }
+        if (directInstalled && "bty_service_task".equals(table)) {
+            DIRECT_COLUMNS.forEach(actual::remove); DIRECT_COLUMNS.forEach(modifiers::remove);
+        }
+        if(startInstalled && "bty_service_submission".equals(table)) {
+            for(String name:Set.of("execution_no","action_observation_json","workflow_observation_json")) { actual.remove(name); modifiers.remove(name); }
+        }
         require(
                 actual.equals(contract.columnDefinitions()),
                 "Beauty column types/nullability differ: " + table);
@@ -636,7 +779,8 @@ public final class BeautySchemaValidator {
                 "Beauty column defaults/generation differ: " + table);
     }
 
-    private static void validateChecks(Connection connection, String table, TableContract contract)
+    private static void validateChecks(Connection connection, String table, TableContract contract,
+            boolean directInstalled, boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled)
             throws SQLException {
         Map<String, String> actual = new TreeMap<>();
         String sql =
@@ -650,11 +794,20 @@ public final class BeautySchemaValidator {
             statement.setString(1, table);
             try (var rows = statement.executeQuery()) {
                 while (rows.next()) {
-                    actual.put(
-                            rows.getString("CONSTRAINT_NAME"),
-                            normalizeCheck(rows.getString("CHECK_CLAUSE")));
+                    String name = rows.getString("CONSTRAINT_NAME");
+                    if (!verifiedExtensionCheck(table, name, directInstalled, actionInstalled,
+                            acceptanceInstalled, startInstalled)) {
+                        actual.put(name, normalizeCheck(rows.getString("CHECK_CLAUSE")));
+                    }
                 }
             }
+        }
+        if (directInstalled && "bty_service_task".equals(table)) actual.remove("ck_bty_task_direct_plan");
+        if (actionInstalled && "bty_service_submission".equals(table)) actual.remove("ck_bty_task_action");
+        if (acceptanceInstalled && "bty_service_submission".equals(table)) actual.remove("ck_bty_task_accept");
+        // Each known successor object was fully validated before removing it from the frozen base comparison.
+        if(startInstalled && "bty_service_submission".equals(table)) {
+            actual.remove("ck_bty_task_start"); actual.remove("ck_bty_task_start_columns");
         }
         require(
                 actual.equals(contract.checks()),
@@ -666,6 +819,14 @@ public final class BeautySchemaValidator {
                         + actual);
     }
 
+    static boolean verifiedExtensionCheck(String table, String name, boolean direct, boolean action,
+            boolean acceptance, boolean start ) {
+        return direct && "bty_service_task".equals(table) && "ck_bty_task_direct_plan".equals(name)
+                || "bty_service_submission".equals(table) && (action && "ck_bty_task_action".equals(name)
+                        || acceptance && "ck_bty_task_accept".equals(name)
+                        || start && ("ck_bty_task_start".equals(name) || "ck_bty_task_start_columns".equals(name) || "ck_bty_task_flow".equals(name)));
+    }
+
     private static String indexSignature(String columns, boolean unique) {
         List<String> names = new ArrayList<>();
         var fields = Pattern.compile("`([^`]+)`").matcher(columns);
@@ -675,7 +836,7 @@ public final class BeautySchemaValidator {
         return unique + ":BTREE:YES:" + String.join(",", names);
     }
 
-    private static void validateIndexes(Connection connection, String table, TableContract contract)
+    private static void validateIndexes(Connection connection, String table, TableContract contract, boolean startInstalled)
             throws SQLException {
         Map<String, Map<Integer, String>> columns = new TreeMap<>();
         Map<String, String> headers = new TreeMap<>();
@@ -713,6 +874,7 @@ public final class BeautySchemaValidator {
         columns.forEach(
                 (name, fields) ->
                         actual.put(name, headers.get(name) + String.join(",", fields.values())));
+        if(startInstalled && "bty_service_submission".equals(table)) actual.remove("uk_bty_submission_execution");
         require(
                 actual.equals(contract.indexes()),
                 "Beauty primary/business/calendar indexes differ: " + table);

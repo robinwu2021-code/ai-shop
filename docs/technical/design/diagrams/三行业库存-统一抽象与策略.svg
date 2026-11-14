@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">三行业简单库存与进销存统一协作</title>
+  <desc id="desc">零售、餐饮和美业各自编译库存需求，使用统一的数量、动作、原件与策略协议，按资源池和冻结策略选择本地独立、补货联动、共享货池同步预留或独占额度。本地基础能力始终保留，进销存仅按选定策略参与；镜像是独立旁路。</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <rect width="1200" height="900" rx="18" fill="#f8fafc"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#0f172a">
+    <text x="600" y="38" text-anchor="middle" font-size="25" font-weight="700">三行业统一库存协作：本地基础 + 可选进销存策略</text>
+    <rect x="30" y="75" width="350" height="100" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="205" y="111" text-anchor="middle" font-size="23" font-weight="600">零售</text>
+    <text x="205" y="146" text-anchor="middle" font-size="18">SKU / 赠品 / 交付与退货</text>
+    <rect x="425" y="75" width="350" height="100" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text x="600" y="111" text-anchor="middle" font-size="23" font-weight="600">餐饮</text>
+    <text x="600" y="146" text-anchor="middle" font-size="18">配方 / 小料 / 制作与实际消耗</text>
+    <rect x="820" y="75" width="350" height="100" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="995" y="111" text-anchor="middle" font-size="23" font-weight="600">美业</text>
+    <text x="995" y="146" text-anchor="middle" font-size="18">售卖商品 / 耗材 / 实际使用</text>
+    <path d="M205 175V200H995V175 M600 175V200" fill="none" stroke="#475569" stroke-width="2"/>
+    <path d="M600 200V220" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="230" y="225" width="740" height="95" rx="12" fill="#fff" stroke="#64748b" stroke-width="2"/>
+    <text x="600" y="262" text-anchor="middle" font-size="22" font-weight="600">统一语义：范围 · 物品 · 数量 · 动作 · 原件与回执</text>
+    <text x="600" y="296" text-anchor="middle" font-size="18">行业编译需求；已有本地账本保留，不合并成一张库存表</text>
+    <path d="M600 320V355" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="230" y="360" width="740" height="85" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="600" y="394" text-anchor="middle" font-size="22" font-weight="600">按资源池绑定策略；订单冻结原策略和来源</text>
+    <text x="600" y="425" text-anchor="middle" font-size="18">先核验能力再启用，禁止超时后改投另一种扣减方式</text>
+    <path d="M600 445V490 M157 490H1042" fill="none" stroke="#475569" stroke-width="2"/>
+    <path d="M157 490V525" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M452 490V525" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M747 490V525" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M1042 490V525" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="30" y="530" width="255" height="145" rx="12" fill="#fff" stroke="#64748b" stroke-width="2"/>
+    <text x="157" y="561" text-anchor="middle" font-size="20" font-weight="600">LOCAL 本地独立</text>
+    <text x="157" y="597" text-anchor="middle" font-size="17">本地入库、预留、消耗</text>
+    <text x="157" y="629" text-anchor="middle" font-size="17">营业不调用进销存</text>
+    <rect x="325" y="530" width="255" height="145" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text x="452" y="561" text-anchor="middle" font-size="20" font-weight="600">REPLENISH 补货</text>
+    <text x="452" y="597" text-anchor="middle" font-size="17">源仓出库 → 本地收货</text>
+    <text x="452" y="629" text-anchor="middle" font-size="17">营业仍扣本地库存</text>
+    <rect x="620" y="530" width="255" height="145" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="747" y="561" text-anchor="middle" font-size="20" font-weight="600">SHARED_SYNC 共享</text>
+    <text x="747" y="597" text-anchor="middle" font-size="17">远端同步预留同一货池</text>
+    <text x="747" y="629" text-anchor="middle" font-size="17">交付按原件实际出库</text>
+    <rect x="915" y="530" width="255" height="145" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="1042" y="561" text-anchor="middle" font-size="20" font-weight="600">DELEGATED 独占</text>
+    <text x="1042" y="597" text-anchor="middle" font-size="17">先占额度，额度内本地扣</text>
+    <text x="1042" y="629" text-anchor="middle" font-size="17">异步核销，不自动回收</text>
+    <rect x="325" y="755" width="550" height="75" rx="12" fill="#fff" stroke="#059669" stroke-width="2"/>
+    <text x="600" y="801" text-anchor="middle" font-size="22" font-weight="600">可选进销存：仓库 / 共享货池 / 独占授权</text>
+    <path d="M452 755V680" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="475" y="720" font-size="16" fill="#475569">补货</text>
+    <path d="M747 675V750" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="768" y="720" font-size="16" fill="#475569">同步命令</text>
+    <path d="M1042 675V792H880" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="1062" y="715" font-size="16" fill="#475569">授权 / 核销</text>
+    <text x="600" y="872" text-anchor="middle" font-size="18" fill="#475569">镜像 / 报表单独开关；实存、占用、额度和次数资产分别记录，禁止重叠相加</text>
+  </g>
+</svg>

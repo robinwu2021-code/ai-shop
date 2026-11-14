@@ -1,3 +1,4 @@
+import {replenishmentHttp} from "./replenishment-http";
 import {storedValueFinanceHttp} from "./stored-value-finance-http";
 import { payHttp } from "./pay-http";
 import { mallHttp } from "./mall-http";
@@ -214,6 +215,7 @@ import type {
 
 export const httpApi: MerchantApi = {
   ...managementHttpApi,
+  ...replenishmentHttp,
   ...issuerHttpApi,
   ...storedValueFinanceHttp,
   ...payHttp,

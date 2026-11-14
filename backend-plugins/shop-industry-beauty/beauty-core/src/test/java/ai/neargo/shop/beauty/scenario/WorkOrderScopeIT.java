@@ -11,6 +11,8 @@ import static org.mockito.Mockito.spy;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
+import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.CreateMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq;
@@ -18,7 +20,6 @@ import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity.VerifiedIdentity;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ReceptionService;
@@ -553,6 +554,29 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
         });
     }
+    @Test void preparationReferenceIsScopedAndNeverAuthorizesStart() {
+        business().run(c -> {
+            login(LoginUser.merchant("A", "operator"));
+            var service = c.getBean(WorkOrderService.class);
+            var opened = service.openWorkOrder("E", "S", "A", new OpenWorkOrderReq(
+                    "cr1_" + "c".repeat(43), "S", List.of(new AppointmentItemReq("SKU", 1)), null), "OPEN");
+            var mapper = c.getBean(BeautyMappers.ServiceSubmissionMapper.class);
+            var start = new BtyServiceSubmission();
+            start.setEntityNo("E"); start.setStoreNo("S"); start.setWorkOrderNo(opened.workOrderNo());
+            start.setSubmissionNo("PREP1"); start.setAction("START"); start.setStatus("RECEIVED");
+            start.setRequestKeyHash("a".repeat(64)); start.setPayloadHash("b".repeat(64));
+            // Only the scoped read reference is under test; this fixture carries no owner grant.
+            start.setFrozenCommand("{\"intent\":{\"binding\":{\"taskNo\":\""
+                    + opened.taskNos().getFirst() + "\"}}}");
+            mapper.insert(start);
+            assertThat(mapper.selectTaskPreparationRefs("E", "OTHER", opened.workOrderNo())).isEmpty();
+            var task = service.getWorkOrder("E", "S", "A", opened.workOrderNo()).tasks().getFirst();
+            assertThat(task.preparationOperationNo()).isEqualTo("PREP1");
+            assertThat(task.canStart()).isFalse();
+            assertThat(task.availableActions()).doesNotContain("START", "COMPLETE", "PREPARE_TASK");
+        });
+    }
+
     @Test void unassignedOrderHasNoResourceOrExecutableTask() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator"));
@@ -565,7 +589,12 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(service.openWorkOrder("E", "S", "A", req, "OPEN")).isEqualTo(opened);
             var detail = service.getWorkOrder("E", "S", "A", opened.workOrderNo());
             assertThat(detail.originalScopeRevision()).isEqualTo(1);
-            assertThat(detail.availableActions()).containsExactly("READ");
+            assertThat(detail.availableActions()).containsExactly("READ", "SUBMIT_SERVICES");
+            assertThat(detail.workOrder().revision()).isEqualTo(sql.queryForObject(
+                    "SELECT version FROM bty_work_order WHERE work_order_no=?", Long.class, opened.workOrderNo()));
+            assertThat(detail.tasks().getFirst().revision()).isEqualTo(sql.queryForObject(
+                    "SELECT version FROM bty_service_task WHERE task_no=?", Long.class,
+                    detail.tasks().getFirst().taskNo()));
             assertThat(detail.tasks()).allSatisfy(task -> {
                 assertThat(task.status()).isEqualTo("PENDING"); assertThat(task.assignmentState())
                         .isEqualTo("UNASSIGNED");

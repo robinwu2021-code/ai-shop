@@ -28,5 +28,6 @@ public class OrdEntServiceOrder extends BaseEntity {
     private String commandSnapshot;
     private String decisionSnapshot;
     private String cancellationReason;
+    private String workOrderClaimSnapshot;
     private LocalDateTime deadline;
 }

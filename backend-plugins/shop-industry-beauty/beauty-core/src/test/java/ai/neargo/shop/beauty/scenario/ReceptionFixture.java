@@ -134,11 +134,23 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, null,
                 List.of()));
     }
+    /** Opening and binding source-only fixtures must never perform a Native or Core start. */
+    private <T> T sourceOnlyOwner(Class<T> type) {
+        return org.mockito.Mockito.mock(type, invocation -> {
+            throw new AssertionError("Source-only fixture cannot call " + invocation.getMethod().getName());
+        });
+    }
+
     ApplicationContextRunner business() {
         return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class,
                         BeautyWriteGuardConfiguration.class, OutboxRoute.class)
                 .withBean(ObjectMapper.class, () -> json)
                 .withBean(ResourceBookingPort.class, () -> owner)
+                .withBean(ai.neargo.shop.spi.resource.ResourceOccupationPort.class, () -> sourceOnlyOwner(ai.neargo.shop.spi.resource.ResourceOccupationPort.class))
+                .withBean(ai.neargo.shop.spi.resource.ResourceExecutionEvidencePort.class, () -> sourceOnlyOwner(ai.neargo.shop.spi.resource.ResourceExecutionEvidencePort.class))
+                .withBean(ai.neargo.shop.spi.resource.ResourceQualificationPort.class, () -> sourceOnlyOwner(ai.neargo.shop.spi.resource.ResourceQualificationPort.class))
+                .withBean(ai.neargo.shop.spi.trade.ServiceExecutionStartPort.class, () -> sourceOnlyOwner(ai.neargo.shop.spi.trade.ServiceExecutionStartPort.class))
+                .withBean(ai.neargo.shop.spi.trade.ServiceExecutionEvidencePort.class, () -> sourceOnlyOwner(ai.neargo.shop.spi.trade.ServiceExecutionEvidencePort.class))
                 .withBean(CustomerIdentityPort.class, () -> new CustomerIdentityPort() {
                     @Override public ResolvedCustomer resolveReference(
                             EntitlementContext context, ReferenceQuery q) {
