@@ -206,7 +206,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
             String bankReference,
             String evidenceKey,
             boolean historical,
-            String reason, String collectorNo, String collectionReference,boolean testPayment) {}
+            String reason, String collectorNo, String collectionReference, Boolean testPayment) {}
 
     @GetMapping("/ops/biz-mall/offline/collectors")
     public Object collectors(@RequestParam("storeNo") String store) {
@@ -234,7 +234,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
                                 d.bankReference(),
                                 d.evidenceKey(),
                                 d.historical(),
-                                d.reason(),d.collectorNo(),d.collectionReference(),d.testPayment())));
+                                d.reason(),d.collectorNo(),d.collectionReference(),Boolean.TRUE.equals(d.testPayment()))));
     }
 
     public record VoidRequest(
