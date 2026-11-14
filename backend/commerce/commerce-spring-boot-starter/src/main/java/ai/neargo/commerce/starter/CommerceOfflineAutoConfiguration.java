@@ -87,6 +87,6 @@ public class CommerceOfflineAutoConfiguration {
                 evidence,
                 Clock.systemUTC(),
                 ids,
-                profileNo.trim()).cashRefunds(cashRefunds).normalRefunds(normalRefunds.getIfAvailable());
+                profileNo.trim()).cashRefunds(cashRefunds).normalRefunds(normalRefunds.getIfAvailable()).testStores(java.util.Arrays.stream(env.getProperty("commerce.mall.offline.test-stores", "").split(",")).map(String::trim).filter(s->!s.isBlank()).collect(java.util.stream.Collectors.toSet()));
     }
 }

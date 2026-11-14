@@ -13,6 +13,15 @@ afterEach(() => vi.unstubAllGlobals());
 
 const ok = (data: unknown) => vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ code: 0, msg: "success", data }) });
 
+it("reads documentation and appends metadata without using confirmation endpoint",async()=>{
+  const fetch=ok({testAllowed:true,confirmations:[]});vi.stubGlobal("fetch",fetch);
+  await commerceHttp.offlineReceiptDocumentation("S/1","O/1");
+  const input={actionNo:"docs",confirmationActionNo:"confirmed",note:"Test only",evidenceKeys:[]};
+  await commerceHttp.supplementOfflineReceipt("S/1","O/1",input);
+  expect(fetch.mock.calls[0]![0]).toContain("/O%2F1/receipt-documentation?storeNo=S%2F1");
+  expect(fetch.mock.calls[1]![0]).toContain("/receipt-documentation?");expect(JSON.parse(fetch.mock.calls[1]![1].body)).toEqual(input);
+});
+
 describe("commerce http", () => {
   it("销售方式、销售凭据和门店按正式合同发送，无银行占位字段", async () => {
     const fetch=ok({status:"ACCEPTED"});vi.stubGlobal("fetch",fetch);

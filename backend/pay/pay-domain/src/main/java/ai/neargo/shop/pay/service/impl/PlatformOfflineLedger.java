@@ -102,7 +102,7 @@ final class PlatformOfflineLedger {
         text(p.operatorNo(),64);text(p.actualReceiver(),64);text(p.evidenceReference(),1024);
         require(p.currency()!=null && p.currency().matches("[A-Z]{3}") && p.actualMinor()>0
                 && p.actualPaidAt()>=0 && p.actualPaidAt()%1000==0 && p.confirmedAt()>=p.actualPaidAt()
-                && ("NORMAL".equals(p.mode()) || "HISTORICAL".equals(p.mode())),"OFFLINE_PROOF_INVALID");
+                && ("NORMAL".equals(p.mode()) || "HISTORICAL".equals(p.mode()) || "TEST".equals(p.mode())),"OFFLINE_PROOF_INVALID");
         try {
             Key resulting = tx.execute(s -> {
                 Receipt original = owner.localReceipt(p.key());
@@ -115,6 +115,7 @@ final class PlatformOfflineLedger {
                 boolean sales = "SALES_COLLECTION".equals(r.method());
                 String referenceKey, reference;
                 String referenceColumn = sales ? "platform_collection_ref_key" : "platform_bank_ref_key";
+                require(!"TEST".equals(p.mode()) || sales && p.collectionReference()!=null && p.collectionReference().startsWith("TEST-"),"OFFLINE_PROOF_INVALID");
                 if (sales) {
                     text(p.collectorNo(),64);text(p.collectionReference(),128);
                     require(p.bankReference()==null,"OFFLINE_METHOD_MISMATCH");
@@ -155,7 +156,7 @@ final class PlatformOfflineLedger {
     }
     List<CashReceipt> receipts(String tenant, String order) {
         if (tenant == null || tenant.isBlank() || order == null || order.isBlank()) return List.of();
-        return jdbc.query("SELECT * FROM stl_payment WHERE tenant_no=? AND order_no=? AND direction='PAY' AND status='SUCCESS' AND pay_scene IN ('PLATFORM_MALL','MALL_UNMATCHED') AND deleted=0 ORDER BY payment_no FOR UPDATE",
+        return jdbc.query("SELECT * FROM stl_payment WHERE tenant_no=? AND order_no=? AND direction='PAY' AND status='SUCCESS' AND pay_scene IN ('PLATFORM_MALL','MALL_UNMATCHED') AND deleted=0 AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(platform_manual_proof,'$.mode')),'NORMAL')<>'TEST' ORDER BY payment_no FOR UPDATE",
                 (rs,n) -> {
                     var r = PlatformCashAuthority.receiptMetadata(json, new org.springframework.jdbc.core.ColumnMapRowMapper().mapRow(rs,n));
                     String no = rs.getString("payment_no");

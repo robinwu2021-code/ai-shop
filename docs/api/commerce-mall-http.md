@@ -178,3 +178,12 @@ commerce:
 - App 销售订单显示联系说明与待核款状态，隐藏银行账户/备注及银行申报；订单和订阅共同确认后展示权益。运营代购的 STORE 原单可由该店有采购职责的商户回读。
 
 本地测试不代表目标环境已配置该方式、发布套餐或发生真实实收。部署先应用增量迁移 `V666__platform_sales_collection.sql`，保留旧银行路由后追加 SALES_COLLECTION，配置正式销售条款，再做同店实收验收。
+
+
+### 销售核款资料后补与测试核款（2026-11-13）
+
+`confirmations.testPayment` 缺省 false，仅 `commerce.mall.offline.test-stores` 允许门店可选测试销售核款，凭据号 TEST- 前缀；真实/测试模式冻结在操作原件和支付 proof。销售 evidenceKey 可 null，银行仍必填；无附件核款的引用为 `DOCUMENTATION_PENDING:<actionNo>`。
+
+GET `/ops/biz-mall/offline/orders/{orderNo}/receipt-documentation?storeNo=` 需订单读权限；POST 同路径需核款权限，body 为 actionNo/confirmationActionNo/note/evidenceKeys。附加记录沿原 actionNo 幂等、原店/单授权和私有附件归属验证；只追加资料，不修改原核款和付款/权益状态。App 不返回内部资料。
+
+`cash-receipts` 仅真实实收，不返回 TEST，测试款不能从异常实收退款入口冒充真实款。正式套餐实收统计 SQL 加 `COALESCE(JSON_UNQUOTE(JSON_EXTRACT(platform_manual_proof,'$.mode')),'NORMAL')<>'TEST'`，测试报告用相反条件。

@@ -1,0 +1,22 @@
+{
+  "taskEntries": 61,
+  "taskEntriesUnchanged": true,
+  "changedTaskEntries": [],
+  "shopSha256": "b766cb1d0ad55c75c139be5fc7b1412f471f7700220392242b283e318d7f5bf0",
+  "originalSalesReleaseSha256": "51860fb0204f42eb770c16ac762445de287adb2f06b22e10240263d09c552f92",
+  "payUnchanged": true,
+  "services": {
+    "ai-shop-api": {
+      "id": "b775bfb198c22bcdfa8f5756ceff42de4774999dea5606315c1ea14f6de0e1ec",
+      "health": "UP",
+      "startedAt": "2026-11-13T12:58:22.352592836Z"
+    },
+    "ai-shop-ops": {
+      "id": "f12f9b95a0321592969879794f25910d682adab1fde74a07c157fd8049dadaf6",
+      "health": "UP",
+      "startedAt": "2026-11-13T12:58:22.587623966Z"
+    }
+  },
+  "web": "/data/www/ai-shop-ops/releases/ops-unified-admission-ui-20261113-e02631cd0",
+  "deployLockReleased": true
+}

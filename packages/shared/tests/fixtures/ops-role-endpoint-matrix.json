@@ -791,6 +791,8 @@
     "GET /ops/biz-mall/offline/orders/{orderNo}/evidence/url",
     "GET /ops/biz-mall/offline/orders/{orderNo}/instructions",
     "POST /ops/biz-mall/offline/orders/{orderNo}/instructions",
+    "GET /ops/biz-mall/offline/orders/{orderNo}/receipt-documentation",
+    "POST /ops/biz-mall/offline/orders/{orderNo}/receipt-documentation",
     "POST /ops/biz-mall/offline/orders/{orderNo}/recover",
     "POST /ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts",
     "POST /ops/biz-mall/offline/orders/{orderNo}/voids",

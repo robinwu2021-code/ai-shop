@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1218 个接口**：后端已实现 967（79%）· 前端在调 1047
+**合计 1220 个接口**：后端已实现 967（79%）· 前端在调 1047
 
 ---
 
@@ -1163,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **607** 个接口 ｜ 后端已实现 **464**（76%）｜ 前端在调 **438**
+共 **609** 个接口 ｜ 后端已实现 **464**（76%）｜ 前端在调 **438**
 
 ### aftersale（5）
 
@@ -1175,7 +1175,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（56）
+### commerce（58）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1191,6 +1191,8 @@
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | requestMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout` | payoutMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover` | recoverMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/receipt-documentation` | offlineReceiptDocumentation | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/receipt-documentation` | supplementOfflineReceipt | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}` | Read the durable original outcome without replaying the command. */ | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline` | 拒绝申报：不等于无款，不释放占用 */ | — | `MallOfflineClaimView` | — | ⬜ | ⬜ |

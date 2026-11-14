@@ -25,6 +25,8 @@
 export const RULES = [
   ["GET", /^\/ops\/stores\/\{storeNo\}\/operational-review$/, "merchant:merchant:read"],
   ["POST", /^\/ops\/stores\/\{storeNo\}\/operational-review\/(?:submit|decide)$/, "merchant:apply:audit"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:offline:confirm"],
   // 主体购买沿用真实Controller权限；复合授权仍由运行时同时校验，表册不改变授权。
   ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assistance-context$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],

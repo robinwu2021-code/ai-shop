@@ -1,12 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { MallOfflineReviewAttempt, mallOfflineReceiver } from "./mall-offline-review";
+import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "./mall-offline-review";
 import type { MallOfflineConfirmRequest, MallOfflineActionView } from "./types";
 
 const request = (): MallOfflineConfirmRequest => ({ actionNo: "original", claimNo: null,
   actualAmount: { currency: "TWD", minor: "69900" }, actualPaidAt: "2026-11-01T00:00:00.000Z",
   actualReceiver: "frozen", bankReference: "bank", evidenceKey: "proof", historical: false, reason: "checked" });
 
+it("supplement recovery freezes evidence and never invokes payment confirmation",async()=>{
+  const payload={actionNo:"docs-1",confirmationActionNo:"confirm-1",note:"test docs",evidenceKeys:["private-1"]};
+  const attempt=new MallOfflineReviewAttempt({kind:"supplement",request:payload});
+  payload.evidenceKeys.push("late-edit");payload.note="changed";
+  const sent:unknown[]=[];const api={confirmOfflinePayment:async()=>{throw Error("must not confirm money");},voidOfflineOrder:async()=>{throw Error("must not void");},
+    supplementOfflineReceipt:async(_s:string,_o:string,v:unknown)=>{sent.push(v);if(sent.length===1)throw Error("lost response");return {actionNo:"docs-1",status:"APPLIED",paymentNo:"original-payment"} as MallOfflineActionView;}};
+  await expect(attempt.submit(api,"s","o")).rejects.toThrow("lost response");
+  await expect(attempt.submit(api,"s","o")).rejects.toThrow("LOOKUP_REQUIRED");
+  await attempt.resolve(async()=>null);await attempt.submit(api,"s","o");
+  expect(sent[1]).toBe(sent[0]);expect(sent[1]).toEqual({actionNo:"docs-1",confirmationActionNo:"confirm-1",note:"test docs",evidenceKeys:["private-1"]});
+});
+
 describe("mall offline review recovery", () => {
+  it("requires actual receipt time in real mode and pre-fills only explicit TEST mode",()=>{
+    const now=new Date("2026-11-13T14:23:45.000Z");
+    expect(receiptTimeForMode(false,now)).toBe("");
+    expect(new Date(receiptTimeForMode(true,now)).getTime()).toBe(now.getTime());
+  });
   it("requires a frozen order receiver and never substitutes a typed receiver", () => {
     expect(mallOfflineReceiver({})).toBeNull();
     expect(mallOfflineReceiver({ platformMerchantNo: " " })).toBeNull();

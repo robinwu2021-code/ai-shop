@@ -265,3 +265,10 @@
 | 商城目录 | 零售 FREE / PRO / CHAIN、餐饮 FREE；7 个 TWD SKU（PRO 年 1990 / 月 199、CHAIN 年 5990 / 月 599、80mm 印表机 2400、热敏纸 560、開店套餐 3990） |
 | 平台类目 | 从本机库导入（2026-11-06），测试店配预包装食品、纸品清洁、个护化妆 |
 | 本期不联调 | 门店收款（收款 Tab、扫码 / POS、付款链接）、商城付款 |
+
+
+### 支付只读环境请求头（沙箱联调）
+
+以上`collect-status`、`orders`列表、`orders/summary`、`orders/lookup`、`orders/{payOrderNo}`五个GET接受可选`X-Pay-Read-Environment: PRODUCTION|SANDBOX`。省略与PRODUCTION保持既有生产视图；SANDBOX是显式选择，服务端仍校验原权限、严格当前店/主体、已启用来源映射和专用受保护客户端配置。无授权/无配置不回退生产，其他header值拒绝。两环境记录/金额/分页/统计不合并。
+
+此header不作用于收款、退款、POST订单query补账、链接重发/作废等写路径。SANDBOX详情仍来自PAY权威DTO，不能用SSE消息或receipt金额替代。私有部署开关默认关闭，见《支付只读环境选择》。正式App默认不传；仅显式沙箱测试构建给上述GET附加header。

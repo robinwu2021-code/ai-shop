@@ -15291,9 +15291,120 @@ components:
         - "url"
       additionalProperties: false
       description: "凭证签名读地址（5 分钟）"
+    MallOfflineSupplementRequest:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+        confirmationActionNo:
+          type: "string"
+        note:
+          type: "string"
+        evidenceKeys:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "actionNo"
+        - "confirmationActionNo"
+        - "note"
+        - "evidenceKeys"
+      additionalProperties: false
+      description: "核款：录入实际到账"
+    MallReceiptDocumentation:
+      type: "object"
+      properties:
+        confirmationActionNo:
+          type: "string"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+        status:
+          type: "string"
+        testPayment:
+          type: "boolean"
+        operatorNo:
+          type: "string"
+        confirmedAt:
+          type: "string"
+        actualAmount:
+          "$ref": "#/components/schemas/MallMoney"
+        actualPaidAt:
+          type: "string"
+        collectorNo:
+          type:
+            - "string"
+            - "null"
+        collectionReference:
+          type:
+            - "string"
+            - "null"
+        evidenceKey:
+          type:
+            - "string"
+            - "null"
+        complete:
+          type: "boolean"
+        supplements:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              actionNo:
+                type: "string"
+              operatorNo:
+                type: "string"
+              createdAt:
+                type: "string"
+              note:
+                type:
+                  - "string"
+                  - "null"
+              evidenceKeys:
+                type: "array"
+                items:
+                  type: "string"
+            required:
+              - "actionNo"
+              - "operatorNo"
+              - "createdAt"
+              - "note"
+              - "evidenceKeys"
+            additionalProperties: false
+      required:
+        - "confirmationActionNo"
+        - "paymentNo"
+        - "status"
+        - "testPayment"
+        - "operatorNo"
+        - "confirmedAt"
+        - "actualAmount"
+        - "actualPaidAt"
+        - "collectorNo"
+        - "collectionReference"
+        - "evidenceKey"
+        - "complete"
+        - "supplements"
+      additionalProperties: false
+    MallDocumentationView:
+      type: "object"
+      properties:
+        testAllowed:
+          type: "boolean"
+        confirmations:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallReceiptDocumentation"
+      required:
+        - "testAllowed"
+        - "confirmations"
+      additionalProperties: false
     MallOfflineConfirmRequest:
       type: "object"
       properties:
+        testPayment:
+          type: "boolean"
         collectorNo:
           type: "string"
         collectionReference:
@@ -15321,7 +15432,9 @@ components:
             - "null"
           description: "银行流水号（全局唯一）"
         evidenceKey:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "凭证资产键"
         historical:
           type: "boolean"
@@ -15339,7 +15452,6 @@ components:
         - "historical"
         - "reason"
       additionalProperties: false
-      description: "核款：录入实际到账"
     MallOfflineVoidRequest:
       type: "object"
       properties:
@@ -17465,6 +17577,75 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/orders/{order}/receipt-documentation":
+    get:
+      operationId: "offlineReceiptDocumentation"
+      summary: "offlineReceiptDocumentation"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "supplementOfflineReceipt"
+      summary: "supplementOfflineReceipt"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineActionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/biz-mall/offline/orders/{order}/cash-receipts":
     get:
       operationId: "mallCashReceipts"

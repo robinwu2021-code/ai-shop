@@ -139,6 +139,16 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
         return ok(offline.action(actor, opsOrder(actor, store, order), code(action)).orElse(null));
     }
 
+    public record SupplementRequest(String actionNo,String confirmationActionNo,String note,List<String> evidenceKeys) {}
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/receipt-documentation")
+    public Object documentation(@PathVariable("orderNo") String order,@RequestParam("storeNo") String store) {
+        var a=context.operator("commerce:mall:order:read");return ok(offline.documentation(a,opsOrder(a,store,order)));
+    }
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/receipt-documentation")
+    public Object supplement(@PathVariable("orderNo") String order,@RequestParam("storeNo") String store,@RequestBody String body) {
+        var a=context.operator("commerce:mall:offline:confirm");var d=json.read(body,SupplementRequest.class);
+        return ok(offline.supplement(a,new SupplementCommand(opsOrder(a,store,order),d.actionNo(),d.confirmationActionNo(),d.note(),d.evidenceKeys())));
+    }
     public record EvidenceRequest(String purpose) {}
 
     @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/evidence")
@@ -196,7 +206,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
             String bankReference,
             String evidenceKey,
             boolean historical,
-            String reason, String collectorNo, String collectionReference) {}
+            String reason, String collectorNo, String collectionReference,boolean testPayment) {}
 
     @GetMapping("/ops/biz-mall/offline/collectors")
     public Object collectors(@RequestParam("storeNo") String store) {
@@ -224,7 +234,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
                                 d.bankReference(),
                                 d.evidenceKey(),
                                 d.historical(),
-                                d.reason(),d.collectorNo(),d.collectionReference())));
+                                d.reason(),d.collectorNo(),d.collectionReference(),d.testPayment())));
     }
 
     public record VoidRequest(

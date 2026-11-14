@@ -1,0 +1,119 @@
+{
+  "realFundsConfirmed": false,
+  "ordersCreated": true,
+  "checks": [
+    {
+      "method": "POST",
+      "path": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=BANK_TRANSFER",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=SALES_COLLECTION",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=SALES_COLLECTION",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/collectors?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/offline/quotes?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/offline/orders?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/offline/orders/b1d96a07a7494dfaba2f3816f298996d/instructions?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/stores/ST261113Y693VWBMKT/subscription?entitlementCode=END_BIZ_APP",
+      "http": 200,
+      "code": 0,
+      "message": null
+    }
+  ],
+  "catalogKeys": [
+    "businessTypes",
+    "businessEnds",
+    "planDefinitions",
+    "planVersions",
+    "products",
+    "skuDefinitions",
+    "skuVersions",
+    "categories"
+  ],
+  "salesProfile": {
+    "profileNo": "UME-TW-BANK-sales",
+    "profileVersion": 1,
+    "platformMerchantNo": "UME-PLATFORM",
+    "currency": "TWD",
+    "collectionMethod": "SALES_COLLECTION",
+    "enabled": true,
+    "paymentWindowMs": 259200000
+  },
+  "eligibleCollectors": 2,
+  "quote": {
+    "quoteNo": "531d4ac5f056466083c111337385a820",
+    "payable": {
+      "currency": "TWD",
+      "minor": "19900"
+    },
+    "collectionMethod": "SALES_COLLECTION",
+    "status": null,
+    "expiresAt": "2026-11-13T13:20:54.920Z"
+  },
+  "orderNo": "b1d96a07a7494dfaba2f3816f298996d",
+  "instructions": {
+    "orderNo": "b1d96a07a7494dfaba2f3816f298996d",
+    "payable": {
+      "currency": "TWD",
+      "minor": "19900"
+    },
+    "collectionMethod": "SALES_COLLECTION",
+    "paymentDueAt": "2026-11-16T13:05:55.219Z",
+    "platformMerchantNo": "UME-PLATFORM"
+  },
+  "unpaidSubscriptionRead": true,
+  "status": "PASS"
+}

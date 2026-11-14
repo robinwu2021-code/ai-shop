@@ -1,0 +1,30 @@
+{
+  "backend": [
+    {
+      "name": "ai.neargo.commerce.persistence.SalesCollectionWorkflowMysqlTest",
+      "tests": 1
+    },
+    {
+      "name": "ai.neargo.commerce.persistence.SalesSupplementWorkflowMysqlTest",
+      "tests": 1
+    },
+    {
+      "name": "ai.neargo.commerce.persistence.MallOfflineWorkflowMysqlTest",
+      "tests": 8
+    },
+    {
+      "name": "ai.neargo.shop.merchant.paysync.StoreSyncPublisherTest",
+      "tests": 6
+    },
+    {
+      "name": "ai.neargo.shop.pay.service.impl.PlatformRefundMysqlTest",
+      "tests": 2
+    },
+    {
+      "name": "ai.neargo.shop.pay.service.impl.PlatformOfflineCollectionMysqlTest",
+      "tests": 16
+    }
+  ],
+  "backendTotal": 34,
+  "opsTests": 87
+}

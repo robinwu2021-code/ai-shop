@@ -1,0 +1,166 @@
+{
+  "activeWebRoot": "/data/www/ai-shop-ops/releases/ops-unified-admission-ui-20261113-e02631cd0/ops-shop",
+  "versionFilePresent": false,
+  "assetCount": 30,
+  "unchangedAssets": 1,
+  "salesMarkers": {
+    "SALES_COLLECTION": true,
+    "offline/collectors": true,
+    "collectionReference": true,
+    "collectorNo": true
+  },
+  "mallPageAssets": [
+    {
+      "asset": "/ops-shop/_next/static/chunks/app/mall/page-aa67fff234164f6d.js",
+      "sameAsSalesRelease": false,
+      "bytes": 167622
+    }
+  ],
+  "changedAssets": [
+    {
+      "asset": "/ops-shop/_next/static/css/3734f19145af2277.css",
+      "sameAsSalesRelease": false,
+      "bytes": 64375
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/webpack-362a01fac44b8957.js",
+      "sameAsSalesRelease": false,
+      "bytes": 3520
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/1fd53486-5c0d6113c635c4d5.js",
+      "sameAsSalesRelease": false,
+      "bytes": 201059
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/7102-618c6b4003f2d8fe.js",
+      "sameAsSalesRelease": false,
+      "bytes": 241768
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/main-app-94e9cacae94b0de7.js",
+      "sameAsSalesRelease": false,
+      "bytes": 529
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/a01f37ce-d10f12b44a788442.js",
+      "sameAsSalesRelease": false,
+      "bytes": 141315
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/735-05cc8ca4a4768286.js",
+      "sameAsSalesRelease": false,
+      "bytes": 35680
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/8936-38dfa29f97652a8f.js",
+      "sameAsSalesRelease": false,
+      "bytes": 8913
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/4505-429ea8a48f94bf4c.js",
+      "sameAsSalesRelease": false,
+      "bytes": 7846
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/2400-9db0ceee6097048e.js",
+      "sameAsSalesRelease": false,
+      "bytes": 23007
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/1240-1edb889695264563.js",
+      "sameAsSalesRelease": false,
+      "bytes": 22989
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/6295-4f3286ac53f7f00e.js",
+      "sameAsSalesRelease": false,
+      "bytes": 26703
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/7772-cbb15cb587249abf.js",
+      "sameAsSalesRelease": false,
+      "bytes": 15895
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/3255-597fdb9a9f6e33ed.js",
+      "sameAsSalesRelease": false,
+      "bytes": 13561
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/7936-2e48faeb817c05a0.js",
+      "sameAsSalesRelease": false,
+      "bytes": 544699
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/8204-609cb1b586a3c12d.js",
+      "sameAsSalesRelease": false,
+      "bytes": 57527
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/3761-ae5ea6bb3ddf3870.js",
+      "sameAsSalesRelease": false,
+      "bytes": 38451
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/2830-707b592900b7f99a.js",
+      "sameAsSalesRelease": false,
+      "bytes": 213111
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/8480-8a58400c9a5e5926.js",
+      "sameAsSalesRelease": false,
+      "bytes": 7834
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/app/layout-e9e8b8a9987d7ac5.js",
+      "sameAsSalesRelease": false,
+      "bytes": 40493
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/987-d7d9a9d05a0026b2.js",
+      "sameAsSalesRelease": false,
+      "bytes": 27460
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/4663-3ba3daa6424a4dc7.js",
+      "sameAsSalesRelease": false,
+      "bytes": 9445
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/1718-9f7216ff38967d9d.js",
+      "sameAsSalesRelease": false,
+      "bytes": 10718
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/5897-4c97083d8a1307c8.js",
+      "sameAsSalesRelease": false,
+      "bytes": 9036
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/6555-f31428f3e697ad4d.js",
+      "sameAsSalesRelease": false,
+      "bytes": 7087
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/1195-b30fc41fbcfbfc38.js",
+      "sameAsSalesRelease": false,
+      "bytes": 9540
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/4570-984c759b0969199b.js",
+      "sameAsSalesRelease": false,
+      "bytes": 5856
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/643-ce18e28779b702bc.js",
+      "sameAsSalesRelease": false,
+      "bytes": 16396
+    },
+    {
+      "asset": "/ops-shop/_next/static/chunks/app/mall/page-aa67fff234164f6d.js",
+      "sameAsSalesRelease": false,
+      "bytes": 167622
+    }
+  ]
+}

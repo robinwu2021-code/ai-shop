@@ -32,10 +32,15 @@ public interface OfflinePurchaseFacade {
     }
     record ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
             String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason,
-            String collectorNo, String collectionReference) {
+            String collectorNo, String collectionReference, boolean testPayment) {
+        public ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
+                String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason,
+                String collectorNo,String collectionReference) {
+            this(order,actionNo,claimNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceKey,historical,reason,collectorNo,collectionReference,false);
+        }
         public ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
                 String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {
-            this(order,actionNo,claimNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceKey,historical,reason,null,null);
+            this(order,actionNo,claimNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceKey,historical,reason,null,null,false);
         }
     }
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,
@@ -44,6 +49,16 @@ public interface OfflinePurchaseFacade {
                 : Collections.unmodifiableMap(new TreeMap<>(unmatchedDispositions)); }
     }
     record ActionView(String actionNo,String status,String paymentNo) {}
+    record SupplementCommand(OrderQuery order,String actionNo,String confirmationActionNo,String note,List<String> evidenceKeys) {
+        public SupplementCommand { evidenceKeys=evidenceKeys==null?List.of():Collections.unmodifiableList(new ArrayList<>(evidenceKeys)); }
+    }
+    record SupplementView(String actionNo,String operatorNo,Instant createdAt,String note,List<String> evidenceKeys) {}
+    record ReceiptDocumentation(String confirmationActionNo,String paymentNo,String status,boolean testPayment,
+            String operatorNo,Instant confirmedAt,Money actualAmount,Instant actualPaidAt,String collectorNo,
+            String collectionReference,String evidenceKey,boolean complete,List<SupplementView> supplements) {}
+    record DocumentationView(boolean testAllowed,List<ReceiptDocumentation> confirmations) {}
+    default DocumentationView documentation(ActorContext actor,OrderQuery order) { throw new UnsupportedOperationException(); }
+    default ActionView supplement(ActorContext actor,SupplementCommand command) { throw new UnsupportedOperationException(); }
     /**
      * Offline quote: collection terms come only from the trusted pay-domain profile configured for this deployment,
      * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.

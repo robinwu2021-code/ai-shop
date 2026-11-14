@@ -1,0 +1,2 @@
+96499ce1ce56456c1616590b5d55326f22dd64fd6168679435bd59773040a391  /data0/app/nearpay-prod/pay-svc.jar
+b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa0640  /data0/app/ai-shop/shop-app.jar

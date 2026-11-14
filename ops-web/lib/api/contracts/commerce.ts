@@ -26,6 +26,8 @@ import type {
 export type OfflineClaimCursor = { afterOrderNo?: string; afterClaimNo?: string; limit?: number };
 
 export interface CommerceApi extends PlatformMallReportingApi, Pick<CashRefundApi, "mallCashReceipts"|"mallCashRefunds"|"requestMallCashRefund"|"payoutMallCashRefund"|"recoverMallCashRefund"> {
+  offlineReceiptDocumentation(storeNo:string,orderNo:string):Promise<import("@/lib/types").MallDocumentationView>;
+  supplementOfflineReceipt(storeNo:string,orderNo:string,v:import("@/lib/types").MallOfflineSupplementRequest):Promise<MallOfflineActionView>;
   // ── 目录（读 commerce:catalog:read；写 :edit；发布/停售/启用 :publish）──
   /** 目录总览。空目录也返回结构（各数组为空），不是 404 */
   mallCatalog(): Promise<MallCatalogOverview>;

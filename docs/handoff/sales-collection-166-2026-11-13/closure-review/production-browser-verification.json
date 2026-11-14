@@ -1,0 +1,41 @@
+{
+  "status": "PASS",
+  "environment": "166",
+  "storeNo": "ST261113Y693VWBMKT",
+  "orderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+  "realFundsReceived": false,
+  "testPayment": true,
+  "confirmation": {
+    "actionNo": "CFM-MWF2Y05C-1S5L",
+    "status": "APPLIED",
+    "paymentNo": "MP1abd4a0aedffcc11bc12fa517c54e896104fb2e62c2e20408cce1bd395a2"
+  },
+  "confirmationCount": 1,
+  "supplementCount": 1,
+  "confirmationRequest": {
+    "actionNo": "CFM-MWF2Y05C-1S5L",
+    "claimNo": null,
+    "actualAmount": {
+      "currency": "TWD",
+      "minor": "199000"
+    },
+    "actualPaidAt": "2026-11-13T14:36:23.000Z",
+    "actualReceiver": "UME-PLATFORM",
+    "bankReference": null,
+    "collectorNo": "ST-UME-ADMIN",
+    "collectionReference": "TEST-CFM-MWF2Y05C-1S5L",
+    "evidenceKey": null,
+    "testPayment": true,
+    "historical": false,
+    "reason": "指定测试门店核款验证；未收取真实资金；附件在确认后补充。"
+  },
+  "supplementRequest": {
+    "actionNo": "docs-MWF2ZRYB-XJEE",
+    "confirmationActionNo": "CFM-MWF2Y05C-1S5L",
+    "note": "测试核款后补充资料：本附件仅证明本次测试操作，不是实际收款凭证。",
+    "evidenceKeys": [
+      "M26111119233ZE990/ST261113Y693VWBMKT/mallpay/202611/c02fdf4a1d6743cba9ed8098ade7fe0e.jpg"
+    ]
+  },
+  "pageErrors": []
+}

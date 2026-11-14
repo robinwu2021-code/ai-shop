@@ -1,0 +1,29 @@
+{
+  "status": "DEPLOYED",
+  "release": "sse-stability-20261114",
+  "sourceCommit": "fb7ea965c89052752d2f0c200ff03d3c3d6ca414",
+  "apiSha256": "b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa0640",
+  "classes": 6,
+  "apiAndOpsHealthy": true,
+  "sameContainersAndBindInodes": true,
+  "payAndStaticUnchanged": true,
+  "sourceCoordinates": {
+    "environment": "SANDBOX",
+    "pay-app-id": "1",
+    "source-type": "CHECKOUT",
+    "source-id": "1",
+    "payment-store-id": "23",
+    "shop-store-id": "23",
+    "store-no": "ST261112G3TMS4DWM7",
+    "entity-no": "M261112G44KM1QND5",
+    "market": "TW"
+  },
+  "existingSourceBootstrapPreserved": true,
+  "explicitSandboxReadEnabled": true,
+  "diagnosticIntervalMs": 10000,
+  "diagnosticDurationMs": 1800000,
+  "productionCallerUnchanged": true,
+  "manualBusinessSqlMutations": false,
+  "paymentPerformed": false,
+  "lockReleased": true
+}

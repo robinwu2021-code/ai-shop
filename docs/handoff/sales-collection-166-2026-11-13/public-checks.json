@@ -1,0 +1,171 @@
+{
+  "/ops-shop/VERSION": {
+    "http": 200,
+    "type": "application/octet-stream",
+    "version": "sha=d3e6ada5a\nrelease=sales-collection-20261113\n"
+  },
+  "/ops-shop/mall/": {
+    "http": 200,
+    "type": "text/html",
+    "assets": [
+      {
+        "path": "/ops-shop/_next/static/css/a210cd06a24ccead.css",
+        "http": 200,
+        "type": "text/css"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/webpack-be0abae8169512ed.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/878afac8-a048c53b9d9c94f1.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/4014-1a0af019abceeb5f.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/main-app-85039ba4421e28a8.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/c8951367-6e8c91073d4d484a.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/7475-940e72eca45e61bf.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/6520-d5e6ef83d82e30cc.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/9849-110b67b9e6d469b2.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/784-01a374d1c79c025f.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/6452-b22449ce10a5c822.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/5691-d381d33bd4e2af24.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/5408-91b27cb38ce04030.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/3759-570e3bd513ad46f6.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/4912-d8b22b6328c0b97c.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/5272-620333d1ce99ee6d.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/2005-92d63b10434014d2.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/6521-1bf76b8d8ed8bc44.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/8576-60109158ef729aaa.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/app/layout-46b4218440bf6867.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/7907-57c7e629b221a71e.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/3243-f7b55a546fa2ee13.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/2213-db4bdf89b1564a96.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/7013-745026073566a7fb.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/3043-c31af98065fe2020.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/9371-6d89f51346fba560.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/5334-e5cbfe1010a9aaa5.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/3168-79f9d319b8c8f72d.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/app/mall/page-1bd7f1234dd76145.js",
+        "http": 200,
+        "type": "application/javascript"
+      },
+      {
+        "path": "/ops-shop/_next/static/chunks/polyfills-42372ed130431b0a.js",
+        "http": 200,
+        "type": "application/javascript"
+      }
+    ]
+  },
+  "/shop-api/biz/stores/UNOWNED/mall/storefront": {
+    "http": 401,
+    "type": "application/json;charset=UTF-8"
+  },
+  "/ops-shop/ops/biz-mall/catalog": {
+    "http": 401,
+    "type": "application/json;charset=UTF-8"
+  }
+}

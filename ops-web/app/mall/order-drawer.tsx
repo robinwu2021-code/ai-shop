@@ -10,7 +10,7 @@
 import * as React from "react";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MallOfflineReviewAttempt, mallOfflineReceiver } from "@/lib/mall-offline-review";
+import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "@/lib/mall-offline-review";
 import { api } from "@/lib/api";
 import { isApiError } from "@/lib/api/error";
 import { describeError } from "@/lib/commerce-reason";
@@ -199,6 +199,8 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
       .then(() => { refresh(); notify.success(c.toastRefundRejected); }),
   });
 
+  const receiptDocs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo),enabled:offline,retry:false});
+  if(receiptDocs.data?.confirmations.some(x=>x.testPayment))return <Notice tone="warning">{c.testNoCashRefund}</Notice>;
   if (!d.refunds?.length) return null;
   const canReview = allow("commerce:refund:review");
   const columns: Column<MallRefundView>[] = [
@@ -510,6 +512,7 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
         <VoidForm c={c} storeNo={storeNo} orderNo={orderNo} unmatched={unmatched}
           onDone={(r) => { setLastAction(r); setMode(null); refresh(); }} onCancel={() => setMode(null)} />
       )}
+      <ReceiptDocumentationSection c={c} storeNo={storeNo} orderNo={orderNo} />
       <CashRefundsSection key={`${storeNo}:${orderNo}`} kind="mall" scope={storeNo} orderNo={orderNo} canRelease={!paid&&!closed} onChanged={refresh} onLock={exceptionLock} />
       {dialog}
     </DrawerSection>
@@ -562,27 +565,30 @@ function ConfirmForm({
   onDone: (r: MallOfflineActionView) => void; onCancel: () => void;
 }) {
   const [actionNo] = React.useState(() => newOpNo("CFM"));
+  const docs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo)});
   const payable = instructions.payable;
   const receiver = mallOfflineReceiver(instructions);
   const sales = instructions.collectionMethod === "SALES_COLLECTION";
   const collectors = useQuery({ queryKey: ["mall-sales-collectors", storeNo], queryFn: () => api.offlineCollectors(storeNo), enabled: sales });
   const review = useOfflineReview(c, storeNo, orderNo, onDone);
-  const [f, setF] = React.useState({ collectorNo: "", currency: payable.currency, amount: "", at: "", bankRef: "", evidenceKey: "", historical: false, reason: "" });
+  const [f, setF] = React.useState({ collectorNo: "", currency: payable.currency, amount: toMajorInput(payable), at: "", bankRef: "", evidenceKey: "", historical: false, reason: "",testPayment:false });
   const minor = parseMajor(f.amount, f.currency);
   const submit = () => review.start({ kind: "confirm", request: { actionNo, claimNo: sales ? null : claimNo,
     actualAmount: { currency: f.currency, minor: minor! }, actualPaidAt: new Date(f.at).toISOString(),
     actualReceiver: receiver!, bankReference: sales ? null : f.bankRef.trim(),
-    collectorNo: sales ? f.collectorNo : undefined, collectionReference: sales ? f.bankRef.trim() : undefined, evidenceKey: f.evidenceKey,
+    collectorNo: sales ? f.collectorNo : undefined, collectionReference: sales ? f.bankRef.trim() : undefined, evidenceKey: f.evidenceKey || null,testPayment:f.testPayment,
     historical: f.historical, reason: f.reason.trim() } });
   const mismatch = minor !== null && (minor !== payable.minor || f.currency !== payable.currency);
-  const valid = /^[A-Z]{3}$/.test(f.currency) && (!sales || collectors.data?.some(x => x.collectorNo === f.collectorNo)) && minor !== null && f.at && receiver?.trim() && f.bankRef.trim() && f.evidenceKey && f.reason.trim();
+  const valid = /^[A-Z]{3}$/.test(f.currency) && (!sales || collectors.data?.some(x => x.collectorNo === f.collectorNo)) && minor !== null && f.at && receiver?.trim() && f.bankRef.trim() && (sales || f.evidenceKey) && f.reason.trim();
   return (
     <div className="mt-3 space-y-3 rounded-card border border-border p-3">
       <div className="txt-strong">{claimNo ? fill(c.confirmForClaim, { no: claimNo }) : c.confirmDirect}</div>
-      <Notice tone="warning">{sales ? c.salesConfirmNotice : c.confirmNotice}</Notice>
+      <Notice tone="warning">{f.testPayment ? c.testReceiptHint : sales ? c.salesConfirmNotice : c.confirmNotice}</Notice>
       {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt), ref: claim.bankReference || "—" })}</p>}
       {!receiver?.trim() && <Notice tone="warning">{c.receiverMissing}</Notice>}
       <fieldset disabled={review.attempt !== null} className="space-y-3">
+        {sales && docs.data?.testAllowed && <CheckboxField label={c.testReceipt} checked={f.testPayment} onChange={v=>setF(x=>({...x,testPayment:v===true,at:receiptTimeForMode(v===true),bankRef:v===true?`TEST-${actionNo}`:"",reason:v===true?c.testReceipt:""}))}/>}
+        {sales && <p className="txt-caption text-muted-foreground">{c.docsLater}</p>}
         {sales && <div className="space-y-1">
           <Label htmlFor="cf-collector" required>{c.fieldCollector}</Label>
           <Select id="cf-collector" value={f.collectorNo} onChange={e => setF(x => ({ ...x, collectorNo: e.target.value }))}>
@@ -607,7 +613,7 @@ function ConfirmForm({
           </div>
           <div className="space-y-1">
             <Label htmlFor="cf-at" required>{c.fieldActualPaidAt}</Label>
-            <Input id="cf-at" type="datetime-local" value={f.at} onChange={(e) => setF((x) => ({ ...x, at: e.target.value }))} />
+            <Input id="cf-at" type="datetime-local" step={1} value={f.at} onChange={(e) => setF((x) => ({ ...x, at: e.target.value }))} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="cf-recv" required>{c.fieldReceiver}</Label>
@@ -631,6 +637,40 @@ function ConfirmForm({
       <ReviewRecovery c={c} review={review} />
     </div>
   );
+}
+
+function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:string;orderNo:string}) {
+  const allow=useCan();
+  const docs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo),retry:false});
+  const [selected,setSelected]=React.useState<string|null>(null);
+  return <div className="mt-4 space-y-3 border-t pt-3">
+    <div className="txt-strong">{c.documentation}</div>
+    {docs.error && <Notice tone="danger">{describeError(docs.error)}</Notice>}
+    {docs.data?.confirmations.map(row=><div key={row.confirmationActionNo} className="space-y-2 rounded-card border p-3">
+      <div className="flex flex-wrap items-center gap-2"><Badge>{row.complete?c.docsComplete:c.docsPending}</Badge>{row.testPayment && <Badge>{c.testReceipt}</Badge>}<span>{row.status}</span></div>
+      <p className="txt-caption">{row.confirmationActionNo} · {fmtAt(row.confirmedAt)} · {row.operatorNo}</p>
+      <p><Money m={row.actualAmount}/> · {row.collectorNo} · {row.collectionReference}</p>
+      {row.evidenceKey && <ClaimReceipts c={c} storeNo={storeNo} orderNo={orderNo} keys={[row.evidenceKey]}/>}
+      {row.supplements.map(item=><div key={item.actionNo} className="border-l-2 pl-3">
+        <p className="txt-caption text-muted-foreground">{fmtAt(item.createdAt)} · {item.operatorNo}</p><p>{item.note}</p>
+        <ClaimReceipts c={c} storeNo={storeNo} orderNo={orderNo} keys={item.evidenceKeys}/>
+      </div>)}
+      {allow("commerce:mall:offline:confirm") && ["APPLIED","UNMATCHED"].includes(row.status) && selected===null && <Button size="sm" variant="outline" onClick={()=>setSelected(row.confirmationActionNo)}>{c.supplement}</Button>}
+      {selected===row.confirmationActionNo && <SupplementForm key={selected} c={c} storeNo={storeNo} orderNo={orderNo} confirmationActionNo={selected} onClose={()=>setSelected(null)}/>}
+    </div>)}
+  </div>;
+}
+function SupplementForm({c,storeNo,orderNo,confirmationActionNo,onClose}:{c:MallCopy;storeNo:string;orderNo:string;confirmationActionNo:string;onClose:()=>void}) {
+  const [actionNo]=React.useState(()=>newOpNo("docs"));const [note,setNote]=React.useState("");const [key,setKey]=React.useState("");
+  const review=useOfflineReview(c,storeNo,orderNo,onClose);
+  return <div className="space-y-3 border-t pt-3"><p className="txt-caption text-muted-foreground">{c.supplementHint}</p>
+    <fieldset disabled={review.attempt!==null} className="space-y-3">
+      <Label htmlFor="supplement-note">{c.supplementNote}</Label><Textarea id="supplement-note" maxLength={1024} value={note} onChange={setNote}/>
+      <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT"]} selected={key} onSelect={setKey}/>
+      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>{c.btnCancel}</Button>
+        <Button disabled={!note.trim()&&!key} loading={review.save.isPending} onClick={()=>review.start({kind:"supplement",request:{actionNo,confirmationActionNo,note:note.trim(),evidenceKeys:key?[key]:[]}})}>{c.btnSave}</Button></div>
+    </fieldset><ReviewRecovery c={c} review={review}/>
+  </div>;
 }
 
 function VoidForm({

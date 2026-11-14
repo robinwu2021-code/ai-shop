@@ -1,0 +1,65 @@
+{
+  "device": "REDMI 2510DRK44C",
+  "scope": "166 / actual robin USR / target Chuangshi sandbox store / no real charge",
+  "foreground": {
+    "result": "PASS",
+    "paymentNo": "PYO261114112637264",
+    "native": {
+      "stage": "NORMAL_FOREGROUND_VERIFIED",
+      "utc": "2026-11-14T03:33:27.711711Z",
+      "paymentNo": "PYO261114112637264",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    }
+  },
+  "background": {
+    "result": "PASS (normal APK independent observation)",
+    "paymentNo": "PYO261114114049265",
+    "paidLocal": "2026-11-14 11:44:48",
+    "pausedLocal": "2026-11-14 11:44:34.055",
+    "resumedLocal": "2026-11-14 11:45:04.287",
+    "nativeBefore": {
+      "pid": "27163",
+      "utc": "2026-11-14T03:43:26.533507Z",
+      "source": "normal App native MethodChannel status via debug VM, read-only",
+      "available": true,
+      "started": 0,
+      "completed": 0,
+      "stopped": 0
+    },
+    "nativeAfter": {
+      "pid": "27163",
+      "utc": "2026-11-14T03:51:04.268048Z",
+      "source": "normal App native MethodChannel status via debug VM, read-only",
+      "available": true,
+      "started": 0,
+      "completed": 0,
+      "stopped": 0
+    },
+    "sameProcess": true,
+    "nativeReplaySpeech": 0,
+    "unreadBefore": 4,
+    "unreadAfter": 5
+  },
+  "normalUI": {
+    "paidCount": 5,
+    "paidTWD": 5,
+    "unread": 5,
+    "messageListCount": 5,
+    "finalRestart": "PASS: user/store restored, home TWD5 / 5 paid"
+  },
+  "managedIntegrationFixture": {
+    "status": "DID_NOT_COMPLETE",
+    "reason": "After real pause the managed test lost its connection, followed by ADB force-stop cleanup; native crash not evidenced. Original VM disconnect cause not fully established. Do not claim this fixture passed.",
+    "separateBusinessCaseEvidence": true
+  },
+  "normalApkSha256": "47a1f6191aeb6ff5a773be7c91c4ec92d5bd234532f55fa1cf9ef3086e83c53b",
+  "limits": [
+    "No QoS1/JetStream/App-consumption ACK",
+    "No OS background notification provider",
+    "Foreground case and background case used separate process lifetimes; background before/after is same normal process",
+    "Managed long-background automation still requires follow-up"
+  ]
+}

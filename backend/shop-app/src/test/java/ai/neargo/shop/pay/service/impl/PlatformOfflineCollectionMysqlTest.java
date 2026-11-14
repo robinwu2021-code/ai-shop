@@ -10,6 +10,30 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 class PlatformOfflineCollectionMysqlTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(longs={1000,86402000})
+    void testSalesReceiptIsMarkedButExcludedFromRealCashAndRefundReadPort(long paidAt) throws Exception {
+        try(var f=new Fixture()) {
+            var terms=f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile("MAIN","test-sales",0,
+                    "platform-mch","TWD",null,null,null,"w1",86400000,true,"ops","test","SALES_COLLECTION","Test only"));
+            var req=new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN","TEST-ORDER","TEST-ATTEMPT"),
+                    "buyer","platform-mch","OFFLINE","SALES_COLLECTION",199000,"TWD",86401000,1000,null,terms);
+            f.base.service.create(req);
+            var proof=new PlatformCollectionService.OfflineProof(req.key(),"ops","platform-mch",199000,"TWD",paidAt,null,
+                    "DOCUMENTATION_PENDING:test-action","TEST",paidAt+1000,"sales","TEST-RECEIPT");
+            var result=f.base.service.confirmOffline(proof);
+            assertEquals("MATCHED",result.disposition());assertEquals("SUCCESS",f.base.service.query(req.key()).state());
+            assertEquals(result,f.base.service.confirmOffline(proof));
+            assertTrue(f.base.service.receipts("MAIN","TEST-ORDER").isEmpty());
+            assertEquals("TEST",f.base.jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(platform_manual_proof,'$.mode')) FROM stl_payment WHERE payment_no=?",String.class,result.receipt().paymentNo()));
+            var refunds=new PlatformRefundServiceImpl(f.base.ds,new org.springframework.jdbc.datasource.DataSourceTransactionManager(f.base.ds),f.base.service,f.base.router);
+            var refund=new PlatformRefundService.Request(new PlatformRefundService.Key("MAIN","TEST-ORDER","test-refund"),"buyer","TEST-ATTEMPT",result.receipt().paymentNo(),"platform-mch",199000,199000,"TWD","Test refund must not become real cash");
+            assertEquals("REFUND_ORIGINAL_UNPROVEN",assertThrows(IllegalArgumentException.class,()->refunds.refund(refund)).getMessage());
+            assertEquals(0,f.base.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE direction='REFUND'",Integer.class));
+            assertEquals(0,f.base.sends.get());
+        }
+    }
+
     @org.junit.jupiter.api.RepeatedTest(3)
     void salesReceiptUniqueIndexArbitratesConcurrentOrders() throws Exception {
         try(var f=new Fixture()) {

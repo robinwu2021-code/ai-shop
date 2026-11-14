@@ -1,0 +1,24 @@
+[
+  {
+    "diagnosticAutoStopped": true,
+    "diagnosticEnabledForNextRestart": false,
+    "configurationInodePreserved": true,
+    "otherConfigurationBytesUnchanged": true,
+    "serviceRestarted": false
+  },
+  {
+    "apiShaMatches": true,
+    "protectedFilesUnchanged": {
+      "/data0/app/nearpay-prod/pay-svc.jar": true,
+      "/data0/app/nearpay-prod/cloud.properties": true,
+      "/data0/app/nearpay-prod/secret.properties": true,
+      "/data0/app/nearpay-prod/nearpay.env": true,
+      "/data0/app/nearpay-prod/payment-sse.private.properties": true
+    },
+    "staticPointersUnchanged": {
+      "/data/www/oms-root/oms": true,
+      "/data/www/nearpay-checkout": true,
+      "/data/www/ai-shop-ops/current": true
+    }
+  }
+]
