@@ -120,7 +120,7 @@ class FoundationQueryMysqlTest {
                     ApiResponseWrapper.class,
                     ai.neargo.shop.portal.biz.BizFoundationController.class);
             new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
-                new org.springframework.core.io.ClassPathResource("db/migration/V667__store_opening_receipts.sql")).execute(f.ds);
+                new org.springframework.core.io.ClassPathResource("db/migration/V673__store_opening_receipts.sql")).execute(f.ds);
             var openingAccess=mock(StoreCreationAccessService.class);
             when(openingAccess.access(any())).thenReturn(new StoreCreationAccessService.Access(true,false,List.of()));
             var openingImpl=new ai.neargo.shop.merchant.service.impl.StoreOpeningServiceImpl(

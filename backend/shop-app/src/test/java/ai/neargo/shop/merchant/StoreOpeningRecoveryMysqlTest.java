@@ -41,7 +41,7 @@ class StoreOpeningRecoveryMysqlTest {
         admin.execute("CREATE DATABASE "+schema);
         var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),dbUser,pw);
         jdbc=new JdbcTemplate(ds);tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V667__store_opening_receipts.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V673__store_opening_receipts.sql")).execute(ds);
         merchants=mock(MerchantAdminPort.class);stores=mock(StoreAdminService.class);access=mock(StoreCreationAccessService.class);
         when(access.access(user)).thenReturn(new StoreCreationAccessService.Access(true,false,List.of()));
         when(merchants.quickStart(any())).thenReturn(new MerchantAdminPort.QuickStartResult("E1","S1"));

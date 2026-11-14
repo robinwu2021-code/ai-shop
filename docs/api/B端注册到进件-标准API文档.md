@@ -1629,6 +1629,6 @@ curl "$API_BASE/biz/merchant/apply" \
 - `POST /biz/store/settings/basic`：`expectedVersion/name/address/addressDetail`，`biz:store:admin`；一个事务更新三个字段。
 - `POST /biz/store/settings/hours`：`expectedVersion/openHours`，`biz:store`；只更新营业时间。
 - 分区过期返回 10409。App 保留用户输入，提示关闭后重新读取核对，不自动覆盖。旧入口保留，缺少新版能力的老服务沿用既有接口，不能视为已具有版本冲突保护。
-- store-creation-context 新增 `storeOpeningSupported=true`；缺少此能力不调用新版开店接口。迁移 V667 仅新增回执表，必须先在 API 数据库应用，当前未部署。
+- store-creation-context 新增 `storeOpeningSupported=true`；缺少此能力不调用新版开店接口。迁移 V673 仅新增回执表，必须先在 API 数据库应用，当前未部署。
 
 字段定义见本目录 `openapi-b-onboarding.json` 的 StoreOpening* 与 StoreSettings*。
