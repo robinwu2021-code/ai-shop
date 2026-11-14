@@ -42,9 +42,9 @@ CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunc
 
 -- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V660__merchant_pay_service_application.sql | trg_mpsa_no_update,trg_mpsa_no_delete
 
--- Native capability absent: backend/shop-app/src/main/resources/db/migration/V649__service_execution_start_ack.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V668__service_execution_start_ack.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
 
--- Native capability absent: backend/shop-app/src/main/resources/db/migration/V651__service_execution_completion.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V669__service_execution_completion.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
 
 CREATE TABLE IF NOT EXISTS cmt_community
 (
@@ -7444,17 +7444,6 @@ CREATE TABLE IF NOT EXISTS pmt_benefit_intent
     CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
-CREATE TABLE IF NOT EXISTS ord_ent_service_task_claim
-(
-    tenant_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    work_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    task_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    service_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    PRIMARY KEY (tenant_no, entity_no, work_order_no, task_no),
-    CONSTRAINT uk_ent_service_task_order UNIQUE (tenant_no, service_order_no)
-);
-
 CREATE TABLE IF NOT EXISTS ord_ent_service_order
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -12030,64 +12019,6 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission
         AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0))
 );
 
-CREATE TABLE IF NOT EXISTS ord_postpay_receipt
-(
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    biz_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    currency CHAR(3) NOT NULL,
-    due_minor BIGINT NOT NULL,
-    received_minor BIGINT NOT NULL,
-    change_minor BIGINT NOT NULL,
-    request_key_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    payload_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    receipt_provenance VARCHAR(24) NOT NULL,
-    received_at DATETIME(3) NOT NULL,
-    recorded_at DATETIME(3) NOT NULL,
-    created_at DATETIME(3) NOT NULL,
-    created_by VARCHAR(64) NULL,
-    updated_at DATETIME(3) NOT NULL,
-    updated_by VARCHAR(64) NULL,
-    version BIGINT NOT NULL DEFAULT 1,
-    deleted INT NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_postpay_receipt_no UNIQUE (tenant_no,receipt_no),
-    CONSTRAINT uk_postpay_receipt_biz UNIQUE (tenant_no,entity_no,store_no,biz_no),
-    CONSTRAINT uk_postpay_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
-    CONSTRAINT ck_postpay_receipt_amounts CHECK (due_minor > 0 AND received_minor >= due_minor AND change_minor = received_minor - due_minor),
-    CONSTRAINT ck_postpay_receipt_provenance CHECK (receipt_provenance = 'POSTPAY_RECEIPT')
-);
-
-CREATE TABLE IF NOT EXISTS ord_postpay_receipt_root
-(
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    order_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    due_minor BIGINT NOT NULL,
-    core_version VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
-    created_at DATETIME(3) NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_postpay_root_order UNIQUE (tenant_no,order_no)
-);
-
-CREATE TABLE IF NOT EXISTS ord_postpay_receipt_record
-(
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    record_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
-    method VARCHAR(24) NOT NULL,
-    amount_minor BIGINT NOT NULL,
-    created_at DATETIME(3) NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_postpay_record UNIQUE (tenant_no,record_no)
-);
-
 CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -13146,6 +13077,249 @@ CREATE TABLE IF NOT EXISTS payment_collection_stream
     created_at BIGINT NOT NULL,
     PRIMARY KEY(scope_key,seq),
     CONSTRAINT uk_collection_stream_event UNIQUE (scope_key,event_id)
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_service_task_claim
+(
+    tenant_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    work_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    task_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    service_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    PRIMARY KEY (tenant_no, entity_no, work_order_no, task_no),
+    CONSTRAINT uk_ent_service_task_order UNIQUE (tenant_no, service_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_writer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_prd_stock_writer UNIQUE (tenant_no,entity_no),
+    CONSTRAINT ck_prd_stock_writer CHECK ((CASE mode WHEN 'LEGACY' THEN TRUE WHEN 'REPLENISH' THEN TRUE ELSE CASE WHEN mode IS NULL THEN NULL ELSE FALSE END END) AND deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    original_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    target_owner VARCHAR(16) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_owner VARCHAR(32) NOT NULL,
+    source_document VARCHAR(32) NOT NULL,
+    source_line INT NOT NULL,
+    binding_hash CHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    mapping_snapshot LONGTEXT NOT NULL,
+    target_snapshot LONGTEXT NULL,
+    admission_generation BIGINT NOT NULL DEFAULT 0,
+    expected_quantity DECIMAL(24,6) NOT NULL,
+    received_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+    difference_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+    returned_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+    return_accepted_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL,
+    close_reason VARCHAR(256) NULL,
+    CONSTRAINT uk_prd_replenishment_no UNIQUE (original_no),
+    CONSTRAINT uk_prd_replenishment_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line),
+    CONSTRAINT ck_prd_replenishment_identity CHECK (source_line>0 AND admission_generation>=0 AND (CASE target_owner WHEN 'FOOD_LOCAL' THEN TRUE WHEN 'PLATFORM' THEN TRUE ELSE CASE WHEN target_owner IS NULL THEN NULL ELSE FALSE END END) AND deleted=0),
+    CONSTRAINT ck_prd_replenishment_snapshot CHECK ((source_snapshot IS JSON) AND (mapping_snapshot IS JSON) AND (target_snapshot IS NULL OR (target_snapshot IS JSON))),
+    CONSTRAINT ck_prd_replenishment_target CHECK (target_owner<>'PLATFORM' OR (target_snapshot IS NOT NULL AND expected_quantity=FLOOR(expected_quantity) AND expected_quantity<=2147483647)),
+    CONSTRAINT ck_prd_replenishment_quantities CHECK (expected_quantity>0 AND received_quantity>=0 AND difference_quantity>=0 AND received_quantity+difference_quantity<=expected_quantity AND returned_quantity>=0 AND returned_quantity<=received_quantity AND return_accepted_quantity>=0 AND return_accepted_quantity<=returned_quantity),
+    CONSTRAINT ck_prd_repl_integer_totals CHECK (target_owner<>'PLATFORM' OR (received_quantity=FLOOR(received_quantity) AND difference_quantity=FLOOR(difference_quantity) AND returned_quantity=FLOOR(returned_quantity) AND return_accepted_quantity=FLOOR(return_accepted_quantity)))
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_connection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    enabled INT NOT NULL DEFAULT 0,
+    generation BIGINT NOT NULL DEFAULT 0,
+    source_system VARCHAR(32) NULL,
+    source_owner VARCHAR(32) NULL,
+    posting_watermark BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_prd_replenishment_connection UNIQUE (tenant_no,entity_no,store_no),
+    CONSTRAINT ck_prd_replenishment_connection CHECK ((CASE enabled WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN enabled IS NULL THEN NULL ELSE FALSE END END) AND generation>=0 AND posting_watermark>=0 AND (enabled=0 OR (source_system IS NOT NULL AND source_owner IS NOT NULL AND generation>0)) AND deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(128) COLLATE utf8mb4_0900_bin NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    CONSTRAINT uk_prd_replenishment_command UNIQUE (tenant_no,entity_no,store_no,action,operation_key),
+    CONSTRAINT ck_prd_replenishment_command CHECK ((result_json IS JSON) AND deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_movement
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    movement_no VARCHAR(32) NOT NULL,
+    original_no VARCHAR(32) NULL,
+    command_action VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(128) COLLATE utf8mb4_0900_bin NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    item_no VARCHAR(32) NOT NULL,
+    base_unit VARCHAR(16) NOT NULL,
+    target_identity CHAR(64) NOT NULL,
+    target_snapshot LONGTEXT NOT NULL,
+    delta INT NOT NULL,
+    on_hand_before INT NOT NULL,
+    on_hand_after INT NOT NULL,
+    reserved_before INT NOT NULL,
+    reserved_after INT NOT NULL,
+    reason VARCHAR(256) NULL,
+    CONSTRAINT uk_prd_repl_movement UNIQUE (movement_no),
+    CONSTRAINT uk_prd_repl_effect UNIQUE (tenant_no,entity_no,store_no,command_action,operation_key),
+    CONSTRAINT ck_prd_repl_movement_qty CHECK (delta<>0 AND delta>=-2147483647 AND on_hand_before>=0 AND on_hand_after>=0 AND reserved_before>=0 AND reserved_after=reserved_before AND reserved_before<=on_hand_before AND reserved_after<=on_hand_after AND on_hand_after=on_hand_before+delta),
+    CONSTRAINT ck_prd_repl_movement_kind CHECK (((CASE kind WHEN 'RECEIVE' THEN TRUE WHEN 'ADJUST_IN' THEN TRUE ELSE CASE WHEN kind IS NULL THEN NULL ELSE FALSE END END) AND delta>0 OR (CASE kind WHEN 'RETURN' THEN TRUE WHEN 'ADJUST_OUT' THEN TRUE ELSE CASE WHEN kind IS NULL THEN NULL ELSE FALSE END END) AND delta<0) AND deleted=0),
+    CONSTRAINT ck_prd_repl_movement_target CHECK ((target_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_manual
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    original_no VARCHAR(32) NOT NULL,
+    movement_no VARCHAR(32) NOT NULL,
+    quantity INT NOT NULL,
+    CONSTRAINT uk_prd_repl_manual_movement UNIQUE (tenant_no,movement_no),
+    CONSTRAINT ck_prd_repl_manual CHECK (quantity>0 AND deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_return
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    original_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_owner VARCHAR(32) NOT NULL,
+    source_document VARCHAR(32) NOT NULL,
+    source_line INT NOT NULL,
+    accepted_quantity INT NOT NULL,
+    proof_hash CHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    CONSTRAINT uk_prd_repl_return_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line),
+    CONSTRAINT ck_prd_repl_return CHECK (source_line>0 AND accepted_quantity>0 AND deleted=0 AND (source_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    biz_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    currency CHAR(3) NOT NULL,
+    due_minor BIGINT NOT NULL,
+    received_minor BIGINT NOT NULL,
+    change_minor BIGINT NOT NULL,
+    request_key_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    receipt_provenance VARCHAR(24) NOT NULL,
+    received_at DATETIME(3) NOT NULL,
+    recorded_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_receipt_no UNIQUE (tenant_no,receipt_no),
+    CONSTRAINT uk_postpay_receipt_biz UNIQUE (tenant_no,entity_no,store_no,biz_no),
+    CONSTRAINT uk_postpay_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
+    CONSTRAINT ck_postpay_receipt_amounts CHECK (due_minor > 0 AND received_minor >= due_minor
+        AND change_minor = received_minor - due_minor),
+    CONSTRAINT ck_postpay_receipt_provenance CHECK (receipt_provenance = 'POSTPAY_RECEIPT')
+);
+
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt_root
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    due_minor BIGINT NOT NULL,
+    core_version VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_root_order UNIQUE (tenant_no,order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt_record
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    record_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    method VARCHAR(24) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_record UNIQUE (tenant_no,record_no)
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product
@@ -20513,95 +20687,3 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
--- I04-D2 admission metadata; MySQL-specific CHECK semantics are tested using V659 on MySQL9.
-CREATE TABLE IF NOT EXISTS prd_stock_writer
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- entity_no VARCHAR(32) NOT NULL, mode VARCHAR(16) NOT NULL,
- CONSTRAINT uk_prd_stock_writer UNIQUE (tenant_no,entity_no)
-);
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- original_no VARCHAR(32) NOT NULL, entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
- target_owner VARCHAR(16) NOT NULL, source_system VARCHAR(32) NOT NULL, source_owner VARCHAR(32) NOT NULL,
- source_document VARCHAR(32) NOT NULL, source_line INT NOT NULL, binding_hash CHAR(64) NOT NULL,
- source_snapshot LONGTEXT NOT NULL, mapping_snapshot LONGTEXT NOT NULL, target_snapshot LONGTEXT NULL,
- admission_generation BIGINT NOT NULL DEFAULT 0, expected_quantity DECIMAL(24,6) NOT NULL,
- received_quantity DECIMAL(24,6) NOT NULL DEFAULT 0, difference_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
- returned_quantity DECIMAL(24,6) NOT NULL DEFAULT 0, return_accepted_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
- status VARCHAR(16) NOT NULL, close_reason VARCHAR(256) NULL,
- CONSTRAINT uk_prd_replenishment_no UNIQUE (original_no),
- CONSTRAINT uk_prd_replenishment_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line)
-);
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment_connection
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, enabled INT NOT NULL DEFAULT 0,
- generation BIGINT NOT NULL DEFAULT 0, source_system VARCHAR(32) NULL, source_owner VARCHAR(32) NULL,
- posting_watermark BIGINT NOT NULL DEFAULT 0,
- CONSTRAINT uk_prd_replenishment_connection UNIQUE (tenant_no,entity_no,store_no)
-);
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment_command
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, action VARCHAR(32) NOT NULL,
- operation_key VARCHAR(128) NOT NULL, request_hash CHAR(64) NOT NULL, result_json LONGTEXT NOT NULL,
- CONSTRAINT uk_prd_replenishment_command UNIQUE (tenant_no,entity_no,store_no,action,operation_key)
-);
-
--- I04-D2-03 local effects. Native CHECK/NO PAD semantics are exercised using V660 on MySQL9.
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment_movement
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- movement_no VARCHAR(32) NOT NULL, original_no VARCHAR(32) NULL,
- command_action VARCHAR(32) NOT NULL, operation_key VARCHAR(128) NOT NULL,
- kind VARCHAR(24) NOT NULL, item_no VARCHAR(32) NOT NULL, base_unit VARCHAR(16) NOT NULL,
- target_identity CHAR(64) NOT NULL, target_snapshot LONGTEXT NOT NULL,
- delta INT NOT NULL, on_hand_before INT NOT NULL, on_hand_after INT NOT NULL,
- reserved_before INT NOT NULL, reserved_after INT NOT NULL, reason VARCHAR(256) NULL,
- CONSTRAINT uk_prd_repl_movement UNIQUE (movement_no),
- CONSTRAINT uk_prd_repl_effect UNIQUE (tenant_no,entity_no,store_no,command_action,operation_key)
-);
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment_manual
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- original_no VARCHAR(32) NOT NULL, movement_no VARCHAR(32) NOT NULL, quantity INT NOT NULL,
- CONSTRAINT uk_prd_repl_manual_movement UNIQUE (tenant_no,movement_no)
-);
-CREATE TABLE IF NOT EXISTS prd_stock_replenishment_return
-(
- id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
- created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
- updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
- version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
- original_no VARCHAR(32) NOT NULL, source_system VARCHAR(32) NOT NULL, source_owner VARCHAR(32) NOT NULL,
- source_document VARCHAR(32) NOT NULL, source_line INT NOT NULL, accepted_quantity INT NOT NULL,
- proof_hash CHAR(64) NOT NULL, source_snapshot LONGTEXT NOT NULL,
- CONSTRAINT uk_prd_repl_return_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line)
-);

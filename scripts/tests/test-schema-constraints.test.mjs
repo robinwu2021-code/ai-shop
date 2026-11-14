@@ -371,7 +371,7 @@ function nativeUpgradeFixture(change = () => {}) {
     const root = mkdtempSync(join(tmpdir(), 'native-upgrade-projection-'));
     try {
         const real = JSON.parse(readFileSync(join(repository, 'backend/scripts/h2-fixture-policy.json'), 'utf8'));
-        const entries = structuredClone(real.entries.filter(entry => /\/V(604|649|651)__/.test(entry.migration)));
+        const entries = structuredClone(real.entries.filter(entry => /\/V(604|668|669)__/.test(entry.migration)));
         for (const entry of entries) {
             for (const name of [entry.migration, entry.descriptor]) {
                 const target = join(root, name);
@@ -398,7 +398,7 @@ function nativeUpgradeFixture(change = () => {}) {
 }
 
 function changeNativeUpgrade(root, entries, transform) {
-    const entry = entries.find(value => value.migration.includes('/V651__'));
+    const entry = entries.find(value => value.migration.includes('/V669__'));
     const migration = join(root, entry.migration);
     const original = readFileSync(migration, 'utf8');
     const sql = transform(original);
@@ -416,7 +416,7 @@ function changeNativeUpgrade(root, entries, transform) {
 test('native execution upgrades retain the exact absent owner chain', () => {
     assert.deepEqual(nativeUpgradeFixture(), [0, 0, 0]);
     assert.throws(() => nativeUpgradeFixture((root, entries) => {
-        entries.splice(entries.findIndex(entry => entry.migration.includes('/V649__')), 1);
+        entries.splice(entries.findIndex(entry => entry.migration.includes('/V668__')), 1);
     }), /native upgrade requires its declared parent/);
 });
 

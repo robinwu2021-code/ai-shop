@@ -116,7 +116,7 @@ import org.springframework.transaction.annotation.AnnotationTransactionAttribute
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Shared actual PLATFORM fixtures and V659/V660; remote FOOD facts remain explicit doubles. */
+/** Shared actual PLATFORM fixtures and V672/V673; remote FOOD facts remain explicit doubles. */
 abstract class RetailStockReplenishmentNativeFixture {
     protected static final Scope S=new Scope("MAIN","E","S");
     protected final String schema="i04d2_"+UUID.randomUUID().toString().replace("-","");
@@ -155,8 +155,8 @@ abstract class RetailStockReplenishmentNativeFixture {
             var found=Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS "+table+"\\s*\\(.*?\n\\);").matcher(ddl);
             assertThat(found.find()).as(table).isTrue();db.execute(found.group());
         }
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V659__retail_stock_replenishment_admission.sql"),
-                new ClassPathResource("db/migration/V660__retail_stock_replenishment_effects.sql")).execute(source);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V672__retail_stock_replenishment_admission.sql"),
+                new ClassPathResource("db/migration/V673__retail_stock_replenishment_effects.sql")).execute(source);
         manager=new DataSourceTransactionManager(source);
         var config=new MybatisConfiguration();config.setMapUnderscoreToCamelCase(true);
         var factory=new MybatisSqlSessionFactoryBean();factory.setDataSource(source);factory.setConfiguration(config);

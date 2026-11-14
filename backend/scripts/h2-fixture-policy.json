@@ -162,10 +162,10 @@
       ]
     },
     {
-      "migration": "backend/shop-app/src/main/resources/db/migration/V649__service_execution_start_ack.sql",
+      "migration": "backend/shop-app/src/main/resources/db/migration/V668__service_execution_start_ack.sql",
       "sourceSha256": "211e932156ec3f53c994fd6a775edfc2406258d2e0a11ff86934a6bf7b3b51e0",
       "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/service-execution-start-schema.json",
-      "descriptorSha256": "084da3f83e452d7cb9b69e9848bdbbd4b32461de460220947b9aec7060398151",
+      "descriptorSha256": "4a2bd5bca0f5a4b09f4cfef86f0c8c077f511ed1170f637384cbdc721d32c23f",
       "datasource": "PRIMARY",
       "mode": "NATIVE_OWNER_ABSENT_UPGRADE",
       "capability": "manual-service-execution",
@@ -178,10 +178,10 @@
       "retainedStatementHashes": []
     },
     {
-      "migration": "backend/shop-app/src/main/resources/db/migration/V651__service_execution_completion.sql",
+      "migration": "backend/shop-app/src/main/resources/db/migration/V669__service_execution_completion.sql",
       "sourceSha256": "cac52242fc1417370b8a70c41c42de86562b391f77e32a12eb78a5f100c51813",
       "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/service-execution-completion-schema.json",
-      "descriptorSha256": "09c754b7c1ebcb3f277fe2fc321e323e1a3c40ade3e3b5734e0494206058b473",
+      "descriptorSha256": "26fc0d0717307798c45962de559dfafad8efc9bd62ea6eb8bd5812115ef1e530",
       "datasource": "PRIMARY",
       "mode": "NATIVE_OWNER_ABSENT_UPGRADE",
       "capability": "manual-service-execution",

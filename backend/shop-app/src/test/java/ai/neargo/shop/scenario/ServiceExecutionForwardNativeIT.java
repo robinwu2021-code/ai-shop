@@ -160,12 +160,12 @@ class ServiceExecutionForwardNativeIT {
             String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             jdbc.execute(script.substring(0, script.indexOf(';') + 1));
         }
-        migrate(data, "649");
+        migrate(data, "668");
         physicalSchema = new ServiceExecutionSchemaVerifier(data, "flyway_schema_history", "");
         assertThat(physicalSchema.installation()).isEqualTo(ServiceExecutionSchemaVerifier.Installation.INSTALLED);
         physicalSchema.requireStartAvailable();
         assertThatThrownBy(physicalSchema::requireCompletionAvailable).isInstanceOf(BizException.class);
-        migrate(data, "651");
+        migrate(data, "669");
         physicalSchema.requireStartAvailable();
         physicalSchema.requireCompletionAvailable();
         var config = new Configuration();
@@ -271,7 +271,7 @@ class ServiceExecutionForwardNativeIT {
         Path directory = Files.createTempDirectory("execution-forward-native-");
         try {
             for (String script : List.of("V604__manual_service_execution_authority.sql",
-                    "V649__service_execution_start_ack.sql", "V651__service_execution_completion.sql")) {
+                    "V668__service_execution_start_ack.sql", "V669__service_execution_completion.sql")) {
                 try (var input = new ClassPathResource("db/migration/" + script).getInputStream()) {
                     Files.copy(input, directory.resolve(script));
                 }

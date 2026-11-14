@@ -15,9 +15,9 @@ test('ACK renderer retains the frozen base and exact forward SQL bytes', () => {
   const result = render(source, base);
   assert.equal(JSON.stringify(base), original);
   assert.equal(result.sql, readFileSync(resolve(root,
-    'backend/shop-app/src/main/resources/db/migration/V649__service_execution_start_ack.sql'), 'utf8'));
+    'backend/shop-app/src/main/resources/db/migration/V668__service_execution_start_ack.sql'), 'utf8'));
   assert.equal(result.descriptor.postTriggers.length, 7);
-  assert.equal(result.descriptor.platformVersion, 649);
+  assert.equal(result.descriptor.platformVersion, 668);
 });
 
 test('a wrong base digest cannot mint an apparently installed successor', () => {
@@ -35,5 +35,5 @@ test('completion successor retains ACK permanence and adds performed-unit guards
   assert.ok(result.descriptor.postTriggers.some(t => t.name === 'trg_seu_performed_terminal'));
   assert.equal(result.descriptor.baseMigrationSha256, ack.migrationSha256);
   assert.equal(result.sql, readFileSync(resolve(root,
-    'backend/shop-app/src/main/resources/db/migration/V651__service_execution_completion.sql'), 'utf8'));
+    'backend/shop-app/src/main/resources/db/migration/V669__service_execution_completion.sql'), 'utf8'));
 });

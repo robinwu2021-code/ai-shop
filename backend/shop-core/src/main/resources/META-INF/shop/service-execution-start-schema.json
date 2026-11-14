@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "platformVersion": 649,
+  "platformVersion": 668,
   "owner": "shop-core/primary",
-  "migrationScript": "V649__service_execution_start_ack.sql",
+  "migrationScript": "V668__service_execution_start_ack.sql",
   "migrationSha256": "211e932156ec3f53c994fd6a775edfc2406258d2e0a11ff86934a6bf7b3b51e0",
   "flywayChecksum": 1087461380,
   "baseMigrationSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",

@@ -111,7 +111,7 @@ record PostpayReceipt(String receiptNo, long dueMinor, long receivedMinor, long 
   - 核心：`POST /internal/trade/postpay-receipts/confirm`（food-server → 宿主）；
   - 餐饮：`POST /internal/food/counter-settlements/{create|finalize|cancel|get}`（宿主里的 food-web → food-server，拆分部署时）。
 - **库表**：
-  - 平台迁移 `V665__postpay_receipt.sql`（编号避开推送分支的 V661–V664，合并时再核对）：`ord_postpay_receipt`（实收号、门店、结算号、币种、应收、实收、找零、外部记账号集合与哈希、操作人、请求键、来源 `provenance='POSTPAY_RECEIPT'`（CHECK 约束）；唯一键 `(tenant, entity, store, biz_no)`、`(tenant, entity, store, request_key_hash)`）；`ord_order` 不改表结构（§6 偏差 1）；`ord_postpay_receipt_root`（实收号、核心单号、应收、核心版本；唯一键 `order_no`）；`ord_postpay_receipt_record`（实收号、外部记账号；唯一键 `record_no`，保证一笔记账只用一次）。
+  - 平台迁移 `V674__postpay_receipt.sql`（统一开发分支合并时由 V665 顺延为 V674，见下）：`ord_postpay_receipt`（实收号、门店、结算号、币种、应收、实收、找零、外部记账号集合与哈希、操作人、请求键、来源 `provenance='POSTPAY_RECEIPT'`（CHECK 约束）；唯一键 `(tenant, entity, store, biz_no)`、`(tenant, entity, store, request_key_hash)`）；`ord_order` 不改表结构（§6 偏差 1）；`ord_postpay_receipt_root`（实收号、核心单号、应收、核心版本；唯一键 `order_no`）；`ord_postpay_receipt_record`（实收号、外部记账号；唯一键 `record_no`，保证一笔记账只用一次）。
   - 餐饮迁移 `V40__counter_settlement.sql`：`fnb_settlement.kind`（为空 = 既有 H5 结算单，`COUNTER` = 柜台）；H5 的恢复任务（`DiningTransactionRecoveryServiceImpl` 两处 CHECKOUT_PENDING 查询）排除 `COUNTER`。
 - **错误码与文案**（三语）：20024 少收（带差额）、20025 多收不是现金、20026 记账号无效（不存在 / 别家 / 作废 / 币种 / 结算号不符 / 已被使用）、20027 核心单或账单已变更需重建、20028 台账有在途批次或未决退餐、20029 核心单有菜在别的台账上、20030 已确认不可取消；「结算单已存在未结束」沿用已有 `CONFLICT`。内部响应把这 7 个码映射为 409（`InternalServiceResponses`）。
 - **权限码**：无新增（R6）。
@@ -124,7 +124,7 @@ record PostpayReceipt(String receiptNo, long dueMinor, long receivedMinor, long 
 |---|---|---|
 | 新增 | `backend/shop-base/.../spi/trade/PostpayReceiptPort.java` | 合同与记录 |
 | 新增 | `backend/shop-core/.../trade/service/PostpayReceiptService.java`、`impl/PostpayReceiptServiceImpl.java`、`mapper/PostpayReceiptMapper.java`、实体 | 核心确认 |
-| 新增 | `backend/shop-app/.../db/migration/V665__postpay_receipt.sql` | 三张表 |
+| 新增 | `backend/shop-app/.../db/migration/V674__postpay_receipt.sql` | 三张表 |
 | 新增 | `backend/shop-app/.../portal/internal/InternalPostpayReceiptController.java`、本地端口实现 | 嵌入与独立两种部署 |
 | 新增 | `F/food-core/.../service/CounterSettlementService.java`、`impl/CounterSettlementServiceImpl.java` | 餐饮编排 |
 | 新增 | `F/food-web/.../api/biz/BizCounterSettlementController.java` | 三个端点 |
@@ -168,7 +168,7 @@ record PostpayReceipt(String receiptNo, long dueMinor, long receivedMinor, long 
 |---|---|
 | 核心单推 PAID 影响下游（结算、报表、积分） | 不发通用「已支付」事件；已逐个核对 PAID 的读者（§6 偏差 6）：资金巡检与出账会把它当线上收款补结算单 —— **已修**；报表日结不重算、后付单无法走售后退款 —— 记为后续 |
 | 结算期间有人退菜 | 冻结期间账单不可变；核心版本比对兜底（AC6） |
-| 迁移编号与推送分支冲突 | 本分支用 V665；合并时再核对 |
+| 迁移编号与推送分支冲突 | 原 V665 与主线 V665 冲突；2026-11-14 统一开发分支把餐饮线平台迁移整体顺延到 V668–V674，本表为 V674 |
 | 独立部署下核心不可达 | 结算单停在 COLLECTING，重试确认；核心幂等 |
 
 ## §5 对账三 · 实现 → 需求（测试）
@@ -262,12 +262,12 @@ BizCounterSettlementPermTest / RemoteCounterSettlementServiceTest  各 1，全�
 
 | 迁移 | 内容 |
 |---|---|
-| 平台 `V665__postpay_receipt.sql` | `ord_postpay_receipt` / `_root` / `_record` 三张新表；不改 `ord_order` |
+| 平台 `V674__postpay_receipt.sql` | `ord_postpay_receipt` / `_root` / `_record` 三张新表；不改 `ord_order` |
 | 餐饮 `V40__counter_settlement.sql` | `fnb_settlement` 加 `kind`、`received_minor`、`change_minor` 三列（V40 未在任何正式环境执行过，故三列合在一版） |
 
 - 合并时与 PR #14 的冲突点：`FoodSchemaValidator` 的期望版本行（两边都改），取较大版本并核对。
-- 平台迁移编号避开了推送分支的 V661–V664，合并推送分支时再核对一次顺序。
-- 本机 MySQL 开着 binlog 时，V649 的触发器需要 SUPER（或 `log_bin_trust_function_creators`）；正式环境由 root 执行则无此问题。
+- 平台迁移编号：2026-11-14 统一开发分支合并时由 V665 顺延为 V674（餐饮线 V649/V651/V654/V657/V659/V660/V665 依次改为 V668–V674）。
+- 本机 MySQL 开着 binlog 时，V668（原 V649）的触发器需要 SUPER（或 `log_bin_trust_function_creators`）；正式环境由 root 执行则无此问题。
 
 ### 2. 应用配置（嵌入部署：餐饮跑在平台进程里）
 

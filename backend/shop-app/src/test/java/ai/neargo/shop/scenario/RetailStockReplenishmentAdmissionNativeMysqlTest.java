@@ -94,7 +94,7 @@ import org.springframework.transaction.annotation.AnnotationTransactionAttribute
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Actual V659, product mappers and transactions. FOOD history/availability are explicit remote doubles. */
+/** Actual V672, product mappers and transactions. FOOD history/availability are explicit remote doubles. */
 @EnabledIfEnvironmentVariable(named="R01_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:3308/.*")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RetailStockReplenishmentAdmissionNativeMysqlTest extends RetailStockReplenishmentNativeFixture {    @Test void registrationIsPermanentAndDoesNotPretendThatSourceGoodsHaveBeenReceived(){

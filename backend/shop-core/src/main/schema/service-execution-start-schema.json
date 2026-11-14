@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "platformVersion": 649,
+  "platformVersion": 668,
   "owner": "shop-core/primary",
   "baseMigrationSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
   "changes": [

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "platformVersion": 651,
+  "platformVersion": 669,
   "owner": "shop-core/primary",
-  "migrationScript": "V651__service_execution_completion.sql",
+  "migrationScript": "V669__service_execution_completion.sql",
   "baseMigrationSha256": "211e932156ec3f53c994fd6a775edfc2406258d2e0a11ff86934a6bf7b3b51e0",
   "changes": [
     {

@@ -47,7 +47,7 @@ class EntitlementServiceTaskClaimMysqlTest {
         jdbc = new JdbcTemplate(source);
         new ResourceDatabasePopulator(
                 new ClassPathResource("db/migration/V495__entitlement_service_order.sql"),
-                new ClassPathResource("db/migration/V654__service_work_order_task_claim.sql")).execute(source);
+                new ClassPathResource("db/migration/V670__service_work_order_task_claim.sql")).execute(source);
 
         var configuration = new MybatisConfiguration();
         configuration.setMapUnderscoreToCamelCase(true);

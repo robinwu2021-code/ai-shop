@@ -675,7 +675,7 @@ FOOD和主库无法同事务：主库认领表示固定交接意图，不声称F
 | shop-core持久化 | `ai.neargo.shop.product.entity`下的PrdStockReplenishment、PrdStockReplenishmentConnection、PrdStockReplenishmentCommand、PrdStockWriter及`ai.neargo.shop.product.mapper.ProductMappers`对应Mapper |
 | 既有主库适配 | `ai.neargo.shop.product.service.impl.StockReplenishmentServiceImpl` / `StockSyncServiceImpl`；`ai.neargo.shop.product.port.RetailReplenishmentTargetPortImpl` |
 | FOOD | food-core的`ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl` / `ai.neargo.shop.food.mapper.FoodMappers`；food-web的`ai.neargo.shop.food.foodclient.RemoteFoodStockReplenishmentPort`；food-server的`ai.neargo.shop.food.server.api.InternalFoodStockReplenishmentController` |
-| shop-app | `src/main/resources/db/migration/V659__retail_stock_replenishment_admission.sql`及对应原生用例；独立进销存引擎/客户端实现未改 |
+| shop-app | `src/main/resources/db/migration/V672__retail_stock_replenishment_admission.sql`及对应原生用例；独立进销存引擎/客户端实现未改 |
 
 | 设计/需求 | 实现 | 验证落点 |
 |---|---|---|
