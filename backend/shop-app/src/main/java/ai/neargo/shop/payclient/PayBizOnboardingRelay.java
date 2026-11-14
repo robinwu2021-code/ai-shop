@@ -6,12 +6,15 @@ import java.io.IOException;
 import java.net.http.HttpTimeoutException;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 /** Shared bounded byte relay; resource controllers retain their exact paths. */
 public final class PayBizOnboardingRelay {
+  private static final Logger LOG = LoggerFactory.getLogger(PayBizOnboardingRelay.class);
   private PayBizOnboardingRelay() {}
   public static ResponseEntity<byte[]> forward(BizOnboardingForwarder forwarder, HttpServletRequest request) throws IOException {
     String path = request.getRequestURI().substring(request.getContextPath().length());
@@ -27,6 +30,10 @@ public final class PayBizOnboardingRelay {
       headers.put(name, request.getHeader(name));
     try {
       var result = forwarder.forward(method, target, headers, body);
+      if (upload && result.status() >= 400) {
+        LOG.warn("BIZ upload relay failed requestType={} capturedBytes={} declaredBytes={} upstreamStatus={}",
+            request.getClass().getName(), body.length, request.getContentLengthLong(), result.status());
+      }
       var responseHeaders = new HttpHeaders();
       result.headers().forEach(responseHeaders::put);
       return ResponseEntity.status(result.status()).headers(responseHeaders).body(result.body());
