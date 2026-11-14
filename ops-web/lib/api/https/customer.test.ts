@@ -16,5 +16,5 @@ it("preserves authoritative source store and never derives identity from phone t
  const result=await customerHttp.platformMembers();expect(result.records.map(p=>p.personNo)).toEqual(["P1","P2"]);expect(result.records[1].sourceStoreNo).toBeNull();
 });
 it("keeps failures visible and never fills a missing live customer source with mock facts",async()=>{
- vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:false,status:503,json:async()=>({code:10503,msg:"unavailable"})}));await expect(customerHttp.customerRegistrations()).rejects.toThrow();await expect(customerMock.platformMembers()).rejects.toThrow("CUSTOMER_REPORTING_REQUIRES_HTTP");
+ vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:false,status:503,json:async()=>({code:10503,msg:"unavailable"})}));await expect(customerHttp.customerRegistrations()).rejects.toThrow();await expect(customerMock.platformMembers()).rejects.toMatchObject({code:400,message:expect.stringContaining("客户报表需要连接真实后端")});
 });
