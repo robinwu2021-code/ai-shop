@@ -73,6 +73,9 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
   const [communityNo, setCommunityNo] = useState("");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<StoreGovern | null>(null);
+  /** 二级抽屉：门店资料 / 经营审核 / 经营状况 / 覆盖与取货，一次只开一个 */
+  const [panel, setPanel] = useState<"profile" | "review" | "stats" | "reach" | null>(null);
+  const review = useCopy(STORE_REVIEW_COPY);
 
   const canBan = allow("merchant:merchant:ban");
 
@@ -89,23 +92,21 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
   });
 
   /*
-   * 经营状况单独一条请求，只在抽屉打开时发：它在后端是另一个域（trade），
-   * 列表里每行都带上等于把商品池那份统计查询乘以一页的行数。
-   */
-  /*
-   * 门店详情（P-11.2.1c）。`getStore` 这个调用**此前声明了、实现了、从没被调用过** ——
-   * 抽屉一直只画列表行上的字段，于是覆盖社区/挂靠自提点/扫码数三样在界面上没有。
+   * 门店详情（P-11.2.1c）：覆盖社区 / 挂靠自提点 / 扫码数，只在打开「覆盖与取货」时取。
    */
   const detail = useQuery({
     queryKey: ["store-detail", current?.storeNo],
     queryFn: () => api.getStore(current!.storeNo),
-    enabled: !!current,
+    enabled: !!current && panel === "reach",
   });
 
+  /*
+   * 经营状况是另一个域（trade）的统计，只在打开「经营状况」时取 —— 详情摘要里不放统计。
+   */
   const stats = useQuery({
     queryKey: ["store-stats", current?.storeNo],
     queryFn: () => api.getStoreStats(current!.storeNo),
-    enabled: !!current,
+    enabled: !!current && panel === "stats",
   });
 
   const restore = useMutation({
@@ -194,13 +195,14 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
 
       <Drawer
         open={!!current}
-        onOpenChange={(o) => !o && setCurrent(null)}
+        onOpenChange={(o) => { if (!o) { setCurrent(null); setPanel(null); } }}
         title={current?.name ?? ""}
         desc={current ? `${current.storeNo} · ${current.merchantName}` : undefined}
         width="w-[560px]"
       >
         {current && (
           <div>
+            {/* 主抽屉只放摘要与入口；资料、经营数、覆盖、审核各开一个二级抽屉，一屏不堆满 */}
             <DrawerSection first title={c.stSecProfile}>
               <FieldGrid>
                 <Field className="mb-3" label={c.stColStatus}><StatusBadge map={statusMap} value={current.status} /></Field>
@@ -213,45 +215,83 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
                 </Field>
               </FieldGrid>
               <Field label={c.stFieldAddress}>{current.address}</Field>
-              <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
-              <Field label={c.stFieldAnnouncement}>
-                {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
-              </Field>
-              {/* 配送四个数摆在一起：单看任何一个都判断不了这家店的配送划不划得来 */}
-              <FieldGrid>
-                <Field className="mb-3" label={c.stFieldRadius}>{fill(c.stMeters, { n: current.deliveryRadiusM })}</Field>
-                <Field className="mb-3" label={c.stFieldMinOrder}>{money(current.deliveryMinOrderMinor)}</Field>
-                <Field className="mb-3" label={c.stFieldFee}>{money(current.deliveryFeeMinor)}</Field>
-                <Field className="mb-3" label={c.stFieldFreeThreshold}>{money(current.deliveryFreeThresholdMinor)}</Field>
-              </FieldGrid>
             </DrawerSection>
 
-            <DrawerSection title={c.stSecStats}>
-              {stats.isLoading && <p className="txt-caption text-muted-foreground">{c.stStatsLoading}</p>}
-              {stats.data && (
-                <FieldGrid>
-                  <Field className="mb-3" label={c.stStatTodayOrders}>{stats.data.todayOrders}</Field>
-                  <Field className="mb-3" label={c.stStatTodayGmv}>{money(stats.data.todayGmvMinor)}</Field>
-                  <Field className="mb-3" label={c.stStatMonthOrders}>{stats.data.monthOrders}</Field>
-                  <Field className="mb-3" label={c.stStatMonthGmv}>{money(stats.data.monthGmvMinor)}</Field>
-                  {/* 自带客流占比直接对应这家店少付的佣金（ADR-004），所以与经营数摆在一起 */}
-                  <Field className="mb-3" label={c.stStatOwnedTraffic}>{Math.round(stats.data.ownedTrafficRate * 100)}%</Field>
-                  <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
-                  <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
-                  <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
-                  {/* 待售后与前三项摆在一起：运营看的是「这家店是不是没人管了」 */}
-                  <Field className="mb-3" label={c.stStatToAfterSale}>{stats.data.toAfterSale}</Field>
-                </FieldGrid>
-              )}
+            <DrawerSection title={c.stSecActions}>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPanel("profile")}>{c.stSecProfile}</Button>
+                <Button size="sm" variant="outline" onClick={() => setPanel("review")}>{review.title}</Button>
+                <Button size="sm" variant="outline" onClick={() => setPanel("stats")}>{c.stSecStats}</Button>
+                <Button size="sm" variant="outline" onClick={() => setPanel("reach")}>{c.stSecReach}</Button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="ghost" asChild>
+                  <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">{c.stViewOrders}</Link>
+                </Button>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">{c.stViewGoods}</Link>
+                </Button>
+              </div>
+              {detailActions && <div className="mt-2">{detailActions(current)}</div>}
             </DrawerSection>
 
-            {/*
-              门店订单入口（P-11.2.1f）。后端与 OrderQ 早就支持 storeNo，
-              **只是没有任何地方发它** —— 运营要看这家店的单，此前只能去订单页
-              自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
-            */}
-            {/* 覆盖社区挂在**主体**上：同主体的门店看到同一份，所以标题不写「本店覆盖」 */}
-            <DrawerSection title={c.stSecReach} desc={c.stReachHint}>
+            {/* 解除强制下线只对平台压下的店出现；其余状态不占位 */}
+            {current.status === "SUSPENDED" && (
+              <DrawerSection title={c.stBtnRestore} desc={c.stRestoreHint}>
+                {canBan
+                  ? <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>{c.stBtnRestore}</Button>
+                  : <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" />}
+              </DrawerSection>
+            )}
+          </div>
+        )}
+      </Drawer>
+
+      <Drawer open={!!current && panel === "profile"} onOpenChange={(o) => !o && setPanel(null)} title={c.stSecProfile} desc={current?.name}>
+        {current && (
+          <DrawerSection first title={c.stSecProfile}>
+            <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
+            <Field label={c.stFieldAnnouncement}>
+              {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
+            </Field>
+            {/* 配送四个数摆在一起：单看任何一个都判断不了这家店的配送划不划得来 */}
+            <FieldGrid>
+              <Field className="mb-3" label={c.stFieldRadius}>{fill(c.stMeters, { n: current.deliveryRadiusM })}</Field>
+              <Field className="mb-3" label={c.stFieldMinOrder}>{money(current.deliveryMinOrderMinor)}</Field>
+              <Field className="mb-3" label={c.stFieldFee}>{money(current.deliveryFeeMinor)}</Field>
+              <Field className="mb-3" label={c.stFieldFreeThreshold}>{money(current.deliveryFreeThresholdMinor)}</Field>
+            </FieldGrid>
+          </DrawerSection>
+        )}
+      </Drawer>
+
+      <Drawer open={!!current && panel === "review"} onOpenChange={(o) => !o && setPanel(null)} title={review.title} desc={current?.name}>
+        {current && <OperationalReview key={current.storeNo} storeNo={current.storeNo} onChanged={(r) => setCurrent((store) => store?.storeNo === r.storeNo ? { ...store, status: r.status } : store)} />}
+      </Drawer>
+
+      <Drawer open={!!current && panel === "stats"} onOpenChange={(o) => !o && setPanel(null)} title={c.stSecStats} desc={current?.name}>
+        <DrawerSection first title={c.stSecStats}>
+          {stats.isLoading && <p className="txt-caption text-muted-foreground">{c.stStatsLoading}</p>}
+          {stats.data && (
+            <FieldGrid>
+              <Field className="mb-3" label={c.stStatTodayOrders}>{stats.data.todayOrders}</Field>
+              <Field className="mb-3" label={c.stStatTodayGmv}>{money(stats.data.todayGmvMinor)}</Field>
+              <Field className="mb-3" label={c.stStatMonthOrders}>{stats.data.monthOrders}</Field>
+              <Field className="mb-3" label={c.stStatMonthGmv}>{money(stats.data.monthGmvMinor)}</Field>
+              {/* 自带客流占比直接对应这家店少付的佣金（ADR-004），所以与经营数摆在一起 */}
+              <Field className="mb-3" label={c.stStatOwnedTraffic}>{Math.round(stats.data.ownedTrafficRate * 100)}%</Field>
+              <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
+              <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
+              <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
+              <Field className="mb-3" label={c.stStatToAfterSale}>{stats.data.toAfterSale}</Field>
+            </FieldGrid>
+          )}
+        </DrawerSection>
+      </Drawer>
+
+      <Drawer open={!!current && panel === "reach"} onOpenChange={(o) => !o && setPanel(null)} title={c.stSecReach} desc={current?.name}>
+        {current && (
+          <DrawerSection first title={c.stSecReach} desc={c.stReachHint}>
               <FieldGrid>
                 {/*
                   ⚠️ 这一栏此前读的是 mch_entity_community，而那张表线上是 **0 行**
@@ -324,51 +364,7 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
                     : <span className="text-muted-foreground">{c.stNoRating}</span>}
                 </Field>
               </FieldGrid>
-            </DrawerSection>
-
-            <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
-              <div className="flex gap-2">
-                {/*
-                  用 asChild 让 Button 把样式套在 <Link> 上，而不是 <Link> 包一个 <button>：
-                  后者会有**两个可聚焦元素**（外层链接没有焦点环），键盘上要按两次 Tab
-                  才走得过一个按钮，且第一次停下来时看不见自己停在哪。
-
-                  `data-audit-skip="button-aschild"`：焦点环那道闸静态扫 JSX 里的
-                  className 字面量，看不到 asChild 在运行时合成的类名。
-                  **不是白名单式豁免** —— 浏览器实测这个 <a> 的 className 确实含
-                  focus-ring（Button 的基础类经 Slot 传了下来）。
-                */}
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
-                    {c.stViewOrders}
-                  </Link>
-                </Button>
-                {/* 门店商品投影（P-11.2.1e）：后端与 SkuQ 早就支持，只是没入口 */}
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
-                    {c.stViewGoods}
-                  </Link>
-                </Button>
-              </div>
-            </DrawerSection>
-
-            <OperationalReview key={current.storeNo} storeNo={current.storeNo} onChanged={(review)=>setCurrent(store=>store?.storeNo===review.storeNo?{...store,status:review.status}:store)} />
-            {detailActions?.(current)}
-
-            <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>
-              {current.status !== "SUSPENDED"
-                ? <p className="txt-caption text-muted-foreground">{c.stNoAction}</p>
-                : canBan
-                  ? (
-                    <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>
-                      {c.stBtnRestore}
-                    </Button>
-                  )
-                  // 有动作但你做不了：置灰说明「有，只是现在不能用」，
-                  // 直接藏起来会让人以为这家店解不开
-                  : <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" />}
-            </DrawerSection>
-          </div>
+          </DrawerSection>
         )}
       </Drawer>
     </>

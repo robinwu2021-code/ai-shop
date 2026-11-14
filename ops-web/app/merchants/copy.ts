@@ -539,7 +539,6 @@ const zh = {
   stViewGoods: "看这家店的商品",
   stBtnRestore: "解除下线",
   stRestoreHint: "只有被平台压下的店解得开。商家自助停用的由商家自己开回来 —— 平台替他开等于替他做经营决定。",
-  stNoAction: "当前没有可执行的平台动作：这家店不在强制下线状态。",
   stToastRestored: "已解除强制下线，货架恢复",
   stReadOnlyWhat: "解除门店强制下线",
   // ── 增值包与门店额度（P-11.2.2~11.2.6）──
@@ -1267,7 +1266,6 @@ const en: typeof zh = {
   stViewGoods: "View this store's products",
   stBtnRestore: "Lift forced offline",
   stRestoreHint: "Only a store the platform pushed offline can be lifted. One the merchant paused reopens on their side — doing it for them is making their call for them.",
-  stNoAction: "Nothing to do here: this store is not forced offline.",
   stToastRestored: "Forced offline lifted; the shelf is back",
   stReadOnlyWhat: "lifting a forced store offline",
   // ── Plans and store quota ──

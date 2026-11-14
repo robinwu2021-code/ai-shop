@@ -13,8 +13,10 @@ import { CUSTOMERS_COPY } from "./copy";
 export function StoreWorkspace(){
   const c=useCopy(CUSTOMERS_COPY),merchant=useCopy(MERCHANTS_COPY),can=useCan(),sp=useSearchParams();
   const [review,setReview]=useState(sp.get("view")==="review"&&can("merchant:apply:audit"));
-  return <div className="space-y-3"><HelpNote>{c.reviewHint}</HelpNote>
+  // 门店列表自带说明；审核视图的说明只在审核视图出现，一屏只留一条
+  return <div className="space-y-3">
     <div className="flex flex-wrap gap-2"><Button variant={review?"outline":"default"} onClick={()=>setReview(false)}>{c.stores}</Button>{can("merchant:apply:audit")&&<Button variant={review?"default":"outline"} onClick={()=>setReview(true)}>{c.review}</Button>}</div>
+    {review&&<HelpNote>{c.reviewHint}</HelpNote>}
     {review?<ApplyTab c={merchant} canAudit={can("merchant:apply:audit")} canReadSubscription={can("commerce:subscription:read")}/>:<StoresTab c={merchant} detailActions={store=><div className="flex flex-wrap gap-2">
       {can("merchant:merchant:ban")&&can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link className="focus-ring" href={`/mall?tab=orders&kind=ENTITY&entity=${encodeURIComponent(store.merchantNo)}`}>{c.assistEntity}</Link></Button>}
       {can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link className="focus-ring" href={`/mall?tab=assisted&store=${encodeURIComponent(store.storeNo)}`}>{c.assistStore}</Link></Button>}
