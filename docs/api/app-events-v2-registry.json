@@ -1,0 +1,570 @@
+{
+  "schemaVersion": 2,
+  "status": "CONTRACT_ONLY_NOT_DEPLOYED",
+  "rules": [
+    {
+      "eventType": "payment.succeeded",
+      "sceneCode": "PAYMENT",
+      "functionCode": "PAYMENT_RECEIPT",
+      "resourceType": "PAYMENT_ORDER",
+      "scope": "STORE",
+      "handler": "PaymentSucceededHandler",
+      "refresh": [
+        "paymentDetail",
+        "paymentList",
+        "homeSummary",
+        "messageUnread"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner",
+        "voiceEligible"
+      ],
+      "routeCode": "payment.detail",
+      "voiceEligible": true,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "paymentDetail",
+      "requiredPayload": [
+        "payOrderNo",
+        "paidAt",
+        "amountMinor",
+        "paidMinor",
+        "currency",
+        "currencyScale",
+        "channelCode",
+        "status"
+      ],
+      "payloadPolicy": "PAYMENT_FACTS_VERIFIED_BY_DETAIL",
+      "reminderPolicy": "VERIFIED_LIVE_OPT_IN"
+    },
+    {
+      "eventType": "order.created",
+      "sceneCode": "ORDER",
+      "functionCode": "RETAIL_FULFILLMENT",
+      "resourceType": "RETAIL_ORDER",
+      "scope": "STORE",
+      "handler": "RetailOrderHandler",
+      "refresh": [
+        "orderDetail",
+        "orderList",
+        "orderTodo",
+        "fulfillmentList",
+        "afterSaleList",
+        "homeSummary"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "order.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "orderDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "order.created",
+      "sceneCode": "ORDER",
+      "functionCode": "DINING_ORDER",
+      "resourceType": "DINING_ORDER",
+      "scope": "STORE",
+      "handler": "DiningOrderHandler",
+      "refresh": [
+        "diningOrders",
+        "kitchenQueue",
+        "tableState",
+        "homeSummary"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "order.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "diningOrders",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "order.status_changed",
+      "sceneCode": "ORDER",
+      "functionCode": "RETAIL_FULFILLMENT",
+      "resourceType": "RETAIL_ORDER",
+      "scope": "STORE",
+      "handler": "RetailOrderHandler",
+      "refresh": [
+        "orderDetail",
+        "orderList",
+        "orderTodo",
+        "fulfillmentList",
+        "afterSaleList",
+        "homeSummary"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "order.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "orderDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "order.status_changed",
+      "sceneCode": "ORDER",
+      "functionCode": "DINING_ORDER",
+      "resourceType": "DINING_ORDER",
+      "scope": "STORE",
+      "handler": "DiningOrderHandler",
+      "refresh": [
+        "diningOrders",
+        "kitchenQueue",
+        "tableState",
+        "homeSummary"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "order.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "diningOrders",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "inventory.changed",
+      "sceneCode": "INVENTORY",
+      "functionCode": "RETAIL_STOCK",
+      "resourceType": "INVENTORY_ITEM",
+      "scope": "STORE",
+      "handler": "InventoryChangedHandler",
+      "refresh": [
+        "stockItem",
+        "inventoryList",
+        "skuDetail",
+        "stockTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "inventory.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "stockItem",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "inventory.low_stock",
+      "sceneCode": "INVENTORY",
+      "functionCode": "RETAIL_STOCK",
+      "resourceType": "INVENTORY_ITEM",
+      "scope": "STORE",
+      "handler": "InventoryChangedHandler",
+      "refresh": [
+        "stockItem",
+        "inventoryList",
+        "skuDetail",
+        "stockTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "inventory.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "stockItem",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "booking.created",
+      "sceneCode": "BOOKING",
+      "functionCode": "SERVICE_BOOKING",
+      "resourceType": "BOOKING",
+      "scope": "STORE",
+      "handler": "BookingChangedHandler",
+      "refresh": [
+        "bookingDetail",
+        "bookingList",
+        "serviceSchedule",
+        "bookingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "booking.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "bookingDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "booking.status_changed",
+      "sceneCode": "BOOKING",
+      "functionCode": "SERVICE_BOOKING",
+      "resourceType": "BOOKING",
+      "scope": "STORE",
+      "handler": "BookingChangedHandler",
+      "refresh": [
+        "bookingDetail",
+        "bookingList",
+        "serviceSchedule",
+        "bookingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "booking.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "bookingDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "onboarding.supplement_required",
+      "sceneCode": "ONBOARDING",
+      "functionCode": "STORE_ACTIVATION",
+      "resourceType": "ONBOARDING_APPLICATION",
+      "scope": "STORE",
+      "handler": "OnboardingChangedHandler",
+      "refresh": [
+        "applicationDetail",
+        "activationProgress",
+        "onboardingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "onboarding.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "applicationDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "onboarding.reviewed",
+      "sceneCode": "ONBOARDING",
+      "functionCode": "STORE_ACTIVATION",
+      "resourceType": "ONBOARDING_APPLICATION",
+      "scope": "STORE",
+      "handler": "OnboardingChangedHandler",
+      "refresh": [
+        "applicationDetail",
+        "activationProgress",
+        "onboardingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "onboarding.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "applicationDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "channel.activation_changed",
+      "sceneCode": "ONBOARDING",
+      "functionCode": "PAYMENT_CHANNEL",
+      "resourceType": "CHANNEL_APPLICATION",
+      "scope": "STORE",
+      "handler": "ChannelActivationHandler",
+      "refresh": [
+        "channelApplication",
+        "storePaymentSettings",
+        "collectionCapability"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "onboarding.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "channelApplication",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "plan.entitlement_changed",
+      "sceneCode": "PLAN",
+      "functionCode": "STORE_PLAN",
+      "resourceType": "STORE_ENTITLEMENT",
+      "scope": "STORE",
+      "handler": "EntitlementChangedHandler",
+      "refresh": [
+        "storeEntitlements",
+        "planDetail",
+        "moduleAvailability"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "plan.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "storeEntitlements",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "store.updated",
+      "sceneCode": "STORE",
+      "functionCode": "STORE_PROFILE",
+      "resourceType": "STORE",
+      "scope": "STORE",
+      "handler": "StoreUpdatedHandler",
+      "refresh": [
+        "storeDetail",
+        "storeList",
+        "homeContext"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "store.settings",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "storeDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "entity.binding_changed",
+      "sceneCode": "STORE",
+      "functionCode": "STORE_PROFILE",
+      "resourceType": "STORE_ENTITY_RELATION",
+      "scope": "STORE",
+      "handler": "EntityBindingHandler",
+      "refresh": [
+        "storeRelation",
+        "entityStoreList",
+        "storePaymentSettings"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "store.settings",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "storeRelation",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "activity.status_changed",
+      "sceneCode": "MARKETING",
+      "functionCode": "ACTIVITY",
+      "resourceType": "ACTIVITY",
+      "scope": "STORE_OR_CHAIN",
+      "handler": "ActivityChangedHandler",
+      "refresh": [
+        "activityDetail",
+        "activityList",
+        "marketingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "marketing.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE_OR_CHAIN",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "activityDetail",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "coupon.issue_completed",
+      "sceneCode": "MARKETING",
+      "functionCode": "COUPON",
+      "resourceType": "COUPON_ISSUE_BATCH",
+      "scope": "STORE_OR_CHAIN",
+      "handler": "CouponIssueHandler",
+      "refresh": [
+        "issueBatch",
+        "issueHistory",
+        "marketingTodo"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner"
+      ],
+      "routeCode": "marketing.detail",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "STORE_OR_CHAIN",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "issueBatch",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    },
+    {
+      "eventType": "authorization.changed",
+      "sceneCode": "SYSTEM",
+      "functionCode": "ACCESS",
+      "resourceType": "ACCESS_SCOPE",
+      "scope": "ACCOUNT",
+      "handler": "AccessChangedHandler",
+      "refresh": [
+        "accessSnapshot",
+        "storeList",
+        "moduleAvailability"
+      ],
+      "actions": [
+        "invalidate",
+        "verifyDetail",
+        "banner",
+        "cancelUnauthorized"
+      ],
+      "routeCode": "access.review",
+      "voiceEligible": false,
+      "authorization": {
+        "policy": "SERVER_RESOURCE_READ",
+        "scope": "ACCOUNT",
+        "clientGrantFromEvent": false,
+        "permissionSource": "existing resource endpoint authorization; audited in T05 before runtime exposure"
+      },
+      "detailReader": "accessSnapshot",
+      "requiredPayload": [],
+      "payloadPolicy": "INVALIDATION_ONLY_READ_RESOURCE_BY_SCOPE_AND_ID",
+      "reminderPolicy": "NO_VOICE"
+    }
+  ]
+}

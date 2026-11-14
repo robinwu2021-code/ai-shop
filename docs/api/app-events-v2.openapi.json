@@ -1,0 +1,196 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Unified app events v2 (contract only)",
+    "version": "2.0.0-draft",
+    "description": "Prospective contract. Not deployed. Existing /biz/payment/events v1 is unchanged."
+  },
+  "paths": {
+    "/biz/app/events": {
+      "get": {
+        "operationId": "appEventsV2",
+        "x-implementation-status": "not-implemented",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE control frames ready/heartbeat/resync_required/authorization.changed/session.revoked; app.event uses the referenced schema. Cursor is opaque and principal-scoped; no store header required.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Principal unauthorized"
+          }
+        }
+      }
+    },
+    "/biz/app/messages/snapshot": {
+      "get": {
+        "operationId": "appMessageSnapshotV2",
+        "x-implementation-status": "not-implemented",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Principal-scoped bounded message snapshot. Messages, unread and syncCursor must share one consistent read boundary; a cursor must never be captured after the list query. Existing v1 List and integer unread APIs are unchanged. Message links are untrusted display data, never automatic navigation instructions.",
+        "responses": {
+          "200": {
+            "description": "Versioned snapshot payload inside the standard API success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AppMessageSnapshotV2"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "AppEventEnvelopeV2": {
+        "$ref": "./app-events-v2.schema.json"
+      },
+      "AppMessageV2": {
+        "type": "object",
+        "required": [
+          "messageNo",
+          "type",
+          "title",
+          "body",
+          "read",
+          "at"
+        ],
+        "properties": {
+          "messageNo": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "link": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bizType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bizNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "AppMessageSnapshotV2": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "messages",
+          "unread",
+          "syncCursor",
+          "serverTime"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 2
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppMessageV2"
+            }
+          },
+          "unread": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "syncCursor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "serverTime": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}

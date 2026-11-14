@@ -108,6 +108,8 @@ public final class ShopCommerceEndContextAdapter
         }
         if (route.foundation()
                 || path.equals("/biz/merchant/quick-start")
+                || path.equals("/biz/merchant/store-openings")
+                || path.startsWith("/biz/merchant/store-openings/")
                 || path.equals("/biz/auth/password")
                 || path.equals("/biz/auth/identities/mine")
                 || path.startsWith("/biz/merchant/store-claims/")) {

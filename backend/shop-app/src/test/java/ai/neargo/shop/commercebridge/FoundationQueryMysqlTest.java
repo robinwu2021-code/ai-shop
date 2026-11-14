@@ -3,6 +3,7 @@ package ai.neargo.shop.commercebridge;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -118,6 +119,19 @@ class FoundationQueryMysqlTest {
             web.register(
                     ApiResponseWrapper.class,
                     ai.neargo.shop.portal.biz.BizFoundationController.class);
+            new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                new org.springframework.core.io.ClassPathResource("db/migration/V667__store_opening_receipts.sql")).execute(f.ds);
+            var openingAccess=mock(StoreCreationAccessService.class);
+            when(openingAccess.access(any())).thenReturn(new StoreCreationAccessService.Access(true,false,List.of()));
+            var openingImpl=new ai.neargo.shop.merchant.service.impl.StoreOpeningServiceImpl(
+                f.jdbc,new tools.jackson.databind.ObjectMapper(),services.getBean(MerchantAdminPort.class),mock(StoreAdminService.class),openingAccess);
+            var openingTx=new org.springframework.transaction.support.TransactionTemplate(f.manager);
+            StoreOpeningService openingService=new StoreOpeningService() {
+                public Receipt open(LoginUser user,String requestNo,String entity,String anchor,MerchantAdminPort.QuickStartCommand cmd) {
+                    return openingTx.execute(status->openingImpl.open(user,requestNo,entity,anchor,cmd));
+                }
+                public Receipt find(LoginUser user,String requestNo) {return openingImpl.find(user,requestNo);}
+            };
             var accountMarkets = mock(AuthService.class);
             when(accountMarkets.accountMarket("N")).thenReturn("CN");
             var mvc =
@@ -126,6 +140,7 @@ class FoundationQueryMysqlTest {
                             web,
                             true,
                             Map.of(
+                                    StoreOpeningService.class, openingService,
                                     AuthService.class,
                                     accountMarkets,
                                     MerchantAdminPort.class,
@@ -147,13 +162,14 @@ class FoundationQueryMysqlTest {
             var catalog = ok(mvc, get("/biz/business-types/RETAIL/plans"), bearer);
             assertEquals(FoundationHttpExamples.example("plans").at("/response/data"), catalog);
             var create =
-                    post("/biz/merchant/quick-start")
+                    post("/biz/merchant/store-openings")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"storeName\":\"Example\",\"businessTypeCode\":\"RETAIL\"}");
+                            .content("{\"requestNo\":\"OPEN-HTTP-1\",\"fields\":{\"storeName\":\"Example\",\"businessTypeCode\":\"RETAIL\"}}");
             var profile = ok(mvc, create, bearer);
-            String store = profile.get("currentStoreNo").asText(),
-                    entity = profile.get("merchantNo").asText();
-            assertEquals(store, ok(mvc, create, bearer).get("currentStoreNo").asText());
+            String store = profile.get("storeNo").asText(),
+                    entity = profile.get("entityNo").asText();
+            assertEquals(store, ok(mvc, create, bearer).get("storeNo").asText());
+            assertEquals(store,ok(mvc,get("/biz/merchant/store-openings/OPEN-HTTP-1"),bearer).get("storeNo").asText());
             var scope = "/biz/stores/" + store;
             var ctx = ok(mvc, get(scope + "/context").header("X-Store-No", store), bearer);
             assertEquals("PENDING_LICENSE", ctx.get("entityStatus").asText());

@@ -576,7 +576,7 @@ class CommerceStoreCreationFlowTest {
             assertEquals(beforeRollbackStores,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store",Integer.class));
             assertEquals(beforeRollbackPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
             jdbc.execute("ALTER TABLE commerce_outbox DROP CHECK reject_ops_event");
-            // Existing LEGACY store certification must not migrate, rename, or create another store/FREE source.
+            // Operator on-behalf creates an independent entity; the old LEGACY store remains untouched.
             var previousName=jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo());
             var previousPeriods=jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo());
             setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_ONBEHALF);
@@ -585,7 +585,8 @@ class CommerceStoreCreationFlowTest {
             String legacyApplication=ops.createMerchantApply(legacyCommand,store.entityNo());
             setOperator("reviewer","merchant:*");
             var certified=ops.auditApply(legacyApplication,true,null,"PLATFORM",List.of(),List.of());
-            assertEquals(store.storeNo(),certified.storeNo());
+            assertNotEquals(store.storeNo(),certified.storeNo());
+            assertEquals("STORE_V1",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,certified.storeNo()));
             assertEquals("LEGACY",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousName,jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo()));

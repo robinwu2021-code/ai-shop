@@ -673,6 +673,8 @@ class BizEndpointPermTest {
                     // ---- 门店结构：改的是主体 ----
                     put("/biz/store/create", BizPerms.STORE_ADMIN);
                     put("/biz/store/{storeNo}/rename", BizPerms.STORE_ADMIN);
+                    put("/biz/store/settings/basic", BizPerms.STORE_ADMIN);
+                    put("/biz/store/settings/hours", BizPerms.STORE);
                     put("/biz/store/{storeNo}/status", BizPerms.STORE_ADMIN);
                     put("/biz/store/{storeNo}/default", BizPerms.STORE_ADMIN);
                     put("/biz/store/{storeNo}/payment", BizPerms.STORE_ADMIN);
@@ -1028,6 +1030,9 @@ class BizEndpointPermTest {
     private static final Map<String, String> FOUNDATION_READS = Map.ofEntries(
             Map.entry("/biz/merchant/store-setup", "@perm.merchantAccount()"),
             Map.entry("/biz/merchant/store-creation-context", "@perm.merchantAccount()"),
+            Map.entry("/biz/merchant/store-openings", "@perm.merchantAccount()"),
+            Map.entry("/biz/merchant/store-openings/{requestNo}", "@perm.merchantAccount()"),
+            Map.entry("/biz/store/settings", "@perm.merchantAccount()"),
             Map.entry("/biz/business-types", "@perm.merchantAccount()"),
             Map.entry("/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()"),
             Map.entry("/biz/feedback", "@perm.merchantAccount()"),

@@ -53,4 +53,15 @@ class MarketPhonePolicyServiceTest {
     @Test void unknownRegionsAndUnmappedCallingPrefixesDoNotBecomeMainland() {
         var s=service("CN");assertThrows(BizException.class,()->s.policy("XX"));assertThrows(BizException.class,()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+999123456"));
     }
+    @Test void consumerPortDelegatesRegionalRulesWithoutGrantingNewCapabilities() {
+        var platform=mock(MarketPhonePolicyService.class);
+        var policy=new MarketPhonePolicyService.Policy("TW","+886",true,false,false,true);
+        when(platform.instancePolicy()).thenReturn(policy);
+        when(platform.validateContact("TW","raw / extension")).thenReturn(policy);
+        var port=new ai.neargo.shop.platform.port.MarketContactPolicyPortImpl(platform);
+        assertSame(policy,port.instancePolicy());
+        assertSame(policy,port.validateContact("TW","raw / extension"));
+        verify(platform).validateContact("TW","raw / extension");
+    }
+
 }

@@ -1615,3 +1615,20 @@ curl "$API_BASE/biz/merchant/apply" \
 | nextBoundaryAt | integer | null | 订阅与各端最近状态边界；没有时为空。 |
 | subscription | CurrentStoreSubscription | 关联模型，字段均随响应返回。 |
 | entitlements | CurrentStoreEntitlements | 关联模型，字段均随响应返回。 |
+
+
+## 2026-11-14 T01 产品实体映射与统一消息草案
+
+参见[经营实体映射与统一消息合同](经营实体映射与统一消息合同.md)。统一账号 SSE v2 尚未部署，不纳入当前已就绪接口；现有 v1 合同与权限不变。
+
+## 开店编排及分区设置增量（2026-11-14，本地实现未部署）
+
+- `POST /biz/merchant/store-openings`：`requestNo`、可选 `entityNo/sourceStoreNo`、`fields`（原 QuickStartRequest）。服务端在原建店事务内写成功回执，固定初始化已发布免费项，不自动开通支付。
+- `GET /biz/merchant/store-openings/{requestNo}`：按账号／租户／身份类型读取原回执。请求未知先查原编号；未找到可同号同意图重试。更改意图返回 10409，失败回滚不留下永久处理中状态。
+- `GET /biz/store/settings`：当前店资料、`sectionVersions.BASIC/HOURS`、`allowedActions`。版本为不透明内容校验值，非全店递增序号。
+- `POST /biz/store/settings/basic`：`expectedVersion/name/address/addressDetail`，`biz:store:admin`；一个事务更新三个字段。
+- `POST /biz/store/settings/hours`：`expectedVersion/openHours`，`biz:store`；只更新营业时间。
+- 分区过期返回 10409。App 保留用户输入，提示关闭后重新读取核对，不自动覆盖。旧入口保留，缺少新版能力的老服务沿用既有接口，不能视为已具有版本冲突保护。
+- store-creation-context 新增 `storeOpeningSupported=true`；缺少此能力不调用新版开店接口。迁移 V667 仅新增回执表，必须先在 API 数据库应用，当前未部署。
+
+字段定义见本目录 `openapi-b-onboarding.json` 的 StoreOpening* 与 StoreSettings*。

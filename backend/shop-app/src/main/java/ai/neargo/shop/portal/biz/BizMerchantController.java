@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.merchant.service.StoreOpeningService;
+
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.LoginUser;
@@ -370,6 +372,26 @@ public class BizMerchantController {
         return profileOf(user, created.storeNo(), consumer == null ? null : consumer.phone());
     }
 
+    private StoreOpeningService openings;
+    @Autowired public void setOpenings(StoreOpeningService service) { this.openings=service; }
+    public record OpeningReq(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo,
+                             String entityNo,String sourceStoreNo,@jakarta.validation.Valid @jakarta.validation.constraints.NotNull QuickStartReq fields) {}
+    @PostMapping("/biz/merchant/store-openings")
+    @PreAuthorize("@perm.merchantAccount()")
+    public StoreOpeningService.Receipt openStore(@jakarta.validation.Valid @RequestBody OpeningReq req) {
+        var user=SecurityUtils.requireUser();
+        if(req.entityNo()==null) BizAuthController.personalUser();
+        if(req.entityNo()!=null && (req.sourceStoreNo()==null || req.sourceStoreNo().isBlank())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        String market=req.entityNo()==null ? marketFor(user.userNo(),req.fields())
+            : resolveMarket(Objects.requireNonNullElse(req.fields().market(),defaultMarket),markets.getIfAvailable(),req.fields(),otherBusinessType,industries());
+        return openings.open(user,req.requestNo(),req.entityNo(),req.sourceStoreNo(),quickStartCommand(user.userNo(),market,req.fields(),industries()));
+    }
+    @GetMapping("/biz/merchant/store-openings/{requestNo}")
+    @PreAuthorize("@perm.merchantAccount()")
+    public StoreOpeningService.Receipt openingResult(@PathVariable String requestNo) {
+        return openings.find(SecurityUtils.requireUser(),requestNo);
+    }
+
     /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
     public record Target(String entityNo, String storeNo) {}
 
@@ -384,11 +406,17 @@ public class BizMerchantController {
      * @param lngE6           经度 ×1e6，同上
      * @param coordSys        坐标系：{@code gcj02}（高德）/ {@code wgs84}（Google）；给了坐标就必填，没给坐标时忽略
      */
-    public record QuickStartReq(String storeName, String address, String businessTypeCode,
+    public record QuickStartReq(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max=64) String storeName, String address, String businessTypeCode,
                                 String market, String industryCode, String subIndustryCode,
                                 String industryText, String subIndustryText, String addressDetail,
-                                Integer latE6, Integer lngE6, String coordSys) {
-
+                                Integer latE6, Integer lngE6, String coordSys, String entityName) {
+        public QuickStartReq(String storeName, String address, String businessTypeCode,
+                             String market, String industryCode, String subIndustryCode,
+                             String industryText, String subIndustryText, String addressDetail,
+                             Integer latE6, Integer lngE6, String coordSys) {
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode,
+                 industryText, subIndustryText, addressDetail, latE6, lngE6, coordSys, null);
+        }
         /** 双地图之前（三步建店）的请求形状：没有坐标 */
         public QuickStartReq(String storeName, String address, String businessTypeCode,
                              String market, String industryCode, String subIndustryCode,
@@ -560,7 +588,7 @@ public class BizMerchantController {
         return new MerchantAdminPort.QuickStartCommand(userNo, req.storeName(), req.address(),
                 req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()),
                 located ? req.latE6() : null, located ? req.lngE6() : null, located ? req.coordSys() : null,
-                stored.get(0), stored.get(1));
+                stored.get(0), stored.get(1), req.entityName());
     }
 
     private static boolean filled(String text, int max) {

@@ -66,7 +66,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * 证照数量不卖 —— 它挡的是「把平台当批量注册工具」。所以写成常量而不是配置项：
      * 配置项会被当成一个可以调的旋钮，而这个数只该由平台按个案单独放开。
      */
-    private static final int MAX_ENTITIES_PER_ACCOUNT = 5;
 
     private final MerchantStoreCreation commerce;
     private final MchEntityMapper merchantMapper;
@@ -1536,6 +1535,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     @Transactional
     public QuickStartResult quickStart(QuickStartCommand cmd) {
         String ownerUserNo = cmd.ownerUserNo();
+        String entityName = cmd.entityName() == null ? cmd.storeName() : cmd.entityName().trim();
+        if (entityName == null || entityName.isBlank() || entityName.codePointCount(0, entityName.length()) > 100)
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         if (ownerUserNo == null || ownerUserNo.isBlank()
                 || cmd.storeName() == null || cmd.storeName().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1558,6 +1560,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 if (existing != null && !cmd.market().equals(existing.getMarket()))
                     throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+            if (cmd.entityName() != null) {
+                var prior = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get())));
+                if (prior == null || !entityName.equals(prior.getName()))
+                    throw BizException.of(ErrorCode.CONFLICT);
+            }
             var row = defaultStoreOf(shell.get(), actor != null);
             commerce.checkReplay(row, cmd.businessTypeCode());
             return new QuickStartResult(shell.get(), row == null ? null : row.getStoreNo());
@@ -1568,7 +1576,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         String name = cmd.storeName().trim();
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
-        m.setName(name);
+        m.setName(entityName.trim());
         m.setLogo("");
         /*
          * 证照还没交，所以这几项与 activate() 刻意不同：
