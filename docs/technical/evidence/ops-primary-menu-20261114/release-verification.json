@@ -1,0 +1,45 @@
+{
+  "fullNativeRunCommit": "847d4671285a7cff9a1b7ff66247c4e295eb66a9",
+  "fixtureFixCommit": "40441f9a1bdfcb8b9fd46f63eefabac2695f68df",
+  "productionTreeAndPomSha256": "09d54c2673577b092465fa9e3c59db82230eda24aecdde0e6099433629b2fb90",
+  "productionTreeAndPomsIdentical": false,
+  "fullRunLog": "head-test.5GdVs3",
+  "supersededFailures": [
+    "MallStorefrontMysqlTest.offlineReadinessIsAdditiveAndUsesPublishedTermsOutsideTheCommerceTransaction",
+    "PlatformCashReportingTest.lockedWorkflowRetainsItsRefundCapacityAndPendingSemantics"
+  ],
+  "affectedFixtureReactorLog": "ops-recovery-remaining-backend.log",
+  "finalVerificationCommit": "ebef865e58791a2cf807cfc1bf20b8119271c171",
+  "productionDelta": [
+    "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/AdmissionManagementService.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/MarketPhonePolicyService.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/impl/AdmissionManagementServiceImpl.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/port/MarketContactPolicyPortImpl.java"
+  ],
+  "originalProductionTreeSha256": "09d54c2673577b092465fa9e3c59db82230eda24aecdde0e6099433629b2fb90",
+  "finalProductionTreeSha256": "23dc39fb123c61ad4d663544d1793ea4261bebe9e4d7f85b60869df37da9b8ca",
+  "compatibilityDeltaVerification": "OfflineHttpContractTest6cases: omitted flag false and explicit true; permissions unchanged",
+  "latestTestOnlyFix": "BizLoginStoreNativeMysqlTest shares canonical OTP fixture between send and verify",
+  "verification": {
+    "shopAppFull": {
+      "tests": 1019,
+      "failures": 0,
+      "errors": 3,
+      "skipped": 120,
+      "logSha256": "5339782fb0ec7ee4370a3253e5706f089805b263f56dfa22974154121425919e",
+      "supersededErrors": "Only three OTP fixture methods; affected class rerun passed all 3"
+    },
+    "loginNativeRerun": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "logSha256": "3acf4ea29f5c3fd04ab0812ac8b98e66ce4faf8c3a79774390ffafa17c62da45"
+    },
+    "architectureAndContextFocused": "ops-recovery-app-context-fixes-final.log BUILD SUCCESS",
+    "remainingUnaffectedModules": "pay-guard 53, pay-portal 6, pay-svc 93 all pass",
+    "foodProfile": "BUILD SUCCESS; unchanged production business source",
+    "beautyProfile": "282 tests; four existing baseline failures; no new failures",
+    "pushPolicy": "Reuse completed module and affected regression evidence; SKIP_TEST_GATE=1 skips duplicate backend tests only; clean HEAD test-compile and all other hooks remain enabled"
+  }
+}
