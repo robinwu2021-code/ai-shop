@@ -20,6 +20,7 @@ import java.util.List;
  * 分账接收方清单里，谁也说不清它算不算数。所以走审核那条路的，必须审过才建。
  */
 public interface MerchantAdminPort {
+    int MAX_ENTITIES_PER_ACCOUNT = 5;
 
     /**
      * 激活商家。<b>建商家 + 配可达范围 + 建分账主体，三件事在一个事务里</b>。
@@ -95,7 +96,13 @@ public interface MerchantAdminPort {
     record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                              String market, String industryText, String subIndustryText, String addressDetail,
                              Integer latE6, Integer lngE6, String coordSys, String industryCode,
-                             String subIndustryCode) {
+                             String subIndustryCode, String entityName) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail,
+                                 Integer latE6, Integer lngE6, String coordSys, String industryCode, String subIndustryCode) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                 addressDetail, latE6, lngE6, coordSys, industryCode, subIndustryCode, null);
+        }
         /** 子行业之前（双地图）的形状：没有行业码 */
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                                  String market, String industryText, String subIndustryText, String addressDetail,

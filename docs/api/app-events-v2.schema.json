@@ -1,0 +1,1225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.neargo.ai/app-events/v2",
+  "title": "AppEventEnvelopeV2",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "eventType",
+    "sceneCode",
+    "functionCode",
+    "resource",
+    "scope",
+    "occurredAt",
+    "publishedAt",
+    "delivery",
+    "payload",
+    "traceId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 2
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "messageNo": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "eventType": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "sceneCode": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "functionCode": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "resource": {
+      "type": "object",
+      "required": [
+        "type",
+        "id",
+        "version"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "environment",
+        "tenantNo"
+      ],
+      "properties": {
+        "environment": {
+          "enum": [
+            "SANDBOX",
+            "PRODUCTION"
+          ]
+        },
+        "tenantNo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "storeNo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "entityNo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operatingEntityId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "chainNo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "occurredAt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "publishedAt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "delivery": {
+      "type": "object",
+      "required": [
+        "mode",
+        "expiresAt"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "live",
+            "replay"
+          ]
+        },
+        "expiresAt": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "display": {
+      "type": "object"
+    },
+    "route": {
+      "type": "object",
+      "required": [
+        "code",
+        "params"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "params": {
+          "type": "object"
+        }
+      }
+    },
+    "payload": {
+      "type": "object"
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "activity.status_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "ACTIVITY"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "authorization.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "ACCESS"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "booking.created"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "SERVICE_BOOKING"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "booking.status_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "SERVICE_BOOKING"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "channel.activation_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "PAYMENT_CHANNEL"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "coupon.issue_completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "COUPON"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "entity.binding_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "STORE_PROFILE"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "inventory.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "RETAIL_STOCK"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "inventory.low_stock"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "RETAIL_STOCK"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "onboarding.reviewed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "STORE_ACTIVATION"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "onboarding.supplement_required"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "STORE_ACTIVATION"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.created"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "RETAIL_FULFILLMENT",
+              "DINING_ORDER"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.status_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "RETAIL_FULFILLMENT",
+              "DINING_ORDER"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "payment.succeeded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "PAYMENT_RECEIPT"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "plan.entitlement_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "STORE_PLAN"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "store.updated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "functionCode": {
+            "enum": [
+              "STORE_PROFILE"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "payment.succeeded"
+          },
+          "functionCode": {
+            "const": "PAYMENT_RECEIPT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "PAYMENT"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "PAYMENT_ORDER"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          },
+          "payload": {
+            "required": [
+              "payOrderNo",
+              "paidAt",
+              "amountMinor",
+              "paidMinor",
+              "currency",
+              "currencyScale",
+              "channelCode",
+              "status"
+            ],
+            "properties": {
+              "payOrderNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "paidAt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "amountMinor": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "paidMinor": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "currencyScale": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "channelCode": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "status": {
+                "const": "SUCCEEDED"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.created"
+          },
+          "functionCode": {
+            "const": "RETAIL_FULFILLMENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ORDER"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "RETAIL_ORDER"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.created"
+          },
+          "functionCode": {
+            "const": "DINING_ORDER"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ORDER"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "DINING_ORDER"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.status_changed"
+          },
+          "functionCode": {
+            "const": "RETAIL_FULFILLMENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ORDER"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "RETAIL_ORDER"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "order.status_changed"
+          },
+          "functionCode": {
+            "const": "DINING_ORDER"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ORDER"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "DINING_ORDER"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "inventory.changed"
+          },
+          "functionCode": {
+            "const": "RETAIL_STOCK"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "INVENTORY"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "INVENTORY_ITEM"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "inventory.low_stock"
+          },
+          "functionCode": {
+            "const": "RETAIL_STOCK"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "INVENTORY"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "INVENTORY_ITEM"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "booking.created"
+          },
+          "functionCode": {
+            "const": "SERVICE_BOOKING"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "BOOKING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "BOOKING"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "booking.status_changed"
+          },
+          "functionCode": {
+            "const": "SERVICE_BOOKING"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "BOOKING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "BOOKING"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "onboarding.supplement_required"
+          },
+          "functionCode": {
+            "const": "STORE_ACTIVATION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ONBOARDING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "ONBOARDING_APPLICATION"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "onboarding.reviewed"
+          },
+          "functionCode": {
+            "const": "STORE_ACTIVATION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ONBOARDING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "ONBOARDING_APPLICATION"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "channel.activation_changed"
+          },
+          "functionCode": {
+            "const": "PAYMENT_CHANNEL"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "ONBOARDING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "CHANNEL_APPLICATION"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "plan.entitlement_changed"
+          },
+          "functionCode": {
+            "const": "STORE_PLAN"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "PLAN"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "STORE_ENTITLEMENT"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "store.updated"
+          },
+          "functionCode": {
+            "const": "STORE_PROFILE"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "STORE"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "STORE"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "entity.binding_changed"
+          },
+          "functionCode": {
+            "const": "STORE_PROFILE"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "STORE"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "STORE_ENTITY_RELATION"
+              }
+            }
+          },
+          "scope": {
+            "required": [
+              "storeNo"
+            ],
+            "properties": {
+              "storeNo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "activity.status_changed"
+          },
+          "functionCode": {
+            "const": "ACTIVITY"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "MARKETING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "ACTIVITY"
+              }
+            }
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "required": [
+                  "storeNo"
+                ],
+                "properties": {
+                  "storeNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              },
+              {
+                "required": [
+                  "chainNo"
+                ],
+                "properties": {
+                  "chainNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "coupon.issue_completed"
+          },
+          "functionCode": {
+            "const": "COUPON"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "MARKETING"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "COUPON_ISSUE_BATCH"
+              }
+            }
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "required": [
+                  "storeNo"
+                ],
+                "properties": {
+                  "storeNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              },
+              {
+                "required": [
+                  "chainNo"
+                ],
+                "properties": {
+                  "chainNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "authorization.changed"
+          },
+          "functionCode": {
+            "const": "ACCESS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sceneCode": {
+            "const": "SYSTEM"
+          },
+          "resource": {
+            "properties": {
+              "type": {
+                "const": "ACCESS_SCOPE"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

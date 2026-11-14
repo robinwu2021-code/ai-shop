@@ -365,4 +365,15 @@ class BizStoreSetupTest {
                 new BizMerchantController.QuickStartReq("店", "地址", "FOOD", "TW", "FOOD", "FOOD_BREAKFAST"), null, rows));
     }
 
+    @org.junit.jupiter.api.Test
+    void operatingEntityNameIsSeparateFromStoreNameAndLegacyCallsStillWork() {
+        var req = new BizMerchantController.QuickStartReq("門店一", "地址", "RETAIL", null,
+                null, null, null, null, null, null, null, null, "經營實體一");
+        var command = BizMerchantController.quickStartCommand("U1", "TW", req);
+        org.junit.jupiter.api.Assertions.assertEquals("經營實體一", command.entityName());
+        org.junit.jupiter.api.Assertions.assertEquals("門店一", command.storeName());
+        var old = new BizMerchantController.QuickStartReq("舊門店", "地址", "RETAIL", null, null, null);
+        org.junit.jupiter.api.Assertions.assertNull(BizMerchantController.quickStartCommand("U1", "TW", old).entityName());
+    }
+
 }

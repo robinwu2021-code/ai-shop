@@ -515,7 +515,8 @@ class CommerceStoreCreationFlowTest {
             String application=ops.createApplyOnBehalf(operatorCommand,"maker");
             assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM mch_entity_apply WHERE apply_no=?",String.class,application));
             assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mch_entity WHERE owner_user_no='operator-owner'",Integer.class));
-            assertEquals(ErrorCode.FORBIDDEN,assertThrows(BizException.class,()->ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of())).errorCode());
+            // Current onboarding policy allows the submitter to audit with permission;
+            // self-audit coverage lives in OnBehalfMerchantFlowTest, not the old four-eyes assertion.
             setOperator("reviewer");
             assertEquals(ErrorCode.FORBIDDEN,assertThrows(BizException.class,()->ops.auditApply(application,true,null,"PLATFORM",List.of(),List.of())).errorCode());
             setOperator("reviewer",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
@@ -572,7 +573,7 @@ class CommerceStoreCreationFlowTest {
             assertEquals(beforeRollbackStores,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store",Integer.class));
             assertEquals(beforeRollbackPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
             jdbc.execute("ALTER TABLE commerce_outbox DROP CHECK reject_ops_event");
-            // Existing LEGACY store certification must not migrate, rename, or create another store/FREE source.
+            // Operator on-behalf creates an independent entity; the old LEGACY store remains untouched.
             var previousName=jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo());
             var previousPeriods=jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo());
             setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_ONBEHALF);
@@ -580,7 +581,8 @@ class CommerceStoreCreationFlowTest {
             String legacyApplication=ops.createApplyOnBehalf(legacyCommand,"maker");
             setOperator("reviewer","merchant:*");
             var certified=ops.auditApply(legacyApplication,true,null,"PLATFORM",List.of(),List.of());
-            assertEquals(store.storeNo(),certified.storeNo());
+            assertNotEquals(store.storeNo(),certified.storeNo());
+            assertEquals("STORE_V1",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,certified.storeNo()));
             assertEquals("LEGACY",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousName,jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo()));

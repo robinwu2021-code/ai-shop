@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
@@ -31,6 +32,6 @@ public class StoreCreationAccessServiceImpl implements StoreCreationAccessServic
             var plan=plans.mine(group.entity().entityNo());var store=anchor.get();
             sources.add(new Source(group.entity().entityNo(),group.entity().name(),store.storeNo(),store.market(),plan.storeQuota(),plan.storeUsed(),plan.storeUsed()<plan.storeQuota()));
         }
-        return new Access(user.subjectKind()==SubjectKind.USR && owned.isEmpty(),user.subjectKind()==SubjectKind.USR && owned.stream().anyMatch(g->"PENDING_LICENSE".equals(g.entity().status())),List.copyOf(sources));
+        return new Access(user.subjectKind()==SubjectKind.USR && owned.size()<MerchantAdminPort.MAX_ENTITIES_PER_ACCOUNT && owned.stream().noneMatch(g->"PENDING_LICENSE".equals(g.entity().status())),user.subjectKind()==SubjectKind.USR && owned.stream().anyMatch(g->"PENDING_LICENSE".equals(g.entity().status())),List.copyOf(sources));
     }
 }
