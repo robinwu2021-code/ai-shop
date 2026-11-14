@@ -16,7 +16,8 @@
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/MarketPhonePolicyService.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/impl/AdmissionManagementServiceImpl.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/port/MarketContactPolicyPortImpl.java",
-    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/paysync/StoreSyncPublisher.java"
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/paysync/StoreSyncPublisher.java",
+    "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PlatformCashReportingImpl.java"
   ],
   "originalProductionTreeSha256": "09d54c2673577b092465fa9e3c59db82230eda24aecdde0e6099433629b2fb90",
   "finalProductionTreeSha256": "23dc39fb123c61ad4d663544d1793ea4261bebe9e4d7f85b60869df37da9b8ca",
@@ -53,6 +54,28 @@
       },
       "redLogSha256": "eb47e0a42477474759f4e5b2300f0e82f63f1661c7e7739c7a2569412b353856",
       "greenLogSha256": "0bb5f008a2cc3c947d9abf84ac6dede09f9b0fe3a8e2330e00fdb882a758571a"
+    },
+    "testCashExclusion": {
+      "cause": "Four explicit TEST proofs reached real-cash reporting and correctly failed financial authority checks",
+      "change": "Exclude TEST originals and their refunds, matching existing offline ledger policy; malformed proofs still invalid",
+      "red": "Original implementation fails new test exclusion assertion",
+      "greenSummaries": [
+        "[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.743 s -- in ai.neargo.shop.pay.service.impl.PlatformCashReportingTest",
+        "[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0",
+        "[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.784 s -- in ai.neargo.shop.commercebridge.PlatformMallReportingMysqlTest",
+        "[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.069 s -- in ai.neargo.shop.commercebridge.PlatformMallReportingTest",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.508 s -- in ai.neargo.shop.pay.service.impl.PlatformCashReportingMysqlTest",
+        "[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0"
+      ],
+      "readOnly166Probe": {
+        "beforeFacts": 12,
+        "explicitTestFacts": 4,
+        "afterFacts": 8,
+        "allRemainingVerifiedAndUniquelyAttributed": true,
+        "databaseWrites": false
+      },
+      "redLogSha256": "a194411cd6fd64a8febe3b74ba2c28a5cda201d1eeb356849cf594f72fcde445",
+      "greenLogSha256": "90e6a5e8cd0b33196e2ea836783772687db990a2ab13cb2d147662f23859dabd"
     }
   }
 }

@@ -82,8 +82,14 @@ class PlatformCashReportingMysqlTest {
             var refundKey=new PlatformRefundService.Key("MAIN","SALES","refund");
             f.refunds().refund(new PlatformRefundService.Request(refundKey,"S1","A",paid.receipt().paymentNo(),"platform-mch",10000,4000,"TWD","test return"));
             f.refunds().confirmOfflinePayout(new PlatformRefundService.OfflinePayout(refundKey,"ops",4000,"TWD",5000,"test-recipient","test-refund-reference","test-proof",6000));
+            var testRequest=new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN","SALES-TEST","A"),"buyer","platform-mch","OFFLINE","SALES_COLLECTION",7000,"TWD",86401000,1000,null,terms);
+            f.base.service.create(testRequest);
+            var testPaid=f.base.service.confirmOffline(new PlatformCollectionService.OfflineProof(testRequest.key(),"ops","platform-mch",7000,"TWD",2000,null,"private-test-proof","TEST",3000,"collector","TEST-report-receipt"));
+            var rawBefore=f.base.jdbc.queryForList("SELECT payment_no,status,version,platform_manual_proof FROM stl_payment ORDER BY payment_no");
             var reporting=new PlatformCashReportingImpl(f.base.ds,new DataSourceTransactionManager(f.base.ds));var facts=new ArrayList<PlatformCashReporting.Fact>();
             reporting.scan(new PlatformCashReporting.Query("MAIN",0,10000,"TWD"),facts::addAll);
+            assertTrue(facts.stream().noneMatch(x->x.paymentNo().equals(testPaid.receipt().paymentNo())));
+            assertEquals(rawBefore,f.base.jdbc.queryForList("SELECT payment_no,status,version,platform_manual_proof FROM stl_payment ORDER BY payment_no"));
             assertEquals(2,facts.size());assertTrue(facts.stream().allMatch(PlatformCashReporting.Fact::verified));
             assertEquals(6000,facts.stream().mapToLong(x->x.direction().equals("PAY")?x.amountMinor():-x.amountMinor()).sum());
             f.base.jdbc.update("UPDATE stl_payment SET platform_collection_ref_key='forged' WHERE payment_no=?",paid.receipt().paymentNo());facts.clear();

@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
 
@@ -69,6 +70,23 @@ class PlatformCashReportingTest {
         assertThat(scan(null)).filteredOn(f->f.paymentNo().equals(ordinary)).singleElement().satisfies(f->{assertThat(f.occurredAt()).isEqualTo(5000);assertThat(f.amountMinor()).isEqualTo(20);assertThat(f.classification()).isEqualTo("NORMAL");});
         assertThat(scan(null)).filteredOn(f->f.paymentNo().equals(cash)).singleElement().extracting(PlatformCashReporting.Fact::classification).isEqualTo("UNMATCHED");
         assertThat(scan(null)).filteredOn(f->f.paymentNo().equals(late)).singleElement().extracting(PlatformCashReporting.Fact::classification).isEqualTo("CLOSED_ORDER");
+    }
+    @Test void testOriginalAndItsRefundStayOutsideCashWhileMalformedProofRemainsInvalid() {
+        var normal=receipt("normal","TWD",100,1000,"PLATFORM_MALL",false);
+        var test=receipt("test","TWD",200,2000,"PLATFORM_MALL",false);
+        var testRefund=refund(test,"test-refund",50,3000);
+        var malformed=receipt("malformed","TWD",300,4000,"PLATFORM_MALL",false);
+        String testNo=PlatformCollectionServiceImpl.paymentNo(test.key());
+        String normalNo=PlatformCollectionServiceImpl.paymentNo(normal.key());
+        String malformedNo=PlatformCollectionServiceImpl.paymentNo(malformed.key());
+        var proof=json.readTree(db.queryForObject("SELECT platform_manual_proof FROM stl_payment WHERE payment_no=?",String.class,testNo));
+        ((ObjectNode)proof).put("mode","TEST");
+        db.update("UPDATE stl_payment SET platform_manual_proof=? WHERE payment_no=?",json.writeValueAsString(proof),testNo);
+        db.update("UPDATE stl_payment SET platform_manual_proof='malformed' WHERE payment_no=?",malformedNo);
+        var facts=scan(null);
+        assertThat(facts).hasSize(2).noneMatch(f->f.paymentNo().equals(testNo)||f.paymentNo().equals(testRefund));
+        assertThat(facts).filteredOn(f->f.paymentNo().equals(normalNo)).singleElement().satisfies(f->assertThat(f.verified()).isTrue());
+        assertThat(facts).filteredOn(f->f.paymentNo().equals(malformedNo)).singleElement().satisfies(f->assertThat(f.verified()).isFalse());
     }
     @Test void malformedAndOverRefundedSuccessCannotBecomeVerifiedMoney() {
         var original=receipt("one","TWD",100,1000,"PLATFORM_MALL",false);

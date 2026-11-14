@@ -46,7 +46,7 @@ public class PlatformCashReportingImpl implements PlatformCashReporting {
             }
         });
     }
-    private record Original(Map<String,Object> row,Request request,String classification,boolean verified) {}
+    private record Original(Map<String,Object> row,Request request,String classification,boolean verified,boolean testOnly) {}
     private List<Fact> facts(String tenant,List<Map<String,Object>> rows) {
         var ids=new LinkedHashSet<String>();
         for(var row:rows) {
@@ -61,7 +61,7 @@ public class PlatformCashReportingImpl implements PlatformCashReporting {
                 Request request=null;boolean verified=false;
                 try { request=PlatformCashAuthority.receiptMetadata(json,row);verified=PlatformCashAuthority.receiptVerified(json,request,row); }
                 catch(RuntimeException invalid) { /* A sanitized invalid candidate still reaches host scope filtering. */ }
-                originals.put(string(row,"payment_no"),new Original(row,request,classification(row),verified));
+                originals.put(string(row,"payment_no"),new Original(row,request,classification(row),verified,testReceipt(row)));
             }
         }
         var invalidCapacity=invalidCapacity(tenant,originals);
@@ -70,6 +70,8 @@ public class PlatformCashReportingImpl implements PlatformCashReporting {
             boolean refund="REFUND".equals(row.get("direction"));
             String originalNo=refund?string(row,"origin_payment_no"):string(row,"payment_no");
             var original=originals.get(originalNo);
+            // TEST proofs are excluded from cash authority, including refunds of that receipt.
+            if(original!=null && original.testOnly())continue;
             boolean verified=original!=null && original.verified();
             String diagnostic=verified?null:"PLATFORM_CASH_ORIGINAL_UNVERIFIED";
             if(verified && refund) {
@@ -83,6 +85,11 @@ public class PlatformCashReportingImpl implements PlatformCashReporting {
                     original==null?classification(row):original.classification(),verified,diagnostic));
         }
         return List.copyOf(result);
+    }
+    private boolean testReceipt(Map<String,Object> row) {
+        if(row.get("platform_manual_proof")==null)return false;
+        try { return "TEST".equals(json.readTree(string(row,"platform_manual_proof")).path("mode").asString()); }
+        catch(RuntimeException invalid) { return false; } // Malformed proofs remain invalid candidates.
     }
     /** Check the full original's refund history, including facts outside this report's occurrence window. */
     private Set<String> invalidCapacity(String tenant,Map<String,Original> originals) {
