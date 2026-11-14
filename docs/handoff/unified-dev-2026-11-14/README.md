@@ -1,6 +1,6 @@
 # 统一开发分支交接清单（2026-11-14）
 
-分支：`integration/unified-20261114`（仅本地，**未推送**；推送待确认）
+分支：`integration/unified-20261114`（2026-11-14 已推送到 origin；pre-push 因下文「基线红灯」经用户批准跳过闸门）
 工作区：`/Users/workingowl/work/ai-shop-unified`
 
 > 把主线、运营线、零售 / 餐饮线合到一条开发分支上；本文列出合了什么、改了什么、怎么验证的、还剩什么。
@@ -142,7 +142,7 @@
 | `ArchitectureTest.noFullyQualifiedReferences` | 两条线共有（`BizEntitlementUseController`、`EntitlementServiceUseCoordinator*`） | 全限定名改 import |
 | `ArchitectureTest.serviceMustBeInterface` | 运营线（`AdmissionManagementService`） | 具体类以 Service 结尾 |
 | `BizEndpointPermTest.everyBizEndpointHasADecision` | `/biz/entitlement-uses/work-order-intents`、`/biz/entitlement-uses/work-order-money-previews`、`/biz/pay/v2/collections` | 端点未定权限 |
-| `b-app/scripts/gen-openapi.mjs` | 餐饮 / 零售线 | 端点 `mRpState` 路径资源段 `commands` 违反命名空间约定；生成文档闸门因此跑不完 |
+| `b-app/scripts/gen-openapi.mjs` | 零售线（`codex/food-next01`） | 补货 10 个端点（`/biz/stock-control/replenishments/:no/*`、`…/commands/:action*`）在旧 `/biz` 下用复数资源段，违反命名空间约定；生成文档闸门因此跑不完。待零售负责人决定是否改成单数路径（契约变更，b-app / POS 同步） |
 | `-P food-embedded` 测试编译 | 餐饮线 | `food-embedded-test` 下 `FoodChannelVertical*` 依赖 commerce 模块，单开 food-embedded 编不过；加 commerce 相关 profile 后 `FoodInventoryDirectSyncNativeMysqlTest` 又缺 food-channel |
 | pre-push 第 6 道「app-backend orphan」 | 基线 | 推送时会挡，需逐次批准跳过 |
 | 本机从零重建工具 | `~/work/tools/ai-shop-mysql-rebuild` | 分段启动时支付库 Flyway 在平台表不全时先跑，留下失败的 V3 记录；删掉失败行再启动即可 |
