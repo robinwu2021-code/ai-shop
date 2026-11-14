@@ -1,0 +1,121 @@
+{
+  "controls": [
+    {
+      "action": "background",
+      "utc": "2026-11-14T00:42:43.265466+00:00"
+    },
+    {
+      "action": "foreground",
+      "utc": "2026-11-14T00:43:21.958920+00:00"
+    },
+    {
+      "action": "observation_finished_after_server_auto_stop",
+      "utc": "2026-11-14T00:56:07.744774+00:00"
+    }
+  ],
+  "runs": {
+    "89f2c95e-ed75-4297-9907-ddda101e447b": {
+      "serverGenerated": 179,
+      "serverQueuedSamples": 175,
+      "serverWriterFrames": 174,
+      "appReceived": 174,
+      "appUnique": 174,
+      "duplicates": 0,
+      "firstSequence": 2,
+      "lastSequence": 179,
+      "internalMissing": [
+        105,
+        106,
+        107,
+        108
+      ],
+      "firstReceivedAt": 1794615940938,
+      "lastReceivedAt": 1794617710884,
+      "arrivalIntervalMs": {
+        "min": 9939,
+        "max": 49959,
+        "median": 10000
+      },
+      "writerButNotApp": [],
+      "appButNotWriter": [],
+      "generatedButNotApp": [
+        1,
+        105,
+        106,
+        107,
+        108
+      ],
+      "controlledBackgroundMissing": [
+        105,
+        106,
+        107,
+        108
+      ],
+      "beforeFirstConnected": [
+        1
+      ],
+      "unexplainedMissing": []
+    }
+  },
+  "readyCount": 3,
+  "errors": [
+    {
+      "utc": "2026-11-14T00:22:50.619289Z",
+      "type": "HttpException",
+      "httpStatus": null
+    },
+    {
+      "utc": "2026-11-14T00:22:54.036375Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:22:56.219511Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:23:02.082145Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:23:11.951858Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:23:29.917814Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:24:01.321868Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:24:32.762796Z",
+      "type": "DioException",
+      "httpStatus": 502
+    },
+    {
+      "utc": "2026-11-14T00:25:04.268680Z",
+      "type": "DioException",
+      "httpStatus": 502
+    }
+  ],
+  "actualPaymentEvents": 1,
+  "nativeCompletionObservations": 1,
+  "latestProgress": {
+    "phase": "WAIT_PROGRESS",
+    "utc": "2026-11-14T00:55:40.942907Z",
+    "elapsedSeconds": 1950,
+    "readyCount": 3,
+    "eventCount": 1,
+    "available": true,
+    "started": 1,
+    "completed": 1,
+    "stopped": 0
+  }
+}

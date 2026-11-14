@@ -1,0 +1,272 @@
+{"phase": "PREAUTH_NATIVE_PREPARED", "utc": "2026-11-14T00:21:44.264826Z", "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "ACCOUNT_GET_PROBE", "utc": "2026-11-14T00:21:47.048900Z", "success": false, "failureKind": "forbidden", "failureCode": "business_70006"}
+{"phase": "PROFILE_CANONICAL_USER_CHECK", "utc": "2026-11-14T00:21:47.050165Z", "profileUserMatches": true, "profileFieldNames": ["merchantNo", "name", "logo", "status", "subject", "tier", "phone", "isPickupPoint", "pickupNo", "rejectReason", "industry", "description", "fundsMode", "agreementPending", "favoriteCount", "displayName", "currentStoreNo", "account", "subjectKind", "currentIdentity", "userNo"]}
+{"phase": "LINKED_IDENTITY_CHECK", "utc": "2026-11-14T00:21:47.050467Z", "accountPresent": false, "linkedUserMatches": false, "expectedMerchantPrincipalMatches": false, "subjectKind": "USR"}
+{"phase": "SESSION_RESTORED", "utc": "2026-11-14T00:21:47.050648Z", "signedIn": true, "profileLoaded": true, "accountEmailMatches": false, "accountPresent": false, "linkedUserMatches": false, "expectedMerchantPrincipalMatches": false, "subjectKind": "USR", "failureKind": null, "failureCode": null}
+{"phase": "TARGET_STORE_ACCESS", "utc": "2026-11-14T00:21:47.051849Z", "accessible": true, "storeNo": "ST261112G3TMS4DWM7", "entityNo": "M261112G44KM1QND5"}
+{"phase": "TARGET_STORE_SELECTED", "utc": "2026-11-14T00:21:48.769494Z", "success": true, "selectedMatches": true, "failureKind": null, "failureCode": null}
+{"phase": "SANDBOX_COLLECT_STATUS_PROBE", "utc": "2026-11-14T00:21:49.079041Z", "success": true, "failureKind": null, "failureCode": null, "enabled": true}
+{"phase": "SANDBOX_LOOKUP_PROBE", "utc": "2026-11-14T00:21:49.436489Z", "success": true, "failureKind": null, "failureCode": null, "matches": 0}
+{"phase": "PAYMENT_DETAIL", "utc": "2026-11-14T00:21:49.752677Z", "detailCount": 1, "success": true, "failureKind": null, "failureCode": null, "status": "pending", "paidAtPresent": false}
+{"phase": "SANDBOX_DETAIL_PROBE", "utc": "2026-11-14T00:21:49.752906Z", "success": true, "failureKind": null, "failureCode": null, "status": "pending"}
+{"phase": "SANDBOX_LIST_RANGE", "utc": "2026-11-14T00:21:49.825356Z", "payRange": "today", "from": "2026-11-14T00:00:00.000", "toExclusive": "2026-11-15T00:00:00.000", "storeTimeZone": "Asia/Taipei", "fallbackTimeZone": null, "size": 50, "filter": "default: no status/source/channel/amount filter"}
+{"phase": "SANDBOX_LIST_ACTUAL_REQUEST", "utc": "2026-11-14T00:21:49.834524Z", "query": {"from": "2026-11-14", "to": "2026-11-14", "size": "50"}, "storeNo": "ST261112G3TMS4DWM7", "entityNo": "M261112G44KM1QND5", "readEnvironment": "SANDBOX"}
+{"phase": "SANDBOX_LIST_ACTUAL_ITEMS", "utc": "2026-11-14T00:21:50.146093Z", "items": [{"paymentNo": "PYO261114041838201", "status": "PENDING", "createdAt": 1794601118263}, {"paymentNo": "PYO261114034111181", "status": "PENDING", "createdAt": 1794598871620}]}
+{"phase": "SANDBOX_LIST_PROBE", "utc": "2026-11-14T00:21:50.147514Z", "success": true, "failureKind": null, "failureCode": null, "itemCount": 2, "targetPresent": false}
+{"phase": "SANDBOX_SUMMARY_PROBE", "utc": "2026-11-14T00:21:50.446802Z", "success": true, "failureKind": null, "failureCode": null, "count": 0}
+{"phase": "NATIVE_PREPARED", "utc": "2026-11-14T00:21:50.590917Z", "available": true, "speakPreference": true, "scopePreference": "ALL", "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_READY", "utc": "2026-11-14T00:21:50.884878Z", "readyCount": 1, "storeNo": "ST261112G3TMS4DWM7", "entityNo": "M261112G44KM1QND5"}
+{"phase": "WAITING_FOR_ROOT_REAL_H5_PAYMENT", "utc": "2026-11-14T00:21:51.676723Z", "waitLimitSeconds": 2700, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:22:22.196787Z", "elapsedSeconds": 30, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:22:50.619289Z", "type": "HttpException", "httpStatus": null}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:22:52.966638Z", "elapsedSeconds": 60, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:22:54.036375Z", "type": "DioException", "httpStatus": 502}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:22:56.219511Z", "type": "DioException", "httpStatus": 502}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:23:02.082145Z", "type": "DioException", "httpStatus": 502}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:23:11.951858Z", "type": "DioException", "httpStatus": 502}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:23:23.712555Z", "elapsedSeconds": 90, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:23:29.917814Z", "type": "DioException", "httpStatus": 502}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:23:54.246896Z", "elapsedSeconds": 120, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:24:01.321868Z", "type": "DioException", "httpStatus": 502}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:24:24.895727Z", "elapsedSeconds": 150, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:24:32.762796Z", "type": "DioException", "httpStatus": 502}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:24:55.661672Z", "elapsedSeconds": 180, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_ERROR", "utc": "2026-11-14T00:25:04.268680Z", "type": "DioException", "httpStatus": 502}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:25:26.159897Z", "elapsedSeconds": 210, "readyCount": 1, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "SSE_READY", "utc": "2026-11-14T00:25:36.268312Z", "readyCount": 2, "storeNo": "ST261112G3TMS4DWM7", "entityNo": "M261112G44KM1QND5"}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:25:40.940159Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 2, "sentAt": 1794615941603, "receivedAt": 1794615940938, "latencyMs": -665}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:25:50.905820Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 3, "sentAt": 1794615951603, "receivedAt": 1794615950905, "latencyMs": -698}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:25:56.795643Z", "elapsedSeconds": 240, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:00.913410Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 4, "sentAt": 1794615961603, "receivedAt": 1794615960913, "latencyMs": -690}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:10.930099Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 5, "sentAt": 1794615971603, "receivedAt": 1794615970930, "latencyMs": -673}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:20.884413Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 6, "sentAt": 1794615981603, "receivedAt": 1794615980884, "latencyMs": -719}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:26:27.742002Z", "elapsedSeconds": 270, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:30.933820Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 7, "sentAt": 1794615991603, "receivedAt": 1794615990933, "latencyMs": -670}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:40.908625Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 8, "sentAt": 1794616001603, "receivedAt": 1794616000903, "latencyMs": -700}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:26:50.883516Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 9, "sentAt": 1794616011603, "receivedAt": 1794616010883, "latencyMs": -720}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:26:58.961419Z", "elapsedSeconds": 300, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:00.923091Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 10, "sentAt": 1794616021603, "receivedAt": 1794616020923, "latencyMs": -680}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:10.872899Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 11, "sentAt": 1794616031603, "receivedAt": 1794616030872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:20.877066Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 12, "sentAt": 1794616041603, "receivedAt": 1794616040877, "latencyMs": -726}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:27:29.766745Z", "elapsedSeconds": 330, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:30.894231Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 13, "sentAt": 1794616051603, "receivedAt": 1794616050894, "latencyMs": -709}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:40.874453Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 14, "sentAt": 1794616061603, "receivedAt": 1794616060874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:27:50.876197Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 15, "sentAt": 1794616071603, "receivedAt": 1794616070876, "latencyMs": -727}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:28:00.310389Z", "elapsedSeconds": 360, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:00.918455Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 16, "sentAt": 1794616081603, "receivedAt": 1794616080918, "latencyMs": -685}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:10.906591Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 17, "sentAt": 1794616091603, "receivedAt": 1794616090906, "latencyMs": -697}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:20.880126Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 18, "sentAt": 1794616101603, "receivedAt": 1794616100880, "latencyMs": -723}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:28:30.810923Z", "elapsedSeconds": 390, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:30.921893Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 19, "sentAt": 1794616111603, "receivedAt": 1794616110921, "latencyMs": -682}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:40.874856Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 20, "sentAt": 1794616121603, "receivedAt": 1794616120874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:28:50.906300Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 21, "sentAt": 1794616131606, "receivedAt": 1794616130906, "latencyMs": -700}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:00.871034Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 22, "sentAt": 1794616141603, "receivedAt": 1794616140871, "latencyMs": -732}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:29:01.306018Z", "elapsedSeconds": 420, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:10.869909Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 23, "sentAt": 1794616151603, "receivedAt": 1794616150869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:20.872447Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 24, "sentAt": 1794616161603, "receivedAt": 1794616160872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:30.873964Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 25, "sentAt": 1794616171603, "receivedAt": 1794616170873, "latencyMs": -730}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:29:31.933077Z", "elapsedSeconds": 450, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:40.881095Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 26, "sentAt": 1794616181603, "receivedAt": 1794616180880, "latencyMs": -723}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:29:50.884499Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 27, "sentAt": 1794616191603, "receivedAt": 1794616190884, "latencyMs": -719}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:00.934002Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 28, "sentAt": 1794616201603, "receivedAt": 1794616200933, "latencyMs": -670}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:30:02.727886Z", "elapsedSeconds": 480, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:10.886319Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 29, "sentAt": 1794616211603, "receivedAt": 1794616210886, "latencyMs": -717}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:20.896991Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 30, "sentAt": 1794616221603, "receivedAt": 1794616220896, "latencyMs": -707}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:30.877694Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 31, "sentAt": 1794616231603, "receivedAt": 1794616230877, "latencyMs": -726}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:30:33.384497Z", "elapsedSeconds": 510, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:40.878156Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 32, "sentAt": 1794616241603, "receivedAt": 1794616240878, "latencyMs": -725}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:30:50.874877Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 33, "sentAt": 1794616251603, "receivedAt": 1794616250874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:00.891932Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 34, "sentAt": 1794616261603, "receivedAt": 1794616260891, "latencyMs": -712}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:31:03.944682Z", "elapsedSeconds": 540, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:10.869592Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 35, "sentAt": 1794616271603, "receivedAt": 1794616270869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:20.867672Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 36, "sentAt": 1794616281603, "receivedAt": 1794616280867, "latencyMs": -736}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:30.868731Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 37, "sentAt": 1794616291603, "receivedAt": 1794616290868, "latencyMs": -735}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:31:34.411073Z", "elapsedSeconds": 570, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:40.873455Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 38, "sentAt": 1794616301603, "receivedAt": 1794616300873, "latencyMs": -730}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:31:50.871409Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 39, "sentAt": 1794616311603, "receivedAt": 1794616310871, "latencyMs": -732}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:00.872996Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 40, "sentAt": 1794616321603, "receivedAt": 1794616320872, "latencyMs": -731}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:32:04.977886Z", "elapsedSeconds": 600, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:10.879835Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 41, "sentAt": 1794616331603, "receivedAt": 1794616330879, "latencyMs": -724}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:20.875529Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 42, "sentAt": 1794616341603, "receivedAt": 1794616340875, "latencyMs": -728}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:30.876241Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 43, "sentAt": 1794616351603, "receivedAt": 1794616350876, "latencyMs": -727}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:32:35.611023Z", "elapsedSeconds": 630, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:40.866208Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 44, "sentAt": 1794616361603, "receivedAt": 1794616360866, "latencyMs": -737}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:32:50.867744Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 45, "sentAt": 1794616371603, "receivedAt": 1794616370867, "latencyMs": -736}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:00.888536Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 46, "sentAt": 1794616381603, "receivedAt": 1794616380888, "latencyMs": -715}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:33:06.279857Z", "elapsedSeconds": 660, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:10.881903Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 47, "sentAt": 1794616391603, "receivedAt": 1794616390881, "latencyMs": -722}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:20.886640Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 48, "sentAt": 1794616401603, "receivedAt": 1794616400886, "latencyMs": -717}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:30.890314Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 49, "sentAt": 1794616411603, "receivedAt": 1794616410890, "latencyMs": -713}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:33:37.046245Z", "elapsedSeconds": 690, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:40.869306Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 50, "sentAt": 1794616421603, "receivedAt": 1794616420869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:33:50.866705Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 51, "sentAt": 1794616431603, "receivedAt": 1794616430866, "latencyMs": -737}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:00.872624Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 52, "sentAt": 1794616441603, "receivedAt": 1794616440872, "latencyMs": -731}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:34:07.548565Z", "elapsedSeconds": 720, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:10.869899Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 53, "sentAt": 1794616451603, "receivedAt": 1794616450869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:20.869572Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 54, "sentAt": 1794616461603, "receivedAt": 1794616460869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:30.889300Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 55, "sentAt": 1794616471603, "receivedAt": 1794616470889, "latencyMs": -714}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:34:38.218385Z", "elapsedSeconds": 750, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:40.872131Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 56, "sentAt": 1794616481603, "receivedAt": 1794616480872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:34:50.878056Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 57, "sentAt": 1794616491603, "receivedAt": 1794616490877, "latencyMs": -726}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:00.874489Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 58, "sentAt": 1794616501603, "receivedAt": 1794616500874, "latencyMs": -729}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:35:08.793291Z", "elapsedSeconds": 780, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:10.864398Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 59, "sentAt": 1794616511603, "receivedAt": 1794616510864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:20.873092Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 60, "sentAt": 1794616521603, "receivedAt": 1794616520873, "latencyMs": -730}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:30.875908Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 61, "sentAt": 1794616531603, "receivedAt": 1794616530875, "latencyMs": -728}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:35:39.359660Z", "elapsedSeconds": 810, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:40.871463Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 62, "sentAt": 1794616541603, "receivedAt": 1794616540871, "latencyMs": -732}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:35:50.868062Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 63, "sentAt": 1794616551603, "receivedAt": 1794616550868, "latencyMs": -735}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:00.903943Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 64, "sentAt": 1794616561603, "receivedAt": 1794616560903, "latencyMs": -700}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:36:09.912662Z", "elapsedSeconds": 840, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:10.888358Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 65, "sentAt": 1794616571603, "receivedAt": 1794616570888, "latencyMs": -715}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:20.865567Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 66, "sentAt": 1794616581603, "receivedAt": 1794616580865, "latencyMs": -738}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:30.866819Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 67, "sentAt": 1794616591603, "receivedAt": 1794616590866, "latencyMs": -737}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:36:40.464130Z", "elapsedSeconds": 870, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:40.925691Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 68, "sentAt": 1794616601603, "receivedAt": 1794616600925, "latencyMs": -678}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:36:50.864345Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 69, "sentAt": 1794616611603, "receivedAt": 1794616610864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:00.868005Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 70, "sentAt": 1794616621603, "receivedAt": 1794616620867, "latencyMs": -736}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:10.863666Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 71, "sentAt": 1794616631603, "receivedAt": 1794616630863, "latencyMs": -740}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:37:11.085423Z", "elapsedSeconds": 900, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:20.895192Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 72, "sentAt": 1794616641603, "receivedAt": 1794616640895, "latencyMs": -708}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:30.862826Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 73, "sentAt": 1794616651603, "receivedAt": 1794616650862, "latencyMs": -741}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:40.866545Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 74, "sentAt": 1794616661603, "receivedAt": 1794616660866, "latencyMs": -737}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:37:41.649476Z", "elapsedSeconds": 930, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:37:50.866102Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 75, "sentAt": 1794616671603, "receivedAt": 1794616670866, "latencyMs": -737}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:00.865835Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 76, "sentAt": 1794616681603, "receivedAt": 1794616680865, "latencyMs": -738}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:10.870124Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 77, "sentAt": 1794616691603, "receivedAt": 1794616690870, "latencyMs": -733}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:38:12.193879Z", "elapsedSeconds": 960, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:20.869433Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 78, "sentAt": 1794616701603, "receivedAt": 1794616700869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:30.863085Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 79, "sentAt": 1794616711603, "receivedAt": 1794616710863, "latencyMs": -740}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:40.862544Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 80, "sentAt": 1794616721603, "receivedAt": 1794616720862, "latencyMs": -741}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:38:42.775418Z", "elapsedSeconds": 990, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:38:50.864029Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 81, "sentAt": 1794616731603, "receivedAt": 1794616730864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:00.880563Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 82, "sentAt": 1794616741603, "receivedAt": 1794616740880, "latencyMs": -723}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:10.864924Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 83, "sentAt": 1794616751603, "receivedAt": 1794616750864, "latencyMs": -739}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:39:13.278948Z", "elapsedSeconds": 1020, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:20.872589Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 84, "sentAt": 1794616761603, "receivedAt": 1794616760872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:30.867562Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 85, "sentAt": 1794616771603, "receivedAt": 1794616770867, "latencyMs": -736}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:40.863446Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 86, "sentAt": 1794616781603, "receivedAt": 1794616780863, "latencyMs": -740}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:39:43.810745Z", "elapsedSeconds": 1050, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:39:50.871185Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 87, "sentAt": 1794616791603, "receivedAt": 1794616790871, "latencyMs": -732}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:00.874623Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 88, "sentAt": 1794616801603, "receivedAt": 1794616800874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:10.864622Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 89, "sentAt": 1794616811603, "receivedAt": 1794616810864, "latencyMs": -739}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:40:14.325849Z", "elapsedSeconds": 1080, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:20.861827Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 90, "sentAt": 1794616821603, "receivedAt": 1794616820861, "latencyMs": -742}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:30.869079Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 91, "sentAt": 1794616831603, "receivedAt": 1794616830869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:40.869392Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 92, "sentAt": 1794616841603, "receivedAt": 1794616840869, "latencyMs": -734}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:40:44.952220Z", "elapsedSeconds": 1110, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:40:50.872017Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 93, "sentAt": 1794616851603, "receivedAt": 1794616850871, "latencyMs": -732}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:00.879353Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 94, "sentAt": 1794616861603, "receivedAt": 1794616860879, "latencyMs": -724}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:10.870757Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 95, "sentAt": 1794616871603, "receivedAt": 1794616870870, "latencyMs": -733}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:41:16.278069Z", "elapsedSeconds": 1140, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:20.866546Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 96, "sentAt": 1794616881603, "receivedAt": 1794616880866, "latencyMs": -737}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:30.869713Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 97, "sentAt": 1794616891603, "receivedAt": 1794616890869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:40.871260Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 98, "sentAt": 1794616901603, "receivedAt": 1794616900870, "latencyMs": -733}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:41:46.853495Z", "elapsedSeconds": 1170, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:41:50.876763Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 99, "sentAt": 1794616911603, "receivedAt": 1794616910876, "latencyMs": -727}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:42:00.884025Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 100, "sentAt": 1794616921603, "receivedAt": 1794616920883, "latencyMs": -720}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:42:10.870650Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 101, "sentAt": 1794616931603, "receivedAt": 1794616930870, "latencyMs": -733}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:42:18.268767Z", "elapsedSeconds": 1200, "readyCount": 2, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:42:20.875074Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 102, "sentAt": 1794616941603, "receivedAt": 1794616940874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:42:30.871074Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 103, "sentAt": 1794616951603, "receivedAt": 1794616950870, "latencyMs": -733}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:42:40.913371Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 104, "sentAt": 1794616961603, "receivedAt": 1794616960913, "latencyMs": -690}
+{"phase": "SSE_READY", "utc": "2026-11-14T00:43:23.663217Z", "readyCount": 3, "storeNo": "ST261112G3TMS4DWM7", "entityNo": "M261112G44KM1QND5"}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:43:24.742664Z", "elapsedSeconds": 1230, "readyCount": 3, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:43:30.872610Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 109, "sentAt": 1794617011603, "receivedAt": 1794617010872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:43:40.872771Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 110, "sentAt": 1794617021603, "receivedAt": 1794617020872, "latencyMs": -731}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:43:50.863438Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 111, "sentAt": 1794617031603, "receivedAt": 1794617030863, "latencyMs": -740}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:43:55.578294Z", "elapsedSeconds": 1260, "readyCount": 3, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:00.864861Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 112, "sentAt": 1794617041603, "receivedAt": 1794617040864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:10.859546Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 113, "sentAt": 1794617051603, "receivedAt": 1794617050859, "latencyMs": -744}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:20.864955Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 114, "sentAt": 1794617061603, "receivedAt": 1794617060864, "latencyMs": -739}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:44:26.214138Z", "elapsedSeconds": 1290, "readyCount": 3, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:30.857517Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 115, "sentAt": 1794617071603, "receivedAt": 1794617070857, "latencyMs": -746}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:40.864866Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 116, "sentAt": 1794617081603, "receivedAt": 1794617080864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:44:50.879297Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 117, "sentAt": 1794617091603, "receivedAt": 1794617090879, "latencyMs": -724}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:44:56.778519Z", "elapsedSeconds": 1320, "readyCount": 3, "eventCount": 0, "available": true, "started": 0, "completed": 0, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:00.874717Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 118, "sentAt": 1794617101603, "receivedAt": 1794617100874, "latencyMs": -729}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:10.858272Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 119, "sentAt": 1794617111603, "receivedAt": 1794617110858, "latencyMs": -745}
+{"phase": "REAL_SSE_EVENT", "utc": "2026-11-14T00:45:20.834725Z", "eventCount": 1}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:20.883943Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 120, "sentAt": 1794617121603, "receivedAt": 1794617120883, "latencyMs": -720}
+{"phase": "PAYMENT_DETAIL", "utc": "2026-11-14T00:45:23.146751Z", "detailCount": 2, "success": true, "failureKind": null, "failureCode": null, "status": "success", "paidAtPresent": true}
+{"phase": "PAYMENT_BANNER", "utc": "2026-11-14T00:45:23.148330Z", "storeNo": "ST261112G3TMS4DWM7"}
+{"phase": "REAL_NATIVE_TTS_COMPLETED", "utc": "2026-11-14T00:45:27.409525Z", "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:30.882187Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 121, "sentAt": 1794617131603, "receivedAt": 1794617130882, "latencyMs": -721}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:40.865199Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 122, "sentAt": 1794617141603, "receivedAt": 1794617140865, "latencyMs": -738}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:45:50.881036Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 123, "sentAt": 1794617151603, "receivedAt": 1794617150880, "latencyMs": -723}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:45:57.962338Z", "elapsedSeconds": 1380, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:00.864691Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 124, "sentAt": 1794617161603, "receivedAt": 1794617160864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:10.859251Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 125, "sentAt": 1794617171603, "receivedAt": 1794617170859, "latencyMs": -744}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:20.872912Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 126, "sentAt": 1794617181603, "receivedAt": 1794617180872, "latencyMs": -731}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:46:28.575981Z", "elapsedSeconds": 1410, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:30.858623Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 127, "sentAt": 1794617191603, "receivedAt": 1794617190858, "latencyMs": -745}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:40.889678Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 128, "sentAt": 1794617201603, "receivedAt": 1794617200889, "latencyMs": -714}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:46:50.870123Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 129, "sentAt": 1794617211603, "receivedAt": 1794617210870, "latencyMs": -733}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:46:59.160143Z", "elapsedSeconds": 1440, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:00.859428Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 130, "sentAt": 1794617221603, "receivedAt": 1794617220859, "latencyMs": -744}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:10.856983Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 131, "sentAt": 1794617231603, "receivedAt": 1794617230856, "latencyMs": -747}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:20.867619Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 132, "sentAt": 1794617241603, "receivedAt": 1794617240867, "latencyMs": -736}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:47:29.709717Z", "elapsedSeconds": 1470, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:30.865003Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 133, "sentAt": 1794617251603, "receivedAt": 1794617250864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:40.878701Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 134, "sentAt": 1794617261603, "receivedAt": 1794617260878, "latencyMs": -725}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:47:50.868650Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 135, "sentAt": 1794617271603, "receivedAt": 1794617270868, "latencyMs": -735}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:48:00.697840Z", "elapsedSeconds": 1500, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:00.916960Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 136, "sentAt": 1794617281603, "receivedAt": 1794617280916, "latencyMs": -687}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:10.855949Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 137, "sentAt": 1794617291603, "receivedAt": 1794617290855, "latencyMs": -748}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:20.893853Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 138, "sentAt": 1794617301603, "receivedAt": 1794617300893, "latencyMs": -710}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:30.884386Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 139, "sentAt": 1794617311603, "receivedAt": 1794617310884, "latencyMs": -719}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:48:32.067644Z", "elapsedSeconds": 1530, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:40.869316Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 140, "sentAt": 1794617321603, "receivedAt": 1794617320869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:48:50.865015Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 141, "sentAt": 1794617331603, "receivedAt": 1794617330864, "latencyMs": -739}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:00.891452Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 142, "sentAt": 1794617341603, "receivedAt": 1794617340891, "latencyMs": -712}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:49:03.179307Z", "elapsedSeconds": 1560, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:10.914856Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 143, "sentAt": 1794617351603, "receivedAt": 1794617350906, "latencyMs": -697}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:20.884947Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 144, "sentAt": 1794617361603, "receivedAt": 1794617360884, "latencyMs": -719}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:30.877825Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 145, "sentAt": 1794617371603, "receivedAt": 1794617370877, "latencyMs": -726}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:49:33.797778Z", "elapsedSeconds": 1590, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:40.865240Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 146, "sentAt": 1794617381603, "receivedAt": 1794617380865, "latencyMs": -738}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:49:50.854891Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 147, "sentAt": 1794617391603, "receivedAt": 1794617390854, "latencyMs": -749}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:00.862489Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 148, "sentAt": 1794617401603, "receivedAt": 1794617400862, "latencyMs": -741}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:50:04.478049Z", "elapsedSeconds": 1620, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:10.857998Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 149, "sentAt": 1794617411603, "receivedAt": 1794617410857, "latencyMs": -746}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:20.877594Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 150, "sentAt": 1794617421603, "receivedAt": 1794617420877, "latencyMs": -726}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:30.856409Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 151, "sentAt": 1794617431603, "receivedAt": 1794617430856, "latencyMs": -747}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:50:35.043045Z", "elapsedSeconds": 1650, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:40.853271Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 152, "sentAt": 1794617441603, "receivedAt": 1794617440853, "latencyMs": -750}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:50:50.857810Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 153, "sentAt": 1794617451603, "receivedAt": 1794617450857, "latencyMs": -746}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:00.881564Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 154, "sentAt": 1794617461603, "receivedAt": 1794617460881, "latencyMs": -722}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:51:05.578986Z", "elapsedSeconds": 1680, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:10.854666Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 155, "sentAt": 1794617471603, "receivedAt": 1794617470854, "latencyMs": -749}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:20.900134Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 156, "sentAt": 1794617481603, "receivedAt": 1794617480899, "latencyMs": -704}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:30.862512Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 157, "sentAt": 1794617491603, "receivedAt": 1794617490862, "latencyMs": -741}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:51:36.145033Z", "elapsedSeconds": 1710, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:40.856257Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 158, "sentAt": 1794617501603, "receivedAt": 1794617500856, "latencyMs": -747}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:51:50.860689Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 159, "sentAt": 1794617511603, "receivedAt": 1794617510860, "latencyMs": -743}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:00.887005Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 160, "sentAt": 1794617521604, "receivedAt": 1794617520886, "latencyMs": -718}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:52:06.731131Z", "elapsedSeconds": 1740, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:10.860680Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 161, "sentAt": 1794617531603, "receivedAt": 1794617530860, "latencyMs": -743}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:20.856962Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 162, "sentAt": 1794617541603, "receivedAt": 1794617540856, "latencyMs": -747}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:30.853410Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 163, "sentAt": 1794617551603, "receivedAt": 1794617550853, "latencyMs": -750}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:52:37.311833Z", "elapsedSeconds": 1770, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:40.861105Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 164, "sentAt": 1794617561603, "receivedAt": 1794617560860, "latencyMs": -743}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:52:50.870010Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 165, "sentAt": 1794617571603, "receivedAt": 1794617570869, "latencyMs": -734}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:00.864986Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 166, "sentAt": 1794617581603, "receivedAt": 1794617580864, "latencyMs": -739}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:53:08.029584Z", "elapsedSeconds": 1800, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:10.861499Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 167, "sentAt": 1794617591603, "receivedAt": 1794617590861, "latencyMs": -742}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:20.862851Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 168, "sentAt": 1794617601603, "receivedAt": 1794617600862, "latencyMs": -741}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:30.857429Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 169, "sentAt": 1794617611603, "receivedAt": 1794617610857, "latencyMs": -746}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:53:38.628283Z", "elapsedSeconds": 1830, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:40.855814Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 170, "sentAt": 1794617621603, "receivedAt": 1794617620855, "latencyMs": -748}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:53:50.858821Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 171, "sentAt": 1794617631603, "receivedAt": 1794617630858, "latencyMs": -745}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:00.892490Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 172, "sentAt": 1794617641604, "receivedAt": 1794617640892, "latencyMs": -712}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:54:09.164259Z", "elapsedSeconds": 1860, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:10.857461Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 173, "sentAt": 1794617651603, "receivedAt": 1794617650857, "latencyMs": -746}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:20.853598Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 174, "sentAt": 1794617661603, "receivedAt": 1794617660853, "latencyMs": -750}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:30.856845Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 175, "sentAt": 1794617671603, "receivedAt": 1794617670856, "latencyMs": -747}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:54:39.827119Z", "elapsedSeconds": 1890, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:40.878735Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 176, "sentAt": 1794617681603, "receivedAt": 1794617680878, "latencyMs": -725}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:54:50.857125Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 177, "sentAt": 1794617691603, "receivedAt": 1794617690857, "latencyMs": -746}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:55:00.871281Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 178, "sentAt": 1794617701603, "receivedAt": 1794617700871, "latencyMs": -732}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:55:10.433699Z", "elapsedSeconds": 1920, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
+{"phase": "DIAGNOSTIC_SAMPLE", "utc": "2026-11-14T00:55:10.884173Z", "runId": "89f2c95e-ed75-4297-9907-ddda101e447b", "sequence": 179, "sentAt": 1794617711603, "receivedAt": 1794617710884, "latencyMs": -719}
+{"phase": "WAIT_PROGRESS", "utc": "2026-11-14T00:55:40.942907Z", "elapsedSeconds": 1950, "readyCount": 3, "eventCount": 1, "available": true, "started": 1, "completed": 1, "stopped": 0}
