@@ -14,6 +14,7 @@ const payServiceProfiles = new Map<string, PayServiceStatus>();
 
 /** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
 const selfOperatedByPhone = new Map<string, string>();
+const selfAdmissionDetails = new Map<string,{ownerUserNo:string;serviceScope:string}>();
 
 /*
  * mock 侧也把「实际可达多少个小区」算出来，而不是回显入参。
@@ -126,6 +127,14 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  listAdmissions: (q = {}) => {
+    const rows: import("@/lib/types").AdmissionEntry[] = [
+      ...db.applies.filter(a=>a.marketCode==="TW").map(a=>({key:"APPLY:"+a.applyNo,type:"ON_BEHALF" as const,name:a.name,ownerUserNo:a.ownerUserNo,status:a.status,createdAt:a.createdAt,application:a})),
+      ...db.merchants.filter(m=>m.selfOperated).map(m=>({key:"SELF:"+m.merchantNo,type:"SELF_OPERATED" as const,name:m.name,ownerUserNo:selfAdmissionDetails.get(m.merchantNo)?.ownerUserNo,status:m.status,createdAt:new Date(m.createdAt).getTime(),selfOperated:{merchantNo:m.merchantNo,name:m.name,ownerUserNo:selfAdmissionDetails.get(m.merchantNo)?.ownerUserNo??"",status:m.status,serviceScope:selfAdmissionDetails.get(m.merchantNo)?.serviceScope??"",createdAt:new Date(m.createdAt).getTime()}})),
+    ];
+    rows.sort((a,b)=>b.createdAt-a.createdAt || b.key.localeCompare(a.key));
+    return wait(db.paginate(rows,q.page,q.size,r=>(!q.type || r.type===q.type) && (!q.status || r.status===q.status) && db.kwHit(q.keyword,r.name,r.ownerUserNo)));
+  },
   onBehalfStoreIndustries: async () => storeIndustries.filter(r=>r.enabled && storeIndustries.some(p=>p.enabled && p.industryCode===r.industryCode && !p.subIndustryCode))
       .map(r=>({...r,subIndustryCode:r.subIndustryCode||null})),
   entityCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
@@ -283,6 +292,7 @@ export const merchantMock: MerchantApi = {
       selfOperated: true,
     });
     selfOperatedByPhone.set(ownerKey, merchantNo);
+    selfAdmissionDetails.set(merchantNo,{ownerUserNo:`U-${ownerKey}`,serviceScope:scope});
     return wait({
       merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${ownerKey}`,
       fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",

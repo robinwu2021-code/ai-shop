@@ -1,0 +1,11 @@
+{
+  "status": "DEPLOYED",
+  "previousSha256": "c477fa54591cd9add7487b6f79483b843569f260f90424db1001409c6c4b9f3f",
+  "newSha256": "cf21b018bba92333983b2e333fa68fad15a3eacb4de469af0f30391e0f978f57",
+  "historicMigrationsUnchanged": true,
+  "newMigration": "V665__ops_admission_entry_consolidation.sql",
+  "apiHealth": "UP",
+  "opsHealth": "UP",
+  "nearPayRestarted": false,
+  "envChanged": false
+}

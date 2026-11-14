@@ -105,14 +105,8 @@ export const NAV: NavSection[] = [
     children: [
       // 2026-11-11 菜单权限矩阵-优化版：按「入驻 → 档案 → 信用 → 展示获客 → 诊断」分组；
       // 准入押金只有财务看得到，迁到经营财务「保证金」组（深链与 point_code 不变）。
-      { href: "/merchants", label: "入驻申请", perm: "merchant:apply:audit", anyPerms:["merchant:apply:audit","merchant:apply:onbehalf"], legacyHrefs:["/merchants?tab=on-behalf"], group: "入驻", matrix: "P-11.1", ready: true },
-      // 代商家进件：BD 在店里替老板填完，落进**同一条审核队列**。
-      // 与「自营建档」刻意分码：那个回答「平台要不要自己下场经营」（只给超管），
-      // 这个回答「谁来替第三方录资料」（要给 BD）。合成一个码的话，
-      // 要么 BD 顺手拿到建平台自营主体的能力（放宽且不报错），要么这一期等于没做。
-      // 建平台自营商家：入驻链路上的一条岔路（平台自己那条），不是另一件事。
-      // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
-      { href: "/merchants?tab=self-operated", label: "自营建档", perm: "merchant:selfop:create", group: "入驻", matrix: "P-11.1", ready: true },
+      { href: "/merchants", label: "入驻管理", perm: "merchant:apply:audit", anyPerms:["merchant:apply:audit","merchant:apply:onbehalf","merchant:selfop:create"], legacyHrefs:["/merchants?tab=on-behalf","/merchants?tab=self-operated"], group: "入驻", matrix: "P-11.1", ready: true },
+      // One destination; application, assisted creation and platform-owned permissions remain separate.
       // 进件看板（WS-C）：跨商家看「谁卡在收款上」。复用 merchant:admission:read，不新增权限码。
       { href: "/merchants?tab=onboarding", label: "支付开通", perm: "merchant:admission:read", group: "入驻", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "档案", matrix: "P-11.1", ready: true },

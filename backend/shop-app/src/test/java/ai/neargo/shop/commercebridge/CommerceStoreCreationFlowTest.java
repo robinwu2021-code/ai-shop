@@ -510,7 +510,9 @@ class CommerceStoreCreationFlowTest {
             jdbc.update("INSERT INTO sys_store_industry(industry_code,sub_industry_code,business_type_code,name_zh,name_tw,enabled,created_at,updated_at) VALUES ('RETAIL_TEST','NOT_PUBLISHED','FOOD','Food','Food',1,NOW(),NOW()),('DISABLED','','RETAIL','Disabled','Disabled',0,NOW(),NOW()),('DISABLED','SHOP','RETAIL','Disabled child','Disabled child',1,NOW(),NOW()),('EMPTY','','FOOD','Empty','Empty',1,NOW(),NOW()),('EMPTY','CHILD','FOOD','Unpublished','Unpublished',1,NOW(),NOW())");
             var setup=new OpsStoreSetupQuery(ds,new JdbcCommerceUnitOfWork(ds,txManager),context.getBean(ai.neargo.shop.spi.user.MerchantQueryPort.class));
             var choices=tx.execute(status->setup.choices(authority.lockCreator("operator-owner")));
-            assertEquals(2,choices.size());assertTrue(choices.stream().allMatch(r->r.industryCode().equals("RETAIL_TEST")));
+            assertEquals(5,choices.size());
+            assertTrue(choices.stream().filter(OpsStoreSetupQuery.Choice::available).allMatch(r->r.industryCode().equals("RETAIL_TEST")));
+            assertTrue(choices.stream().filter(r->r.industryCode().equals("EMPTY")).noneMatch(OpsStoreSetupQuery.Choice::available));
             assertTrue(choices.stream().anyMatch(r->"SHOP".equals(r.subIndustryCode())));
             String application=ops.createApplyOnBehalf(operatorCommand,"maker");
             assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM mch_entity_apply WHERE apply_no=?",String.class,application));

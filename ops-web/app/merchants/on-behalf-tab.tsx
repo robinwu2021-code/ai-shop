@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -12,17 +12,18 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Textarea } from "@/components/ui/textarea";
 import { ApplyTab } from "./apply-tab";
+import { SelfOperatedTab } from "./self-operated-tab";
 import type { MerchantsCopy } from "./copy";
 
-export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canReadSubscription?:boolean }) {
+export function OnBehalfTab({ c, canSubmit, canAudit=false, canSelfOp=false, initialType="", canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canSelfOp?:boolean; initialType?:""|"SELF_OPERATED"; canReadSubscription?:boolean }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
   const qc = useQueryClient();
-  if (!canSubmit && !canAudit) return <Notice tone="danger">{c.obNoPerm}</Notice>;
+  if (!canSubmit && !canAudit && !canSelfOp) return <Notice tone="danger">{c.obNoPerm}</Notice>;
   return <div className="space-y-4">
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <ApplyTab c={c} canAudit={canAudit} canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
-      {open && <ApplicationDialog c={c} onDone={(result) => {
+      <ApplyTab c={c} canAudit={canAudit} canSelfOp={canSelfOp} canViewApplications={canAudit||canSubmit} initialType={initialType} unified canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit||canSelfOp?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
+      {open && <ApplicationDialog c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setDone(null);setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
         setDone(result); setOpen(false);
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
@@ -31,8 +32,12 @@ export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=
   </div>;
 }
 
-function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
-  const context = useQuery({queryKey:["onbehalf-context"],queryFn:()=>api.onBehalfContext()});
+function ApplicationDialog({ c, canSubmit, canSelfOp, onSelfDone, onDone, onCancel }: { c: MerchantsCopy; canSubmit:boolean; canSelfOp:boolean; onSelfDone:()=>void; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
+  const [type,setType]=useState(canSubmit?"ON_BEHALF":"SELF_OPERATED");
+  const assisted=type==="ON_BEHALF";
+  const [selfBusy,setSelfBusy]=useState(false);
+  const titleRef=useRef<HTMLHeadingElement>(null);
+  const context = useQuery({queryKey:["onbehalf-context"],queryFn:()=>api.onBehalfContext(),enabled:assisted});
   const policy = context.data;
   const market = policy?.market;
   const phoneOwner = market === "CN" && policy?.recordOnly === false;
@@ -51,13 +56,13 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
   const [category, setCategory] = useState("");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
-  const storeChoices = useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries()});
-  const industries = useQuery({queryKey:["industries","for-on-behalf"],queryFn:()=>api.listIndustries()});
+  const storeChoices = useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries(),enabled:assisted});
+  const industries = useQuery({queryKey:["industries","for-on-behalf"],queryFn:()=>api.listIndustries(),enabled:assisted});
   const storeParents = (storeChoices.data ?? []).filter(r=>r.enabled && !r.subIndustryCode);
   const storeChildren = (storeChoices.data ?? []).filter(r=>r.enabled && r.subIndustryCode && r.industryCode===storeIndustry);
   const chosenStore = storeChildren.find(r=>r.subIndustryCode===storeSubIndustry);
   const phoneOk = policy?.recordOnly === true || (market === "CN" ? /^1[3-9]\d{9}$/.test(phone.trim()) : /^\+?\d{3,20}$/.test(phone.trim()));
-  const ready = !!chosenStore && !!storeName.trim() && !!storeAddress.trim() && !!policy?.marketEnabled && !context.isError && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && !!name.trim() && !!licenseUrl.trim();
+  const ready = !!chosenStore && chosenStore.available!==false && !!storeName.trim() && !!storeAddress.trim() && !!policy?.marketEnabled && !context.isError && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && !!name.trim() && !!licenseUrl.trim();
   const submit = useMutation({
     mutationFn: () => api.applyOnBehalf({
       ownerEmail: phoneOwner ? undefined : ownerEmail.trim(),
@@ -72,17 +77,22 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
     onError:(e:Error)=>notify.error(e.message),
   });
   const cell = "space-y-1.5";
+  const typeField=<div className={cell}><Label className="block" htmlFor="admission-create-type">{c.admissionType}</Label><Select className="w-full" id="admission-create-type" value={type} onChange={e=>setType(e.target.value)} disabled={submit.isPending||selfBusy}>
+    {canSubmit&&<option value="ON_BEHALF">{c.admissionAssisted}</option>}
+    {canSelfOp&&<option value="SELF_OPERATED">{c.admissionSelf}</option>}
+  </Select></div>;
   return <Dialog.Portal>
     <Dialog.Overlay className="fixed inset-0 z-[var(--z-dialog)] bg-black/40" />
-    <Dialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-dialog)] flex max-h-[90dvh] w-[min(94vw,880px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-sheet bg-card shadow-pop outline-none"
-      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending)e.preventDefault();}}>
+    <Dialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-dialog)] flex max-h-[88dvh] w-[min(94vw,800px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-pop outline-none focus-visible:outline-none"
+      onOpenAutoFocus={e=>{e.preventDefault();titleRef.current?.focus();}}
+      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending||selfBusy)e.preventDefault();}}>
       <div className="border-b p-5">
-        <Dialog.Title className="txt-heading">{c.obNew}</Dialog.Title>
+        <Dialog.Title ref={titleRef} tabIndex={-1} className="txt-heading outline-none">{c.obNew}</Dialog.Title>
         <Dialog.Description className="sr-only">{c.obDesc}</Dialog.Description>
-        <p className="mt-1 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"}</p>
       </div>
-      <form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
+      {assisted?<form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
         <div className="min-h-0 space-y-5 overflow-y-auto p-5">
+          <div className="grid gap-4 sm:grid-cols-2">{typeField}<div className={cell}><span className="block txt-caption">{c.obSystemMarket}</span><p className="flex h-[var(--ctl-h)] items-center txt-body">{market??"—"}</p></div></div>
           {context.isPending && <Notice tone="muted">{c.obLoadingContext}</Notice>}
           {context.error && <Notice tone="danger">{context.error.message}</Notice>}
           {storeChoices.error && <Notice tone="danger">{storeChoices.error.message}</Notice>}
@@ -104,10 +114,11 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className={cell}><Label className="block" required htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} onChange={e=>setStoreName(e.target.value)} /></div>
                 <div className={cell}><Label className="block" required htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} onChange={e=>setStoreAddress(e.target.value)} /></div>
-                <div className={cell}><Label className="block" required htmlFor="ob-store-industry">{c.obStoreIndustry}</Label><Select className="w-full" id="ob-store-industry" required value={storeIndustry} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}><option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}</Select></div>
-                <div className={cell}><Label className="block" required htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label><Select className="w-full" id="ob-store-sub-industry" required value={storeSubIndustry} disabled={!storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}</Select></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-industry">{c.obStoreIndustry}</Label><Select className="w-full" id="ob-store-industry" required value={storeIndustry} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}><option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}{r.available===false?` · ${c.obIndustryPending}`:""}</option>)}</Select></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label><Select className="w-full" id="ob-store-sub-industry" required value={storeSubIndustry} disabled={!storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!} disabled={r.available===false}>{r.nameZh}{r.available===false?` · ${c.obIndustryPending}`:""}</option>)}</Select></div>
               </div>
             </section>
+            {storeParents.find(r=>r.industryCode===storeIndustry)?.available===false&&<Notice tone="muted">{c.obIndustryUnavailable}</Notice>}
             <section className="space-y-3 border-t pt-4">
               <h3 className="txt-body font-semibold">{c.obEntitySection}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -133,7 +144,7 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
           <Button type="button" variant="secondary" disabled={submit.isPending} onClick={onCancel}>{c.obCancel}</Button>
           <Button type="submit" disabled={!ready || submit.isPending} loading={submit.isPending}>{c.obSubmit}</Button>
         </div>
-      </form>
+      </form>:<div className="min-h-0 overflow-y-auto p-5"><SelfOperatedTab c={c} canCreate={canSelfOp} embedded admissionTypeField={typeField} onCreated={onSelfDone} onBusyChange={setSelfBusy} /><div className="mt-4 flex justify-end"><Button variant="secondary" disabled={selfBusy} onClick={onCancel}>{c.obCancel}</Button></div></div>}
     </Dialog.Content>
   </Dialog.Portal>;
 }

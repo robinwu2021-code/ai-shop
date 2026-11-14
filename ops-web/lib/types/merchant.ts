@@ -281,6 +281,8 @@ export interface InitialStoreProfile {
 }
 /** 可用于运营代客建店的已启用行业与已发布经营类型。 */
 export interface StoreIndustryChoice {
+  /** Whether this industry has a published, enabled business type and free plan. */
+  available?: boolean;
   /** 系统门店行业编码 */
   industryCode: string;
   /** 子行业编码；行业父项为 null */
@@ -300,6 +302,17 @@ export interface StoreIndustryChoice {
 }
 
 /** 入驻申请单（后端 `mch_entity_apply`）。 */
+export interface AdmissionEntry {
+  key: string;
+  type: "ON_BEHALF" | "SELF_OPERATED";
+  name: string;
+  ownerUserNo?: string | null;
+  status: string;
+  createdAt: number;
+  application?: MerchantApply | null;
+  selfOperated?: { merchantNo: string; name: string; ownerUserNo: string; status: string; serviceScope: string; createdAt: number } | null;
+}
+
 export interface MerchantApply {
   /** 实际店主账号 */
   ownerUserNo?: string | null;

@@ -1,0 +1,14 @@
+{
+  "status": "DEPLOYED",
+  "releaseId": "seed-sandbox-entry-20261114-42a0670a",
+  "web": "/data/www/nearpay-oms-releases/seed-sandbox-entry-20261114-42a0670a",
+  "previous": "/data/www/nearpay-oms-releases/sandbox-binding-feedback-20261113-1814f5e2",
+  "sourceCommit": "42a0670a70e3ef1ed7180677ff02299d8731a525",
+  "webSha256": "6a9ada34f405077f4dad131ebad675ec194730586ece2f7daddb6376ce81b132",
+  "pages": {
+    "merchants/onboarding-review": 200,
+    "merchants": 200
+  },
+  "backendAndShopAndCheckoutUnchanged": true,
+  "backendRestarted": false
+}

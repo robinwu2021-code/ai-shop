@@ -3,7 +3,6 @@ package ai.neargo.shop.portal.ops;
 import ai.neargo.commerce.starter.http.MallHttpContextPort;
 import ai.neargo.shop.merchant.service.StoreIndustryAdminService;
 import ai.neargo.shop.commercebridge.OpsStoreSetupQuery;
-import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.PermChecker;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +30,7 @@ public class OpsStoreIndustryController {
 
     @GetMapping("/ops/merchants/store-industries")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "') or @perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
-    public List<MerchantQueryPort.IndustryRow> choices() {
+    public List<OpsStoreSetupQuery.Choice> choices() {
         String cap=permissions.can(Perms.MERCHANT_APPLY_ONBEHALF)
                 ? Perms.MERCHANT_APPLY_ONBEHALF : Perms.MERCHANT_APPLY_AUDIT;
         return setup.choices(context.operator(cap));
