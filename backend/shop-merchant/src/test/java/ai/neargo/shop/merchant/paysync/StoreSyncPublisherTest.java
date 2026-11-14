@@ -30,6 +30,41 @@ class StoreSyncPublisherTest {
     }
 
     @Test
+    void timerWaitsForApplicationReadyAndStopsWithContext() {
+        var reader = mock(StoreSnapshotReader.class);
+        var legacy = mock(OutboxEventBus.class);
+        var facade = mock(ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade.class);
+        var publisher = new StoreSyncPublisher(reader, legacy, NearPayStoreSyncTest.PROPS,
+                (LockingTaskExecutor) null);
+        publisher.setUnified(facade);
+        var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext();
+        org.springframework.test.context.support.TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
+                context, "shop.nearpay.store-sync.enabled=true");
+        context.registerBean(StoreSyncPublisher.class, () -> publisher);
+        try {
+            context.refresh();
+            assertThat(org.springframework.test.util.ReflectionTestUtils.getField(publisher, "timer")).isNull();
+            org.mockito.Mockito.verifyNoInteractions(reader, legacy, facade);
+
+            when(facade.enabled("PLATFORM")).thenReturn(true);
+            context.publishEvent(new org.springframework.boot.context.event.ApplicationReadyEvent(
+                    new org.springframework.boot.SpringApplication(), new String[0], context,
+                    java.time.Duration.ZERO));
+            var timer = (java.util.concurrent.ScheduledExecutorService)
+                    org.springframework.test.util.ReflectionTestUtils.getField(publisher, "timer");
+            assertThat(timer).isNotNull();
+            assertThat(timer.isShutdown()).isFalse();
+            publisher.enqueue(List.of(row(7, T)), null);
+            verify(facade).accept(org.mockito.ArgumentMatchers.eq("PLATFORM"), any());
+            org.mockito.Mockito.verifyNoInteractions(legacy);
+            context.close();
+            assertThat(timer.isShutdown()).isTrue();
+        } finally {
+            context.close();
+        }
+    }
+
+    @Test
     void unifiedStoreSyncUsesStableIngressWithoutLegacyRows() {
         var facade=mock(ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade.class);
         when(facade.enabled("PLATFORM")).thenReturn(true);

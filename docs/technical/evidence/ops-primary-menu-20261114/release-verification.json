@@ -15,7 +15,8 @@
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/AdmissionManagementService.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/MarketPhonePolicyService.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/platform/impl/AdmissionManagementServiceImpl.java",
-    "backend/shop-core/src/main/java/ai/neargo/shop/platform/port/MarketContactPolicyPortImpl.java"
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/port/MarketContactPolicyPortImpl.java",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/paysync/StoreSyncPublisher.java"
   ],
   "originalProductionTreeSha256": "09d54c2673577b092465fa9e3c59db82230eda24aecdde0e6099433629b2fb90",
   "finalProductionTreeSha256": "23dc39fb123c61ad4d663544d1793ea4261bebe9e4d7f85b60869df37da9b8ca",
@@ -40,6 +41,18 @@
     "remainingUnaffectedModules": "pay-guard 53, pay-portal 6, pay-svc 93 all pass",
     "foodProfile": "BUILD SUCCESS; unchanged production business source",
     "beautyProfile": "282 tests; four existing baseline failures; no new failures",
-    "pushPolicy": "Reuse completed module and affected regression evidence; SKIP_TEST_GATE=1 skips duplicate backend tests only; clean HEAD test-compile and all other hooks remain enabled"
+    "pushPolicy": "Reuse completed module and affected regression evidence; SKIP_TEST_GATE=1 skips duplicate backend tests only; clean HEAD test-compile and all other hooks remain enabled",
+    "storeSyncLifecycle": {
+      "cause": "PostConstruct scanner could create a legacy event before unified outbox registration during slow startup",
+      "change": "Start timer only after ApplicationReadyEvent",
+      "red": "Original source deterministically fails timer-null assertion",
+      "green": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "redLogSha256": "eb47e0a42477474759f4e5b2300f0e82f63f1661c7e7739c7a2569412b353856",
+      "greenLogSha256": "0bb5f008a2cc3c947d9abf84ac6dede09f9b0fe3a8e2330e00fdb882a758571a"
+    }
   }
 }
