@@ -29,7 +29,7 @@ function implementedEndpoints(): Set<string> {
     // 认不出的失败样子一模一样：400 字窗口一路吃到下一个方法，
     // 于是报的是**下一个方法**没有 client 调用，而那个方法明明写着 ——
     // 一条把人指向无关代码的报错，比不报还费时间。这个坑今晚踩了两次。
-    const re = /(\w+):\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:[\w$.]+\(\s*)*(?:await\s+)?client\.(get|post|put)(?:<[^(\n]*>)?\(/g;
+    const re = /(\w+):\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\{[\s\S]{0,400}?)?(?:[\w$.]+\(\s*)*(?:await\s+)?client\.(get|post|put)(?:<[^(\n]*>)?\(/g;
     let m;
     while ((m = re.exec(src))) names.add(m[1]);
   }

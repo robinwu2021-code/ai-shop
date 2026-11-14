@@ -44127,6 +44127,16 @@
       {
         "name": "Action",
         "values": [
+          "LOGIN",
+          "OTP_SEND",
+          "EMAIL_OTP_SEND"
+        ],
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "name": "Action",
+        "values": [
           "EARN",
           "HOLD",
           "RELEASE",
@@ -56587,6 +56597,7 @@
         "ai.neargo.inventory:inventory-client",
         "ai.neargo.inventory:inventory-domain",
         "ai.neargo.inventory:inventory-svc",
+        "cloud.tianai.captcha:tianai-captcha",
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",

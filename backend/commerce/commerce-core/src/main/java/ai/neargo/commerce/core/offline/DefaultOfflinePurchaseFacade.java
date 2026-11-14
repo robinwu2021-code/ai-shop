@@ -62,12 +62,31 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         this.profileNo=profileNo;
     }
     public QuoteView quote(ActorContext actor,QuoteCommand command) {
+        return quote(actor, command, null);
+    }
+    @Override
+    public QuoteView quote(ActorContext actor, QuoteCommand command, String method) {
         uow.requireOutsideTransaction();
-        if(profileNo==null)throw fail("OFFLINE_UNAVAILABLE");
-        if(actor==null || command==null || command.store()==null || command.currency()==null)throw fail("INVALID_REQUEST");
-        // Pay-domain read happens before any commerce transaction; the quote re-verifies currency and freezes terms.
-        var terms=collection.terms(actor.tenantNo(),profileNo,command.currency()).orElseThrow(()->fail("OFFLINE_UNAVAILABLE"));
+        if (profileNo==null) throw fail("OFFLINE_UNAVAILABLE");
+        if (actor==null || command==null || command.store()==null || command.currency()==null) throw fail("INVALID_REQUEST");
+        var terms=collection.terms(actor.tenantNo(),OfflineCollectionTerms.profile(profileNo,method),command.currency())
+                .orElseThrow(()->fail("OFFLINE_UNAVAILABLE"));
+        if (!terms.collectionMethod().equals(OfflineCollectionTerms.method(method))) throw fail("OFFLINE_METHOD_MISMATCH");
         return mall.quoteOffline(actor,command,terms);
+    }
+    @Override
+    public QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand command, String currency) {
+        return quoteUpgrade(actor,command,currency,null);
+    }
+    @Override
+    public QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand command, String currency, String method) {
+        uow.requireOutsideTransaction();
+        if (profileNo==null) throw fail("OFFLINE_UNAVAILABLE");
+        if (actor==null || command==null || command.store()==null || currency==null) throw fail("INVALID_REQUEST");
+        var terms=collection.terms(actor.tenantNo(),OfflineCollectionTerms.profile(profileNo,method),currency)
+                .orElseThrow(()->fail("OFFLINE_UNAVAILABLE"));
+        if (!terms.collectionMethod().equals(OfflineCollectionTerms.method(method))) throw fail("OFFLINE_METHOD_MISMATCH");
+        return mall.quoteUpgradeOffline(actor,command,terms);
     }
     public DefaultOfflinePurchaseFacade(MallRepository orders,FulfillmentRepository operations,OfflineRepository offline,
             SubscriptionAccountRepository accounts,CommerceUnitOfWork uow,StoreDirectoryPort stores,ActorAuthorizationPort auth,
@@ -91,7 +110,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             var account=accounts.lockSubscriptionAccount(q.store());
             // Merchants act only on a live store. Operators must still record or fence real money
             // after a store is suspended, so they are bound to the order's frozen store/entity instead.
-            if(a.subjectKind()==SubjectKind.ACCOUNT && (live.isEmpty() || live.get().status()!=StoreStatus.ACTIVE
+            if(a.subjectKind()==SubjectKind.ACCOUNT && (live.isEmpty() || (live.get().status()!=StoreStatus.ACTIVE && live.get().status()!=StoreStatus.SETUP)
                     || live.get().model()!=CommerceModel.STORE_V1 || !live.get().merchantNo().equals(account.entityNo())))
                 throw fail("STORE_UNAVAILABLE");
             String currency=operations.locate(a.tenantNo(),q.orderNo()).filter(l->q.store().equals(l.store()))
@@ -159,6 +178,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         text(c.claimNo(),64);text(c.bankReference(),128);
         verifyEvidence(actor,c.order(),c.evidenceKeys(),"BUYER_RECEIPT","commerce:mall:purchase");
         return locked(actor,c.order(),"commerce:mall:purchase",o->{
+            if (!"BANK_TRANSFER".equals(o.quote().purchase().offline().collectionMethod())) throw fail("OFFLINE_METHOD_MISMATCH");
             var prior=offline.claim(actor.tenantNo(),o.orderNo(),c.claimNo());
             if(prior.isPresent()) {
                 if(!prior.get().command().equals(c) || !prior.get().submitterNo().equals(actor.principalNo()))throw fail("IDEMPOTENCY_CONFLICT");
@@ -214,7 +234,9 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if(!issued)throw fail("OFFLINE_INSTRUCTIONS_NOT_ISSUED");
         boolean cash=o.view().payable().minor()>0;
         return new InstructionsView(o.orderNo(),o.view().payable(),java.time.Instant.ofEpochMilli(o.paymentDueAt()),
-                terms.profileNo(),terms.profileVersion(),terms.platformMerchantNo(),cash?withRemark(terms.instructions(),o.orderNo()):Map.of());
+                terms.profileNo(),terms.profileVersion(),cash
+                        ? ("BANK_TRANSFER".equals(terms.collectionMethod())?withRemark(terms.instructions(),o.orderNo()):terms.instructions())
+                        : Map.of(),terms.collectionMethod(),terms.platformMerchantNo());
     }
     /** Ops confirms a transfer by locating the order; the buyer puts its number on the transfer. */
     static Map<String,String> withRemark(Map<String,String> instructions,String orderNo) {
@@ -255,7 +277,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     public OfflineCollectionTerms configureProfile(ActorContext actor,ProfileCommand c) {
         uow.requireOutsideTransaction();
         tenantOperator(actor,"commerce:collection:profile:write");
-        if(c==null || profileNo==null || !profileNo.equals(c.profileNo()))throw fail("INVALID_REQUEST");
+        if(c==null || profileNo==null || !OfflineCollectionTerms.profile(profileNo,c.collectionMethod()).equals(c.profileNo()))throw fail("INVALID_REQUEST");
         text(c.reason(),1024);
         try { return collection.configure(actor.tenantNo(),actor.principalNo(),c); }
         catch(IllegalArgumentException refused) {
@@ -264,10 +286,23 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         }
     }
     public Optional<OfflineCollectionProfile> profile(ActorContext actor,String currency) {
+        return profile(actor,currency,null);
+    }
+    @Override
+    public Optional<OfflineCollectionProfile> profile(ActorContext actor,String currency,String method) {
         uow.requireOutsideTransaction();
         tenantOperator(actor,"commerce:collection:profile:read");
         if(profileNo==null || currency==null || !currency.matches("[A-Z]{3}"))throw fail("INVALID_REQUEST");
-        return collection.profile(actor.tenantNo(),profileNo,currency);
+        return collection.profile(actor.tenantNo(),OfflineCollectionTerms.profile(profileNo,method),currency);
+    }
+
+    @Override
+    public List<OfflineCollectionPort.Collector> collectors(ActorContext actor,StoreRef store) {
+        uow.requireOutsideTransaction();
+        operator(actor);
+        if(store==null || !store.tenantNo().equals(actor.tenantNo())
+                || !auth.authorize(actor,store,"commerce:mall:offline:confirm").allowed()) throw fail("FORBIDDEN");
+        return collection.collectors(store);
     }
 
     public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {
@@ -300,7 +335,8 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         operator(actor);
         if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
                 || c.actualPaidAt().getNano()!=0 || c.actualPaidAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
-        text(c.actionNo(),64);text(c.actualReceiver(),64);text(c.bankReference(),128);text(c.reason(),1024);
+        text(c.actionNo(),64);text(c.actualReceiver(),64);text(c.reason(),1024);
+        var eligible = c.collectorNo()==null ? List.<OfflineCollectionPort.Collector>of() : collectors(actor,c.order().store());
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"PLATFORM_RECEIPT","commerce:mall:offline:confirm");
         var action=locked(actor,c.order(),"commerce:mall:offline:confirm",o->{
             var previous=offline.action(actor.tenantNo(),o.orderNo(),c.actionNo());
@@ -308,6 +344,15 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 var p=previous.get();
                 if(!c.equals(p.review()) || !actor.principalNo().equals(p.operatorNo()))throw fail("IDEMPOTENCY_CONFLICT");
                 return p;
+            }
+            boolean sales="SALES_COLLECTION".equals(o.quote().purchase().offline().collectionMethod());
+            if(sales) {
+                text(c.collectorNo(),64);text(c.collectionReference(),128);
+                if(c.bankReference()!=null || c.claimNo()!=null)throw fail("OFFLINE_METHOD_MISMATCH");
+                if(eligible.stream().noneMatch(v->v.collectorNo().equals(c.collectorNo())))throw fail("SALES_COLLECTOR_UNAVAILABLE");
+            } else {
+                text(c.bankReference(),128);
+                if(c.collectorNo()!=null || c.collectionReference()!=null)throw fail("OFFLINE_METHOD_MISMATCH");
             }
             if(c.claimNo()!=null) {
                 var claim=offline.claim(actor.tenantNo(),o.orderNo(),c.claimNo()).orElseThrow(()->fail("NOT_FOUND"));
@@ -344,7 +389,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if("CONFIRM".equals(a.kind())) {
             var c=a.review();
             var observed=collection.confirm(new OfflineCollectionPort.ManualPayment(a.payment(),a.operatorNo(),c.actualAmount(),
-                    c.actualPaidAt(),c.actualReceiver(),c.bankReference(),c.evidenceKey(),c.historical(),java.time.Instant.ofEpochMilli(a.acceptedAt())));
+                    c.actualPaidAt(),c.actualReceiver(),c.bankReference(),c.evidenceKey(),c.historical(),java.time.Instant.ofEpochMilli(a.acceptedAt()),c.collectorNo(),c.collectionReference()));
             if(observed==null || !Set.of("MATCHED","LATE","UNMATCHED").contains(observed.disposition()) || observed.paymentNo()==null)
                 throw fail("OFFLINE_MONEY_UNKNOWN");
             moneyNo=observed.paymentNo();

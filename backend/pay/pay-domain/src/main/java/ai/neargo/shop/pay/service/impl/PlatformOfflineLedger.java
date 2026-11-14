@@ -34,22 +34,39 @@ final class PlatformOfflineLedger {
     }
     OfflineInstructions configure(OfflineProfile p) {
         require(p != null && p.expectedVersion() >= 0, "OFFLINE_PROFILE_INVALID");
-        text(p.tenantNo(),32);text(p.profileNo(),64);text(p.merchantNo(),64);text(p.bankCode(),32);
-        text(p.bankAccount(),128);text(p.accountName(),128);text(p.operatorNo(),64);text(p.reason(),1024);
+        text(p.tenantNo(),32);text(p.profileNo(),64);text(p.merchantNo(),64);
+        text(p.operatorNo(),64);text(p.reason(),1024);
+        String method = p.collectionMethod() == null ? "BANK_TRANSFER" : p.collectionMethod();
+        require(Set.of("BANK_TRANSFER", "SALES_COLLECTION").contains(method), "OFFLINE_METHOD_INVALID");
         text(p.paymentWindowVersion(),64);
         require(p.currency() != null && p.currency().matches("[A-Z]{3}")
                 && p.paymentWindowMs() >= 1000 && p.paymentWindowMs() <= 90L*86400000, "OFFLINE_PROFILE_INVALID");
-        // No currency, profile version, merchant label, or caller-provided namespace in funds identity.
-        String account = p.bankAccount().replace(" ", "").replace("-", "").toUpperCase(Locale.ROOT);
-        String bank = p.bankCode().trim().toUpperCase(Locale.ROOT);
-        text(account,128);
+        String accountKey;
+        Map<String,String> instructions;
+        if ("SALES_COLLECTION".equals(method)) {
+            text(p.contactInstructions(),1024);
+            require(p.bankCode()==null && p.bankAccount()==null && p.accountName()==null, "OFFLINE_METHOD_MISMATCH");
+            accountKey = hash("platform-sales-collection:v1",p.tenantNo(),p.merchantNo());
+            instructions = Map.of("collectionMethod",method,"contactInstructions",p.contactInstructions());
+        } else {
+            text(p.bankCode(),32);text(p.bankAccount(),128);text(p.accountName(),128);
+            String account = p.bankAccount().replace(" ", "").replace("-", "").toUpperCase(Locale.ROOT);
+            String bank = p.bankCode().trim().toUpperCase(Locale.ROOT);
+            text(account,128);
+            accountKey = hash("platform-bank-account:v1",p.tenantNo(),"BANK_TRANSFER",bank,account);
+            instructions = Map.of("bankCode",p.bankCode(),"bankAccount",p.bankAccount(),"accountName",p.accountName());
+        }
         var terms = new OfflineInstructions(p.profileNo(), Math.addExact(p.expectedVersion(),1), p.merchantNo(), p.currency(),
-                hash("platform-bank-account:v1",p.tenantNo(),"BANK_TRANSFER",bank,account),
-                p.paymentWindowVersion(),p.paymentWindowMs(),Map.of("bankCode",p.bankCode(),"bankAccount",p.bankAccount(),"accountName",p.accountName()));
+                accountKey,p.paymentWindowVersion(),p.paymentWindowMs(),instructions);
         return tx.execute(s -> {
             jdbc.update("INSERT INTO pay_platform_collection_head(tenant_no,profile_no,current_version,enabled) VALUES (?,?,0,0) ON DUPLICATE KEY UPDATE profile_no=profile_no",p.tenantNo(),p.profileNo());
             Long version = jdbc.queryForObject("SELECT current_version FROM pay_platform_collection_head WHERE tenant_no=? AND profile_no=? FOR UPDATE",Long.class,p.tenantNo(),p.profileNo());
             require(version != null && version == p.expectedVersion(),"OFFLINE_PROFILE_VERSION_CONFLICT");
+            if (version > 0) {
+                var prior = jdbc.queryForObject("SELECT instructions_json FROM pay_platform_collection_profile WHERE tenant_no=? AND profile_no=? AND profile_version=?",
+                        (row,n)->json.readValue(row.getString(1),OfflineInstructions.class),p.tenantNo(),p.profileNo(),version);
+                require(prior.collectionMethod().equals(method),"OFFLINE_METHOD_MISMATCH");
+            }
             jdbc.update("INSERT INTO pay_platform_collection_profile(tenant_no,profile_no,profile_version,instructions_json,configured_by,reason,created_at) VALUES (?,?,?,?,?,?,UTC_TIMESTAMP(3))",
                     p.tenantNo(),p.profileNo(),terms.version(),json.writeValueAsString(terms),p.operatorNo(),p.reason());
             jdbc.update("UPDATE pay_platform_collection_head SET current_version=?,enabled=? WHERE tenant_no=? AND profile_no=?",terms.version(),p.enabled()?1:0,p.tenantNo(),p.profileNo());
@@ -71,7 +88,8 @@ final class PlatformOfflineLedger {
      */
     void verifyIssuance(Request r) {
         var terms = r.offline();
-        require(terms != null && terms.merchantNo().equals(r.merchantNo()) && terms.currency().equals(r.currency()),"OFFLINE_PROFILE_MISMATCH");
+        require(terms != null && terms.merchantNo().equals(r.merchantNo()) && terms.currency().equals(r.currency())
+                && terms.collectionMethod().equals(r.method()),"OFFLINE_PROFILE_MISMATCH");
         var frozen = jdbc.query("SELECT p.instructions_json FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no WHERE p.tenant_no=? AND p.profile_no=? AND p.profile_version=? AND h.enabled=1 FOR SHARE",
                 (row,n)->json.readValue(row.getString(1),OfflineInstructions.class),r.key().tenantNo(),terms.profileNo(),terms.version());
         require(frozen.size()==1 && terms.equals(frozen.getFirst()),"OFFLINE_PROFILE_UNAVAILABLE");
@@ -81,7 +99,7 @@ final class PlatformOfflineLedger {
     }
     ManualReceipt confirm(OfflineProof p) {
         require(p != null && p.key()!=null,"OFFLINE_PROOF_REQUIRED");
-        text(p.operatorNo(),64);text(p.actualReceiver(),64);text(p.bankReference(),128);text(p.evidenceReference(),1024);
+        text(p.operatorNo(),64);text(p.actualReceiver(),64);text(p.evidenceReference(),1024);
         require(p.currency()!=null && p.currency().matches("[A-Z]{3}") && p.actualMinor()>0
                 && p.actualPaidAt()>=0 && p.actualPaidAt()%1000==0 && p.confirmedAt()>=p.actualPaidAt()
                 && ("NORMAL".equals(p.mode()) || "HISTORICAL".equals(p.mode())),"OFFLINE_PROOF_INVALID");
@@ -94,10 +112,25 @@ final class PlatformOfflineLedger {
                 Long issued = jdbc.queryForObject("SELECT platform_dispatch_at FROM stl_payment WHERE payment_no=?",Long.class,original.paymentNo());
                 require(issued!=null,"OFFLINE_INSTRUCTIONS_NOT_ISSUED");
                 require("HISTORICAL".equals(p.mode()) || Math.addExact(p.actualPaidAt(),999)>=r.preparedAt(),"OFFLINE_HISTORICAL_MODE_REQUIRED");
-                String referenceKey = PlatformCashAuthority.bankReferenceKey(r,p.bankReference());
-                var prior = jdbc.queryForList("SELECT payment_no,platform_manual_proof FROM stl_payment WHERE platform_bank_ref_key=? FOR UPDATE",referenceKey);
+                boolean sales = "SALES_COLLECTION".equals(r.method());
+                String referenceKey, reference;
+                String referenceColumn = sales ? "platform_collection_ref_key" : "platform_bank_ref_key";
+                if (sales) {
+                    text(p.collectorNo(),64);text(p.collectionReference(),128);
+                    require(p.bankReference()==null,"OFFLINE_METHOD_MISMATCH");
+                    reference = p.collectionReference().trim();
+                    referenceKey = PlatformCashAuthority.salesReferenceKey(r,p);
+                } else {
+                    text(p.bankReference(),128);
+                    require(p.collectorNo()==null && p.collectionReference()==null,"OFFLINE_METHOD_MISMATCH");
+                    reference=p.bankReference();
+                    referenceKey=PlatformCashAuthority.bankReferenceKey(r,reference);
+                }
+                // A missing sales key must not acquire an InnoDB gap lock: competing orders
+                // would deadlock while inserting the same key. The unique index arbitrates it.
+                var prior = jdbc.queryForList("SELECT payment_no,platform_manual_proof FROM stl_payment WHERE "+referenceColumn+"=?"+(sales?"":" FOR UPDATE"),referenceKey);
                 if (!prior.isEmpty()) {
-                    require(p.equals(json.readValue((String)prior.getFirst().get("platform_manual_proof"),OfflineProof.class)),"OFFLINE_BANK_REFERENCE_CONFLICT");
+                    require(p.equals(json.readValue((String)prior.getFirst().get("platform_manual_proof"),OfflineProof.class)),sales?"SALES_REFERENCE_CONFLICT":"OFFLINE_BANK_REFERENCE_CONFLICT");
                     return jdbc.query("SELECT payment_request_json FROM stl_payment WHERE payment_no=?",(rs,n)->json.readValue(rs.getString(1),PlatformCollectionServiceImpl.Frozen.class).request().key(),prior.getFirst().get("payment_no")).getFirst();
                 }
                 // A further real deposit against an already-paid intent is still money: keep it as an
@@ -105,20 +138,20 @@ final class PlatformOfflineLedger {
                 boolean matches = !"SUCCESS".equals(original.state())
                         && r.currency().equals(p.currency()) && r.amountMinor()==p.actualMinor();
                 if (matches) {
-                    jdbc.update("UPDATE stl_payment SET status='SUCCESS',trade_no=?,succeeded_at=?,platform_bank_ref_key=?,platform_manual_proof=?,platform_handoff_state='PENDING',err_code=NULL,version=version+1 WHERE payment_no=?",
-                            p.bankReference(),p.actualPaidAt(),referenceKey,json.writeValueAsString(p),original.paymentNo());
+                    jdbc.update("UPDATE stl_payment SET status='SUCCESS',trade_no=?,succeeded_at=?,"+referenceColumn+"=?,platform_manual_proof=?,platform_handoff_state='PENDING',err_code=NULL,version=version+1 WHERE payment_no=?",
+                            reference,p.actualPaidAt(),referenceKey,json.writeValueAsString(p),original.paymentNo());
                     return r.key();
                 }
                 Key unmatched = new Key(r.key().tenantNo(),r.key().orderNo(),"U"+referenceKey.substring(0,60));
-                Request actual = new Request(unmatched,r.buyerNo(),r.merchantNo(),"OFFLINE","BANK_TRANSFER",p.actualMinor(),p.currency(),r.expiresAt(),r.preparedAt(),null,r.offline());
-                jdbc.update("INSERT INTO stl_payment(payment_no,direction,order_no,user_no,entity_no,pay_channel,pay_scene,pay_method,amount_minor,currency,status,out_trade_no,payment_request_json,tenant_no,created_at,updated_at,created_by,updated_by,trade_no,succeeded_at,platform_bank_ref_key,platform_manual_proof,platform_dispatch_at) VALUES (?,'PAY',?,?,?,'OFFLINE',?,'BANK_TRANSFER',?,?,'SUCCESS',?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?, ?,?)",
-                        PlatformCollectionServiceImpl.paymentNo(unmatched),r.key().orderNo(),r.buyerNo(),r.merchantNo(),UNMATCHED,p.actualMinor(),p.currency(),"U"+referenceKey.substring(0,31),
-                        json.writeValueAsString(new PlatformCollectionServiceImpl.Frozen(UNMATCHED,actual)),r.key().tenantNo(),p.operatorNo(),p.operatorNo(),p.bankReference(),p.actualPaidAt(),referenceKey,json.writeValueAsString(p),issued);
+                Request actual = new Request(unmatched,r.buyerNo(),r.merchantNo(),"OFFLINE",r.method(),p.actualMinor(),p.currency(),r.expiresAt(),r.preparedAt(),null,r.offline());
+                jdbc.update("INSERT INTO stl_payment(payment_no,direction,order_no,user_no,entity_no,pay_channel,pay_scene,pay_method,amount_minor,currency,status,out_trade_no,payment_request_json,tenant_no,created_at,updated_at,created_by,updated_by,trade_no,succeeded_at,"+referenceColumn+",platform_manual_proof,platform_dispatch_at) VALUES (?,'PAY',?,?,?,'OFFLINE',?,?,?,?,'SUCCESS',?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?, ?,?)",
+                        PlatformCollectionServiceImpl.paymentNo(unmatched),r.key().orderNo(),r.buyerNo(),r.merchantNo(),UNMATCHED,r.method(),p.actualMinor(),p.currency(),"U"+referenceKey.substring(0,31),
+                        json.writeValueAsString(new PlatformCollectionServiceImpl.Frozen(UNMATCHED,actual)),r.key().tenantNo(),p.operatorNo(),p.operatorNo(),reference,p.actualPaidAt(),referenceKey,json.writeValueAsString(p),issued);
                 return unmatched;
             });
             Receipt receipt = owner.query(resulting);
             return new ManualReceipt(!resulting.equals(p.key())?"UNMATCHED":receipt.closureReference()!=null?"LATE":"MATCHED",receipt);
-        } catch (DuplicateKeyException duplicate) { throw new IllegalArgumentException("OFFLINE_BANK_REFERENCE_CONFLICT",duplicate); }
+        } catch (DuplicateKeyException duplicate) { throw new IllegalArgumentException(p.collectorNo()!=null?"SALES_REFERENCE_CONFLICT":"OFFLINE_BANK_REFERENCE_CONFLICT",duplicate); }
     }
     List<CashReceipt> receipts(String tenant, String order) {
         if (tenant == null || tenant.isBlank() || order == null || order.isBlank()) return List.of();

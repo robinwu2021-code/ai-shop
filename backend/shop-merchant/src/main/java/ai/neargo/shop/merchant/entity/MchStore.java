@@ -97,7 +97,14 @@ public class MchStore extends BaseEntity {
      */
     private String acodeBase64;
 
+    public static final String PENDING_OPEN = "PENDING_OPEN";
     private String status;
+    /** Explicit operating admission; NULL means no historic decision is asserted. */
+    private String operationalReview;
+    private String operationalSource;
+    private String operationalOrderNo;
+    private Long operationalDecidedAt;
+    private Long operationalSubmittedAt;
 
     /**
      * 因**套餐降级**被压为只读（V150）。与商家自己停用的 {@link #READONLY} 状态相同，

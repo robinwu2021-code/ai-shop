@@ -7,6 +7,7 @@ import ai.neargo.commerce.api.port.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.plan.*;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 import java.time.*;
 import java.util.*;
 import java.util.function.*;
@@ -29,6 +30,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private final Predicate<String> opsVisible;
   private final Clock clock;
   private final String profileNo;
+  private final StoreOperationalReviewService reviews;
 
   public record Snapshot(
       String entityNo,
@@ -55,7 +57,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       StoreOwnershipWritePort ownership,
       Predicate<String> opsVisible,
       Clock clock,
-      String profileNo) {
+      String profileNo, StoreOperationalReviewService reviews) {
     this.db = db;
     this.tx = new TransactionTemplate(manager);
     this.json = json;
@@ -67,6 +69,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     this.opsVisible = opsVisible;
     this.clock = clock;
     this.profileNo = profileNo;
+    this.reviews = reviews;
   }
 
   private static RuntimeException bad() {
@@ -391,7 +394,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         db
             .queryForList(
                 "SELECT store_no,name FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
-                    + " status='ACTIVE' AND deleted=0 ORDER BY store_no",
+                    + " status IN ('ACTIVE','PENDING_OPEN') AND deleted=0 ORDER BY store_no",
                 TENANT,
                 a.entityNo())
             .stream()
@@ -405,7 +408,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     operator(creator);
     if (one(
             "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND store_no=?"
-                + " AND status='ACTIVE' AND deleted=0",
+                + " AND status IN ('ACTIVE','PENDING_OPEN') AND deleted=0",
             TENANT,
             creator.entityNo(),
             c.storeNo())
@@ -543,7 +546,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               if (creator.operator()
                   && one(
                           "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
-                              + " store_no=? AND status='ACTIVE' AND deleted=0",
+                              + " store_no=? AND status IN ('ACTIVE','PENDING_OPEN') AND deleted=0",
                           TENANT,
                           a.entityNo(),
                           a.storeNo())
@@ -871,7 +874,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
           var old =
               one(
                   "SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
-                      + " action_no=?",
+                      + " action_no=? FOR UPDATE",
                   TENANT,
                   no,
                   c.actionNo());
@@ -1038,10 +1041,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                     s.entityNo());
               db.update(
                   "UPDATE mch_store SET"
-                      + " status='ACTIVE',plan_suspended=0,version=version+1,updated_at=NOW() WHERE"
+                      + " status=CASE WHEN status='SUSPENDED' THEN status WHEN operational_review IN ('PENDING','REJECTED') THEN 'PENDING_OPEN' ELSE 'ACTIVE' END,plan_suspended=0,version=version+1,updated_at=NOW() WHERE"
                       + " tenant_no=? AND entity_no=? AND plan_suspended=1 AND deleted=0",
                   TENANT,
                   s.entityNo());
+              reviews.activatePaid(TENANT,s.entityNo(),s.storeNo(),"ENTITY",no,number(current,"created_at"),accepted);
               status = "APPLIED";
             }
           }

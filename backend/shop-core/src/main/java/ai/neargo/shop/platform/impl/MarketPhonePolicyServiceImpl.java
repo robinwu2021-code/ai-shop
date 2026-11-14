@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class MarketPhonePolicyServiceImpl implements MarketPhonePolicyService {
     private final MarketPort markets;
+    private final String defaultMarket;
     private final SettingService settings;
     private final ObjectMapper json;
     private final Set<String> readyMarkets;
@@ -24,7 +25,9 @@ public class MarketPhonePolicyServiceImpl implements MarketPhonePolicyService {
 
     public MarketPhonePolicyServiceImpl(MarketPort markets, SettingService settings, ObjectMapper json,
             @Value("${shop.sms.channel-ready-markets:CN}") String ready,
-            @Value("${shop.sms.calling-prefixes:CN=+86,TW=+886,HK=+852,SG=+65,AE=+971,SA=+966}") String prefixConfig) {
+            @Value("${shop.sms.calling-prefixes:CN=+86,TW=+886,HK=+852,SG=+65,AE=+971,SA=+966}") String prefixConfig,
+            @Value("${shop.merchant.default-market:CN}") String defaultMarket) {
+        this.defaultMarket=defaultMarket;
         this.markets=markets; this.settings=settings; this.json=json;
         this.readyMarkets=Arrays.stream(ready.split(",")).map(String::trim).filter(s->!s.isEmpty()).collect(Collectors.toUnmodifiableSet());
         var parsed=new LinkedHashMap<String,String>();
@@ -32,6 +35,7 @@ public class MarketPhonePolicyServiceImpl implements MarketPhonePolicyService {
         this.prefixes=Map.copyOf(parsed);
     }
     private static String key(String market) { return "platform.market-phone-policy."+market; }
+    @Override public Policy instancePolicy() { return policy(defaultMarket); }
     @Override public List<Policy> list() { return markets.all().stream().map(this::loadPolicy).toList(); }
     @Override public Policy policy(String market) {
         return loadPolicy(markets.find(market).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND)));

@@ -77,21 +77,12 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    */
   setFundsMode(v: { merchantNo: string; fundsMode: FundsMode }): Promise<Merchant>;
 
-  /**
-   * 建**平台自营商家**（跳过进件与审核）。只有超管调得动
-   * （`merchant:selfop:create` 不在任何角色的码表里）。
-   *
-   * 拒的情形：手机号格式不对、名称为空、范围不在启用白名单里、
-   * scope=COMMUNITY 却没勾社区（400）—— 最后一条不是挑剔：
-   * 没有覆盖社区的商家上着架却对谁都不可见，而这个故障不报错。
-   *
-   * ⚠️ 别的档不要求勾社区，**但也不等于就可见了**。返回的
-   * `reachableCommunities` 才是真判据。
-   *
-   * **幂等按人**：同一个手机号连调两次返回同一个主体，`created=false`。
-   */
+  /** 当前系统地区的自营建档账号策略。 */
+  selfOperatedContext(): Promise<Pick<import("@/lib/types").MarketPhonePolicy,"market"|"recordOnly"|"marketEnabled">>;
+  /** 自营建档：台湾使用已注册邮箱，大陆保留手机号身份；沿原权限、服务范围规则和 owner 幂等执行。 */
   createSelfOperated(v: {
-    phone: string;
+    phone?: string;
+    ownerEmail?: string;
     name: string;
     /** COMMUNITY / CITY / PLATFORM；空按 COMMUNITY。先过一期启用白名单 */
     serviceScope?: string;
@@ -100,6 +91,11 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
     industry?: string;
     description?: string;
   }): Promise<SelfOperatedResult>;
+
+  /** 当前登录环境统一配置的入驻地区与电话策略。 */
+  onBehalfContext(): Promise<import("@/lib/types").MarketPhonePolicy>;
+  /** 仅运营代办申请，服务端过滤后分页。 */
+  listOnBehalfApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
 
   /**
    * **代商家提交入驻申请**（三期）。BD 在店里把执照拍下来、当场替老板填完。
@@ -113,8 +109,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    *
    * **协议不在这里勾**：`agreed_at` 落库时一律为空，运营不能替商户同意。
    *
-   * ⚠️ **代填的人审不了自己填的那张单**（后端按 `submitted_by` 拦，403）——
-   * BD 同时持有审核码与代填码，光靠权限配置挡不住。
+   * 地区由登录环境统一配置决定；旧客户端仅可传入相同地区。审核沿用审核权限并留痕。
    */
   applyOnBehalf(v: {
     market?: string;
@@ -237,6 +232,9 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    *   运营台默认打开就该是「要我做的事」，已处理的属于历史
    */
   listApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
+
+  /** System-region admission list, trimmed by existing application/self-operation permissions. */
+  listAdmissions(q?: {type?: "ON_BEHALF"|"SELF_OPERATED"; status?: string; keyword?: string; page?: number; size?: number}): Promise<Page<import("@/lib/types").AdmissionEntry>>;
 
   /** 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤 */
   acceptApply(applyNo: string): Promise<void>;

@@ -7,7 +7,7 @@ import { BACKEND_ROLE_PERMS } from "./permissions";
 import { useNavTabs, usePageTab } from "./use-page-tab";
 
 const state = vi.hoisted(() => ({ path: "/system", keys: ["appearance", "market", "flags", "storage", "industry", "storeIndustry", "authCode", "scope", "testPhone", "appVersion"], query: "", perms: ["*"], hrefSet: new Set<string>() }));
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(state.query) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(state.query), usePathname:()=>state.path, useRouter:()=>({push:vi.fn()}) }));
 vi.mock("@/lib/auth", () => ({ useAuth: (select: (s: typeof state) => unknown) => select(state) }));
 vi.mock("@/lib/i18n", () => ({ useI18n: () => ({ tNav: (label: string) => label }) }));
 vi.mock("@/lib/stores/server-menu", () => ({ useCatalogNavTree: () => platformCatalog(), useServerMenu: (select: (s: typeof state) => unknown) => select(state) }));
@@ -62,7 +62,7 @@ it("keeps the mall catalog default and labels after placing entity plans before 
 });
 it.each([false, true])("preserves the restricted merchant bare-URL default with server grants=%s", async server => {
   state.path = "/merchants";
-  state.keys = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "on-behalf", "mode-risk", "ban", "plans", "plan-defs", "chain"];
+  state.keys = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans", "plan-defs", "chain"];
   state.perms = ["merchant:merchant:read"];
   if (server) state.hrefSet = new Set(["/merchants?tab=list", "/merchants?tab=stores", "/merchants?tab=plans", "/merchants?tab=plan-defs"]);
   await render(); expect(result().selected).toBe("list");

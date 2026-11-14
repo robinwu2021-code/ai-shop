@@ -29,6 +29,9 @@ final class PlatformCashAuthority {
         return PlatformOfflineLedger.hash("platform-bank-reference:v1",r.key().tenantNo(),
                 r.offline().receivingAccountKey(),reference.trim().toUpperCase(Locale.ROOT));
     }
+    static String salesReferenceKey(Request r,OfflineProof p) {
+        return PlatformOfflineLedger.hash("platform-sales-reference:v1",r.key().tenantNo(),"SALES_COLLECTION",p.collectorNo(),p.collectionReference().trim());
+    }
     /** Recheck immutable proof; reading facts must never refresh a gateway or repair a ledger row. */
     static boolean receiptVerified(JsonMapper json,Request r,Map<String,Object> row) {
         if (!"SUCCESS".equals(row.get("status")) || !"PAY".equals(row.get("direction"))
@@ -37,9 +40,15 @@ final class PlatformCashAuthority {
                 || !("PLATFORM_MALL".equals(row.get("pay_scene")) || "MALL_UNMATCHED".equals(row.get("pay_scene")))) return false;
         if (r.offline()!=null) {
             var p=json.readValue((String)row.get("platform_manual_proof"),OfflineProof.class);
-            String bankKey=bankReferenceKey(r,p.bankReference());
+            boolean sales="SALES_COLLECTION".equals(r.method());
+            if(sales ? p.bankReference()!=null || p.collectorNo()==null || p.collectorNo().isBlank()
+                    || p.collectionReference()==null || p.collectionReference().isBlank()
+                : p.bankReference()==null || p.bankReference().isBlank() || p.collectorNo()!=null || p.collectionReference()!=null) return false;
+            String reference=sales?p.collectionReference().trim():p.bankReference();
+            String bankKey=sales?salesReferenceKey(r,p):bankReferenceKey(r,p.bankReference());
             boolean unmatched="MALL_UNMATCHED".equals(row.get("pay_scene"));
-            return "OFFLINE".equals(r.channel()) && "BANK_TRANSFER".equals(r.method())
+            return "OFFLINE".equals(r.channel()) && (sales || "BANK_TRANSFER".equals(r.method()))
+                    && r.offline().collectionMethod().equals(r.method())
                     && p.key()!=null && r.key().tenantNo().equals(p.key().tenantNo())
                     && r.key().orderNo().equals(p.key().orderNo())
                     && (unmatched ? r.key().attemptNo().equals("U"+bankKey.substring(0,60)) : r.key().equals(p.key()))
@@ -49,7 +58,7 @@ final class PlatformCashAuthority {
                     && p.confirmedAt()>=p.actualPaidAt() && succeeded.longValue()==p.actualPaidAt()
                     && ("HISTORICAL".equals(p.mode()) || "NORMAL".equals(p.mode())
                         && Math.addExact(p.actualPaidAt(),999)>=r.preparedAt())
-                    && p.bankReference().equals(row.get("trade_no")) && bankKey.equals(row.get("platform_bank_ref_key"))
+                    && reference.equals(row.get("trade_no")) && bankKey.equals(row.get(sales?"platform_collection_ref_key":"platform_bank_ref_key"))
                     && p.evidenceReference()!=null && !p.evidenceReference().isBlank()
                     && p.operatorNo()!=null && !p.operatorNo().isBlank() && row.get("platform_dispatch_at")!=null;
         }

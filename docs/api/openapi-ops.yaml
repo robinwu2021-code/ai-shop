@@ -368,6 +368,9 @@ components:
     StoreIndustryChoice:
       type: "object"
       properties:
+        available:
+          type: "boolean"
+          description: "Whether this industry has a published, enabled business type and free plan."
         industryCode:
           type: "string"
           description: "系统门店行业编码"
@@ -407,6 +410,63 @@ components:
         - "enabled"
       additionalProperties: false
       description: "可用于运营代客建店的已启用行业与已发布经营类型。"
+    AdmissionEntry:
+      type: "object"
+      properties:
+        key:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "ON_BEHALF"
+            - "SELF_OPERATED"
+        name:
+          type: "string"
+        ownerUserNo:
+          type:
+            - "string"
+            - "null"
+        status:
+          type: "string"
+        createdAt:
+          type: "number"
+        application:
+          anyOf:
+            - "$ref": "#/components/schemas/MerchantApply"
+            - type: "null"
+        selfOperated:
+          anyOf:
+            - type: "object"
+              properties:
+                merchantNo:
+                  type: "string"
+                name:
+                  type: "string"
+                ownerUserNo:
+                  type: "string"
+                status:
+                  type: "string"
+                serviceScope:
+                  type: "string"
+                createdAt:
+                  type: "number"
+              required:
+                - "merchantNo"
+                - "name"
+                - "ownerUserNo"
+                - "status"
+                - "serviceScope"
+                - "createdAt"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "key"
+        - "type"
+        - "name"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+      description: "入驻申请单（后端 `mch_entity_apply`）。"
     MerchantApply:
       type: "object"
       properties:
@@ -519,7 +579,6 @@ components:
         - "status"
         - "createdAt"
       additionalProperties: false
-      description: "入驻申请单（后端 `mch_entity_apply`）。"
     StoreFulfillmentRow:
       type: "object"
       properties:
@@ -3728,6 +3787,7 @@ components:
         - "ACTIVE"
         - "READONLY"
         - "SUSPENDED"
+        - "PENDING_OPEN"
       description: "门店经营状态。三档**不是同一个人在管**，所以不能压成一个 `enabled` 布尔：\n\n- `ACTIVE`    正常营业；\n- `READONLY`  商家自助停用（自己关的，自己能开回来）；\n- `SUSPENDED` 平台强制下线 —— **只有平台解得开**，商家侧的启停对它一律拒绝。\n\n压成布尔的后果是运营看不出「这家店是自己歇业还是被我们压下去的」， 而这两件事该做的动作完全相反。"
     StoreGovernDetail:
       type: "object"
@@ -3931,6 +3991,53 @@ components:
         - "toAfterSale"
       additionalProperties: false
       description: "门店经营状况（`GET /ops/stores/{storeNo}/stats`）。\n\n后端复用商家自己在 B 端看的那套统计，不另存计数器 —— 另存的迟早出现「总览说 3 单、点进去只有 2 单」。\n\n待办只有**门店维度**三项：核销与分拣是自提点维度且不限商家， 摆进门店页会被读成「这家店的活」。"
+    StoreOperationalReview:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        status:
+          "$ref": "#/components/schemas/StoreGovernStatus"
+        review:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "PENDING"
+            - "APPROVED"
+            - "REJECTED"
+            - null
+        source:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "MANUAL"
+            - "STORE"
+            - "ENTITY"
+            - null
+        orderNo:
+          type:
+            - "string"
+            - "null"
+        decidedAt:
+          type:
+            - "number"
+            - "null"
+        submittedAt:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "storeNo"
+        - "status"
+        - "review"
+        - "source"
+        - "orderNo"
+        - "decidedAt"
+        - "submittedAt"
+      additionalProperties: false
+      description: "Store operating admission, independent of entity/legal and payment review."
     CouponType:
       type: "string"
       enum:
@@ -14315,9 +14422,28 @@ components:
           description: "估值时间"
       additionalProperties: false
       description: "升级抵扣明细"
+    MallCollectionMethod:
+      type: "string"
+      enum:
+        - "BANK_TRANSFER"
+        - "SALES_COLLECTION"
+      description: "报价（服务器冻结）"
+    MallSalesCollector:
+      type: "object"
+      properties:
+        collectorNo:
+          type: "string"
+        displayName:
+          type: "string"
+      required:
+        - "collectorNo"
+        - "displayName"
+      additionalProperties: false
     MallQuoteView:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         quoteNo:
           type: "string"
           description: "报价号"
@@ -14353,7 +14479,6 @@ components:
             - type: "null"
           description: "升级抵扣明细；普通报价为 null"
       additionalProperties: false
-      description: "报价（服务器冻结）"
     MallQuoteLine:
       type: "object"
       properties:
@@ -14371,6 +14496,8 @@ components:
     MallQuoteRequest:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         lines:
           type: "array"
           items:
@@ -14967,6 +15094,10 @@ components:
     MallOfflineProfileCommand:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
+        contactInstructions:
+          type: "string"
         profileNo:
           type: "string"
           description: "档案号"
@@ -14980,13 +15111,19 @@ components:
           type: "string"
           description: "币种"
         bankCode:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "银行代码"
         bankAccount:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "账号"
         accountName:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "户名"
         paymentWindowVersion:
           type: "string"
@@ -15080,6 +15217,8 @@ components:
     MallOfflineInstructionsView:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         platformMerchantNo:
           type: "string"
           description: "Immutable receiver frozen with this order."
@@ -15155,6 +15294,10 @@ components:
     MallOfflineConfirmRequest:
       type: "object"
       properties:
+        collectorNo:
+          type: "string"
+        collectionReference:
+          type: "string"
         actionNo:
           type: "string"
           description: "幂等动作号"
@@ -15173,7 +15316,9 @@ components:
           type: "string"
           description: "实际收款主体（必须是档案里的平台主体）"
         bankReference:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "银行流水号（全局唯一）"
         evidenceKey:
           type: "string"
@@ -15190,7 +15335,6 @@ components:
         - "actualAmount"
         - "actualPaidAt"
         - "actualReceiver"
-        - "bankReference"
         - "evidenceKey"
         - "historical"
         - "reason"
@@ -17243,6 +17387,84 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/platform-mall/orders":
+    get:
+      operationId: "platformMallOrders"
+      summary: "platformMallOrders"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/platform-mall/claims":
+    get:
+      operationId: "platformMallClaims"
+      summary: "platformMallClaims"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/platform-mall/cash":
+    get:
+      operationId: "platformMallCash"
+      summary: "platformMallCash"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/biz-mall/offline/orders/{order}/cash-receipts":
     get:
       operationId: "mallCashReceipts"
@@ -18523,6 +18745,32 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/collectors":
+    get:
+      operationId: "offlineCollectors"
+      summary: "offlineCollectors"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/biz-mall/offline/claims":
     get:
       operationId: "offlinePendingClaims"
@@ -20647,6 +20895,182 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/customers/users":
+    get:
+      operationId: "customerRegistrations"
+      summary: "customerRegistrations"
+      tags:
+        - "customer"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/customers/users/{userNo}/stores":
+    get:
+      operationId: "customerRegistrationStores"
+      summary: "customerRegistrationStores"
+      tags:
+        - "customer"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "userNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/customers/chains":
+    get:
+      operationId: "customerBrands"
+      summary: "customerBrands"
+      tags:
+        - "customer"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          type: "object"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/customers/members":
+    get:
+      operationId: "platformMembers"
+      summary: "platformMembers"
+      tags:
+        - "customer"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          type: "object"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/customers/members/{personNo}":
+    get:
+      operationId: "platformMember"
+      summary: "platformMember"
+      tags:
+        - "customer"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "personNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/auth/login":
     post:
       operationId: "login"
@@ -28393,8 +28817,8 @@ paths:
         description: "请求体字段见对应契约方法的入参。"
   "/ops/merchant-plan-purchases/{e}":
     get:
-      operationId: "entityPlanPurchases"
-      summary: "entityPlanPurchases"
+      operationId: "entityPlanPurchasePage"
+      summary: "Authorized operator page; orderNo cursor, limit1..100. No legacy100-row fallback. */"
       tags:
         - "merchant"
       responses:
@@ -28979,10 +29403,36 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/self-operated/context":
+    get:
+      operationId: "selfOperatedContext"
+      summary: "当前系统地区的自营建档账号策略"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchants/self-operated":
     post:
       operationId: "createSelfOperated"
-      summary: "建**平台自营商家**（跳过进件与审核）"
+      summary: "自营建档：台湾使用已注册邮箱，大陆保留手机号身份"
       tags:
         - "merchant"
       responses:
@@ -29011,6 +29461,74 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/apply-on-behalf/context":
+    get:
+      operationId: "onBehalfContext"
+      summary: "当前登录环境统一配置的入驻地区与电话策略"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchants/apply-on-behalf/search":
+    get:
+      operationId: "listOnBehalfApplies"
+      summary: "仅运营代办申请，服务端过滤后分页"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          "$ref": "#/components/schemas/MerchantApply"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchants/apply-on-behalf":
     post:
       operationId: "applyOnBehalf"
@@ -29542,6 +30060,32 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchants/admissions":
+    get:
+      operationId: "listAdmissions"
+      summary: "System-region admission list, trimmed by existing application/self-operation permissions. */"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
                 required:
                   - "code"
                   - "msg"
@@ -35495,6 +36039,114 @@ paths:
                   - "data"
       parameters:
         - name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/{storeNo}/operational-review":
+    get:
+      operationId: "getStoreOperationalReview"
+      summary: "Read explicit store operating admission; historic unsubmitted review stays null. */"
+      tags:
+        - "store"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoreOperationalReview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}/operational-review/submit":
+    post:
+      operationId: "submitStoreOperationalReview"
+      summary: "Submit this store for operating admission without changing legal or payment review. */"
+      tags:
+        - "store"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoreOperationalReview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/{storeNo}/operational-review/decide":
+    post:
+      operationId: "decideStoreOperationalReview"
+      summary: "Decide explicit operating admission with the existing application audit authority. */"
+      tags:
+        - "store"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoreOperationalReview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
           in: "path"
           required: true
           schema:

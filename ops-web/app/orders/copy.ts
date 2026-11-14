@@ -177,7 +177,7 @@ const zh = {
   storeFilterClear: "看全部门店",
   filterFulfill: "按履约方式筛选",
   filterFulfillAll: "全部履约方式",
-  empty: "没有符合条件的订单。一期交易闭环（M1-1）尚未打通时，这里只有 mock 数据。",
+  empty: "没有符合条件的订单。",
 
   colSubOrderNo: "子订单号",
   colMerchant: "商家",
@@ -393,7 +393,7 @@ const en: typeof zh = {
   storeFilterClear: "All stores",
   filterFulfill: "Filter by fulfillment",
   filterFulfillAll: "All fulfillment types",
-  empty: "No orders match these filters. Until the phase-1 transaction loop (M1-1) is wired up, this page only holds mock data.",
+  empty: "No orders match these filters.",
 
   colSubOrderNo: "Sub-order no.",
   colMerchant: "Merchant",

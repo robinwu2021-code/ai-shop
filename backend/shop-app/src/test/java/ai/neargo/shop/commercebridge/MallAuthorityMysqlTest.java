@@ -32,6 +32,49 @@ class MallAuthorityMysqlTest {
     }
 
     @Test
+    void pendingStoreProcurementUsesFreshRealAuthorityButBusinessEndRemainsClosed() throws Exception {
+        try(var f=new AccessMysqlFixture()) {
+            new ai.neargo.commerce.persistence.CommerceMigrationRunner(f.ds).migrate();
+            var ref=new ai.neargo.commerce.api.common.StoreRef("MAIN","S");
+            var subscriptions=new ai.neargo.commerce.persistence.JdbcSubscriptionRepository(f.ds,n->UUID.randomUUID().toString());
+            CommerceAccessSecurityFlowTest.seedSubscriptions(f,ref,subscriptions,new org.springframework.transaction.support.TransactionTemplate(f.manager));
+            var resolver=new ai.neargo.shop.merchant.service.impl.BizIdentityResolverImpl(
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper.class),
+                org.mockito.Mockito.mock(ai.neargo.shop.spi.user.PickupQueryPort.class),
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class),
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class));
+            var sessions=new DbAccountSessionVerifier(f.dao,f.loader,f.clock,f.manager);
+            var stores=new ShopCommerceStoreAdapter(f.ds,f.manager);
+            var authority=new ShopMallAuthority(sessions,sessions,resolver,stores,f.clock);
+            var user=LoginUser.merchantByUser("U","owner");
+            String token=f.store.issue(TokenStore.SessionData.of(user));
+            authenticated(user,token);
+            BizContext.set(resolver.resolveStrict(user,"S"));
+            f.jdbc.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='PENDING' WHERE store_no='S'");
+            var buyer=authority.buyer("S","commerce:mall:purchase");
+            assertTrue(authority.authorize(buyer.actor(),ref,"commerce:mall:purchase").allowed());
+            var endHost=new ShopCommerceActorAdapter(sessions,resolver,stores);
+            var end=new ai.neargo.commerce.core.access.EndAccessService(
+                new ai.neargo.commerce.persistence.JdbcEndAccessRepository(f.ds),
+                new ai.neargo.commerce.persistence.JdbcCommerceUnitOfWork(f.ds,f.manager),endHost,
+                org.mockito.Mockito.mock(ai.neargo.commerce.api.port.EndContextCodecPort.class),f.clock,Duration.ofMinutes(1));
+            assertEquals(ai.neargo.commerce.api.access.AccessStatus.STORE_DISABLED,end.inspect(
+                new ai.neargo.commerce.api.access.IssueEndContextCommand(ShopCommerceActorAdapter.current(),ref,ref,"BIZ_APP","END_BIZ_APP","biz-app",ai.neargo.commerce.api.access.EndAccessFacade.AUDIENCE)).status());
+            var gate=new ShopCommerceEndContextAdapter(stores,resolver,end,sessions,f.clock);
+            var request=new org.springframework.mock.web.MockHttpServletRequest("POST","/biz/stores/S/mall/offline/quotes");
+            request.addHeader("X-Store-No","S");
+            assertTrue(gate.admit(user,BizContext.current(),request,new org.springframework.mock.web.MockHttpServletResponse()));
+            var operation=new org.springframework.mock.web.MockHttpServletRequest("GET","/biz/stores/S/pos/access");
+            operation.addHeader("X-Store-No","S");
+            assertFalse(gate.admit(user,BizContext.current(),operation,new org.springframework.mock.web.MockHttpServletResponse()));
+            f.jdbc.update("UPDATE mch_store SET status='SUSPENDED' WHERE store_no='S'");
+            assertThrows(AccessDenied.class,()->authority.buyer("S","commerce:mall:purchase"));
+        } finally {SecurityContextHolder.clearContext();BizContext.clear();}
+    }
+
+    @Test
     void typedBuyerKeysAlwaysFitPersistedBuyerColumnsIncluding64CharacterRawIdentity() {
         String raw = "u".repeat(64);
         String usr = ShopMallIdentity.buyerKey(LoginUser.merchantByUser(raw, "owner"));

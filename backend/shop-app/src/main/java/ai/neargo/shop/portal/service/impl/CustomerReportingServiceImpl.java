@@ -43,8 +43,8 @@ public class CustomerReportingServiceImpl implements CustomerReportingService {
   }
   @Override public OperatingEntity operatingEntity(Scope s, String id) {
     var p=params(s).addValue("id",id);
-    String visible=s.all()?"1=1":"(oe.legal_subject_no IN (:entities) OR (oe.legal_subject_no IS NULL AND EXISTS (SELECT 1 FROM mch_account a WHERE a.tenant_no=oe.tenant_no AND a.user_no=oe.owner_user_no AND a.deleted=0 AND a.status='ACTIVE' AND a.is_owner=1 AND "+scope(s,"a.entity_no")+")))";
-    var rows=jdbc.query("SELECT oe.operating_entity_no,oe.name,oe.market,oe.status,oe.version,oe.legal_subject_no,oe.owner_user_no,("+visible+") visible FROM mch_operating_entity oe JOIN usr_account u ON u.tenant_no=oe.tenant_no AND u.user_no=oe.owner_user_no AND u.deleted=0 AND u.status='NORMAL' WHERE oe.tenant_no=:tenant AND oe.operating_entity_no=:id AND oe.deleted=0 AND oe.status='ENABLED'",p,
+    String visible=s.all()?"1=1":"(oe.legal_subject_no IN (:entities) OR (oe.legal_subject_no IS NULL AND EXISTS (SELECT 1 FROM mch_account a WHERE a.tenant_no=oe.tenant_no COLLATE utf8mb4_unicode_520_ci AND a.user_no=oe.owner_user_no COLLATE utf8mb4_unicode_520_ci AND a.deleted=0 AND a.status='ACTIVE' AND a.is_owner=1 AND "+scope(s,"a.entity_no")+")))";
+    var rows=jdbc.query("SELECT oe.operating_entity_no,oe.name,oe.market,oe.status,oe.version,oe.legal_subject_no,oe.owner_user_no,("+visible+") visible FROM mch_operating_entity oe JOIN usr_account u ON u.tenant_no=oe.tenant_no COLLATE utf8mb4_unicode_520_ci AND u.user_no=oe.owner_user_no COLLATE utf8mb4_unicode_520_ci AND u.deleted=0 AND u.status='NORMAL' WHERE oe.tenant_no=:tenant AND oe.operating_entity_no=:id AND oe.deleted=0 AND oe.status='ENABLED'",p,
         (r,n)->new AbstractMap.SimpleImmutableEntry<>(r.getBoolean("visible"),new OperatingEntity(r.getString("operating_entity_no"),r.getString("name"),r.getString("market"),r.getString("status"),r.getLong("version"),r.getString("legal_subject_no"),r.getString("owner_user_no"),Set.of("PAYMENT_MERCHANT_CREATE"))));
     if(rows.isEmpty())throw BizException.of(ErrorCode.NOT_FOUND);
     if(!rows.getFirst().getKey())throw BizException.of(ErrorCode.FORBIDDEN);

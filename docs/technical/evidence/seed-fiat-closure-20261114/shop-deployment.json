@@ -1,0 +1,16 @@
+{
+  "releaseId": "seed-owner-lookup-20261113-580783acd",
+  "sourceCommit": "580783acd83d94aa72034cf0c0a5558c009a46e9",
+  "classes": 4,
+  "messageKeysAdded": 3,
+  "databaseChanged": false,
+  "runtimeConfigChanged": false,
+  "allOtherArchiveEntriesUnchanged": true,
+  "status": "DEPLOYED",
+  "sha256": "d67836e7cfb3a85ad677b6e1db09a7831cd41290335e606ef557025cd156cbef",
+  "apiHealth": "UP",
+  "opsHealth": "UP",
+  "unrelatedServicesUnchanged": true,
+  "frontendChanged": false,
+  "lockReleased": true
+}

@@ -77,7 +77,7 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                         .orElseThrow(() -> new MallException("NOT_FOUND"));
         if (facts.model() != CommerceModel.STORE_V1
                 || actor.subjectKind() == SubjectKind.ACCOUNT
-                        && facts.status() != StoreStatus.ACTIVE)
+                        && (facts.status() != StoreStatus.ACTIVE && facts.status() != StoreStatus.SETUP))
             throw new MallException("STORE_UNAVAILABLE");
         var account = accounts.lockSubscriptionAccount(store);
         if (!store.equals(account.store())

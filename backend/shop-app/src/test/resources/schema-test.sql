@@ -467,6 +467,10 @@ CREATE TABLE IF NOT EXISTS notify_message
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     template_no VARCHAR(64) DEFAULT NULL,
     receiver_type VARCHAR(16) NOT NULL DEFAULT 'USER',
+    biz_type VARCHAR(32) NULL,
+    biz_no VARCHAR(64) NULL,
+    store_no VARCHAR(64) NULL,
+    entity_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_message_no UNIQUE (message_no),
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
@@ -1228,6 +1232,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     platform_bank_ref_key VARCHAR(64) DEFAULT NULL,
     platform_manual_proof MEDIUMTEXT DEFAULT NULL,
     platform_reconciliation_proof MEDIUMTEXT DEFAULT NULL,
+    platform_collection_ref_key VARCHAR(64) DEFAULT NULL,
     sub_merchant_id VARCHAR(64) DEFAULT NULL,
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
     pay_order_id BIGINT NULL,
@@ -1239,6 +1244,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     channel_amount_minor BIGINT NULL,
     channel_currency CHAR(3) NULL,
     CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
+    CONSTRAINT uk_platform_collection_reference UNIQUE (platform_collection_ref_key),
     CONSTRAINT uk_platform_bank_reference UNIQUE (platform_bank_ref_key),
     CONSTRAINT uk_payment_receipt_no UNIQUE (tenant_no,receipt_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
@@ -1735,6 +1741,11 @@ CREATE TABLE IF NOT EXISTS mch_store
     name VARCHAR(128) DEFAULT NULL,
     is_default TINYINT(4) NOT NULL DEFAULT 0,
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    operational_review VARCHAR(16) DEFAULT NULL,
+    operational_source VARCHAR(16) DEFAULT NULL,
+    operational_order_no VARCHAR(64) DEFAULT NULL,
+    operational_decided_at BIGINT DEFAULT NULL,
+    operational_submitted_at BIGINT DEFAULT NULL,
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
     payment_changed_at BIGINT(20) DEFAULT NULL,
     delivery_radius_m INT(11) NOT NULL DEFAULT 3000,
@@ -12998,6 +13009,73 @@ CREATE TABLE IF NOT EXISTS mch_pay_service_application
     CONSTRAINT ck_mpsa_json CHECK ((request_json IS JSON))
 );
 
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_state
+(
+    state_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    scope_hash VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_rate
+(
+    rate_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    hits INT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_source
+(
+    environment VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    pay_app_id BIGINT NOT NULL,
+    source_type VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    source_id BIGINT NOT NULL,
+    payment_store_id BIGINT NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY(environment,pay_app_id,source_type,source_id,payment_store_id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_receipt
+(
+    environment VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    event_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    pay_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_sha256 CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    receipt_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload LONGTEXT NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    created_at BIGINT NOT NULL,
+    projected_at BIGINT NULL,
+    PRIMARY KEY(environment,event_id),
+    CONSTRAINT uk_collection_order UNIQUE (environment,pay_order_no),
+    CONSTRAINT uk_collection_receipt UNIQUE (receipt_no)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_scope
+(
+    scope_key VARCHAR(512) COLLATE utf8mb4_bin NOT NULL,
+    seq BIGINT NOT NULL DEFAULT 0,
+    floor_seq BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(scope_key)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_stream
+(
+    scope_key VARCHAR(512) COLLATE utf8mb4_bin NOT NULL,
+    seq BIGINT NOT NULL,
+    event_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    message_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pay_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    paid_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY(scope_key,seq),
+    CONSTRAINT uk_collection_stream_event UNIQUE (scope_key,event_id)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -20307,6 +20385,14 @@ WHERE a.point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK' AND a.deleted = 0
 DELETE FROM sys_role_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
 DELETE FROM sys_function_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
 UPDATE stl_payment_operation SET evidence_ref = REPLACE(evidence_ref, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE evidence_ref LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+UPDATE sys_function_point SET name='入驻申请',href='/merchants',group_name='入驻',sort=10,updated_at=NOW()
+WHERE point_code IN ('OPS_MERCHANT','OPS_MERCHANT__TAB_ON_BEHALF') AND point_type='MENU';
+UPDATE sys_function_point SET name='自营建档',group_name='入驻',sort=20,updated_at=NOW()
+WHERE point_code='OPS_MERCHANT__TAB_SELF_OPERATED' AND point_type='MENU';
+UPDATE sys_function_point SET name='支付开通',group_name='入驻',sort=30,updated_at=NOW()
+WHERE point_code='OPS_MERCHANT__TAB_ONBOARDING' AND point_type='MENU';
+UPDATE sys_function_point SET name='入驻管理',href='/merchants',group_name='入驻',sort=10,updated_at=NOW()
+WHERE point_code IN ('OPS_MERCHANT','OPS_MERCHANT__TAB_ON_BEHALF','OPS_MERCHANT__TAB_SELF_OPERATED') AND point_type='MENU';
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES
@@ -20355,20 +20441,3 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
-
-
-CREATE TABLE IF NOT EXISTS sys_auth_captcha_state
-(
-    state_key VARCHAR(64) NOT NULL PRIMARY KEY,
-    scope_hash VARCHAR(64) NOT NULL,
-    payload TEXT NOT NULL,
-    expires_at BIGINT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS sys_auth_captcha_rate
-(
-    rate_key VARCHAR(64) NOT NULL PRIMARY KEY,
-    hits INT NOT NULL,
-    expires_at BIGINT NOT NULL
-);

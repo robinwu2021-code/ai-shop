@@ -31,7 +31,7 @@ public class EntityPlanReportingTest {
     order("MAIN","A","E1","S1","USD",10,2000);order("MAIN","OLD","E1","DELETED_STORE","CNY",12,1000);
     order("OTHER","B","E1","S1","USD",99,5000);
     db.update("INSERT INTO mch_plan_purchase_claim VALUES('MAIN','B','C1','SUBMITTED'),('MAIN','B','C2','DECLINED'),('MAIN','A','C1','SUBMITTED'),('OTHER','OLD','C1','SUBMITTED')");
-    service=new EntityPlanPurchaseServiceImpl(db,mock(PlatformTransactionManager.class),JsonMapper.builder().build(),mock(PlatformPaymentPort.class),mock(OfflineCollectionPort.class),mock(PrivateEvidencePort.class),mock(MoneyPolicyPort.class),mock(StoreOwnershipWritePort.class),e->{throw new AssertionError("No per-entity enumeration");},Clock.systemUTC(),"P");
+    service=new EntityPlanPurchaseServiceImpl(db,mock(PlatformTransactionManager.class),JsonMapper.builder().build(),mock(PlatformPaymentPort.class),mock(OfflineCollectionPort.class),mock(PrivateEvidencePort.class),mock(MoneyPolicyPort.class),mock(StoreOwnershipWritePort.class),e->{throw new AssertionError("No per-entity enumeration");},Clock.systemUTC(),"P", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.StoreOperationalReviewService.class));
   }
   @AfterEach void close() { db.execute("DROP ALL OBJECTS"); }
   void order(String t,String no,String e,String store,String currency,long amount,long time) {

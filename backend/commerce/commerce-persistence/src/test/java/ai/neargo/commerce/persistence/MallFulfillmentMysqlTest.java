@@ -366,6 +366,12 @@ class MallFulfillmentMysqlTest {
             List<ai.neargo.commerce.api.catalog.SkuComponent> components,
             java.util.function.Consumer<MallOrderConcurrencyMysqlTest.Fixture> configure,
             boolean migrate) {
+        return setup(db,hardware,components,configure,migrate,(store,entity,order,purchasedAt,at)->{});
+    }
+    Fixture setup(MysqlDatabase db, boolean hardware,
+            List<ai.neargo.commerce.api.catalog.SkuComponent> components,
+            java.util.function.Consumer<MallOrderConcurrencyMysqlTest.Fixture> configure,
+            boolean migrate, PaidStoreActivationPort activation) {
         if (migrate) db.migrate();
         var m = new MallOrderConcurrencyMysqlTest.Fixture(db, hardware, components);
         configure.accept(m);
@@ -402,8 +408,8 @@ class MallFulfillmentMysqlTest {
                         CLOCK,
                         m.c.ids,
                         "platform",
-                        Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER"),
-                        (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()));
+                        Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER", "OFFLINE:SALES_COLLECTION"),
+                        (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()), activation);
         return new Fixture(m, svc, bridge, m.place(m.quote(), "place"));
     }
 
@@ -426,6 +432,44 @@ class MallFulfillmentMysqlTest {
 
     long count(MysqlDatabase db, String sql) {
         return db.jdbc.queryForObject(sql, Long.class);
+    }
+
+    @Test
+    void operatingActivationWaitsForFullPaidFulfillmentAndSharesItsTransaction() {
+        try(var db=new MysqlDatabase()) {
+            var calls=new java.util.concurrent.atomic.AtomicInteger();
+            PaidStoreActivationPort activation=(store,entity,order,purchasedAt,at)->{
+                assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
+                assertEquals(STORE,store);assertEquals("merchant",entity);
+                if(calls.getAndIncrement()==0)throw new IllegalStateException("host admission unavailable");
+            };
+            var f=setup(db,false,null,m->{},true,activation);
+            assertThrows(MallException.class,()->f.svc.fulfill(new FulfillmentQuery("tenant-a",f.order.orderNo())));
+            assertEquals(0,calls.get());
+            start(f);f.svc.confirmPayment(paid(f,8800));
+            assertEquals(0,calls.get());
+            assertThrows(IllegalStateException.class,()->f.svc.fulfill(new FulfillmentQuery("tenant-a",f.order.orderNo())));
+            assertEquals(1,count(db,"SELECT COUNT(*) FROM mch_subscription_period"));
+            assertNotEquals("COMPLETED",db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order",String.class));
+            f.svc.fulfill(new FulfillmentQuery("tenant-a",f.order.orderNo()));
+            f.svc.fulfill(new FulfillmentQuery("tenant-a",f.order.orderNo()));
+            assertEquals(2,count(db,"SELECT COUNT(*) FROM mch_subscription_period"));
+            assertEquals("COMPLETED",db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order",String.class));
+        }
+    }
+
+    @Test
+    void operatingActivationDoesNotRunForPartialHardwareFulfillment() {
+        try(var db=new MysqlDatabase()) {
+            var calls=new java.util.concurrent.atomic.AtomicInteger();
+            var parts=List.of(
+                new ai.neargo.commerce.api.catalog.SkuComponent(null,ComponentKind.PLAN,"pro-1",null,null,365,1,100,false,"ON_FULFILLMENT"),
+                new ai.neargo.commerce.api.catalog.SkuComponent(null,ComponentKind.HARDWARE,null,null,"device",null,2,100,false,"ON_FULFILLMENT"));
+            var f=setup(db,true,parts,m->{},true,(store,entity,order,purchasedAt,at)->calls.incrementAndGet());
+            start(f);f.svc.confirmPayment(paid(f,f.order.payable().minor()));
+            f.svc.fulfill(new FulfillmentQuery("tenant-a",f.order.orderNo()));
+            assertEquals(0,calls.get());
+        }
     }
 
     @Test
@@ -1015,8 +1059,8 @@ class MallFulfillmentMysqlTest {
                 clock,
                 f.mall.c.ids,
                 "platform",
-                Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER"),
-                (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()));
+                Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER", "OFFLINE:SALES_COLLECTION"),
+                (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()), (store,entity,order,purchasedAt,at)->{});
     }
 
     Fixture interruptedZero(MysqlDatabase db, MutableClock clock) {

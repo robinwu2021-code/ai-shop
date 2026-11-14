@@ -71,6 +71,7 @@ class CommerceOfflineWiringTest {
                         () -> unused(SubscriptionAccountRepository.class))
                 .withBean(CommerceUnitOfWork.class, Uow::new)
                 .withBean(StoreDirectoryPort.class, () -> s -> Optional.empty())
+                .withBean(PaidStoreActivationPort.class, () -> (store,entity,order,purchasedAt,at)->{})
                 .withBean(CommerceIdGenerator.class, () -> n -> UUID.randomUUID().toString())
                 .withBean(
                         CheckoutReadinessPort.class,

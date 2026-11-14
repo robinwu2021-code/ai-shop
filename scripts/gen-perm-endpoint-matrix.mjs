@@ -62,7 +62,7 @@ export function scanEndpoints(root = ROOT) {
   const files = execFileSync("rg", ["-l", '"/ops', "--glob", "*.java", "backend",
     "backend-plugins/shop-commerce-integration/commerce-web/src/main/java"], {
     cwd: root, encoding: "utf8",
-  }).trim().split("\n").filter(Boolean);
+  }).trim().split("\n").filter(f => f.includes("/src/main/java/") && !f.includes("/target/"));
 
   const out = [];
   for (const f of files) {
@@ -120,6 +120,8 @@ export function scanEndpoints(root = ROOT) {
           if (blocked) continue;
           const hit = /@PreAuthorize[^\n]*Perms\.(\w+)/.exec(lines[j]);
           if (hit) { perm = hit[1]; break; }
+          const literal = /@PreAuthorize\("@perm\.can\('([a-z0-9:_-]+)'\)"\)/.exec(lines[j]);
+          if (literal) { perm = "=" + literal[1]; break; }
         }
       }
       // Multiline action-dependent annotations do not fit the historical
@@ -137,8 +139,11 @@ export function scanEndpoints(root = ROOT) {
                 && !annotation.includes(" or @perm.can(")) {
               throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
             }
-            if ( (annotation.match(/@perm\.can\(/g) ?? []).length !== 2
-                || constants.length !== 2 || annotation.includes("&& @perm")) {
+            const calls = (annotation.match(/@perm\.can\(/g) ?? []).length;
+            const conditional = annotation.includes("?") && annotation.includes(":");
+            const ors = (annotation.match(/ or @perm\.can\(/g) ?? []).length;
+            if (calls !== constants.length || calls < 2 || annotation.includes("&& @perm")
+                || (conditional ? calls !== 2 : ors !== calls - 1)) {
               throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
             }
             perm = constants.join("|");
@@ -158,11 +163,22 @@ export function scanEndpoints(root = ROOT) {
           if (op) { perm = "=" + op[1]; break; }
         }
       }
-      out.push({ method: mk.method, path: mk.path, perm });
+      const mapping = src.slice(mk.i, src.indexOf("\n",mk.i));
+      const condition = /params\s*=\s*"([^"]+)"/.exec(mapping)?.[1] ?? "";
+      out.push({ method: mk.method, path: mk.path, perm, condition });
     }
   }
-  out.sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
-  return out;
+  const unique = new Map();
+  for (const endpoint of out) {
+    const key = `${endpoint.method} ${endpoint.path} ${endpoint.condition}`;
+    const previous = unique.get(key);
+    if (previous)
+      throw new Error(`Duplicate production endpoint: ${key}`);
+    unique.set(key, endpoint);
+  }
+  const endpoints = [...unique.values()];
+  endpoints.sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
+  return endpoints;
 }
 
 /** Perms.java → { codes: 常量名→码, roles: 角色→常量名[] | "*" } */

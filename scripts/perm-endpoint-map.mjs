@@ -23,6 +23,8 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/stores\/\{storeNo\}\/operational-review$/, "merchant:merchant:read"],
+  ["POST", /^\/ops\/stores\/\{storeNo\}\/operational-review\/(?:submit|decide)$/, "merchant:apply:audit"],
   // 主体购买沿用真实Controller权限；复合授权仍由运行时同时校验，表册不改变授权。
   ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assistance-context$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
@@ -57,6 +59,7 @@ export const RULES = [
   ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(instructions|claims)$/, "commerce:mall:order:read"],
   ["*", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/evidence(\/content|\/url)?$/, "commerce:mall:offline:evidence"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/claims\/\{claimNo\}\/decline$/, "commerce:mall:offline:review"],
+  ["GET", /^\/ops\/biz-mall\/offline\/collectors$/, "commerce:mall:offline:confirm"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/confirmations$/, "commerce:mall:offline:confirm"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/voids$/, "commerce:mall:offline:void"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/payouts$/, "commerce:mall:offline:refund:confirm"],
@@ -188,6 +191,7 @@ export const RULES = [
   // 建平台自营商家（跳过进件与审核）。**单独一个码，且不配给任何角色** ——
   // 于是只有持 "*" 的 SUPER_ADMIN 能用。不复用 merchant:admission:update：
   // 那个码 BD 手里有，而「平台成为这批货的销售主体」不该由招商日常决定
+  ["GET", /^\/ops\/merchants\/admissions$/, "merchant:apply:audit", "OR merchant:apply:onbehalf / merchant:selfop:create; rows are filtered by each existing permission"],
   ["POST", /^\/ops\/merchants\/self-operated$/, "merchant:selfop:create"],
   // 代商家提交入驻申请（BD 在店里替老板填）。**与 selfop 刻意分开的另一个码**：
   // 那个回答「平台要不要自己下场经营」只给超管，这个回答「谁来替第三方录资料」要给 BD。

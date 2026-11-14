@@ -78,7 +78,8 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   Class<? extends HttpMessageConverter<?>> selectedConverterType,
                                   ServerHttpRequest request, ServerHttpResponse response) {
         // supports() 拿不到请求，所以路径在这里判
-        if (body instanceof ApiResult<?> || body instanceof Resource || isInternal(request) || isShortLink(request)
+        if (MediaType.TEXT_EVENT_STREAM.isCompatibleWith(selectedContentType)
+                || body instanceof ApiResult<?> || body instanceof Resource || isInternal(request) || isShortLink(request)
                 || isPayPortal(request)
                 || pathOf(request).equals("/private/print-artifacts")) {
             return body;

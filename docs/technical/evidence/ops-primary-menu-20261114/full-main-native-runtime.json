@@ -1,0 +1,327 @@
+{
+  "status": "complete",
+  "main": "ai.neargo.shop.ShopApplication",
+  "profiles": [
+    "api",
+    "ops"
+  ],
+  "java": "21.0.12.1",
+  "mysql": "native MySQL9 at 127.0.0.1:3308",
+  "baseUrl": "http://127.0.0.1:34211",
+  "classpath": "main compiled target/classes and dependency jars; every module target/test-classes removed",
+  "schemaPolicy": "brand-new ai_shop_full_local_<uuid>, utf8mb4_0900_ai_ci; no existing business data copied",
+  "productionBootstrapSupported": true,
+  "productionBlocker": null,
+  "attempts": [
+    {
+      "log": "/tmp/ai-shop-full-local-1939e53c/main.log",
+      "failure": "V1 line15 unknown collation utf8mb4_uca1400_ai_ci (1273)"
+    },
+    {
+      "log": "/tmp/ai-shop-full-local-1939e53c/adapted-main2.log",
+      "failure": "After existing inventory collation adapter: V18 line32 DROP INDEX IF EXISTS rejected (1064)"
+    },
+    {
+      "log": "/tmp/ai-shop-full-local-1939e53c/adapted-main3.log",
+      "failure": "V150 line105 mixed0900/unicode520 join collation after inventory-specific520 mapping"
+    },
+    {
+      "log": "/tmp/ai-shop-full-local-1939e53c/adapted-main4.log",
+      "failure": "Same V150 mixed collation despite schema default520; explicit CHARSET uses native default0900"
+    },
+    {
+      "log": "/tmp/ai-shop-full-local-1939e53c/adapted-main5.log",
+      "schema": "ai_shop_full_local_ec52696e",
+      "successThrough": "V180",
+      "stoppedAt": "Original V181 Java seed actively loading620k village rows; stopped only owned process to enable JDBC rewriteBatchedStatements=true on fresh run"
+    }
+  ],
+  "nativeAdapterSmoke": "PASS: conditional drop/add index twice, multi-column conditional add twice, quoted commas/decimal and ordinary literals preserved",
+  "optimizedRunLog": "/tmp/ai-shop-full-local-polzkvlw/default-full-main-browser.log",
+  "optimizedRunCommand": "python3 scripts/start-platform-full-local.py --self-test",
+  "frozenSourceSha256": {
+    "backend/shop-app/src/main/resources/db/migration/V1__baseline.sql": "c8699fd01c8c1739867b7691adcc531f26abd9cce31d6ad8bb4c94d314d22958",
+    "backend/shop-app/src/main/resources/db/migration/V18__store_role_multi.sql": "818a52b5b6e7dcb62d6a13daff0d574fcf989e795aba07fe4760a0b0e5b0b090",
+    "backend/shop-app/src/main/resources/db/migration/V150__merchant_plan.sql": "2f31870d085b8e71731ee790fadfc3d6cdb544e427dd216e7933ad69ecfb9c35",
+    "backend/shop-app/src/main/java/db/migration/V181__seed_villages.java": "e817b7d22ae6682d06c50642af2ced93b5f4da0b9d97829b9f01f11cb9de368b",
+    "backend/shop-app/src/main/resources/db/migration/V252__sku_external_identity.sql": "c7fcfad2f6f5e9030e326a1d7a4c78a1eae0c96fcc73640fa5c733ee82f4bcb5"
+  },
+  "notes": [
+    "No frozen SQL/Java migration edits, failed history bypass, generated H2 schema or fake success records.",
+    "Secrets exist only in private runtime dir700/config600 and process environment; never embedded in repo evidence.",
+    "Final runtime copied current production target/classes after all reactor builds were stable; every source/copied file SHA256 matched, eliminating observed transient classpath refresh races.",
+    "Exact gateway Origin password login and real DB session auth/me succeeded; no browser mock or session injection.",
+    "DevSeeder created 11 actual public demo operator identities; no unrelated existing schema or server changed.",
+    "Local offline profile number is explicitly configured; its collection-profile business record must be created by the legitimate ops workflow before payment acceptance.",
+    "One coordinated host reactor run validated 13 focused tests with Java21 and capped768m Maven/fork heaps; no push, deploy, or commit."
+  ],
+  "productionFixStatus": "Verified: existing Flyway-only runtime adapter supports original native MySQL9 chain and exact ShopApplication main bootstrap.",
+  "currentCoreDiagnostic": {
+    "schema": "ai_shop_full_local_e4a397ea",
+    "log": "/tmp/ai-shop-full-local-polzkvlw/production-core-migrations.log",
+    "originalMigrationsApplied": 583,
+    "maxVersion": 672,
+    "originalJavaMigrationRegionRows": 665276,
+    "originalJavaMigrationVillageRows": 620573,
+    "elapsed": "7m41s"
+  },
+  "review": "Read-only P1/P2 review of production adapter/helper/native+unit tests/final launcher: no actionable P1/P2; full chain/main completion remains pending",
+  "runtime": {
+    "schema": "ai_shop_full_local_e4a397ea",
+    "pid": 38368,
+    "baseUrl": "http://127.0.0.1:34211",
+    "browserOrigin": "http://127.0.0.1:34212",
+    "main": "ai.neargo.shop.ShopApplication",
+    "mainLog": "/tmp/ai-shop-full-local-polzkvlw/default-full-main-browser.log",
+    "privateConfigPath": "/tmp/ai-shop-full-local-polzkvlw/config.json",
+    "classpathPath": "/tmp/ai-shop-full-local-polzkvlw/classpath-frozen",
+    "snapshotManifestPath": "/tmp/ai-shop-full-local-polzkvlw/main-snapshot-manifest.json",
+    "snapshotManifestSha256": "01e4395d49fe17b413e2bdcfae4d35264b015df96bb77cffb529d01500607f75",
+    "productionModuleDirectories": 36,
+    "productionFiles": 10665,
+    "testClasses": false,
+    "extraSpringBeans": false,
+    "configUsesExistingDbSessionAndEndAccessGate": true,
+    "currentlyRunning": false,
+    "privateConfigRemoved": true
+  },
+  "histories": {
+    "flyway_schema_history": {
+      "historyRows": 583,
+      "migrationRows": 583,
+      "maxVersion": 672,
+      "failedRows": 0
+    },
+    "pay_flyway_history": {
+      "historyRows": 17,
+      "migrationRows": 16,
+      "maxVersion": 16,
+      "failedRows": 0
+    },
+    "sec_flyway_history": {
+      "historyRows": 3,
+      "migrationRows": 2,
+      "maxVersion": 2,
+      "failedRows": 0
+    },
+    "commerce_schema_history": {
+      "historyRows": 14,
+      "migrationRows": 13,
+      "maxVersion": 13,
+      "failedRows": 0
+    }
+  },
+  "focusedVerification": {
+    "log": "/tmp/ai-shop-next01-focused-maven.log",
+    "result": "BUILD SUCCESS",
+    "tests": [
+      {
+        "class": "ai.neargo.shop.config.FlywayMariaDbDialectDataSourceTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "class": "ai.neargo.shop.config.FlywayMysql9DialectNativeTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "class": "ai.neargo.shop.commercebridge.MallAuthorityMysqlTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "class": "ai.neargo.shop.merchant.plan.EntityPlanPurchaseMysqlTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "totalTests": 13,
+    "launcherNativeSmoke": "native_production_adapter_idempotence PASS",
+    "launcherSmokeLog": "/tmp/ai-shop-full-local-polzkvlw/launcher-smoke.log"
+  },
+  "apiSmoke": [
+    {
+      "path": "/ops/auth/login",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "token",
+        "staff",
+        "challenge",
+        "challengeTo"
+      ]
+    },
+    {
+      "path": "/ops/auth/me",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "staffNo",
+        "username",
+        "realName",
+        "roles",
+        "perms",
+        "status",
+        "merchantNo",
+        "communityNo",
+        "pickupNo",
+        "lastLoginAt",
+        "mustChangePassword",
+        "secondFactorExempt"
+      ]
+    },
+    {
+      "path": "/ops/dashboard/kpi",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "gmv",
+        "orderCount",
+        "avgOrderValue",
+        "pendingMerchantAudit",
+        "pendingAfterSale",
+        "redeemRate",
+        "pendingGoodsAudit",
+        "goodsAuditOldestDays"
+      ]
+    },
+    {
+      "path": "/ops/stores",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "records",
+        "total",
+        "page",
+        "size"
+      ]
+    },
+    {
+      "path": "/ops/orders",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "records",
+        "total",
+        "page",
+        "size"
+      ]
+    },
+    {
+      "path": "/ops/merchant-plans",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "records",
+        "total",
+        "page",
+        "size"
+      ]
+    },
+    {
+      "path": "/ops/plan-defs",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "list",
+      "count": 3
+    },
+    {
+      "path": "/ops/business-types",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "list",
+      "count": 0
+    },
+    {
+      "path": "/ops/industry-plans",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "list",
+      "count": 0
+    },
+    {
+      "path": "/ops/biz-mall/catalog",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "businessTypes",
+        "businessEnds",
+        "planDefinitions",
+        "planVersions",
+        "products",
+        "skuDefinitions",
+        "skuVersions",
+        "categories"
+      ]
+    },
+    {
+      "path": "/mp/store/nearby?lat=31.23&lng=121.47",
+      "httpStatus": 200,
+      "code": 0,
+      "dataType": "dict",
+      "keys": [
+        "records",
+        "total",
+        "page",
+        "size"
+      ]
+    }
+  ],
+  "productionSourceFiles": [
+    "backend/shop-app/src/main/java/ai/neargo/shop/config/FlywayMariaDbDialectDataSource.java",
+    "backend/shop-app/src/main/java/ai/neargo/shop/config/FlywayMysql9MigrationSql.java"
+  ],
+  "sqlPortability": {
+    "exitCode": 0,
+    "findings": "30 new reported findings across current tree, including preexisting inventory/historical adapters and intentional compatibility test inputs; no known-* baseline was extended."
+  },
+  "productionSourceSha256": {
+    "backend/shop-app/src/main/java/ai/neargo/shop/config/FlywayMariaDbDialectDataSource.java": "ea28a964e65d5b3c8aa3be2f07178249c3f09421142cc6568996d6903408d759",
+    "backend/shop-app/src/main/java/ai/neargo/shop/config/FlywayMysql9MigrationSql.java": "dc6ea77943780806ca5d5b949cfcd473ff215a0e0e0b96fe2c6158fefcee6c1f"
+  },
+  "cleanup": {
+    "ownedJavaProcessesStopped": 1,
+    "stoppedPid": 38368,
+    "ownedSchemasDropped": [
+      "ai_shop_full_local_bb1ec0b5",
+      "ai_shop_full_local_df572d13",
+      "ai_shop_full_local_92dccad5",
+      "ai_shop_full_local_ce1b6ab6",
+      "ai_shop_full_local_20027c87",
+      "ai_shop_full_local_ec52696e",
+      "ai_shop_full_local_87138130",
+      "ai_shop_full_local_170abe7d",
+      "ai_shop_full_local_e4a397ea"
+    ],
+    "schemaCount": 9,
+    "privateSecretFilesRemoved": [
+      "/tmp/ai-shop-full-local-1939e53c/config.json",
+      "/tmp/ai-shop-full-local-polzkvlw/config.json",
+      "/tmp/ai-shop-full-local-polzkvlw/ops-session.json",
+      "/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/ai-shop-full-local-mrzbu_db/config.json"
+    ],
+    "privateSecretFileCount": 4,
+    "unprovenEmptyOrphanRetained": "ai_shop_full_local_bc0e4f63",
+    "nonsecretLogsAndSnapshotManifestPreserved": true,
+    "sharedMysqlAndOtherSchemasUnchanged": true,
+    "verifiedExactSchemaSetAbsent": true,
+    "verifiedPrivateSecretFilesAbsent": true,
+    "verifiedOwnedPidExited": true
+  }
+}

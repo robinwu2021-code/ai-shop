@@ -120,10 +120,11 @@ class CommerceStoreCreationFlowTest {
                                                 + "\\s*\\(.*?\n\\);")
                                 .matcher(schema);
                 assertTrue(matcher.find(), table);
-                jdbc.execute(matcher.group());
+                jdbc.execute(matcher.group().replaceAll("(?m)^.*operational_(?:review|source|order_no|submitted_at|decided_at)[^\\n]*\\n", ""));
             }
             jdbc.execute("ALTER TABLE mch_entity_apply DROP store_profile,DROP store_no");
             new ResourceDatabasePopulator(new ClassPathResource("db/migration/V662__operator_initial_store_profile.sql")).execute(ds);
+            new ResourceDatabasePopulator(new ClassPathResource("db/migration/V672__store_operational_review.sql")).execute(ds);
             jdbc.execute(
                     "ALTER TABLE mch_store DROP business_type_code,DROP commerce_model,DROP"
                             + " business_type_changed_at");
@@ -510,7 +511,9 @@ class CommerceStoreCreationFlowTest {
             jdbc.update("INSERT INTO sys_store_industry(industry_code,sub_industry_code,business_type_code,name_zh,name_tw,enabled,created_at,updated_at) VALUES ('RETAIL_TEST','NOT_PUBLISHED','FOOD','Food','Food',1,NOW(),NOW()),('DISABLED','','RETAIL','Disabled','Disabled',0,NOW(),NOW()),('DISABLED','SHOP','RETAIL','Disabled child','Disabled child',1,NOW(),NOW()),('EMPTY','','FOOD','Empty','Empty',1,NOW(),NOW()),('EMPTY','CHILD','FOOD','Unpublished','Unpublished',1,NOW(),NOW())");
             var setup=new OpsStoreSetupQuery(ds,new JdbcCommerceUnitOfWork(ds,txManager),context.getBean(ai.neargo.shop.spi.user.MerchantQueryPort.class));
             var choices=tx.execute(status->setup.choices(authority.lockCreator("operator-owner")));
-            assertEquals(2,choices.size());assertTrue(choices.stream().allMatch(r->r.industryCode().equals("RETAIL_TEST")));
+            assertEquals(5,choices.size());
+            assertTrue(choices.stream().filter(OpsStoreSetupQuery.Choice::available).allMatch(r->r.industryCode().equals("RETAIL_TEST")));
+            assertTrue(choices.stream().filter(r->r.industryCode().equals("EMPTY")).noneMatch(OpsStoreSetupQuery.Choice::available));
             assertTrue(choices.stream().anyMatch(r->"SHOP".equals(r.subIndustryCode())));
             String application=ops.createApplyOnBehalf(operatorCommand,"maker");
             assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM mch_entity_apply WHERE apply_no=?",String.class,application));

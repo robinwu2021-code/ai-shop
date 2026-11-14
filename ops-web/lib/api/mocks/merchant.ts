@@ -14,6 +14,7 @@ const payServiceProfiles = new Map<string, PayServiceStatus>();
 
 /** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
 const selfOperatedByPhone = new Map<string, string>();
+const selfAdmissionDetails = new Map<string,{ownerUserNo:string;serviceScope:string}>();
 
 /*
  * mock 侧也把「实际可达多少个小区」算出来，而不是回显入参。
@@ -126,6 +127,14 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  listAdmissions: (q = {}) => {
+    const rows: import("@/lib/types").AdmissionEntry[] = [
+      ...db.applies.filter(a=>a.marketCode==="TW").map(a=>({key:"APPLY:"+a.applyNo,type:"ON_BEHALF" as const,name:a.name,ownerUserNo:a.ownerUserNo,status:a.status,createdAt:a.createdAt,application:a})),
+      ...db.merchants.filter(m=>m.selfOperated).map(m=>({key:"SELF:"+m.merchantNo,type:"SELF_OPERATED" as const,name:m.name,ownerUserNo:selfAdmissionDetails.get(m.merchantNo)?.ownerUserNo,status:m.status,createdAt:new Date(m.createdAt).getTime(),selfOperated:{merchantNo:m.merchantNo,name:m.name,ownerUserNo:selfAdmissionDetails.get(m.merchantNo)?.ownerUserNo??"",status:m.status,serviceScope:selfAdmissionDetails.get(m.merchantNo)?.serviceScope??"",createdAt:new Date(m.createdAt).getTime()}})),
+    ];
+    rows.sort((a,b)=>b.createdAt-a.createdAt || b.key.localeCompare(a.key));
+    return wait(db.paginate(rows,q.page,q.size,r=>(!q.type || r.type===q.type) && (!q.status || r.status===q.status) && db.kwHit(q.keyword,r.name,r.ownerUserNo)));
+  },
   onBehalfStoreIndustries: async () => storeIndustries.filter(r=>r.enabled && storeIndustries.some(p=>p.enabled && p.industryCode===r.industryCode && !p.subIndustryCode))
       .map(r=>({...r,subIndustryCode:r.subIndustryCode||null})),
   entityCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
@@ -217,8 +226,15 @@ export const merchantMock: MerchantApi = {
    * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
    * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
    */
+  onBehalfContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  listOnBehalfApplies: (q = {}) => {
+    const statuses=q.status?.split(",").filter(Boolean) ?? ["PENDING","REVIEWING"];
+    return wait(db.paginate(db.applies,q.page,q.size,a=>a.onBehalf===true && statuses.includes(a.status) && db.kwHit(q.keyword,a.name,a.contactName,a.contactPhone)));
+  },
   applyOnBehalf: async (v) => {
-    const {phone,name,subject,qualificationItems,market="CN",ownerEmail,storeProfile}=v;
+    const {phone,name,subject,qualificationItems,ownerEmail,storeProfile}=v;
+    const market=marketPhonePolicies.find(p=>p.market==="TW")!.market;
+    if(v.market && v.market!==market) fail("地区与系统配置不符", "Region differs from system configuration");
     const policy=marketPhonePolicies.find(p=>p.market===market && p.marketEnabled);
     if (!policy) fail("地区不可用", "Market unavailable");
     if (!policy!.recordOnly && !/^1[3-9]\d{9}$/.test(phone ?? "")) {
@@ -242,10 +258,9 @@ export const merchantMock: MerchantApi = {
     return wait({applyNo,ownerUserNo},500);
   },
 
-  createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
-    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
-      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
-    }
+  selfOperatedContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  createSelfOperated: async ({ ownerEmail, name, serviceScope, communityNos }) => {
+    if(ownerEmail!=="owner@example.test") fail("请选择已注册店主邮箱", "Use the registered owner email");
     if (!name?.trim()) {
       fail("主体名称不能为空", "Merchant name is required");
     }
@@ -255,12 +270,12 @@ export const merchantMock: MerchantApi = {
     if (scope === "COMMUNITY" && !communityNos?.length) {
       fail("必须至少选一个覆盖社区", "At least one covered community is required");
     }
-    const tail = phone.slice(-4);
-    const owned = selfOperatedByPhone.get(phone);
+    const ownerKey=ownerEmail!;
+    const owned = selfOperatedByPhone.get(ownerKey);
     if (owned) {
       return wait({
         merchantNo: owned, storeNo: `${owned}-S1`,
-        ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
+        ownerUserNo: `U-${ownerKey}`, fundsMode: "AGGREGATED" as const,
         businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
         selfOperated: true,
         reachableCommunities: reachOf(scope, communityNos),
@@ -270,16 +285,17 @@ export const merchantMock: MerchantApi = {
     db.merchants.unshift({
       merchantNo, name: name.trim(), legalForm: "ENTERPRISE", tier: "MEDIUM", status: "ACTIVE",
       communityNos: [...communityNos],
-      contactName: "平台自营", contactPhone: `${phone.slice(0, 3)}****${tail}`,
+      contactName: "平台自营", contactPhone: "",
       categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
       settleAccountReady: false, createdAt: new Date().toISOString(),
       fundsMode: "AGGREGATED",
       // 建出来的主体要带上这个标记，否则 mock 下「自营的类目授权不禁用」演不出来
       selfOperated: true,
     });
-    selfOperatedByPhone.set(phone, merchantNo);
+    selfOperatedByPhone.set(ownerKey, merchantNo);
+    selfAdmissionDetails.set(merchantNo,{ownerUserNo:`U-${ownerKey}`,serviceScope:scope});
     return wait({
-      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
+      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${ownerKey}`,
       fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
       serviceScope: scope, created: true, selfOperated: true,
       reachableCommunities: reachOf(scope, communityNos),

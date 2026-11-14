@@ -81,7 +81,7 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                                     .filter(v -> ref.equals(v.store()))
                                     .orElseThrow(() -> new MallException("NOT_FOUND"));
                     if (store.model() != CommerceModel.STORE_V1
-                            || store.status() != StoreStatus.ACTIVE)
+                            || (store.status() != StoreStatus.ACTIVE && store.status() != StoreStatus.SETUP))
                         throw new MallException("STORE_UNAVAILABLE");
                     var account = accounts.lockSubscriptionAccount(ref);
                     if (!ref.equals(account.store())
@@ -149,7 +149,9 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
     private StorefrontView withOffline(StoreRef ref, StorefrontView view) {
         if (view.products().isEmpty()) return view;
         uow.requireOutsideTransaction();
-        var terms = offline.terms(ref.tenantNo(), offlineProfileNo, view.currency()).orElse(null);
+        var terms = java.util.stream.Stream.of("BANK_TRANSFER","SALES_COLLECTION")
+                .map(method -> offline.terms(ref.tenantNo(),ai.neargo.commerce.api.offline.OfflineCollectionTerms.profile(offlineProfileNo,method),view.currency()).orElse(null))
+                .filter(Objects::nonNull).toList();
         var store =
                 stores.find(ref)
                         .filter(v -> ref.equals(v.store()))
@@ -158,9 +160,12 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
         for (var product : view.products()) {
             var skus = new ArrayList<StorefrontView.Sku>();
             for (var sku : product.skus()) {
-                var status =
-                        readiness.evaluateOffline(
-                                store, sku.sku().price(), List.of(sku.sku()), terms);
+                var statuses=terms.stream().map(t->readiness.evaluateOffline(store,sku.sku().price(),List.of(sku.sku()),t))
+                        .filter(Objects::nonNull).toList();
+                var available=statuses.stream().filter(CheckoutReadinessPort.Readiness::available).toList();
+                var status = available.isEmpty()
+                        ? (statuses.isEmpty()?readiness.evaluateOffline(store,sku.sku().price(),List.of(sku.sku()),null):statuses.getFirst())
+                        : new CheckoutReadinessPort.Readiness(true,List.of(),available.stream().flatMap(s->s.paymentOptions().stream()).distinct().toList());
                 if (status == null)
                     status =
                             new CheckoutReadinessPort.Readiness(

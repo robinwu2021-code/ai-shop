@@ -4,6 +4,13 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService.ReviewVO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.web.bind.annotation.RequestBody;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,15 +38,40 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsStoreController {
 
     private final MerchantGovernService governService;
+    private final StoreOperationalReviewService operationalReviews;
     private final AuditLogPort auditLogPort;
     private final ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService;
 
     public OpsStoreController(MerchantGovernService governService, AuditLogPort auditLogPort,
-                              ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService) {
+                              ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService,
+                              StoreOperationalReviewService operationalReviews) {
         this.governService = governService;
+        this.operationalReviews = operationalReviews;
         this.auditLogPort = auditLogPort;
         this.fulfillmentService = fulfillmentService;
     }
+
+    /** Explicit operating admission; entity qualification and payment onboarding are separate. */
+    @GetMapping("/ops/stores/{storeNo}/operational-review")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
+    public ReviewVO operationalReview(@PathVariable String storeNo) {
+        return operationalReviews.read(storeNo);
+    }
+
+    @PostMapping("/ops/stores/{storeNo}/operational-review/submit")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
+    public ReviewVO submitOperationalReview(@PathVariable String storeNo) {
+        return operationalReviews.submit(storeNo);
+    }
+
+    @PostMapping("/ops/stores/{storeNo}/operational-review/decide")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
+    public ReviewVO decideOperationalReview(
+            @PathVariable String storeNo, @Valid @RequestBody OperationalDecisionReq req) {
+        return operationalReviews.decide(storeNo,req.approved(),req.reason());
+    }
+    public record OperationalDecisionReq(@NotNull Boolean approved,
+            @NotBlank @Size(max=500) String reason) {}
 
     /**
      * 商家履约配置（方案 v4，P0 只读）：门店 × 送货方式矩阵。

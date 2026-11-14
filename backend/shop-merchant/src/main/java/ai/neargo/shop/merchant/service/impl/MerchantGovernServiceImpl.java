@@ -534,7 +534,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             // 只有平台压下去的才由平台解除；对 ACTIVE/READONLY 的店「解除」没有意义
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
-        s.setStatus(MchStore.ACTIVE);
+        s.setStatus("PENDING".equals(s.getOperationalReview()) || "REJECTED".equals(s.getOperationalReview())
+                ? MchStore.PENDING_OPEN : MchStore.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(s));
         // 只回带 platform_suspended 标记的行 —— 商家在处置期间自己下架的不动
         shelfPort.getObject().platformRestore(s.getEntityNo(), storeNo);

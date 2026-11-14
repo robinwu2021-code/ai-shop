@@ -125,6 +125,11 @@ public interface OpsService {
      */
     PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size);
 
+    PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size, boolean onBehalfOnly);
+
+    PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size,
+                                           boolean onBehalfOnly, String market, boolean newestFirst);
+
     /**
      * 审核入驻。**驳回必须写理由**；通过才创建商家主体。
      *

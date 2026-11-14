@@ -22,13 +22,17 @@ import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest(properties="shop.auth.captcha.enabled=true")
+@SpringBootTest(properties={"shop.auth.captcha.enabled=true",
+        "shop.otp.adaptive.scenes[ORDER_PICKUP_CONFIRM].enabled=true",
+        "shop.otp.adaptive.scenes[ORDER_PICKUP_CONFIRM].entries[0]=ORDER_TEST"})
 @ActiveProfiles("test")
 class BizCaptchaHttpTest {
     @Autowired WebApplicationContext context;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired OtpStore otp;
+    @Autowired ai.neargo.shop.common.otp.service.OtpSendService sends;
+    @Autowired ai.neargo.shop.common.otp.policy.InMemoryOtpFrequency frequency;
     MockMvc mvc;
     @BeforeEach void setup() {
         mvc = MockMvcBuilders.webAppContextSetup(context)
@@ -64,10 +68,58 @@ class BizCaptchaHttpTest {
 
     @Test void smsAndEmailSendsRequireProofWithoutDeliveringAnyMessage() throws Exception {
         String email = "blocked-"+UUID.randomUUID()+"@example.test";
-        required(postJson("/biz/auth/email-otp/send",Map.of("email",email),null),"EMAIL_OTP_SEND");
+        for (int i=0;i<3;i++) frequency.record(EmailOtpService.key(email));
+        for (int i=0;i<3;i++) frequency.record("13800000000");
+        var response = postJson("/biz/auth/email-otp/send",Map.of("email",email),null);
+        required(response,"EMAIL_OTP_SEND");
+        assertThat(response.path("data").path("scene").asString()).isEqualTo("LOGIN");
         required(postJson("/biz/auth/otp/send",Map.of("phone","13800000000"),null),"OTP_SEND");
         assertThat(otp.peek(EmailOtpService.key(email))).isEmpty();
         assertThat(otp.peek("13800000000")).isEmpty();
+    }
+
+    @Test void firstEmailSendUsesExistingStubWithoutSliderAndStoresCode() throws Exception {
+        String email = "low-"+UUID.randomUUID()+"@example.test";
+        var result = postJson("/biz/auth/email-otp/send",Map.of("email",email),null);
+        assertThat(result.path("code").asInt()).as(result.toString()).isZero();
+        assertThat(result.path("data").path("expiresInSeconds").asInt()).isEqualTo(600);
+        assertThat(otp.peek(EmailOtpService.key(email))).isPresent();
+    }
+
+    @Test void challengeRejectsDisabledScenesAndLoginBusinessKeys() throws Exception {
+        assertThat(postJson("/biz/auth/captcha/challenge",Map.of("action","OTP_SEND","principal","13800000000",
+                "scene","PASSWORD_RESET"),null).path("code").asInt()).isEqualTo(10400);
+        assertThat(postJson("/biz/auth/captcha/challenge",Map.of("action","OTP_SEND","principal","13800000000",
+                "scene","LOGIN","businessKey","order1"),null).path("code").asInt()).isEqualTo(10400);
+    }
+
+    @Test void enabledBusinessSceneRoundTripsThroughHttpAndRetiresProofOnRetry() throws Exception {
+        String phone = "13900000009";
+        String scene = "ORDER_PICKUP_CONFIRM";
+        String business = "order-"+UUID.randomUUID();
+        var caller = new ai.neargo.shop.common.otp.service.OtpSendService.OtpContext("ORDER_TEST","test-ip",null);
+        var command = new ai.neargo.shop.common.otp.service.OtpSendService.SendCommand(scene,
+                ai.neargo.shop.common.otp.service.OtpSendService.Channel.SMS,phone,business,null,null,null);
+        frequency.record(phone);
+        assertThatThrownBy(() -> sends.send(command,caller))
+                .isInstanceOf(ai.neargo.shop.common.captcha.CaptchaRequiredException.class);
+        var issued = postJson("/biz/auth/captcha/challenge",Map.of("action","OTP_SEND","principal",phone,
+                "scene",scene,"businessKey",business),null);
+        assertThat(issued.path("code").asInt()).as(issued.toString()).isZero();
+        var c = json.treeToValue(issued.path("data"),BizCaptchaService.Challenge.class);
+        String payload = jdbc.queryForObject("SELECT payload FROM sys_auth_captcha_state WHERE state_key=?",String.class,JdbcCaptchaStore.hash(c.challengeId()));
+        int x = Math.round(json.readTree(payload).path("validData").path("percentage").floatValue()*c.backgroundImageWidth());
+        var verified = postJson("/biz/auth/captcha/verify",Map.of("challengeId",c.challengeId(),"action","OTP_SEND","principal",phone,
+                "scene",scene,"businessKey",business,"track",BizCaptchaServiceTest.track(c,x)),null);
+        assertThat(verified.path("code").asInt()).as(verified.toString()).isZero();
+        String proof = verified.path("data").path("captchaToken").asString();
+        var retry = new ai.neargo.shop.common.otp.service.OtpSendService.SendCommand(scene,
+                command.channel(),phone,business,null,null,proof);
+        assertThat(sends.send(retry,caller).expiresInSeconds()).isEqualTo(300);
+        String key = ai.neargo.shop.common.otp.OtpKeys.storageKey(scene,command.channel(),phone,business);
+        String code = otp.peek(key).orElseThrow();
+        assertThatThrownBy(() -> sends.send(retry,caller)).isInstanceOf(ai.neargo.shop.common.captcha.CaptchaRequiredException.class);
+        assertThat(otp.peek(key)).contains(code);
     }
 
     @Test void otpCredentialLoginAndIdentityEntryRemainOutsideCaptchaPolicy() throws Exception {

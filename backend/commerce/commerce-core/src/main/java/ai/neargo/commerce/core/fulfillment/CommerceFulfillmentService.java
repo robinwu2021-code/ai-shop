@@ -33,6 +33,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
     private final String recipient;
     private final Set<String> routes;
     private final ActorAuthorizationPort authorization;
+    private final PaidStoreActivationPort activation;
 
     public CommerceFulfillmentService(
             MallRepository orders,
@@ -47,7 +48,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
             CommerceIdGenerator ids,
             String recipient,
             Set<String> routes,
-            ActorAuthorizationPort authorization) {
+            ActorAuthorizationPort authorization, PaidStoreActivationPort activation) {
         this.orders = orders;
         this.repo = repo;
         this.accounts = accounts;
@@ -61,6 +62,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         this.recipient = recipient;
         this.routes = Set.copyOf(routes);
         this.authorization = authorization;
+        this.activation = Objects.requireNonNull(activation);
         if (recipient == null || recipient.isBlank() || routes.isEmpty())
             throw new IllegalArgumentException("platform collection configuration required");
     }
@@ -177,7 +179,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         var command = locked(q.tenantNo(),q.orderNo(),o -> {
             if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
             return new StartPaymentCommand(o.quote().store(),o.orderNo(),o.view().payable().minor()==0?"INTERNAL":"OFFLINE",
-                    o.view().payable().minor()==0?"ZERO":"BANK_TRANSFER",null);
+                    o.view().payable().minor()==0?"ZERO":o.quote().purchase().offline().collectionMethod(),null);
         });
         return preparePayment(q.tenantNo(),command,o -> {
             if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
@@ -197,6 +199,9 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 o -> {
                     authorized.accept(o);
                     if (!internalZero && (o.quote().purchase().offline() != null) != "OFFLINE".equals(c.channel()))
+                        throw fail("PAYMENT_ROUTE_MISMATCH");
+                    if (!internalZero && o.quote().purchase().offline()!=null
+                            && !o.quote().purchase().offline().collectionMethod().equals(c.payMethod()))
                         throw fail("PAYMENT_ROUTE_MISMATCH");
                     if (internalZero && o.view().payable().minor() != 0)
                         throw fail("INVALID_REQUEST");
@@ -596,6 +601,12 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         Payment.PAID,
                         all ? Fulfillment.COMPLETED : Fulfillment.PARTIAL,
                         o.axes().refund());
+        if (all && o.axes().refund() == Refund.NONE
+                && orders.components(o.quote().store(),o.orderNo()).stream().anyMatch(part ->
+                    part.snapshot().allocation().component().kind() == ComponentKind.PLAN
+                    && part.snapshot().plan().tier() != PlanTier.FREE)) {
+            activation.activate(o.quote().store(),o.quote().entityNo(),o.orderNo(),o.quote().valuationAt(),clock.millis());
+        }
         return result(after);
     }
 

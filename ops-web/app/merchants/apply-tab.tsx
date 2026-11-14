@@ -10,17 +10,18 @@
 // 这一页要解决的实际问题：**服务范围没人能填**。
 // 商家申请时允许留空（ADR-009），本该由运营在通过时补 —— 而运营侧此前没有这个入口。
 // 结果是商家通过审核、上完架，却对谁都不可见，且没有任何报错。
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCodeLabel } from "@/lib/api/master-data";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
 import { fill } from "@/lib/use-copy";
-import type { ApplyStatus, MerchantApply } from "@/lib/types";
+import type { AdmissionEntry, ApplyStatus, MerchantApply } from "@/lib/types";
+import { SelfOperatedDetails } from "./self-operated-details";
 import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
+import { AdmissionDetailDrawer as Drawer, AdmissionDetailSection as DrawerSection, AdmissionDetailField as Field, AdmissionDetailGrid as FieldGrid } from "./admission-detail-layout";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
@@ -44,7 +45,7 @@ const STATUS_MAP: StatusMap<ApplyStatus> = {
 function scopeLabel(c: MerchantsCopy, scope?: string | null): string {
   if (scope === "CITY") return c.applyScopeCity;
   if (scope === "PLATFORM") return c.applyScopePlatform;
-  return c.applyScopeCommunity;
+  return scope === "COMMUNITY" ? c.applyScopeCommunity : c.applyScopeEmpty;
 }
 
 /** 文案表是扁平的 Record<string,string>，枚举 → 文案的映射在组件里拼 */
@@ -55,15 +56,18 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
   OTHER: c.qualOTHER,
 });
 
-export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean }) {
+export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=true, unified=false, initialType="", canReadSubscription=false, onBehalfOnly=false, action }: { c: MerchantsCopy; canAudit: boolean; canSelfOp?:boolean; canViewApplications?:boolean; unified?:boolean; initialType?:""|"SELF_OPERATED"; canReadSubscription?:boolean; onBehalfOnly?:boolean; action?:React.ReactNode }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(!unified && onBehalfOnly ? "PENDING,REVIEWING,APPROVED,REJECTED" : "");
+  const [type,setType]=useState<""|"ON_BEHALF"|"SELF_OPERATED">(initialType);
+  const [selfCurrent,setSelfCurrent]=useState<AdmissionEntry["selfOperated"]>(null);
   const { page, setPage, size, setSize } = usePaging();
 
   const [current, setCurrent] = useState<MerchantApply | null>(null);
+  useEffect(()=>{setCurrent(null);setSelfCurrent(null);},[canAudit,canSelfOp,canViewApplications,onBehalfOnly]);
   const [reason, setReason] = useState("");
   const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
@@ -72,16 +76,18 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
 
   const subscription=useQuery({queryKey:["mall-subscription",current?.storeNo],queryFn:()=>api.mallSubscription(current!.storeNo!),enabled:!!current?.storeNo && canReadSubscription});
   const q = { keyword, status, page, size };
-  const list = useQuery({ queryKey: ["applies", q], queryFn: () => api.listApplies(q) });
+  const list = useQuery({ queryKey: ["applies", onBehalfOnly ? "on-behalf" : "review", q], queryFn: () => onBehalfOnly ? api.listOnBehalfApplies(q) : api.listApplies(q),enabled:!unified });
+  const management = useQuery({queryKey:["applies","management",canAudit,canSelfOp,canViewApplications,onBehalfOnly,{...q,type}],queryFn:()=>api.listAdmissions({...q,type:type||undefined,status:status||undefined}),enabled:unified});
 
   // 社区目录：通过时要从这里挑。只取启用中的 —— 归档的小区不该还能被指派
   const communities = useQuery({
     queryKey: ["communities", "for-audit"],
     queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+    enabled: canAudit,
   });
 
   // 授权码字典：通过时在同一屏里勾。只有启用的会下发
-  const authCodes = useQuery({ queryKey: ["auth-codes"], queryFn: () => api.listAuthCodes() });
+  const authCodes = useQuery({ queryKey: ["auth-codes"], queryFn: () => api.listAuthCodes(), enabled: canAudit });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["applies"] });
 
@@ -121,28 +127,13 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
   const decided = current?.status === "APPROVED" || current?.status === "REJECTED";
 
   const columns: Column<MerchantApply>[] = [
-    { header: c.colNo, cell: (a) => a.applyNo, numeric: true, align: "start" },
-    { header: c.colName, cell: (a) => a.name },
-    { header: c.applyColIndustry, cell: (a) => label.industry(a.industry) },
-    { header: c.applyColSubject, cell: (a) => label.subject(a.subject) },
-    { header: c.colContact, cell: (a) => `${a.contactName} ${a.contactPhone}` },
-    {
-      // 服务范围空着的要一眼看出来 —— 它是「通过之后没人看得见」的唯一预警
-      header: c.applyColScope,
-      cell: (a) =>
-        a.communityNos?.length ? (
-          // 服务范围是 ADR-009 定的**固定三档**，不是运营可维护的字典 ——
-          // 所以用文案表而不是 master-data。判据：取值域会不会被运营改
-          `${scopeLabel(c, a.serviceScope)} · ${a.communityNos.length}`
-        ) : (
-          <span className="text-[var(--warning)]">{c.applyScopeEmpty}</span>
-        ),
-    },
-    { header: c.colStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
-    { header: c.colCreatedAt, cell: (a) => fmtTime(new Date(a.createdAt).toISOString()) },
+    { header:c.applyColName,cell:(a)=><div className="space-y-1"><div className="max-w-56 truncate font-medium" title={a.name}>{a.name}</div><div className="max-w-56 truncate txt-caption text-muted-foreground" title={a.storeProfile?.name}>{a.storeProfile?.name || c.applyStoreUnprovided}</div></div> },
+    { header:c.colContact,cell:(a)=><span>{a.contactName || "—"}</span> },
+    { header: c.applyColStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
+    { header: c.colCreatedAt, cell: (a) => <div className="max-w-24 whitespace-normal">{fmtTime(new Date(a.createdAt).toISOString())}</div> },
     {
       header: c.colActions,
-      // 窄屏钉在行尾：这张表 9 列约 1076px 宽，手机视口 375 —— 不钉的话
+      // 窄屏钉在行尾：手机视口 375 —— 不钉的话
       // 要一路横滑到底才点得到「受理/查看」，而企微的入驻意向通知点进来就是这一页
       stickyEnd: true,
       cell: (a) => (
@@ -159,6 +150,20 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
       ),
     },
   ];
+  const admissionStatuses: StatusMap<string> = {...STATUS_MAP,
+    ACTIVE:{label:c.admissionActive,tone:"success"}, SUSPENDED:{label:c.admissionBanned,tone:"danger"}, FROZEN:{label:c.admissionFrozen,tone:"danger"},
+    PENDING_LICENSE:{label:c.admissionPendingLicense,tone:"warning"}};
+  const managementColumns: Column<AdmissionEntry>[] = [
+    {header:c.admissionName,cell:r=><div className="max-w-56 truncate font-medium" title={r.name}>{r.name}</div>},
+    {header:c.admissionType,cell:r=>r.type==="SELF_OPERATED"?c.admissionSelf:r.application?.onBehalf?c.admissionAssisted:c.admissionMerchant},
+    {header:c.admissionOwner,cell:r=><span className="max-w-40 break-all">{r.ownerUserNo||"—"}</span>},
+    {header:c.admissionStatus,cell:r=><StatusBadge value={r.status} map={admissionStatuses} />},
+    {header:c.colCreatedAt,cell:r=>fmtTime(new Date(r.createdAt).toISOString())},
+    {header:c.colActions,stickyEnd:true,cell:r=><div className="flex gap-2">
+      {canAudit && r.application?.status==="PENDING" && <Button size="sm" variant="outline" onClick={()=>accept.mutate(r.application!.applyNo)}>{c.applyActionAccept}</Button>}
+      <Button size="sm" variant="outline" onClick={()=>{if(r.application)open(r.application);else setSelfCurrent(r.selfOperated);}}>{c.actionView}</Button>
+    </div>},
+  ];
 
   return (
     <>
@@ -167,57 +172,75 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
         onSearch={(v) => { setKeyword(v); setPage(1); }}
         searchPlaceholder={c.applySearchPh}
       >
+        {unified&&<FilterSelect aria-label={c.admissionType} value={type} onChange={v=>{setType(v as typeof type);setPage(1);}} allLabel={c.admissionAll} options={[...(canViewApplications?[{value:"ON_BEHALF",label:c.admissionAssisted}]:[]),...(canSelfOp?[{value:"SELF_OPERATED",label:c.admissionSelf}]:[])]} />}
         <FilterSelect
+          aria-label={unified?c.admissionStatus:c.applyColStatus}
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
           options={[
-            { value: "", label: c.applyFilterTodo },
+            ...(!unified && onBehalfOnly ? [{value:"PENDING,REVIEWING,APPROVED,REJECTED",label:c.obAllStatuses}] : []),
+            { value: "", label: unified?c.obAllStatuses:c.applyFilterTodo },
             { value: "PENDING", label: STATUS_MAP.PENDING.label },
             { value: "REVIEWING", label: STATUS_MAP.REVIEWING.label },
             { value: "APPROVED", label: STATUS_MAP.APPROVED.label },
             { value: "REJECTED", label: STATUS_MAP.REJECTED.label },
+            ...(unified&&canSelfOp?[{value:"ACTIVE",label:c.admissionActive}]:[]),
           ]}
         />
+        {action && <div className="ms-auto">{action}</div>}
       </Toolbar>
 
-      <DataTable
+      {unified?<DataTable columns={managementColumns} rows={management.data?.records??[]} loading={management.isPending} rowKey={r=>r.key} error={management.error} onRetry={()=>management.refetch()} empty={c.applyEmpty} />:<DataTable
         columns={columns}
         rows={list.data?.records ?? []}
         loading={list.isPending}
         rowKey={(a) => a.applyNo}
-        empty={c.applyEmpty}
+        empty={status || keyword.trim() ? c.applyEmpty : c.applyEmptyTodo}
         error={list.error}
         onRetry={() => list.refetch()}
-      />
+      />}
       <Pagination
         page={page}
         size={size}
-        total={list.data?.total ?? 0}
+        total={(unified?management.data?.total:list.data?.total) ?? 0}
         onPage={setPage}
         onSize={(v) => { setSize(v); setPage(1); }}
       />
+      <SelfOperatedDetails c={c} entry={selfCurrent} canAddStore={canSelfOp} onClose={()=>setSelfCurrent(null)} />
 
-      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""}>
+      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}
+        footer={current && canAudit && !decided ? (
+          <div className="flex w-full flex-wrap justify-end gap-3">
+            <Button variant="outline" disabled={!reason.trim() || audit.isPending} onClick={() => audit.mutate({ approved: false })}>
+              {c.applyActionReject}
+            </Button>
+            <Button disabled={!scopeReady || audit.isPending} onClick={() => audit.mutate({ approved: true })}>
+              {c.applyActionApprove}
+            </Button>
+          </div>
+        ) : undefined}
+      >
         {current && (
           <>
-            <DrawerSection title={c.applySectionInfo}>
+            <DrawerSection title={c.applySectionInfo} first>
               <FieldGrid>
-                <Field label={c.colNo}>{current.applyNo}</Field>
-                <Field label={c.applyOwner}>{current.ownerUserNo??"—"}</Field>
+                <Field label={c.applyColStatus}><StatusBadge value={current.status} map={STATUS_MAP} /></Field>
                 <Field label={c.applyMarket}>{current.marketCode??"—"}</Field>
-                {current.storeProfile&&<>
-                  <Field label={c.obStoreName}>{current.storeProfile.name}</Field>
-                  <Field label={c.obStoreAddress}>{current.storeProfile.address}</Field>
-                  <Field label={c.obStoreIndustry}>{current.storeProfile.industryCode} / {current.storeProfile.subIndustryCode}</Field>
-                  <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
-                </>}
-                {current.storeNo&&<>
-                  <Field label={c.applyStoreResult}>{current.merchantNo} / {current.storeNo}</Field>
-                  {canReadSubscription&&<Field label={c.applyViewSubscription}>
-                    {subscription.error ? (subscription.error as Error).message : subscription.data
-                      ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
-                  </Field>}
-                </>}
+                <Field label={c.applyOwner} wide>{current.ownerUserNo??"—"}</Field>
+                <Field label={c.colCreatedAt}>{fmtTime(new Date(current.createdAt).toISOString())}</Field>
+                {(decided || !canAudit) && <Field label={c.applyColScope}>{scopeLabel(c, current.serviceScope)}{current.communityNos?.length ? ` · ${current.communityNos.length}` : ""}</Field>}
+              </FieldGrid>
+              {current.onBehalf && (
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Badge tone="info">{c.applySourceOps}</Badge>
+                  <Badge tone={current.agreedAt ? "success" : "warning"}>{current.agreedAt ? c.applyAgreed : c.applyNotAgreed}</Badge>
+                </div>
+              )}
+              {current.rejectReason && <Notice tone="danger" className="mt-5 [overflow-wrap:anywhere]">{current.rejectReason}</Notice>}
+            </DrawerSection>
+
+            <DrawerSection title={c.applySectionBusiness}>
+              <FieldGrid>
                 <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 {/*
@@ -226,44 +249,39 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                   它是这张意向单里唯一说得出「平台还接不了的是哪一类」的地方。
                 */}
                 {current.industryNote ? (
-                  <Field label={c.applyColIndustryNote}>{current.industryNote}</Field>
+                  <Field label={c.applyColIndustryNote} wide>{current.industryNote}</Field>
                 ) : null}
-                <Field label={c.colContact}>{`${current.contactName} ${current.contactPhone}`}</Field>
-                <Field label={c.applyColCategory}>{current.category}</Field>
+                <Field label={c.colContact}>{current.contactName || "—"}</Field>
+                <Field label={c.obContactPhone}>{current.contactPhone || "—"}</Field>
+                {current.category && <Field label={c.applyColCategory} wide>{current.category}</Field>}
                 {/* 推荐人：**只在有值时显示** —— 绝大多数申请没有，空着一栏比不显示更容易误读成「查不到」 */}
                 {current.referrerPhone ? (
                   <Field label={c.applyColReferrer}>{current.referrerPhone}</Field>
                 ) : null}
-                <Field label={c.colStatus}>
-                  <StatusBadge value={current.status} map={STATUS_MAP} />
-                </Field>
               </FieldGrid>
-              {/*
-                ★ **代填标记**（三期）。摆在资料正文之前，因为它改变的是
-                「这份资料该怎么读」：下面每一格都不是商户自己录的。
-
-                后端继续校验真实审核权限；有权限的代填人可以自审并留痕。
-                商户协议仍由商户本人确认。
-              */}
-              {current.onBehalf && (
-                <Notice tone="warning" className="mt-3">
-                  {c.applyOnBehalf}
-                  {/*
-                    协议状态跟着代填一起说。分开放两处的话，
-                    「这单是代填的」与「协议还没人勾」会被当成两件不相干的事 ——
-                    而后者正是前者的必然结果（运营不能替商户勾）。
-                  */}
-                  <span className="mt-1 block txt-caption">
-                    {current.agreedAt ? c.applyAgreed : c.applyNotAgreed}
-                  </span>
-                </Notice>
-              )}
-              <p className="mt-2 txt-body text-[var(--muted)]">{current.desc}</p>
-              {current.asPickupPoint && <Badge className="mt-2">{c.applyAsPickup}</Badge>}
-              {current.rejectReason && (
-                <Notice tone="danger" className="mt-3">{current.rejectReason}</Notice>
-              )}
+              {current.desc && <p className="mt-5 whitespace-pre-wrap txt-body text-muted-foreground [overflow-wrap:anywhere]">{current.desc}</p>}
+              {current.asPickupPoint && <Badge className="mt-5">{c.applyAsPickup}</Badge>}
             </DrawerSection>
+
+            {current.storeProfile && <DrawerSection title={c.applySectionStore}>
+              <FieldGrid>
+                <Field label={c.obStoreName} wide>{current.storeProfile.name}</Field>
+                <Field label={c.obStoreAddress} wide>{current.storeProfile.address}</Field>
+                <Field label={c.obStoreIndustry}>{label.industry(current.storeProfile.industryCode)} / {current.storeProfile.subIndustryCode}</Field>
+                <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
+              </FieldGrid>
+            </DrawerSection>}
+
+            {(current.merchantNo || current.storeNo) && <DrawerSection title={c.applySectionResult}>
+              <FieldGrid>
+                {current.merchantNo && <Field label={c.applyResultMerchant} wide>{current.merchantNo}</Field>}
+                {current.storeNo && <Field label={c.applyResultStore} wide>{current.storeNo}</Field>}
+                {current.storeNo && canReadSubscription && <Field label={c.applyViewSubscription} wide>
+                  {subscription.error ? (subscription.error as Error).message : subscription.data
+                    ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
+                </Field>}
+              </FieldGrid>
+            </DrawerSection>}
 
             {/*
               资质：需要执照的档位必传，免执照档位没有。缺它正是驳回的主因。
@@ -274,20 +292,20 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
             */}
             {!!current.qualificationItems?.length && (
               <DrawerSection title={c.applySectionLicenses}>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {current.qualificationItems.map((q, i) => (
-                    <div key={i} className="rounded-card border p-2">
-                      <div className="flex items-center justify-between">
+                    <div key={i} className="min-w-0 rounded-card border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge tone="info">{qualTypeLabel(c)[q.type] ?? q.type}</Badge>
                         <span className="txt-caption text-muted-foreground">
                           {q.expireAt ? fmtTime(q.expireAt) : c.applyQualForever}
                         </span>
                       </div>
-                      <div className="mt-1 txt-caption tabular-nums">{q.code || "—"}</div>
+                      <div className="mt-3 txt-caption tabular-nums [overflow-wrap:anywhere]">{q.code || "—"}</div>
                       {q.imageUrl && (
                         <a className="focus-ring" href={q.imageUrl} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded-card" />
+                          <img src={q.imageUrl} alt={qualTypeLabel(c)[q.type] ?? q.type} className="mt-3 h-36 w-full rounded-card bg-muted/30 object-contain" />
                         </a>
                       )}
                     </div>
@@ -305,7 +323,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                 <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline [overflow-wrap:anywhere]">
                       {url.split("/").pop()}
                     </a>
                   ))}
@@ -319,10 +337,10 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                   服务范围放在审核动作**上面**：它是通过的前置条件，不是附属选项。
                   放下面的话运营会先点通过再发现被拦，而拦截原因在视线之外。
                 */}
-                <Notice tone="info" className="mb-3">{c.applyScopeNotice}</Notice>
-
                 <Label>{c.applyScopeLabel}</Label>
                 <FilterSelect
+                  className="mt-2 w-full"
+                  aria-label={c.applyScopeLabel}
                   value={scope}
                   onChange={setScope}
                   options={[
@@ -387,22 +405,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                   />
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    disabled={!scopeReady || audit.isPending}
-                    onClick={() => audit.mutate({ approved: true })}
-                  >
-                    {c.applyActionApprove}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    // 驳回必须写理由 —— 不写就等于让对方猜着改，而重来的人有一部分不会回来
-                    disabled={!reason.trim() || audit.isPending}
-                    onClick={() => audit.mutate({ approved: false })}
-                  >
-                    {c.applyActionReject}
-                  </Button>
-                </div>
               </DrawerSection>
             )}
           </>

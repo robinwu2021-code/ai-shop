@@ -2,6 +2,20 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  fieldActualCurrency: '实际收款币种',
+  salesClaimsNotRequired: '销售代收订单由运营核对实际收款，无需商户提交银行转账申报。',
+  fieldCollectionMethod: '收款方式',
+  methodSales: '销售代收',
+  methodBank: '银行转账',
+  fieldSalesContact: '销售付款说明',
+  fieldCollector: '实际收款销售',
+  fieldSalesReference: '销售收款凭据号',
+  pickCollector: '选择实际收款人员',
+  salesConfirmNotice: '确认销售实际代平台收到的款项；同一收款凭据只能用于一笔订单。确认后系统记录付款并交付权益，金额不符则进入待处置。',
+  salesInstructionsIssued: '销售付款说明已准备，等待实际收款后由运营核款。',
+  salesContactHint: '说明如何联系销售付款。无需银行账户；下单和联系销售均不代表已付款。',
+  collectorsEmpty: '没有可用收款销售，请核对员工状态、职责及数据范围。',
+
   // ── 通用 ──
   loading: "加载中…",
   btnSave: "保存",
@@ -419,7 +433,7 @@ const zh = {
   shippingRegion: "省/州", shippingCity: "城市", shippingAddress: "详细地址", shippingPostal: "邮政编码",
   toastProfileSaved: "已保存为 v{v}",
   secChannels: "台湾线上收款通道",
-  channelsNotice: "NewebPay、LINE Pay、JKOPay 尚未完成真实协议适配与商户串接验收，目前不可启用。台湾门店只能走线下银行转账。",
+  channelsNotice: "NewebPay、LINE Pay、JKOPay 尚未完成真实协议适配与商户串接验收，目前不可启用。可用线下收款方式以平台已启用配置为准。",
   channelNotConnected: "未接通",
   channelEnableAria: "启用 {n}（未接通，不可启用）",
 
@@ -461,6 +475,20 @@ const zh = {
 };
 
 const en: typeof zh = {
+  fieldActualCurrency: 'Currency actually received',
+  salesClaimsNotRequired: 'Operators confirm actual sales receipts. No buyer bank-transfer declaration is required.',
+  fieldCollectionMethod: 'Collection method',
+  methodSales: 'Sales collection',
+  methodBank: 'Bank transfer',
+  fieldSalesContact: 'Sales payment instructions',
+  fieldCollector: 'Salesperson who collected payment',
+  fieldSalesReference: 'Sales receipt reference',
+  pickCollector: 'Select the salesperson',
+  salesConfirmNotice: 'Confirm the actual amount collected by the salesperson for the platform. One receipt settles one order. Matching funds trigger delivery; mismatches remain unresolved.',
+  salesInstructionsIssued: 'Sales payment instructions are ready. Confirm only after actual collection.',
+  salesContactHint: 'Explain how to contact sales. No bank account is required. Ordering or contacting sales does not confirm payment.',
+  collectorsEmpty: 'No eligible sales staff. Check employee status, permissions and scope.',
+
   loading: "Loading…",
   btnSave: "Save",
   btnSaveDraft: "Save draft",
@@ -870,7 +898,7 @@ const en: typeof zh = {
   shippingRegion: "State/region", shippingCity: "City", shippingAddress: "Street address", shippingPostal: "Postal code",
   toastProfileSaved: "Saved as v{v}",
   secChannels: "Taiwan online payment channels",
-  channelsNotice: "NewebPay, LINE Pay and JKOPay have no real protocol adapter or merchant integration acceptance yet and cannot be enabled. Taiwan stores can only pay by offline bank transfer.",
+  channelsNotice: "NewebPay, LINE Pay and JKOPay have no real protocol adapter or merchant integration acceptance yet and cannot be enabled. Available offline collection methods depend on the enabled platform configuration.",
   channelNotConnected: "Not connected",
   channelEnableAria: "Enable {n} (not connected, cannot be enabled)",
 

@@ -76,6 +76,7 @@ public class CommerceFulfillmentAutoConfiguration {
             CommerceEventPersistencePort events,
             CommerceIdGenerator ids,
             ActorAuthorizationPort authorization,
+            PaidStoreActivationPort activation,
             @Value("${commerce.mall.payment.platform-merchant-no}") String recipient,
             @Value("${commerce.mall.payment.routes}") String routes) {
         uow.requireOutsideTransaction();
@@ -99,6 +100,6 @@ public class CommerceFulfillmentAutoConfiguration {
                 ids,
                 recipient,
                 allowed,
-                authorization);
+                authorization, activation);
     }
 }

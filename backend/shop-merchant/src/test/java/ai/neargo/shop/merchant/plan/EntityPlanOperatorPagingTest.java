@@ -34,7 +34,7 @@ class EntityPlanOperatorPagingTest {
     for (int i = 1; i <= 105; i++) db.update("INSERT INTO mch_plan_purchase VALUES('MAIN','E1',?)", String.format("O%03d", i));
     db.update("INSERT INTO mch_plan_purchase VALUES('MAIN','E2','O002'),('OTHER','E1','O004')");
     payments = mock(PlatformPaymentPort.class); cash = mock(OfflineCollectionPort.class);
-    service = spy(new EntityPlanPurchaseServiceImpl(db, mock(PlatformTransactionManager.class), mock(ObjectMapper.class), payments, cash, mock(PrivateEvidencePort.class), mock(MoneyPolicyPort.class), mock(StoreOwnershipWritePort.class), e -> e.equals("E1"), Clock.systemUTC(), "P"));
+    service = spy(new EntityPlanPurchaseServiceImpl(db, mock(PlatformTransactionManager.class), mock(ObjectMapper.class), payments, cash, mock(PrivateEvidencePort.class), mock(MoneyPolicyPort.class), mock(StoreOwnershipWritePort.class), e -> e.equals("E1"), Clock.systemUTC(), "P", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.StoreOperationalReviewService.class)));
     for (int i = 1; i <= 105; i++) {
       String no = String.format("O%03d", i);
       doReturn(new OrderView(no, "R" + no, "E1", "S1", null, "SUBMITTED", null, null, List.of(), List.of(), "MERCHANT")).when(service).order(operator, no);

@@ -1,14 +1,19 @@
 package ai.neargo.shop.user.service.impl;
 
-import ai.neargo.shop.spi.notify.SmsPort;
-import ai.neargo.shop.spi.platform.SmsAdmissionPort;
-import ai.neargo.shop.common.ratelimit.OtpSendGuard;
+import ai.neargo.shop.common.otp.OtpEntries;
+import ai.neargo.shop.common.otp.OtpScenes;
+import ai.neargo.shop.common.otp.service.OtpSendService;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
+import ai.neargo.shop.common.otp.service.OtpSendService.OtpContext;
+import ai.neargo.shop.common.otp.service.OtpSendService.SendCommand;
+import ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand;
+import ai.neargo.shop.auth.RequestMetaContext;
+import java.util.Map;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.EmailOtpService;
 import ai.neargo.shop.user.service.MpSessionService;
 import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.auth.Realm;
-import ai.neargo.shop.user.service.OtpTestPhoneService;
-import ai.neargo.shop.common.OtpStore;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
@@ -30,7 +35,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +60,6 @@ public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     /** 密码最短长度。与端上的校验保持一致；服务端也判，因为端上那道挡不住直接打接口的人 */
     private static final int PWD_MIN_LEN = 6;
@@ -88,80 +91,38 @@ public class AuthServiceImpl implements AuthService {
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ai.neargo.shop.spi.user.StaffSessionPort staffSessionPort = ai.neargo.shop.spi.user.StaffSessionPort.NONE;
-    private final OtpStore otpStore;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
 
-    /**
-     * 固定验证码（**只给本地联调与 E2E**）。
-     *
-     * <p>为什么需要它：进程外的测试拿不到随机码 —— 日志抓码不可靠（缓冲、轮转、并发混叠），
-     * 而「登录」是每一条旅程的第一步，拿不到码等于一条都跑不了。
-     *
-     * <p><b>三条护栏</b>：
-     * <ul>
-     *   <li>默认空 = 真随机，什么都不打开</li>
-     *   <li>一旦设了值，启动时打 WARN —— 它必须在日志里显眼到不可能被带上生产</li>
-     *   <li>它不绕过校验，只是让码可预测：验证码该过期还是过期、该消费还是消费</li>
-     * </ul>
-     */
-    private final String fixedOtp;
-    private final OtpTestPhoneService testPhoneService;
-
-    private final OtpSendGuard sendGuard;
-    private final SmsPort smsPort;
-    private final SmsAdmissionPort phonePolicies;
     private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
     /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
     private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
 
-    private final ai.neargo.shop.user.service.EmailOtpService emailOtpService;
+    private final OtpSendService otp;
 
-    private List<String> mockSmsPrefixes = List.of();
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            WxPhonePort wxPhonePort, MpSessionService mpSessions,
-                           TokenStore tokenStore, OtpStore otpStore,
-                           OtpSendGuard sendGuard,
-                           SmsPort smsPort,
+                           TokenStore tokenStore,
                            ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
                            ai.neargo.shop.auth.PasswordHasher passwordHasher,
                            ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
                            ai.neargo.shop.user.service.PersonService personService,
-                           @org.springframework.beans.factory.annotation.Value(
-                                   "${shop.auth.otp.fixed:}") String fixedOtp,
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
-                           OtpTestPhoneService testPhoneService,
-                           ai.neargo.shop.user.service.EmailOtpService emailOtpService,
-                           SmsAdmissionPort phonePolicies) {
-        this.phonePolicies = phonePolicies;
+                           OtpSendService otp) {
         this.wxPhonePort = wxPhonePort;
         this.mpSessions = mpSessions;
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
-        this.otpStore = otpStore;
-        this.sendGuard = sendGuard;
-        this.smsPort = smsPort;
         this.wxAuthPort = wxAuthPort;
         this.passwordHasher = passwordHasher;
         this.rateLimiter = rateLimiter;
         this.personService = personService;
-        this.fixedOtp = fixedOtp;
         this.fissionPort = fissionPort;
-        this.testPhoneService = testPhoneService;
-        this.emailOtpService = emailOtpService;
-        if (usingFixedOtp()) {
-            /*
-             * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
-             * WARN 在启动刷屏里是背景噪音，而这条说的是「此刻任何人都能登进任何账号」。
-             */
-            log.error("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
-                    + "任何人都能用这个码登录任意手机号，且不再发真实短信。"
-                    + "**生产环境绝不能出现这条日志**（prod profile 下会直接拒绝启动）", fixedOtp);
-        }
+        this.otp = otp;
     }
 
     @Override
@@ -174,76 +135,15 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void sendOtp(String phone, String senderKey) {
-        phonePolicies.requireSmsEnabled(phone);
-        /*
-         * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
-         * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
-         * 两件事对不上，只会让他再点一次。
-         */
-        sendGuard.check(phone, senderKey);
-
-        if (usingFixedOtp()) {
-            /*
-             * 预设码**不走短信通道**。走的话有两个代价：真实通道下每次自动化测试
-             * 都在烧短信费，而且给人发一条「你的验证码是 123456」的真短信 ——
-             * 那个码谁都知道，等于把它做成了一把公开的钥匙。
-             */
-            otpStore.save(phone, fixedOtp);
-            log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
-            return;
-        }
-        if (testIdentity(ai.neargo.shop.user.service.TestIdentityService.PHONE, phone)) {
-            // 测试身份白名单：用配置里的统一码，不发短信、不存码（限流已在上面照旧算过）
-            log.warn("[test-identity] 白名单手机号 {} 发码请求已跳过（未发短信）", mask(phone));
-            return;
-        }
-        /*
-         * 测试号白名单（TDD-测试号固定验证码）。**位置有讲究**：
-         *
-         *   · 在 sendGuard 之后 —— 白名单号不该绕过限流。绕过的话，那个号就是一条
-         *     免费的、无限次的发码通道，而它的码是公开可猜的。
-         *   · 在生成随机码之前 —— 放在之后的话，随机码会先写进 OtpStore，
-         *     把上一条固定码冲掉，然后再被固定码覆盖回去。中间那一瞬正确的码是哪个，
-         *     取决于两次 save 的顺序，而两次 save 之间任何一次 verify 都会失败。
-         *   · **不调 smsPort** —— 这是它与「把码写进库再捞出来」那个方案的关键差别：
-         *     后者只改了存码那半句，短信照样会发给一个真实号段的陌生人。
-         *
-         * 与上面的 usingFixedOtp() 的差别只有一处，但是关键的一处：
-         * **作用域从「任意手机号」收窄到「列表里的号」**。
-         */
-        var fixed = testPhoneService.fixedCodeFor(phone);
-        if (fixed.isPresent()) {
-            otpStore.save(phone, fixed.get());
-            log.warn("[otp] 测试号白名单命中 {}，已下发固定验证码（未发短信）", mask(phone));
-            return;
-        }
-        String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
-        otpStore.save(phone, code);
-        if (mockedSmsRegion(phone)) {
-            // 这个号段还没有短信通道（TDD-短信按号段走模拟通道）：只存码，验证码打 debug 供本地取码
-            log.debug("[sms-mock] otp to {} = {}", mask(phone), code);
-            return;
-        }
-        smsPort.sendOtp(phone, code);
+        otp.send(new SendCommand(OtpScenes.LOGIN, Channel.SMS, phone, null, null, Map.of(), null), otpContext(senderKey));
     }
 
-    /**
-     * 走模拟通道的号段前缀，如 {@code +886,+971}（{@code shop.sms.mock-prefixes}，缺省空）。
-     *
-     * <p>台湾 / 阿联酋还没有国际短信通道，而现有短信实现（阿里云）的模板只对大陆号码可用：
-     * 不分流的话，开真实短信之后这两个号段的发码会直接失败。<b>缺省空 = 不分流</b>，
-     * 所有号码都走原来的 {@link SmsPort}；生产不配它，行为与改动前完全一致。
-     *
-     * <p>用 setter 注入而不是构造参数：构造参数已有十几个，测试与调用方都按位置传，
-     * 再加一个会把每一处都改一遍。
-     */
-    @org.springframework.beans.factory.annotation.Value("${shop.sms.mock-prefixes:}")
-    public void setMockSmsPrefixes(String csv) {
-        this.mockSmsPrefixes = csv == null ? List.of()
-                : java.util.Arrays.stream(csv.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
+    private OtpContext otpContext(String senderKey) {
+        var meta = RequestMetaContext.current();
+        return new OtpContext(OtpEntries.LEGACY_AUTH, meta == null ? null : meta.ip(), senderKey);
     }
 
-    /** 测试身份白名单（TDD-测试身份白名单登录）。setter 注入，理由同 {@link #setMockSmsPrefixes}；没注入 = 关 */
+    /** 测试身份白名单（TDD-测试身份白名单登录）。setter 注入，理由同 原有部署配置；没注入 = 关 */
     private ai.neargo.shop.user.service.TestIdentityService testIdentities;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -258,7 +158,7 @@ public class AuthServiceImpl implements AuthService {
     private String defaultMarket = "CN";
     private String registrationMarketsCsv = "";
 
-    /** 部署默认经营地区。setter 注入，理由同 {@link #setMockSmsPrefixes} */
+    /** 部署默认经营地区。setter 注入，理由同 原有部署配置 */
     @Value("${shop.merchant.default-market:CN}")
     public void setDefaultMarket(String market) {
         this.defaultMarket = market;
@@ -297,18 +197,10 @@ public class AuthServiceImpl implements AuthService {
         return email == null ? null : email.getIdentityValue();
     }
 
-    private boolean mockedSmsRegion(String phone) {
-        return phone != null && mockSmsPrefixes.stream().anyMatch(phone::startsWith);
-    }
-
     @Override
-    public ai.neargo.shop.user.service.EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
-        return emailOtpService.send(email, locale);
-    }
-
-    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
-    private boolean usingFixedOtp() {
-        return fixedOtp != null && !fixedOtp.isBlank();
+    public EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
+        var result = otp.send(new SendCommand(OtpScenes.LOGIN, Channel.EMAIL, email, null, locale, Map.of(), null), otpContext(null));
+        return new EmailOtpService.Delivery(result.expiresInSeconds(), result.resendAfterSeconds());
     }
 
     /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
@@ -438,7 +330,7 @@ public class AuthServiceImpl implements AuthService {
             requireUsable(account);
             boolean email = cmd.principal().contains("@");
             return new VerifiedPrincipal(email ? IdentityType.EMAIL : IdentityType.PHONE,
-                    email ? ai.neargo.shop.user.service.EmailOtpService.normalize(cmd.principal()) : cmd.principal().trim(), account.getUserNo());
+                    email ? EmailOtpService.normalize(cmd.principal()) : cmd.principal().trim(), account.getUserNo());
         }
         if (!GRANT_PHONE_OTP.equals(cmd.grantType()) && !GRANT_EMAIL_OTP.equals(cmd.grantType())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -628,7 +520,7 @@ public class AuthServiceImpl implements AuthService {
         // principal 带 @ 就按邮箱身份找人（ADR-051）；限流键也分开，免得两种身份互相耗额度
         boolean email = phone.contains("@");
         if (email) {
-            phone = ai.neargo.shop.user.service.EmailOtpService.normalize(phone);
+            phone = EmailOtpService.normalize(phone);
         }
         String rateKey = "pwd:login:" + (email ? "EMAIL:" + phone : phone);
         ai.neargo.shop.common.ratelimit.RateLimiter.Decision d =
@@ -788,7 +680,7 @@ public class AuthServiceImpl implements AuthService {
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
             }
             case GRANT_EMAIL_OTP -> List.of(new Credential(IdentityType.EMAIL,
-                    emailOtpService.verify(cmd.principal(), cmd.credential()), "APP"));
+                    verifyEmailOtp(cmd.principal(), cmd.credential()), "APP"));
             case GRANT_APPLE ->
                 /*
                  * TODO(S4) 校验 identityToken 签名后取 sub；Apple 永远给不出手机号，
@@ -804,16 +696,15 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void verifyOtp(String phone, String code) {
-        phonePolicies.requireSmsEnabled(phone);
-        if (testIdentities != null && testIdentities.acceptsCode(
-                ai.neargo.shop.user.service.TestIdentityService.PHONE, phone, code)) {
-            return;
-        }
-        if (!otpStore.verifyAndConsume(phone, code)) {
-            // **不是 10400**：那句「请求参数有误」让用户去检查自己传了什么，
-            // 而他要做的只是再看一眼短信、或者重新要一个码
+        if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.LOGIN, Channel.SMS, phone, null, code), otpContext(null)))
             throw BizException.of(ErrorCode.OTP_INVALID);
-        }
+    }
+
+    private String verifyEmailOtp(String email, String code) {
+        String normalized = EmailOtpService.normalize(email);
+        if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.LOGIN, Channel.EMAIL, normalized, null, code), otpContext(null)))
+            throw BizException.of(ErrorCode.OTP_INVALID);
+        return normalized;
     }
 
     /**

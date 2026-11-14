@@ -5,6 +5,7 @@ import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.FeedbackVO;
 import ai.neargo.shop.message.dto.MessageVOs.InAppLogVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
+import ai.neargo.shop.message.dto.MessageVOs.PaymentUnread;
 import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
 import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
@@ -70,6 +71,11 @@ public interface MessageService {
 
     /** 未读数。三端角标轮询用 —— 只 count，不拉列表。 */
     long unreadCount(String receiverType);
+
+    /** Global STAFF payment unread counts grouped by actual store, for live authorization. */
+    default List<PaymentUnread> paymentUnreadScopes() {
+        return List.of();
+    }
 
     /**
      * 指定收件人的未读数。

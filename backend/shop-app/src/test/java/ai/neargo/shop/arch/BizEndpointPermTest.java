@@ -50,6 +50,9 @@ class BizEndpointPermTest {
                     "/biz/geo/estates",
                     "/biz/geo/estates/counts",
                     "/biz/auth/login",
+                    // 登录前滑块校验，与 SecurityConfig 的匿名登录入口保持一致。
+                    "/biz/auth/captcha/challenge",
+                    "/biz/auth/captcha/verify",
                     "/biz/auth/identities",
                     "/biz/auth/identities/enter",
                     "/biz/auth/identities/mine",
@@ -707,6 +710,7 @@ class BizEndpointPermTest {
                     put("/biz/payment/app-grant/{id}", BizPerms.PAY_APP_GRANT);
                     // 「收款」Tab（TDD-B端收款订单与商城接口对齐 P1）：列表、查找、详情、查单只读；汇总仍归看账的码
                     put("/biz/payment/orders", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/events", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/collect-status", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/orders/lookup", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/orders/{payOrderNo}", BizPerms.PAY_ORDER_VIEW);

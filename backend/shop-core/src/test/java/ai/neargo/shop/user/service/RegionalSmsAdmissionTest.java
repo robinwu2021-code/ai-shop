@@ -23,10 +23,19 @@ class RegionalSmsAdmissionTest {
     @Test void disabledRegionCannotSendOrVerifyEvenWithFixedCodesMocksAndTestWhitelist() {
         var policy=mock(SmsAdmissionPort.class);var otp=mock(OtpStore.class);var sms=mock(SmsPort.class);var guard=mock(OtpSendGuard.class);
         doThrow(BizException.of(ErrorCode.SMS_VERIFICATION_DISABLED)).when(policy).requireSmsEnabled(anyString());
-        var auth=new AuthServiceImpl(mock(UserMapper.class),mock(IdentityMapper.class),mock(WxPhonePort.class),mock(MpSessionService.class),
-                mock(TokenStore.class),otp,guard,sms,mock(WxAuthPort.class),mock(PasswordHasher.class),new InMemoryRateLimiter(),
-                mock(PersonService.class),"123456",mock(FissionPort.class),mock(OtpTestPhoneService.class),mock(EmailOtpService.class),policy);
-        auth.setMockSmsPrefixes("+886");var identities=mock(TestIdentityService.class);
+        var identities=mock(TestIdentityService.class);
+        var auth=new AuthServiceImpl(mock(UserMapper.class),
+                mock(IdentityMapper.class),
+                mock(WxPhonePort.class),
+                mock(MpSessionService.class),
+                mock(TokenStore.class),
+                mock(WxAuthPort.class),
+                mock(PasswordHasher.class),
+                new InMemoryRateLimiter(),
+                mock(PersonService.class),
+                mock(FissionPort.class),
+                OtpFixtures.create(otp, guard, sms, mock(ai.neargo.shop.spi.notify.MailPort.class), policy, mock(OtpTestPhoneService.class), identities, "123456", false, false, "+886"));
+
         when(identities.acceptsCode(TestIdentityService.PHONE,"+886900001111","123456")).thenReturn(true);auth.setTestIdentities(identities);
         assertEquals(ErrorCode.SMS_VERIFICATION_DISABLED,assertThrows(BizException.class,()->auth.sendOtp("+886900001111")).errorCode());
         assertEquals(ErrorCode.SMS_VERIFICATION_DISABLED,assertThrows(BizException.class,()->auth.login(new AuthService.LoginCommand(AuthService.GRANT_PHONE_OTP,"+886900001111","123456",null,null,true))).errorCode());

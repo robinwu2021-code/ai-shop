@@ -116,7 +116,6 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/pay-ops/platform-keys",
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
-    "/merchants?tab=self-operated",
     /*
      * 代商家进件（2026-09-17，三期）。**超管与 BD 两行都会多出它** ——
      * 与上面那条刻意不同：那个只给超管（平台自己下场经营不是招商日常），
@@ -257,7 +256,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     const live = new Set<string>();
     for (const s of NAV) {
       const fc = `OPS_${s.key.toUpperCase()}`;
-      for (const l of s.children ?? []) { live.add(l.href); live.add(`${fc}\t${l.href}`); }
+      for (const l of s.children ?? []) { for(const legacy of l.legacyHrefs??[])live.add(legacy); live.add(l.href); live.add(`${fc}\t${l.href}`); }
     }
     const stale = keys.filter((k) => !live.has(k));
     expect(stale, "这些 href 已经不在 NAV 里了。**删之前先确认库里没有指向它们的授权**：\n" +
@@ -666,7 +665,7 @@ describe("路由归属与面包屑", () => {
       // visibleLeaves 会把它们滤掉，拿它做断言只会验到「看不见」
       const nav = overlayNav(NAV, { leaves: { "/merchants?tab=list": { name: "商户名册" } } });
       expect(navTabs("/merchants", ["audit", "list"], nav).map((t) => t.label))
-        .toEqual(["入驻审核", "商户名册"]);
+        .toEqual(["入驻管理", "商户名册"]);
       expect(breadcrumb("/merchants", "list", null, backendPermsOf("SUPER_ADMIN"), undefined, nav))
         .toContain("商户名册");
     });
@@ -817,7 +816,7 @@ describe("路由归属与面包屑", () => {
   });
 
   it("面包屑 = 一级 › 二级", () => {
-    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻审核"]);
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻管理"]);
   });
 
   it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {

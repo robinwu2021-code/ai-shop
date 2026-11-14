@@ -1,10 +1,7 @@
 package ai.neargo.shop.user.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-import java.util.Locale;
+import ai.neargo.shop.common.otp.OtpKeys;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
 
 /**
  * 邮箱登录验证码（TDD-B端邮箱验证码注册登录 · ADR-051）。实现见 {@code EmailOtpServiceImpl}。
@@ -27,18 +24,10 @@ public interface EmailOtpService {
 
     /** 产品策略：整个地址 trim + 全小写，不做供应商专属别名合并（Gmail 的点号与 +tag 等）。 */
     static String normalize(String email) {
-        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+        return email == null ? "" : OtpKeys.normalize(Channel.EMAIL, email);
     }
 
-    /** 验证码存储键。用哈希而不是明文地址：堆转储里不直接出现商户邮箱；前缀与手机号的键隔离。 */
-    static String key(String normalized) {
-        try {
-            return "email:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(normalized.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Required SHA-256 unavailable", e);
-        }
-    }
+    static String key(String normalized) { return OtpKeys.recipientKey(Channel.EMAIL, normalized); }
 
     record Delivery(long expiresInSeconds, int resendAfterSeconds) {
     }

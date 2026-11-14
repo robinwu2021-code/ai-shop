@@ -4,10 +4,13 @@ import { BACKEND_ROLE_PERMS } from './permissions';
 import { platformNav, platformCatalog, platformSections, platformDefaultHref } from './platform-nav';
 
 describe('platform primary navigation', () => {
-  it('projects exactly five roots while preserving the original 155 leaf catalog', () => {
+  it('projects five roots and preserves the unified admission aliases', () => {
     expect(platformNav().map(s => s.key)).toEqual(['iam', 'commerce', 'customers', 'paymentMerchant', 'orders']);
     expect(NAV).toHaveLength(13);
-    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(155);
+    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(153);
+    const admissions=NAV.flatMap(s=>s.children??[]).find(l=>l.href==='/merchants')!;
+    expect(admissions.legacyHrefs).toEqual(expect.arrayContaining(['/merchants?tab=on-behalf','/merchants?tab=self-operated']));
+    expect(admissions.anyPerms).toEqual(expect.arrayContaining(['merchant:apply:audit','merchant:apply:onbehalf','merchant:selfop:create']));
     for (const s of NAV) for (const l of s.children ?? []) expect(platformCatalog().flatMap(s => s.children ?? [])).toContainEqual(l);
     expect(platformNav()[1].children).toEqual(NAV.find(s => s.key === 'commerce')!.children);
   });

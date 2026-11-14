@@ -1,6 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
 import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
+import ai.neargo.commerce.api.common.StoreRef;
 import ai.neargo.commerce.api.offline.OfflinePurchaseFacade;
 import ai.neargo.commerce.api.port.OfflineCollectionPort;
 import ai.neargo.commerce.api.port.PaymentIntentCommand;
@@ -8,6 +9,7 @@ import ai.neargo.shop.pay.service.PlatformCollectionService;
 import ai.neargo.shop.pay.service.PlatformRefundService;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Translates the commerce manual-rail port onto the pay domain's single ledger. It never decides a
@@ -15,6 +17,8 @@ import java.util.*;
  * after it has written (or found) the real money row. Called outside commerce transactions.
  */
 public final class ShopMallOfflineCollectionAdapter implements OfflineCollectionPort {
+    private final Function<StoreRef,List<Collector>> collectors;
+    @Override public List<Collector> collectors(StoreRef store) { return collectors.apply(store); }
     private final PlatformCollectionService collection;
     private final PlatformRefundService refunds;
     private final String recipient;
@@ -31,6 +35,12 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
     /** @param recipient configured platform merchant; profiles for any other receiver are refused */
     public ShopMallOfflineCollectionAdapter(
             PlatformCollectionService collection, PlatformRefundService refunds, String recipient) {
+        this(collection,refunds,recipient,store->List.of());
+    }
+
+    public ShopMallOfflineCollectionAdapter(PlatformCollectionService collection,PlatformRefundService refunds,
+            String recipient,Function<StoreRef,List<Collector>> collectors) {
+        this.collectors=Objects.requireNonNull(collectors);
         this.collection = Objects.requireNonNull(collection);
         this.refunds = refunds;
         this.recipient = recipient;
@@ -57,7 +67,7 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
                                 c.paymentWindowMs(),
                                 c.enabled(),
                                 operatorNo,
-                                c.reason())));
+                                c.reason(),c.collectionMethod(),c.contactInstructions())));
     }
 
     static OfflineCollectionTerms terms(PlatformCollectionService.OfflineInstructions i) {
@@ -88,7 +98,7 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
         if (original == null
                 || original.offline() == null
                 || !"OFFLINE".equals(original.channel())
-                || !"BANK_TRANSFER".equals(original.payMethod()))
+                || !original.offline().collectionMethod().equals(original.payMethod()))
             throw new IllegalArgumentException("OFFLINE_INTENT_REQUIRED");
         return new PlatformCollectionService.Key(
                 original.tenantNo(), original.orderNo(), original.paymentAttemptNo());
@@ -124,7 +134,7 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
                                 c.bankReference(),
                                 c.evidenceReference(),
                                 c.historical() ? "HISTORICAL" : "NORMAL",
-                                c.confirmedAt().toEpochMilli()));
+                                c.confirmedAt().toEpochMilli(),c.collectorNo(),c.collectionReference()));
         if (receipt == null || receipt.receipt() == null)
             throw new IllegalStateException("OFFLINE_MONEY_UNKNOWN");
         return new ManualResult(receipt.disposition(), receipt.receipt().paymentNo());

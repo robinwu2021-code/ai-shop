@@ -181,7 +181,7 @@ import type { BusinessMode } from "./finance";
  * 压成布尔的后果是运营看不出「这家店是自己歇业还是被我们压下去的」，
  * 而这两件事该做的动作完全相反。
  */
-export type StoreGovernStatus = "ACTIVE" | "READONLY" | "SUSPENDED";
+export type StoreGovernStatus = "ACTIVE" | "READONLY" | "SUSPENDED" | "PENDING_OPEN";
 
 /**
  * 平台视角的门店档案（后端 `mch_store`，`GET /ops/stores`）。
@@ -335,4 +335,15 @@ export interface StoreStats {
    * 而运营正是拿这个数判断「这家店是不是没人管了」。
    */
   toAfterSale: number;
+}
+
+/** Store operating admission, independent of entity/legal and payment review. */
+export interface StoreOperationalReview {
+  storeNo: string;
+  status: StoreGovernStatus;
+  review: "PENDING" | "APPROVED" | "REJECTED" | null;
+  source: "MANUAL" | "STORE" | "ENTITY" | null;
+  orderNo: string | null;
+  decidedAt: number | null;
+  submittedAt: number | null;
 }

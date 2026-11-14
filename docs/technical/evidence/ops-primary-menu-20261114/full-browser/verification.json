@@ -1,0 +1,79 @@
+{
+  "backend": "actual ShopApplication api,ops; native MySQL9",
+  "mode": "http",
+  "login": "real password and DB session; exact gateway Origin allowed",
+  "store": "ST-M0002",
+  "operatingReview": [
+    "explicit submit -> PENDING_OPEN",
+    "manual reject with mandatory reason",
+    "resubmit persisted across hard refresh",
+    "manual approval -> ACTIVE, source MANUAL"
+  ],
+  "sibling": "ST-M0001 remained ACTIVE",
+  "pages": [
+    "dashboard",
+    "store list and detail",
+    "operating orders filtered by store",
+    "ENTITY plans",
+    "STORE catalog",
+    "global ENTITY/STORE orders",
+    "global claims",
+    "platform cash summary"
+  ],
+  "limits": [
+    "No whole purchase browser flow: catalog and cash ledger legitimately empty",
+    "Package purchase/activation and concurrent refund tests are separate native service evidence"
+  ],
+  "screenshots": [
+    "store-pending.png",
+    "store-rejected.png",
+    "store-approved.png",
+    "platform-cash-summary.png"
+  ],
+  "databaseVerification": {
+    "stores": [
+      [
+        "ST-M0001",
+        "ACTIVE",
+        "NULL",
+        "NULL"
+      ],
+      [
+        "ST-M0002",
+        "ACTIVE",
+        "APPROVED",
+        "MANUAL"
+      ]
+    ],
+    "audit": [
+      [
+        "STORE_OPERATIONAL_APPROVED",
+        "1"
+      ],
+      [
+        "STORE_OPERATIONAL_REJECTED",
+        "1"
+      ],
+      [
+        "STORE_OPERATIONAL_SUBMITTED",
+        "2"
+      ]
+    ],
+    "result": "passed"
+  },
+  "independentPay": {
+    "main": "actual PayApplication api,ops; native MySQL9; no test classes",
+    "sso": "Shop -> Pay -> Shop, original real STAFF bearer verified by host, no token in URL, no session injection",
+    "language": "English preserved in both directions",
+    "views": [
+      "payment orders: actual empty result",
+      "platform merchants and assistance context: actual empty result, create input available"
+    ],
+    "baseline": "tracked schema-only V42 current SHA256 + genuine baseline42 and original later migrations; historical provenance mismatch remains a release blocker",
+    "screenshots": [
+      "pay-main-sso.png",
+      "pay-merchant-workspace.png"
+    ]
+  },
+  "runtimeCleanup": "Owned host/PAY JVMs and gateway stopped, owned verified schemas removed, private configurations/keys/tokens removed; shared MySQL retained."
+}

@@ -123,7 +123,7 @@ class EntityPlanOfflineLedgerMysqlTest {
               ownership,
               e -> true,
               Clock.fixed(now, ZoneOffset.UTC),
-              "profile");
+              "profile", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.StoreOperationalReviewService.class));
       var owner = new Actor("U1", "E1", "S1", false);
       var ops = new Actor("ops", "E1", null, true);
       service.saveOffer(

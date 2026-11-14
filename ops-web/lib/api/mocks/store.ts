@@ -37,6 +37,9 @@ function pickStore(merchantNo: string, storeNo?: string) {
 }
 
 export const storeMock: StoreApi = {
+  getStoreOperationalReview: async () => fail("经营开通审核请连接真实后端", "Connect to the live backend for operating admission review"),
+  submitStoreOperationalReview: async () => fail("经营开通审核请连接真实后端", "Connect to the live backend for operating admission review"),
+  decideStoreOperationalReview: async () => fail("经营开通审核请连接真实后端", "Connect to the live backend for operating admission review"),
   // ── 门店档案（P-11.2.1）────────────────────────────────────────
 
   listStores: (q = {}) =>

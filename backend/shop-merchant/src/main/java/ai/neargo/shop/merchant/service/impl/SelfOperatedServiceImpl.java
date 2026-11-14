@@ -4,7 +4,6 @@ import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.Phones;
 import ai.neargo.shop.common.ServiceScopes;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 /** {@link SelfOperatedService} 的实现：拼装既有零件，不新造建主体的逻辑。 */
 @Service
@@ -32,7 +30,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     /** 平台自营恒为企业主体 —— 它是税务口径，不是开关。 */
     private static final String LEGAL_FORM = "ENTERPRISE";
 
-    private static final Pattern PHONE = Pattern.compile(Phones.CN_MOBILE);
+    private final ai.neargo.shop.spi.platform.MarketContactPolicyPort contacts;
 
     private final UserProvisionPort userProvision;
     private final PayMerchantMirror payMirror;
@@ -61,7 +59,8 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                                    MerchantQueryPort merchantQueryPort,
                                    StoreCategoryService storeCategoryService,
                                    ai.neargo.shop.merchant.service.MerchantPlanService planService,
-                                   PayMerchantMirror payMirror) {
+                                   PayMerchantMirror payMirror, ai.neargo.shop.spi.platform.MarketContactPolicyPort contacts) {
+        this.contacts=contacts;
         this.payMirror = payMirror;
         this.userProvision = userProvision;
         this.merchantAdminPort = merchantAdminPort;
@@ -77,9 +76,11 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     @Override
     @Transactional
     public ResultVO create(CreateCommand cmd, String operatorNo) {
-        String phone = cmd.phone() == null ? "" : cmd.phone().trim();
+        var policy=contacts.instancePolicy();
+        String phone=policy.recordOnly() || cmd.phone()==null ? cmd.phone() : cmd.phone().trim();
+        contacts.validateContact(policy.market(),phone);
         String name = cmd.name() == null ? "" : cmd.name().trim();
-        if (!PHONE.matcher(phone).matches() || name.isEmpty()) {
+        if (name.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         /*
@@ -110,7 +111,10 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
          * 所以不需要本人先去 App 收一次验证码 —— 他日后用这个号登录时命中的是同一个账号，
          * B 端身份自然就在（成员行由 activate 建）。
          */
-        String ownerUserNo = userProvision.ensureUserByPhone(phone);
+        String ownerUserNo = "CN".equals(policy.market()) && !policy.recordOnly()
+                ? userProvision.ensureUserByPhone(phone)
+                : userProvision.registeredUserByEmail(cmd.ownerEmail())
+                        .orElseThrow(()->BizException.of(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE));
 
         /*
          * 幂等的判据是**人**，不是申请单 —— 与审核链路刻意相反。
@@ -138,7 +142,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
         String entityNo = merchantAdminPort.activateSelfOperated(new MerchantAdminPort.ActivateCommand(
                 ownerUserNo, name, LEGAL_FORM, scope, communities,
                 null, cmd.industry(), cmd.description(),
-                owned == null ? null : owned.getEntityNo()));
+                owned == null ? null : owned.getEntityNo(),policy.market(),null));
 
         /*
          * funds_mode 与 business_mode 的库默认值**正好**就是自营要的那两个

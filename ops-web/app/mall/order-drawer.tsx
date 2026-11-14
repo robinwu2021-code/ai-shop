@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MallOfflineReviewAttempt, mallOfflineReceiver } from "@/lib/mall-offline-review";
 import { api } from "@/lib/api";
 import { isApiError } from "@/lib/api/error";
+import { describeError } from "@/lib/commerce-reason";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
@@ -486,12 +487,12 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
           <Field label={c.colPayable}><Money m={ins.data.payable} /></Field>
           <Field label={c.colDueAt}>{fmtAt(ins.data.paymentDueAt)}</Field>
           <Field label={c.colProfile}>{`${ins.data.profileNo} · v${ins.data.profileVersion}`}</Field>
-          <Field label={c.colInstructions}>{Object.entries(ins.data.instructions).map(([k, v]) => `${k}: ${v}`).join(" · ")}</Field>
+          <Field label={c.colInstructions}>{Object.entries(ins.data.instructions).filter(([key])=>key!=="collectionMethod").map(([k, v]) => `${k}: ${v}`).join(" · ")}</Field>
         </FieldGrid>
       )}
 
       <DataTable columns={claimColumns} rows={claims.data} loading={claims.isLoading} error={claims.error && !notOffline ? showErr(claims.error) : undefined}
-        onRetry={() => claims.refetch()} rowKey={(x) => x.claimNo} empty={c.claimsEmpty} />
+        onRetry={() => claims.refetch()} rowKey={(x) => x.claimNo} empty={ins.data?.collectionMethod === "SALES_COLLECTION" || d.quote?.collectionMethod === "SALES_COLLECTION" ? c.salesClaimsNotRequired : c.claimsEmpty} />
 
       {lastAction && <div className="mt-2"><ActionResult c={c} r={lastAction} /></div>}
 
@@ -563,27 +564,44 @@ function ConfirmForm({
   const [actionNo] = React.useState(() => newOpNo("CFM"));
   const payable = instructions.payable;
   const receiver = mallOfflineReceiver(instructions);
+  const sales = instructions.collectionMethod === "SALES_COLLECTION";
+  const collectors = useQuery({ queryKey: ["mall-sales-collectors", storeNo], queryFn: () => api.offlineCollectors(storeNo), enabled: sales });
   const review = useOfflineReview(c, storeNo, orderNo, onDone);
-  const [f, setF] = React.useState({ amount: "", at: "", bankRef: "", evidenceKey: "", historical: false, reason: "" });
-  const minor = parseMajor(f.amount, payable.currency);
-  const submit = () => review.start({ kind: "confirm", request: { actionNo, claimNo,
-    actualAmount: { currency: payable.currency, minor: minor! }, actualPaidAt: new Date(f.at).toISOString(),
-    actualReceiver: receiver!, bankReference: f.bankRef.trim(), evidenceKey: f.evidenceKey,
+  const [f, setF] = React.useState({ collectorNo: "", currency: payable.currency, amount: "", at: "", bankRef: "", evidenceKey: "", historical: false, reason: "" });
+  const minor = parseMajor(f.amount, f.currency);
+  const submit = () => review.start({ kind: "confirm", request: { actionNo, claimNo: sales ? null : claimNo,
+    actualAmount: { currency: f.currency, minor: minor! }, actualPaidAt: new Date(f.at).toISOString(),
+    actualReceiver: receiver!, bankReference: sales ? null : f.bankRef.trim(),
+    collectorNo: sales ? f.collectorNo : undefined, collectionReference: sales ? f.bankRef.trim() : undefined, evidenceKey: f.evidenceKey,
     historical: f.historical, reason: f.reason.trim() } });
-  const mismatch = minor !== null && minor !== payable.minor;
-  const valid = minor !== null && f.at && receiver?.trim() && f.bankRef.trim() && f.evidenceKey && f.reason.trim();
+  const mismatch = minor !== null && (minor !== payable.minor || f.currency !== payable.currency);
+  const valid = /^[A-Z]{3}$/.test(f.currency) && (!sales || collectors.data?.some(x => x.collectorNo === f.collectorNo)) && minor !== null && f.at && receiver?.trim() && f.bankRef.trim() && f.evidenceKey && f.reason.trim();
   return (
     <div className="mt-3 space-y-3 rounded-card border border-border p-3">
       <div className="txt-strong">{claimNo ? fill(c.confirmForClaim, { no: claimNo }) : c.confirmDirect}</div>
-      <Notice tone="warning">{c.confirmNotice}</Notice>
+      <Notice tone="warning">{sales ? c.salesConfirmNotice : c.confirmNotice}</Notice>
       {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt), ref: claim.bankReference || "—" })}</p>}
       {!receiver?.trim() && <Notice tone="warning">{c.receiverMissing}</Notice>}
       <fieldset disabled={review.attempt !== null} className="space-y-3">
+        {sales && <div className="space-y-1">
+          <Label htmlFor="cf-collector" required>{c.fieldCollector}</Label>
+          <Select id="cf-collector" value={f.collectorNo} onChange={e => setF(x => ({ ...x, collectorNo: e.target.value }))}>
+            <option value="">{c.pickCollector}</option>
+            {collectors.data?.map(x => <option key={x.collectorNo} value={x.collectorNo}>{x.displayName}</option>)}
+          </Select>
+          {!!collectors.error && <Notice tone="danger">{describeError(collectors.error)}</Notice>}
+          {!collectors.isFetching && !collectors.error && !collectors.data?.length && <Notice tone="warning">{c.collectorsEmpty}</Notice>}
+        </div>}
+
         <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT"]} selected={f.evidenceKey}
           onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <Label htmlFor="cf-amt" required>{fill(c.fieldActualAmount, { cur: payable.currency })}</Label>
+            <Label htmlFor="cf-currency" required>{c.fieldActualCurrency}</Label>
+            <Input id="cf-currency" maxLength={3} value={f.currency} onChange={e => setF(x => ({ ...x, currency: e.target.value.toUpperCase() }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cf-amt" required>{fill(c.fieldActualAmount, { cur: f.currency })}</Label>
             <Input id="cf-amt" inputMode="decimal" value={f.amount} invalid={!!f.amount && minor === null} onChange={(e) => setF((x) => ({ ...x, amount: e.target.value }))} />
             {mismatch && <p className="txt-caption text-destructive">{fill(c.amountMismatchHint, { want: toMajorInput(payable) })}</p>}
           </div>
@@ -596,7 +614,7 @@ function ConfirmForm({
             <div id="cf-recv" className="txt-body">{Object.entries(instructions.instructions).map(([k, v]) => `${k}: ${v}`).join(" · ") || "—"}</div>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cf-ref" required>{c.fieldBankRef}</Label>
+            <Label htmlFor="cf-ref" required>{sales ? c.fieldSalesReference : c.fieldBankRef}</Label>
             <Input id="cf-ref" value={f.bankRef} onChange={(e) => setF((x) => ({ ...x, bankRef: e.target.value }))} />
           </div>
         </div>

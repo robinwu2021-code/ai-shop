@@ -34,12 +34,16 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { PagedTable } from "@/components/ui/paged-table";
 import { IdCell } from "@/components/ui/misc";
 import type { MerchantsCopy as Copy } from "./copy";
+import { useCopy } from "@/lib/use-copy";
+import { STORE_REVIEW_COPY } from "./operational-review-copy";
+import { OperationalReview } from "./operational-review";
 
 /**
  * 三档状态**不能压成「营业 / 停业」两档**：
  * READONLY 是商家自己关的，SUSPENDED 是平台压下的 —— 运营对这两者要做的事相反。
  */
-const useStatusMap = (c: Copy): StatusMap<StoreGovernStatus> => ({
+const useStatusMap = (c: Copy, pending: string): StatusMap<StoreGovernStatus> => ({
+  PENDING_OPEN: { label: pending, tone: "warning" },
   ACTIVE: { label: c.stStatusActive, tone: "success" },
   READONLY: { label: c.stStatusReadonly, tone: "muted" },
   SUSPENDED: { label: c.stStatusSuspended, tone: "danger" },
@@ -53,7 +57,7 @@ const MODE_OPTIONS = (c: Copy) => [
 export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (store: StoreGovern) => ReactNode }) {
   const qc = useQueryClient();
   const allow = useCan();
-  const statusMap = useStatusMap(c);
+  const statusMap = useStatusMap(c, useCopy(STORE_REVIEW_COPY).pending);
   const modeOptions = MODE_OPTIONS(c);
 
   const [keyword, setKeyword] = useState("");
@@ -348,6 +352,7 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
               </div>
             </DrawerSection>
 
+            <OperationalReview key={current.storeNo} storeNo={current.storeNo} onChanged={(review)=>setCurrent(store=>store?.storeNo===review.storeNo?{...store,status:review.status}:store)} />
             {detailActions?.(current)}
 
             <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>

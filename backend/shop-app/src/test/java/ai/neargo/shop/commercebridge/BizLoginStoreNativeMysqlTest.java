@@ -82,12 +82,23 @@ class BizLoginStoreNativeMysqlTest {
                     Realm.CONSUMER, new MemoryTokenStore(Duration.ofHours(1)),
                     Realm.OPERATOR, new MemoryTokenStore(Duration.ofHours(1))));
             var guard = new OtpSendGuard(limiter, true, 60, 10, 20, 15);
-            var email = new EmailOtpServiceImpl(mock(MailPort.class), otp, guard, false, false, 60);
+            var otpService = mock(ai.neargo.shop.common.otp.service.OtpSendService.class);
+            when(otpService.verifyAndConsume(any(), any())).thenAnswer(inv -> {
+                ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand c = inv.getArgument(0);
+                String recipient = ai.neargo.shop.common.otp.OtpKeys.normalize(c.channel(), c.recipient());
+                return otp.verifyAndConsume(ai.neargo.shop.common.otp.OtpKeys.storageKey(c.scene(), c.channel(), recipient, c.businessKey()), c.code());
+            });
             auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class),
-                    db.mybatis.getMapper(IdentityMapper.class), mock(WxPhonePort.class),
-                    mock(MpSessionService.class), tokens, otp, guard, mock(SmsPort.class),
-                    mock(WxAuthPort.class), new PasswordHasher(), limiter, mock(PersonService.class),
-                    "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(SmsAdmissionPort.class));
+                db.mybatis.getMapper(IdentityMapper.class),
+                mock(WxPhonePort.class),
+                mock(MpSessionService.class),
+                tokens,
+                mock(WxAuthPort.class),
+                new PasswordHasher(),
+                limiter,
+                mock(PersonService.class),
+                mock(FissionPort.class),
+                otpService);
             auth.setRegistrationMarkets("CN,TW");
             var stores = new StoreAdminServiceImpl(mock(MerchantStoreCreation.class),
                     mock(StoreCategoryService.class), db.mybatis.getMapper(MchStoreMapper.class),

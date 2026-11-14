@@ -69,7 +69,8 @@ export const commerceHttp: CommerceApi = {
     client.post<MallSubscriptionView>(`/ops/stores/${seg(storeNo)}/subscription/sources/${seg(sourceNo)}/revoke`, v),
 
   // ── 线下银行转账 ──
-  offlineProfile: (currency) => client.get<MallOfflineCollectionProfile | null>("/ops/biz-mall/offline/profile", { currency }),
+  offlineProfile: (currency, collectionMethod) => client.get<MallOfflineCollectionProfile | null>("/ops/biz-mall/offline/profile", { currency, collectionMethod }),
+  offlineCollectors: (storeNo) => client.get<Array<{ collectorNo: string; displayName: string }>>("/ops/biz-mall/offline/collectors", { storeNo }),
   configureOfflineProfile: (v) => client.put<MallOfflineCollectionTerms>("/ops/biz-mall/offline/profile", v),
   offlinePendingClaims: (q) => client.get<MallOfflinePendingClaim[]>("/ops/biz-mall/offline/claims", q),
   offlineAssistedQuote: (storeNo, v) => client.post<MallQuoteView>("/ops/biz-mall/offline/quotes", v, { storeNo }),

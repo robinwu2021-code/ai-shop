@@ -94,7 +94,8 @@ export interface CommerceApi extends PlatformMallReportingApi, Pick<CashRefundAp
 
   // ── 线下银行转账（Task8）──
   /** 收款档案（按币种）；从未配置返回 null */
-  offlineProfile(currency: string): Promise<MallOfflineCollectionProfile | null>;
+  offlineProfile(currency: string, collectionMethod?: "BANK_TRANSFER" | "SALES_COLLECTION"): Promise<MallOfflineCollectionProfile | null>;
+  offlineCollectors(storeNo: string): Promise<Array<{ collectorNo: string; displayName: string }>>;
   /** 配置收款档案：每次修改生成新版本，已发出的指引按原版本 */
   configureOfflineProfile(v: MallOfflineProfileCommand): Promise<MallOfflineCollectionTerms>;
   /** 待审申报队列 */

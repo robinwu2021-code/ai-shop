@@ -84,7 +84,8 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                 r.amountMinor() > 0 && r.preparedAt() > 0 && r.expiresAt() > r.preparedAt(),
                 "PAYMENT_INTENT_INVALID");
         if ("OFFLINE".equals(r.channel())) {
-            require("BANK_TRANSFER".equals(r.method()) && r.offline()!=null, "OFFLINE_INTENT_INVALID");
+            require(Set.of("BANK_TRANSFER","SALES_COLLECTION").contains(r.method()) && r.offline()!=null
+                    && r.method().equals(r.offline().collectionMethod()), "OFFLINE_INTENT_INVALID");
             return;
         }
         require(r.offline()==null, "PAYMENT_ROUTE_MISMATCH");

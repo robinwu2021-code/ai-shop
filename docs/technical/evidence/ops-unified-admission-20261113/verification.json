@@ -1,0 +1,97 @@
+{
+  "backend": {
+    "releaseId": "ops-unified-admission-20261113-b2a510207",
+    "sourceCommit": "b2a510207162f4fa66e88c4709f92b9ff0885c79",
+    "migration": "667",
+    "runtimeConfigChanged": false,
+    "allOtherArchiveEntriesUnchanged": true,
+    "status": "DEPLOYED",
+    "sha256": "b766cb1d0ad55c75c139be5fc7b1412f471f7700220392242b283e318d7f5bf0",
+    "apiHealth": "UP",
+    "opsHealth": "UP",
+    "rolesAndGrantsUnchanged": true,
+    "menuPointsPreserved": true,
+    "menuPointsChanged": 3,
+    "permissionCodesUnchanged": true,
+    "previousMigrationsUnchanged": true,
+    "flyway667": [
+      "667",
+      "-2046121423",
+      "1"
+    ],
+    "unrelatedServicesUnchanged": true,
+    "unrelatedServicesMutatedByRelease": false,
+    "lockReleased": true
+  },
+  "frontend": {
+    "releaseId": "ops-unified-admission-ui-20261113-e02631cd0",
+    "build": {
+      "fixCommit": "e02631cd0c4113abe7bb21be407c7709e0f168d4",
+      "backendTestsPassed": 28,
+      "frontendTestsPassed": 170,
+      "permissionMatrixTestsPassed": 40,
+      "permissionParserTestsPassed": 3,
+      "frontendBuild": true,
+      "productionArtifactGuard": true,
+      "lintPassed": true,
+      "apiContractGuardPassed": true,
+      "uiCatalogGuardPassed": true,
+      "schemaProjectionPassed": true,
+      "baselineClassesMatched": 11,
+      "migration": "667",
+      "apiBase": "/ops-shop",
+      "basePath": "/ops-shop",
+      "preservedSalesCollectionCommit": "d3e6ada5a",
+      "baselineSha256": "51860fb0204f42eb770c16ac762445de287adb2f06b22e10240263d09c552f92",
+      "coverageWarningPreserved": true,
+      "backendSourceCommit": "b2a510207162f4fa66e88c4709f92b9ff0885c79"
+    },
+    "previousWeb": "/data/www/ai-shop-ops/releases/ops-unified-admission-ui-20261113-b2a510207",
+    "backendChanged": false,
+    "databaseChanged": false,
+    "configChanged": false,
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/ops-unified-admission-ui-20261113-e02631cd0",
+    "pagesVerified": 2,
+    "assetsVerified": 34,
+    "runtimesUnchanged": true,
+    "payWebUnchanged": true,
+    "backendSha256Unchanged": true,
+    "lockReleased": true
+  },
+  "reviewer": {
+    "account": "robin@neargo.ai",
+    "role": "STORE_APPLY_REVIEW",
+    "menus": [
+      "入驻管理"
+    ],
+    "tableCount": 1,
+    "columns": [
+      "商家名称",
+      "入驻类型",
+      "店主账号",
+      "入驻状态",
+      "提交时间",
+      "操作"
+    ],
+    "records": 6,
+    "createButtonAbsent": true,
+    "realMutations": false,
+    "verifiedAgainstFrontendSource": "b2a510207162f4fa66e88c4709f92b9ff0885c79"
+  },
+  "adminUiVerification": {
+    "status": "PASSED",
+    "account": "neara@neargo.ai",
+    "allRecords": 6,
+    "selfOperatedFilterRecords": 0,
+    "assistedFilterRecords": 6,
+    "legacySelfOperatedLinkRedirected": true,
+    "bothCreateTypesVerified": true,
+    "mobileWidth375NoHorizontalOverflow": true,
+    "noBusinessMutation": true,
+    "latestFormEvidence": "../ops-merchant-form-20261113/verification.json"
+  },
+  "realApplicationsCreated": false,
+  "realStoresCreated": false,
+  "realChannelRequestsSubmitted": false
+}

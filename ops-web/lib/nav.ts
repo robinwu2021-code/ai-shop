@@ -24,6 +24,8 @@ export const PANEL_WIDTH = 176;
 export interface NavLeaf {
   href: string; // 详情/深链（可含 ?tab= / ?view=，可跨 section）
   label: string;
+  legacyHrefs?: string[];
+  anyPerms?: string[];
   perm?: string; // 细粒度权限码；无则跟随所属 section 的 canModule
   soon?: boolean; // 待建：灰显不可点
   /**
@@ -161,17 +163,10 @@ export const NAV: NavSection[] = [
     children: [
       // 2026-11-11 菜单权限矩阵-优化版：按「入驻 → 档案 → 信用 → 展示获客 → 诊断」分组；
       // 准入押金只有财务看得到，迁到经营财务「保证金」组（深链与 point_code 不变）。
-      { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻", matrix: "P-11.1", ready: true },
-      // 代商家进件：BD 在店里替老板填完，落进**同一条审核队列**。
-      // 与「自营建档」刻意分码：那个回答「平台要不要自己下场经营」（只给超管），
-      // 这个回答「谁来替第三方录资料」（要给 BD）。合成一个码的话，
-      // 要么 BD 顺手拿到建平台自营主体的能力（放宽且不报错），要么这一期等于没做。
-      { href: "/merchants?tab=on-behalf", label: "代办入驻", perm: "merchant:apply:onbehalf", group: "入驻", matrix: "P-11.1", ready: true },
-      // 建平台自营商家：入驻链路上的一条岔路（平台自己那条），不是另一件事。
-      // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
-      { href: "/merchants?tab=self-operated", label: "自营建档", perm: "merchant:selfop:create", group: "入驻", matrix: "P-11.1", ready: true },
+      { href: "/merchants", label: "入驻管理", perm: "merchant:apply:audit", anyPerms:["merchant:apply:audit","merchant:apply:onbehalf","merchant:selfop:create"], legacyHrefs:["/merchants?tab=on-behalf","/merchants?tab=self-operated"], group: "入驻", matrix: "P-11.1", ready: true },
+      // One destination; application, assisted creation and platform-owned permissions remain separate.
       // 进件看板（WS-C）：跨商家看「谁卡在收款上」。复用 merchant:admission:read，不新增权限码。
-      { href: "/merchants?tab=onboarding", label: "进件看板", perm: "merchant:admission:read", group: "入驻", matrix: "P-11.1", ready: true },
+      { href: "/merchants?tab=onboarding", label: "支付开通", perm: "merchant:admission:read", group: "入驻", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "档案", matrix: "P-11.1", ready: true },
       // 紧挨着商家档案：同一份 merchant:merchant:read，且门店是主体的下一层
       { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "档案", matrix: "P-11.2" , ready: true },
@@ -544,7 +539,7 @@ export function visibleSections(perms: string[] | undefined,
    */
   if (serverHrefs?.size) {
     return nav.filter((s) => !(s.children?.length)
-        || s.children.some((l) => serverHrefs.has(l.href)));
+        || s.children.some((l) => (serverHrefs.has(l.href) || l.legacyHrefs?.some(href=>serverHrefs.has(href)))));
   }
   return nav.filter((s) => s.modules.some((m) => canModule(perms, m))
       // 设置与商城跨多个模块；只有动作权限时不能出现没有可用叶子的入口。
@@ -555,9 +550,9 @@ export function visibleSections(perms: string[] | undefined,
 export function visibleLeaves(section: NavSection, perms: string[] | undefined,
                               serverHrefs?: Set<string>): NavLeaf[] {
   if (serverHrefs?.size) {
-    return (section.children ?? []).filter((l) => serverHrefs.has(l.href));
+    return (section.children ?? []).filter((l) => (serverHrefs.has(l.href) || l.legacyHrefs?.some(href=>serverHrefs.has(href))));
   }
-  return (section.children ?? []).filter((l) => (l.perm ? can(perms, l.perm) : true));
+  return (section.children ?? []).filter((l) => (l.anyPerms ? l.anyPerms.some(p=>can(perms,p)) : l.perm ? can(perms, l.perm) : true));
 }
 
 /**
@@ -864,8 +859,11 @@ export function overlayNav(nav: NavSection[], overlay: NavOverlay | undefined): 
  */
 export function navTabs(
   path: string, keys: readonly string[], nav: NavSection[] = NAV,
-): { key: string; label: string | undefined }[] {
-  return keys.map((key, i) => ({ key, label: leafForTab(nav, path, key, i)?.label }));
+): { key: string; label: string | undefined; group?: string; href?: string }[] {
+  return keys.map((key, i) => {
+    const leaf = leafForTab(nav, path, key, i);
+    return { key, label: leaf?.label, group: leaf?.group, href: leaf?.href };
+  });
 }
 
 /**

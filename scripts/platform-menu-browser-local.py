@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Loopback-only, read-only static gateway for disposable platform browser acceptance.
 
-Auth/business requests go to actual test-classpath Java applications; this server never
+Auth/business requests go to configured loopback Java applications; this server never
 creates sessions, changes roles, fabricates domain responses or accesses production.
 """
 import argparse
 import http.client
 import json
 import mimetypes
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -18,7 +19,13 @@ def main():
     parser.add_argument('--shop-output', type=Path, required=True)
     parser.add_argument('--pay-output', type=Path, required=True)
     parser.add_argument('--port', type=int, default=34112)
+    parser.add_argument('--shop-port', type=int, default=34111)
+    parser.add_argument('--pay-port', type=int, default=34113)
+    parser.add_argument('--drop-once', action='append', choices=['merchant-create','profile-save'], default=[],
+                        help='Local recovery acceptance only: drop one successful upstream response after commit')
     args = parser.parse_args()
+    drops=set(args.drop_once)
+    drop_lock=threading.Lock()
     roots = {'/ops-shop': args.shop_output.resolve(), '/oms': args.pay_output.resolve()}
     class Gateway(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -30,13 +37,13 @@ def main():
             path = urlsplit(self.path).path
             target = None
             if path.startswith('/oms-api/auth/'):
-                target = (34111, self.path.replace('/oms-api/auth/', '/ops/auth/', 1))
+                target = (args.shop_port, self.path.replace('/oms-api/auth/', '/ops/auth/', 1))
             elif path.startswith('/oms-api/pay-ops/'):
-                target = (34113, self.path.replace('/oms-api', '', 1))
+                target = (args.pay_port, self.path.replace('/oms-api', '', 1))
             elif path.startswith('/pay-ops/'):
-                target = (34113, self.path)
+                target = (args.pay_port, self.path)
             elif path.startswith('/ops/'):
-                target = (34111, self.path)
+                target = (args.shop_port, self.path)
             if target:
                 body = self.rfile.read(int(self.headers.get('Content-Length', '0')))
                 headers = {key: value for key, value in self.headers.items() if key.lower() not in ('host', 'connection', 'content-length')}
@@ -44,6 +51,18 @@ def main():
                 try:
                     connection.request(self.command, target[1], body=body, headers=headers)
                     response = connection.getresponse(); data = response.read()
+                    # The upstream transaction has committed before a success body is returned.
+                    fault = 'merchant-create' if self.command=='POST' and target[1]=='/pay-ops/v2/merchant-creations' else 'profile-save' if self.command=='PUT' and target[1].endswith('/assisted-profile/draft') else None
+                    with drop_lock:
+                        should_drop = fault in drops and 200<=response.status<300 and json.loads(data).get('code')==0
+                        if should_drop: drops.remove(fault)
+                    if should_drop:
+                        print('TEST_DROPPED_AFTER_COMMIT',fault,flush=True)
+                        # A gateway error hides the committed result without triggering a browser socket retry.
+                        failure=b'{"code":502,"message":"Local acceptance: upstream response lost after commit"}'
+                        self.send_response(502); self.send_header('Content-Type','application/json')
+                        self.send_header('Content-Length',str(len(failure))); self.end_headers(); self.wfile.write(failure)
+                        return
                     self.send_response(response.status)
                     for key, value in response.getheaders():
                         if key.lower() not in ('transfer-encoding', 'connection', 'content-length'):

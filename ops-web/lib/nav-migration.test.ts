@@ -46,8 +46,18 @@ it('V658 leaves every role grant, permission and gate in place except merging th
   expect(v658.indexOf('INSERT INTO sys_role_point')).toBeLessThan(v658.indexOf('DELETE FROM sys_role_point'));
 });
 
-it('the database menu after navigation migrations matches nav.ts point by point', () => {
+it('the database menu after all navigation migrations matches nav.ts point by point', () => {
   const moves = menuMoves(v657, v658, v668, v669, v670);
+  for (const name of ['V665__ops_admission_entry_consolidation.sql','V667__ops_unified_admission_management.sql']) {
+    const sql=read(name);
+    for (const statement of sql.split(';')) {
+      const label=statement.match(/SET name='([^']+)'/);
+      const where=statement.split('WHERE point_code')[1];
+      if(label&&where)for(const code of [...where.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(c=>c!=='MENU')) {
+        const old=moves.get(code);if(old)moves.set(code,[old[0],label[1]]);
+      }
+    }
+  }
   for (const section of NAV) for (const leaf of section.children ?? []) {
     const fn = `OPS_${section.key.toUpperCase()}`;
     const point = POINT_CODES[`${fn}\t${leaf.href}`] ?? POINT_CODES[leaf.href];

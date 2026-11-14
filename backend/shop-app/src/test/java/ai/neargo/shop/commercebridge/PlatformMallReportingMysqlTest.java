@@ -66,7 +66,7 @@ class PlatformMallReportingMysqlTest {
     db.update("INSERT INTO mch_plan_purchase_claim VALUES('MAIN','B','C1','SUBMITTED'),('MAIN','B','C2','DECLINED'),('MAIN','A','C1','DECLINED'),('OTHER','E_OLD','C1','SUBMITTED')");
     claim("Z","C1","SUBMITTED",1);claim("Z","C2","DECLINED",2);claim("Y","C1","REVIEWING",1);
     stores=new JdbcPurchaseOrderQuery(ds);
-    var entities=new EntityPlanPurchaseServiceImpl(db,new DataSourceTransactionManager(ds),JsonMapper.builder().build(),mock(PlatformPaymentPort.class),mock(OfflineCollectionPort.class),mock(PrivateEvidencePort.class),mock(MoneyPolicyPort.class),mock(StoreOwnershipWritePort.class),e->{throw new AssertionError("No per-entity enumeration");},Clock.systemUTC(),"P");
+    var entities=new EntityPlanPurchaseServiceImpl(db,new DataSourceTransactionManager(ds),JsonMapper.builder().build(),mock(PlatformPaymentPort.class),mock(OfflineCollectionPort.class),mock(PrivateEvidencePort.class),mock(MoneyPolicyPort.class),mock(StoreOwnershipWritePort.class),e->{throw new AssertionError("No per-entity enumeration");},Clock.systemUTC(),"P", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.StoreOperationalReviewService.class));
     reporting=new PlatformMallReporting(stores,entities,cashProvider);
   }
 

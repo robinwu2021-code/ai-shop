@@ -226,6 +226,10 @@ public class StlPayment extends BaseEntity {
     @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private String platformBankRefKey;
 
+    /** V665: namespaced sales receipt identity; bank references retain their original key. */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String platformCollectionRefKey;
+
     /** 运营录入的线下实收或出款证明（JSON）。 */
     @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private String platformManualProof;

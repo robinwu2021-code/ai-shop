@@ -11,6 +11,7 @@ import ai.neargo.shop.auth.store.FreshAccountReadUnavailable;
 
 import java.time.Clock;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -143,7 +144,7 @@ final class ShopMallAuthority
                 || !scope.storeNos().contains(ref.storeNo())
                 || !facts.merchantNo().equals(scope.merchantNo()))
             throw denied(AccessStatus.FORBIDDEN);
-        if (facts.status() != StoreStatus.ACTIVE) throw denied(AccessStatus.STORE_DISABLED);
+        if (facts.status() != StoreStatus.ACTIVE && facts.status() != StoreStatus.SETUP) throw denied(AccessStatus.STORE_DISABLED);
         boolean permitted =
                 switch (capability) {
                     case "commerce:mall:browse" -> true;
@@ -204,7 +205,7 @@ final class ShopMallAuthority
                 session -> {
                     if ("INTERNAL".equals(channel) && "ZERO".equals(method)) return null;
                     // Bank transfer carries no payer binding; the frozen pay-domain terms are the route.
-                    if ("OFFLINE".equals(channel) && "BANK_TRANSFER".equals(method)) return null;
+                    if ("OFFLINE".equals(channel) && Set.of("BANK_TRANSFER","SALES_COLLECTION").contains(method)) return null;
                     var current = actor(session.user(), session.sessionFingerprint());
                     var proof =
                             bindings.current(current, channel, method)

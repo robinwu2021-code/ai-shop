@@ -73,4 +73,23 @@ class PlatformCashReportingMysqlTest {
             assertFalse(candidate.toString().contains("private"));
         }
     }
+    @Test void salesCollectionProofsAndRefundsUseTheSameAuthorityAsTheirCanonicalWriter() throws Exception {
+        try(var f=new PlatformOfflineCollectionMysqlTest.Fixture()) {
+            var terms=f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile("MAIN","sales-report",0,"platform-mch","TWD",null,null,null,"w1",86400000,true,"ops","test only","SALES_COLLECTION","Contact assigned sales"));
+            var request=new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN","SALES","A"),"buyer","platform-mch","OFFLINE","SALES_COLLECTION",10000,"TWD",86401000,1000,null,terms);
+            f.base.service.create(request);
+            var paid=f.base.service.confirmOffline(new PlatformCollectionService.OfflineProof(request.key(),"ops","platform-mch",10000,"TWD",1000,null,"private-proof","NORMAL",2000,"collector","receipt-1"));
+            var refundKey=new PlatformRefundService.Key("MAIN","SALES","refund");
+            f.refunds().refund(new PlatformRefundService.Request(refundKey,"S1","A",paid.receipt().paymentNo(),"platform-mch",10000,4000,"TWD","test return"));
+            f.refunds().confirmOfflinePayout(new PlatformRefundService.OfflinePayout(refundKey,"ops",4000,"TWD",5000,"test-recipient","test-refund-reference","test-proof",6000));
+            var reporting=new PlatformCashReportingImpl(f.base.ds,new DataSourceTransactionManager(f.base.ds));var facts=new ArrayList<PlatformCashReporting.Fact>();
+            reporting.scan(new PlatformCashReporting.Query("MAIN",0,10000,"TWD"),facts::addAll);
+            assertEquals(2,facts.size());assertTrue(facts.stream().allMatch(PlatformCashReporting.Fact::verified));
+            assertEquals(6000,facts.stream().mapToLong(x->x.direction().equals("PAY")?x.amountMinor():-x.amountMinor()).sum());
+            f.base.jdbc.update("UPDATE stl_payment SET platform_collection_ref_key='forged' WHERE payment_no=?",paid.receipt().paymentNo());facts.clear();
+            reporting.scan(new PlatformCashReporting.Query("MAIN",0,10000,"TWD"),facts::addAll);
+            assertTrue(facts.stream().filter(x->x.direction().equals("PAY")).noneMatch(PlatformCashReporting.Fact::verified));
+        }
+    }
+
 }

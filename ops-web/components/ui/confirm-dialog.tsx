@@ -44,6 +44,8 @@ export interface ConfirmOptions {
    * 各写一遍的结果是「活动能填理由、券不能」——而后端对两者的要求一模一样。
    */
   requireReason?: boolean;
+  /** Override when the default merchant-facing reason hint does not apply. */
+  reasonHint?: string;
 }
 
 interface Pending extends ConfirmOptions {
@@ -120,7 +122,7 @@ export function useConfirm() {
             {pending?.requireReason && (
               <div className="mt-4">
                 <div className="mb-1.5 txt-caption text-muted-foreground">
-                  {t("confirm.reasonHint")}
+                  {pending.reasonHint ?? t("confirm.reasonHint")}
                 </div>
                 <Input
                   autoFocus

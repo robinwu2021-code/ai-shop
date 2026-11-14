@@ -55,6 +55,17 @@ class CustomerReportingMysqlTest {
     var moved=person.sources().stream().filter(src->src.sourceNo().equals("MOVED_SRC")).findFirst().orElseThrow();assertEquals("S3",moved.storeNo());assertNull(moved.storeName());
     var origin=reporting.member(one,"PS2");assertEquals("S3",origin.person().sourceStoreNo());assertNull(origin.person().sourceStoreName());assertNull(origin.memberships().getFirst().sourceStoreName());assertTrue(origin.sources().isEmpty());assertTrue(origin.stores().isEmpty());
   }
+  @Test void operatingEntityBootstrapSupportsHistoricalAndMysql9AccountCollations(){
+    // Full MySQL9 historical replay normalizes legacy tables to 0900; V648 remains frozen at 520.
+    db.execute("ALTER TABLE usr_account CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+    db.execute("ALTER TABLE mch_account CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+    assertEquals("U1",reporting.operatingEntity(all,"OE0").ownerUserNo());
+    assertEquals("U1",reporting.operatingEntity(one,"OE0").ownerUserNo());
+    assertThrows(BizException.class,()->reporting.operatingEntity(empty,"OE0"));
+    assertThrows(BizException.class,()->reporting.operatingEntity(one,"OE2"));
+    db.update("UPDATE usr_account SET status='BANNED' WHERE tenant_no='MAIN' AND user_no='U1'");
+    assertThrows(BizException.class,()->reporting.operatingEntity(all,"OE0"));
+  }
   @Test void operatingEntityBootstrapReturnsRealOwnerOnlyWithinTrustedScope(){
     var r=reporting.operatingEntity(one,"OE1");assertEquals("U1",r.ownerUserNo());assertEquals("TW",r.market());assertEquals(Set.of("PAYMENT_MERCHANT_CREATE"),r.allowedActions());assertEquals("U1",reporting.operatingEntity(one,"OE0").ownerUserNo());
     assertThrows(BizException.class,()->reporting.operatingEntity(one,"OE2"));assertThrows(BizException.class,()->reporting.operatingEntity(empty,"OE0"));assertThrows(BizException.class,()->reporting.operatingEntity(all,"OFF"));

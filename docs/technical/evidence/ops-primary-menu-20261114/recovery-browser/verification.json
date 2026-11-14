@@ -1,0 +1,237 @@
+{
+  "recordedAt": "2026-11-14T03:43:27.423699+00:00",
+  "environment": "owned loopback MySQL9 / actual ShopApplication + independent PayApplication + live Next exports",
+  "productionDeployment": false,
+  "fixtureBoundary": "Only synthetic USER and operating-entity prerequisites inserted in owned host schema. Merchant and encrypted draft created through actual STAFF UI/services. No payment/approval/final states seeded.",
+  "scenario": "Upstream 2xx result replaced with a local gateway 502 after transaction commit; hard refresh; explicit receipt recovery. Raw socket drop was separately observed to trigger a browser transport retry; final gate uses 502 to make the unknown result deterministic.",
+  "browserAssertions": {
+    "creationRecoveredSameMerchant": "PM2026111411400002",
+    "profileInputsBlankAndFilledIndicatorsAfterRefresh": true,
+    "profileReceiptRecoveredWithSavedNotice": true,
+    "gatewayFaults": [
+      "TEST_DROPPED_AFTER_COMMIT merchant-create",
+      "TEST_DROPPED_AFTER_COMMIT profile-save"
+    ],
+    "creationPostCount": 1,
+    "profilePutCount": 1,
+    "receiptGetCount": 2,
+    "maskedViewBoundary": "Input values are empty after refresh. Server-allowlisted legal name/address/industry may appear as placeholders; registration number, representative and phone have Filled indicators without plaintext. None of the draft payload is persisted by recovery storage."
+  },
+  "databaseAssertions": {
+    "creation": [
+      [
+        "PM2026111411400002",
+        "STAFF",
+        "LOCAL_RECOVERY_OE2",
+        "1"
+      ]
+    ],
+    "profileReceipt": [
+      [
+        "PM2026111411400002",
+        "SAVE",
+        "1",
+        "1"
+      ]
+    ],
+    "draft": [
+      [
+        "PM2026111411400002",
+        "1",
+        "EDITING"
+      ]
+    ],
+    "shopHistory": [
+      [
+        "587",
+        "672"
+      ]
+    ],
+    "payHistory": [
+      [
+        "BASELINE",
+        "1",
+        "42"
+      ],
+      [
+        "SQL",
+        "51",
+        "101"
+      ],
+      [
+        "JDBC",
+        "3",
+        "70"
+      ]
+    ]
+  },
+  "nativeSuites": [
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.commerce.persistence.MallFulfillmentMysqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.commerce.persistence.SalesCollectionWorkflowMysqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.shop.merchant.plan.EntityPlanPurchaseMysqlTest",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.shop.pay.service.impl.PlatformCashReportingMysqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.shop.portal.service.CustomerReportingMysqlTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.shop.commercebridge.MallAuthorityMysqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "shop",
+      "suite": "ai.neargo.shop.pay.service.impl.PlatformOfflineCollectionMysqlTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.api.ops.v2.OpsMerchantAssistanceControllerTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.svc.PayMigrationDataSourceTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.svc.SchemaVersionCheckMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.svc.OpsMerchantReviewMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.platmch.creation.MerchantCreationMySqlTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.platmch.PlatformMerchantNumbersMysqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "repository": "pay",
+      "suite": "ai.neargo.shop.pay.platmch.profile.ProfileApprovalSubjectTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "baseline": {
+    "bytes": 250525,
+    "sha256": "c4680f7142993a12856bb5e0667fafa88ec64b3209630f922c4eeed0e870756d",
+    "archiveVerified": false,
+    "remote166DatabaseVerified": false
+  },
+  "review": {
+    "blockingFindings": 0,
+    "collationDeltaBlockingFindings": 0,
+    "minorDeferred": "One manually corrupted localStorage pointer can prevent scanning other valid pointers in that namespace. Normal atomic JSON writes are covered; no new implementation added."
+  },
+  "cleanup": {
+    "ownedApplicationAndGatewayPortsClosed": true,
+    "ownedTwoSchemasDropped": true,
+    "ownedPrivateRuntimeDirectoriesRemoved": true,
+    "sharedMysqlLeftRunning": true
+  },
+  "branchIntegration": [
+    {
+      "repository": "shop",
+      "branch": "codex/config-release-20261113",
+      "head": "57ace7b3dd445479a25775caca1de4f7a4837417",
+      "mergeHead": "4a432a939e72de84229c51cc1a3138af91e00f10",
+      "previousUpstream": "origin/codex/ai-shop-codex",
+      "upstream": "origin/codex/ai-shop-codex",
+      "retainedStash": "407c1db35ae80164eaf7ba063cf38ad96630742b",
+      "unmergedEntries": 0,
+      "mergeCommitCreated": false,
+      "frozenVersionedSqlChanges": []
+    },
+    {
+      "repository": "pay",
+      "branch": "codex/config-release-20261113",
+      "head": "4d41ae5e772b397e9ebce79edd9fde8dc2f664f9",
+      "mergeHead": "2d3c56bdc91ff17c09f64657100b99e66b4a48aa",
+      "previousUpstream": "origin/develop/s1",
+      "upstream": "origin/codex/near-pay-migration",
+      "retainedStash": "e82650610a000d44c70e4639c2435510f9a349bf",
+      "unmergedEntries": 0,
+      "mergeCommitCreated": false,
+      "frozenVersionedSqlChanges": []
+    }
+  ],
+  "frontendVerification": {
+    "payRecoveryHttpI18nTests": 25,
+    "payTypeScript": "PASS",
+    "payProductionLiveBuild": "PASS",
+    "shopAffectedNavigationSuitesTests": 38,
+    "shopOtherSelectedSuites": "passed before fixture-only correction; unchanged",
+    "shopPermissionParserTests": 4,
+    "shopTypeScript": "PASS",
+    "shopProductionBuild": "PASS",
+    "contractKnownGaps": 8,
+    "contractNewGaps": 0
+  }
+}

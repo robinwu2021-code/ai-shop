@@ -355,19 +355,34 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size) {
+        return searchApplies(status,keyword,page,size,false);
+    }
+
+    @Override
+    public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size, boolean onBehalfOnly) {
+        return searchApplies(status, keyword, page, size, onBehalfOnly, null, false);
+    }
+
+    @Override
+    public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size,
+                                                  boolean onBehalfOnly, String market, boolean newestFirst) {
         List<String> statuses = status == null || status.isBlank()
                 // 不给状态时只看待办两档 —— 运营台默认打开就该是「要我做的事」
                 ? List.of(MchEntityApply.PENDING, MchEntityApply.REVIEWING)
                 : Arrays.stream(status.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
 
         var q = Wrappers.<MchEntityApply>lambdaQuery()
+                .eq(market != null, MchEntityApply::getMarketCode, market)
+                .isNotNull(onBehalfOnly, MchEntityApply::getSubmittedBy)
                 .in(MchEntityApply::getStatus, statuses)
                 /*
                  * 待办按提交顺序（先来先审），历史按最近优先。
                  * 两种排序不能合成一种：待办倒序会让最早提交的人一直排在最后，
                  * 而他等得最久。
                  */
-                .orderByAsc(MchEntityApply::getId);
+                .orderByDesc(newestFirst, MchEntityApply::getCreatedAt)
+                .orderByDesc(newestFirst, MchEntityApply::getApplyNo)
+                .orderByAsc(!newestFirst, MchEntityApply::getId);
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.trim();
             q.and(w -> w.like(MchEntityApply::getName, kw)

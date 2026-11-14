@@ -2,6 +2,12 @@ package ai.neargo.shop.message.api.biz;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.BizIdentityResolver;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.auth.LoginUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.HashMap;
+import java.util.Map;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.entity.MsgMessage;
@@ -28,20 +34,48 @@ public class BizMessageController {
 
     private final MessageService messageService;
     private final AfterSalePendingQueryPort afterSales;
+    private final BizIdentityResolver identities;
 
     public BizMessageController(MessageService messageService, AfterSalePendingQueryPort afterSales) {
+        this(messageService, afterSales, BizIdentityResolver.NONE);
+    }
+
+    @Autowired
+    public BizMessageController(MessageService messageService, AfterSalePendingQueryPort afterSales,
+                                BizIdentityResolver identities) {
         this.messageService = messageService;
         this.afterSales = afterSales;
+        this.identities = identities;
+    }
+
+    /** Payment history stays global across authorized stores; revoked store details must disappear. */
+    private List<MessageVO> authorizedPayments(List<MessageVO> messages) {
+        var user = SecurityUtils.requireUser();
+        Map<List<String>, Boolean> allowed = new HashMap<>();
+        return messages.stream().filter(message -> {
+            if (!"PAYMENT".equals(message.bizType())) return true;
+            if (message.storeNo() == null || message.entityNo() == null) return false;
+            return allowed.computeIfAbsent(List.of(message.entityNo(), message.storeNo()), key -> {
+                return canReadPayment(user, message.entityNo(), message.storeNo());
+            });
+        }).toList();
+    }
+
+    private boolean canReadPayment(LoginUser user, String entityNo, String storeNo) {
+        if (entityNo == null || storeNo == null) return false;
+        var ctx = identities.resolveStrict(user, storeNo);
+        return entityNo.equals(ctx.merchantNo()) && ctx.hasStoreAccess(storeNo)
+                && ctx.withStore(storeNo).can(BizPerms.PAY_ORDER_VIEW);
     }
 
     public record BizMessageVO(String messageNo, String type, String title, String body,
                                String link, boolean read, long at,
-                               String bizType, String bizNo, String storeNo,
+                               String bizType, String bizNo, String storeNo, String entityNo,
                                boolean actionPending) { }
 
     @GetMapping("/biz/message")
     public List<BizMessageVO> messages() {
-        List<MessageVO> messages = messageService.list(MsgMessage.RECEIVER_STAFF);
+        List<MessageVO> messages = authorizedPayments(messageService.list(MsgMessage.RECEIVER_STAFF));
         var ctx = BizContext.current();
         java.util.Map<String, String> ids = new java.util.HashMap<>();
         java.util.Map<String, String> stores = new java.util.HashMap<>();
@@ -56,8 +90,9 @@ public class BizMessageController {
                 ? afterSales.pending(ctx.merchantNo(), ctx.currentStoreNo(), ids.values())
                 : java.util.Set.of();
         return messages.stream().map(m -> new BizMessageVO(m.messageNo(), m.type(), m.title(),
-                m.body(), m.link(), m.read(), m.at(), ids.containsKey(m.messageNo())
-                ? "AFTER_SALE" : null, ids.get(m.messageNo()), stores.get(m.messageNo()),
+                m.body(), m.link(), m.read(), m.at(), m.bizType()!=null ? m.bizType() : ids.containsKey(m.messageNo())
+                ? "AFTER_SALE" : null, m.bizNo()!=null ? m.bizNo() : ids.get(m.messageNo()),
+                m.storeNo()!=null ? m.storeNo() : stores.get(m.messageNo()), m.entityNo(),
                 ids.containsKey(m.messageNo()) && pending.contains(ids.get(m.messageNo())))).toList();
     }
 
@@ -76,17 +111,24 @@ public class BizMessageController {
     /** 未读角标。b-app 30s 轮询用，只给一个数。 */
     @GetMapping("/biz/message/unread-count")
     public long unreadCount() {
-        return messageService.unreadCount(MsgMessage.RECEIVER_STAFF);
+        var scopes = messageService.paymentUnreadScopes();
+        if (scopes.isEmpty()) return messageService.unreadCount(MsgMessage.RECEIVER_STAFF);
+        long total = scopes.getFirst().globalUnreadCount();
+        var user = SecurityUtils.requireUser();
+        long hidden = scopes.stream()
+                .filter(scope -> scope.unreadCount() > 0 && !canReadPayment(user, scope.entityNo(), scope.storeNo()))
+                .mapToLong(scope -> scope.unreadCount()).sum();
+        return total - hidden;
     }
 
     @PostMapping("/biz/message/{messageNo}/read")
     public List<MessageVO> read(@PathVariable String messageNo) {
-        return messageService.markRead(MsgMessage.RECEIVER_STAFF, messageNo);
+        return authorizedPayments(messageService.markRead(MsgMessage.RECEIVER_STAFF, messageNo));
     }
 
     @PostMapping("/biz/message/read-all")
     public List<MessageVO> readAll() {
-        return messageService.markAllRead(MsgMessage.RECEIVER_STAFF);
+        return authorizedPayments(messageService.markAllRead(MsgMessage.RECEIVER_STAFF));
     }
 
     /**

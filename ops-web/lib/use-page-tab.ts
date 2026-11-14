@@ -11,7 +11,7 @@
 // 复制粘贴的代价不只是行数：漏掉 `setPage(1)` 就会出现"从第 3 页切到另一个 tab，
 // 还停在第 3 页但那个 tab 只有 1 页"——列表空白，看着像没数据。
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { platformContextTabKeys } from "@/lib/platform-nav";
 import { navTabs, visibleTabKeys } from "@/lib/nav";
 import { useI18n } from "@/lib/i18n";
@@ -23,6 +23,8 @@ export interface PageTab {
   label: string;
   /** 不带 ?tab= 的页面入口；与菜单的显示顺序无关。 */
   isDefault?: boolean;
+  group?: string;
+  href?: string;
 }
 
 /**
@@ -56,17 +58,18 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
   return React.useMemo(
     () => {
       // 默认及无权访问默认项时的后备页签，均按页面原始顺序选取，不随跨模块菜单重排。
-      const labels = new Map(navTabs(path, keys, nav).map(({ key, label }) => [key, label]));
+      const labels = new Map(navTabs(path, keys, nav).map(entry => [entry.key, entry]));
       const defaultKey = keys.find(key => allowed.includes(key));
       return allowed.map(key => {
-        const label = labels.get(key);
+        const entry = labels.get(key);
+        const label = entry?.label;
         if (!label) {
           const msg = `[nav] ${path} 的 tab "${key}" 在 lib/nav.ts 里没有对应叶子 —— 补一条，否则它在菜单里进不去`;
           if (process.env.NODE_ENV !== "production") throw new Error(msg);
           console.error(msg);
           return { key, label: key, isDefault: key === defaultKey };
         }
-        return { key, label: tNav(label), isDefault: key === defaultKey };
+        return { key, label: tNav(label), isDefault: key === defaultKey, href: entry?.href, group: entry?.group ? tNav(entry.group) : undefined };
       });
     },
     // allowed 已经是 useMemo 的产物；tNav 随 locale 变，必须进依赖
@@ -82,9 +85,15 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
  */
 export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [string, (k: string) => void] {
   const sp = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const qTab = sp.get("tab");
   const valid = React.useCallback((k: string | null) => !!k && tabs.some((t) => t.key === k), [tabs]);
-  const defaultKey = (tabs.find(t => t.isDefault) ?? tabs[0]).key;
+  const defaultKey = (tabs.find(t => t.isDefault) ?? tabs.find(t => {
+    if (!t.href) return false;
+    const query = new URLSearchParams(t.href.split("?")[1]);
+    return !query.has("tab") && !query.has("view");
+  }) ?? tabs[0])?.key ?? "";
 
   const [tab, setTabState] = React.useState(() => (valid(qTab) ? (qTab as string) : defaultKey));
 
@@ -117,10 +126,18 @@ export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [st
     (k: string) => {
       setTabState(k);
       onSwitch?.();
+      const target = tabs.find((t) => t.key === k)?.href;
+      const [path, search = ""] = target?.split("?")
+        ?? [pathname, k === defaultKey ? "" : `tab=${encodeURIComponent(k)}`];
+      const query = new URLSearchParams(sp.toString());
+      query.delete("tab");query.delete("view");
+      new URLSearchParams(search).forEach((v,key) => query.set(key,v));
+      const suffix = query.toString();
+      router.push(path + (suffix ? `?${suffix}` : ""), {scroll:false});
     },
     // 同上：onSwitch 每次渲染都是新引用，不进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [tabs, sp, pathname, router, defaultKey],
   );
 
   return [tab, setTab];

@@ -1,0 +1,126 @@
+{
+  "scope": "NEXT02 explicit store operating admission; no push/deploy/commit",
+  "migration": "V672__store_operational_review.sql",
+  "model": {
+    "historical": "All five operating-review columns NULL; ordinary FREE creation unchanged",
+    "submitted": "PENDING_OPEN/PENDING only via explicit scoped OPS submission",
+    "approved": "Scoped manual decision or qualifying successful paid fulfillment; entity legal/payment review unchanged",
+    "paidFence": "Frozen quote/order purchase time must be >= admission submitted time; exact tenant/entity/store only",
+    "quotaRestore": "Existing flag reset preserved; PENDING/REJECTED stay PENDING_OPEN, SUSPENDED stays SUSPENDED"
+  },
+  "verification": [
+    {
+      "suite": "StoreOperationalReviewTest",
+      "tests": 5,
+      "result": "passed",
+      "environment": "Native MySQL9 127.0.0.1:3308, owned disposable schema, actual V1 mch_store DDL + V672; actual MyBatis DataPermissionInterceptor",
+      "covers": [
+        "explicit submit",
+        "paid target/replay isolation",
+        "manual reject",
+        "audit rollback",
+        "scope denial",
+        "wrong owner",
+        "old order fence"
+      ]
+    },
+    {
+      "suite": "StoreOperationalEnableBarrierTest",
+      "tests": 2,
+      "result": "passed",
+      "covers": [
+        "merchant enable/disable blocked during review",
+        "platform restore preserves pending/rejected admission"
+      ]
+    },
+    {
+      "suite": "EntityPlanPurchaseMysqlTest",
+      "tests": 26,
+      "result": "passed",
+      "environment": "Native MySQL9, actual store DDL/V672 + real admission service",
+      "covers": [
+        "merchant and assisted purchase pending/claim/no premature open",
+        "concurrent same confirm idempotence",
+        "unmatched receipt no plan/open",
+        "quota restore retains rejected sibling",
+        "existing entity purchase regressions"
+      ]
+    },
+    {
+      "suite": "EntityPlanPurchaseMysqlTest#quotaRestorationAndPaidFulfillmentCannotLiftGovernanceSuspension",
+      "result": "passed in fullstack coordinated focused batch",
+      "covers": [
+        "flagged SUSPENDED store not reopened by quota restore/fulfillment"
+      ]
+    },
+    {
+      "suite": "MallAuthorityMysqlTest",
+      "tests": 3,
+      "result": "passed in fullstack coordinated focused batch",
+      "environment": "Native MySQL9, DB-backed account session verifier, actual identity resolver and store adapter",
+      "covers": [
+        "pending STORE procurement authority and exact server-classified mall route",
+        "business EndAccess denied",
+        "governance suspension still blocks procurement",
+        "existing operator session/permission revocation"
+      ]
+    },
+    {
+      "suite": "MallFulfillmentMysqlTest",
+      "selected": [
+        "operatingActivationWaitsForFullPaidFulfillmentAndSharesItsTransaction",
+        "operatingActivationDoesNotRunForPartialHardwareFulfillment",
+        "rejectsUnboundAndMismatchedPaidFactsThenDeliversExactlyOnce"
+      ],
+      "result": "3 passed across initial batch and focused corrected-fixture rerun",
+      "environment": "Native MySQL9",
+      "covers": [
+        "paid-only activation",
+        "full completed nonFREE PLAN requirement",
+        "hook failure rolls back subscription periods and fulfillment",
+        "mixed hardware partial remains unapproved",
+        "replay does not duplicate rights"
+      ]
+    },
+    {
+      "suite": "CommerceMallWiringTest + CommerceOfflineWiringTest",
+      "tests": 15,
+      "result": "passed",
+      "covers": [
+        "required trusted host activation port and payment/offline assembly"
+      ]
+    },
+    {
+      "suite": "scripts/test-permission-annotation.mjs",
+      "tests": 3,
+      "result": "passed"
+    },
+    {
+      "suite": "ops-web/lib/api/openapi-parity.test.ts",
+      "tests": 4,
+      "result": "passed"
+    },
+    {
+      "suite": "scripts/check-ops-contract.mjs --check",
+      "result": "passed; 8 existing gaps unchanged"
+    }
+  ],
+  "builds": [
+    "Independent backend/commerce install passed",
+    "Host shop-app and required dependencies compile passed",
+    "Coordinated host focused batch passed",
+    "Final independent commerce focused test batch BUILD SUCCESS 2026-11-14 10:00:06 +08:00"
+  ],
+  "review": "Independent review found quota-restoration bypass and flagged SUSPENDED variant; both fixed and covered; no remaining actionable P1/P2 reported",
+  "generated": {
+    "openapi": "603 operations / 535 paths / 586 types",
+    "matrix": "634 production route variants x 12 roles; fixtures/target excluded; literal permissions stay guarded; duplicate canonical mapping fails, distinct explicit params variants retained",
+    "apiIndex": "1213 interfaces; includes 5 existing customer and 3 platform-mall previously omitted plus 3 new operating-review routes"
+  },
+  "limits": [
+    "Tests establish real workflow services and separate real session/transport authority; do not claim a whole purchase browser flow from this evidence",
+    "No external channel onboarding approval or real transfer performed",
+    "CommerceStoreCreationFlowTest fixture updated to apply V672 from precolumn shape; that existing full creation test was not rerun in this scope",
+    "Import-only final source tidy preserves tested semantics; all target outputs declared stable after final native batch"
+  ]
+}

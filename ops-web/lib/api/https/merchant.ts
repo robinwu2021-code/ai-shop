@@ -34,7 +34,10 @@ export const merchantHttp: MerchantApi = {
   modeRisk: () => client.get("/ops/merchants/mode-risk"),
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
+  selfOperatedContext: () => client.get("/ops/merchants/self-operated/context"),
   createSelfOperated: (v) => client.post("/ops/merchants/self-operated", v),
+  onBehalfContext: () => client.get("/ops/merchants/apply-on-behalf/context"),
+  listOnBehalfApplies: (q) => client.get("/ops/merchants/apply-on-behalf/search", q),
   applyOnBehalf: (v) => client.post("/ops/merchants/apply-on-behalf", v),
   addSelfOperatedStore: ({ merchantNo, ...body }) =>
     client.post(`/ops/merchants/${merchantNo}/stores`, body),
@@ -58,6 +61,7 @@ export const merchantHttp: MerchantApi = {
    * 也把「申请单」与「主体」两个资源分开：混用是之前模型对不上的根源。
    */
   listApplies: (q) => client.get("/ops/merchant/apply/search", q),
+  listAdmissions: (q) => client.get("/ops/merchants/admissions", q),
   acceptApply: (applyNo) => client.post(`/ops/merchant/apply/${applyNo}/accept`),
   auditApply: (applyNo, approved, reason, serviceScope, communityNos, grantCodes) =>
     client.post(`/ops/merchant/apply/${applyNo}/audit`, {

@@ -156,3 +156,25 @@ commerce:
 动作返回 `ACCEPTED / APPLIED / UNMATCHED / REJECTED`。ACCEPTED 表示已受理、资金端未确认，由恢复任务继续；REJECTED 带原因码返回。权限码由迁移 V627 预置给 SUPER_ADMIN。
 
 常见原因码：`OFFLINE_UNAVAILABLE`、`OFFLINE_INSTRUCTIONS_NOT_ISSUED`、`OFFLINE_INTENT_REQUIRED`、`EVIDENCE_FORBIDDEN`、`EVIDENCE_UNAVAILABLE`、`EVIDENCE_ALREADY_STORED`、`CLAIM_ALREADY_REVIEWED`、`OFFLINE_RECEIVER_MISMATCH`、`OFFLINE_BANK_REFERENCE_CONFLICT`、`OFFLINE_HISTORICAL_MODE_REQUIRED`、`OFFLINE_ALREADY_PAID`、`OFFLINE_UNMATCHED_DISPOSITION_REQUIRED`、`OFFLINE_PAYOUT_AMOUNT_MISMATCH`、`OFFLINE_PROFILE_MERCHANT_MISMATCH`、`STORE_UNAVAILABLE`。
+
+### 2026-11-11 · 线下升级报价
+
+`POST /biz/stores/{storeNo}/mall/offline/upgrade-quotes`：商家采购身份及门店归属沿原线下采购认证。JSON 为 `targetPlanVersionNo`、`targetSkuVersionNo`、`operationNo`、`expectedEntitlementVersion`、`currency`。返回同一 `QuoteView`，后续复用 `POST .../mall/orders` 和原订单线下指引/核款流程。
+
+估值、来源抵扣、精确升级时长、TWD 收付量子、报价过期与版本冲突沿原升级实现。平台收款档案在 commerce 事务外读取并冻结在报价内；币种不符拒绝。申报仍不代表真实收款，不新增自动补差或自动发权益。
+
+运营订阅 GET `/ops/stores/{storeNo}/subscription` 沿 `commerce:subscription:read`，增加 `businessTypeCode`、`currency`、`currentPlanVersionNo`、`serverNow`（毫秒）摘要。当前方案由服务器时间选取生效中的 NORMAL 固定方案，否则取初始 FREE；未来、已撤销和独立端来源不会成为当前方案。代客购买仍由正式报价校验在售、经营类型、币种和订阅资格。
+
+
+## 销售代收（2026-11-13，实施增量）
+
+沿原线下订单新增 `OFFLINE/SALES_COLLECTION`。银行仍是 `OFFLINE/BANK_TRANSFER`，旧请求不传方式维持银行语义。
+
+- 管理档案 GET `/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=SALES_COLLECTION`；PUT 使用部署的原档案号加 `-sales` 后缀，传 `collectionMethod`、平台主体、币种、付款窗口、`contactInstructions` 与 enabled；银行三字段置 null。档案新版本不改已冻订单。
+- 运营及商户 `/offline/quotes`、商户 `/offline/upgrade-quotes` 增加可选 `collectionMethod`；只有启用条款和明确路由 `OFFLINE:SALES_COLLECTION` 才可购买。报价 `collectionMethod`、付款指引 `collectionMethod/platformMerchantNo` 为服务端冻结事实。
+- `GET /ops/biz-mall/offline/collectors?storeNo=` 需 `commerce:mall:offline:confirm`，返回 `collectorNo/displayName` 最小字段。销售沿平台启用员工及代购权限；当前支持全量/主体数据域，社区或网点受限员工不扩权为商城销售。
+- 原 confirmations 增加 `collectorNo/collectionReference`，销售订单 bankReference、claimNo 为 null；确认人取会话，actualReceiver 仍是平台主体。提交真实金额/币种/秒精度收款时间、私有平台凭证和审计原因。下单、准备指引都不是实收。
+- 新增销售资金唯一键为租户、方式、销售、收款凭据号的摘要，与原银行唯一键分开。同凭据跨订单/换操作号仍拒绝；同原键/原内容继续原结果恢复。金额不符不发权益；原晚到、作废、退款和交付恢复规则继续有效。
+- App 销售订单显示联系说明与待核款状态，隐藏银行账户/备注及银行申报；订单和订阅共同确认后展示权益。运营代购的 STORE 原单可由该店有采购职责的商户回读。
+
+本地测试不代表目标环境已配置该方式、发布套餐或发生真实实收。部署先应用增量迁移 `V666__platform_sales_collection.sql`，保留旧银行路由后追加 SALES_COLLECTION，配置正式销售条款，再做同店实收验收。
