@@ -155,3 +155,5 @@ Ruling：不生成合并提交，以保留所有现有及新增修改的未提�
 完整发布守卫补漏：修复自营主体检索绕过运营DataScope的真实缺陷，mapper边界回归确认保留当前范围且不跳过；商城错误去掉被通用文案吞掉的四个无效参数。相关21项通过。代建表单复用共享Drawer保留焦点/提交关闭保护；客户表格补错误重试、空态与焦点环；旧页面测试按统一入驻/上下文页签补齐。点码生成器按只增不改保留全部155个原映射（含两个旧入口），不撤销授权。UI纪律97项/共享UI9项、针对页签表单37项及最终表单/点码8项通过。共享元数据10套183项通过，6项原有欠账仍在冻结数量内；未扩大任何基线。最终独立审阅无P1/P2。
 
 本轮完整零售回归已在干净847d46712及原生MySQL9执行：仅出现两项测试夹具错误——MallStorefrontMysqlTest遗漏现已发布的销售代收配置查询；PlatformCashReportingTest把MySQL JSON锁定查询放在H2。只改断言/将该方法移至原生PlatformCashReportingMysqlTest，保留真实核款、退款核验与FOR UPDATE断言，受影响套件复测通过；生产源码、资源、POM均未变。按MEMORY增量约定，复用该次无变更模块结果，补跑因依赖失败未执行的commerce starter、pay guard/portal/svc、shop-app及餐饮/美业检查。最终推送仅复查干净编译（SKIP_TEST_GATE=1），完整/增量组合证据单独保留，不将“跳过重跑”表述为又跑了一次全量，也不扩大已知失败基线。
+
+补测starter时进一步定位真实的旧客户端兼容问题：现有商城HTTP契约把testPayment定义为可省略、默认false，但新增ConfirmRequest使用primitive boolean，Jackson3在旧请求省略该字段时拒绝解析。按既有契约把传输DTO改为Boolean，并在进入ReviewCommand时以Boolean.TRUE.equals转成false默认；不放宽业务testAllowed/操作权限。保留省略字段的200断言，并新增显式true从HTTP传到业务命令的断言。该受影响控制器单独复测，制品重建，其他域的既有完整回归仍有效。
