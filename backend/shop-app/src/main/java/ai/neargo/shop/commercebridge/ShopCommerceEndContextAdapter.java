@@ -137,7 +137,7 @@ public final class ShopCommerceEndContextAdapter
                 throw new AccessDenied(AccessStatus.FORBIDDEN);
             return;
         }
-        var strict = strictScope(user, requested, facts, route);
+        var strict = strictScope(user, requested, facts, route, path);
         BizContext.set(strict);
         if (route.lane() == CommerceRoutePolicy.Lane.END_PROTECTED) {
             var actor = ShopCommerceActorAdapter.current();
@@ -157,11 +157,14 @@ public final class ShopCommerceEndContextAdapter
             LoginUser user,
             String requested,
             StoreSnapshot facts,
-            CommerceRoutePolicy.Route route) {
+            CommerceRoutePolicy.Route route, String path) {
         if (facts.model() == CommerceModel.STORE_V1
                 && (facts.businessTypeCode() == null || facts.businessTypeCode().isBlank()))
             throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
-        if (facts.status() != StoreStatus.ACTIVE)
+        boolean procurementSetup = facts.status() == StoreStatus.SETUP
+                && route.lane() == CommerceRoutePolicy.Lane.BOOTSTRAP
+                && path.startsWith("/biz/stores/" + requested + "/mall/");
+        if (facts.status() != StoreStatus.ACTIVE && !procurementSetup)
             throw new AccessDenied(AccessStatus.STORE_DISABLED);
         var strict = resolver.resolveStrict(user, requested);
         if (!requested.equals(strict.currentStoreNo())
@@ -199,7 +202,7 @@ public final class ShopCommerceEndContextAdapter
                                             && !requested.equals(route.pathStore()))
                                 throw new AccessDenied(AccessStatus.FORBIDDEN);
                             var strict =
-                                    strictScope(fresh, requested, store(fresh, requested), route);
+                                    strictScope(fresh, requested, store(fresh, requested), route, path);
                             if (path.equals("/biz/upload/image")
                                     && !strict.owner()
                                     && !strict.can(BizPerms.STORE)
