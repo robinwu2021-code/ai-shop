@@ -32,15 +32,15 @@ class StoreSettingsMysqlTest {
         schema="store_settings_test_"+UUID.randomUUID().toString().replace("-","");admin.execute("CREATE DATABASE "+schema);
         var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),user,pw);jdbc=new JdbcTemplate(ds);
         tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
-        jdbc.execute("CREATE TABLE mch_store (id BIGINT PRIMARY KEY AUTO_INCREMENT,tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),name VARCHAR(64),address VARCHAR(255),address_detail VARCHAR(64),open_hours VARCHAR(512),deleted INT DEFAULT 0)");
+        jdbc.execute("CREATE TABLE mch_store (id BIGINT PRIMARY KEY AUTO_INCREMENT,tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),name VARCHAR(64),address VARCHAR(255),address_detail VARCHAR(64),open_hours VARCHAR(512),contact_name VARCHAR(64),contact_phone VARCHAR(32),deleted INT DEFAULT 0)");
         jdbc.update("INSERT INTO mch_store(tenant_no,entity_no,store_no,name,address,address_detail,open_hours) VALUES('MAIN','E1','S1','Original','Taipei','1F','09:00-18:00')");
         var configuration=new MybatisConfiguration();configuration.addMapper(MchStoreMapper.class);
         var factory=new MybatisSqlSessionFactoryBean();factory.setDataSource(ds);factory.setConfiguration(configuration);
         var mapper=new SqlSessionTemplate(factory.getObject()).getMapper(MchStoreMapper.class);
         var profiles=mock(MerchantStoreService.class);
-        when(profiles.profile("E1","S1")).thenAnswer(call->jdbc.queryForObject("SELECT name,address,address_detail,open_hours FROM mch_store WHERE store_no='S1'",(rs,n)->{
+        when(profiles.profile("E1","S1")).thenAnswer(call->jdbc.queryForObject("SELECT name,address,address_detail,open_hours,contact_name,contact_phone FROM mch_store WHERE store_no='S1'",(rs,n)->{
             var p=mock(StoreProfileVO.class);when(p.name()).thenReturn(rs.getString(1));when(p.address()).thenReturn(rs.getString(2));
-            when(p.addressDetail()).thenReturn(rs.getString(3));when(p.openHours()).thenReturn(rs.getString(4));return p;
+            when(p.addressDetail()).thenReturn(rs.getString(3));when(p.openHours()).thenReturn(rs.getString(4));when(p.contactName()).thenReturn(rs.getString(5));when(p.contactPhone()).thenReturn(rs.getString(6));return p;
         }));
         var ownership=mock(StoreOwnershipWritePort.class);
         doAnswer(call->{jdbc.queryForObject("SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND store_no=? FOR UPDATE",String.class,call.getArgument(0),call.getArgument(1),call.getArgument(2));return null;})
@@ -68,4 +68,32 @@ class StoreSettingsMysqlTest {
         tx.execute(s->service.basic("E1","S1",snapshot.sectionVersions().get("BASIC"),"New","Taipei","3F"));
         var actual=service.load("E1","S1");assertEquals("New",actual.profile().name());assertEquals("10:00-20:00",actual.profile().openHours());
     }
+    @Test void contactHasIndependentVersionAndCanClear() {
+        var before=service.load("E1","S1");
+        tx.execute(s->service.contact("E1","S1",before.sectionVersions().get("CONTACT")," Alice "," +886 (2) 123-456 "));
+        var contact=service.load("E1","S1");
+        assertEquals("Alice",contact.profile().contactName());
+        assertEquals("+886 (2) 123-456",contact.profile().contactPhone());
+        assertEquals(before.sectionVersions().get("BASIC"),contact.sectionVersions().get("BASIC"));
+        tx.execute(s->service.basic("E1","S1",before.sectionVersions().get("BASIC"),"Updated","Taipei","2F"));
+        tx.execute(s->service.hours("E1","S1",before.sectionVersions().get("HOURS"),"24h"));
+        assertEquals("Alice",service.load("E1","S1").profile().contactName());
+        assertEquals(ErrorCode.CONFLICT,assertThrows(BizException.class,()->tx.execute(s->service.contact(
+            "E1","S1",before.sectionVersions().get("CONTACT"),"Stale",""))).errorCode());
+        tx.execute(s->service.contact("E1","S1",contact.sectionVersions().get("CONTACT"),"",""));
+        assertEquals("",service.load("E1","S1").profile().contactName());
+        assertEquals("",service.load("E1","S1").profile().contactPhone());
+    }
+    @Test void concurrentContactHasOneWinner() throws Exception {
+        String version=service.load("E1","S1").sectionVersions().get("CONTACT");
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var a=pool.submit(()->saveContact(version,"Alice"));var b=pool.submit(()->saveContact(version,"Bob"));
+            assertEquals(1,a.get(10,TimeUnit.SECONDS)+b.get(10,TimeUnit.SECONDS));
+        }
+    }
+    private int saveContact(String version,String name) {
+        try {tx.execute(s->service.contact("E1","S1",version,name,"123"));return 1;}
+        catch(BizException e){assertEquals(ErrorCode.CONFLICT,e.errorCode());return 0;}
+    }
+
 }

@@ -1551,7 +1551,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * （那时 BizContext 已经有了，不需要走这条路）。
          */
         var actor = commerce.actor(ownerUserNo);
-        var shell = pendingLicenseEntityOf(ownerUserNo, actor != null);
+        var shell = pendingLicenseEntityOf(ownerUserNo, actor != null, true);
         if (shell.isPresent()) {
             // 同一待补证壳的重试必须是同一市场；换了市场不能复用旧壳（它的免费期币种已冻结）
             if (cmd.market() != null) {
@@ -1574,34 +1574,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         requireEntityQuota(ownerUserNo, actor != null);
 
         String name = cmd.storeName().trim();
-        MchEntity m = new MchEntity();
-        m.setEntityNo(BizKey.next(BizKey.MERCHANT));
-        m.setName(entityName.trim());
-        m.setLogo("");
-        /*
-         * 证照还没交，所以这几项与 activate() 刻意不同：
-         *   legal_form  留空 —— 还不知道是个体户还是公司，进件那一步才需要它
-         *   verified    false —— 「已认证」标是审核给的，不能自己开店就带上
-         *   status      PENDING_LICENSE —— 可见性闸门认的就是它
-         * 其余（评分初值、计数器）与 activate() 保持一致，避免两条路建出来的主体
-         * 在别处表现不同。
-         */
-        m.setRating(RATING_INIT);
-        m.setRatingCount(0);
-        m.setSalesCount(0);
-        m.setGoodsCount(0);
-        m.setScoreGoods(RATING_INIT);
-        m.setScoreService(RATING_INIT);
-        m.setScoreSpeed(RATING_INIT);
-        m.setVerified(false);
-        m.setBreachCount(0);
-        m.setTags("[]");
-        m.setOwnerUserNo(ownerUserNo);
-        m.setJoinedAt(System.currentTimeMillis());
-        m.setStatus(MchEntity.PENDING_LICENSE);
-        m.setServiceScope(AREA_COMMUNITY);
-        if (cmd.market() != null) m.setMarket(cmd.market());
-        merchantMapper.insert(m);
+        MchEntity m = pendingEntity(ownerUserNo, entityName.trim(), null, cmd.market());
 
         /*
          * 与 activate() 同样是一个事务，但**少两件**：
@@ -1631,6 +1604,49 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 而这个账号名下可能已经有另一张执照（多证照），按默认主体解析出来的是**旧的那家**。
          */
         return new QuickStartResult(m.getEntityNo(), defaultStoreOf(m.getEntityNo(), actor != null).getStoreNo());
+    }
+
+    @Override
+    @Transactional
+    public String createPendingEntity(String ownerUserNo, String name, String legalForm, String market) {
+        requireEntityQuota(ownerUserNo, true);
+        MchEntity entity = pendingEntity(ownerUserNo, name, legalForm, market);
+        ensureOwnerStaff(entity.getEntityNo(), ownerUserNo);
+        ensureFreePlan(entity.getEntityNo());
+        return entity.getEntityNo();
+    }
+
+    private MchEntity pendingEntity(String ownerUserNo, String name, String legalForm, String market) {
+        MchEntity m = new MchEntity();
+        m.setEntityNo(BizKey.next(BizKey.MERCHANT));
+        m.setName(name);
+        m.setLogo("");
+        /*
+         * 证照还没交，所以这几项与 activate() 刻意不同：
+         *   legal_form  可选预填，不代表证照已经审核；快速开店仍留空
+         *   verified    false —— 「已认证」标是审核给的，不能自己开店就带上
+         *   status      PENDING_LICENSE —— 可见性闸门认的就是它
+         * 其余（评分初值、计数器）与 activate() 保持一致，避免两条路建出来的主体
+         * 在别处表现不同。
+         */
+        m.setRating(RATING_INIT);
+        m.setRatingCount(0);
+        m.setSalesCount(0);
+        m.setGoodsCount(0);
+        m.setScoreGoods(RATING_INIT);
+        m.setScoreService(RATING_INIT);
+        m.setScoreSpeed(RATING_INIT);
+        m.setVerified(false);
+        m.setBreachCount(0);
+        m.setTags("[]");
+        m.setOwnerUserNo(ownerUserNo);
+        m.setJoinedAt(System.currentTimeMillis());
+        m.setStatus(MchEntity.PENDING_LICENSE);
+        m.setServiceScope(AREA_COMMUNITY);
+        if (market != null) m.setMarket(market);
+        m.setLegalForm(legalForm);
+        merchantMapper.insert(m);
+        return m;
     }
 
     /** 主体的默认门店号。解除数据域的理由同 {@link #ensureDefaultStore} —— 建主体时作用域还不存在。 */
@@ -1695,6 +1711,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     private java.util.Optional<String> pendingLicenseEntityOf(String userNo, boolean current) {
+        return pendingLicenseEntityOf(userNo, current, false);
+    }
+
+    private java.util.Optional<String> pendingLicenseEntityOf(String userNo, boolean current, boolean requireStore) {
         if (userNo == null || userNo.isBlank()) {
             return java.util.Optional.empty();
         }
@@ -1712,6 +1732,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .in(MchEntity::getEntityNo, ownedEntityNos)
                         .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
+                        .apply(requireStore, "EXISTS (SELECT 1 FROM mch_store s WHERE s.entity_no=mch_entity.entity_no "
+                                + "AND s.tenant_no=mch_entity.tenant_no AND s.is_default=1 AND s.deleted=0)")
                         .last(current ? "limit 1 for share" : "limit 1")));
         return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
     }
@@ -1733,7 +1755,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
-                        .last(current, "for share"))
+                        .last(current, defaultStoreCurrentLock))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo)
                 .distinct().count());
         if (owned >= MAX_ENTITIES_PER_ACCOUNT) {

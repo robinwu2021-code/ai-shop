@@ -128,7 +128,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 store == null ? null : store.getSlug(),
                 store == null ? null : store.getStatus(),
                 store == null ? null : Boolean.TRUE.equals(store.getIsDefault()),
-                store == null ? null : Boolean.TRUE.equals(store.getPlanSuspended()));
+                store == null ? null : Boolean.TRUE.equals(store.getPlanSuspended()),
+                store == null ? null : store.getContactName(),
+                store == null ? null : store.getContactPhone());
     }
 
     /** 背景图地址的上限：与列宽（V368，VARCHAR(512)）一致，超了是端上传错了东西 */

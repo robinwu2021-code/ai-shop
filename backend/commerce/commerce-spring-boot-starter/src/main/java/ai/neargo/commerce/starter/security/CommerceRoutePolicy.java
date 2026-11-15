@@ -87,6 +87,8 @@ public final class CommerceRoutePolicy {
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
                     "POST /biz/merchant/store-openings",
+                    "POST /biz/entities",
+                    "GET /biz/entities",
                     "GET /biz/merchant/store-setup",
                     "GET /biz/business-types",
                     // 账号本人的设置：按登录人定位，与门店无关；推送注册在登录后、选店前就会调
@@ -168,11 +170,13 @@ public final class CommerceRoutePolicy {
                 || method.equals("GET")
                         && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/(?:plans|feature-matrix)"))
             return new Route(Lane.ACCOUNT, null, null, null);
-        if (method.equals("GET") && path.matches("/biz/merchant/store-openings/" + ID))
+        if (method.equals("GET") && (path.matches("/biz/merchant/store-openings/" + ID)
+                || path.matches("/biz/entities/create-results/" + ID)))
             return new Route(Lane.ACCOUNT, null, null, null);
         // Settings is a selected-store namespace, not a path containing a store ID.
         if (method.equals("GET") && path.equals("/biz/store/settings")
-                || method.equals("POST") && Set.of("/biz/store/settings/basic", "/biz/store/settings/hours").contains(path))
+                || method.equals("POST") && Set.of("/biz/store/settings/basic", "/biz/store/settings/hours",
+                    "/biz/store/settings/contact").contains(path))
             return new Route(Lane.BOOTSTRAP, null, null, null);
         for (HostRoute management : MANAGEMENT_ACCOUNT) {
             if (management.matches(method, path))
