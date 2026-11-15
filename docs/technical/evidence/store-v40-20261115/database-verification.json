@@ -1,0 +1,20 @@
+{
+  "entityReceipts": 1,
+  "claims": 0,
+  "sourceEntity": "M26111119233ZE990",
+  "contactHash": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+  "migration": {
+    "version": "674",
+    "success": true,
+    "checksum": -1140970194
+  },
+  "temporaryDdlGrants": 0,
+  "createdEntity": {
+    "entityNo": "M261115B1H3EMFBG8",
+    "status": "PENDING_LICENSE",
+    "storeCount": 0
+  },
+  "contactRestored": true,
+  "claimNotCreated": true,
+  "sourceOwnershipUnchanged": true
+}
