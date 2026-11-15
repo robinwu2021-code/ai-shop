@@ -95,6 +95,16 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
     }
 
     @Override
+    public OwnerContact ownerContact(String userNo, String entityNo) {
+        var mine = memberships(userNo).stream()
+                .filter(m -> Boolean.TRUE.equals(m.getIsOwner()))
+                .filter(m -> m.getEntityNo().equals(entityNo))
+                .findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
+        return new OwnerContact(mine.getDisplayName(), mine.getLoginPhone());
+    }
+
+    @Override
     public String requireOwned(String userNo, String entityNoParam) {
         if (entityNoParam == null || entityNoParam.isBlank()) {
             // 原行为：作用在当前证照上。绝大多数请求走这一支

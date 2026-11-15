@@ -3,6 +3,7 @@ package ai.neargo.shop.payclient;
 import java.util.List;
 import java.util.Map;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.service.annotation.*;
 
@@ -49,6 +50,24 @@ public interface PayEntityProfileApi {
   @PostExchange(ROOT + "/channel-requests")
   Map<String, Object> addChannels(
       @PathVariable("entity") String entity, @RequestBody Map<String, Object> body);
+
+  /** The entity contact, outside the immutable material revisions (V46). */
+  @PostExchange(ROOT + "/contact")
+  Map<String, Object> contact(
+      @PathVariable("entity") String entity, @RequestBody Map<String, Object> body);
+
+  /** Discards a revision draft; PAY refuses one under review or with an unknown result. */
+  @PostExchange(ROOT + "/revision-discards")
+  Map<String, Object> discardRevision(
+      @PathVariable("entity") String entity, @RequestBody Map<String, Object> body);
+
+  /** Owner-only thumbnail of an uploaded evidence file; 204 when there is none (PDF). */
+  @GetExchange(ROOT + "/files/{file}/preview")
+  ResponseEntity<byte[]> preview(
+      @PathVariable("entity") String entity,
+      @PathVariable("file") String file,
+      @RequestParam("sourceScope") String scope,
+      @RequestParam("actorRef") String actor);
 
   record SummaryQuery(String sourceScope, List<String> entities) {}
 

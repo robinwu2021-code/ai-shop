@@ -5,7 +5,7 @@
   "plan": "docs/technical/TDD-商户App商户资料提交.md",
   "contract": "docs/api/entity-profile-workspace.openapi.json",
   "consumerRepository": "ai-shop-bapp",
-  "consumerCommit": "1ca5866",
+  "consumerCommit": "b59304f",
   "consumerEvidence": "docs/handoff/v45-entity-workspace-20261115/oscar-closure-progress.md",
   "entries": [
     {
@@ -52,6 +52,21 @@
       "app": "b-app",
       "method": "GET",
       "path": "/biz/entities/create-results/{requestNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/contact"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/revision-discards"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entities/{entityNo}/files/{fileId}/preview"
     }
   ]
 }

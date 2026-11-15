@@ -472,4 +472,182 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
                 no))
         .isEqualTo("WAITING");
   }
+
+  private String newEntity(String token) throws Exception {
+    return create(token, "v46-" + java.util.UUID.randomUUID(), "NearGo")
+        .path("data")
+        .path("entity")
+        .path("entityNo")
+        .asString();
+  }
+
+  private tools.jackson.databind.JsonNode postJson(String token, String path, String body)
+      throws Exception {
+    return json.readTree(
+        mvc()
+            .perform(
+                post(path)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+  }
+
+  @Test
+  void channelMaterialsForwardedAndBounded() throws Exception {
+    String token = login();
+    String no = newEntity(token);
+    when(pay.save(eq(no), anyMap())).thenReturn(Map.of("entityNo", no, "version", 1));
+    var saved =
+        postJson(
+            token,
+            "/biz/entities/" + no + "/profile-draft",
+            "{\"requestNo\":\"cm1\",\"expectedVersion\":0,\"schemaVersion\":\"TW_ENTITY_2\","
+                + "\"channelMaterials\":{\"NEWEBPAY\":{\"merchantName\":\"日常選物\",\"methods\":\"CREDIT,MOBILE\"}}}");
+    assertThat(saved.path("code").asInt()).as(saved.toString()).isZero();
+    var body = ArgumentCaptor.forClass(Map.class);
+    verify(pay).save(eq(no), body.capture());
+    assertThat(((Map<?, ?>) body.getValue().get("channelMaterials")).containsKey("NEWEBPAY"))
+        .isTrue();
+    assertThat(
+            ((Map<?, ?>) ((Map<?, ?>) body.getValue().get("channelMaterials")).get("NEWEBPAY"))
+                .get("merchantName"))
+        .isEqualTo("日常選物");
+    var unknown =
+        postJson(
+            token,
+            "/biz/entities/" + no + "/profile-draft",
+            "{\"requestNo\":\"cm2\",\"expectedVersion\":1,\"schemaVersion\":\"TW_ENTITY_2\","
+                + "\"channelMaterials\":{\"PAYPAL\":{\"a\":\"b\"}}}");
+    assertThat(unknown.path("code").asInt()).as(unknown.toString()).isEqualTo(10400);
+    var tooMany = new StringBuilder("{");
+    for (int i = 0; i < 21; i++) tooMany.append(i == 0 ? "" : ",").append("\"k" + i + "\":\"v\"");
+    tooMany.append("}");
+    var bounded =
+        postJson(
+            token,
+            "/biz/entities/" + no + "/profile-draft",
+            "{\"requestNo\":\"cm3\",\"expectedVersion\":1,\"schemaVersion\":\"TW_ENTITY_2\","
+                + "\"channelMaterials\":{\"NEWEBPAY\":"
+                + tooMany
+                + "}}");
+    assertThat(bounded.path("code").asInt()).as(bounded.toString()).isEqualTo(10400);
+    verify(pay, times(1)).save(eq(no), anyMap());
+  }
+
+  @Test
+  void contactUsesTheOwnerAccountAndIsOwnerOnly() throws Exception {
+    String token = login();
+    String no = newEntity(token);
+    jdbc.update(
+        "UPDATE mch_account SET display_name=?, login_phone=? WHERE entity_no=?",
+        "陳小華",
+        "+886912345678",
+        no);
+    when(pay.contact(eq(no), anyMap())).thenReturn(Map.of("entityNo", no, "contactVersion", 1));
+    String spoof =
+        "{\"requestNo\":\"c1\",\"expectedContactVersion\":0,\"schemaVersion\":\"TW_ENTITY_2\","
+            + "\"contactSource\":\"ACCOUNT\",\"contactName\":\"Spoof\",\"contactMobile\":\"0900000000\","
+            + "\"contactEmail\":\"chen@example.com.tw\",\"contactSameAddress\":true,"
+            + "\"sourceScope\":\"ATTACK\",\"actorRef\":\"OTHER\"}";
+    var saved = postJson(token, "/biz/entities/" + no + "/contact", spoof);
+    assertThat(saved.path("code").asInt()).as(saved.toString()).isZero();
+    var body = ArgumentCaptor.forClass(Map.class);
+    verify(pay).contact(eq(no), body.capture());
+    assertThat(body.getValue().get("contactName")).isEqualTo("陳小華");
+    assertThat(body.getValue().get("contactMobile")).isEqualTo("0912345678");
+    assertThat(body.getValue().get("contactEmail")).isEqualTo("chen@example.com.tw");
+    assertThat(body.getValue().get("expectedContactVersion")).isEqualTo(0L);
+    assertThat(body.getValue().get("sourceScope")).isNotEqualTo("ATTACK");
+    assertThat(body.getValue().get("actorRef")).isNotEqualTo("OTHER");
+    assertThat(BizEntityProfileControllerAccess.localMobile("+886 912-345-678"))
+        .isEqualTo("0912345678");
+    assertThat(BizEntityProfileControllerAccess.localMobile("15912345678")).isNull();
+    var badMobile =
+        postJson(
+            token,
+            "/biz/entities/" + no + "/contact",
+            spoof.replace("\"c1\"", "\"c2\"").replace("0900000000", "123"));
+    assertThat(badMobile.path("code").asInt()).as(badMobile.toString()).isEqualTo(10400);
+    clearInvocations(pay);
+    var denied = postJson(login(), "/biz/entities/" + no + "/contact", spoof);
+    assertThat(denied.path("code").asInt()).as(denied.toString()).isEqualTo(10403);
+    verifyNoInteractions(pay);
+  }
+
+  @Test
+  void revisionDiscardIsForwardedForTheOwner() throws Exception {
+    String token = login();
+    String no = newEntity(token);
+    when(pay.discardRevision(eq(no), anyMap()))
+        .thenReturn(Map.of("entityNo", no, "version", 4, "revisionState", "EFFECTIVE"));
+    String body =
+        "{\"requestNo\":\"d1\",\"expectedVersion\":3,\"schemaVersion\":\"TW_ENTITY_2\"}";
+    var done = postJson(token, "/biz/entities/" + no + "/revision-discards", body);
+    assertThat(done.path("code").asInt()).as(done.toString()).isZero();
+    var sent = ArgumentCaptor.forClass(Map.class);
+    verify(pay).discardRevision(eq(no), sent.capture());
+    assertThat(sent.getValue().get("expectedVersion")).isEqualTo(3L);
+    when(pay.discardRevision(eq(no), anyMap()))
+        .thenThrow(
+            new ServiceCallException(CallOutcome.REMOTE_ERROR, "PAY", 409, "not discardable"));
+    var refused =
+        postJson(token, "/biz/entities/" + no + "/revision-discards", body.replace("d1", "d2"));
+    assertThat(refused.path("code").asInt()).as(refused.toString()).isEqualTo(10409);
+  }
+
+  @Test
+  void previewIsOwnerOnlyAndNotCached() throws Exception {
+    String token = login();
+    String no = newEntity(token);
+    String file = "0123456789abcdef0123456789abcdef";
+    byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3};
+    when(pay.preview(eq(no), eq(file), anyString(), anyString()))
+        .thenReturn(org.springframework.http.ResponseEntity.ok(jpeg));
+    var response =
+        mvc()
+            .perform(
+                get("/biz/entities/" + no + "/files/" + file + "/preview")
+                    .header("Authorization", "Bearer " + token))
+            .andReturn()
+            .getResponse();
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(response.getContentAsByteArray()).isEqualTo(jpeg);
+    assertThat(response.getContentType()).startsWith("image/jpeg");
+    assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+    when(pay.preview(eq(no), eq(file), anyString(), anyString()))
+        .thenReturn(org.springframework.http.ResponseEntity.noContent().build());
+    var none =
+        mvc()
+            .perform(
+                get("/biz/entities/" + no + "/files/" + file + "/preview")
+                    .header("Authorization", "Bearer " + token))
+            .andReturn()
+            .getResponse();
+    assertThat(none.getStatus()).isEqualTo(204);
+    clearInvocations(pay);
+    var bad =
+        mvc()
+            .perform(
+                get("/biz/entities/" + no + "/files/not-a-file/preview")
+                    .header("Authorization", "Bearer " + token))
+            .andReturn()
+            .getResponse();
+    // Errors come in the API envelope.
+    assertThat(json.readTree(bad.getContentAsString()).path("code").asInt()).isEqualTo(10400);
+    var denied =
+        json.readTree(
+            mvc()
+                .perform(
+                    get("/biz/entities/" + no + "/files/" + file + "/preview")
+                        .header("Authorization", "Bearer " + login()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(denied.path("code").asInt()).as(denied.toString()).isEqualTo(10403);
+    verifyNoInteractions(pay);
+  }
 }
+

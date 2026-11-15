@@ -504,6 +504,124 @@
           }
         }
       }
+    },
+    "/biz/entities/{entityNo}/contact": {
+      "post": {
+        "summary": "Save the entity contact outside material revisions (V46); ACCOUNT name and mobile come from the owner account",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/revision-discards": {
+      "post": {
+        "summary": "Discard a revision draft (DRAFT, rejected or sync failed); refused while under review or unknown",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/files/{fileId}/preview": {
+      "get": {
+        "summary": "Owner-only thumbnail of an uploaded evidence file; no-store",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "description": "The 32 hex characters of file:entity-profile/<id>",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JPEG thumbnail",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No thumbnail (for example a PDF)"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -696,7 +814,10 @@
             "minimum": 0
           },
           "schemaVersion": {
-            "const": "TW_ENTITY_1"
+            "enum": [
+              "TW_ENTITY_1",
+              "TW_ENTITY_2"
+            ]
           },
           "fields": {
             "$ref": "#/components/schemas/EntityFields"
@@ -727,6 +848,26 @@
           },
           "confirmed": {
             "type": "boolean"
+          },
+          "channelMaterials": {
+            "type": "object",
+            "maxProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "NEWEBPAY",
+                "LINEPAY",
+                "JKOPAY"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "maxProperties": 20,
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 512
+              }
+            },
+            "description": "Channel supplements (Newebpay: merchantName, mcType, merchantType, merchantNameEn, merchantAddressEn, managerNameEn, serviceEmail, methods); frozen with the submission"
           }
         }
       },
@@ -844,6 +985,80 @@
               "integer",
               "null"
             ]
+          },
+          "revisionState": {
+            "enum": [
+              "DRAFT",
+              "PLATFORM_REVIEWING",
+              "PLATFORM_REJECTED",
+              "PLATFORM_APPROVED",
+              "CHANNEL_SYNCING",
+              "SYNC_FAILED",
+              "EFFECTIVE",
+              "DISCARDED"
+            ],
+            "description": "Layer A (PAY V46); clients derive it from platformReview when absent"
+          },
+          "effectiveRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactVersion": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "channelMaterials": {
+            "type": "object",
+            "maxProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "NEWEBPAY",
+                "LINEPAY",
+                "JKOPAY"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "maxProperties": 20,
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 512
+              }
+            },
+            "description": "Channel supplements (Newebpay: merchantName, mcType, merchantType, merchantNameEn, merchantAddressEn, managerNameEn, serviceEmail, methods); frozen with the submission"
+          },
+          "channelModifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "changeNo": {
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "PENDING_APPROVAL",
+                    "SENDING",
+                    "ACCEPTED",
+                    "CHANNEL_REVIEWING",
+                    "APPLIED",
+                    "FAILED",
+                    "UNKNOWN",
+                    "CANCELLED"
+                  ]
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -948,6 +1163,69 @@
           "byteLength": {
             "type": "integer",
             "maximum": 5242880
+          }
+        }
+      },
+      "ContactCommand": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "expectedContactVersion",
+          "schemaVersion",
+          "contactSource"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedContactVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "schemaVersion": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "contactSource": {
+            "enum": [
+              "ACCOUNT",
+              "REPRESENTATIVE",
+              "OTHER"
+            ]
+          },
+          "contactName": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "contactMobile": {
+            "type": "string",
+            "pattern": "^09[0-9]{8}$"
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 128
+          },
+          "disputeEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 128
+          },
+          "contactSameAddress": {
+            "type": "boolean"
+          },
+          "contactCity": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "contactArea": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "contactAddress": {
+            "type": "string",
+            "maxLength": 128
           }
         }
       }
