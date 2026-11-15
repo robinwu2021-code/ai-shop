@@ -2,8 +2,8 @@ package ai.neargo.commerce.starter.security;
 
 import ai.neargo.commerce.api.access.AccessDenied;
 import ai.neargo.commerce.api.access.AccessStatus;
-
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -171,7 +171,11 @@ public final class CommerceRoutePolicy {
                         && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/(?:plans|feature-matrix)"))
             return new Route(Lane.ACCOUNT, null, null, null);
         if (method.equals("GET") && (path.matches("/biz/merchant/store-openings/" + ID)
-                || path.matches("/biz/entities/create-results/" + ID)))
+                || path.matches("/biz/entities/create-results/" + ID)
+                || path.matches("/biz/entity/" + ID)))
+            return new Route(Lane.ACCOUNT, null, null, null);
+        if ((method.equals("GET") && path.matches("/biz/entities/"+ID+"/(?:profile-template|profile-draft|commands/"+ID+")"))
+                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests)")))
             return new Route(Lane.ACCOUNT, null, null, null);
         // Settings is a selected-store namespace, not a path containing a store ID.
         if (method.equals("GET") && path.equals("/biz/store/settings")
@@ -291,11 +295,11 @@ public final class CommerceRoutePolicy {
         return new Route(Lane.DENY, store, null, null);
     }
 
-    public static java.util.Optional<String> entitlementForEnd(String end) {
+    public static Optional<String> entitlementForEnd(String end) {
         return switch (end) {
-            case "BIZ_APP" -> java.util.Optional.of(BIZ);
-            case "APP_POS" -> java.util.Optional.of(POS);
-            case null, default -> java.util.Optional.empty();
+            case "BIZ_APP" -> Optional.of(BIZ);
+            case "APP_POS" -> Optional.of(POS);
+            case null, default -> Optional.empty();
         };
     }
 

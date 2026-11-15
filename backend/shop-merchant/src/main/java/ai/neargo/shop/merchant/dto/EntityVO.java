@@ -21,15 +21,25 @@ package ai.neargo.shop.merchant.dto;
  */
 public record EntityVO(String entityNo, String name, String status, boolean verified,
                        String legalForm, int storeCount, boolean isPrimary, boolean canManage,
-                       String review, String applyNo, String rejectReason, String taxNo, String owner) {
+                       String review, String applyNo, String rejectReason, String taxNo, String owner,
+                       String platformReview, Long draftVersion, Long approvedProfileVersion, String payMerchantNo) {
+    public EntityVO(String entityNo,String name,String status,boolean verified,String legalForm,int storeCount,boolean isPrimary,boolean canManage,
+                    String review,String applyNo,String rejectReason,String taxNo,String owner){
+        this(entityNo,name,status,verified,legalForm,storeCount,isPrimary,canManage,review,applyNo,rejectReason,taxNo,owner,null,null,null,null);
+    }
     public EntityVO(String entityNo, String name, String status, boolean verified, String legalForm,
                     int storeCount, boolean isPrimary, boolean canManage) {
         this(entityNo, name, status, verified, legalForm, storeCount, isPrimary, canManage,
                 "PENDING_LICENSE".equals(status) ? "NONE" : "APPROVED", null, "", "", "");
     }
 
-    public EntityVO withReview(String review, String applyNo, String rejectReason, String taxNo, String owner) {
-        return new EntityVO(entityNo, name, status, verified, legalForm, storeCount, isPrimary, canManage,
-                review, applyNo, rejectReason, taxNo, owner);
+    public EntityVO withReview(String review,String applyNo,String rejectReason,String taxNo,String owner) {
+        return new EntityVO(entityNo,name,status,verified,legalForm,storeCount,isPrimary,canManage,
+            review,applyNo,rejectReason,taxNo,owner,platformReview,draftVersion,approvedProfileVersion,payMerchantNo);
     }
+    public EntityVO withProfile(String platformReview,Long draftVersion,Long approvedProfileVersion,String payMerchantNo) {
+        return new EntityVO(entityNo,name,status,verified,legalForm,storeCount,isPrimary,canManage,platformReview,applyNo,rejectReason,taxNo,owner,
+            platformReview,draftVersion,approvedProfileVersion,payMerchantNo);
+    }
+
 }

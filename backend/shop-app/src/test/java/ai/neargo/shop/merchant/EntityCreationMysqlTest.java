@@ -65,7 +65,7 @@ class EntityCreationMysqlTest {
                     .replace("    contact_name VARCHAR(64) DEFAULT NULL,\n", "")
                     .replace("    contact_phone VARCHAR(32) DEFAULT NULL,\n", ""));
         }
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V674__store_contact_and_entity_creation.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V674__store_contact_and_entity_creation.sql"),new ClassPathResource("db/migration/V675__entity_profile_initialization_receipt.sql")).execute(ds);
         jdbc.update("INSERT INTO usr_account(user_no,market,created_at,updated_at) VALUES('ENTITY_OWNER','TW',NOW(),NOW())");
         var config=new MybatisConfiguration();
         var factory=new MybatisSqlSessionFactoryBean();factory.setConfiguration(config);factory.setDataSource(ds);

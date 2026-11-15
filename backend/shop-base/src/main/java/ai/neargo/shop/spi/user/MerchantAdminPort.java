@@ -20,6 +20,9 @@ import java.util.List;
  * 分账接收方清单里，谁也说不清它算不算数。所以走审核那条路的，必须审过才建。
  */
 public interface MerchantAdminPort {
+    /** Enrolled entity registrations are maintained through immutable PAY profile revisions. */
+    default boolean managedRegistration(String tenantNo,String entityNo){return false;}
+
     int MAX_ENTITIES_PER_ACCOUNT = 5;
 
     /**

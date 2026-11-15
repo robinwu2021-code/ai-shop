@@ -42,12 +42,18 @@ public class EntityCreationServiceImpl implements EntityCreationService {
     @Override
     @Transactional
     public Result create(LoginUser user, String requestNo, String name, String legalForm) {
+        return create(user,requestNo,name,legalForm,null);
+    }
+
+    @Override
+    @Transactional
+    public Result create(LoginUser user,String requestNo,String name,String legalForm,String initialProfileHash) {
         personal(user);
         var accounts = jdbc.queryForList("SELECT market FROM usr_account WHERE tenant_no=? AND user_no=? "
                 + "AND status='NORMAL' AND deleted=0 FOR UPDATE", String.class, user.tenantNo(), user.userNo());
         if (accounts.size() != 1) throw BizException.of(ErrorCode.FORBIDDEN);
         // Preserve the original submitted intent, even after canonical master data changes.
-        String hash = StoreContentVersion.hash(json.writeValueAsString(Arrays.asList(name, legalForm)));
+        String hash = StoreContentVersion.hash(json.writeValueAsString(initialProfileHash == null ? Arrays.asList(name, legalForm) : Arrays.asList(name, legalForm, initialProfileHash)));
         var prior = receipt(user, requestNo);
         if (!prior.isEmpty()) {
             if (!hash.equals(prior.getFirst()[0])) throw BizException.of(ErrorCode.CONFLICT);
@@ -57,19 +63,20 @@ public class EntityCreationServiceImpl implements EntityCreationService {
         if (legalForm != null && canonical == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         String entityNo = merchants.createPendingEntity(user.userNo(), name.trim(), canonical, accounts.getFirst());
         jdbc.update("INSERT INTO mch_entity_creation_request "
-                + "(tenant_no,user_no,request_no,intent_hash,entity_no,created_at) VALUES(?,?,?,?,?,?)",
-                user.tenantNo(), user.userNo(), requestNo, hash, entityNo, System.currentTimeMillis());
+                + "(tenant_no,user_no,request_no,intent_hash,entity_no,created_at,initial_profile_hash,profile_request_no) VALUES(?,?,?,?,?,?,?,?)",
+                user.tenantNo(), user.userNo(), requestNo, hash, entityNo, System.currentTimeMillis(),initialProfileHash,initialProfileHash==null?null:"INIT-"+StoreContentVersion.hash(requestNo).substring(0,48));
         return current(user, requestNo, entityNo, false);
     }
 
     private List<String[]> receipt(LoginUser user, String requestNo) {
-        return jdbc.query("SELECT intent_hash,entity_no FROM mch_entity_creation_request "
+        return jdbc.query("SELECT intent_hash,entity_no,initial_profile_hash,profile_request_no FROM mch_entity_creation_request "
                 + "WHERE tenant_no=? AND user_no=? AND request_no=?",
-                (rs, n) -> new String[]{rs.getString(1), rs.getString(2)}, user.tenantNo(), user.userNo(), requestNo);
+                (rs, n) -> new String[]{rs.getString(1), rs.getString(2),rs.getString(3),rs.getString(4)}, user.tenantNo(), user.userNo(), requestNo);
     }
 
     private Result current(LoginUser user, String requestNo, String entityNo, boolean replayed) {
-        return new Result(requestNo, entities.detail(user.userNo(), entityNo).entity(), replayed);
+        var row=receipt(user,requestNo).getFirst();
+        return new Result(requestNo, entities.detail(user.userNo(), entityNo).entity(), replayed,row[2]==null?"NOT_REQUESTED":"PENDING",row[3]);
     }
 
     @Override

@@ -740,3 +740,41 @@ N2 host接线偏差：旧15路由的BizOnboardingForwarder及Order(0)认证链�
 N1 写入/恢复已实现：真实 USR 登录及选店、短事务冻结、PAY 持久预留/确认/取消、本地提交后单向恢复、员工撤权和最终投影验收通过；[N1 证据与范围](../handoff/nearpay-biz-onboarding-2026-11-09/n1-local-acceptance-2026-11-10/README.md)。N2 已实现独立 PAY 业务单/私有证明/原操作回执、host 精确权限转发、App 冷恢复及 OPS 核实关联；真实双 JVM 重启、上传响应丢失与 OPS 成功/拒绝响应丢失旅程通过；[N2 证据、发布开关和剩余项](../handoff/nearpay-biz-onboarding-2026-11-09/n2-local-acceptance-2026-11-10/README.md)。
 
 最终 LINKED 不代表实际账户已核验、启用或门店可收款；本次账户仍 UNVERIFIED/PENDING，门店绑定数零，host 没有新增影子 payment/qualification。新增开关默认关闭，App N2 依赖既有 BIZ 基础开关提供会话/成员；首批 UI 仅 NEWEBPAY。独立库存/商品/经营配置迁移及真实供应商收款仍按证据页剩余项推进。本地增量检查范围及已知 H2 限制如证据页，未宣称全量或生产验收。保留三仓现有未提交改动，无提交/推送，166 不部署。
+
+## V45 增量实施（2026-11-15，开发中）
+
+### §0 需求对账
+
+V45批准原型为本轮需求：账号级entityNo资料，两入口共用；七组资料及私有附件；明确选渠道提交、审核中只读、批准后修订；不改变门店关联或直接授予收款资格。跨项目执行索引见App仓库`docs/handoff/v45-entity-workspace-20261115/backend-implementation-checklist.md`。
+
+### §1 边界与审核责任
+
+`entityNo`归shop，不等于独立运营组织`operatingEntityId`或PAY merchantNo。PAY通过可信来源映射承接资料，当前账号owner权限在shop每次请求验证。平台资料审批复用PAY不可变资料修订；既有shop登记审核是旧流程，不再从ACTIVE推断新资料版本已批准。渠道内部材料复核不等于已送渠道，送件回执才推进渠道状态；不移除既有审批闸。
+
+### §2 实施顺序
+
+1. 账号级实体详情授权与真实合同；保留旧单数详情路径。
+2. PAY实体级安全草稿／文件／命令回执，shop提供受信账号门面；文件5MiB，与现有PAY约束一致。
+3. 提交快照、实际声明及所选渠道请求；复用来源协作及资料修订；平台批准后按已有渠道流程处理。
+4. Flutter使用真实API与服务端权限，不以本地mock成功替代真实结果。
+
+影响范围：独立实体资料与进件；旧门店设置、正式改绑和支付路由保持原有业务校验。新合同和迁移未发布前保持关闭；不改已应用迁移。
+
+### §5 增量验证
+
+`PlatformEntityCreationFlowTest.personalAccountCreatesAndRecoversWithoutSelectedStore`新增无店详情及跨账号拒绝；后续资料／附件／审核测试按实现补入。本节不宣称尚未执行的测试通过。
+
+
+### V45 本地验证补记（2026-11-15）
+
+账号实体与PAY资料修订分离；提交先登记可恢复意图，平台批准仅投影登记事实，不创建门店／套餐／支付配置。投影使用原命令回执、观察代次及排他实体锁；旧登记写入口同锁隔离。新增失败尝试不能阻断先前有效批准事实。文件5MiB、私密正文不记请求日志；指定补件白名单与原审批在同一事务提交。
+
+PAY V100 和 SHOP V674→V675 已在本机隔离 MySQL9 演练；PAY 13项／SHOP 8项定向测试通过。未部署166，功能开关默认关闭。渠道准备只建立草稿，不是供应商受理；Ops React 私密材料面板和渠道后续状态聚合仍待对接。完整执行范围及证据见 App `docs/handoff/v45-entity-workspace-20261115/backend-integration-acceptance.md`。
+
+### V46 deployment update (2026-11-15; supersedes the local-only status above)
+
+166 now runs SHOP V675 and PAY V102/V103. Existing assisted-profile V100/V101 remain unchanged; V100 in the previous unpublished local exercise was a provisional number. The operator snapshot/supplement UI and actual channel-state aggregation are deployed. Channel preparation creates drafts only; it does not grant collection eligibility or prove provider acceptance.
+
+Platform entity materials use one canonical PRODUCTION partition. SANDBOX material writes are rejected before side effects; sandbox payments and channel applications retain their existing isolation. Internal material endpoints authenticate first, then bind the trusted configured environment before SEC/Vault and transaction access. No request-controlled environment or incompatible-scope suspension is allowed.
+
+Oscar account restoration, real entity creation and recovery of its original receipt have been verified. Incremental testing found and fixed missing SEC context, Connector/J DATETIME conversion and misleading App dependency/file labels. Final material submission, operator approval and payment results are tracked in the App handoff oscar-closure-progress.md; incomplete stages remain explicitly incomplete.

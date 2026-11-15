@@ -50,6 +50,10 @@ import javax.sql.DataSource;
 @Component
 public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         ai.neargo.shop.spi.user.MerchantRatingPort {
+    private ai.neargo.shop.merchant.service.EntityRegistrationProjection registrationProjection;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void setRegistrationProjection(ai.neargo.shop.merchant.service.EntityRegistrationProjection projection){this.registrationProjection=projection;}
+    @Override public boolean managedRegistration(String tenant,String entity){return registrationProjection!=null&&registrationProjection.managed(tenant,entity);}
 
     private static final String ACTIVE = "ACTIVE";
     /** 履约能力（ADR-013）。值域与 mch_entity.fulfillment_reach 一致 */
@@ -110,7 +114,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
     /** Native fixtures default to MySQL; Spring selects the actual primary database's current-read lock. */
     private String defaultStoreCurrentLock = " FOR SHARE";
-
 
     public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
