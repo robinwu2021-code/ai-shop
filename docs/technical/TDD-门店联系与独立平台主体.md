@@ -1,6 +1,7 @@
 # TDD-门店联系与独立平台主体
 
 状态：已实现
+166发布：2026-11-15已部署V674及本轮接口；联系人/独立实体真联调通过，正式改绑正向被存量依赖阻断。详见[发布与验收](evidence/store-v40-20261115/README.md)。
 关联需求：docs/requirements/门店注册到进件-流程节点与代码对齐.md N1/N7；本轮用户确认单店联系资料、独立平台经营主体、正式门店重挂。
 创建：2026-11-15 · 最后更新：2026-11-15
 
@@ -98,3 +99,7 @@ POST /biz/entities {requestNo,name,legalForm?}；requestNo `[A-Za-z0-9_-]{1,64}`
 复核补齐（2026-11-15）：发现零门店独立主体创建后，GET /biz/entities仍依赖选店STORE_ADMIN，导致不能重新进入列表。改为ACCOUNT路由和个人USR校验，保留现有当前用户活跃owner过滤；MCH身份明确拒绝。PlatformEntityCreationFlowTest在创建后无选店GET列表断言实体号/storeCount=0，并以真实MCH会话断言403、另一USR列表为空。只补跑HTTP场景与路由测试，不重跑未受影响CONTACT、重挂或原生实体测试。
 
 复核补齐验证：`mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=PlatformEntityCreationFlowTest,StoreOpeningRoutePolicyTest -Dsurefire.failIfNoSpecifiedTests=false`：HTTP 2/2、路由1/1通过，均0失败/0错误/0跳过，`BUILD SUCCESS`；日志 `/tmp/v40-entity-list-targeted.log`。未重跑CONTACT、预检、原生创建测试，未部署或提交。
+
+## §7 本轮提交发布与真实联调
+
+后端代码03b86f393已推送，23文件对应§2模块；随后只补验收文档。166已发布V674及37项类/资源增量，API/OPS健康UP，临时DDL权限已收回。联系人与独立零门店实体真实验收通过；正式改绑成功执行仍待库存迁移围栏、支付六项历史结构及正式执行开关就绪。没有伪称改绑完成，没有全量测试。详见[发布与真实验收记录](evidence/store-v40-20261115/README.md)。前文“未提交/未部署”描述均为此前开发验证阶段历史记录。

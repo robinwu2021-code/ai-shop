@@ -1,0 +1,36 @@
+{
+  "environment": "166",
+  "principal": "U261106HF6ZK3RERQ",
+  "contact": {
+    "saved": true,
+    "conflictKeptInput": true,
+    "basicAndHoursUnchanged": true
+  },
+  "contactRestored": true,
+  "entity": {
+    "entityNo": "M261115B1H3EMFBG8",
+    "requestNo": "9cce049e-38d2-475e-9ef2-521a888d2e5d",
+    "storeCount": 0,
+    "originalReceiptRecovered": true,
+    "sameRequestReplayed": true,
+    "storeListUnchanged": true
+  },
+  "relink": {
+    "state": "BLOCKED_DEPENDENCIES",
+    "storeNo": "ST261111JX1JMM2F3Q",
+    "targetEntityNo": "M261114Y28YADQANZ",
+    "blockers": [
+      "INVENTORY_HISTORY_UNKNOWN",
+      "FINANCIAL_HISTORY_UNKNOWN",
+      "PAY_HISTORY_SCHEMA_ENT_GRANT",
+      "PAY_HISTORY_SCHEMA_ENT_INSTANCE",
+      "PAY_HISTORY_SCHEMA_ENT_ISSUE_BATCH",
+      "PAY_HISTORY_SCHEMA_PTS_USER_LEDGER",
+      "PAY_HISTORY_SCHEMA_PTS_GRANT_POSITION",
+      "PAY_HISTORY_SCHEMA_PTS_REDEEM_POSITION",
+      "RELINK_CONCURRENCY_UNAVAILABLE"
+    ],
+    "claimNotSubmitted": true,
+    "ownershipUnchanged": true
+  }
+}
