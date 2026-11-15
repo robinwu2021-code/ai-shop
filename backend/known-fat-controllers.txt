@@ -40,3 +40,8 @@ OpsPlatformConfigController
 # 独立进销存服务的库存投影接口（inventory-svc）：activate/apply/deactivate/query/receipt/validate-mappings
 # 是同一个「投影」资源的生命周期动作，按动词拆路径导致判据数成 6 个资源。2026-11-06 推 ai-shop-codex 时登记，拆不拆留给进销存会话
 StockProjectionController
+
+# One account-owned entity material aggregate: template/draft/files/submission/revisions/channel intents/command receipts.
+# All routes share the same entity ownership, trusted source mapping, profile version and recovery boundary.
+# Splitting these lifecycle actions solely by URL prefix would duplicate the security boundary; unrelated store/transaction resources remain outside.
+BizEntityProfileController
