@@ -1,0 +1,459 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Platform entity creation and store contacts",
+    "version": "2026-11-15"
+  },
+  "paths": {
+    "/biz/entities": {
+      "post": {
+        "operationId": "createPlatformEntity",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "requestNo",
+                        "entity",
+                        "replayed"
+                      ],
+                      "properties": {
+                        "requestNo": {
+                          "type": "string"
+                        },
+                        "entity": {
+                          "$ref": "#/components/schemas/EntityVO"
+                        },
+                        "replayed": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestNo",
+                  "name"
+                ],
+                "properties": {
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "legalForm": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 32,
+                    "description": "Canonical sys_legal_form or existing recognized alias; ENTERPRISE / INDIVIDUAL / NATURAL_PERSON. No market accepted."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Personal MERCHANT/USR account, no selected-store/entity headers required. Creates only MchEntity PENDING_LICENSE, verified=false, review=NONE, active owner and FREE plan; no stores, approval, source/channel or payment binding. Market inherited from locked normal account; hard owner quota retained. Same request and original body replays; altered body conflicts permanently."
+      },
+      "get": {
+        "operationId": "listOwnedPlatformEntities",
+        "description": "Personal MERCHANT/USR account only; no selected-store/entity headers required. Lists current active owner memberships, including entities with zero stores. MCH credentials are forbidden. Each result is enriched with current review state.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing envelope; code=0 success; MCH identity returns FORBIDDEN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EntityVO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/create-results/{requestNo}": {
+      "get": {
+        "operationId": "platformEntityCreationResult",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "requestNo",
+                        "entity",
+                        "replayed"
+                      ],
+                      "properties": {
+                        "requestNo": {
+                          "type": "string"
+                        },
+                        "entity": {
+                          "$ref": "#/components/schemas/EntityVO"
+                        },
+                        "replayed": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "requestNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "description": "Current active owner required; returns current entity with replayed=true. Unknown key is NOT_FOUND; a revoked owner is FORBIDDEN. Receipt never restores permission."
+      }
+    },
+    "/biz/store/settings": {
+      "get": {
+        "operationId": "storeSettingsWithContact",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "profile",
+                        "sectionVersions",
+                        "allowedActions"
+                      ],
+                      "properties": {
+                        "profile": {
+                          "type": "object",
+                          "properties": {
+                            "contactName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "contactPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "additionalProperties": true
+                        },
+                        "sectionVersions": {
+                          "type": "object",
+                          "required": [
+                            "BASIC",
+                            "HOURS",
+                            "CONTACT"
+                          ],
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store/settings/contact": {
+      "post": {
+        "operationId": "saveStoreContact",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "profile",
+                        "sectionVersions",
+                        "allowedActions"
+                      ],
+                      "properties": {
+                        "profile": {
+                          "type": "object",
+                          "properties": {
+                            "contactName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "contactPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "additionalProperties": true
+                        },
+                        "sectionVersions": {
+                          "type": "object",
+                          "required": [
+                            "BASIC",
+                            "HOURS",
+                            "CONTACT"
+                          ],
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedVersion",
+                  "contactName",
+                  "contactPhone"
+                ],
+                "properties": {
+                  "expectedVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "contactName": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "contactPhone": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "pattern": "^[0-9+().\\s-]*$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Selected-store STORE_ADMIN, identical permission to BASIC. Non-null contact fields allow clearing to empty and are trimmed. CONTACT content version checked atomically under ownership lock; BASIC/HOURS versions do not cover contacts. EDIT_CONTACT is advertised only to STORE_ADMIN."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "EntityVO": {
+        "type": "object",
+        "required": [
+          "entityNo",
+          "name",
+          "status",
+          "verified",
+          "storeCount",
+          "canManage",
+          "review"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "storeCount": {
+            "type": "integer"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "canManage": {
+            "type": "boolean"
+          },
+          "review": {
+            "type": "string"
+          },
+          "applyNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "type": "string"
+          },
+          "taxNo": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

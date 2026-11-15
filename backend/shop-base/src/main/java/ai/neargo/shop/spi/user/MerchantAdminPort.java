@@ -59,6 +59,9 @@ public interface MerchantAdminPort {
      */
     QuickStartResult quickStart(QuickStartCommand cmd);
 
+    /** Creates only a pending entity, owner membership and FREE plan; caller holds the personal account row lock. */
+    String createPendingEntity(String ownerUserNo, String name, String legalForm, String market);
+
     /**
      * 这个账号名下「待补证照」的占位主体（{@code PENDING_LICENSE}）。
      *

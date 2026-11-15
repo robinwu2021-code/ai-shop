@@ -1728,6 +1728,8 @@ CREATE TABLE IF NOT EXISTS mch_store
     entity_no VARCHAR(64) NOT NULL,
     announcement VARCHAR(255) DEFAULT NULL,
     open_hours VARCHAR(64) DEFAULT NULL,
+    contact_name VARCHAR(64) DEFAULT NULL,
+    contact_phone VARCHAR(32) DEFAULT NULL,
     address VARCHAR(255) DEFAULT NULL,
     featured TEXT DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
@@ -20446,3 +20448,13 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+
+CREATE TABLE IF NOT EXISTS mch_entity_creation_request (
+ tenant_no VARCHAR(32) NOT NULL,
+ user_no VARCHAR(64) NOT NULL,
+ request_no VARCHAR(64) NOT NULL,
+ intent_hash CHAR(64) NOT NULL,
+ entity_no VARCHAR(64) NULL,
+ created_at BIGINT NOT NULL,
+ PRIMARY KEY (tenant_no, user_no, request_no)
+);

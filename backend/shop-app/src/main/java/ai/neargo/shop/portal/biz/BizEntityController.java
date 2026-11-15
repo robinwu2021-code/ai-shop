@@ -5,6 +5,14 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
 import ai.neargo.shop.merchant.dto.EntityVO;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
+import ai.neargo.shop.merchant.service.EntityCreationService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import ai.neargo.shop.merchantbridge.EntityReviewAssembler;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,14 +36,43 @@ import java.util.List;
  */
 @Profile("api")
 @RestController
+@Validated
 public class BizEntityController {
 
     private final MerchantEntityService entityService;
     private final EntityReviewAssembler reviews;
+    private final EntityCreationService creations;
 
-    public BizEntityController(MerchantEntityService entityService, EntityReviewAssembler reviews) {
+    public BizEntityController(MerchantEntityService entityService, EntityReviewAssembler reviews,
+                               EntityCreationService creations) {
         this.entityService = entityService;
         this.reviews = reviews;
+        this.creations = creations;
+    }
+
+    public record CreateEntityReq(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo,
+                                  @NotBlank @Size(max=64) String name, @Size(max=32) String legalForm) {}
+
+    /** Creates a pending platform entity for the personal account without selecting or creating a store. */
+    @PostMapping("/biz/entities")
+    @PreAuthorize("@managementAccess.authenticated()")
+    public EntityCreationService.Result create(@Valid @RequestBody CreateEntityReq req) {
+        var user = BizAuthController.personalUser();
+        return enrich(user.userNo(), creations.create(user, req.requestNo(), req.name(), req.legalForm()));
+    }
+
+    /** Recovers the original request after a lost response, using current owner authorization. */
+    @GetMapping("/biz/entities/create-results/{requestNo}")
+    @PreAuthorize("@managementAccess.authenticated()")
+    public EntityCreationService.Result createResult(
+            @PathVariable @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo) {
+        var user = BizAuthController.personalUser();
+        return enrich(user.userNo(), creations.find(user, requestNo));
+    }
+
+    private EntityCreationService.Result enrich(String user, EntityCreationService.Result result) {
+        return new EntityCreationService.Result(result.requestNo(),
+                reviews.enrich(user, List.of(result.entity())).getFirst(), result.replayed());
     }
 
     /**
@@ -54,12 +91,13 @@ public class BizEntityController {
     }
 
     /**
-     * 我名下的证照列表（03 屏）。<b>只有老板能看</b> —— 列出的每一张他都能改资料、交执照。
+     * 个人账号名下的证照列表，不要求选店，包含尚无门店的主体；MCH员工身份不能读取。
      */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PreAuthorize("@perm.merchantAccount()")
     @GetMapping("/biz/entities")
     public List<EntityVO> myEntities() {
-        return reviews.enrich(SecurityUtils.currentUserNo(), entityService.myEntities(SecurityUtils.currentUserNo()));
+        var user = BizAuthController.personalUser();
+        return reviews.enrich(user.userNo(), entityService.myEntities(user.userNo()));
     }
 
     /**

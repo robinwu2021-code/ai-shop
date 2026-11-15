@@ -27,7 +27,8 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
     @Override public View load(String entity,String store) {
         var p=profiles.profile(entity,store);
         if(p.name()==null) throw BizException.of(ErrorCode.NOT_FOUND);
-        return new View(p,Map.of("BASIC",version(p.name(),p.address(),p.addressDetail()),"HOURS",version(p.openHours())));
+        return new View(p,Map.of("BASIC",version(p.name(),p.address(),p.addressDetail()),"HOURS",version(p.openHours()),
+            "CONTACT",version(p.contactName(),p.contactPhone())));
     }
     private static String version(String... fields) {
         // Length framing distinguishes null, empty and concatenation boundaries.
@@ -46,6 +47,14 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
             .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store)
             .set(MchStore::getName,name.trim()).set(MchStore::getAddress,address.trim()).set(MchStore::getAddressDetail,detail.trim())));
         mirror.changed(entity);
+        return load(entity,store);
+    }
+    @Override @Transactional
+    public View contact(String entity,String store,String expected,String name,String phone) {
+        requireVersion(entity,store,"CONTACT",expected);
+        DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
+            .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store)
+            .set(MchStore::getContactName,name.trim()).set(MchStore::getContactPhone,phone.trim())));
         return load(entity,store);
     }
     @Override @Transactional
