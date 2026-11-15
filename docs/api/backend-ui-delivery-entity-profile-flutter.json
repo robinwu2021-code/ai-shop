@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "These handlers are consumed by the separate ai-shop-bapp Flutter repository, not this repository's legacy Vue b-app. This registers the external consumer without changing the historical orphan baseline or weakening the scanner. Submission is verified; operator approval and payment closure remain pending.",
+  "plan": "docs/technical/TDD-商户App商户资料提交.md",
+  "contract": "docs/api/entity-profile-workspace.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerCommit": "1ca5866",
+  "consumerEvidence": "docs/handoff/v45-entity-workspace-20261115/oscar-closure-progress.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entities/{entityNo}/profile-template"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entities/{entityNo}/profile-draft"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/profile-draft"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/review-submissions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/revisions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/channel-requests"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entities/{entityNo}/commands/{requestNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/files"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/entities/create-results/{requestNo}"
+    }
+  ]
+}
