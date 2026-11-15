@@ -20,13 +20,12 @@ public class StoreOwnershipWritePortImpl implements StoreOwnershipWritePort {
                 "H2".equals(connection.getMetaData().getDatabaseProductName()) ? " FOR UPDATE" : " FOR SHARE");
     }
 
-    @Override
-    public void lockEntityAndCheck(String tenant, String entity) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive())
-            throw new IllegalStateException("Store ownership check requires the business write transaction");
-        var rows=jdbc.queryForList("SELECT ownership_change_no FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0"+shareLock,tenant,entity);
-        if (rows.size()!=1 || rows.getFirst().get("ownership_change_no")!=null)
-            throw BizException.of(ErrorCode.CONFLICT);
+    @Override public void lockEntityAndCheck(String tenant,String entity){lockEntity(tenant,entity,shareLock);}
+    @Override public void lockEntityExclusiveAndCheck(String tenant,String entity){lockEntity(tenant,entity," FOR UPDATE");}
+    private void lockEntity(String tenant,String entity,String lock) {
+        if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Store ownership check requires the business write transaction");
+        var rows=jdbc.queryForList("SELECT ownership_change_no FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0"+lock,tenant,entity);
+        if(rows.size()!=1||rows.getFirst().get("ownership_change_no")!=null)throw BizException.of(ErrorCode.CONFLICT);
     }
 
     @Override

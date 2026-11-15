@@ -31,6 +31,9 @@ import java.util.Set;
 
 @Service
 public class MerchantGovernServiceImpl implements MerchantGovernService {
+    private ai.neargo.shop.merchant.service.EntityRegistrationProjection registrationProjection;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void setRegistrationProjection(ai.neargo.shop.merchant.service.EntityRegistrationProjection projection){this.registrationProjection=projection;}
 
     private static final String ACTIVE = "ACTIVE";
     private static final String SUSPENDED = "SUSPENDED";
@@ -1086,6 +1089,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 || cmd.qualName() == null || cmd.qualName().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        String registrationTenant=null;
+        if(registrationProjection!=null){registrationTenant=require(merchantNo).getTenantNo();registrationProjection.lockLegacyWrite(registrationTenant,merchantNo);}
         MchQualification q;
         if (cmd.qualNo() == null || cmd.qualNo().isBlank()) {
             q = new MchQualification();
@@ -1111,6 +1116,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
         }
+        if(registrationProjection!=null&&("BUSINESS_LICENSE".equals(cmd.qualType())||"BUSINESS_LICENSE".equals(q.getQualType()))&&registrationProjection.managed(registrationTenant,merchantNo))throw BizException.of(ErrorCode.CONFLICT);
         q.setQualType(cmd.qualType());
         q.setQualName(cmd.qualName());
         q.setQualNumber(cmd.qualNumber());
@@ -1177,6 +1183,5 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         return new QualificationVO(q.getQualNo(), q.getEntityNo(), q.getQualType(),
                 q.getQualName(), q.getQualNumber(), q.getImageUrl(), q.getExpireAt(), q.getStatus());
     }
-
 
 }

@@ -20450,6 +20450,8 @@ VALUES
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
 
 CREATE TABLE IF NOT EXISTS mch_entity_creation_request (
+ initial_profile_hash CHAR(64),
+ profile_request_no VARCHAR(64),
  tenant_no VARCHAR(32) NOT NULL,
  user_no VARCHAR(64) NOT NULL,
  request_no VARCHAR(64) NOT NULL,
@@ -20457,4 +20459,11 @@ CREATE TABLE IF NOT EXISTS mch_entity_creation_request (
  entity_no VARCHAR(64) NULL,
  created_at BIGINT NOT NULL,
  PRIMARY KEY (tenant_no, user_no, request_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_entity_profile_projection (
+ tenant_no VARCHAR(32) NOT NULL, entity_no VARCHAR(64) NOT NULL, state VARCHAR(24) NOT NULL,
+ next_check_at BIGINT NOT NULL DEFAULT 0, observed_actor VARCHAR(64) NOT NULL, observed_request_no VARCHAR(64) NOT NULL, observation_generation BIGINT NOT NULL DEFAULT 1, approved_revision BIGINT NOT NULL DEFAULT 0,
+ approved_ref VARCHAR(80), facts_hash CHAR(64), registration_no VARCHAR(8), evidence_ref VARCHAR(128),
+ PRIMARY KEY(tenant_no,entity_no)
 );

@@ -66,7 +66,6 @@ public class OpsServiceImpl implements OpsService {
     @Autowired
     public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
 
-
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OpsServiceImpl.class);
 
@@ -407,7 +406,7 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MchEntityApply apply = requireApply(applyNo);
-        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityExclusiveAndCheck("MAIN", apply.getEntityNo());
 
         // 审核权限由既有运营入口校验；同人代填与审核按真实身份留痕。
         String auditor = SecurityUtils.currentUserNo();
@@ -443,6 +442,7 @@ public class OpsServiceImpl implements OpsService {
 
         // 走状态机而不是「是不是进行中」：后者放行了 APPROVED → APPROVED 之外的所有组合，
         // 而重复审批会重复建商家。状态机是唯一一处写着「什么能变成什么」的地方
+        if(approved&&apply.getEntityNo()!=null&&merchantAdminPort.managedRegistration(apply.getTenantNo(),apply.getEntityNo()))throw BizException.of(ErrorCode.CONFLICT);
         move(apply, approved ? MchEntityApply.APPROVED : MchEntityApply.REJECTED);
 
         LoginUser operator = SecurityUtils.requireUser();
@@ -536,6 +536,9 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public MerchantProfileSubmission submitMerchantProfile(SubmitApplyCommand cmd, String selectedEntityNo) {
+        ownershipWrites.lockEntityExclusiveAndCheck("MAIN",selectedEntityNo);
+        if(merchantAdminPort.managedRegistration("MAIN",selectedEntityNo))throw BizException.of(ErrorCode.CONFLICT);
+
         // Preserve owner/placeholder eligibility and the existing one-active-owner unique key.
         var master = masterDataService.snapshot();
         if (master.industries().stream().noneMatch(i -> i.industry().equals(cmd.industry()))
@@ -960,7 +963,6 @@ public class OpsServiceImpl implements OpsService {
         return apply == null ? null : toVO(apply);
     }
 
-
     @Override
     public java.util.Map<String, MerchantApplyVO> latestAppliesOf(String userNo, List<String> entityNos) {
         if (entityNos.isEmpty()) return java.util.Map.of();
@@ -971,7 +973,6 @@ public class OpsServiceImpl implements OpsService {
         for (var row : rows) latest.putIfAbsent(row.getEntityNo(), toVO(row));
         return latest;
     }
-
 
     // ---------------------------------------------------------------- 审计
 

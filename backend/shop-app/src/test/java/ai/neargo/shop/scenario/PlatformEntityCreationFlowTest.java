@@ -1,9 +1,10 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.support.TestLogin;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +15,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** The entity resource must be reachable before the account owns any store. */
 @SpringBootTest
@@ -37,7 +38,7 @@ class PlatformEntityCreationFlowTest {
     JsonNode create(String token,String key,String name) throws Exception {
         return json.readTree(mvc().perform(post("/biz/entities").header("Authorization","Bearer "+token)
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(
-                        java.util.Map.of("requestNo",key,"name",name,"legalForm","ENTERPRISE"))))
+                        Map.of("requestNo",key,"name",name,"legalForm","ENTERPRISE"))))
                 .andReturn().getResponse().getContentAsString());
     }
     @Test void personalAccountCreatesAndRecoversWithoutSelectedStore() throws Exception {
@@ -49,6 +50,14 @@ class PlatformEntityCreationFlowTest {
         assertThat(entity.path("verified").asBoolean()).isFalse();
         assertThat(entity.path("canManage").asBoolean()).isTrue();
         assertThat(entity.path("storeCount").asInt()).isZero();
+        var detail=json.readTree(mvc().perform(get("/biz/entity/"+no)
+                .header("Authorization","Bearer "+token)).andReturn().getResponse().getContentAsString());
+        assertThat(detail.path("code").asInt()).as(detail.toString()).isZero();
+        assertThat(detail.path("data").path("entity").path("entityNo").asString()).isEqualTo(no);
+        var forbidden=json.readTree(mvc().perform(get("/biz/entity/"+no)
+                .header("Authorization","Bearer "+login())).andReturn().getResponse().getContentAsString());
+        assertThat(forbidden.path("code").asInt()).as(forbidden.toString()).isEqualTo(10403);
+
         var listed=json.readTree(mvc().perform(get("/biz/entities").header("Authorization","Bearer "+token))
                 .andReturn().getResponse().getContentAsString());
         assertThat(listed.path("code").asInt()).as(listed.toString()).isZero();
