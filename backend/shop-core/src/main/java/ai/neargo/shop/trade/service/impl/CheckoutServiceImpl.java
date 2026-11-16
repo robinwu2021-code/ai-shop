@@ -366,7 +366,9 @@ public class CheckoutServiceImpl implements CheckoutService {
                     boolean placed = op.getOrderNo() != null;
                     String phase = placed ? "CREATED" : confirmation != null ? "CONFIRMED" : "QUOTED";
                     return new ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState(
-                            confirmation == null && !placed && "OPEN".equals(quote.getStatus()),
+                            confirmation == null && !placed && "OPEN".equals(quote.getStatus())
+                                    && quote.getExpiresAt() != null
+                                    && quote.getExpiresAt().toInstant(ZoneOffset.UTC).isAfter(clock.now()),
                             confirmation == null ? null : counterConfirmation(confirmation),
                             new ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterResult(
                                     phase, op.getOrderNo()));

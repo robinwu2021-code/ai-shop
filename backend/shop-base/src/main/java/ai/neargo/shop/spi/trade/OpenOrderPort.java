@@ -27,4 +27,12 @@ public interface OpenOrderPort {
      * 压店只停新单，这些单照常履约（套餐页文案「进行中的订单照常完成」说的就是它们）。
      */
     long countOpenByStore(String storeNo);
+
+    /**
+     * Unfinished after-sales cases of one store, including those on already completed orders —
+     * the merchant account deletion check needs both orders and after-sales in flight.
+     */
+    default long countOpenAfterSalesByStore(String storeNo) {
+        return 0;
+    }
 }

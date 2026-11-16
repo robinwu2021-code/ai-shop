@@ -719,7 +719,7 @@ B02事务失败补充：DB来源会话撤销仍与票据/新会话同事务；Me
 
 **偏差说明**
 
-- 注销前置检查的判据：`OPEN_ORDERS` = 名下门店 `OpenOrderPort#countOpenByStore` > 0；`PENDING_PAYOUT` = 名下主体在支付库 `stl_bill` 中 `PENDING` / `SPLITTING` 的账单；`PAID_PLAN_ACTIVE` = 名下门店存在 `state='ACTIVE'`、`cash_basis_minor>0`、`effective_end_at` 未到的方案期（未安装商城 schema 时视为无）；`BUYER_OPEN_ORDERS` 沿用 C 端口径。按 D14-B，门店本身不再是拦截项，`ACTIVE_STORES` 不出现。
+- 注销前置检查的判据（2026-11-16 review 后修正）：`OPEN_ORDERS` = 名下门店未终结的子订单 + 未终结的售后（含已完成订单上的售后，新增 `OpenOrderPort#countOpenAfterSalesByStore`）；`PENDING_PAYOUT` = 名下主体在支付库 `stl_bill` 中除 `PAID` / `SPLIT_CONFIRMED` / `REVERSED` / `OFFLINE_SETTLED` 以外的账单；`PAID_PLAN_ACTIVE` = 名下门店存在 `state IN (NORMAL, FROZEN)`、`cash_basis_minor>0`、`effective_end_at` 未到的方案期（库里没有商城表即未部署方案模块时视为无，其余 SQL 错误照常抛出）；`BUYER_OPEN_ORDERS` 沿用 C 端口径。按 D14-B，门店本身不再是拦截项，`ACTIVE_STORES` 不出现。
 - 「新号已等于当前号」（10458）与「新邮箱已等于当前邮箱」（10475）提前到验码之前判：同一地址不可能同时有两条有效验证码，放在验码后永远到不了。
 - D6 人档合并只落 `usr_person_merge_log`，被并入的线索档上的会员关系不搬迁（与既有 `merge` 一致），记作后续项。
 
@@ -733,4 +733,6 @@ B02事务失败补充：DB来源会话撤销仍与票据/新会话同事务；Me
 | AC19 | `#blockedDeregistration` | 已通过本地 H2 验证 |
 | 回归 | `DeregisterFlowTest`、`BizIdentityFlowTest`、`BizAuthEmailLoginTest`、`ArchitectureTest`、`BizEndpointPermTest`、`SchemaDriftTest`、`BackendI18nParityTest` | 已通过本地验证 |
 
-未覆盖：有门店的店主注销（门店置 READONLY）、D5 别家员工行随号迁移、AC20 员工会话写操作回 10403 尚无自动化用例，联调时在 166 上验证。
+Review 修正（2026-11-16）：换手机时同主体任一状态的行占用新号即 10409（唯一键含停用行），同主体两行同时迁移也 10409；人档冲突统一回 10409；注销与换号只处理未关联账号或关联本人的员工行；吊销其他会话失败只记日志；柜台报价 `canAccept` 同时要求报价未过期。新增用例 `#phoneChangeIntoDisabledStaffPhoneIsConflict`、`#staffRowsFollowPhoneChange`、`#ownerDeregistrationFreezesStoresAndSparesOthers`、`#staffSessionIsReadOnly`，已通过本地 H2 验证。
+
+仍未覆盖：`PENDING_PAYOUT` / `PAID_PLAN_ACTIVE` 拦截的正向用例（H2 无商城表）；吊销原因仍用 `DISABLED`；被并入线索档上的会员关系不搬迁。

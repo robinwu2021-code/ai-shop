@@ -50,7 +50,7 @@ public class MerchantDeregisterChecks {
         List<String> busy = new ArrayList<>();
         long open = 0;
         for (String store : stores) {
-            long n = openOrders.countOpenByStore(store);
+            long n = openOrders.countOpenByStore(store) + openOrders.countOpenAfterSalesByStore(store);
             if (n > 0) {
                 busy.add(store);
                 open += n;
@@ -74,22 +74,43 @@ public class MerchantDeregisterChecks {
         if (entities.isEmpty() || ds == null) return 0;
         Long n = new NamedParameterJdbcTemplate(ds).queryForObject(
                 "SELECT COUNT(*) FROM stl_bill WHERE deleted = 0 AND entity_no IN (:e)"
-                        + " AND status IN ('PENDING','SPLITTING')",
+                        // Everything but the settled end states: self-operated bills awaiting payment
+                        // (PENDING_RECON / CONFIRMED), splits not yet confirmed, retries and manual cases.
+                        + " AND status NOT IN ('PAID','SPLIT_CONFIRMED','REVERSED','OFFLINE_SETTLED')",
                 new MapSqlParameterSource("e", entities), Long.class);
         return n == null ? 0 : n;
     }
 
+    private volatile Boolean commerceInstalled;
+
+    /**
+     * The commerce schema is migrated by its own runner and is absent where the plan module is not
+     * deployed; such a deployment sells no plans. Any other SQL failure propagates.
+     */
+    private boolean commerceInstalled() {
+        Boolean known = commerceInstalled;
+        if (known != null) return known;
+        boolean found = Boolean.TRUE.equals(platform.getJdbcTemplate().execute(
+                (org.springframework.jdbc.core.ConnectionCallback<Boolean>) c -> {
+                    var meta = c.getMetaData();
+                    for (String name : new String[] {"mch_subscription_period", "MCH_SUBSCRIPTION_PERIOD"}) {
+                        try (var rs = meta.getTables(c.getCatalog(), null, name, new String[] {"TABLE"})) {
+                            if (rs.next()) return true;
+                        }
+                    }
+                    return false;
+                }));
+        commerceInstalled = found;
+        return found;
+    }
+
     /** Owned stores with a cash-paid plan period that has not ended. */
     private List<String> paidPlanStores(List<String> stores) {
-        if (stores.isEmpty()) return List.of();
-        try {
-            return platform.queryForList(
+        if (stores.isEmpty() || !commerceInstalled()) return List.of();
+        // NORMAL and FROZEN periods are still owed time; CONVERTED / REFUNDED / REVOKED are settled.
+        return platform.queryForList(
                 "SELECT DISTINCT store_no FROM mch_subscription_period WHERE deleted = 0 AND store_no IN (:s)"
-                        + " AND state = 'ACTIVE' AND cash_basis_minor > 0 AND effective_end_at > :now",
-                    new MapSqlParameterSource("s", stores).addValue("now", System.currentTimeMillis()), String.class);
-        } catch (org.springframework.jdbc.BadSqlGrammarException commerceNotInstalled) {
-            // The commerce schema is migrated by its own runner; a deployment without it sells no plans.
-            return List.of();
-        }
+                        + " AND state IN ('NORMAL','FROZEN') AND cash_basis_minor > 0 AND effective_end_at > :now",
+                new MapSqlParameterSource("s", stores).addValue("now", System.currentTimeMillis()), String.class);
     }
 }

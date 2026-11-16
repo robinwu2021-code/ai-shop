@@ -525,11 +525,20 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                         .eq(MchAccount::getLoginPhone, oldPhone).eq(MchAccount::getIsOwner, false)
                         .and(w -> w.isNull(MchAccount::getUserNo).or().eq(MchAccount::getUserNo, userNo))));
         List<MchAccount> moving = new java.util.ArrayList<>(owners);
-        moving.addAll(staff);
+        for (MchAccount a : staff) {
+            if (moving.stream().noneMatch(m -> m.getMchAccountNo().equals(a.getMchAccountNo()))) moving.add(a);
+        }
+        /*
+         * uk_mch_account_entity_phone (entity_no, login_phone) covers disabled rows as well, so any row of
+         * the entity already on the new phone is a conflict — and two moving rows of one entity would
+         * collide with each other. Both are refused as 10409 before anything is written.
+         */
+        java.util.Set<String> entities = new java.util.HashSet<>();
         for (MchAccount a : moving) {
+            if (!entities.add(a.getEntityNo())) throw BizException.of(ErrorCode.CONFLICT);
             boolean taken = DataScopeContext.executeWithoutScope(() -> staffMapper.selectCount(
                     Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getEntityNo, a.getEntityNo())
-                            .eq(MchAccount::getLoginPhone, newPhone).eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                            .eq(MchAccount::getLoginPhone, newPhone)
                             .ne(MchAccount::getMchAccountNo, a.getMchAccountNo()))) > 0;
             if (taken) throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -578,7 +587,13 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 .and(w -> {
                     if (hasUser) w.eq(MchAccount::getUserNo, userNo);
                     if (hasUser && hasPhone) w.or();
-                    if (hasPhone) w.eq(MchAccount::getLoginPhone, phone);
+                    // A phone match counts only when the row is not linked to someone else's account:
+                    // a recycled number must not take another person's staff role with it.
+                    if (hasPhone) w.nested(n -> {
+                        n.eq(MchAccount::getLoginPhone, phone);
+                        if (hasUser) n.and(u -> u.isNull(MchAccount::getUserNo).or().eq(MchAccount::getUserNo, userNo));
+                        else n.isNull(MchAccount::getUserNo);
+                    });
                 })));
     }
 

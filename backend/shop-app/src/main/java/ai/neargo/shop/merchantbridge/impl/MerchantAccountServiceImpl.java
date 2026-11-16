@@ -18,6 +18,8 @@ import ai.neargo.shop.user.service.AccountCredentialService.Credentials;
 import ai.neargo.shop.user.service.AccountCredentialService.VerifyBy;
 import ai.neargo.shop.user.service.UserService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -25,6 +27,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 public class MerchantAccountServiceImpl implements MerchantAccountService {
+
+    private static final Logger log = LoggerFactory.getLogger(MerchantAccountServiceImpl.class);
 
     private final AccountCredentialService credentials;
     private final MerchantStaffService staff;
@@ -113,8 +117,13 @@ public class MerchantAccountServiceImpl implements MerchantAccountService {
         Runnable revoke = () -> {
             // Single-pool deployments (memory / ehcache / redis) return the same store for both realms,
             // so the consumer pool must keep the current token too.
-            tokens.of(Realm.MERCHANT).revokeUserExcept(userNo, keepToken);
-            tokens.of(Realm.CONSUMER).revokeUserExcept(userNo, keepToken);
+            try {
+                tokens.of(Realm.MERCHANT).revokeUserExcept(userNo, keepToken);
+                tokens.of(Realm.CONSUMER).revokeUserExcept(userNo, keepToken);
+            } catch (RuntimeException failure) {
+                // The credential change is committed; a failed revocation must not report it as failed.
+                log.error("[account] revoking other sessions failed user={}", userNo, failure);
+            }
         };
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

@@ -288,14 +288,7 @@ public class DbTokenStore implements TokenStore {
         row.ifPresent(r -> audit(LoginEvent.LOGOUT, r.userNo(), null, true));
     }
 
-    /**
-     * 踢掉某个主体的全部会话。一条 UPDATE，**跨实例生效**。
-     *
-     * <p>本地的即时性靠**复用撤销轮询**：写完库立刻在本进程跑一次
-     * {@link #pollRevocations()}，于是「本实例立刻、其它实例最长一个轮询周期」——
-     * 一个机制两处用，不必再维护一份「user_no → 本地缓存里的哪些令牌」的反向索引，
-     * 而那种索引正是最容易与真实状态漂移的东西。
-     */
+    /** Revokes every session of the subject but {@code keepToken}; same propagation as {@link #revokeUser}. */
     @Override
     public int revokeUserExcept(String userNo, String keepToken) {
         if (userNo == null || userNo.isBlank() || keepToken == null) {
@@ -311,6 +304,14 @@ public class DbTokenStore implements TokenStore {
         return n;
     }
 
+    /**
+     * 踢掉某个主体的全部会话。一条 UPDATE，**跨实例生效**。
+     *
+     * <p>本地的即时性靠**复用撤销轮询**：写完库立刻在本进程跑一次
+     * {@link #pollRevocations()}，于是「本实例立刻、其它实例最长一个轮询周期」——
+     * 一个机制两处用，不必再维护一份「user_no → 本地缓存里的哪些令牌」的反向索引，
+     * 而那种索引正是最容易与真实状态漂移的东西。
+     */
     @Override
     public int revokeUser(String userNo) {
         int n = sessions.revokeByUser(userNo, RevokeReason.DISABLED, LocalDateTime.now(clock));

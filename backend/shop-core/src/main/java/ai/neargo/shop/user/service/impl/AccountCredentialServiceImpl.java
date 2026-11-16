@@ -109,7 +109,13 @@ public class AccountCredentialServiceImpl implements AccountCredentialService {
         upsertIdentity(userNo, IdentityType.PHONE, newPhone);
         users.update(null, Wrappers.<UsrAccount>lambdaUpdate()
                 .eq(UsrAccount::getUserNo, userNo).set(UsrAccount::getPhone, newPhone));
-        persons.changePhone(userNo, newPhone);
+        try {
+            persons.changePhone(userNo, newPhone);
+        } catch (BizException taken) {
+            // The contract reports every "this phone belongs to someone else" case as 10409.
+            if (taken.errorCode() == ErrorCode.PERSON_PHONE_TAKEN) throw BizException.of(ErrorCode.CONFLICT);
+            throw taken;
+        }
         log(userNo, PHONE_CHANGE, maskPhone(before.phone()), maskPhone(newPhone), clientIp);
         return before.phone();
     }
