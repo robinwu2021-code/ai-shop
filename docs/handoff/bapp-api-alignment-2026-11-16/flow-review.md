@@ -32,6 +32,7 @@
 | 5 | App 仍调第一代进件 | App `onboarding_api.dart:919-966` → `BizMerchantController:829-917`；`MerchantPaymentServiceImpl:498-513` 只有 Stub/微信/支付宝 | 台湾商户看到一个永远完成不了的进件入口 | App 改走 `/biz/pay/v2` + pay-service；后端旧端点标废弃 | 低 |
 | 6 | 统一登录不绑人档 | `AuthServiceImpl.enterVerified:347`、`LoginIdentityServiceImpl` 不调 `bindOnLogin`（旧 login :419 调） | 走统一登录注册的店主没有人档，会员关系挂不上 | `enterVerified` 补 `bindOnLogin`（失败不阻塞） | 低 |
 | 7 | 主体激活两条路缺同一把锁 | 运营审核 `activate` 未走 `lockLegacyWrite/managed`（`MerchantGovernServiceImpl:1094/1120` 才有） | 运营审核与 V46 投影可能并发写同一主体 | 运营路径加同样的锁 | 中 |
+| 8 | 建店能力位恒为 true（App 会话 2026-11-16 反馈） | `StoreCreationAccessService.Access` 三参构造把 `entityNameSupported`、`storeOpeningSupported` 写死为 true | 功能关闭时仍报支持，App 分不清该走 store-openings 还是 quick-start（关闭时 `canQuickStart=false` 却 `storeOpeningSupported=true`） | 按真实开关取值；去掉三参构造前先确认所有调用方 | 低 |
 
 ---
 
