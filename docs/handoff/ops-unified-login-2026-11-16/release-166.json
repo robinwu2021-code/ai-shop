@@ -1,0 +1,52 @@
+{
+  "releaseId": "ops-logout-20261116 + unified-login-20261116-b12ca8cc7",
+  "status": "DEPLOYED_PUBLIC_VERIFIED_PARTIAL",
+  "deployedAt": "2026-11-16T14:38+08:00 (backend) / 14:4x+08:00 (front end)",
+  "environment": "UME166",
+  "scope": "ai-shop-ops backend class overlay (logout endpoint) + /ops-shop static front end. /oms (v46 near-pay build) NOT changed; ai-shop-api container not restarted; database untouched.",
+  "backend": {
+    "method": "Class overlay onto the running v46-entity-closure jar (same approach the v46 releases used)",
+    "precheck": "Compiled origin/feat/entity-v46 ac1cea9cb: OpsPlatformController*, OpsService, SecurityConfig byte-identical to the running jar; OpsServiceImpl differs, so it was left untouched and the revoke lives in the controller",
+    "source": "ai-shop branch hotfix/ops-logout-v46 commit 95e060dad (on top of ac1cea9cb)",
+    "tests": "OpsLogoutFlowTest 3/3, OpsEndpointPermTest 5/5 on the hotfix branch",
+    "changedEntries": [
+      "BOOT-INF/classes/ai/neargo/shop/config/SecurityConfig.class",
+      "BOOT-INF/lib/shop-core-0.1.0-SNAPSHOT.jar (16 OpsPlatformController*.class entries; nested jar kept STORED)"
+    ],
+    "jarSha256Prefix": {
+      "before": "4623d27652a30d6b",
+      "after": "3f697b8647f005d8"
+    },
+    "backup": "/home/ume/ops-logout-20261116/shop-app.jar.before-20261116-143834",
+    "restart": "docker restart ai-shop-ops only; healthy after 75s; ai-shop-api keeps its open handle to the old jar until its next restart (compatible)",
+    "startupErrors": "only the pre-existing 'shop.ship.track-key not configured' message"
+  },
+  "frontend": {
+    "source": "main b12ca8cc7",
+    "releaseDir": "/data/www/ai-shop-ops/releases/unified-login-20261116-b12ca8cc7",
+    "files": 343,
+    "previousRelease": "/data/www/ai-shop-ops/releases/brand-login-20261116-b88ea3a41"
+  },
+  "publicVerification": {
+    "domains": [
+      "https://nearshop.umeshop.ai",
+      "https://twpay.umeshop.ai"
+    ],
+    "pagesByteIdentical": "10/10",
+    "assetsPerDomain": "26/26",
+    "endpoints": {
+      "POST /ops-shop/ops/auth/logout (no token)": 200,
+      "POST /ops-shop/ops/auth/logout (bogus token)": 200,
+      "GET /ops-shop/ops/auth/me (no token)": 401,
+      "POST /ops-shop/ops/auth/login (bad credentials)": "rejected as before"
+    },
+    "browser": "Live login page shows 「登录后进入 支付运营」 for returnTo=/oms/"
+  },
+  "notYetLive": "near-pay /oms unified-login build (232b6ac2): /oms still runs the v46 near-pay build with its own login; source branch of that build unknown",
+  "interimBehaviour": "Old /oms still finds the session through ai-shop's shop-ops-auth cache. Logging out in old /oms does not revoke the token or clear neargo-ops-auth, so /ops-shop may stay signed in until the token expires.",
+  "authenticatedBrowserCheck": "NOT_DONE",
+  "rollback": {
+    "frontend": "ssh -F ~/work/env/ume/ssh.config ume-app166 'cd /data/www/ai-shop-ops && sudo ln -s /data/www/ai-shop-ops/releases/brand-login-20261116-b88ea3a41 current.new && sudo mv -T current.new current'",
+    "backend": "sudo cp /home/ume/ops-logout-20261116/shop-app.jar.before-20261116-143834 /data0/app/ai-shop/shop-app.jar.new && sudo mv -f /data0/app/ai-shop/shop-app.jar.new /data0/app/ai-shop/shop-app.jar && sudo docker restart ai-shop-ops"
+  }
+}

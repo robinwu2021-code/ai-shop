@@ -1,6 +1,6 @@
 # TDD · 运营端统一登录与系统切换（ai-shop × near-pay）
 
-> 状态：**已实现、已合入两边主线，未上线**（方案 2026-11-16 评审通过；ai-shop `main` `55e1b472a`、near-pay `codex/near-pay-migration` `232b6ac2`；166 为 v46 版本、发布暂缓，见[交接](../../../handoff/ops-unified-login-2026-11-16/README.md)）· 档位 2：跨两个仓库，新增 ai-shop 服务端接口（退出吊销）与前端配置项。
+> 状态：**部分上线**（2026-11-16）：ai-shop 后端退出接口与 `/ops-shop` 前端已发布 UME166；near-pay `/oms` 未切换，见[交接与发布记录](../../../handoff/ops-unified-login-2026-11-16/README.md)。档位 2：跨两个仓库，新增 ai-shop 服务端接口（退出吊销）与前端配置项。
 > 前序：near-pay `docs/delivery/31-运营端统一登录/技术方案.md`（v0.2，2026-11-06）。本文在它的基础上标出**已经做了什么**，补齐剩下的部分，并加上两端互相切换的入口。
 
 ## 一、定位（L1）

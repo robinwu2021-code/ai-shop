@@ -811,7 +811,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [TDD · 运营端 · 功能开关与菜单状态](./design/ops/TDD-ops-功能开关与菜单状态.md) | **已实现**（AC1/AC2 单测 + AC3/AC4 闸门；AC2 现场验过）· 创建 2026-09-09 |
 | [TDD · 运营端 · 品牌名称配置与登录页整洁化](./design/ops/TDD-ops-品牌名称与登录页.md) | **已实现并发布 UME166**（2026-11-16，发布 `brand-login-20261116-b88ea3a41`，发布记录）· 档位 1：新增配 |
 | [种子商户：入驻、NearPay 与测试支付闭环](./design/ops/TDD-ops-种子商户法币闭环验收.md) | 已实现；部署与验收证据见本文各次发布记录。 |
-| [TDD · 运营端统一登录与系统切换（ai-shop × near-pay）](./design/ops/TDD-ops-统一登录与系统切换.md) | **已实现、已合入两边主线，未上线**（方案 2026-11-16 评审通过；ai-shop `main` `55e1b472a`、near-pay `code |
+| [TDD · 运营端统一登录与系统切换（ai-shop × near-pay）](./design/ops/TDD-ops-统一登录与系统切换.md) | **部分上线**（2026-11-16）：ai-shop 后端退出接口与 `/ops-shop` 前端已发布 UME166；near-pay `/oms` 未切 |
 | [UI 推送阻塞修复 · 2026-10-28](./design/reviews/b-app-ui/2026-10-28-push-repairs.md) | 修复已实现并通过提交前检查；正式远端推送仍受完整 pre-push 门禁约束，结果以 Git 远端分支及本地门禁回执为准。 |
 | [B 端 UI 本地提交范围 · 2026-10-26](./design/reviews/b-app-ui/commit-scope.md) | 历史提交范围记录；后续修复与推送检查以 push-checks.md 为准。 |
 | [B 端 UI 推送检查 · 2026-10-26](./design/reviews/b-app-ui/push-checks.md) | 2026-10-26的历史检查记录；2026-10-28已获授权继续修复跨模块阻塞，修复与验证见 2026-10-28记录 及 Git 日志。 |
