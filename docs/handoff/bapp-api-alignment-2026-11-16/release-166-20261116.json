@@ -56,7 +56,7 @@
     "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-tw2-20261116 (v2 field labels)",
     "aiShop": "main f5ce0afa4 (feat/entity-validation-details). Running jar had meanwhile become 65bca4fd7c36… from another session's sms-content release (Mitake SMS, V677/V678, not on main), so instead of a full jar this is a class overlay on top of it: EntityProfileRemoteCalls, svc-client ServiceCallException/ServiceClients, shop-base BizDetailedException (new), shop-base-auth GlobalExceptionHandler; method-level diff showed only these changes. Result 6d261deb9db8c16a2a6ddc0db1d3643d7a255aa3522390417ed44cef517d8b2d, inode kept, both containers UP after 140 s, no new ERROR lines",
     "rollback": "/home/ume/entity-tw2-20261116/{pay-before-tw2.jar,shop-before-tw2.jar} written back in place; oms symlink back to entity-material-recognition-20261116",
-    "note": "the next full ai-shop jar built from main must also contain the sms-content changes, or it will drop them",
+    "note": "Mitake SMS (origin/codex/ai-shop-codex, V677) merged into main a91713ad3. The later sms-content release (V678__notify_log_content.sql + SendResult, SmsPort$SmsException, SysNotifyLog, NotifyLogWriter, NotifyLoggingSmsPort, MitakeSmsGateway; /home/ume/sms-content-20261116) is in no pushed branch; a full jar from main would still drop it and must wait until its author pushes it",
     "notVerified": "logged-in App save with TW_ENTITY_2 fields and the {field, reason} envelope on 166"
   }
 }
