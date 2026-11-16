@@ -818,7 +818,13 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.P
 Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-新增 4 项：`channelMaterialsForwardedAndBounded`、`contactUsesTheOwnerAccountAndIsOwnerOnly`、`revisionDiscardIsForwardedForTheOwner`、`previewIsOwnerOnlyAndNotCached`。`BackendI18nParityTest` 通过。`ArchitectureTest.everyScheduledMethodMustBeLocked` 失败于本分支既有的 `EntityRegistrationProjectionCoordinator#run`（无分布式锁），与本节改动无关，单独处理。`scripts/check-app-backend-orphan.py` 通过。
+新增 4 项：`channelMaterialsForwardedAndBounded`、`contactUsesTheOwnerAccountAndIsOwnerOnly`、`revisionDiscardIsForwardedForTheOwner`、`previewIsOwnerOnlyAndNotCached`。`BackendI18nParityTest` 通过。`scripts/check-app-backend-orphan.py` 通过。账号级实体资料 10 个路径登记进 `BizEndpointPermTest.FOUNDATION_READS`（`@perm.merchantAccount()`），`commerceDecisionsAreEnforced` 通过。
+
+pre-push 全量（MySQL 9.7 本机，4594 项／36 模块）：5 项失败均在分支基线 `409c8f41f` 上同样失败，与本节无关，留给对应负责人：
+- `ArchitectureTest.everyScheduledMethodMustBeLocked`：`EntityRegistrationProjectionCoordinator#run` 无分布式锁
+- `BizEndpointPermTest.everyBizEndpointHasADecision`：剩 `/biz/entities/create-results/{requestNo}`、`/biz/store/settings/contact` 未定权限
+- `BizEndpointPermTest.decisionsAreActuallyEnforced`：`BizEntityController` 的 `/biz/entities`、`/biz/entity/{entityNo}` 表里是 `STORE_ADMIN`，代码是 `merchantAccount`
+- `CommerceMerchantScopeFlowTest.legacyOwnerCannotReachNewMerchantThroughSameNumberStaffAccount[2]`、`CommerceStoreCreationFlowTest.nativeQuickStartAndOperatorApprovalCommitHostAndCommerceTogether`（基线连跑两次均失败）
 
 ### §6 设计 → 实现
 
