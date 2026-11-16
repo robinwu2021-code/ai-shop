@@ -1,6 +1,6 @@
 # 经营实体证件识别（App 对接）
 
-状态：已实现（near-pay 原文件读取接口待对方实现）。档位1。依据：App 合同 `ai-shop-bapp-entity/docs/api/经营实体证件识别接口.md`（经营实体资料全量方案 §14）及 [进件材料OpenAI识别](TDD-进件材料OpenAI识别.md)。
+状态：已实现。near-pay 原文件读取接口已在 near-pay `feat/entity-material-recognition` 实现（2026-11-16，未部署）；部署前已上传文件识别在联调环境仍回依赖不可用。档位1。依据：App 合同 `ai-shop-bapp-entity/docs/api/经营实体证件识别接口.md`（经营实体资料全量方案 §14）及 [进件材料OpenAI识别](TDD-进件材料OpenAI识别.md)。
 
 ## §0 需求与验收
 
@@ -19,7 +19,7 @@
 - `POST /biz/entities/{entity}/recognitions`：JSON `{requestNo, fileRef, docType}`；`fileRef` 形如 `file:entity-profile/<32位hex>`；先按 `MerchantEntityService.detail` 核本人主体。
 - 返回 `{docType, recognized, fields, lowConfidence}`，`Cache-Control: no-store`。`confidence < 0.8` 时全部返回字段列入 `lowConfidence`。
 - 实例地区须为 TW（同 OPS 识别）；服务商、密钥、开关沿用 `shop.ai.vision.*`，无新配置。控制器随 `shop.pay.entity-profiles.enabled` 启用。
-- **near-pay 新内部接口（待实现）**：`GET /internal/pay/v2/entity-profiles/{entity}/files/{file}/content?sourceScope&actorRef`，返回原文件字节与 Content-Type；文件不属于该实体/来源回 404。ai-shop 侧 `PayEntityProfileApi#content` 已按此调用。
+- **near-pay 内部接口（已实现，见 near-pay TDD-支付服务-I4「实体资料原件读取与审核识别」）**：`GET /internal/pay/v2/entity-profiles/{entity}/files/{file}/content?sourceScope&actorRef`，返回原文件字节与 Content-Type；文件不属于该实体/来源回 404。ai-shop 侧 `PayEntityProfileApi#content` 已按此调用。
 
 docType 与端口类型：
 
