@@ -45,7 +45,7 @@ const norm = (p) => p.replace(/\$\{[^}]*\}/g, "*").replace(/\{[^}]*\}/g, "*").re
  */
 const EXTRA_CALL_SITES = ["ops-web/lib/stream.ts"];
 
-function calledPaths() {
+export function calledPaths() {
   const out = new Set();
   const files = readdirSync(HTTP_DIR).map((f) => join(HTTP_DIR, f));
   for (const rel of EXTRA_CALL_SITES) {
@@ -55,7 +55,7 @@ function calledPaths() {
   for (const f of files) {
     const src = readFileSync(f, "utf8");
     // 模板串里带 ${} 的也要收 —— 它们正是带路径参数的那些
-    for (const m of src.matchAll(/["`](\/ops\/[^"`\n]*)/g)) out.add(norm(m[1]));
+    for (const m of src.matchAll(/["`](?:\$\{[^}\n]+\})?(\/ops\/[^"`\n]*)/g)) out.add(norm(m[1]));
   }
   return out;
 }
@@ -63,7 +63,9 @@ function calledPaths() {
 // Source-authority reads consumed by the independently deployed PAY service, not an OPS page.
 // AiShopBizIdentityClient.operatorEntity forwards the authenticated STAFF session to this exact GET.
 // Covered by CustomerReportingMysqlTest and the actual two-main browser recovery acceptance.
-const SERVICE_CONSUMERS = new Set(["GET /ops/customers/operating-entities/*"]);
+// Independent PAY OPS frontend: ops-web/lib/onboarding/recognition.ts, DocumentRecognition in the material form.
+// Host permission and Taiwan scope remain enforced by OpsOnboardingDocumentController.
+const SERVICE_CONSUMERS = new Set(["GET /ops/customers/operating-entities/*", "POST /ops/onboarding-documents/recognize"]);
 export const hasServiceConsumer = ({method, path}) => SERVICE_CONSUMERS.has(`${method} ${norm(path)}`);
 
 export function orphans() {

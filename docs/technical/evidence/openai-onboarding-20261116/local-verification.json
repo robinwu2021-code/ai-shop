@@ -1,0 +1,58 @@
+{
+  "scope": "OpenAI adapter and Taiwan OPS recognition backend; frontend integration and deployment incomplete",
+  "localTests": [
+    {
+      "suite": "ai.neargo.shop.channel.ai.port.OpenAiCertVisionGatewayTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "ai.neargo.shop.portal.ops.OpsOnboardingDocumentControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "liveProbe": {
+    "endpoint": "https://api.openai.com/v1/responses",
+    "model": "gpt-4.1-mini",
+    "syntheticOnly": true,
+    "registrationPng": true,
+    "registrationPdf": true,
+    "identityFrontPng": true,
+    "identityFrontPdf": true,
+    "bankProofPng": true,
+    "bankProofPdf": true,
+    "paidInCapitalDistinguishedFromTotalPng": true,
+    "paidInCapitalDistinguishedFromTotalPdf": true,
+    "result": "PASS"
+  },
+  "authenticationVerification": {
+    "endpoint": "https://api.openai.com/v1/models/gpt-4.1-mini",
+    "http": 200,
+    "model": "gpt-4.1-mini",
+    "envReadVerified": true,
+    "credentialsRecorded": false
+  },
+  "credentialSyncPerformed": true,
+  "deploymentPerformed": false,
+  "pending": "Main checks, deployment and authenticated OPS verification",
+  "credentialSync": {
+    "status": "SYNCED",
+    "path": "/data0/app/ai-shop/ai-shop.env",
+    "key": "SHOP_AI_VISION_OPENAI_API_KEY",
+    "valueMatchesLocal": true,
+    "otherVariablesPreserved": true,
+    "servicesRestarted": false,
+    "keyPrinted": false
+  },
+  "frontendTests": {
+    "passed": 15,
+    "typecheck": true,
+    "compositeLiveBuild": true
+  },
+  "independentReview": "Three findings fixed; follow-up no blockers"
+}

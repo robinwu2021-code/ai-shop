@@ -1,5 +1,8 @@
 package ai.neargo.shop.spi.product;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 证照识别：上传营业执照 / 身份证，自动读出结构化字段。
  *
@@ -39,6 +42,25 @@ public interface CertVisionPort {
      * @return null = 认不出来 / 模型不可达
      */
     Cert recognize(byte[] imageBytes, String contentType);
+
+    /** 原有服务商不自动获得进件文档能力；不支持时仍由人工填写。 */
+    default boolean supportsDocuments() { return false; }
+
+    default Document recognizeDocument(byte[] bytes, String contentType, DocumentType type) { return null; }
+
+    enum DocumentType {
+        REGISTRATION(List.of("name", "taxNo", "registeredAddress", "incorporationDate", "capitalAmount", "representativeName")),
+        OWNER_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType", "expiryDate")),
+        OWNER_BACK(List.of("identityAddress", "expiryDate")),
+        BANK_COVER(List.of("bankCode", "branchCode", "accountName", "bankAccount"));
+
+        private final List<String> fields;
+        DocumentType(List<String> fields) { this.fields = fields; }
+        public List<String> fields() { return fields; }
+    }
+
+    /** 只供当前上传者确认的临时建议，不是审核事实或附件凭证。 */
+    record Document(DocumentType documentType, Map<String, String> fields, double confidence) { }
 
     /**
      * 认出来的字段。**认不出的一律 null，不猜** ——

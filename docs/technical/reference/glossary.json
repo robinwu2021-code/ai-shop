@@ -45078,6 +45078,17 @@
         "module": "shop-base"
       },
       {
+        "name": "DocumentType",
+        "values": [
+          "REGISTRATION",
+          "OWNER_FRONT",
+          "OWNER_BACK",
+          "BANK_COVER"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "EndScope",
         "values": [
           "STORE",

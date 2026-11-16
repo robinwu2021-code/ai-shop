@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -41,6 +42,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "shop.ai.vision.provider", havingValue = "compatible", matchIfMissing = true)
 public class CertVisionGateway implements CertVisionPort {
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -49,7 +51,7 @@ public class CertVisionGateway implements CertVisionPort {
      * 提示词。**要求「认不出填 null，不要猜」是这段里最重要的一句** ——
      * 少了它，模型会把模糊的位补齐成一个看着合法的信用代码。
      */
-    private static final String PROMPT = """
+    static final String PROMPT = """
             你是证照识别助手。只输出 JSON，不要任何解释、不要代码块。
             先判断这是哪种证件，再按对应字段填。**认不出的字段一律填 null，不要猜、不要补全。**
 
@@ -160,7 +162,7 @@ public class CertVisionGateway implements CertVisionPort {
      * {@code response_format=json_object} 在这个部署上无效（与商品识别是同一条教训），
      * 所以靠提示词要 JSON，而模型偶尔仍会包一层 ```json。
      */
-    private Cert parse(String content) {
+    static Cert parse(String content) {
         if (content == null || content.isBlank()) {
             return null;
         }
