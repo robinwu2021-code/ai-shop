@@ -37977,6 +37977,13 @@
         "module": "shop-app"
       },
       {
+        "host": "PaymentCollectionWork",
+        "name": "TYPE",
+        "value": "MERCHANT_COLLECTION_RECEIVED",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
         "host": "WxShippingUploadRequested",
         "name": "TYPE",
         "value": "WX_SHIPPING_UPLOAD_REQUESTED",
@@ -39024,6 +39031,55 @@
         "name": "PLATFORM",
         "value": "PLATFORM",
         "zh": "全平台 —— 无履约半径的：虚拟商品、卡券、平台自营的快递品",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpEntries",
+        "name": "BIZ_LOGIN",
+        "value": "BIZ_LOGIN",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpEntries",
+        "name": "LEGACY_AUTH",
+        "value": "LEGACY_AUTH",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "LOGIN",
+        "value": "LOGIN",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "PASSWORD_RESET",
+        "value": "PASSWORD_RESET",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "PHONE_CHANGE",
+        "value": "PHONE_CHANGE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "EMAIL_CHANGE",
+        "value": "EMAIL_CHANGE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "ORDER_PICKUP_CONFIRM",
+        "value": "ORDER_PICKUP_CONFIRM",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -44564,6 +44620,16 @@
         "module": "logistics"
       },
       {
+        "name": "CaptchaMode",
+        "values": [
+          "ADAPTIVE",
+          "ALWAYS",
+          "RATE_ONLY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "CatalogErrorCode",
         "values": [
           "INVALID_ARGUMENT",
@@ -44599,6 +44665,15 @@
         ],
         "zh": "矩阵的一格。",
         "module": "shop-merchant"
+      },
+      {
+        "name": "Channel",
+        "values": [
+          "SMS",
+          "EMAIL"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "ChannelOperation",
@@ -48954,6 +49029,15 @@
           "DISABLED"
         ],
         "zh": "分类状态"
+      },
+      {
+        "name": "MallCollectionMethod",
+        "client": "ops-web",
+        "values": [
+          "BANK_TRANSFER",
+          "SALES_COLLECTION"
+        ],
+        "zh": "报价（服务器冻结）"
       },
       {
         "name": "MallComponentKind",
@@ -53768,6 +53852,14 @@
       "module": "shop-app"
     },
     {
+      "host": "PaymentReadRouter",
+      "name": "HEADER",
+      "type": "String",
+      "value": "\"X-Pay-Read-Environment\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
       "host": "BizFoundationController",
       "name": "OTHER",
       "type": "String",
@@ -53973,6 +54065,14 @@
       "type": "int",
       "value": "4",
       "zh": "用户自提",
+      "module": "shop-base"
+    },
+    {
+      "host": "OtpScenes",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM)",
+      "zh": "",
       "module": "shop-base"
     },
     {

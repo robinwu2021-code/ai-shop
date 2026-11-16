@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1202 个接口**：后端已实现 952（79%）· 前端在调 1034
+**合计 1208 个接口**：后端已实现 955（79%）· 前端在调 1037
 
 ---
 
@@ -1163,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **591** 个接口 ｜ 后端已实现 **449**（76%）｜ 前端在调 **425**
+共 **597** 个接口 ｜ 后端已实现 **452**（76%）｜ 前端在调 **428**
 
 ### aftersale（5）
 
@@ -1175,7 +1175,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（52）
+### commerce（55）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1184,12 +1184,15 @@
 | POST | `/ops/biz-mall/categories` | 新建分类（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | PUT | `/ops/biz-mall/categories/{code}` | 改分类：上级 / 名称 / 图标 / 排序 / 启停 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/collectors` | offlineCollectors | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{order}/cash-receipts` | mallCashReceipts | — | `数组` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | mallCashRefunds | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | requestMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout` | payoutMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover` | recoverMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/receipt-documentation` | offlineReceiptDocumentation | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/receipt-documentation` | supplementOfflineReceipt | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}` | Read the durable original outcome without replaying the command. */ | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline` | 拒绝申报：不等于无款，不释放占用 */ | — | `MallOfflineClaimView` | — | ⬜ | ⬜ |
@@ -1560,7 +1563,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（66）
+### merchant（69）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1616,9 +1619,12 @@
 | POST | `/ops/merchants/{merchantNo}/verified` | 认证标授予/撤销（P-11.1.2） | — | `Merchant` | — | ✅ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/violations` | 记一条违规并执行处置 | — | `Violation` | — | ✅ | ✅ |
 | POST | `/ops/merchants/apply-on-behalf` | **代商家提交入驻申请**（三期） | — | `ApplyOnBehalfResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/apply-on-behalf/context` | 当前登录环境统一配置的入驻地区与电话策略 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/merchants/apply-on-behalf/search` | 仅运营代办申请，服务端过滤后分页 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/auth-codes` | 授权码目录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants/mode-risk` | 无照主体 × 自营门店的税务敞口清单 | — | `数组` | — | ✅ | ✅ |
-| POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
+| POST | `/ops/merchants/self-operated` | 自营建档：台湾使用已注册邮箱，大陆保留手机号身份 | — | `SelfOperatedResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/self-operated/context` | 当前系统地区的自营建档账号策略 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/store-industries` | onBehalfStoreIndustries | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/onboarding` | 旧进件列表接口，保留给现有调用者 | — | `object` | — | ✅ | ✅ |

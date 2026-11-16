@@ -266,6 +266,19 @@ _无字段_
 类型：[`MallOfflinePendingClaim`](#mallofflinependingclaim)\[\]
 
 
+#### GET `/ops/biz-mall/offline/collectors`
+
+offlineCollectors
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/biz-mall/offline/orders`
 
 代客下单 */
@@ -427,6 +440,46 @@ _无字段_
 | `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
 | `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
 | `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
+
+
+#### GET `/ops/biz-mall/offline/orders/{order}/receipt-documentation`
+
+offlineReceiptDocumentation
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/biz-mall/offline/orders/{order}/receipt-documentation`
+
+supplementOfflineReceipt
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineActionView`](#mallofflineactionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | 动作号 |
+| `status` | [`MallOfflineActionStatus`](#mallofflineactionstatus) | 是 | 结果 |
+| `paymentNo` | `string,null` | 是 | 产生的支付号 |
 
 
 #### GET `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}`
@@ -597,6 +650,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -624,6 +678,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -753,6 +808,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
@@ -9096,6 +9152,39 @@ _无字段_
 | `ownerUserNo` | `string` | 是 | 商户本人的 userNo。**可能是这一刻新建的** —— 界面上要据此提示「这个号是新开的，本人还不知道」。 |
 
 
+#### GET `/ops/merchants/apply-on-behalf/context`
+
+当前登录环境统一配置的入驻地区与电话策略
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/merchants/apply-on-behalf/search`
+
+仅运营代办申请，服务端过滤后分页
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantApply`](#merchantapply)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
 #### GET `/ops/merchants/auth-codes`
 
 授权码目录
@@ -9124,7 +9213,7 @@ _无字段_
 
 #### POST `/ops/merchants/self-operated`
 
-建**平台自营商家**（跳过进件与审核）
+自营建档：台湾使用已注册邮箱，大陆保留手机号身份
 
 **入参**
 
@@ -9145,6 +9234,19 @@ _无字段_
 | `selfOperated` | `boolean` | 是 | 回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。 |
 | `reachableCommunities` | `number` | 是 | **这家店现在对多少个小区可见。** 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。 |
 | `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
+
+
+#### GET `/ops/merchants/self-operated/context`
+
+当前系统地区的自营建档账号策略
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/merchants/store-industries`
@@ -15920,6 +16022,15 @@ Delivery state of an inventory/order synchronization event.
 | `status` | [`MallCategoryStatus`](#mallcategorystatus) | 是 | 启用状态 |
 | `version` | `number` | 是 | 乐观锁版本，改分类时作为 expectedVersion 传回 |
 
+### MallCollectionMethod
+
+报价（服务器冻结）
+
+枚举取值：
+
+- `BANK_TRANSFER`
+- `SALES_COLLECTION`
+
 ### MallComponentKind
 
 组件种类
@@ -16075,6 +16186,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -16300,10 +16412,9 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 ### MallQuoteView
 
-报价（服务器冻结）
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
