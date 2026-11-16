@@ -16,7 +16,7 @@
   "newFailuresComparedWithParent": [],
   "frozenFailureListModified": false,
   "normalPrePushStatus": "BLOCKED_BY_EXISTING_FAILURES",
-  "scopedPushApproval": "PENDING",
+  "scopedPushApproval": "APPROVED_BY_USER",
   "privateCredentialsCommitted": false,
   "foodPluginGate": {
     "tests": 1264,
@@ -24,5 +24,12 @@
     "errors": 0,
     "status": "PASS",
     "profiles": "food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded"
+  },
+  "scopedPushMode": {
+    "environmentFlag": "SKIP_TEST_GATE=1",
+    "reuseCompletedBackendFullRun": true,
+    "reusePassedFoodPluginGate": true,
+    "otherPrePushChecksRetained": true,
+    "businessCodeChangedAfterTestedCommit": false
   }
 }
