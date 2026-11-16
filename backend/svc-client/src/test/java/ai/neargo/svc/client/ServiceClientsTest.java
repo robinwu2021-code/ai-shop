@@ -305,5 +305,27 @@ class ServiceClientsTest {
         var old = new ServiceCallException(CallOutcome.REMOTE_ERROR, "DEMO", 404, "safe");
         assertThat(old.remoteErrorCode()).isNull();
         assertThat(old.requestDigest()).isNull();
+        assertThat(old.remoteErrorField()).isNull();
+    }
+
+    @Test
+    void rejectedFieldKeyAndReasonAreKeptOnlyWhenTheyAreSafeShapes() throws IOException {
+        AtomicReference<String> base = new AtomicReference<>(startServer(400, "private value",
+                Map.of("X-Internal-Error-Field", "beneficiary.0.identityNo",
+                        "X-Internal-Error-Reason", "INVALID_OPTION")));
+        DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true));
+        assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
+                .isInstanceOfSatisfying(ServiceCallException.class, error -> {
+                    assertThat(error.remoteErrorField()).isEqualTo("beneficiary.0.identityNo");
+                    assertThat(error.remoteErrorReason()).isEqualTo("INVALID_OPTION");
+                    assertThat(error.toString()).doesNotContain("beneficiary", "private value");
+                });
+        base.set(startServer(400, "private", Map.of("X-Internal-Error-Field", "A123456789 王小明",
+                "X-Internal-Error-Reason", "lowercase")));
+        assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
+                .isInstanceOfSatisfying(ServiceCallException.class, error -> {
+                    assertThat(error.remoteErrorField()).isNull();
+                    assertThat(error.remoteErrorReason()).isNull();
+                });
     }
 }

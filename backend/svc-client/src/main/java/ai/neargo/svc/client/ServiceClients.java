@@ -70,7 +70,15 @@ public final class ServiceClients {
                                             safeHeader(
                                                     res,
                                                     "X-Internal-Request-Digest",
-                                                    "[0-9a-f]{64}"));
+                                                    "[0-9a-f]{64}"),
+                                            safeHeader(
+                                                    res,
+                                                    "X-Internal-Error-Field",
+                                                    "[A-Za-z][A-Za-z0-9_.]{0,63}"),
+                                            safeHeader(
+                                                    res,
+                                                    "X-Internal-Error-Reason",
+                                                    "[A-Z][A-Z_]{0,31}"));
                 })
                 .build();
         return HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build().createClient(api);
