@@ -29,6 +29,12 @@ public class PayClientConfig {
 
     /** 来源申请支付服务（near-pay source-links/apply），运营端「申请支付服务」用 */
     @Bean
+    @ConditionalOnProperty(name="shop.pay.entity-profiles.enabled",havingValue="true")
+    PayEntityProfileApi payEntityProfileApi(InternalHttp http) {
+        return http.client(ServiceName.PAY, PayEntityProfileApi.class, PAY_READ_TIMEOUT);
+    }
+
+    @Bean
     PaySourceLinkApi paySourceLinkApi(InternalHttp http) {
         return http.client(ServiceName.PAY, PaySourceLinkApi.class, PAY_READ_TIMEOUT);
     }

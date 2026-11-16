@@ -1,5 +1,8 @@
 package ai.neargo.shop.spi.product;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 证照识别：上传营业执照 / 身份证，自动读出结构化字段。
  *
@@ -39,6 +42,34 @@ public interface CertVisionPort {
      * @return null = 认不出来 / 模型不可达
      */
     Cert recognize(byte[] imageBytes, String contentType);
+
+    /** 原有服务商不自动获得进件文档能力；不支持时仍由人工填写。 */
+    default boolean supportsDocuments() { return false; }
+
+    default Document recognizeDocument(byte[] bytes, String contentType, DocumentType type) { return null; }
+
+    enum DocumentType {
+        REGISTRATION(List.of("name", "taxNo", "registeredAddress", "incorporationDate", "capitalAmount", "representativeName")),
+        OWNER_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType", "expiryDate")),
+        OWNER_BACK(List.of("identityAddress", "expiryDate")),
+        BANK_COVER(List.of("bankCode", "branchCode", "accountName", "bankAccount")),
+        // App 经营实体资料（TW_ENTITY_2 字段键）；登记地址拆为县市/区/其余，故不与 OPS 的 REGISTRATION 共用
+        ENTITY_REGISTRATION(List.of("name", "taxNo", "legalForm", "registeredCity", "registeredArea", "registeredAddress",
+                "incorporationDate", "capitalAmount", "representativeName", "businessDescription")),
+        CORPORATE_REGISTRATION(List.of("corporateTaxNo", "corporateName", "corporateAddress", "corporateCapital", "representativeName")),
+        ID_CARD_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType")),
+        ARC_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "expiryDate")),
+        ARC_BACK(List.of("arcBackNo")),
+        PASSPORT(List.of("representativeName", "identityNo", "birthDate", "expiryDate")),
+        BENEFICIARY_ID_CARD_FRONT(List.of("name", "nationality", "birthDate", "identityNo"));
+
+        private final List<String> fields;
+        DocumentType(List<String> fields) { this.fields = fields; }
+        public List<String> fields() { return fields; }
+    }
+
+    /** 只供当前上传者确认的临时建议，不是审核事实或附件凭证。 */
+    record Document(DocumentType documentType, Map<String, String> fields, double confidence) { }
 
     /**
      * 认出来的字段。**认不出的一律 null，不猜** ——

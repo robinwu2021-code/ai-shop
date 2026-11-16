@@ -24,9 +24,21 @@ public class OpenOrderPortImpl implements OpenOrderPort {
             List.of(OrdSubOrder.COMPLETED, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED);
 
     private final StoreOrderMapper subOrderMapper;
+    private final ai.neargo.shop.trade.order.mapper.AfterSaleMapper afterSales;
 
-    public OpenOrderPortImpl(StoreOrderMapper subOrderMapper) {
+    public OpenOrderPortImpl(StoreOrderMapper subOrderMapper,
+                             ai.neargo.shop.trade.order.mapper.AfterSaleMapper afterSales) {
         this.subOrderMapper = subOrderMapper;
+        this.afterSales = afterSales;
+    }
+
+    @Override
+    public long countOpenAfterSalesByStore(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return 0;
+        }
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> afterSales.countOpenByStore(storeNo));
     }
 
     @Override

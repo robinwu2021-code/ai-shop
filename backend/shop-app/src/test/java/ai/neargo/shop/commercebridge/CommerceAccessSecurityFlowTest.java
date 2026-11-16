@@ -524,6 +524,9 @@ class CommerceAccessSecurityFlowTest {
                                     CommunityQueryPort.class,
                                     StoreCategoryService.class,
                                     MerchantGovernService.class,
+                                    StoreOpeningService.class,
+                                    ai.neargo.shop.auth.captcha.BizCaptchaService.class,
+                                    ai.neargo.shop.common.otp.service.OtpSendService.class,
                                     MerchantAdminPort.class,
                                     DebtService.class,
                                     StoreFavoriteService.class,
@@ -543,6 +546,7 @@ class CommerceAccessSecurityFlowTest {
                         else if (realServices.values().stream().noneMatch(type::isInstance))
                             b.registerSingleton(type.getSimpleName(),mock(type));
                     }
+                    b.registerSingleton("entityCreations", mock(ai.neargo.shop.merchant.service.EntityCreationService.class));
                     b.registerSingleton("accounts", f.mybatis.getMapper(MchAccountMapper.class));
                     b.registerSingleton("entityRows", f.mybatis.getMapper(MchEntityMapper.class));
                     b.registerSingleton("qualificationRows", f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper.class));
@@ -637,6 +641,7 @@ class CommerceAccessSecurityFlowTest {
                         b.registerSingleton("resolver", BizIdentityResolver.NONE);
                         b.registerSingleton("tokenStore", f.store);
                         b.registerSingleton("entities", entities);
+                        b.registerSingleton("entityCreations", mock(ai.neargo.shop.merchant.service.EntityCreationService.class));
                         b.registerSingleton("review", review);
                         b.registerSingleton("portalFilters", portalFilters());
                     });

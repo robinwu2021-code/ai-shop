@@ -647,6 +647,10 @@ shop:
     channel-account-claims:
       enabled: ${NEARPAY_CHANNEL_ACCOUNT_CLAIMS_ENABLED:false}
       base-url: ${NEARPAY_BIZ_ORIGIN:}
+    # 账号级经营实体资料（/biz/entities/{e}/**，转发 PAY）：同时需要 deployment=standalone；
+    # PAY 侧另需 near-pay.entity-profiles.enabled。V46 的联系人／放弃修订／缩略图依赖 PAY 对应内部端点。
+    entity-profiles:
+      enabled: ${SHOP_PAY_ENTITY_PROFILES_ENABLED:false}
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
       # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.

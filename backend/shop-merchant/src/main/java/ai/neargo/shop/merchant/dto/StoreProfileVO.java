@@ -40,7 +40,8 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
                               * 中间被压店的那一刻会给出「READONLY + 不是平台压的」，App 就把续费引成了「恢复营业」。
                               */
                              String name, String slug, String status,
-                             Boolean isDefault, Boolean planSuspended) {
+                             Boolean isDefault, Boolean planSuspended,
+                             String contactName, String contactPhone) {
 
     /**
      * 一条覆盖项。

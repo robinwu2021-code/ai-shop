@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "本轮新接口已在独立 ai-shop-bapp Flutter 项目接入并验收；此仓 b-app 是旧 uniapp，其页面迁移尚未纳入本轮，不作为已接入出口。",
+  "plan": "docs/technical/TDD-门店开店编排与分区版本.md",
+  "contract": "docs/api/openapi-b-onboarding.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/merchant/store-openings"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/merchant/store-openings/{requestNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/store/settings"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/store/settings/basic"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/store/settings/hours"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "payment": {
+    "schemaVersion": 2,
+    "eventId": "EVT_SAMPLE_001",
+    "messageNo": "MSG_SAMPLE_001",
+    "eventType": "payment.succeeded",
+    "sceneCode": "PAYMENT",
+    "functionCode": "PAYMENT_RECEIPT",
+    "resource": {
+      "type": "PAYMENT_ORDER",
+      "id": "PO_SAMPLE_001",
+      "version": "8"
+    },
+    "scope": {
+      "environment": "SANDBOX",
+      "tenantNo": "TENANT_SAMPLE",
+      "storeNo": "STORE_SAMPLE",
+      "entityNo": "ENTITY_SAMPLE"
+    },
+    "occurredAt": 1794614400000,
+    "publishedAt": 1794614400300,
+    "delivery": {
+      "mode": "live",
+      "expiresAt": 1794614700300
+    },
+    "payload": {
+      "payOrderNo": "PO_SAMPLE_001",
+      "paidAt": 1794614400000,
+      "amountMinor": "100",
+      "paidMinor": "100",
+      "currency": "TWD",
+      "currencyScale": 2,
+      "channelCode": "NEWEBPAY",
+      "status": "SUCCEEDED"
+    },
+    "traceId": "TRACE_SAMPLE"
+  }
+}

@@ -313,37 +313,182 @@
     "/biz/auth/identities/mine": {
       "get": {
         "operationId": "get__biz_auth_identities_mine_8ce561",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+        "summary": "List identities for switching from the current merchant session",
+        "description": "Merchant session (USR or MCH). Issues a new ticket bound to the current session; currentIdentityNo marks the identity now in use. Entering with this ticket revokes the current session.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope. code=0 success; 10402 when the session is not live or the MCH account is inactive/has no login phone; 60001 banned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/LoginIdentityChoice"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+        }
       }
     },
     "/biz/auth/session": {
       "get": {
         "operationId": "get__biz_auth_session_961637",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPaySessionController.java",
+        "summary": "Current merchant session for the pay onboarding bridge",
+        "description": "Only registered when shop.pay.biz-onboarding.enabled=true (otherwise no handler). Served by the pay-bridge security chain: the btk_ bearer token is re-verified against mch_session on every call (no cache). Response carries Cache-Control: no-store.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope code=0.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BizSession"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/unknown/expired token: code 10401.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BizError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ctk_/otk_ token, inactive/deleted account or non-MAIN tenant: code 10403.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BizError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Session store unavailable: code 10505.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BizError"
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPaySessionController.java"
+        }
       }
     },
     "/biz/merchant/store-claims/{claimNo}": {
       "get": {
         "operationId": "get__biz_merchant_store_claims__claimNo__1994a2",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java",
+        "summary": "Read a store claim",
+        "description": "Personal (USR) merchant session; no selected store/entity needed. Ownership is checked against the claim's owner. Read-only; returns the stored result once COMPLETED.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope. code=0 success; 10403 not a personal (USR) merchant session or claim owned by someone else; 10404 unknown claim/request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreEntityClaim"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+        }
       },
       "parameters": [
         {
@@ -351,7 +496,8 @@
           "in": "path",
           "required": true,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
           }
         }
       ]
@@ -359,13 +505,51 @@
     "/biz/merchant/store-claims/by-request/{requestNo}": {
       "get": {
         "operationId": "get__biz_merchant_store_claims_by_request__requestNo__96d9eb",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java",
+        "summary": "Recover a store claim by its requestNo",
+        "description": "Personal (USR) merchant session; no selected store/entity needed. Ownership is checked against the claim's owner. Read-only; returns the stored result once COMPLETED.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope. code=0 success; 10403 not a personal (USR) merchant session or claim owned by someone else; 10404 unknown claim/request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreEntityClaim"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+        }
       },
       "parameters": [
         {
@@ -373,7 +557,8 @@
           "in": "path",
           "required": true,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
           }
         }
       ]
@@ -629,47 +814,194 @@
     "/biz/store/{storeNo}/entity/relink-check": {
       "get": {
         "operationId": "get__biz_store__storeNo__entity_relink_check_55c455",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java",
+        "summary": "Precheck moving the selected store under another owned entity",
+        "description": "Personal (USR) merchant session with biz:store:admin on the selected store. Read-only.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StoreNoHeader"
+          },
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Target entity."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope. code=0 success; 10403 MCH session, missing permission, or path storeNo != X-Store-No / selected store; 10400 validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreRelinkInspection"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java"
+        }
       },
       "parameters": [
         {
-          "name": "storeNo",
-          "in": "path",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
+          "$ref": "#/components/parameters/StoreNoPath"
         }
       ]
     },
     "/biz/auth/identities": {
       "post": {
         "operationId": "post__biz_auth_identities_399a5b",
-        "responses": {
-          "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+        "summary": "Verify a login credential and list selectable merchant identities",
+        "description": "Anonymous. Verifies PHONE_OTP / EMAIL_OTP / PASSWORD without issuing a session and returns a single-use identity ticket. PASSWORD requires the LOGIN captcha proof when captcha enforcement is on.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CaptchaToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIdentityVerifyRequest"
+              }
+            }
           }
         },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+        "responses": {
+          "200": {
+            "description": "Envelope. code=0 success; 10452 captcha required (PASSWORD only); 10400 validation; credential errors use the existing login codes; 60001 banned account; 10402 when the verified identity's account vanished.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/LoginIdentityChoice"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/CaptchaRequired"
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/biz/auth/identities/enter": {
       "post": {
         "operationId": "post__biz_auth_identities_enter_ec1ae2",
-        "responses": {
-          "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+        "summary": "Enter one identity with a login ticket and receive a merchant session",
+        "description": "Anonymous (ticket-authenticated). OWNER/NEW_OWNER issues a USR merchant session (NEW_OWNER creates the account if needed); STAFF-<no> issues an MCH session. When the ticket came from /mine, the originating session is revoked on success.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIdentityEnterRequest"
+              }
+            }
           }
         },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java"
+        "responses": {
+          "200": {
+            "description": "Envelope. code=0 success; 10404 identity unavailable with data.identities (ticket kept, list narrowed); 10474 invalid/expired/consumed ticket or origin session no longer valid; 10402 account vanished; 60001 banned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MerchantLoginResponse"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/LoginIdentityUnavailable"
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/biz/merchant/onboarding": {
@@ -687,13 +1019,51 @@
     "/biz/merchant/store-claims/{claimNo}/resume": {
       "post": {
         "operationId": "post__biz_merchant_store_claims__claimNo__resume_6fdd6e",
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java",
+        "summary": "Advance a non-terminal store claim",
+        "description": "Personal (USR) merchant session; no selected store/entity needed. Ownership is checked against the claim's owner. Re-runs the same phase machine as the create call; terminal claims return unchanged. No request body.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+            "description": "Envelope. code=0 success; 10403 not a personal (USR) merchant session or claim owned by someone else; 10404 unknown claim/request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreEntityClaim"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreClaimRecoveryController.java"
+        }
       },
       "parameters": [
         {
@@ -701,7 +1071,8 @@
           "in": "path",
           "required": true,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
           }
         }
       ]
@@ -877,17 +1248,124 @@
     "/biz/store/{storeNo}/entity": {
       "post": {
         "operationId": "post__biz_store__storeNo__entity_76adf8",
-        "responses": {
-          "200": {
-            "description": "Check the existing business envelope code; full contract/signature and immutable source references are in app-foundation-api-2026-11-10."
+        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java",
+        "summary": "Claim: move the selected store under another owned entity",
+        "description": "Personal (USR) merchant session with biz:store:admin on the selected store. Freezes the store, then advances the pay reservation and local commit synchronously (up to 5 phases); a non-terminal state is resumed via /biz/merchant/store-claims/{claimNo}/resume or the background recovery.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StoreNoHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreEntityClaimRequest"
+              }
+            }
           }
         },
-        "x-source-commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
-        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java"
+        "responses": {
+          "200": {
+            "description": "Envelope. code=0 (inspect state/lastError); 10403 MCH session, missing permission or storeNo mismatch; 10409 store not under the current entity, version mismatch, any blocker, or requestNo reused with a different body; 10505 feature disabled (shop.merchant.store-claim.enabled) or pay/subscription bridge unavailable; 10404 store snapshot missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreEntityClaim"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
       },
       "parameters": [
         {
-          "name": "storeNo",
+          "$ref": "#/components/parameters/StoreNoPath"
+        }
+      ]
+    },
+    "/biz/entity/{entityNo}": {
+      "get": {
+        "operationId": "get__biz_entity__entityNo_",
+        "summary": "One owned entity with its stores",
+        "description": "Personal merchant account (USR) only; no selected-store header needed. Not the caller's owned entity -> 10403 (not 10404).",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope. code=0 success; 10403 MCH session or entity not owned; 10404 membership exists but entity row missing; 10505 pay profile summary unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/EntityStores"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/BizError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizEntityController.java"
+      },
+      "parameters": [
+        {
+          "name": "entityNo",
           "in": "path",
           "required": true,
           "schema": {
@@ -1261,6 +1739,916 @@
               "$ref": "#/components/schemas/MerchantProfileRevision"
             }
           }
+        }
+      },
+      "BizError": {
+        "type": "object",
+        "description": "Business rejection envelope from GlobalExceptionHandler: HTTP 200 (401 only for missing/expired login), code != 0, data null.",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "code",
+          "msg"
+        ]
+      },
+      "LoginIdentity": {
+        "type": "object",
+        "description": "LoginIdentityService.Identity. OWNER is the personal account's owner identity (all owned entities); STAFF is one MCH staff account found by the verified phone.",
+        "properties": {
+          "identityNo": {
+            "type": "string",
+            "description": "\"OWNER\" or \"STAFF-<mchAccountNo>\"; pass back unchanged to /biz/auth/identities/enter."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "STAFF"
+            ]
+          },
+          "merchantNo": {
+            "type": "string",
+            "description": "OWNER: first owned entityNo (\"\" when the account owns none); STAFF: the staff account's entityNo."
+          },
+          "merchantName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Entity name. OWNER: only when exactly one entity is owned, else null; STAFF: entity name or null if the entity row is missing."
+          },
+          "entityCount": {
+            "type": "integer",
+            "description": "OWNER: number of owned entities; STAFF: always 1."
+          },
+          "role": {
+            "type": "string",
+            "description": "Localized role label (Accept-Language). STAFF joins multiple labels with \"、\"; empty when no store roles."
+          },
+          "roleCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "OWNER: [\"OWNER\"]; STAFF: distinct sorted store role codes (MANAGER/CLERK/PICKER/COURIER/CS...)."
+          },
+          "storeCount": {
+            "type": "integer",
+            "description": "OWNER: stores under all owned entities; STAFF: distinct stores the account is granted."
+          }
+        },
+        "required": [
+          "identityNo",
+          "type",
+          "merchantNo",
+          "merchantName",
+          "entityCount",
+          "role",
+          "roleCodes",
+          "storeCount"
+        ]
+      },
+      "LoginIdentityChoice": {
+        "type": "object",
+        "description": "LoginIdentityService.IdentityChoice. The ticket is single-use and bound to the listed identityNo values.",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "description": "Login ticket for /biz/auth/identities/enter."
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ticket TTL (shop.auth.login-ticket.ttl, default PT5M = 300)."
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoginIdentity"
+            },
+            "description": "OWNER first (if any), then STAFF identities. May be empty."
+          },
+          "canCreateOwner": {
+            "type": "boolean",
+            "description": "true when no OWNER identity exists; enter may then use identityNo=NEW_OWNER."
+          },
+          "currentIdentityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null from POST /biz/auth/identities; identityNo of the current session from GET /biz/auth/identities/mine."
+          }
+        },
+        "required": [
+          "ticket",
+          "expiresInSeconds",
+          "identities",
+          "canCreateOwner",
+          "currentIdentityNo"
+        ]
+      },
+      "LoginIdentityVerifyRequest": {
+        "type": "object",
+        "description": "BizIdentityController.VerifyReq.",
+        "properties": {
+          "grantType": {
+            "type": "string",
+            "enum": [
+              "PHONE_OTP",
+              "EMAIL_OTP",
+              "PASSWORD"
+            ]
+          },
+          "principal": {
+            "type": "string",
+            "description": "Phone (PHONE_OTP), email (EMAIL_OTP) or bound phone/email (PASSWORD).",
+            "minLength": 1,
+            "maxLength": 191
+          },
+          "credential": {
+            "type": "string",
+            "description": "OTP code or password; never logged.",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "agreed": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Login agreement accepted; stored on the ticket and used if entering creates a new account."
+          },
+          "marketCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Registration market, only applied when entering creates a new account.",
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "grantType",
+          "principal",
+          "credential"
+        ]
+      },
+      "LoginIdentityEnterRequest": {
+        "type": "object",
+        "description": "BizIdentityController.EnterReq.",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "identityNo": {
+            "type": "string",
+            "description": "An identityNo from the ticket's list, or NEW_OWNER when canCreateOwner=true.",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "ticket",
+          "identityNo"
+        ]
+      },
+      "MerchantProfile": {
+        "type": "object",
+        "description": "BizMerchantController.MerchantProfileVO (same shape as GET /biz/merchant/profile).",
+        "properties": {
+          "merchantNo": {
+            "type": "string",
+            "description": "Current entity/merchant number; \"\" when the account has no merchant yet."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "\"\" when no merchant yet."
+          },
+          "status": {
+            "type": "string",
+            "description": "With merchant: ACTIVE / PENDING_LICENSE / SUSPENDED. Without: NONE / APPLYING / REVIEWING / REJECTED.",
+            "enum": [
+              "ACTIVE",
+              "PENDING_LICENSE",
+              "SUSPENDED",
+              "NONE",
+              "APPLYING",
+              "REVIEWING",
+              "REJECTED"
+            ]
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Subject type; PERSONAL when no apply."
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SMALL when no merchant yet."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Login phone; \"\" when none."
+          },
+          "isPickupPoint": {
+            "type": "boolean"
+          },
+          "pickupNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fundsMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AGGREGATED / DIRECT; null before onboarding."
+          },
+          "agreementPending": {
+            "type": "boolean"
+          },
+          "favoriteCount": {
+            "type": "integer"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "\"\" when not set."
+          },
+          "currentStoreNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "account": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Verified login identifier of a USR session (phone, else normalized email); null for MCH sessions."
+          },
+          "subjectKind": {
+            "type": "string",
+            "enum": [
+              "USR",
+              "MCH"
+            ]
+          },
+          "currentIdentity": {
+            "$ref": "#/components/schemas/LoginIdentity"
+          },
+          "userNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Authenticated principal: usr_account.user_no (USR) or mch_account_no (MCH)."
+          }
+        },
+        "required": [
+          "merchantNo",
+          "name",
+          "logo",
+          "status",
+          "subject",
+          "tier",
+          "phone",
+          "isPickupPoint",
+          "pickupNo",
+          "rejectReason",
+          "industry",
+          "description",
+          "fundsMode",
+          "agreementPending",
+          "favoriteCount",
+          "displayName",
+          "currentStoreNo",
+          "account",
+          "subjectKind",
+          "currentIdentity",
+          "userNo"
+        ]
+      },
+      "MerchantLoginResponse": {
+        "type": "object",
+        "description": "BizAuthController.MerchantLoginResp.",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "MERCHANT-pool bearer token (btk_...)."
+          },
+          "merchant": {
+            "$ref": "#/components/schemas/MerchantProfile"
+          }
+        },
+        "required": [
+          "token",
+          "merchant"
+        ]
+      },
+      "CaptchaRequired": {
+        "type": "object",
+        "description": "GlobalExceptionHandler#onCaptcha for CaptchaRequiredException; same shape as biz-auth-captcha.openapi.json.",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 10452
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "captchaRequired": {
+                "type": "boolean",
+                "const": true
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "LOGIN"
+                ]
+              }
+            },
+            "required": [
+              "captchaRequired",
+              "action"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
+      },
+      "LoginIdentityUnavailable": {
+        "type": "object",
+        "description": "BizIdentityController#unavailable: chosen identity is not (or no longer) available. The ticket is NOT consumed; its allowed list has been narrowed to data.identities, so the client can re-pick with the same ticket.",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 10404
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "identities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LoginIdentity"
+                }
+              }
+            },
+            "required": [
+              "identities"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
+      },
+      "BizSession": {
+        "type": "object",
+        "description": "BizPaySessionController.SessionVO.",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "enum": [
+              "MERCHANT"
+            ]
+          },
+          "subjectType": {
+            "type": "string",
+            "description": "USR session -> USER; MCH session -> MCH_ACCOUNT.",
+            "enum": [
+              "USER",
+              "MCH_ACCOUNT"
+            ]
+          },
+          "subjectRef": {
+            "type": "string",
+            "description": "user_no (USER) or mch_account_no (MCH_ACCOUNT)."
+          },
+          "tenantNo": {
+            "type": "string",
+            "description": "Always MAIN (verifier rejects other tenants)."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "realm",
+          "subjectType",
+          "subjectRef",
+          "tenantNo",
+          "status"
+        ]
+      },
+      "EntityVO": {
+        "type": "object",
+        "description": "merchant.dto.EntityVO after EntityReviewAssembler.enrich.",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / PENDING_LICENSE / SUSPENDED / BANNED."
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null while PENDING_LICENSE."
+          },
+          "storeCount": {
+            "type": "integer"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Caller is the entity owner."
+          },
+          "review": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Without a pay profile summary: APPROVED (not PENDING_LICENSE) or NONE / REVIEWING / REJECTED from the latest apply. When a pay profile summary exists it is replaced by platformReview."
+          },
+          "applyNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reject reason when review=REJECTED, else \"\"."
+          },
+          "taxNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Business licence number (apply item while pending, qualification otherwise); \"\" when unknown."
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Latest apply contactName; \"\" when no apply."
+          },
+          "platformReview": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pay entity-profile summary platformReview; null when no summary."
+          },
+          "draftVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "approvedProfileVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "entityNo",
+          "name",
+          "status",
+          "verified",
+          "legalForm",
+          "storeCount",
+          "isPrimary",
+          "canManage",
+          "review",
+          "applyNo",
+          "rejectReason",
+          "taxNo",
+          "owner",
+          "platformReview",
+          "draftVersion",
+          "approvedProfileVersion",
+          "payMerchantNo"
+        ]
+      },
+      "StoreVO": {
+        "type": "object",
+        "description": "merchant.dto.StoreVO. Market context fields are null unless the assembling service filled them.",
+        "properties": {
+          "storeNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / READONLY."
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null = uses the entity default."
+          },
+          "payReady": {
+            "type": "boolean"
+          },
+          "staffCount": {
+            "type": "integer"
+          },
+          "planSuspended": {
+            "type": "boolean"
+          },
+          "rating": {
+            "type": "integer",
+            "description": "Store rating x10."
+          },
+          "ratingCount": {
+            "type": "integer"
+          },
+          "businessMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SELF_OPERATED / THIRD_PARTY."
+          },
+          "selfOperated": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shareUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "market": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currencyScale": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "timeZone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "industryCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subIndustryCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "businessTypeCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "industryText": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subIndustryText": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "storeNo",
+          "name",
+          "address",
+          "isDefault",
+          "status",
+          "payMerchantNo",
+          "payReady",
+          "staffCount",
+          "planSuspended",
+          "rating",
+          "ratingCount",
+          "businessMode",
+          "selfOperated",
+          "slug",
+          "shareUrl",
+          "market",
+          "currency",
+          "currencyScale",
+          "timeZone",
+          "industryCode",
+          "subIndustryCode",
+          "businessTypeCode",
+          "industryText",
+          "subIndustryText"
+        ]
+      },
+      "EntityStores": {
+        "type": "object",
+        "description": "merchant.dto.EntityStoresVO.",
+        "properties": {
+          "entity": {
+            "$ref": "#/components/schemas/EntityVO"
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreVO"
+            }
+          }
+        },
+        "required": [
+          "entity",
+          "stores"
+        ]
+      },
+      "StoreRelinkInspection": {
+        "type": "object",
+        "description": "StoreRelinkPrecheck.Inspection: a current diagnostic only; the claim rechecks.",
+        "properties": {
+          "allowed": {
+            "type": "boolean",
+            "description": "executionReady and no blockers."
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Distinct codes. Local: INVENTORY_HISTORY_UNKNOWN, SOURCE_NOT_PLACEHOLDER, CLAIM_IN_PROGRESS, TARGET_NOT_OWNED, TARGET_NOT_ACTIVE, TARGET_MARKET_MISMATCH, TARGET_STORE_QUOTA_EXCEEDED, HAS_TRADES, APPLY_PENDING, INDUSTRY_HISTORY_UNKNOWN, SUBSCRIPTION_UNKNOWN, PAID_PLAN, ORGANIZATION_HISTORY, STORE_CONFIGURATION_HISTORY. Pay: PAY_SERVICE_UNKNOWN, FINANCIAL_HISTORY_UNKNOWN, PAY_SERVICE_APPLIED, HAS_TRADES plus any blocker codes returned by the pay service. RELINK_CONCURRENCY_UNAVAILABLE when shop.merchant.store-claim.enabled=false."
+          },
+          "revokedStaff": {
+            "type": "integer",
+            "description": "Staff grants that the move would revoke."
+          },
+          "executionReady": {
+            "type": "boolean",
+            "description": "Feature enabled and pay financial-history check complete."
+          },
+          "storeVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Current mch_store.version; send as expectedStoreVersion."
+          }
+        },
+        "required": [
+          "allowed",
+          "blockers",
+          "revokedStaff",
+          "executionReady",
+          "storeVersion"
+        ]
+      },
+      "StoreEntityClaimRequest": {
+        "type": "object",
+        "description": "BizStoreEntityController.ClaimRequest.",
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "description": "Idempotency key; same key + same body replays, different body -> 10409.",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "entityNo": {
+            "type": "string",
+            "description": "Target owned entity.",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedStoreVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "requestNo",
+          "entityNo",
+          "expectedStoreVersion"
+        ]
+      },
+      "StoreEntityClaim": {
+        "type": "object",
+        "description": "StoreEntityClaimService.View.",
+        "properties": {
+          "claimNo": {
+            "type": "string",
+            "description": "SEC-prefixed claim number."
+          },
+          "requestNo": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "Terminal: COMPLETED / ABORTED. Others are in progress; call resume.",
+            "enum": [
+              "FROZEN",
+              "PAY_PREPARED",
+              "LOCAL_COMMITTED",
+              "COMPLETED",
+              "ABORTING",
+              "ABORTED"
+            ]
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "previousEntityNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string",
+            "description": "Target entity."
+          },
+          "stores": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EntityStores"
+            },
+            "description": "Only when COMPLETED: the owner's store groups (as GET /biz/stores/mine) after the move; otherwise null."
+          },
+          "revokedStaff": {
+            "type": "integer"
+          },
+          "placeholderRetired": {
+            "type": "boolean",
+            "description": "Source placeholder entity retired (it had only this store)."
+          },
+          "lastError": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null, or PAY_UNAVAILABLE / PAY_STATE_CONFLICT / PAY_RESULT_UNKNOWN (retryable via resume) or abort reason PAY_ABORTED / PAY_REJECTED / LOCAL_REJECTED."
+          }
+        },
+        "required": [
+          "claimNo",
+          "requestNo",
+          "state",
+          "storeNo",
+          "previousEntityNo",
+          "entityNo",
+          "stores",
+          "revokedStaff",
+          "placeholderRetired",
+          "lastError"
+        ]
+      }
+    },
+    "parameters": {
+      "CaptchaToken": {
+        "name": "X-Captcha-Token",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "One-use LOGIN captcha proof (biz-auth-captcha.openapi.json). Read only when grantType=PASSWORD, and enforced only when shop.auth.captcha.enabled=true; missing/invalid proof then returns CaptchaRequired (10452)."
+      },
+      "StoreNoHeader": {
+        "name": "X-Store-No",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Selected store; must equal the {storeNo} path value and the resolved selected store, else 10403."
+      },
+      "StoreNoPath": {
+        "name": "storeNo",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
         }
       }
     }

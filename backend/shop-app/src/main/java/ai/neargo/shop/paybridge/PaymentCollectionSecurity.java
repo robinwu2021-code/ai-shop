@@ -32,8 +32,7 @@ public final class PaymentCollectionSecurity {
 
     public void verify(
             String timestamp, String nonce, String environment, String signature, String raw) {
-        if (!"SANDBOX".equals(environment)
-                || !properties.getEnvironment().equals(environment)
+        if (properties.secretFor(environment) == null
                 || Math.abs(clock.instant().getEpochSecond() - Long.parseLong(timestamp)) > 300
                 || !MessageDigest.isEqual(
                         signature.getBytes(StandardCharsets.US_ASCII),
@@ -47,7 +46,7 @@ public final class PaymentCollectionSecurity {
         return HexFormat.of()
                 .formatHex(
                         hmac(
-                                properties.getSecret(),
+                                properties.secretFor(environment),
                                 timestamp + "\n" + nonce + "\n" + environment + "\n" + raw));
     }
 

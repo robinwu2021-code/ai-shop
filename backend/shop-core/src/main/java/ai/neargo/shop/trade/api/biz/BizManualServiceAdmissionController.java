@@ -74,6 +74,19 @@ public class BizManualServiceAdmissionController {
         return manual.readCounterQuote(scope(), new OperationRef("BEAUTY", operationNo));
     }
 
+    /** Saved progress of a counter quote: whether it can still be accepted, the acceptance, the order. */
+    @GetMapping("/biz/service-orders/counter-quotes/{operationNo}/state")
+    @PreAuthorize(
+            "@perm.canBiz('"
+                    + BizPerms.CHECKOUT_PREPARE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.ORDER_VIEW
+                    + "')")
+    public ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState readCounterState(
+            @PathVariable String operationNo) {
+        return manual.readCounterState(scope(), new OperationRef("BEAUTY", operationNo));
+    }
+
     @PostMapping("/biz/service-orders/counter-quotes/{operationNo}/acceptances")
     @PreAuthorize(
             "@perm.canBiz('"

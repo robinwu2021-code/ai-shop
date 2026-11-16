@@ -53,10 +53,10 @@ class MallHostMigrationMysqlTest {
                             new ClassPathResource(
                                     "db/migration/V627__commerce_offline_permissions.sql"));
             }
-            // V624 adds 5 platform_* columns; the fixture schema already carries V626's
-            // platform_bank_ref_key / platform_manual_proof / platform_reconciliation_proof.
+            // V624 adds five platform_* columns; the current fixture also carries the
+            // bank/manual/reconciliation fields and the sales collection reference.
             assertEquals(
-                    8,
+                    9,
                     f.jdbc.queryForObject(
                             "SELECT count(*) FROM information_schema.columns WHERE"
                                 + " table_schema=DATABASE() AND table_name='stl_payment' AND"

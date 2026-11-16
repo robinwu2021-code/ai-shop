@@ -6,12 +6,10 @@ import ai.neargo.commerce.starter.security.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.service.StorePaySettingService;
-
 import jakarta.servlet.http.*;
-
-import org.springframework.web.context.request.*;
-
 import java.io.IOException;
+import java.time.Clock;
+import org.springframework.web.context.request.*;
 
 public final class ShopCommerceEndContextAdapter
         implements BizContextFilter.Admission, StorePaySettingService.WriteAdmission {
@@ -21,7 +19,7 @@ public final class ShopCommerceEndContextAdapter
     private final BizIdentityResolver resolver;
     private final EndAccessFacade access;
     private final AccountSessionVerifier sessions;
-    private final java.time.Clock clock;
+    private final Clock clock;
     private final CommerceAccessInterceptor interceptor;
     private final CommerceRoutePolicy policy = new CommerceRoutePolicy(ShopStoreMemberRoutes.ALL);
 
@@ -30,7 +28,7 @@ public final class ShopCommerceEndContextAdapter
             BizIdentityResolver resolver,
             EndAccessFacade access,
             AccountSessionVerifier sessions,
-            java.time.Clock clock) {
+            Clock clock) {
         this.sessions = sessions;
         this.clock = clock;
         this.stores = stores;
@@ -108,8 +106,17 @@ public final class ShopCommerceEndContextAdapter
         }
         if (route.foundation()
                 || path.equals("/biz/merchant/quick-start")
+                || path.equals("/biz/entities")
+                || path.matches("/biz/entity/[A-Za-z0-9_-]{1,64}")
+                || path.startsWith("/biz/entities/")
+                || path.equals("/biz/merchant/store-openings")
+                || path.startsWith("/biz/merchant/store-openings/")
                 || path.equals("/biz/auth/password")
                 || path.equals("/biz/auth/identities/mine")
+                || path.equals("/biz/auth/account")
+                || path.equals("/biz/auth/phone/change")
+                || path.equals("/biz/auth/email/bind")
+                || path.startsWith("/biz/auth/deregister")
                 || path.startsWith("/biz/merchant/store-claims/")) {
             checkFoundationSession(user, legacy, req, route, path, requested);
             if (route.foundation()) return;

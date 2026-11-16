@@ -1,9 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizPerms;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.product.CertVisionPort;
+import ai.neargo.shop.portal.common.CertDocumentReader;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,12 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.Image;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * 证照识别：传一张营业执照或身份证，读出结构化字段**回给他确认**。
@@ -41,18 +35,6 @@ import java.io.InputStream;
 @RestController
 public class BizCertController {
 
-    /**
-     * 送给模型之前压到的长边像素。
-     *
-     * <p>实拍执照常见 5712×4284 / 7.3MB，base64 之后接近 10MB —— 多数网关直接拒收，
-     * 而那个失败在端上看起来像「模型不可用」。1600 是实测过的：
-     * 信用代码、成立日期、住所逐字对过，压到这个尺寸识别结果不变。
-     */
-    private static final int MAX_EDGE = 1600;
-
-    /** 上传上限。比 /biz/upload/image 的 5MB 松一档 —— 证照本来就常是高清原图 */
-    private static final long MAX_BYTES = 12L * 1024 * 1024;
-
     private final CertVisionPort certVision;
 
     public BizCertController(CertVisionPort certVision) {
@@ -71,65 +53,13 @@ public class BizCertController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @PostMapping("/biz/qualifications/recognize")
     public CertVO recognize(@RequestParam("file") MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty() || file.getSize() > MAX_BYTES) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        /*
-         * ★ **先校验入参，再看模型开没开。**
-         *
-         * 反过来写的话（我第一版就是），模型没开时任何字节都会拿到一个
-         * 「没认出来」的成功响应 —— 包括一段纯文本改名成 .jpg。
-         * 于是端上分不清「这张证认不出」与「你传的根本不是图」，
-         * 而后者他改多少次证件都没用。用例 rejectsNonImageBytes 逮到的就是这个。
-         *
-         * 代价是模型没开时也解一次图。一张 12MB 以内的图，值。
-         */
-        byte[] shrunk = downscale(file);
-        if (shrunk == null) {
-            // 解不出来的多半根本不是图（后缀是客户端说了算的）
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        if (!certVision.isEnabled()) {
+        var document = CertDocumentReader.read(file);
+        if (!certVision.isEnabled() || ("application/pdf".equals(document.contentType()) && !certVision.supportsDocuments())) {
             // 没配模型：如实说「这次没认」，不要编一个空结果让端上以为认过了
             return CertVO.none();
         }
-        var cert = certVision.recognize(shrunk, "image/jpeg");
+        var cert = certVision.recognize(document.bytes(), document.contentType());
         return cert == null ? CertVO.none() : CertVO.of(cert);
-    }
-
-    /**
-     * 压到长边 {@link #MAX_EDGE}，统一转成 jpeg。
-     *
-     * <p>小于阈值的也重编码：一是统一 mime（模型对 webp/gif 的支持参差），
-     * 二是**顺手扔掉 EXIF** —— 手机拍的证照常带 GPS，那是没必要跟着走的信息。
-     *
-     * @return null 表示这根本解不成图
-     */
-    private static byte[] downscale(MultipartFile file) throws IOException {
-        BufferedImage src;
-        try (InputStream in = file.getInputStream()) {
-            src = ImageIO.read(in);
-        }
-        if (src == null) {
-            return null;
-        }
-        int w = src.getWidth();
-        int h = src.getHeight();
-        double scale = Math.min(1.0, (double) MAX_EDGE / Math.max(w, h));
-        int nw = Math.max(1, (int) Math.round(w * scale));
-        int nh = Math.max(1, (int) Math.round(h * scale));
-
-        // TYPE_INT_RGB 而不是 ARGB：目标是 jpeg，带 alpha 会编出一张偏色的图
-        BufferedImage dst = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_RGB);
-        var g = dst.createGraphics();
-        try {
-            g.drawImage(src.getScaledInstance(nw, nh, Image.SCALE_SMOOTH), 0, 0, null);
-        } finally {
-            g.dispose();
-        }
-        var out = new ByteArrayOutputStream();
-        ImageIO.write(dst, "jpeg", out);
-        return out.toByteArray();
     }
 
     /**

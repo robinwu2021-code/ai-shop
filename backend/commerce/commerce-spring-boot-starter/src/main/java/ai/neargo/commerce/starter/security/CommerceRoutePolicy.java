@@ -2,8 +2,8 @@ package ai.neargo.commerce.starter.security;
 
 import ai.neargo.commerce.api.access.AccessDenied;
 import ai.neargo.commerce.api.access.AccessStatus;
-
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -84,8 +84,19 @@ public final class CommerceRoutePolicy {
                     "GET /biz/merchant/apply",
                     "GET /biz/auth/password",
                     "POST /biz/auth/password",
+                    // 本人登录凭证与注销（TDD-商户App统一登录与账号 端点 4–8）：按登录人定位，与门店无关
+                    "GET /biz/auth/account",
+                    "POST /biz/auth/phone/change",
+                    "POST /biz/auth/email/bind",
+                    "GET /biz/auth/deregister/precheck",
+                    "POST /biz/auth/deregister",
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
+                    "POST /biz/merchant/store-openings",
+                    "POST /biz/entities",
+                    "GET /biz/entities",
+                    // 新增经营实体前识别登记证明（TDD-经营实体证件识别）：实体还不存在，只能是账号级
+                    "POST /biz/entity-recognitions",
                     "GET /biz/merchant/store-setup",
                     "GET /biz/business-types",
                     // 账号本人的设置：按登录人定位，与门店无关；推送注册在登录后、选店前就会调
@@ -167,6 +178,19 @@ public final class CommerceRoutePolicy {
                 || method.equals("GET")
                         && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/(?:plans|feature-matrix)"))
             return new Route(Lane.ACCOUNT, null, null, null);
+        if (method.equals("GET") && (path.matches("/biz/merchant/store-openings/" + ID)
+                || path.matches("/biz/entities/create-results/" + ID)
+                || path.matches("/biz/entity/" + ID)))
+            return new Route(Lane.ACCOUNT, null, null, null);
+        // Every BizEntityProfileController route; a missing one falls through to DENY (403) for commerce stores.
+        if ((method.equals("GET") && path.matches("/biz/entities/"+ID+"/(?:profile-template|profile-draft|commands/"+ID+"|files/"+ID+"/preview)"))
+                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests|contact|revision-discards|recognitions)")))
+            return new Route(Lane.ACCOUNT, null, null, null);
+        // Settings is a selected-store namespace, not a path containing a store ID.
+        if (method.equals("GET") && path.equals("/biz/store/settings")
+                || method.equals("POST") && Set.of("/biz/store/settings/basic", "/biz/store/settings/hours",
+                    "/biz/store/settings/contact").contains(path))
+            return new Route(Lane.BOOTSTRAP, null, null, null);
         for (HostRoute management : MANAGEMENT_ACCOUNT) {
             if (management.matches(method, path))
                 return new Route(Lane.ACCOUNT, null, null, null);
@@ -280,11 +304,11 @@ public final class CommerceRoutePolicy {
         return new Route(Lane.DENY, store, null, null);
     }
 
-    public static java.util.Optional<String> entitlementForEnd(String end) {
+    public static Optional<String> entitlementForEnd(String end) {
         return switch (end) {
-            case "BIZ_APP" -> java.util.Optional.of(BIZ);
-            case "APP_POS" -> java.util.Optional.of(POS);
-            case null, default -> java.util.Optional.empty();
+            case "BIZ_APP" -> Optional.of(BIZ);
+            case "APP_POS" -> Optional.of(POS);
+            case null, default -> Optional.empty();
         };
     }
 

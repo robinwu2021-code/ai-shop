@@ -1,6 +1,8 @@
 # TDD-支付服务-I4进件与收款商户
 
-状态：已实现
+状态：已实现，**已被 near-pay 取代**（2026-11-16 标注）
+
+> 进件与收款商户现由独立 near-pay 承担（[TDD-B端进件接入near-pay](./TDD-B端进件接入near-pay.md)）；near-pay 在 V25/V26 改了 `pay_onboarding.inflight_key`、`pay_merchant.status` 与 `pay_merchant_binding.active_key` 的语义。本文描述的宿主内嵌实现（`OnboardingServiceImpl`、`PayOnboardingPollJob`、`PayMerchantMirror*` 双写与回填）在 166 上双写与读切均为默认关闭，属待下线代码，见 [主链路评审](../handoff/bapp-api-alignment-2026-11-16/flow-review.md) 五节 C 批。不要据本文修改 near-pay 的表。
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I4 · [数据库现状对比与执行方案](./支付服务-数据库现状对比与执行方案.md) §3.2、§4.5（B1–B4、S5 比对、S6 读切）、§4.6、§5（Q2 / Q3 / Q4 / Q6）· [数据库表结构说明 v4](./TDD-支付服务-数据库表结构说明.md) §6.2、§8.1、§8.2 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §2.4 · [ADR-043](./ADR/ADR-043-进件与收款商户归支付域.md) · [代码 Review](./支付服务-代码Review-2026-10-24.md) R01 / R02 / R04 / R06 / R23 / R24 / R26
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -157,3 +159,25 @@
 18. **I3 偏差 10 转来的 `PaymentPort#startPayment` 与独立的 `RouteSelectionPolicy` 本迭代没做，再转 I5**：今天交易下单冻结路由走 `MerchantQueryPort#paymentRouteOf`
     （商城 `OrderServiceImpl`、行业结账 `IndustryCheckoutServiceImpl`、积分目标），S6 已把它切到门店绑定 —— 读切后「选路由」事实上由 `PayMerchantQueryPort` 回答；
     缺的是「支付域自己选方式 → 选路由 → 冻结快照」这一个入口，它与开放 API 建单同形，随 I5 一起做。
+
+
+## 2026-11-15 附件转发故障定位（档位 1，未宣称修复）
+
+| 需求／AC | 设计与影响范围 | 验证 |
+|---|---|---|
+| App 正常上传 NearGo 虚构附件 | 原进件／身份／字节转发不变，仅在失败上传记录请求包装类型、捕获及声明字节数和上游状态；不记录正文或认证头 | 真实模拟器与 Python 经 Shop 均 HTTP400，PAY 提示缺少 requestNo；同一水印附件直达 PAY HTTP200、draftVersion=5 |
+| 收敛到具体边界 | PayBizOnboardingRelay 一处安全传输日志，不改权限、校验、数据库或支付配置 | Java21 按 166 原包依赖编译；小 multipart 字节保留单例通过，排除单纯小文件读取问题 |
+
+实现对账：PayBizOnboardingRelay.java 增加失败元数据日志；PayBizRequestBodyTest.java 增加小 multipart 包含命令和附件的检查。现有原生传输测试已有 2MiB 原样转发覆盖，但与当前线上完整过滤链存在差异。继续按节点取证，不将诊断上传当成 App 上传通过，不改变真实实体／渠道配置。
+
+
+### 认证后捕获原始附件（待 166 复测）
+
+安全日志复现：声明 80616 字节，控制器捕获 0 字节，上游 400。增加认证通过后、进入后续框架前的唯一原始附件捕获；原有总量／单文件限制仍由 PayBizRequestBody 执行一次，后续转发复用请求内捕获值，保持原始字节及身份，不重编码或将参数挪到 URL。仅命中既有进件上传路径；身份拒绝不读附件。
+
+| AC | 实现 | 测试／结果 |
+|---|---|---|
+| 后续框架读取输入流不丢原件 | PayBizAuthenticationFilter、PayBizRequestBody 请求内捕获 | PayBizUploadCaptureTest：原失败 expected1242/actual0；修复后2项通过 |
+| 限额、原始字节与原路由权限不变 | 复用既有解析／Relay | PayBizRequestBodyTest5、PayBizOnboardingHttpTest10通过 |
+
+共17项影响范围内测试通过，未运行全量。具体框架消费者仍未点名，不能把假设写成既定根因；以 166 正常 App 上传复测裁定修复结果。

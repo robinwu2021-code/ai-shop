@@ -180,7 +180,7 @@ def _h2_type(col: str) -> str:
         r"\1TEXT", col, flags=re.I)
     replacements = []
     mask = _sql_code_mask(col)
-    for match in re.finditer(r"\bCHARACTER\s+SET\s+utf8mb4(?:\s+COLLATE\s+utf8mb4_bin)?\b", mask, re.I):
+    for match in re.finditer(r"\b(?:CHARACTER\s+SET\s+utf8mb4(?:\s+COLLATE\s+utf8mb4_bin)?|COLLATE\s+utf8mb4_bin)\b", mask, re.I):
         replacements.append((match.start(), match.end(), ""))
     simple = r"([A-Za-z_]\w*)"
     for match in re.finditer(r"\bJSON_VALID\(\s*" + simple + r"\s*\)", mask, re.I):

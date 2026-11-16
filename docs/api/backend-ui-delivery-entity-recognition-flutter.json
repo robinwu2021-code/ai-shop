@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "These handlers are consumed by the separate ai-shop-bapp Flutter repository (ENTITY_WORKSPACE_OCR), not this repository's legacy Vue b-app. Registers the external consumer without changing the historical orphan baseline. Reading an uploaded file waits for near-pay's internal files/{file}/content endpoint.",
+  "plan": "docs/technical/design/TDD-经营实体证件识别.md",
+  "contract": "docs/api/entity-recognition.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerCommit": "cfe67b0",
+  "consumerEvidence": "docs/api/经营实体证件识别接口.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entity-recognitions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/entities/{entityNo}/recognitions"
+    }
+  ]
+}

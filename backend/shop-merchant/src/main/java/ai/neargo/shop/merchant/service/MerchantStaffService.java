@@ -122,4 +122,28 @@ public interface MerchantStaffService {
      */
     java.util.List<ai.neargo.shop.merchant.dto.StaffLogVO> logs(String merchantNo,
                                                                 String targetAccountNo);
+
+    // ------------------------------------------------------------ account self-service (TDD-商户App统一登录与账号)
+
+    /** Entities where {@code userNo} holds an active owner row. */
+    java.util.List<String> ownedEntityNos(String userNo);
+
+    /** Stores of the entities returned by {@link #ownedEntityNos}. */
+    java.util.List<String> ownedStoreNos(String userNo);
+
+    /** Active staff rows of this person in other owners' entities (by user number or login phone). */
+    int activeStaffMemberships(String userNo, String phone);
+
+    /**
+     * The person changed their login phone: their owner rows and the staff rows other owners created
+     * for the old phone follow to the new one (D5), each staff change logged in that entity.
+     * Refused with 10409 when an entity already has another active row on the new phone.
+     */
+    void followLoginPhone(String userNo, String oldPhone, String newPhone);
+
+    /**
+     * The person deleted their account: every membership row is disabled and its sessions revoked (D8),
+     * and the stores they own become read-only (D14 option B).
+     */
+    void retireAccount(String userNo, String phone);
 }

@@ -349,6 +349,33 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     @Override
+    public ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState readCounterState(
+            CheckoutScope scope, OperationRef operation) {
+        manualPolicy.requireCounterReader(scope, operation);
+        return unscoped(
+                () -> {
+                    var op = requireOperation(operation);
+                    requireScope(op, scope);
+                    requireCounter(op);
+                    var confirmation = op.getConfirmationNo() == null ? null
+                            : confirmations.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                    .<OrdCheckoutConfirmation>lambdaQuery()
+                                    .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo())
+                                    .last("limit 1"));
+                    var quote = requireQuote(op);
+                    boolean placed = op.getOrderNo() != null;
+                    String phase = placed ? "CREATED" : confirmation != null ? "CONFIRMED" : "QUOTED";
+                    return new ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState(
+                            confirmation == null && !placed && "OPEN".equals(quote.getStatus())
+                                    && quote.getExpiresAt() != null
+                                    && quote.getExpiresAt().toInstant(ZoneOffset.UTC).isAfter(clock.now()),
+                            confirmation == null ? null : counterConfirmation(confirmation),
+                            new ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterResult(
+                                    phase, op.getOrderNo()));
+                });
+    }
+
+    @Override
     public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
         if (request == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

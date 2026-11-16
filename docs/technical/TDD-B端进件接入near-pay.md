@@ -9,7 +9,7 @@
 | AC | 验收要求 | 落点 |
 |---|---|---|
 | A1 | 只认实时有效的 MERCHANT / USER 或 MCH_ACCOUNT / MAIN 会话；撤销过期 401、禁用或禁止身份 403、会话依赖失败 503；不采信身份头 | 独立的受认证 B 端安全链、PayBizSessionVerifier、BizPaySessionController |
-| A2 | 只暴露清单中的 15 个方法与路径，限制编号与原始 URI，固定 HTTPS origin（开发可 loopback HTTP） | BizOnboardingForwarder、BizPayOnboardingController |
+| A2 | 只暴露清单中的方法与路径（交接时 15 个；2026-11 加入商户代建与资料修订各 3 个后为 21 个，以 `BizOnboardingForwarder#allowed` 为准），限制编号与原始 URI，固定 HTTPS origin（开发可 loopback HTTP） | BizOnboardingForwarder、BizPayOnboardingController |
 | A3 | 原始 Bearer、JSON、multipart boundary/body、版本、幂等字段透传；无服务身份、存储、重封装、body 日志 | 专用安全链避开本地 BizContext / 旧支付 Guard；原始流读取 |
 | A4 | JSON 1 MiB、multipart 总计 6 MiB、每文件 5 MiB，在入口有界读取并用现有 Tomcat 流式解析器检查文件大小 | PayBizRequestBody、专用 multipart resolver |
 | A5 | 原样返回状态/body及适配器允许的响应头；二进制不套信封；连接 3 秒、请求 20 秒、不跟随重定向、不应用级重试；通信失败 502、超时 504 | forwarder、协议异常处理、ApiResponseWrapper |

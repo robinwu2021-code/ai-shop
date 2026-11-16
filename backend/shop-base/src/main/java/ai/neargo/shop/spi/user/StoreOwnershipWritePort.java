@@ -4,4 +4,5 @@ package ai.neargo.shop.spi.user;
 public interface StoreOwnershipWritePort {
     void lockAndCheck(String tenantNo, String expectedEntityNo, String storeNo);
     void lockEntityAndCheck(String tenantNo, String entityNo);
+    default void lockEntityExclusiveAndCheck(String tenantNo,String entityNo){throw new UnsupportedOperationException("Exclusive entity ownership lock unavailable");}
 }

@@ -30,6 +30,9 @@ public interface CheckoutService {
     /** Explicit current cashier acceptance is required independently from member identity. */
     CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request);
 
+    ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState readCounterState(
+            CheckoutScope scope, OperationRef operation);
+
     /** Finalize only the accepted original through common stock and persistence owners. */
     CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request);
 

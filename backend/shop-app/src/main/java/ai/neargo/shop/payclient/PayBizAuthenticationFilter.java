@@ -43,7 +43,10 @@ public final class PayBizAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
     try {
+      PayBizRequestBody.captureUpload(request);
       chain.doFilter(request, response);
+    } catch (PayBizException rejected) {
+      errors.resolveException(request, response, null, rejected);
     } finally {
       SecurityContextHolder.clearContext();
     }

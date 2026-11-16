@@ -46,6 +46,14 @@ public class UserServiceImpl implements UserService {
     /** 注销要连人档一起解绑（P0）—— 与删凭证是同一件事的两半 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
+    /** Merchant-side deregistration rules (D7). Setter-injected; absent in slices without the merchant domain. */
+    private ai.neargo.shop.spi.merchant.MerchantDeregisterPort merchantDeregister;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMerchantDeregister(ai.neargo.shop.spi.merchant.MerchantDeregisterPort port) {
+        this.merchantDeregister = port;
+    }
+
     public UserServiceImpl(UserMapper userMapper, IdentityMapper identityMapper, MpSessionService mpSessions,
                            PickupQueryPort pickupQueryPort, OtpStore otpStore,
                            OpenOrderPort openOrderPort, TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores, 
@@ -77,6 +85,31 @@ public class UserServiceImpl implements UserService {
          */
         if (openOrderPort.hasOpenOrders(user.getUserNo())) {
             throw BizException.of(ErrorCode.DEREGISTER_HAS_OPEN_ORDERS);
+        }
+        /*
+         * 店主从小程序注销也要过商户侧的前置检查（D7）：否则门店会变成无人能登录的店。
+         */
+        var merchant = merchantDeregister;
+        if (merchant != null && merchant.blocked(user.getUserNo())) {
+            throw BizException.of(ErrorCode.DEREGISTER_BLOCKED);
+        }
+        deregisterAccount(user.getUserNo());
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deregisterAccount(String userNo) {
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        if (user == null || STATUS_DEREGISTERED.equals(user.getStatus())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var merchant = merchantDeregister;
+        if (merchant != null) {
+            UsrIdentity phone = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                    .eq(UsrIdentity::getUserNo, userNo)
+                    .eq(UsrIdentity::getIdentityType, IdentityType.PHONE).last("limit 1"));
+            merchant.onDeregistered(userNo, phone == null ? user.getPhone() : phone.getIdentityValue());
         }
 
         /*

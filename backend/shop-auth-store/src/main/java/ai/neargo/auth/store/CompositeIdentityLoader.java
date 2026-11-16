@@ -8,8 +8,8 @@ import java.util.Optional;
  * 一个池里装着两类主体时，按会话行上的 {@code subject_kind} 分发。
  *
  * <h2>只有 B 端需要它</h2>
- * <p>店员从 {@code /biz/auth/staff-login} 进来，主体是 {@code mch_account_no}；
- * 老板与<b>还没开店的人</b>从 {@code /biz/auth/login} 进来，主体是 {@code user_no}。
+ * <p>员工身份的会话（选 STAFF 身份进入，或旧的 {@code /biz/auth/staff-login}）主体是 {@code mch_account_no}；
+ * 店主与<b>还没开店的人</b>的会话主体是 {@code user_no}。
  * 生产实测 9 个商家账号里 8 个没有 {@code usr_account}，所以两类都得认。
  *
  * <h2>失败即关闭</h2>
