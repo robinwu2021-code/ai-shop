@@ -58,5 +58,15 @@
     "rollback": "/home/ume/entity-tw2-20261116/{pay-before-tw2.jar,shop-before-tw2.jar} written back in place; oms symlink back to entity-material-recognition-20261116",
     "note": "Mitake SMS (origin/codex/ai-shop-codex, V677) merged into main a91713ad3. The later sms-content release (V678__notify_log_content.sql + SendResult, SmsPort$SmsException, SysNotifyLog, NotifyLogWriter, NotifyLoggingSmsPort, MitakeSmsGateway; /home/ume/sms-content-20261116) is in no pushed branch; a full jar from main would still drop it and must wait until its author pushes it",
     "notVerified": "logged-in App save with TW_ENTITY_2 fields and the {field, reason} envelope on 166"
+  },
+  "entityV46PayRelease": {
+    "approvedBy": "user, 2026-11-16 (Deploy to 166, including migration V104)",
+    "source": "near-pay feat/entity-material-recognition 62e0deb3",
+    "migration": "V104 pay_entity_profile_contact on nearpay_prod. First apply failed (nearpay_prod_app lacks CREATE) and left a failed history row; removed with Flyway repair; CREATE granted temporarily via db61 root and revoked right after (grants back to SELECT/INSERT/UPDATE/DELETE)",
+    "pay": "class overlay on 0f7da83e5a32… -> a047d57d877736a862b66975fa3bc1d26608f9b6e19f1ce7c58fa8addea0173f; readiness OK; schema check V104 matches",
+    "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-v46-20261116",
+    "aiShop": "unchanged (already calls contact, revision-discards, preview and forwards channelMaterials)",
+    "rollback": "/home/ume/entity-v46-20261116/pay-before-v46.jar written back in place; V104 table can stay; oms symlink back to entity-tw2-20261116",
+    "notVerified": "logged-in App use of contact, discard, preview and channelMaterials on 166"
   }
 }
