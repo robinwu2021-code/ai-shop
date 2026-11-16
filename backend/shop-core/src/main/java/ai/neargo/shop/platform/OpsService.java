@@ -203,6 +203,12 @@ public interface OpsService {
     String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy);
 
     /**
+     * 代填并指定店主名下一个待补证照主体（迁移用）：审核通过时激活该主体并保留其原有门店，
+     * 不另建主体与门店。{@code entityNo} 为空时同 {@link #createApplyOnBehalf(SubmitApplyCommand, String)}。
+     */
+    String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy, String entityNo);
+
+    /**
      * 改自己那份<b>还在等审核</b>的入驻意向。
      *
      * <p><b>只有 PENDING 放行</b>，其余三档各有各的理由：

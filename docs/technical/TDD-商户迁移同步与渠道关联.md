@@ -180,6 +180,52 @@ query exact identity
 
 残余风险：N3 为事务内先查后插，不加库级唯一键（166 存量可能已有同主体多商户，加唯一键会使迁移失败）；同主体两个不同 `requestNo` 并发代建仍可能各建一个，由脚本串行执行规避。
 
+## §8 第二期：运营端迁移接口（2026-11-16 用户要求「全部通过运营端 API 完成」，草稿）
+
+背景：首户改为以原系统商户「李昱達」（`88600253990002308`）为准，在 Oscar 账号（`U261113VG2HFDJMK0`）下新建主体「李昱達」，门店用 Oscar 名下 `ST2611132NS49C2EPQ`「ume 早餐店」，新建支付商户，渠道暂不配。后续有大量账号按同一路径迁移，商户本人不参与操作。
+
+### 8.1 现状核对（源码与 166 数据）
+
+| 能力 | 现状 | 缺口 |
+|---|---|---|
+| 来源数据 | 导入表 `ai_shop_ume.stg_ume_active_stores_20261113`、`stg_ume_first_batch_store_accounts_20261113`，`nearpay_prod.stg_ume_active_payment_merchants_20261112` | 无运营读取接口（N4） |
+| 账号下建主体 | 仅 App `POST /biz/entities`（本人）；运营 `apply-on-behalf` 会连带新建门店 | 运营端不能「选已有门店建主体」 |
+| 门店换挂主体 | 仅 App `POST /biz/store/{storeNo}/entity`（本人），与 near-pay 两阶段协同（`StoreEntityClaimServiceImpl`） | 运营端无入口；策略 `StoreRelinkLocalPolicy` 要求目标主体 `ACTIVE`、来源主体 `PENDING_LICENSE`；来源只剩该店时来源主体被注销 |
+| 主体变 ACTIVE | 仅 near-pay 实体资料审批回写（`EntityRegistrationProjectionImpl`，要求 8 位统编） | 个人工商户无统编 |
+| 支付商户 | `POST /ops/merchant/{entityNo}/pay-service/apply` 由商城主体同步建商户并建来源关联，门店随之关联；`registrationNo` 必填 | 个人无统编；运营代建 `merchant-creations` 依赖 `mch_operating_entity`（仅本人 App 可建），与门店主体体系不通，不采用 |
+
+### 8.2 拟新增接口
+
+| 编号 | 仓库 | 端点 | 说明 |
+|---|---|---|---|
+| M1 | ai-shop | `GET /ops/migration-sources/merchants/{sourceMerchantId}`；`GET /ops/migration-sources/merchants?email=&storeName=` | 只读导入表：门店、账号（手机末 3 位）；权限 `merchant:migration:read` |
+| M2 | near-pay | `GET /pay-ops/v2/migration-sources/merchants/{sourceMerchantId}` | 只读导入表：主体要素（证号末 4 位）、各渠道及渠道商户号；权限 `pay:merchant:view` |
+| M3 | ai-shop | `GET /ops/migration/entity-claims/precheck?ownerUserNo=&storeNo=`；`POST /ops/migration/entity-claims`；`GET /ops/migration/entity-claims/by-request/{requestNo}` | 一个运营命令：为店主新建主体（记来源商户号）→ 按迁移口径置主体状态（待 D1）→ 复用现有门店换挂协同把门店挂到新主体；`requestNo` 幂等、可续跑；权限 `merchant:migration:execute`；审计 |
+| M4 | 现有 | `POST /ops/merchant/{entityNo}/pay-service/apply` | 建支付商户；个人无统编时的取值待 D2 |
+
+### 8.3 决定（2026-11-16 用户确认）
+
+- D1 来源已审核（`audit_status=2`）的商户迁移时即为 `ACTIVE`：由运营审核代填单落实（审核通过即激活），审核依据为来源审核结论。
+- D2 个人工商户无统编：支付商户登记号用负责人证件号，由运营录入，不进 Git、不进脚本配置。
+- D3 原「創勢科技」可改掉或删除：不再走门店换挂。
+
+### 8.4 166 现状追加核对与路线调整
+
+- 门店换挂在 166 不可用：`shop.merchant.store-claim.enabled` 未开，且 `INVENTORY_ENABLED=true` 使 `StoreRelinkLocalPolicy` 恒报 `INVENTORY_HISTORY_UNKNOWN`。
+- 批量迁移不需要换挂：原系统 600 余户的主体（`MUME…`）、门店（`STUME…`）、店主（`UUMEU…`）已导入为待补证照主体。
+- 新路线：运营代填 `POST /ops/merchants/apply-on-behalf` 新增可选 `entityNo`（店主名下待补证照主体）→ `accept` → `audit` 通过即激活该主体为 `ACTIVE` 并改为申请名称，**保留其原默认门店**，不另建主体与门店 → `POST /ops/stores/nearpay-sync` → `POST /ops/merchant/{entityNo}/pay-service/apply` 建支付商户 → 渠道账户与绑定。
+- 首户 Oscar：`entityNo=M261113Y3QW5XKEFW`（原「創勢科技」，门店 ume 早餐店）改为「李昱達」（个人）。
+
+### 8.5 已实现（M3' 代填指定主体）
+
+| 动作 | 路径 |
+|---|---|
+| 修改 | `shop-core/.../api/ops/OpsMerchantApplyController.java`：`OnBehalfReq.entityNo`（可选，`[A-Za-z0-9_-]{1,64}`） |
+| 修改 | `shop-core/.../platform/OpsService.java`、`impl/OpsServiceImpl.java`：`createApplyOnBehalf(cmd, submittedBy, entityNo)`；锁主体、拒绝已托管登记、与 `storeProfile` 互斥，主体须为店主本人名下待补证照且有营业中默认店（复用 `merchantApplicationEntity`） |
+| 测试 | `OnBehalfMerchantFlowTest#onBehalfWithEntityNoActivatesThatPendingEntityAndKeepsItsStore`、`#onBehalfWithEntityNoRejectsForeignEntityAndStoreDraft`（全类 16/16）；`OpsMerchantRegionalContactTest` 8/8 |
+
+M1、M2（来源读取）随批量迁移排期；本户不依赖。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 |

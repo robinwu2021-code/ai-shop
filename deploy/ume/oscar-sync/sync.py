@@ -142,7 +142,8 @@ def run(api, t, apply=False, execute_repair=False):
         return '-'.join((rq,) + parts)[:64]
 
     def account():
-        rows = records(api.shop('/ops/customers/users', keyword=t['email'], size=20))
+        # 运营账号检索不按邮箱匹配；有 userNo 时按 userNo 精确查
+        rows = records(api.shop('/ops/customers/users', keyword=t.get('userNo') or t['email'], size=20))
         if t.get('userNo'):
             rows = [x for x in rows if x.get('userNo') == t['userNo']] or rows
         v, hit = decide(rows, lambda x: not t.get('userNo') or x.get('userNo') == t['userNo'])
@@ -213,6 +214,7 @@ def run(api, t, apply=False, execute_repair=False):
             raise Blocked('门店未定')
         try:
             s = detail(api.pay('/stores/%s' % ids['storeNo']))
+            s = s.get('store', s)  # near-pay 门店详情为 record.store
         except Blocked as e:
             if e.status != 404:
                 raise
