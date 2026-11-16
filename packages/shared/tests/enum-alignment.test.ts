@@ -38,13 +38,6 @@ const KNOWN_SHARED: Record<string, string> = {
     "是另一个端点，接 App 时再补。两者接通时删掉本条对应的半句",
   MerchantTier:
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
-  FULFILLMENT:
-    "**STORE_VERIFY 与 APPOINTMENT 已接通**（2026-08-17，服务履约一、二期）：后端取值域、" +
-    "支付后落 FULFILLING（不经「待发货」，因为没有东西要发）、预约时段与上门地址两道必填闸、核销全链路。" +
-    "剩 INSTANT（虚拟即时发放，三期：与卡包耦合）。" +
-    "接通时**不需要新增订单状态** —— 归进 SELF_SERVE / SERVE_TO_BUYER 两个交付形态即可，" +
-    "文案表加一行（见《订单状态-统一整理》）。" +
-    "（DELIVERY 与 MERCHANT_DELIVERY 的同物异名、PICKUP 与 STORE_PICKUP 的同物异名均已修）",
 };
 
 /**

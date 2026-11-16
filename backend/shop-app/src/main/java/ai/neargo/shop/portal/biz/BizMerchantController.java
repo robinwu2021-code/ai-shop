@@ -8,6 +8,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.commercebridge.FoundationTarget;
 import ai.neargo.shop.commercebridge.FoundationPaymentAccess;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -351,7 +352,7 @@ public class BizMerchantController {
      * <p>已经有待补证照的占位主体时原样返回它，不建第二个（防连点，见 Port 注释）。
      */
     @PostMapping("/biz/merchant/quick-start")
-    public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
+    public MerchantProfileVO quickStart(@Valid @RequestBody QuickStartReq req) {
         var user = BizAuthController.personalUser();
         String userNo = user.userNo();
         // 校验先于建壳：市场或行业不对时什么都不建（TDD-注册地区与三步建店 AC6）

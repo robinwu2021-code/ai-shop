@@ -3,6 +3,8 @@ package ai.neargo.shop.product.policy;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.mapper.ProductMappers.ExecutionRetentionMapper;
@@ -13,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Owner-local read-only fence: stock roots precede links, claims and balances; no cross-owner IO. */
 @Component
 public final class ExecutionStockRetentionGuard {
+    private static final Logger log = LoggerFactory.getLogger(ExecutionStockRetentionGuard.class);
     private final ExecutionRetentionMapper links;
     private final ExecutionStockRetentionSchemaVerifier schema;
     public ExecutionStockRetentionGuard(ExecutionRetentionMapper links, ExecutionStockRetentionSchemaVerifier schema) {
@@ -27,8 +30,8 @@ public final class ExecutionStockRetentionGuard {
         var state = schema.installation();
         if (state == ExecutionStockRetentionSchemaVerifier.Installation.ABSENT) return List.of();
         if (state != ExecutionStockRetentionSchemaVerifier.Installation.INSTALLED) {
-            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE,
-                "EXECUTION_STOCK_RETENTION_SCHEMA_UNAVAILABLE");
+            log.warn("EXECUTION_STOCK_RETENTION_SCHEMA_UNAVAILABLE");
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
         }
         if (originals.isEmpty()) return List.of();
         return DataScopeContext.executeWithoutScope(() -> links.lockOriginalLinks(

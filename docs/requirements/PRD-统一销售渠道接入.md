@@ -67,4 +67,4 @@ ALL14 厨房日报已有真实 FOOD/KITCHEN 原事件数量来源及 affected-da
 运营权限沿恢复后的原角色授权表；`SYSTEM_COMMERCE_READ/UPDATE` 常量与精确接口检查不等于给任何默认角色授权。未新增 SUPPORT/TECH_OPS 默认 grants，新增运营接口当前仅原 SUPER_ADMIN 通配权限可用。此处为实际权限口径同步，不扩展业务或角色能力。
 
 
-零售自提/骑手交接来源本轮补齐为原 Core 真实 CHANNEL+RETAIL 动作证据：成功 final commit 同事务追加 V614 `ord_channel_fulfillment_evidence`，封存动作前进度与目标之差、原 MAIN 行 opaque allocation、真实发生时间和原 receipt/hash。历史 terminal、UNKNOWN 和无新增交付量不补造证据。可沿现有 CIM 履约发布接口使用原 `fulfillmentNo` 和 `sourceRevision="1"`，本地或受服务令牌保护的 typed 原来源读取；桥接默认关闭。当前仅支持 `PICKED_UP/HANDED_OVER`，快递 `SHIPPED/DELIVERED` 仍不支持，不改本地 PAID、不造承运商包裹/物流或资金凭证。新增源码及测试源码已写，统一编译/原生测试待主执行者记录。
+零售自提/骑手交接来源本轮补齐为原 Core 真实 CHANNEL+RETAIL 动作证据：成功 final commit 同事务追加 V614 `ord_channel_fulfillment_evidence`，封存动作前进度与目标之差、原 MAIN 行 opaque allocation、真实发生时间和原 receipt/hash。历史 terminal、UNKNOWN 和无新增交付量不补造证据。可沿现有 CIM 履约发布接口使用原 `fulfillmentNo` 和 `sourceRevision="1"`，本地或受服务令牌保护的 typed 原来源读取；桥接默认关闭。当前仅支持 `PICKED_UP/HANDED_OVER`，快递发货/送达事件仍不支持，不改本地 PAID、不造承运商包裹/物流或资金凭证。新增源码及测试源码已写，统一编译/原生测试待主执行者记录。

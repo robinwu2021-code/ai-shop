@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "pendingP1P2": 0,
+  "scope": "正文快照、成功/失败留档、OPS权限与NULL兼容、App与日志不泄漏、V678、6类二进制兼容",
+  "reviewer": "sms_content_review",
+  "tests": {
+    "maven": {
+      "tests": 61,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "ops": {
+      "tests": 31,
+      "failures": 0,
+      "typecheck": "PASS",
+      "build": "webpack /ops-shop PASS"
+    }
+  }
+}

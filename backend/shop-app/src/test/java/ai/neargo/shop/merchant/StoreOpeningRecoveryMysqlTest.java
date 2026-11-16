@@ -60,7 +60,7 @@ class StoreOpeningRecoveryMysqlTest {
         assertEquals(ErrorCode.NOT_FOUND,assertThrows(BizException.class,()->service.find(LoginUser.merchantByUser("OTHER","other"),"OPEN-1")).errorCode());
     }
     @Test void failureRollsBackReceiptAndRetryUsesSameRequest() {
-        when(merchants.quickStart(any())).thenThrow(BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED));
+        when(merchants.quickStart(any())).thenThrow(BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED,1,1,"FREE"));
         assertThrows(BizException.class,()->open("OPEN-2","Shop"));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_opening_request",Integer.class));
         doReturn(new MerchantAdminPort.QuickStartResult("E1","S1")).when(merchants).quickStart(any());
@@ -75,10 +75,10 @@ class StoreOpeningRecoveryMysqlTest {
         verify(merchants,times(1)).quickStart(any());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_opening_request",Integer.class));
     }
-    @Test void branchReceiptKeepsItsChosenIndustryAndAddressFields() {
+    @Test void branchUsesCurrentCapacityDespiteStaleDisplayAndKeepsItsFields() {
         jdbc.execute("CREATE TABLE mch_store (tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),address_detail VARCHAR(64),industry_code VARCHAR(32),sub_industry_code VARCHAR(32),industry_text VARCHAR(32),sub_industry_text VARCHAR(32),lat_e6 INT,lng_e6 INT,coord_sys VARCHAR(16),deleted INT NOT NULL DEFAULT 0)");
         when(access.access(user)).thenReturn(new StoreCreationAccessService.Access(false,false,List.of(
-            new StoreCreationAccessService.Source("E1","Entity","ANCHOR","TW",2,1,true))));
+            new StoreCreationAccessService.Source("E1","Entity","ANCHOR","TW",1,1,false))));
         var branch=mock(ai.neargo.shop.merchant.dto.StoreVO.class);when(branch.storeNo()).thenReturn("BRANCH");
         when(stores.create(eq("E1"),any(StoreAdminService.CreateCommand.class))).thenAnswer(call->{
             jdbc.update("INSERT INTO mch_store(tenant_no,entity_no,store_no) VALUES('MAIN','E1','BRANCH')");return branch;
@@ -92,10 +92,16 @@ class StoreOpeningRecoveryMysqlTest {
     @Test void branchRequiresOwnedSourceAndCapacityWithoutCreatingEntity() {
         when(access.access(user)).thenReturn(new StoreCreationAccessService.Access(false,false,List.of(
             new StoreCreationAccessService.Source("E1","Entity","ANCHOR","TW",1,1,false))));
+        when(stores.create(eq("E1"),any(StoreAdminService.CreateCommand.class)))
+            .thenThrow(BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED,2,2,"PRO"));
         var denied=assertThrows(BizException.class,()->tx.execute(s->service.open(user,"OPEN-4","E1","ANCHOR",command("Branch"))));
         assertEquals(ErrorCode.STORE_QUOTA_EXCEEDED,denied.errorCode());
+        assertArrayEquals(new Object[]{2,2,"PRO"},denied.args());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_opening_request",Integer.class));
         var foreign=assertThrows(BizException.class,()->tx.execute(s->service.open(user,"OPEN-4","FOREIGN","ANCHOR",command("Branch"))));
         assertEquals(ErrorCode.FORBIDDEN,foreign.errorCode());
-        verifyNoInteractions(merchants,stores);
+        verify(stores,times(1)).create(eq("E1"),any(StoreAdminService.CreateCommand.class));
+        verifyNoMoreInteractions(stores);
+        verifyNoInteractions(merchants);
     }
 }

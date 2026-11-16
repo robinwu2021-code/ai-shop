@@ -1,0 +1,114 @@
+[
+  {
+    "document": "docs/technical/design/组织关系-ai-shop与独立进销存-业务抽象.md",
+    "output": "docs/technical/diagrams/org-dependencies.svg",
+    "title": "组织依赖与结算事实关系",
+    "description": "箭头由依赖方指向被依赖方；保留从属、成员、指定、授权与事实引用五种线型，以及范围解析、核销清分和结算汇总关系。",
+    "source": "flowchart BT\n  ACC([账户·人])\n  CUS([顾客])\n  ENT[经营主体]\n  CH[支付渠道]\n  MER[收款商户]\n  STO[门店]\n  SPA[管理空间]\n  GRP[组·kind=连锁]\n  SCO{{范围}}\n  ISS[发行方]\n  INS[工具·储值/券]\n  REL[投放·活动]\n  RED[核销]\n  CLR[清分]\n  BIL[结算单]\n  MER ==>|从属| ENT\n  STO ==>|从属| ENT\n  GRP ==>|从属| SPA\n  INS ==>|从属| ISS\n  REL ==>|从属| INS\n  STO -->|成员·同kind至多一| GRP\n  CUS -->|会员关系| SCO\n  GRP -.->|指定 结算主体| ENT\n  ISS -.->|指定 结算主体·版本| ENT\n  ISS -.->|指定 收款| MER\n  STO -.->|指定 按渠道| MER\n  ISS -->|适用| SCO\n  SCO -->|解析| STO\n  SCO -->|解析| GRP\n  SCO -->|解析| ENT\n  ACC -.->|授权| ENT\n  ACC -.->|授权| STO\n  ACC -.->|授权| GRP\n  SPA -.->|所有人| ACC\n  MER --> CH\n  RED -->|引用版本| INS\n  RED -->|发生于| STO\n  RED --> CUS\n  CLR -->|源于| RED\n  CLR -->|付方/收方| ENT\n  BIL -->|汇总| CLR\n  linkStyle 0,1,2,3,4 stroke-width:3px\n  linkStyle 15,16,17,18 stroke-dasharray:2 3\n  linkStyle 19,20,21,22,23,24,25 stroke:#B4B2A9\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-会员与营销-表结构与对象模型.md",
+    "output": "docs/technical/diagrams/member-marketing-objects.svg",
+    "title": "会员与营销逻辑对象模型",
+    "description": "设计层对象视图，列出Person、Member、标签、人群、活动、券及核销对象的字段、方法与聚合和组合多重性；数据库物理结构以本册前文生成ER图为准。",
+    "source": "classDiagram\n    class Person {\n        +PersonNo no\n        +PhoneHash phoneHash\n        +UserNo user\n        +PersonNo mergedInto\n        +void bindPhone(Phone)   %% A/B/C：多数是一步到位\n        +void bindAccount(UserNo)\n        +void mergeInto(Person)\n    }\n    class Member {\n        +MemberNo no\n        +EntityNo entity\n        +PersonNo person\n        +MemberStatus status\n        +Level level\n        +Metrics metrics\n        +bool reachable()\n        +void claim(UserNo)\n        +void applyOrder(SubOrder)\n    }\n    class MemberStore {\n        +StoreNo store\n        +Metrics metrics\n        +Level level\n        +bool isFirstStore\n    }\n    class MemberSource {\n        +SourceType type\n        +StoreNo store\n        +LinkNo link\n        +UserNo inviter\n        +OperatorNo operator\n        +ActivityNo activity\n    }\n    class MemberTag {\n        +TagNo tag\n        +TagType type\n    }\n    class Tag {\n        +TagNo no\n        +string name\n        +TagStatus status\n        +TagNo mergedInto\n        +void rename(string)\n        +void mergeInto(Tag)\n    }\n    class Segment {\n        +SegmentNo no\n        +StoreNo scopeStore\n        +Rule rule\n        +List~MemberNo~ resolve()\n    }\n    class ReachLog {\n        +Scene scene\n        +long sentAt\n        +bool openedInWindow()\n    }\n\n    class Activity {\n        +ActivityNo no\n        +Trigger trigger\n        +Benefit benefit\n        +Schedule schedule\n        +Quota quota\n        +StoreNo store\n        +bool isActiveAt(long)\n        +bool covers(Buyer)\n        +Money discountFor(Basket)\n    }\n    class Audience {\n        +AudienceType type\n        +string value\n    }\n    class GoodsScope {\n        +ScopeType type\n        +string refNo\n    }\n    class Coupon {\n        +CouponNo no\n        +Benefit benefit\n        +Condition condition\n        +Scope scope\n        +Validity validity\n        +IssueMode issue\n        +RedeemMode redeem\n        +int timesTotal\n        +Money discountFor(Money base)\n        +UserCoupon issueTo(UserNo, long now)\n    }\n    class UserCoupon {\n        +UserCouponNo no\n        +long expireAt\n        +int timesUsed\n        +Status status\n        +bool usableAt(long, Basket)\n        +PromotionApply redeem(...)\n    }\n    class CouponIssue\n    class PromotionApply\n\n    Person \"1\" o-- \"0..*\" Member\n    Member \"1\" *-- \"0..*\" MemberStore\n    Member \"1\" *-- \"0..*\" MemberSource\n    Member \"1\" *-- \"0..*\" MemberTag\n    Tag \"1\" o-- \"0..*\" MemberTag\n    Member \"1\" o-- \"0..*\" ReachLog\n    Segment \"1\" o-- \"0..*\" ReachLog\n\n    Activity \"1\" *-- \"0..*\" Audience\n    Activity \"1\" *-- \"0..*\" GoodsScope\n    Activity \"0..1\" o-- \"0..1\" Coupon\n    Coupon \"1\" *-- \"0..*\" UserCoupon\n    Coupon \"1\" o-- \"0..*\" CouponIssue\n    UserCoupon \"1\" o-- \"0..*\" PromotionApply\n    Segment \"1\" o-- \"0..*\" CouponIssue\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-商品域V2-多行业一体化方案.md",
+    "output": "docs/technical/diagrams/product-v2-layers.svg",
+    "title": "商品V2治理目录与售卖分层",
+    "description": "平台治理定义产品类型及属性，商家目录承载产品规格与Trait，门店售卖承载Listing、价格、可售时段和陈列；独立库存仅引用Variant。",
+    "source": "flowchart TB\n  subgraph GOV[\"治理层（平台）\"]\n    TX[\"Taxonomy 后台类目<br/>资质·税务·属性模板挂载\"]\n    PT[\"ProductType 产品类型<br/>= Trait组合 + AttributeSet\"]\n    AS[\"AttributeSet / AttributeDef<br/>描述属性 Schema\"]\n  end\n  subgraph CAT[\"目录层（商家）\"]\n    P[\"Product (SPU)<br/>标题·图·类目·属性\"]\n    O[\"Option / OptionValue<br/>销售规格轴\"]\n    V[\"Variant (SKU)<br/>价格基线·条码·计量\"]\n    TR[\"Trait 数据<br/>service / catchWeight /<br/>preorder / bundle\"]\n    MG[\"ModifierGroup / Modifier<br/>min·max·required·加价\"]\n  end\n  subgraph SELL[\"售卖层（门店）\"]\n    L[\"Listing 门店报价<br/>上下架·工位·限量·MOQ\"]\n    PB[\"PriceBook / PriceEntry<br/>渠道×客群×有效期\"]\n    AV[\"AvailabilityRule<br/>星期×时段×渠道\"]\n    CO[\"Collection 陈列<br/>菜单分类·项目分组·专题\"]\n  end\n  TX --> P\n  PT --> P\n  AS --> PT\n  P --> O --> V\n  P --> TR\n  P -.attach.-> MG\n  P --> L\n  V --> PB\n  L --> AV\n  L -.member of.-> CO\n  INV[(\"库存域（独立）<br/>目录不存库存数\")] -.引用.- V\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-商品域-完整方案.md",
+    "output": "docs/technical/diagrams/product-layers.svg",
+    "title": "商品域治理目录与售卖分层",
+    "description": "保留商品治理、目录与门店售卖的设计层依赖；商品和SKU不承担独立库存，工位由门店资源域引用，价格按渠道客群和有效期解析。",
+    "source": "flowchart TB\n  subgraph GOV[\"治理层（平台）\"]\n    TX[\"Taxonomy 后台类目 = prd_category<br/>资质·属性模板挂载\"]\n    PT[\"ProductType 产品类型（数据）<br/>= Trait 组合 + AttributeSet\"]\n  end\n  subgraph CAT[\"目录层（商家）\"]\n    P[\"Product = prd_goods<br/>标题·图·属性·售后策略\"]\n    V[\"Variant = prd_sku<br/>基线价·条码·计量单位\"]\n    TR[\"Trait 表（按行为分表）<br/>service / metered / preorder / bundle\"]\n    MG[\"ModifierGroup / Modifier<br/>required·min·max·加价(定额/比例/可负)\"]\n  end\n  subgraph SELL[\"售卖层（门店）\"]\n    L[\"Listing = prd_store_listing<br/>上下架·工位·限量·MOQ·道次\"]\n    PE[\"PriceEntry 价格条目<br/>渠道×客群×有效期，运行时 resolve\"]\n    AV[\"AvailabilityRule 可售时段\"]\n    CO[\"Collection 陈列<br/>菜单分类·项目分组·本店推荐\"]\n  end\n  TX --> P\n  PT --> P\n  P --> V\n  P --> TR\n  P -.attach.-> MG\n  P --> L\n  V --> PE\n  L --> AV\n  L -.member.-> CO\n  ST[\"mch_station 出品工位（门店资源域）\"] -.引用.- L\n  INV[(\"库存域（独立）\")] -.引用.- V\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md",
+    "output": "docs/technical/diagrams/base-workflow-tracks.svg",
+    "title": "基础订单与行业工作流双轨",
+    "description": "基础订单只有一条流程；行业工作流通过Core API同步调用基座，基座通过异步事件回流行业，实线与虚线保留方向及含义。",
+    "source": "flowchart LR\n  subgraph BASE[\"基础订单流（唯一，基座）\"]\n    direction LR\n    P[\"下单 place\"] --> Y[\"支付 markPaid\"] --> F[\"履约 fulfill/verify\"] --> C[\"完成\"] --> S[\"结算\"]\n    Y -.-> R[\"售后/取消\"]\n  end\n  subgraph WF[\"行业工作流（0..1 条，行业包）\"]\n    direction LR\n    W1[\"行业对象<br/>台账/预约单/工单\"] --> W2[\"行业状态机<br/>OPEN/SERVING/…\"] --> W3[\"行业动作<br/>加菜/划菜/换人/爽约\"]\n  end\n  WF -- \"同步点：Core*Api（同步，工→基）\" --> BASE\n  BASE -- \"同步点：事件（异步，基→工）\" --> WF\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md",
+    "output": "docs/technical/diagrams/food-order-workflow-sequence.svg",
+    "title": "餐饮台账与订单同步时序",
+    "description": "按两条泳道保留开台、下达、支付、加退菜、结账和超时撤单的先后顺序；实线表示调用，虚线表示回调，后付入厨不等支付。",
+    "source": "sequenceDiagram\n  participant W as 台账轨（餐饮工作流）\n  participant B as 订单轨（基础订单流）\n  W->>W: 开台 OPEN（占桌台资源）\n  W->>B: ① 下达 → place（先付 WAIT_PAY / 后付 WAIT_OFFLINE_PAY）\n  B-->>W: ② onPaid（先付）→ 入厨 + 厨房票\n  Note over W: 后付：下达即入厨，不等支付\n  W->>W: 加菜 = 再走 ①（新订单，永不改旧单）\n  W->>B: ③ 退菜(钱已收) → refundLine ／ (钱未收) → cancel+place\n  W->>W: 发起结账 SETTLING（此后不许加菜）\n  W->>B: ④ 逐笔 ord_payment → settle 足额 → 逐单 markPaid(MIXED)\n  B-->>W: ⑤ onPaid ×N → 结台 CLOSED、释放桌台、小票\n  B-->>W: ⑥ onCancelled（超时）→ 撤制作行、打撤单条\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md",
+    "output": "docs/technical/diagrams/beauty-order-workflow-sequence.svg",
+    "title": "美业预约工单与订单同步时序",
+    "description": "按预约工单与订单泳道保留线上付条件分支、到店开单、服务、核销扣次、合并结账、退款和爽约处理；不把工作流状态并入基础订单。",
+    "source": "sequenceDiagram\n  participant W as 预约/工单轨（服务业工作流）\n  participant B as 订单轨（基础订单流）\n  W->>W: 建预约 PENDING（占位 tryBook，可无订单、可无会员）\n  alt 线上付（W2 例外：付钱=真意向，此时即开单）\n    W->>B: ① place(WAIT_PAY)\n    B-->>W: ② onPaid → 预约 CONFIRMED\n  end\n  W->>W: 到店 CHECKED_IN → 开工单 CREATED\n  W->>B: ③ 此时才 place（到店付 / 资产付）—— 避免幽灵订单\n  W->>W: 服务 SERVING（换人=改工单行+留痕，不碰订单）\n  W->>B: ④ 完成 → verify + deductAsset(基座资产流水) + markPaid(TIMES_CARD)\n  W->>B: ⑤ 多工单合并：逐笔 ord_payment → settle\n  B-->>W: ⑥ onRefunded → 提成倒扣 + 资产冲正顺序（O7）\n  W->>B: ⑦ 爽约 → 按规则 cancel / 扣次（规则在门店配置，不在代码）\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-base-architecture.svg",
+    "title": "基座与行业应用总体架构",
+    "description": "历史草稿总览：展示三端、基座和行业入口、独立行业包、零依赖SPI、基座能力、公共底座与数据库依赖；虚线保留实现与自有表关系，不代表当前部署状态。",
+    "source": "flowchart TB\n  subgraph CL[\"端\"]\n    C1[\"c-app 买家<br/>小程序 / App / H5\"]\n    C2[\"b-app 商家\"]\n    C3[\"ops-web 运营\"]\n  end\n\n  subgraph GW[\"入口层（同一个 Spring 应用，按 profile 起 api/ops/worker）\"]\n    G1[\"基座入口<br/>/mp/** · /biz/** · /ops/**<br/>299 个端点\"]\n    G2[\"行业入口<br/>/mp|biz|ops/x/&lt;code&gt;/**<br/>餐饮 25 · 美业 26\"]\n    G3[\"外部回调<br/>/callback/**<br/>恒走基座\"]\n  end\n\n  subgraph IND[\"行业应用（独立 Maven 项目，独立 jar）\"]\n    F[\"shop-industry-food<br/>桌台 · 台账 · 制作 · 结账\"]\n    B[\"shop-industry-beauty<br/>预约 · 工单 · 耗卡 · 提成\"]\n  end\n\n  SPI[\"shop-industry-spi<br/><b>零依赖契约</b><br/>扩展点 5 个 · 回调 API 8 个\"]\n\n  subgraph CORE[\"基座能力（模块化单体）\"]\n    direction LR\n    O[\"交易 trade<br/>订单 · 状态机 · 售后\"]\n    P[\"商品 product<br/>SKU · 价格 · 库存 · 组合\"]\n    M[\"会员 member<br/>档案 · 资产 · 触达\"]\n    R[\"商户 merchant<br/>主体 · 门店 · 资源 · 排班 · 员工\"]\n    S[\"结算 settle\"]\n    PR[\"打印 channel/print<br/>设备 · 模板 · 路由 · 任务\"]\n    PM[\"支付 channel/pay\"]\n  end\n\n  BASE[\"shop-base<br/>取值域 · SPI · 事件 outbox · 幂等 · 能力开关\"]\n  DB[(\"MySQL / MariaDB<br/>基座表 + 行业表同库，迁移历史各自独立\")]\n\n  C1 --> G1 & G2\n  C2 --> G1 & G2\n  C3 --> G1 & G2\n  G2 --> F & B\n  F --> SPI\n  B --> SPI\n  SPI -.实现.-> CORE\n  G1 --> CORE\n  G3 --> CORE\n  CORE --> BASE\n  CORE --> DB\n  F -.自有表.-> DB\n  B -.自有表.-> DB\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-read-write-event-boundaries.svg",
+    "title": "写入读取与事件边界",
+    "description": "历史草稿边界：写操作按对象主语归属，读操作可聚合，基座事件经outbox异步回到行业监听，行业监听自行幂等。",
+    "source": "flowchart LR\n  subgraph W[\"① 写：按主语\"]\n    W1[\"主语是基座对象<br/>订单 商品 会员 券 结算\"] --> W2[\"基座接口\"]\n    W3[\"主语是行业对象<br/>台账 桌台 预约单 工单\"] --> W4[\"行业接口<br/>编排后调 Core*Api\"]\n  end\n  subgraph R[\"② 读：可聚合\"]\n    R1[\"单一基座对象\"] --> R2[\"基座接口\"]\n    R3[\"基座 + 行业附属<br/>菜品列表 / 项目列表\"] --> R4[\"行业聚合读<br/>一次返回，免前端拼\"]\n  end\n  subgraph E[\"③ 事件：基座→行业的唯一回路\"]\n    E1[\"基座发生了什么<br/>OrderPaid / Cancelled / Refunded\"] --> E2[\"outbox at-least-once\"] --> E3[\"行业监听<br/>自己保证幂等\"]\n  end\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-table-ownership.svg",
+    "title": "基座与行业表的所有权边界",
+    "description": "历史设计区分纯基座表、1:1行业附属表及行业专属表；标出order_no、order_item_id、store_no+goods_no、resource_no与slot_no的引用。",
+    "source": "flowchart TB\n  subgraph C[\"C 类 · 纯基座表（行业迁移一列不许碰）\"]\n    C1[\"ord_order / ord_sub_order / ord_item<br/><b>钱与状态的唯一真源</b>\"]\n    C2[\"prd_goods / prd_sku / prd_store_stock\"]\n    C3[\"mbr_member / mbr_card / mbr_asset_txn<br/><b>余次与余额的唯一真源</b>\"]\n    C4[\"mch_resource / mch_appointment_slot<br/><b>占位计数的唯一真源</b>\"]\n    C5[\"prn_printer / prn_route / prn_job\"]\n  end\n  subgraph B2[\"B 类 · 附属表（1:1，主键就是基座业务键）\"]\n    B1[\"fnb_order_ext<br/>桌号 轮次 谁点的\"]\n    B3[\"fnb_order_item_ext<br/>部门 做法 制作状态\"]\n    B4[\"bty_order_item_ext<br/>技师 卡号 耗次\"]\n    B5[\"fnb_goods_ext / bty_goods_ext<br/>出品部门 / 时长缓冲\"]\n  end\n  subgraph A[\"A 类 · 行业专属表（基座没有的对象）\"]\n    A1[\"fnb_table / fnb_check / fnb_check_cart\"]\n    A2[\"bty_appointment / bty_work_order\"]\n    A3[\"fnb_payment / bty_payment<br/><b>行业里唯一存金额的表</b>\"]\n  end\n  B1 -->|order_no| C1\n  B3 -->|order_item_id| C1\n  B4 -->|order_item_id| C1\n  B5 -->|store_no+goods_no| C2\n  A1 -->|resource_no| C4\n  A2 -->|slot_no| C4\n  A3 -->|order_no| C1\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-food-checkout-sequence.svg",
+    "title": "餐饮结账调用时序",
+    "description": "保留七条泳道、台账冻结、查询金额、多笔收款、逐单确认支付的循环，以及事务外提交打印；行业不自行计算订单金额。",
+    "source": "sequenceDiagram\n  participant U as 店员 b-app\n  participant FG as 行业入口 /biz/x/food\n  participant FS as 餐饮编排 CheckoutService\n  participant CA as Core*Api（SPI）\n  participant CO as 基座 交易/支付\n  participant PR as 基座 打印\n  participant DB as DB\n\n  U->>FG: POST /check/{no}/settle/begin\n  FG->>FS: beginSettle\n  FS->>DB: fnb_check OPEN → SETTLING（此后不许加菜）\n  U->>FG: GET /check/{no}/bill\n  FS->>CA: 取台账下各订单\n  CA->>CO: 查 ord_order\n  CO-->>FS: payAmount 之和（<b>台账不自己算钱</b>）\n  U->>FG: POST /settle/pay ×N（现金+微信+储值）\n  FS->>DB: 每笔一条 fnb_payment\n  FS->>FS: 足额校验（少一分不许结台）\n  loop 台账下每张订单\n    FS->>CA: confirmOfflinePaid(orderNo, MIXED, 收款单号)\n    CA->>CO: markPaid → 库存转实扣 · 入会 · 发分 · 触发结算\n  end\n  FS->>DB: fnb_check CLOSED + 释放桌台资源\n  FS-->>PR: 提交结账小票（<b>事务外</b>，失败不回滚订单）\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-beauty-verify-sequence.svg",
+    "title": "美业核销与资产扣次时序",
+    "description": "保留前台、行业入口、编排、SPI、基座和数据库泳道；原价建单、资产流水、次卡支付和原价提成按顺序执行，打印在事务外。",
+    "source": "sequenceDiagram\n  participant U as 前台 b-app\n  participant BG as 行业入口 /biz/x/beauty\n  participant WS as 美业编排 WorkOrderService\n  participant CA as Core*Api（SPI）\n  participant CO as 基座 交易/会员资产\n  participant DB as DB\n\n  U->>BG: POST /work-order/{no}/verify\n  WS->>CA: place(项目原价快照)\n  CA->>CO: 建 ord_order / ord_item（price = 原价）\n  WS->>DB: bty_order_ext / bty_order_item_ext（技师·卡号）\n  WS->>CA: deductAsset(cardNo, 1 次)\n  CA->>CO: mbr_asset_txn 流水（<b>行业包不许自己算余次</b>）\n  WS->>CA: markPaid(payChannel = TIMES_CARD)\n  Note over CO: payAmount = 0，assetDeductMinor = 抵扣额<br/>收入不重复计（钱在卖卡那单已确认）\n  WS->>DB: bty_commission_record（基数 = <b>原价</b>，不是实收 0）\n  WS-->>U: 服务单 + 余次条（打印，事务外）\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-capability-resolution.svg",
+    "title": "门店能力开关解析",
+    "description": "能力预设只在开店改店时展开；运行时读取门店能力表，区分显式开关、行业默认与最终关闭，行业包字段仅参与预设展开。",
+    "source": "flowchart LR\n  I[\"sys_industry_capability<br/>行业预设包\"] -->|开店/改店时展开一次| S[\"mch_store_capability<br/><b>唯一被代码读的表</b>\"]\n  S --> Q{\"CoreCapabilityApi<br/>enabled(storeNo, cap)\"}\n  Q -->|有行 enabled=1| Y[\"开\"]\n  Q -->|有行 enabled=0| N1[\"关\"]\n  Q -->|一行都没有| D[\"取行业 default_on<br/>行业也没配 → <b>关</b>\"]\n  X[\"mch_store.industry_pkg\"] -.仅此一处被读.-> I\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-build-runtime.svg",
+    "title": "源码依赖构建与运行拓扑",
+    "description": "历史草稿构建链：同仓的两个独立reactor经本地Maven仓库连接，按行业profile打包，再分别运行api、ops和worker；保留原目录与端口。",
+    "source": "flowchart TB\n  subgraph SRC[\"源码（同一 git 仓库）\"]\n    R1[\"backend/（shop-parent reactor）<br/>shop-base · shop-core · shop-merchant<br/>shop-settle · shop-channel · shop-app<br/><b>+ shop-industry-spi</b>\"]\n    R2[\"backend-plugins/（独立 reactor，<b>不进 shop-parent modules</b>）<br/>shop-industry-food · shop-industry-beauty\"]\n  end\n  R1 -->|mvn install| M2[(\"~/.m2<br/>shop-industry-spi\")]\n  M2 --> R2\n  R2 -->|mvn install| M2b[(\"~/.m2<br/>行业包 jar\")]\n  M2b --> BLD\n  R1 --> BLD[\"mvn package -P{all|food|beauty|core-only}\"]\n  BLD --> JAR[\"app-&lt;ver&gt;.jar\"]\n  JAR --> D1[\"api profile :8080 公网\"]\n  JAR --> D2[\"ops profile :8081 内网\"]\n  JAR --> D3[\"worker profile 无 HTTP\"]\n"
+  },
+  {
+    "document": "docs/technical/design/TDD-基座与行业应用-总体架构.md",
+    "output": "docs/technical/diagrams/industry-package-startup.svg",
+    "title": "行业包启动注册与拒绝条件",
+    "description": "启动先验证SPI主版本和必需能力，任一不匹配即拒绝启动；通过后运行行业独立Flyway历史，再注册扩展点、端点、权限和任务。",
+    "source": "flowchart LR\n  A[\"扫描 classpath 的 IndustryPackage\"] --> B{\"spiVersion major 匹配?\"}\n  B -->|否| F1[\"<b>拒绝启动</b><br/>报清楚：哪个包 要什么版本 当前什么版本\"]\n  B -->|是| C{\"requiredCapabilities 都有?\"}\n  C -->|否| F2[\"<b>拒绝启动</b>\"]\n  C -->|是| D[\"跑该包自己的 Flyway<br/>db/industry/&lt;code&gt; → 独立历史表\"]\n  D --> E[\"注册扩展点 · 端点 · 权限码 · 任务\"]\n"
+  },
+  {
+    "document": "docs/technical/design/餐饮后端统一实施/03-代码清单与开发方案.md",
+    "output": "docs/technical/diagrams/food-stock-fulfillment-recovery.svg",
+    "title": "餐饮库存履约与恢复流程",
+    "description": "从可信门店来源冻结owner与计划，进入库存预留、共享订单与厨房分次消耗，再交付回传；取消退餐释放未消耗量或按原凭据返还，原键回执支持恢复。",
+    "source": "flowchart LR\n A[可信门店和行业来源] --> B[冻结 owner 与计划]\n B --> C[库存预留命令]\n C --> D[共享订单 / 餐饮批次]\n D --> E[厨房事件及分次消耗]\n E --> F[交付与渠道回传]\n D --> G[取消 / 退餐]\n G --> H[释放未消耗量或凭据返还]\n C --> I[原键回执 / 恢复]\n E --> I\n"
+  }
+]

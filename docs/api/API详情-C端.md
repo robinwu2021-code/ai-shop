@@ -1112,6 +1112,7 @@ My service confirmation　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -1157,6 +1158,7 @@ My service confirmation　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -1208,6 +1210,7 @@ My service confirmation　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -1253,6 +1256,7 @@ My service confirmation　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -1298,6 +1302,7 @@ My service confirmation　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -4386,6 +4391,7 @@ BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -5296,6 +5302,8 @@ PointsOrderState 的 phase 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `requestNo` | `string` | 否 | 本报价所属的求团需求编号 |
+| `status` | `string` | 否 | 报价生命周期状态（有效、撤回或毁约），服务端返回原码 |
 | `quoteNo` | `string` | 是 | 报价单号 |
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 报价商家。`breachCount` 会在报价卡上公示 —— 事后信用替代事前审核 |
 | `priceMinor` | `number` | 是 | 报价单价 |

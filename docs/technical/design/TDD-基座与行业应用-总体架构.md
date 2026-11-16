@@ -26,59 +26,13 @@
 
 ## 2. 分层
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart TB
-  subgraph CL["端"]
-    C1["c-app 买家<br/>小程序 / App / H5"]
-    C2["b-app 商家"]
-    C3["ops-web 运营"]
-  end
+图源保存在 `scripts/doc-design-diagrams.json`，运行 `node scripts/gen-doc-design-diagrams.mjs` 可重新生成；设计草稿保留原有历史语义。
 
-  subgraph GW["入口层（同一个 Spring 应用，按 profile 起 api/ops/worker）"]
-    G1["基座入口<br/>/mp/** · /biz/** · /ops/**<br/>299 个端点"]
-    G2["行业入口<br/>/mp|biz|ops/x/&lt;code&gt;/**<br/>餐饮 25 · 美业 26"]
-    G3["外部回调<br/>/callback/**<br/>恒走基座"]
-  end
+![基座与行业应用总体架构](../diagrams/industry-base-architecture.svg)
 
-  subgraph IND["行业应用（独立 Maven 项目，独立 jar）"]
-    F["shop-industry-food<br/>桌台 · 台账 · 制作 · 结账"]
-    B["shop-industry-beauty<br/>预约 · 工单 · 耗卡 · 提成"]
-  end
-
-  SPI["shop-industry-spi<br/><b>零依赖契约</b><br/>扩展点 5 个 · 回调 API 8 个"]
-
-  subgraph CORE["基座能力（模块化单体）"]
-    direction LR
-    O["交易 trade<br/>订单 · 状态机 · 售后"]
-    P["商品 product<br/>SKU · 价格 · 库存 · 组合"]
-    M["会员 member<br/>档案 · 资产 · 触达"]
-    R["商户 merchant<br/>主体 · 门店 · 资源 · 排班 · 员工"]
-    S["结算 settle"]
-    PR["打印 channel/print<br/>设备 · 模板 · 路由 · 任务"]
-    PM["支付 channel/pay"]
-  end
-
-  BASE["shop-base<br/>取值域 · SPI · 事件 outbox · 幂等 · 能力开关"]
-  DB[("MySQL / MariaDB<br/>基座表 + 行业表同库，迁移历史各自独立")]
-
-  C1 --> G1 & G2
-  C2 --> G1 & G2
-  C3 --> G1 & G2
-  G2 --> F & B
-  F --> SPI
-  B --> SPI
-  SPI -.实现.-> CORE
-  G1 --> CORE
-  G3 --> CORE
-  CORE --> BASE
-  CORE --> DB
-  F -.自有表.-> DB
-  B -.自有表.-> DB
-```
+历史草稿总览：展示三端、基座和行业入口、独立行业包、零依赖SPI、基座能力、公共底座与数据库依赖；虚线保留实现与自有表关系，不代表当前部署状态。
 
 **每层的一句话职责，以及它不许做的事：**
 
@@ -97,24 +51,11 @@ flowchart TB
 
 这套架构成立与否，全在这三条线画得准不准。
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart LR
-  subgraph W["① 写：按主语"]
-    W1["主语是基座对象<br/>订单 商品 会员 券 结算"] --> W2["基座接口"]
-    W3["主语是行业对象<br/>台账 桌台 预约单 工单"] --> W4["行业接口<br/>编排后调 Core*Api"]
-  end
-  subgraph R["② 读：可聚合"]
-    R1["单一基座对象"] --> R2["基座接口"]
-    R3["基座 + 行业附属<br/>菜品列表 / 项目列表"] --> R4["行业聚合读<br/>一次返回，免前端拼"]
-  end
-  subgraph E["③ 事件：基座→行业的唯一回路"]
-    E1["基座发生了什么<br/>OrderPaid / Cancelled / Refunded"] --> E2["outbox at-least-once"] --> E3["行业监听<br/>自己保证幂等"]
-  end
-```
+![写入读取与事件边界](../diagrams/industry-read-write-event-boundaries.svg)
+
+历史草稿边界：写操作按对象主语归属，读操作可聚合，基座事件经outbox异步回到行业监听，行业监听自行幂等。
 
 **为什么写不能聚合**：唯一写入口 = 唯一校验 = 唯一状态机。
 三个门写同一张订单，是这套方案最不该有的东西。
@@ -135,38 +76,11 @@ flowchart LR
 
 ## 4. 数据：三类表
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart TB
-  subgraph C["C 类 · 纯基座表（行业迁移一列不许碰）"]
-    C1["ord_order / ord_sub_order / ord_item<br/><b>钱与状态的唯一真源</b>"]
-    C2["prd_goods / prd_sku / prd_store_stock"]
-    C3["mbr_member / mbr_card / mbr_asset_txn<br/><b>余次与余额的唯一真源</b>"]
-    C4["mch_resource / mch_appointment_slot<br/><b>占位计数的唯一真源</b>"]
-    C5["prn_printer / prn_route / prn_job"]
-  end
-  subgraph B2["B 类 · 附属表（1:1，主键就是基座业务键）"]
-    B1["fnb_order_ext<br/>桌号 轮次 谁点的"]
-    B3["fnb_order_item_ext<br/>部门 做法 制作状态"]
-    B4["bty_order_item_ext<br/>技师 卡号 耗次"]
-    B5["fnb_goods_ext / bty_goods_ext<br/>出品部门 / 时长缓冲"]
-  end
-  subgraph A["A 类 · 行业专属表（基座没有的对象）"]
-    A1["fnb_table / fnb_check / fnb_check_cart"]
-    A2["bty_appointment / bty_work_order"]
-    A3["fnb_payment / bty_payment<br/><b>行业里唯一存金额的表</b>"]
-  end
-  B1 -->|order_no| C1
-  B3 -->|order_item_id| C1
-  B4 -->|order_item_id| C1
-  B5 -->|store_no+goods_no| C2
-  A1 -->|resource_no| C4
-  A2 -->|slot_no| C4
-  A3 -->|order_no| C1
-```
+![基座与行业表的所有权边界](../diagrams/industry-table-ownership.svg)
+
+历史设计区分纯基座表、1:1行业附属表及行业专属表；标出order_no、order_item_id、store_no+goods_no、resource_no与slot_no的引用。
 
 **分类判据一句话**：这条数据脱离基座对象还有没有意义？
 有 → A（桌台在没有订单时照样存在）；没有 → B（"这一行的做法是免辣"脱离订单行毫无意义）。
@@ -185,64 +99,19 @@ flowchart TB
 
 ### 5.1 餐饮 · 先吃后付的结账
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 写错一个字符整张图静默不渲染、不报错，
-> 这条风险对时序图同样成立。保留是取舍：泳道 × 序号 × 跨轨箭头换成表格会掉信息（谁调谁、第几步、
-> 哪条是异步），而这里的结构信息值这个风险。改动它时请手工确认渲染。
+> 图已固化为 SVG，完整保留泳道、序号、跨轨箭头与同步/异步线型；修改设计时同步更新图源并重新生成。
 
-```mermaid
-sequenceDiagram
-  participant U as 店员 b-app
-  participant FG as 行业入口 /biz/x/food
-  participant FS as 餐饮编排 CheckoutService
-  participant CA as Core*Api（SPI）
-  participant CO as 基座 交易/支付
-  participant PR as 基座 打印
-  participant DB as DB
+![餐饮结账调用时序](../diagrams/industry-food-checkout-sequence.svg)
 
-  U->>FG: POST /check/{no}/settle/begin
-  FG->>FS: beginSettle
-  FS->>DB: fnb_check OPEN → SETTLING（此后不许加菜）
-  U->>FG: GET /check/{no}/bill
-  FS->>CA: 取台账下各订单
-  CA->>CO: 查 ord_order
-  CO-->>FS: payAmount 之和（<b>台账不自己算钱</b>）
-  U->>FG: POST /settle/pay ×N（现金+微信+储值）
-  FS->>DB: 每笔一条 fnb_payment
-  FS->>FS: 足额校验（少一分不许结台）
-  loop 台账下每张订单
-    FS->>CA: confirmOfflinePaid(orderNo, MIXED, 收款单号)
-    CA->>CO: markPaid → 库存转实扣 · 入会 · 发分 · 触发结算
-  end
-  FS->>DB: fnb_check CLOSED + 释放桌台资源
-  FS-->>PR: 提交结账小票（<b>事务外</b>，失败不回滚订单）
-```
+保留七条泳道、台账冻结、查询金额、多笔收款、逐单确认支付的循环，以及事务外提交打印；行业不自行计算订单金额。
 
 ### 5.2 美业 · 卡客耗卡
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 写错一个字符整张图静默不渲染、不报错，
-> 这条风险对时序图同样成立。保留是取舍：泳道 × 序号 × 跨轨箭头换成表格会掉信息（谁调谁、第几步、
-> 哪条是异步），而这里的结构信息值这个风险。改动它时请手工确认渲染。
+> 图已固化为 SVG，完整保留泳道、序号、跨轨箭头与同步/异步线型；修改设计时同步更新图源并重新生成。
 
-```mermaid
-sequenceDiagram
-  participant U as 前台 b-app
-  participant BG as 行业入口 /biz/x/beauty
-  participant WS as 美业编排 WorkOrderService
-  participant CA as Core*Api（SPI）
-  participant CO as 基座 交易/会员资产
-  participant DB as DB
+![美业核销与资产扣次时序](../diagrams/industry-beauty-verify-sequence.svg)
 
-  U->>BG: POST /work-order/{no}/verify
-  WS->>CA: place(项目原价快照)
-  CA->>CO: 建 ord_order / ord_item（price = 原价）
-  WS->>DB: bty_order_ext / bty_order_item_ext（技师·卡号）
-  WS->>CA: deductAsset(cardNo, 1 次)
-  CA->>CO: mbr_asset_txn 流水（<b>行业包不许自己算余次</b>）
-  WS->>CA: markPaid(payChannel = TIMES_CARD)
-  Note over CO: payAmount = 0，assetDeductMinor = 抵扣额<br/>收入不重复计（钱在卖卡那单已确认）
-  WS->>DB: bty_commission_record（基数 = <b>原价</b>，不是实收 0）
-  WS-->>U: 服务单 + 余次条（打印，事务外）
-```
+保留前台、行业入口、编排、SPI、基座和数据库泳道；原价建单、资产流水、次卡支付和原价提成按顺序执行，打印在事务外。
 
 **这两条时序里各有一处最容易做错的**：
 - 餐饮：**制作由"下达"触发，不由 `OrderPaid` 触发** —— 后付时钱还没收，菜必须已经在做了；
@@ -253,19 +122,11 @@ sequenceDiagram
 
 ## 6. 行业能力怎么被打开
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart LR
-  I["sys_industry_capability<br/>行业预设包"] -->|开店/改店时展开一次| S["mch_store_capability<br/><b>唯一被代码读的表</b>"]
-  S --> Q{"CoreCapabilityApi<br/>enabled(storeNo, cap)"}
-  Q -->|有行 enabled=1| Y["开"]
-  Q -->|有行 enabled=0| N1["关"]
-  Q -->|一行都没有| D["取行业 default_on<br/>行业也没配 → <b>关</b>"]
-  X["mch_store.industry_pkg"] -.仅此一处被读.-> I
-```
+![门店能力开关解析](../diagrams/industry-capability-resolution.svg)
+
+能力预设只在开店改店时展开；运行时读取门店能力表，区分显式开关、行业默认与最终关闭，行业包字段仅参与预设展开。
 
 三条硬规矩：
 1. **代码里唯一允许读 `industry_pkg` 的地方是开店/改店服务**，此后无人再读 —— ArchUnit 拦；
@@ -280,26 +141,11 @@ flowchart LR
 
 ## 7. 构建与部署
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart TB
-  subgraph SRC["源码（同一 git 仓库）"]
-    R1["backend/（shop-parent reactor）<br/>shop-base · shop-core · shop-merchant<br/>shop-settle · shop-channel · shop-app<br/><b>+ shop-industry-spi</b>"]
-    R2["backend-plugins/（独立 reactor，<b>不进 shop-parent modules</b>）<br/>shop-industry-food · shop-industry-beauty"]
-  end
-  R1 -->|mvn install| M2[("~/.m2<br/>shop-industry-spi")]
-  M2 --> R2
-  R2 -->|mvn install| M2b[("~/.m2<br/>行业包 jar")]
-  M2b --> BLD
-  R1 --> BLD["mvn package -P{all|food|beauty|core-only}"]
-  BLD --> JAR["app-&lt;ver&gt;.jar"]
-  JAR --> D1["api profile :8080 公网"]
-  JAR --> D2["ops profile :8081 内网"]
-  JAR --> D3["worker profile 无 HTTP"]
-```
+![源码依赖构建与运行拓扑](../diagrams/industry-build-runtime.svg)
+
+历史草稿构建链：同仓的两个独立reactor经本地Maven仓库连接，按行业profile打包，再分别运行api、ops和worker；保留原目录与端口。
 
 | Profile | 装什么 | 用途 |
 |---|---|---|
@@ -313,19 +159,11 @@ flowchart TB
 
 **启动装配**：行业包自带 `AutoConfiguration`，启动时基座读它的 `IndustryPackage`：
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart LR
-  A["扫描 classpath 的 IndustryPackage"] --> B{"spiVersion major 匹配?"}
-  B -->|否| F1["<b>拒绝启动</b><br/>报清楚：哪个包 要什么版本 当前什么版本"]
-  B -->|是| C{"requiredCapabilities 都有?"}
-  C -->|否| F2["<b>拒绝启动</b>"]
-  C -->|是| D["跑该包自己的 Flyway<br/>db/industry/&lt;code&gt; → 独立历史表"]
-  D --> E["注册扩展点 · 端点 · 权限码 · 任务"]
-```
+![行业包启动注册与拒绝条件](../diagrams/industry-package-startup.svg)
+
+启动先验证SPI主版本和必需能力，任一不匹配即拒绝启动；通过后运行行业独立Flyway历史，再注册扩展点、端点、权限和任务。
 
 `requiredCapabilities` 是一条廉价但救命的检查：餐饮包依赖分单路由，
 基座这一版没做就**启动时报错**，而不是等第一桌客人点完菜、后厨没出票才发现。

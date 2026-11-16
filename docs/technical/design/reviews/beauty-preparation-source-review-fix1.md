@@ -1,5 +1,7 @@
 # C04b3 FIX1 scoped independent review
 
+> 状态：历史源码复审 · REQUEST CHANGES，剩余fixture问题已转fix2复审；本文不声明运行结果。
+
 Reviewed `/private/tmp/beauty-c04b3-review-fix1.diff` (1,782 lines / 17 paths), the final preparation-observation specification ruling, FIX1 report and 17-path manifest. Scope was I1/I2/I3 and breakage introduced by their fixes; the original broad review was not repeated. The root-approved typed wrapper is the governing specification; I did not demand reconstruction of missing historical mirror evidence from the old aggregate receipt.
 
 **SPEC: REQUEST CHANGES (one fixture-source correction). QUALITY: REQUEST CHANGES (same correction).** No remaining product Important found in this scoped pass. No Critical finding. No tests, Maven, SQL, DB, HTTP, application or deployment execution, and no product edits/subagents. Compile outcomes belong to root; this report makes no runtime-pass claim.

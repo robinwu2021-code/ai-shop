@@ -108,38 +108,11 @@ Trait（行为，代码消费，强类型）：
 
 # 二 · 概念模型总图
 
-```mermaid
-flowchart TB
-  subgraph GOV["治理层（平台）"]
-    TX["Taxonomy 后台类目<br/>资质·税务·属性模板挂载"]
-    PT["ProductType 产品类型<br/>= Trait组合 + AttributeSet"]
-    AS["AttributeSet / AttributeDef<br/>描述属性 Schema"]
-  end
-  subgraph CAT["目录层（商家）"]
-    P["Product (SPU)<br/>标题·图·类目·属性"]
-    O["Option / OptionValue<br/>销售规格轴"]
-    V["Variant (SKU)<br/>价格基线·条码·计量"]
-    TR["Trait 数据<br/>service / catchWeight /<br/>preorder / bundle"]
-    MG["ModifierGroup / Modifier<br/>min·max·required·加价"]
-  end
-  subgraph SELL["售卖层（门店）"]
-    L["Listing 门店报价<br/>上下架·工位·限量·MOQ"]
-    PB["PriceBook / PriceEntry<br/>渠道×客群×有效期"]
-    AV["AvailabilityRule<br/>星期×时段×渠道"]
-    CO["Collection 陈列<br/>菜单分类·项目分组·专题"]
-  end
-  TX --> P
-  PT --> P
-  AS --> PT
-  P --> O --> V
-  P --> TR
-  P -.attach.-> MG
-  P --> L
-  V --> PB
-  L --> AV
-  L -.member of.-> CO
-  INV[("库存域（独立）<br/>目录不存库存数")] -.引用.- V
-```
+图源保存在 `scripts/doc-design-diagrams.json`，运行 `node scripts/gen-doc-design-diagrams.mjs` 可重新生成；设计草稿保留原有历史语义。
+
+![商品V2治理目录与售卖分层](../diagrams/product-v2-layers.svg)
+
+平台治理定义产品类型及属性，商家目录承载产品规格与Trait，门店售卖承载Listing、价格、可售时段和陈列；独立库存仅引用Variant。
 
 **库存不在商品域**（Square / Medusa 同此）：目录只持 Variant 的身份，库存数、锁定、
 预占在独立的库存域。Listing 上的「每日限量」是**售卖概念**（流量，每天回满），不是库存（存量）。

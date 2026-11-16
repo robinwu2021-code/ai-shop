@@ -15,6 +15,7 @@ import ai.neargo.shop.member.service.MemberService;
 import ai.neargo.shop.member.service.MemberAudienceService;
 import ai.neargo.shop.member.service.MemberSegmentService;
 import ai.neargo.shop.merchant.dto.MerchantAccountVO;
+import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.product.service.MerchantGoodsService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -156,6 +157,13 @@ class CommerceMerchantScopeFlowTest {
                         + " ('OTHER','N',NOW(),NOW())");
             var mvc = CommerceAccessSecurityFlowTest.merchantMvc(f, web, enabled);
             var bearer = bearer(f);
+            // The shared MVC fixture mocks store projections; populate both namespaces so
+            // a membership leak would expose N rather than pass with two empty store lists.
+            var stores = web.getBean(StoreAdminService.class);
+            when(stores.list("M")).thenReturn(List.of(new StoreVO("S", "store", null, true,
+                    "ACTIVE", null, false, 0, false, 0, 0, "SELF_OPERATED", false, null, null)));
+            when(stores.list("OTHER")).thenReturn(List.of(new StoreVO("N", null, null, false,
+                    "ACTIVE", null, false, 0, false, 0, 0, "SELF_OPERATED", false, null, null)));
             var own = get("/biz/entity/M").header("Authorization", bearer);
             var other = get("/biz/entity/OTHER").header("Authorization", bearer);
             var preview =
@@ -196,14 +204,23 @@ class CommerceMerchantScopeFlowTest {
                                     + " store_no='N'");
                         int denial = enabled ? 403 : 503;
                         assertAll(
-                                () ->
-                                        assertMemberDenied(mvc, other, enabled),
-                                () -> {
-                                    if (enabled) mvc.perform(own)
-                                            .andExpect(status().isOk())
-                                            .andExpect(jsonPath("$.entity.entityNo").value("M"));
-                                    else mvc.perform(own).andExpect(status().is(denial));
-                                },
+                                // ACCOUNT reads use the signed USR membership in both modes;
+                                // the unrelated STORE_V1 must not turn this into a 503 or expose it.
+                                () -> mvc.perform(other)
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.code").value(forbidden))
+                                        .andExpect(jsonPath("$.entity").doesNotExist())
+                                        .andExpect(jsonPath("$.stores").doesNotExist()),
+                                () -> mvc.perform(own)
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.entity.entityNo").value("M"))
+                                        .andExpect(jsonPath("$.stores[*].storeNo")
+                                                .value(org.hamcrest.Matchers.contains("S"))),
+                                () -> mvc.perform(get("/biz/entities").header("Authorization", bearer))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.length()").value(1))
+                                        .andExpect(jsonPath("$[0].entityNo").value("M")),
+                                // Unaudited LEGACY_PREVIEW still checks both bare-number namespaces.
                                 () -> mvc.perform(preview).andExpect(status().is(denial)),
                                 () ->
                                         mvc.perform(
@@ -212,7 +229,9 @@ class CommerceMerchantScopeFlowTest {
                                                 .andExpect(jsonPath("$.length()").value(1))
                                                 .andExpect(
                                                         jsonPath("$[0].entity.entityNo")
-                                                                .value("M")),
+                                                                .value("M"))
+                                                .andExpect(jsonPath("$[0].stores[*].storeNo")
+                                                        .value(org.hamcrest.Matchers.contains("S"))),
                                 () ->
                                         mvc.perform(
                                                         get("/biz/merchant/profile")

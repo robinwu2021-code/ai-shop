@@ -68,6 +68,23 @@ class OpsLogoutFlowTest {
     }
 
     @Test
+    @DisplayName("非 Bearer 头不吊销票据，正确前缀沿统一解析去除票据两侧空白")
+    void logoutPreservesBearerParsingAtTheBoundHeaderBoundary() throws Exception {
+        String token = TestLogin.admin(mvc(), json);
+        for (String header : new String[]{"bearer " + token, "BEARER " + token,
+                "Basic " + token, "Bearer\t" + token, "Bearer "}) {
+            mvc().perform(post("/ops/auth/logout").header("Authorization", header))
+                    .andExpect(status().isOk());
+            mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+        mvc().perform(post("/ops/auth/logout").header("Authorization", "Bearer   " + token + "  "))
+                .andExpect(status().isOk());
+        mvc().perform(get("/ops/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("只吊销自己的令牌：另一个会话不受影响")
     void logoutOnlyRevokesPresentedToken() throws Exception {
         String first = TestLogin.admin(mvc(), json);

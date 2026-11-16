@@ -35,36 +35,11 @@
 
 # 二 · 概念模型
 
-```mermaid
-flowchart TB
-  subgraph GOV["治理层（平台）"]
-    TX["Taxonomy 后台类目 = prd_category<br/>资质·属性模板挂载"]
-    PT["ProductType 产品类型（数据）<br/>= Trait 组合 + AttributeSet"]
-  end
-  subgraph CAT["目录层（商家）"]
-    P["Product = prd_goods<br/>标题·图·属性·售后策略"]
-    V["Variant = prd_sku<br/>基线价·条码·计量单位"]
-    TR["Trait 表（按行为分表）<br/>service / metered / preorder / bundle"]
-    MG["ModifierGroup / Modifier<br/>required·min·max·加价(定额/比例/可负)"]
-  end
-  subgraph SELL["售卖层（门店）"]
-    L["Listing = prd_store_listing<br/>上下架·工位·限量·MOQ·道次"]
-    PE["PriceEntry 价格条目<br/>渠道×客群×有效期，运行时 resolve"]
-    AV["AvailabilityRule 可售时段"]
-    CO["Collection 陈列<br/>菜单分类·项目分组·本店推荐"]
-  end
-  TX --> P
-  PT --> P
-  P --> V
-  P --> TR
-  P -.attach.-> MG
-  P --> L
-  V --> PE
-  L --> AV
-  L -.member.-> CO
-  ST["mch_station 出品工位（门店资源域）"] -.引用.- L
-  INV[("库存域（独立）")] -.引用.- V
-```
+图源保存在 `scripts/doc-design-diagrams.json`，运行 `node scripts/gen-doc-design-diagrams.mjs` 可重新生成；设计草稿保留原有历史语义。
+
+![商品域治理目录与售卖分层](../diagrams/product-layers.svg)
+
+保留商品治理、目录与门店售卖的设计层依赖；商品和SKU不承担独立库存，工位由门店资源域引用，价格按渠道客群和有效期解析。
 
 **Trait 清单（终版，含已验证业态列 —— 防止 Trait 变成想象出来的抽象）**：
 

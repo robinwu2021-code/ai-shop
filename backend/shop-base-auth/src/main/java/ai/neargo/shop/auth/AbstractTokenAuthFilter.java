@@ -109,7 +109,11 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
 
     /** 从 {@code Authorization: Bearer xxx} 里取令牌；没有或为空返回 null。 */
     public static String bearer(HttpServletRequest req) {
-        String header = req.getHeader("Authorization");
+        return bearer(req.getHeader("Authorization"));
+    }
+
+    /** Parse a bound Authorization header with the same semantics as the filter entry point. */
+    public static String bearer(String header) {
         if (header == null || !header.startsWith("Bearer ")) {
             return null;
         }

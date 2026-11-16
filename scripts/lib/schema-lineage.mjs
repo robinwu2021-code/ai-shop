@@ -457,7 +457,7 @@ export const NAME_COLLISIONS = {
   "pay_order_no": "payment_collection_receipt与payment_collection_stream保存独立PAY服务签发的订单号；必须按environment+pay_order_no关联，不是本地商城订单或本地表的单列外键。",
   "print_fact_no": "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
   "trace_no": "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
-  "receipt_no": "payment_collection_receipt是独立PAY事件投影的本地幂等收据（environment+event_id），不属于支付/打印收据族；stl_payment支付收据、ent_migration_return旧券恢复凭证、prn_receipt打印设备回执独立发号，按来源族及tenant限定；恢复按tenant+return_no引用pmt_migration_return，不能仅按receipt_no跨族关联。",
+  "receipt_no": "payment_collection_receipt是独立PAY事件投影的本地幂等收据（environment+event_id），不属于支付/打印收据族；stl_payment支付收据、ent_migration_return旧券恢复凭证、prn_receipt打印设备回执独立发号，按来源族及tenant限定；恢复按tenant+return_no引用pmt_migration_return，不能仅按receipt_no跨族关联。 ord_channel_fulfillment_evidence.receipt_no是渠道实物交接证据的本地不可变回执，不是设备回执或资金收据。",
   "route_no": "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
   "policy_version_no": "储值发行政策版本与打印场景政策版本各自发布，必须结合来源表选择所属版本族。",
   "source_event_no": "来源协议键：sys_outbox 需 (source_system,source_event_no)；pmt_effect_projection 还接收旧申请号，不能全局连接 outbox。；统一扩展：来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
@@ -475,18 +475,18 @@ export const NAME_COLLISIONS = {
   "active_revision_no": "行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。",
   "previous_revision_no": "行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。",
   "draft_revision_no": "储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。",
-  "policy_no": "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
+  "policy_no": "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。 打印场景与渠道应收准入也是各自独立政策族；渠道导入只引用本tenant/entity/store/channel_store_key的ord_channel_policy。",
   "bridge_actor_no": "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
   "voucher_no": "积分 pts_voucher 与储值 sv_voucher 独立发号；仅登记四条同族引用，禁止根互连或跨族关联。；统一扩展：积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
   "quote_no": "营销 mkt_quote、订单定价 ord_price_quote、结算 ord_checkout_quote 及渠道导入 ord_channel_quote 四族独立发号；按源表选择同族根并匹配 tenant_no，禁止根互连或裸号跨族连接。operation.current_quote_no 仅标识结算报价，不能代替 revision/hash/caller 校验。",
-  "plan_no": "pts_topup_plan 按 (plan_no,period_key) 定义独立计划；pmt_migration_decision 与 ent_migration_import 引用 tenant 内 ent_migration_plan；sv_recharge、sv_recharge_plan_version 与 sv_statement 引用 tenant 内 sv_recharge_plan。三族不可裸号互连。",
+  "plan_no": "pts_topup_plan 按 (plan_no,period_key) 定义独立计划；pmt_migration_decision 与 ent_migration_import 引用 tenant 内 ent_migration_plan；sv_recharge、sv_recharge_plan_version 与 sv_statement 引用 tenant 内 sv_recharge_plan。三族不可裸号互连。 ord_food_stock_bridge_command保存门店本地食材计划的来源身份及动作幂等记录，不属于积分、储值或旧券迁移计划。",
   "grant_no": "普通发放路径 ent_instance.grant_no → ent_grant.grant_no；MIGRATION_BASELINE 实例来自 ent_migration_asset.baseline_no，未创建 ent_grant，因此不画无条件实例边。仅售卡承诺和券投影可限定引用 ent_grant。；mch_management_grant 是独立经营管理授权族；服务执行及其库存retention保留服务grant上下文，不连接 ent_grant。",
   "trade_no": "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
   "source_shipment_no": "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",
   "parent_no": "cmt_community.parent_no是社区层级，prd_category.parent_no是商品类目层级；各自树内引用，不能按全局名字连线。",
   "provider_no": "通道回执需结合通道、资金方向与原请求。",
   "scope_no": "角色授权范围与积分开关统计范围，须按各自范围类型解释；mkt_counter_campaign_fence 按 tenant_no+scope_kind 判别：ENTITY 对应经营主体 mch_entity.entity_no，PLATFORM 为固定 PLATFORM 哨兵，无无条件 FK。；统一扩展：角色授权范围与积分开关统计范围，须按各自范围类型解释。",
-  "revision_no": "商品版本与积分账单版本，各自独立。",
+  "revision_no": "商品版本与积分账单版本，各自独立。 零售选品版本只在entity/store/selection内有效；渠道交接证据revision_no属于履约动作修订，不是商品、选品或账单版本。",
   "holder_no": "积分持有人多态编号，必须结合 holder_type。",
   "position_no": "积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。；统一扩展：不同种类积分持仓的多态编号，必须结合持仓类型。",
   "ticket_no": "积分资金指令与客服工单的独立编号，不可直接关联。",
@@ -494,12 +494,12 @@ export const NAME_COLLISIONS = {
   "aggregate_no": "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
   "diff_no": "结算差异stl_recon_diff与权益差异pay_ent_recon_diff分别发号。",
   "current_version_no": "pmt_activity指活动版本，ent_template指权益模板版本，须按所属表限定。",
-  "biz_no": "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
+  "biz_no": "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。 外部记账保留来源业务值、通知按biz_type保存业务引用，两者均不构成通用业务主表。",
   "account_no": "mch_payout_account为银行出款账户；sv_account为储值账户。",
   "version_no": "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
-  "resource_no": "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。；统一扩展：幂等结果和对账差异按对应资源类型解释，不是同一实体。",
-  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。mch_pay_service_application按actor_realm区分OPERATOR/MERCHANT，不是任何账号族的通用外键。",
-  "decision_no": "Core订单源决定与旧券迁移永久源决定分别发号。",
+  "resource_no": "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。；统一扩展：幂等结果和对账差异按对应资源类型解释，不是同一实体。 实际资源段/桶引用tenant/entity内的mch_resource；品牌受众和费用快照保存营销资源与版本，须按其资源类型解释，不能连到人员或物理资源。",
+  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。mch_pay_service_application按actor_realm区分OPERATOR/MERCHANT，不是任何账号族的通用外键。 零售选品、外部记账、品牌受众及营销命令保存原授权上下文中的操作人审计值，不因同名字段就归入统一账号族。",
+  "decision_no": "Core订单源决定与旧券迁移永久源决定分别发号。 渠道售后ord_channel_after_sale是另一决定族，仅同族明细按tenant/entity/store/admission限定引用。",
   "reservation_no": "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
   "source_decision_no": "Core订单源决定或迁移源决定，由source协议与purpose限定。",
   "operation_no": "统一使用意图或旧券原操作号，由protocol决定根表，不能仅按号合并。",
@@ -517,7 +517,7 @@ export const NAME_COLLISIONS = {
   "issue_no": "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
   "tax_no": "**它根本不是编号，是纳税人识别号这个业务值**（ord_invoice_request 开票抬头填的、stl_settle_invoice 结算发票上印的）。两张表都没给它建唯一键。\n  同一个纳税人识别号本来就该在多张表里重复出现，按它 join 得到的是笛卡尔积。",
   "receiver_no": "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：**推送发错人**，而且不报错。要连必须带上 receiver_type 一起连。",
-  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。这些编号族互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。 主体购买request_no按typed创建者限定，门店认领request_no按原老板限定，均为各自原命令幂等号，不与其他请求族按同号关联。mch_pay_service_application按tenant_no/source_caller/source_scope限定支付资料原申请键，摘要另绑定主体及typed操作人，不与来源事件号或其他请求族关联。",
+  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。这些编号族互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。 主体购买request_no按typed创建者限定，门店认领request_no按原老板限定，均为各自原命令幂等号，不与其他请求族按同号关联。mch_pay_service_application按tenant_no/source_caller/source_scope限定支付资料原申请键，摘要另绑定主体及typed操作人，不与来源事件号或其他请求族关联。 门店开设以tenant+actor_key+request_no、主体创建以tenant+user_no+request_no记录各自幂等请求，均不是其他请求族的外键。",
   "invoice_no": "**三个方向的票，这是最危险的一组同名**：\n  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n  ord_invoice_request 是**销项·对消费者**（平台开给买家，ADR-017 §3.4 条件 2，决定归集资金模式成不成立）；\n  stl_settle_invoice 是**销项·对商家**（平台开给商家的结算凭证，P-12.2.4）。\n  义务人、方向、法律后果各不相同 —— 按名字 join 出来的「发票」会把进项当销项，而三边都有值、都不报错。",
   "express_no": "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   "apply_no": "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
@@ -525,19 +525,19 @@ export const NAME_COLLISIONS = {
   "operator_no": "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。 主体购买动作operator_no为运营审核身份，只作原动作审计，不是其他业务操作人的通用外键。",
   "template_no": "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
   "txn_no": "mch_deposit_txn.txn_no 是保证金流水号（平台代管商家资金，将来要退还）；\n  mch_debt_txn.txn_no 是商家欠款流水号（平台垫付后向商家追偿）。\n  两者都是各自表的唯一业务键（各自建了 uk），资金方向相反 ——按名字 join 会把保证金扣款连到欠款追偿上，而两边都有值、不报错。",
-  "source_no": "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。",
+  "source_no": "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。 渠道导入及来源守卫按source_system/source_version限定原渠道来源；零售来源、品牌券来源独立持有身份。品牌费用按tenant+source_type+source_no限定费用来源，仅费用事实和品牌券命令登记同族关系。",
   "log_no": "mch_staff_log.log_no 是员工操作日志的流水号；\n  pay_risk_shadow_log.log_no 是支付风控影子模式拦截记录的流水号（只记录、不真拦）。\n  两者都是各自表的唯一业务键，所属域完全不同 —— 按名字 join 会把员工操作连到风控影子记录上。",
   "unit_no": "资源持有单元与手工服务永久数量单元独立发号，仅 ord_service_execution 以 tenant/entity/store 引用本族数量单元。；prd_execution_retention 与 prd_execution_retention_route 保存服务数量单元原号及其完整原权威上下文，不能当作资源持有单元号。",
   "action_no": "手工收款声明动作与服务执行动作是两个不可变命名空间，不按同名号跨族关联。 mch_plan_purchase_action由tenant+order_no+action_no限定，核款/对账命令不与其他业务动作连接。",
   "source_line_no": "结算原始行由 ord_checkout_line 持有，服务数量单元须同时核对 tenant/caller/operation/order/subOrder。；ord_price_quote_line.source_line_no 是报价来源行标识，须遵循来源协议，非结算行的无条件外键。",
   "source_operation_no": "原始结算操作别名须核对完整作用域；仅服务数量单元登记带 caller/entity/store 的精确引用。",
   "declaration_no": "收款声明与声明动作属于原收款族；执行尝试仅以 tenant/entity/store 绑定原声明，不建立跨族全局别名。",
-  "owner_no": "通知渠道的owner_no按owner_type解释；资源归属头在mch_booking_owner，不能按同名字段跨域关联。",
+  "owner_no": "通知渠道的owner_no按owner_type解释；资源归属头在mch_booking_owner，不能按同名字段跨域关联。 实际占用mch_resource_occupation引用tenant/entity/store内的资源归属头，不能连接通知渠道。",
   "source_order_no": "来源协议决定根：ent_usage 的 SERVICE_USE 指向服务单，ORDER_USE/STORE_USE 指向 ord_sub_order.sub_order_no；不能无条件连接 ord_order。仅 ent_legacy_coupon_operation 引用 tenant 内 ord_order.order_no。",
   "tier_no": "档位仅在 (tenant_no,version_no) 内唯一；pmt_activity_reservation 须同时匹配 tenant_no 与 version_no 才能引用 pmt_recharge_tier。；sv_recharge、sv_lot、sv_release_tier 保存各自活动/版本/发布上下文中的档位，不能只按tier_no连接全局根。",
   "catalog_no": "目录仅在主体内唯一；prd_store_catalog_version 须同时匹配 tenant_no 与 entity_no 才能引用 prd_store_catalog。",
   "actor_account_no": "支付 ord_checkout_payment_request 与 stl_payment_operation 保存解析后的 mch_account.mch_account_no（包括 USR 路径）；mch_staff_log 历史保存 login userNo，禁止全局连商家账号。",
-  "execution_no": "普通退款义务条件路径 ord_refund_obligation.execution_no → ord_refund_execution.execution_no；PRF- + after_sale_no 路径指 ord_points_refund_execution.after_sale_no，不能画无条件普通执行边。",
+  "execution_no": "普通退款义务条件路径 ord_refund_obligation.execution_no → ord_refund_execution.execution_no；PRF- + after_sale_no 路径指 ord_points_refund_execution.after_sale_no，不能画无条件普通执行边。 实际资源占用引用tenant/entity/store内的ord_service_execution，不连接退款执行。",
   "claim_no": "mch_store_entity_claim是门店经营主体认领回执；mch_plan_purchase_claim是主体额度包付款申报，分别按tenant+原门店/订单及各自编号授权，不能按claim_no跨族关联。",
   "snapshot_no": "ord_card_sale_snapshot 是售卡冻结快照；mbr_brand_audience_snapshot 是品牌受众快照，两族独立发号，不可按同名跨族连接。",
   "legal_entity_no": "V651/V652 的品牌法人主体引用 tenant 内 mch_entity.entity_no；只登记已审计的品牌与受众快照来源。",
@@ -547,7 +547,21 @@ export const NAME_COLLISIONS = {
   "issuer_entity_no": "V652 品牌费用规则、冻结快照及账单的发行主体引用 tenant 内 mch_entity.entity_no；只登记已审计来源。",
   "rule_version_no": "V652 品牌费用规则版本由 pmt_brand_cost_rule 持有；快照须同时匹配 tenant/management/brand/issuer_entity，不能跨品牌套用规则。",
   "expense_entity_no": "V652 品牌费用账单及事实的费用承担主体引用 tenant 内 mch_entity.entity_no；不是发行主体的别名。",
-  "buyer_no": "结算、人工服务及行业订单来源的 USER 买家引用 tenant 内 usr_account.user_no；mch_plan_purchase 按 buyer_kind 解释，不能无条件连用户账号。"
+  "buyer_no": "结算、人工服务及行业订单来源的 USER 买家引用 tenant 内 usr_account.user_no；mch_plan_purchase 按 buyer_kind 解释，不能无条件连用户账号。",
+  "guest_no": "访客根由mbr_guest_registration持有；已审计订单/结算/手工服务来源仅按tenant/entity/store引用本店登记，访客号本身不能授予认领权。",
+  "confirmation_operation_no": "库存原锁与执行retention保存确认操作协议标识；一个操作可覆盖多条原锁，原始行及确认hash仍须核验，不存在可按单列连接的确认操作主表。",
+  "owner_user_no": "mch_entity是历史创建者审计值，不能替代mch_account真实成员授权；门店认领保存原所有人作用域。mch_operating_entity明确保存tenant内真实USR所有人，仅该来源登记usr_account引用。",
+  "preparation_no": "积分退款准备行与渠道导入准备属于独立流程；渠道导入只按tenant/entity/store/admission引用ord_channel_preparation，不能连接积分退款行。",
+  "authorization_no": "ord_ent_authorization是本地权益本人授权；ord_external_certificate_use是外部凭证消费授权，独立发号且不代表本地权益资产，不跨族关联。",
+  "record_no": "sv_statement是储值账单展示记录；ord_offline_record是商家自报外部记账，两族独立；仅外部记账事件按tenant引用自身记录。",
+  "party_no": "retail_channel_party持有原零售渠道当事人；retail_channel_order_source按tenant/entity/store/channel_store_key引用它。ord_industry_order_source由source_type解释渠道当事人，不能全局绑定零售方。",
+  "fulfillment_no": "ord_industry_fulfillment持有行业履约身份；渠道交接证据须同时匹配tenant/entity/store/order/sub_order才引用本次履约，不能脱离原单据上下文。",
+  "planned_resource_command_no": "服务执行的规划资源命令身份；资源归属头、各次命令与实际占用保存同一规划绑定及hash，不等于mch_resource_command.command_no。真正执行命令另有start_command_no，不画按规划号到命令表的裸FK。",
+  "resource_command_no": "ord_service_execution与库存retention保存ExecutionReference.plannedResourceCommandNo的原规划身份，并绑定规划hash；不是实际START命令command_no，不应伪造到mch_resource_command的外键。",
+  "retention_no": "保留组的确定性身份；prd_execution_retention以tenant+retention_no+original_row_id保存多条原始库存行，路由头以tenant+retention_no持有整组，不存在按retention_no单列唯一的库存原行根。",
+  "source_confirmation_no": "执行retention及路由保存原库存来源确认凭证；须结合原权威、原始行、confirmation操作与证据hash核验，既不是结算confirmation_no，也不是可裸号连接的本地主表。",
+  "admission_no": "原渠道导入身份由ord_channel_import持有；报价、准备、售后及资金历史只在tenant/entity/store内引用原导入，不是手工服务声明或其他准入族的别名。",
+  "selection_no": "零售选品身份仅在entity/store内唯一；版本与草稿引用本店rtl_channel_selection，原商品价格与媒体仍归各自领域所有。"
 };
 
 // Exact source-audited memberships; new tables require explicit review.
@@ -615,6 +629,7 @@ export const COLLISION_MEMBERS = {
     "stl_payment",
     "ent_migration_return",
     "prn_receipt",
+    "ord_channel_fulfillment_evidence",
     "payment_collection_receipt"
   ],
   "source_event_no": [
@@ -634,7 +649,8 @@ export const COLLISION_MEMBERS = {
     "ord_service_execution",
     "ord_service_execution_action",
     "prd_execution_retention",
-    "prd_execution_retention_route"
+    "prd_execution_retention_route",
+    "mch_resource_occupation"
   ],
   "entry_no": [
     "pts_ledger_entry",
@@ -666,13 +682,14 @@ export const COLLISION_MEMBERS = {
   ],
   "plan_no": [
     "pts_topup_plan",
+    "sv_recharge",
     "ent_migration_plan",
     "pmt_migration_decision",
     "ent_migration_import",
-    "sv_recharge",
     "sv_recharge_plan",
     "sv_recharge_plan_version",
-    "sv_statement"
+    "sv_statement",
+    "ord_food_stock_bridge_command"
   ],
   "source_order_no": [
     "ent_usage",
@@ -783,7 +800,9 @@ export const COLLISION_MEMBERS = {
     "ord_manual_price_policy",
     "ord_manual_price_adjustment",
     "prn_scene_policy",
-    "prn_policy_version"
+    "prn_policy_version",
+    "ord_channel_policy",
+    "ord_channel_import"
   ],
   "bridge_actor_no": [
     "prn_device",
@@ -813,7 +832,10 @@ export const COLLISION_MEMBERS = {
     "ord_store_pricing_revision",
     "ord_pricing_fee_rule",
     "ord_pricing_fee_revision",
-    "ord_pricing_fee_application"
+    "ord_pricing_fee_application",
+    "rtl_channel_selection",
+    "rtl_channel_selection_revision",
+    "ord_channel_fulfillment_evidence"
   ],
   "holder_no": [
     "pts_account",
@@ -871,7 +893,9 @@ export const COLLISION_MEMBERS = {
     "stl_channel_message",
     "sv_voucher",
     "pay_ent_exception",
-    "prn_request"
+    "prn_request",
+    "ord_offline_record",
+    "notify_message"
   ],
   "account_no": [
     "mch_payout_account",
@@ -900,7 +924,11 @@ export const COLLISION_MEMBERS = {
     "mch_resource",
     "mch_schedule_rule",
     "mch_schedule_change_log",
-    "mch_resource_bucket"
+    "mch_resource_bucket",
+    "mch_resource_occupation_segment",
+    "mch_resource_occupation_bucket",
+    "mbr_brand_audience_snapshot",
+    "pmt_brand_cost_snapshot"
   ],
   "actor_no": [
     "mbr_identity_ticket",
@@ -922,13 +950,21 @@ export const COLLISION_MEMBERS = {
     "ord_checkout_payment_request",
     "stl_payment_operation",
     "ord_manual_service_admission",
+    "rtl_channel_selection_command",
+    "ord_offline_record_event",
+    "mbr_brand_audience_snapshot",
+    "pmt_brand_coupon_source",
+    "pmt_brand_coupon_command",
+    "pmt_brand_marketing_command",
     "mch_pay_service_application"
   ],
   "decision_no": [
     "ord_ent_source_decision",
     "pmt_migration_decision",
     "pmt_migration_source",
-    "sv_clearing_entry"
+    "sv_clearing_entry",
+    "ord_channel_after_sale",
+    "ord_channel_after_sale_line"
   ],
   "reservation_no": [
     "pmt_activity_reservation",
@@ -1069,7 +1105,9 @@ export const COLLISION_MEMBERS = {
     "prn_batch",
     "mch_store_entity_claim",
     "mch_plan_purchase",
-    "mch_pay_service_application"
+    "mch_pay_service_application",
+    "mch_store_opening_request",
+    "mch_entity_creation_request"
   ],
   "invoice_no": [
     "stl_purchase_invoice",
@@ -1151,7 +1189,14 @@ export const COLLISION_MEMBERS = {
     "ord_industry_fulfillment",
     "prn_export_task",
     "biz_print_fact",
-    "mch_booking_owner"
+    "mch_booking_owner",
+    "ord_channel_import",
+    "ord_channel_admission_guard",
+    "retail_channel_order_source",
+    "pmt_brand_coupon_source",
+    "pmt_brand_coupon_command",
+    "pmt_brand_cost_source",
+    "pmt_brand_cost_fact"
   ],
   "log_no": [
     "mch_staff_log",
@@ -1162,7 +1207,8 @@ export const COLLISION_MEMBERS = {
     "notify_channel",
     "mch_booking_owner",
     "mch_resource_command",
-    "mch_booking_hold"
+    "mch_booking_hold",
+    "mch_resource_occupation"
   ],
   "claim_no": [
     "mch_store_entity_claim",
@@ -1212,6 +1258,78 @@ export const COLLISION_MEMBERS = {
     "stl_payment_operation",
     "ord_manual_service_admission",
     "mch_plan_purchase"
+  ],
+  "guest_no": [
+    "ord_order",
+    "ord_sub_order",
+    "ord_create_intent",
+    "mbr_guest_registration",
+    "ord_checkout_operation",
+    "ord_checkout_confirmation",
+    "ord_manual_service_admission"
+  ],
+  "confirmation_operation_no": [
+    "prd_stock_lock",
+    "prd_execution_retention"
+  ],
+  "owner_user_no": [
+    "mch_entity",
+    "mch_store_entity_claim",
+    "mch_operating_entity"
+  ],
+  "preparation_no": [
+    "pts_refund_preparation_line",
+    "ord_channel_import",
+    "ord_channel_preparation"
+  ],
+  "authorization_no": [
+    "ord_ent_authorization",
+    "ord_external_certificate_use"
+  ],
+  "record_no": [
+    "sv_statement",
+    "ord_offline_record",
+    "ord_offline_record_event"
+  ],
+  "party_no": [
+    "ord_industry_order_source",
+    "retail_channel_party",
+    "retail_channel_order_source"
+  ],
+  "fulfillment_no": [
+    "ord_industry_fulfillment",
+    "ord_channel_fulfillment_evidence"
+  ],
+  "planned_resource_command_no": [
+    "mch_booking_owner",
+    "mch_resource_command",
+    "mch_resource_occupation"
+  ],
+  "resource_command_no": [
+    "ord_service_execution",
+    "prd_execution_retention",
+    "prd_execution_retention_route"
+  ],
+  "retention_no": [
+    "prd_execution_retention",
+    "prd_execution_retention_route"
+  ],
+  "source_confirmation_no": [
+    "prd_execution_retention",
+    "prd_execution_retention_route"
+  ],
+  "admission_no": [
+    "ord_channel_import",
+    "ord_channel_quote",
+    "ord_channel_preparation",
+    "ord_channel_after_sale",
+    "ord_channel_after_sale_line",
+    "ord_channel_funding_history"
+  ],
+  "selection_no": [
+    "rtl_channel_selection",
+    "rtl_channel_selection_revision",
+    "rtl_channel_selection_draft"
   ]
 };
 
@@ -1247,6 +1365,23 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
     }
   },
   "ord_checkout_operation": {
@@ -1267,6 +1402,23 @@ export const TABLE_KEY_OWNERS = {
         {
           "from": "tenant_no",
           "to": "tenant_no"
+        }
+      ]
+    },
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
         }
       ]
     }
@@ -1559,24 +1711,6 @@ export const TABLE_KEY_OWNERS = {
         {
           "from": "tenant_no",
           "to": "tenant_no"
-        }
-      ]
-    },
-    "resource_command_no": {
-      "table": "mch_resource_command",
-      "col": "command_no",
-      "scope": [
-        {
-          "from": "tenant_no",
-          "to": "tenant_no"
-        },
-        {
-          "from": "entity_no",
-          "to": "entity_no"
-        },
-        {
-          "from": "store_no",
-          "to": "store_no"
         }
       ]
     }
@@ -1932,6 +2066,23 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
     }
   },
   "mch_brand": {
@@ -2035,6 +2186,19 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "source_no": {
+      "table": "pmt_brand_cost_source",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "source_type",
+          "to": "source_type"
+        }
+      ]
     }
   },
   "mch_resource_occupation_unit": {
@@ -2079,11 +2243,37 @@ export const TABLE_KEY_OWNERS = {
           "to": "entity_no"
         }
       ]
+    },
+    "resource_no": {
+      "table": "mch_resource",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
     }
   },
   "mch_resource_occupation_bucket": {
     "occupation_no": {
       "table": "mch_resource_occupation",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    },
+    "resource_no": {
+      "table": "mch_resource",
       "scope": [
         {
           "from": "tenant_no",
@@ -2110,6 +2300,40 @@ export const TABLE_KEY_OWNERS = {
           "to": "entity_no"
         }
       ]
+    },
+    "owner_no": {
+      "table": "mch_booking_owner",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    },
+    "execution_no": {
+      "table": "ord_service_execution",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
     }
   },
   "ord_channel_import": {
@@ -2131,6 +2355,366 @@ export const TABLE_KEY_OWNERS = {
         {
           "from": "admission_no",
           "to": "admission_no"
+        }
+      ]
+    },
+    "preparation_no": {
+      "table": "ord_channel_preparation",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "admission_no",
+          "to": "admission_no"
+        }
+      ]
+    },
+    "policy_no": {
+      "table": "ord_channel_policy",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "channel_store_key",
+          "to": "channel_store_key"
+        }
+      ]
+    }
+  },
+  "ord_order": {
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_sub_order": {
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_create_intent": {
+    "guest_no": {
+      "table": "mbr_guest_registration",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_quote": {
+    "admission_no": {
+      "table": "ord_channel_import",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_preparation": {
+    "admission_no": {
+      "table": "ord_channel_import",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_after_sale": {
+    "admission_no": {
+      "table": "ord_channel_import",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_after_sale_line": {
+    "admission_no": {
+      "table": "ord_channel_import",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    },
+    "decision_no": {
+      "table": "ord_channel_after_sale",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "admission_no",
+          "to": "admission_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_funding_history": {
+    "admission_no": {
+      "table": "ord_channel_import",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_fulfillment_evidence": {
+    "fulfillment_no": {
+      "table": "ord_industry_fulfillment",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "order_no",
+          "to": "order_no"
+        },
+        {
+          "from": "sub_order_no",
+          "to": "sub_order_no"
+        }
+      ]
+    }
+  },
+  "rtl_channel_selection_revision": {
+    "selection_no": {
+      "table": "rtl_channel_selection",
+      "scope": [
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "rtl_channel_selection_draft": {
+    "selection_no": {
+      "table": "rtl_channel_selection",
+      "scope": [
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        }
+      ]
+    }
+  },
+  "rtl_channel_selection": {
+    "revision_no": {
+      "table": "rtl_channel_selection_revision",
+      "scope": [
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "selection_no",
+          "to": "selection_no"
+        }
+      ]
+    }
+  },
+  "retail_channel_order_source": {
+    "party_no": {
+      "table": "retail_channel_party",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "channel_store_key",
+          "to": "channel_store_key"
+        }
+      ]
+    }
+  },
+  "ord_offline_record_event": {
+    "record_no": {
+      "table": "ord_offline_record",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "mch_operating_entity": {
+    "owner_user_no": {
+      "table": "usr_account",
+      "col": "user_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "pmt_brand_coupon_command": {
+    "source_no": {
+      "table": "pmt_brand_coupon_source",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "management_no",
+          "to": "management_no"
+        },
+        {
+          "from": "brand_no",
+          "to": "brand_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
         }
       ]
     }

@@ -10,6 +10,15 @@ import ai.neargo.commerce.api.foundation.FoundationQueryFacade.BusinessType;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import tools.jackson.databind.ObjectMapper;
+import static org.mockito.Mockito.verifyNoInteractions;
 import ai.neargo.shop.platform.port.GeoRouter;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.spi.platform.GeoPort;
@@ -38,6 +47,28 @@ class BizStoreSetupTest {
 
     static BizMerchantController.QuickStartReq req(String market, String industry, String sub) {
         return new BizMerchantController.QuickStartReq("店", "地址", "RETAIL", market, industry, sub);
+    }
+
+    @Test
+    void quickStartRejectsInvalidStoreNamesBeforeEnteringTheBusinessFlow() throws Exception {
+        var merchants = mock(MerchantAdminPort.class);
+        var controller = new BizMerchantController(false, "TW", null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, merchants, null, null);
+        try (var validator = new LocalValidatorFactoryBean()) {
+            validator.afterPropertiesSet();
+            var mvc = MockMvcBuilders.standaloneSetup(controller)
+                    .setValidator(validator).build();
+            for (String storeName : List.of("", " ", "x".repeat(65))) {
+                var body = new ObjectMapper().writeValueAsString(Map.of("storeName", storeName));
+                var result = mvc.perform(MockMvcRequestBuilders
+                        .post("/biz/merchant/quick-start").contentType(MediaType.APPLICATION_JSON)
+                        .content(body)).andExpect(MockMvcResultMatchers
+                                .status().isBadRequest()).andReturn();
+                assertInstanceOf(MethodArgumentNotValidException.class,
+                        result.getResolvedException());
+            }
+            verifyNoInteractions(merchants);
+        }
     }
 
     @Test

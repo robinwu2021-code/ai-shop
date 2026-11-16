@@ -138,6 +138,10 @@ export interface QuoteRevision {
  *   3. 信用 —— 选定后不履约计入商家 `breachCount` 与评分，累计则限制报价资格
  */
 export interface Quote {
+  /** 本报价所属的求团需求编号 */
+  requestNo?: string;
+  /** 报价生命周期状态（有效、撤回或毁约），服务端返回原码 */
+  status?: string;
   /** 报价单号 */
   quoteNo: string;
   /** 报价商家。`breachCount` 会在报价卡上公示 —— 事后信用替代事前审核 */
@@ -160,6 +164,8 @@ export interface Quote {
   locked: boolean;
 }
 export interface GroupRequest {
+  /** 已选中的商家报价；未选中时为空 */
+  chosenQuote?: Quote | null;
   /** 求团需求单号 */
   requestNo: string;
   /** 求团发起人用户号；服务端用于区分发起人与参与邻居。 */

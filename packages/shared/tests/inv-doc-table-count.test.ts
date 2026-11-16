@@ -18,7 +18,7 @@ import { join } from "node:path";
  */
 const ROOT = new URL("../../..", import.meta.url).pathname;
 const DOC = join(ROOT, "docs/technical/design/进销存-数据库表结构.md");
-const MIG = join(ROOT, "backend/shop-inventory/src/main/resources/db/inventory");
+const MIG = join(ROOT, "backend/inventory/inventory-domain/src/main/resources/db/inventory");
 
 function tablesInMigrations(): Set<string> {
   const out = new Set<string>();

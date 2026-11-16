@@ -10,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +23,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 运营端的**功能点登记**与**代码里真实存在的端点**必须对得上。
+ * 运营端的功能点登记必须对应本地鉴权端点，或已接线的跨系统菜单工作区。
+ * 支付工作区的服务端鉴权由支付仓库验证；这里验证本仓菜单、页面引用与导航合同的接线。
  *
  * <h2>这两边错开的后果，各自是什么</h2>
  * <ul>
@@ -49,14 +51,19 @@ class FunctionPointPermAlignmentTest {
     @Autowired
     private JdbcClient jdbc;
 
-    /** 运营端的判权入口只有这两个。 */
-    private static final Pattern GUARD = Pattern.compile("@perm\\.can(Any)?\\(");
-    private static final Pattern PERMS_REF = Pattern.compile("Perms\\.([A-Z_0-9]+)");
-    /**
-     * 商城可移植 starter 不挂 @PreAuthorize：方法体里 context.operator("commerce:…") 由宿主按实时会话与
-     * 功能点判权（与 OpsEndpointPermTest / gen-perm-endpoint-matrix.mjs 同一规则）。
-     */
-    private static final Pattern OPERATOR_CODE = Pattern.compile("context\\.operator\\(\"([a-z][a-z:_-]*)\"\\)");
+    // Possessive repetitions consume long source tokens without a recursive backtracking stack.
+    private static final String JAVA_STRING = "\"(?:[^\"\\\\]++|\\\\.)*+\"";
+    private static final String JAVA_TEXT_BLOCK = "\"\"\"(?:[^\"\\\\]++|\\\\[\\s\\S]|\"(?!\"\"))*+\"\"\"";
+    private static final String COMMENT = "//[^\\r\\n]*+|/\\*(?:[^*]++|\\*(?!/))*+\\*/";
+    /** Consume strings, text blocks and comments so their contents cannot impersonate annotations. */
+    private static final Pattern SOURCE_TOKEN = Pattern.compile(
+            JAVA_TEXT_BLOCK + "|" + JAVA_STRING + "|" + COMMENT
+                    + "|@PreAuthorize\\s*\\((?<authorization>(?:" + JAVA_STRING + "|[^\"()]++)*+)\\)"
+                    + "|context\\.operator\\(\\s*\"(?<operator>[a-z][a-z:_-]*)\"\\s*\\)");
+    private static final Pattern EXPRESSION_TOKEN = Pattern.compile(
+            "(?<text>" + JAVA_STRING + ")|\\bPerms\\.(?<constant>[A-Z_0-9]+)");
+    private static final Pattern GUARD = Pattern.compile("@perm\\.can(?:Any)?\\(([^)]*)\\)");
+    private static final Pattern PERMISSION_ARGUMENT = Pattern.compile("'([a-z][a-z0-9:_-]*)'");
 
     /**
      * **已知欠账**，立闸门那天就存在的。只准变短，不准变长。
@@ -77,18 +84,19 @@ class FunctionPointPermAlignmentTest {
                     + "即事实上只有超管能用，而这在界面上看不出来"));
 
     @Test
-    @DisplayName("★★★ 登记了功能点的权限码，代码里必须真的有端点 —— 否则界面在承诺不存在的能力")
-    void everyRegisteredPointHasAnEndpoint() throws IOException {
+    @DisplayName("★★★ 登记的功能点须有本地端点或已接线的跨系统菜单工作区")
+    void everyRegisteredPointHasAnEndpointOrLinkedRemoteWorkspace() throws IOException {
         Set<String> registered = registeredPermCodes();
         assertThat(registered).as("一条功能点都没读到 —— 测试库没跑迁移？").isNotEmpty();
 
         Set<String> unimplemented = new TreeSet<>(registered);
         unimplemented.removeAll(permCodesUsedByEndpoints());
+        unimplemented.removeAll(linkedRemoteWorkspacePermCodes());
         unimplemented.removeAll(KNOWN_UNIMPLEMENTED.keySet());
 
         assertThat(unimplemented)
                 .as("这些权限码登记成了功能点，运营能在界面上勾选、能授权，"
-                        + "但**代码里没有任何端点用它**。\n"
+                        + "但既无本地端点，也未接线到跨系统菜单工作区。\n"
                         + "要么实现，要么把功能点下线 —— 留着等于让界面承诺一个做不到的事：")
                 .isEmpty();
     }
@@ -146,25 +154,147 @@ class FunctionPointPermAlignmentTest {
         // endpoints moved to ai-hxkey. Count only actual endpoints in this repo;
         // the external client's permission constants do not constitute handlers.
         for (Path p : sources()) {
-            String src = Files.readString(p);
-            for (Matcher op = OPERATOR_CODE.matcher(src); op.find(); ) out.add(op.group(1));
-            if (!src.contains("@perm.can")) {
-                continue;
-            }
-            for (String line : src.split("\n")) {
-                if (!GUARD.matcher(line).find()) {
-                    continue;
+            out.addAll(permCodesInSource(Files.readString(p), literal));
+        }
+        return out;
+    }
+
+    private static Set<String> permCodesInSource(String source, Map<String, String> literal) {
+        Set<String> out = new TreeSet<>();
+        for (Matcher token = SOURCE_TOKEN.matcher(source); token.find(); ) {
+            if (token.group("operator") != null) {
+                out.add(token.group("operator"));
+            } else if (token.group("authorization") != null) {
+                StringBuilder expression = new StringBuilder();
+                for (Matcher part = EXPRESSION_TOKEN.matcher(token.group("authorization")); part.find(); ) {
+                    String text = part.group("text");
+                    if (text != null) {
+                        expression.append(text.substring(1, text.length() - 1).translateEscapes());
+                    } else {
+                        String name = part.group("constant");
+                        assertThat(literal).as("PreAuthorize 引用了无法解析的 Perms.%s", name).containsKey(name);
+                        expression.append(literal.get(name));
+                    }
                 }
-                Matcher m = PERMS_REF.matcher(line);
-                while (m.find()) {
-                    String lit = literal.get(m.group(1));
-                    if (lit != null) {
-                        out.add(lit);
+                for (Matcher guard = GUARD.matcher(expression); guard.find(); ) {
+                    for (Matcher argument = PERMISSION_ARGUMENT.matcher(guard.group(1)); argument.find(); ) {
+                        out.add(argument.group(1));
                     }
                 }
             }
         }
         return out;
+    }
+
+    @Test
+    void permissionScannerReadsMultilineConstantsAndLiteralCanArguments() {
+        String source = """
+                @PreAuthorize(
+                    "@perm.can('" + Perms.FIRST + "') or @perm.canAny('literal:read', '"
+                    + Perms.SECOND + "')")
+                public Object read() { return context.operator("commerce:catalog:read"); }
+                """;
+        assertThat(permCodesInSource(source, Map.of("FIRST", "first:read", "SECOND", "second:read")))
+                .containsExactlyInAnyOrder("first:read", "second:read", "literal:read", "commerce:catalog:read");
+    }
+
+    @Test
+    void permissionScannerRejectsCommentsStringsAndUnrelatedAuthorizationArguments() {
+        String source = """
+                // @PreAuthorize("@perm.can('comment:read')")
+                /* context.operator("comment:operator") */
+                String sample = "@PreAuthorize(\\"@perm.can('sample:read')\\")";
+                @PreAuthorize("hasAuthority('unrelated:read') and #request.permission() == 'not:guarded'")
+                public void read() {}
+                """;
+        assertThat(permCodesInSource(source, Map.of())).isEmpty();
+    }
+
+    @Test
+    void permissionScannerConsumesLargeStringsTextBlocksAndCommentsWithoutRecursion() {
+        String padding = "x".repeat(100_000);
+        String string = "String sample = \"" + padding + "\\\"".repeat(20_000) + "\";\n";
+        String textBlock = "String text = \"\"\"\n" + padding
+                + "\n@PreAuthorize(\"@perm.can('text:block')\")\n\"\"\";\n";
+        String comments = "/*" + "x*".repeat(100_000)
+                + "@PreAuthorize(\"@perm.can('comment:block')\")*/\n"
+                + "//" + padding + "context.operator(\"comment:line\")\n";
+        String authorization = "@PreAuthorize(\"#request.note() == '" + padding
+                + "' and @perm.can('real:read')\")\npublic void read() {}";
+        assertThat(permCodesInSource(string + textBlock + comments + authorization, Map.of()))
+                .containsExactly("real:read");
+        assertThat(withoutComments(string + textBlock + comments))
+                .isEqualTo(string + textBlock + " \n \n");
+    }
+
+    private record RemoteMenu(String href, String permission) {}
+    private record Workspace(String path, String permission) {}
+    private record PageReference(String href, String workspace) {}
+
+    /** V671 links payment menus to the existing payment application, not shop backend handlers. */
+    private Set<String> linkedRemoteWorkspacePermCodes() throws IOException {
+        Path repository = Path.of("../..").toRealPath();
+        String bridge = withoutComments(Files.readString(repository.resolve("ops-web/lib/auth/ops-bridge.ts")));
+        Matcher declarations = Pattern.compile(
+                "export const PAYMENT_WORKSPACES = \\{(.*?)\\} as const;", Pattern.DOTALL).matcher(bridge);
+        assertThat(declarations.find()).as("PAYMENT_WORKSPACES 导航合同未读到").isTrue();
+        Map<String, Workspace> workspaces = new TreeMap<>();
+        Matcher entry = Pattern.compile(
+                "[\\\"]?([a-z-]+)[\\\"]?:\\s*\\{\\s*path:\\s*\\\"(/[^\\\"]+)\\\",\\s*permission:\\s*\\\"([^\\\"]+)\\\"\\s*\\}")
+                .matcher(declarations.group(1));
+        while (entry.find()) workspaces.put(entry.group(1), new Workspace(entry.group(2), entry.group(3)));
+        assertThat(workspaces).as("跨系统工作区没有可解析的路由和权限").isNotEmpty();
+        List<PageReference> references = new ArrayList<>();
+        Path app = repository.resolve("ops-web/app");
+        try (Stream<Path> pages = Files.walk(app)) {
+            for (Path page : pages.filter(path -> path.getFileName().toString().equals("page.tsx")).toList()) {
+                String source = withoutComments(Files.readString(page));
+                if (!source.contains("import { PaymentOpsEntry } from \"@/components/payment-ops-entry\"")) continue;
+                String route = "/" + app.relativize(page.getParent()).toString();
+                Matcher usage = Pattern.compile(
+                        "tab\\s*===\\s*\"([^\"]+)\"\\s*&&\\s*(?:<>\\s*)?<PaymentOpsEntry\\s+workspace=\"([^\"]+)\"")
+                        .matcher(source);
+                while (usage.find()) references.add(new PageReference(route + "?tab=" + usage.group(1), usage.group(2)));
+            }
+        }
+        assertThat(references).as("跨系统工作区没有实际页面引用").isNotEmpty();
+        List<RemoteMenu> menus = jdbc.sql("""
+                SELECT href, perm_code FROM sys_function_point
+                 WHERE deleted=0 AND point_type='MENU' AND href IS NOT NULL AND perm_code IS NOT NULL
+                """).query((rs, row) -> new RemoteMenu(rs.getString("href"), rs.getString("perm_code"))).list();
+        return linkedRemoteWorkspacePermCodes(menus, workspaces, references);
+    }
+
+    private static Set<String> linkedRemoteWorkspacePermCodes(List<RemoteMenu> menus,
+            Map<String, Workspace> workspaces, List<PageReference> references) {
+        Set<String> out = new TreeSet<>();
+        for (PageReference reference : references) {
+            Workspace workspace = workspaces.get(reference.workspace());
+            if (workspace != null && menus.contains(new RemoteMenu(reference.href(), workspace.permission()))) {
+                out.add(workspace.permission());
+            }
+        }
+        return out;
+    }
+
+    private static String withoutComments(String source) {
+        return Pattern.compile(JAVA_TEXT_BLOCK + "|" + JAVA_STRING + "|" + COMMENT).matcher(source)
+                .replaceAll(match -> match.group().startsWith("/") ? " " : Matcher.quoteReplacement(match.group()));
+    }
+
+    @Test
+    void remoteMenuRequiresMatchingPageReferencePermissionAndHref() {
+        var menu = new RemoteMenu("/merchants?tab=payment", "pay:merchant:view");
+        var workspace = new Workspace("/merchants", "pay:merchant:view");
+        var reference = new PageReference(menu.href(), "merchants");
+        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace), List.of(reference)))
+                .containsExactly("pay:merchant:view");
+        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace), List.of())).isEmpty();
+        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of(), List.of(reference))).isEmpty();
+        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu),
+                Map.of("merchants", new Workspace("/merchants", "pay:onboarding:view")), List.of(reference))).isEmpty();
+        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace),
+                List.of(new PageReference("/merchants?tab=onboarding", "merchants")))).isEmpty();
     }
 
     /** {@code Perms} 的常量名 → 字面量。 */
