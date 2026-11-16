@@ -1,6 +1,6 @@
 # TDD-商户迁移同步与渠道关联
 
-状态：已确认（2026-11-16，用户「按建议确认并开发」）；N2、N3、N5 已实现（near-pay 在分支 `feat/oscar-entity-merchant-repair`），未部署
+状态：已确认（2026-11-16，用户「按建议确认并开发」）；N2、N3、N5、N6 已实现（near-pay 在分支 `feat/oscar-entity-merchant-repair`），未部署
 关联需求：[运营端-账户商户门店渠道-功能矩阵](../requirements/运营端-账户商户门店渠道-功能矩阵.md) §3.1–3.4、§六 D4；[PRD-支付域](../requirements/PRD-支付域.md)；交接 [oscar-channel-sync-2026-11-16](../handoff/oscar-channel-sync-2026-11-16/README.md)
 档位：2（跨 ai-shop 与 near-pay 两个仓库；新资源与新表；历史归属修复不可逆，另见 [ADR-060](ADR/ADR-060-迁移归属冲突走修复申请不按名称合并.md)）
 创建：2026-11-16 · 最后更新：2026-11-16
@@ -23,6 +23,7 @@
 - AC6：Given 资质已有同类型有效记录，When 调用资质新建 API，Then 返回冲突码，不覆盖原记录。
 - AC7：Given 经营主体已有支付商户，When 调用 `merchant-creations`，Then 返回冲突并带出已有 `merchantNo`，不建第二个。
 - AC8：Given 支付商户的来源关联指向旧主体，When 运营提交归属修复申请并经审批执行，Then 只改本次申请范围内的关联并留历史；不迁其他门店、不转移 MID。
+- AC10（2026-11-16 用户纠正）：创建顺序为「账号 → 门店 → 选门店建主体」，每个新主体（含同一账号的第二个主体）都必须先有一家门店、基于该门店建主体，不单独建主体（实现方式待 Q5）；Given 主体尚无门店或门店未同步到支付侧，When 运营代建支付商户，Then 返回冲突，不建商户。
 - AC9：关联清单 A–G 每条执行后回读，脚本输出编号对照表（userNo / entityNo / storeNo / merchantNo / accountNo / bindingNo）。
 
 ### 不做（Out of Scope）
@@ -41,9 +42,9 @@
 | # | 对象 | 判重键 | 查询 API | 新建 API |
 |---|---|---|---|---|
 | O1 | 账号 | 邮箱或手机 + 地区 | `GET /ops/customers/users?keyword=` ✅ | `POST /ops/customers/users` ❌（N1） |
-| O2 | 经营主体 | 统一编号 + 地区 | `GET /ops/merchants?keyword=`、`GET /ops/merchants/{entityNo}`、`GET /ops/customers/operating-entities/{entityNo}` ✅ | `POST /ops/merchants/apply-on-behalf` ✅ → `POST /ops/merchant/apply/{applyNo}/accept`、`/audit` ✅ |
+| O2 | 经营主体 | 统一编号 + 地区 | `GET /ops/merchants?keyword=`、`GET /ops/merchants/{entityNo}`、`GET /ops/customers/operating-entities/{entityNo}` ✅ | `POST /ops/merchants/apply-on-behalf` ✅（**必须带门店资料 `storeProfile`**，主体与首店同单建） → `POST /ops/merchant/apply/{applyNo}/accept`、`/audit` ✅ |
 | O3 | 资质 | 主体 + 资质类型（有效） | `GET /ops/merchants/{entityNo}/qualifications` ✅ | 现 `POST` 为登记或更新 ⚠️ → 新增只新建 `POST .../qualification-creations` ❌（N2） |
-| O4 | 门店 | 主体 + 门店名 + 地址 | `GET /ops/stores`、`GET /ops/stores/{storeNo}` ✅ | `POST /ops/merchants/{entityNo}/stores` ✅ |
+| O4 | 门店 | 主体 + 门店名 + 地址 | `GET /ops/stores`、`GET /ops/stores/{storeNo}` ✅ | 新主体：随 O2 申请建；已有主体加店：`POST /ops/merchants/{entityNo}/stores` ✅ |
 | O5 | 支付商户 | 经营主体编号 | `GET P/merchants`、`GET P/merchants/{merchantNo}`、`GET /ops/merchant/{entityNo}/pay-service` ✅ | `POST P/merchant-creations` ✅ 已在 166 运行版本；缺主体级唯一 ⚠️（N3） |
 | O6 | 渠道商户账户 | 环境 + 渠道 + MID | `GET P/channel-accounts` ✅ | `POST P/channel-accounts` ✅ |
 | O7 | 渠道凭据 | 渠道账户 + 用途 + 版本 | `GET P/credentials` ✅ | `POST P/credentials` ✅（密钥只读受控配置） |
@@ -55,8 +56,8 @@
 | # | 关联 | API | 状态 |
 |---|---|---|---|
 | A | 账号 ↔ 经营主体（店主） | 代建申请时指定店主；回读 `GET /ops/customers/users/{userNo}/stores` | ✅；已有主体补店主暂无接口，Oscar 已是店主，本期不做 |
-| B | 经营主体 ↔ 门店 | 门店在主体下新建 | ✅ |
-| C | 经营主体 ↔ 支付商户 | `merchant-creations` 带 `operatingEntityId` | ✅ |
+| B | 经营主体 ↔ 门店 | 主体创建时必须先关联门店（随申请同建）；已有主体加店在主体下新建 | ✅ |
+| C | 经营主体 ↔ 支付商户 | `merchant-creations` 带 `operatingEntityId`；前置：主体已有门店且已经 D 同步到支付侧（N6） | ✅ |
 | D | 门店 ↔ 支付门店投影 | `POST /ops/stores/nearpay-sync`，回读 `GET P/stores/{storeNo}` | ✅ |
 | E | 支付商户 ↔ 迁移来源 | `POST P/merchants/{merchantNo}/source-links/{linkNo}/verify` | ✅（需真实来源依据） |
 | F | 支付商户 ↔ 渠道账户 | 渠道账户新建时指定商户 | ✅ |
@@ -67,6 +68,7 @@
 
 | AC | 落点 |
 |---|---|
+| AC10 | 脚本：主体零条时门店随主体计划新建；O5 待建前要求 O4 复用且门店投影存在，否则 BLOCKED。near-pay N6 |
 | AC1–AC4、AC9 | 同步脚本 `deploy/ume/oscar-sync/sync.py`（查询—选择—新建/复用—回读） |
 | AC5 | 各新建 API 的 `requestNo` 回执（N1、N2、N5 照 `merchant-creations` 的 `request_hash` 做法） |
 | AC6 | N2 |
@@ -95,6 +97,7 @@
 | N3 | near-pay | `POST P/merchant-creations` 与 `biz/pay/v2/merchant-creations` 行为变更 | 无；建前查代建回执 `operating_entity_no` 与来源关联 `external_entity_id`（均排除 `CLOSED` 商户） | 不变 | 复用 `STATE_CONFLICT`，说明「经营主体已有支付商户 PM…」 | P0 |
 | N4 | ai-shop | `GET /ops/migration-sources/merchants?registrationNo=`、`/{sourceId}`、`/{sourceId}/channel-accounts` | 视来源系统而定 | `merchant:read` | — | 待 Q1 |
 | N5 | near-pay | `GET P/source-association-repair-requests`、`GET .../{repairNo}`、`POST ...`、`POST .../{repairNo}/approve`、`/reject`、`/execute` | `pay_source_association_repair`（申请、范围、前后快照、审批、执行结果） | `pay:merchant:repair`（申请）、`pay:merchant:repair:approve`（审批，申请人不可自批） | 范围外对象、状态不允许、版本冲突 | P0 |
+| N6 | near-pay | 运营代建 `POST P/merchant-creations` 加前置（App 侧 `biz/pay/v2/merchant-creations` 不变） | 无；查 `pay_store_projection`（同主体、未删除、非 `DELETED`/`DISABLED`） | 不变 | 复用 `STATE_CONFLICT`「经营主体尚未关联门店」 | P0 |
 
 配置项：无。脚本连接参数走环境变量 `NEARSHOP_BASE`、`NEARSHOP_TOKEN`，不入库不入 Git。
 
@@ -110,7 +113,7 @@
 | 修改 | near-pay `pay-domain/.../OpsMerchantCreationService` | N3：建前按主体查已有商户 |
 | 新增 | near-pay `pay-domain/.../platmch/repair/*`、`pay-portal/.../OpsSourceAssociationRepairController` | N5 |
 | 新增 | near-pay 迁移 `V1xx__source_association_repair.sql` | N5 |
-| 后续 | `deploy/ume/oscar-sync/sync.py --apply` | WP6：在契约落地后接入新建与关联命令 |
+| 修改 | `deploy/ume/oscar-sync/sync.py --apply [--execute-repair]` | WP6（已实现）：只自动做 O3 资质只新建、H 修复申请（审批由他人）与已批准执行、D 门店同步支付侧、O5 运营代建、G 门店绑定；账号、主体、门店、渠道账户、凭据、产品、来源核验只报告。requestNo 前缀取配置 `requestPrefix`，重跑沿用原单；修复申请缺真实资料依据不提交 |
 
 ### 关键接口
 
@@ -144,7 +147,7 @@ query exact identity
 
 1. **WP1 只读脚本**（不动契约，本期先交付）→ 在 166 跑出 Oscar 编号对照与冲突清单。
 2. **N3、N5**（near-pay，P0）与 **N2**（ai-shop，P1）并行；各自单测 + 本仓闸门。
-3. 部署 166 后，**WP6** 给脚本加 `--apply`：依次 O1–O8、A–G，冲突处插入 H。
+3. 部署 166 后，**WP6** 给脚本加 `--apply`：依次 O1 → O2+O4（主体随门店同建）→ A → O3 → D（门店同步支付侧）→ O5/C → E → O6–O8 → F、G，冲突处插入 H。
 4. N1、N4 等 Q1 定论后再排。
 
 ## §3 选型
@@ -173,6 +176,8 @@ query exact identity
 - Q3 一个经营主体只允许一个支付商户：N3 照此实现。
 - Q4 N1（运营新建账号）本期不做。
 
+- Q5（待定，2026-11-16）：「先门店后主体」时门店在主体建成前挂在哪里——现有 `mch_store.entity_no` 为必填，且没有「选门店建主体」接口。候选：A 门店先归属账号、`entity_no` 可空，主体新建必填 `storeNo`；B 先挂占位主体、建正式主体后用现有门店换挂。适用范围（运营端+脚本 / 连 App V46）一并待定。Oscar 首户账号、主体、门店均已存在，不受影响，迁移先行。
+
 残余风险：N3 为事务内先查后插，不加库级唯一键（166 存量可能已有同主体多商户，加唯一键会使迁移失败）；同主体两个不同 `requestNo` 并发代建仍可能各建一个，由脚本串行执行规避。
 
 ## §5 对账三 · 实现 → 需求（测试）
@@ -180,10 +185,11 @@ query exact identity
 | AC | 测试方法 | 跑过 |
 |---|---|---|
 | AC1–AC4 | `deploy/ume/oscar-sync/test_sync.py` | WP1 |
-| AC5 | N2/N5 幂等测试；脚本 `--apply` 回执测试 | 待实现 |
+| AC5 | N5 幂等测试（`SourceAssociationRepair*Test`）；脚本 `test_sync.py::ApplyTest` 8 条（只读模式零写入、代建回读、未同步先排队不代建、500 不写、冲突走修复不建第二个商户、已批准仅带开关执行、补绑定、资质缺资料不提交）——全文件 20/20 | ✅ |
 | AC6 | ai-shop `QualificationCreateOnlyTest`（3 条：同类型有效即冲突且不写；无则新建；带 `qualNo` 拒绝） | ✅ 3/3 |
 | AC7 | near-pay `MerchantCreationMySqlTest#secondMerchantForSameOperatingEntityConflictsAndNamesTheExistingOne`、`#sourceLinkedEntityAlsoCountsAsHavingAMerchant`（MySQL 9.7@3308） | ✅ 全类 17/17 |
 | AC8 | near-pay `SourceAssociationRepairServiceTest`（H2）7/7、`SourceAssociationRepairMySqlTest`（MySQL 9.7）7/7、`OpsSourceAssociationRepairControllerTest` 4/4；自批拦截做过消融（去掉即红） | ✅ |
+| AC10 | ai-shop `test_sync.py::StoreFirstTest` 4/4；near-pay `MerchantCreationMySqlTest#operatorCreationRequiresTheEntityToHaveASyncedStore`（全类 18/18）、`OpsMerchantReviewMySqlTest` 1/1 | ✅ |
 | AC9 | 166 只读运行报告 | 待运行 |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
@@ -236,3 +242,5 @@ near-pay（feat/oscar-entity-merchant-repair）
 |---|---|
 | 2026-11-16 | 草稿；WP1 只读脚本先行 |
 | 2026-11-16 | 方案确认（Q1–Q4 按建议）；N2、N3、N5 实现，相关测试全绿，已提交、未部署 |
+| 2026-11-16 | 用户纠正：经营主体创建必须先关联门店（范围：迁移流程 + 运营代建支付商户，不改 App 的 V46「主体可先于门店」）；新增 AC10、N6 |
+| 2026-11-16 | 用户明确顺序「账号 → 门店 → 选门店建主体」，实现方式记为 Q5 待定；先完成 WP6 `--apply` 并执行 Oscar 迁移 |

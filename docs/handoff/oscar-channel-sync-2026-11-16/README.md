@@ -123,3 +123,4 @@ HTTP 错误、超时或权限拒绝不能当成零条结果。新建超时后先
 - 版本核对：166 上 near-pay 运行源为 `release/166-collection-sse-20261116`，已含运营代建 `P/merchant-creations` 与沙箱会话；代建只按 `requestNo` 幂等，**不按经营主体去重**（N3）。
 - 与上文「状态」列的更正：资质 `POST` 为登记或更新合一（N2 另开只新建端点）；`/ops/ume/*` 来源读取、运营新建账号、归属修复申请、正式支付测试在两个仓库均无实现。
 - 只读脚本：[`deploy/ume/oscar-sync/sync.py`](../../../deploy/ume/oscar-sync/sync.py)，只调 GET，输出 REUSE / PLAN_CREATE / CONFLICT / BLOCKED；尚未在 166 运行（需运营令牌）。
+- 用户纠正（2026-11-16）：经营主体创建必须先关联门店。迁移中新主体只走 `apply-on-behalf` 并带门店资料；运营代建支付商户前须主体已有门店且已同步到支付侧（near-pay N6），否则冲突。App 侧 V46 行为不变。
