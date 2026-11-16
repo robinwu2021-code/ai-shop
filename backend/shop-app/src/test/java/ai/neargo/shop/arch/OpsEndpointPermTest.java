@@ -71,6 +71,7 @@ class OpsEndpointPermTest {
             Map.entry("/ops/auth/forgot", "找回密码 —— 此时他还没有会话"),
             Map.entry("/ops/auth/reset", "重置密码，凭邮件/短信里的令牌，不凭会话权限"),
             Map.entry("/ops/captcha", "图形验证码，登录前就要取"),
+            Map.entry("/ops/auth/logout", "退出 —— 只吊销自己带来的那一个令牌"),
             Map.entry("/ops/auth/me", "「我是谁」。前端拿它决定画哪些菜单，不能反过来要权限"),
             Map.entry("/ops/staffs/me/password", "改**自己**的密码。改别人的是 iam:staff:update，那条有码"),
             Map.entry("/ops/menu", "菜单本身就是按他的权限算出来的，再给它加一层码是循环"),

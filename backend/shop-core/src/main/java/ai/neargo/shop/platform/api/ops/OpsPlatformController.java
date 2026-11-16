@@ -44,8 +44,13 @@ public class OpsPlatformController {
     private final IndustryService industryService;
     private final ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService;
 
+    /** 退出时吊销令牌用（TDD-ops-统一登录与系统切换 §3.3）。v46 热修把吊销放在控制器，不改 OpsService/OpsServiceImpl */
+    private final ai.neargo.shop.auth.TokenStores tokenStores;
+
     public OpsPlatformController(OpsService opsService, IndustryService industryService,
-                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService, ai.neargo.shop.auth.LoginAuditor auditor) {
+                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService, ai.neargo.shop.auth.LoginAuditor auditor,
+                                 ai.neargo.shop.auth.TokenStores tokenStores) {
+        this.tokenStores = tokenStores;
         this.opsService = opsService;
         this.auditor = auditor;
         this.industryService = industryService;
@@ -114,6 +119,18 @@ public class OpsPlatformController {
 
     /** @param newPassword 至少 8 位 */
     public record ResetReq(@NotBlank String token, @NotBlank String newPassword) {
+    }
+
+    /**
+     * 退出：服务端吊销当前令牌，只动 OPERATOR 池。免鉴权（SecurityConfig 放行）且幂等 ——
+     * 令牌已过期的人点「退出」也该得到成功。只吊销请求头里那一个令牌。
+     */
+    @PostMapping("/ops/auth/logout")
+    public void logout(jakarta.servlet.http.HttpServletRequest request) {
+        String token = ai.neargo.shop.auth.AbstractTokenAuthFilter.bearer(request);
+        if (token != null && !token.isBlank()) {
+            tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revoke(token.trim());
+        }
     }
 
     @GetMapping("/ops/auth/me")
