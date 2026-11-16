@@ -5,6 +5,87 @@
 关联架构：[TDD-backend](TDD-backend.md) §4（`shop-channel` 只装适配器，不装业务判断）
 创建日期：2026-08-13
 
+## 0. 三竹增量范围（2026-11-16）
+
+用户授权：接入台湾三竹短信，使用仓库外私有凭据；仅本地联调，不部署、不发送真实短信。
+
+| AC | 设计落点 | 验证 |
+|---|---|---|
+| 默认桩及既有阿里云兼容，显式选择三竹 | shop-notify / notify.port 三个 Gateway 的条件装配 | MitakeSmsGatewayTest 的装配测试 |
+| 私有凭据读取、缺配启动失败，不记录凭据/正文/手机号 | MitakeSmsGateway，私有 JSON 文件 | 私有文件与错误脱敏测试 |
+| 台湾当地/国际号码转为 09xxxxxxxx，拒绝其他地区和无效号码 | MitakeSmsGateway；MarketPhonePolicyServiceImpl 准入复用同一台湾判据 | 号码参数化与市场策略测试 |
+| 验证 UTF-8 表单、响应码和流水号 | JDK HTTP，单条 SmSend 协议 | 回环 HTTP 服务测试 |
+| 运营体检显示实际供应商，凭据只回是否配置 | NotifyChannelServiceImpl / PlatformChannelCredentials | PlatformChannelCredentialsTest.mitakeHealthUsesPrivateFilePresenceWithoutExposingItsPath |
+
+### 0.1 设计选择
+
+沿用 SmsPort，新建 ai.neargo.shop.notify.port.MitakeSmsGateway（shop-notify），不经旧 UME 转发、不复制旧服务。凭据不进环境变量正文，只注入私有 JSON 路径 `SHOP_SMS_MITAKE_CONFIG_FILE`；该文件读取 username/password，不输出原始解析异常。通过 `SHOP_SMS_PROVIDER=mitake` 且 `SHOP_SMS_STUB=false` 才启用，provider 默认 ali；未知 provider 缺少 smsGateway，启动失败。本次不改 API、身份/OTP 存储键、业务表结构和线上市场开关；V677仅登记三竹渠道，不更新既有数据。手机号格式转换只发生在通道发送边界，不做已有账号合并；发码、验码继续要求同一身份字符串。
+
+`shop.sms.mitake.endpoint`（`SHOP_SMS_MITAKE_ENDPOINT`）默认 HTTPS 的 UME 同域同路径 `/api/mtk/SmSend?CharsetURL=UTF-8`。旧私有文件的 HTTP endpoint 仅为来源记录，不直接使用；仅允许 HTTPS 或显式回环 HTTP 联调地址。不跟随重定向。测试必须覆盖传输表单，禁止真实短信调用。
+
+台湾有效手机号：当地 09+8 位、+8869+8 位、8869+8 位，兼容国际前缀后多写一个 0；移除空格、点、短横线后校验，其他国家号码拒绝。共享判据落在 shop-base/common/Phones；市场准入仍需 TW 渠道就绪及系统设置显式开启，默认保持关闭。
+
+依据[三竹官方 HTTP API v2.14](https://sms.mitake.com.tw/download/B2C_MitakeAPI_v2.14.pdf?t=1719648401967316499389F338751B53AC1E04B2C6550)：UTF-8 URL 编码 POST username/password/dstaddr/smbody；0/1/2/4 并有 msgid 才受理成功，不代表均已送达。其余业务码失败，a/b/l/r 为可稍后重试；网络中断、HTTP 错误、畸形或多条响应因受理状态不明不自动重试。异常只暴露固定错误标识和已验证的单字符状态码，不输出上游 Error 原文。验证码各 SMS 场景使用独立用途文案；非验证码通知无配置则 tpl_unconfigured，不静默当作已发送。
+
+### 0.2 执行计划（writing-plans）
+
+- [x] 先补号码、协议、错误边界、条件装配及市场开关测试。
+- [x] 实现适配器、私有文件读取及台湾判据；同步 application.yml 和本地模板。
+- [x] 运行相关 Maven 测试；用实际私有凭据对回环服务验证，不调用真实三竹地址。
+- [x] 回填真实验证结果与文件清单，保持未提交，不部署。
+
+### 0.5 本地验证
+
+2026-11-16 本地验证通过。JDK21，backend 下执行：
+
+```sh
+mvn -o -pl shop-notify,shop-core -am test \
+  -Dtest=MitakeSmsGatewayTest,PlatformChannelCredentialsTest,MarketPhonePolicyServiceTest,RegionalSmsAdmissionTest,SmsMockPrefixTest,OtpSendCompatibilityTest,ShipTemplateParamTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dmitake.local.credentials="$HOME/.config/ai-shop/mitake-ume.local.json"
+```
+
+真实输出：`shop-core Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`shop-notify Tests run: 47, Failures: 0, Errors: 0, Skipped: 0`；`BUILD SUCCESS`，19.165s。MitakeSmsGatewayTest 共46例，其中私有文件用例读取真实配置，仅向测试自身新建的 127.0.0.1 随机端口发请求。未提供该系统属性时，仅此私有文件用例跳过，其余测试不依赖私有资料。未验证真实账户状态、出口 IP 白名单、真实短信送达和渠道回调。
+
+独立代码复核发现并修复：发送日志默认归ALI；渠道表没有MITAKE且未选中ALI可误报READY。日志写入改用PlatformChannelCredentials.smsProvider()；V677按既有V158的enabled=1语义登记MITAKE，未选中的平台短信供应商显示DISABLED。注意现有渠道表enabled尚未接入实际发送门禁，不能将登记状态当作真实发送安全开关；本批不重构全渠道门禁，真实发送仍由stub/provider控制。
+
+增量验证命令：`mvn -o -pl shop-core -am test -Dtest=MitakeNotifyOperationsTest,NotifyLoggingPortTest,OutboxNotificationOutcomeTest,PlatformChannelCredentialsTest,PushRouterTest -Dsurefire.failIfNoSpecifiedTests=false`。真实输出：`Tests run: 17, Failures: 0, Errors: 0, Skipped: 0`，`BUILD SUCCESS`，7.719s。覆盖成功/失败日志的实际入库provider及流水号、非选中短信供应商状态、邮件和推送存量兼容。构造注入变更引起的PushRouterTest编译回归已修复并通过该轮验证。
+
+V677在127.0.0.1:3308的MySQL9.7.4独立测试库执行两次，验证只登记一行NCH-SMS-MITAKE、enabled=1、未改业务表；测试库最终删除。首次临时表方案遇到MySQL1137（同一临时表不可重复引用），改用独立测试库实表验证；未因此修改迁移逻辑。历史V158等迁移未改。
+
+| AC | 实际测试方法 |
+|---|---|
+| 渠道装配 | selectionPreservesDefaultStubAndChoosesOnlyMitakeWhenConfigured（同时验证旧 ali 选择） |
+| 私有文件、脱敏 | missingOrMalformedCredentialsFailWithoutExposingFileContents / privateUmeCredentialsCanBeUsedOnlyAgainstLoopbackWhenExplicitlyRequested |
+| 号码与准入 | taiwanNumbersBecomeLocalMobileAndUseUtf8Form / invalidOrForeignMobileNeverReachesTransport / taiwanMobileVariantsStillRequireExplicitRegionalAdmission |
+| 响应码与失败 | acceptedStatusesRequireProviderReceipt / rejectedStatusesAreNotSuccessAndDoNotExposeUpstreamText / explicitTemporaryProviderRejectionCanBeRetried / malformedOrMultipleReceiptsFailClosed |
+| 网络与重定向 | httpFailureDoesNotBecomeSuccessAndDoesNotAutomaticallyResend / redirectNeverForwardsCredentials / disconnectedTransportFailsWithoutResendOrSensitiveExceptionText / nonLoopbackHttpAndCredentialBearingUrlsAreRejectedBeforeSending |
+| 场景与通知 | everySmsOtpSceneHasItsOwnPurposeAndUnknownSceneIsRejected / unconfiguredNotificationNeverCallsTransport |
+| 存量兼容 | RegionalSmsAdmissionTest / SmsMockPrefixTest / OtpSendCompatibilityTest / ShipTemplateParamTest |
+| 运营归属一致 | MitakeNotifyOperationsTest.successAndFailureLogsUseSelectedProviderAndPreserveReceipt / inactiveSmsProviderIsNeverAdvertisedReadyAndOperatorDisableStillWins |
+
+代码与日志扫描未发现实际账号密码；私有 JSON 文件权限为600，未加入仓库。默认模拟开关未改。后续若另行批准启用，需将 `shop.sms.channel-ready-markets` 明确设为 TW、经系统设置启用 TW 短信策略，并核查 `shop.sms.mock-prefixes` 无台湾模拟前缀；本批不执行这些启用动作。不得将 localhost 模拟成功当作账户有效或手机送达证明。
+
+### 0.55 后续线上授权与发布
+
+2026-11-16 用户追加授权部署线上并接受正式注册登录，已按[166发布记录](../部署-三竹短信与台湾正式登录-166-2026-11-16.md)执行。上述“仅本地、不部署”是首次交付范围，现由本追加授权替代。迁移因线上已到V676改为V677，保留所有既有线上更新。TW短信已开启、模拟前缀和固定码已清空；未代替真实用户完成收码登录。
+
+### 0.6 实现对账
+
+| 模块 | 本次文件与职责 |
+|---|---|
+| shop-base | common/Phones.java：共享台湾发送格式判据 |
+| shop-notify | notify/port/MitakeSmsGateway.java：私有凭据、OTP场景、POST与响应；AliSmsGateway.java：选择条件；MitakeSmsGatewayTest.java：协议联调 |
+| shop-core | platform/impl/MarketPhonePolicyServiceImpl.java及MarketPhonePolicyServiceTest.java：台湾号码识别但仍尊重市场开关 |
+| shop-core | message/entity/NotifyChannel.java、message/notify/PlatformChannelCredentials.java、message/notify/impl/NotifyChannelServiceImpl.java及PlatformChannelCredentialsTest.java：体检供应商及凭据存在性 |
+| shop-core | message/notify/NotifyLogWriter.java、NotifyChannelRegistry.java、MitakeNotifyOperationsTest.java：日志及渠道供应商一致；NotifyLoggingPortTest.java、OutboxNotificationOutcomeTest.java、PushRouterTest.java：构造注入适配与兼容验证 |
+| shop-app / backend | application.yml、.env.local.example：provider、config-file、endpoint；不内置账号密码 |
+| shop-app | db/migration/V677__mitake_sms_channel.sql：三竹登记，重复执行不覆盖状态、不切换实际通道 |
+| 配套生成物 | schema-test.sql：三竹渠道测试种子；technical/README.md、reference/glossary.json、中英文对照-实体与字典.md、静态常量清单.md：文档索引及供应商常量同步 |
+| docs | 本TDD §0：设计、计划、验证与交付限制 |
+
+只做本地开发；未提交、未推送、未部署，未变更已发布迁移或现有用户身份。正式端到端发码/验码、运营渠道记录配置与真实送达为后续获准启用阶段；非OTP通知仍返回tpl_unconfigured。
+
 ---
 
 ## 1. 需求摘要

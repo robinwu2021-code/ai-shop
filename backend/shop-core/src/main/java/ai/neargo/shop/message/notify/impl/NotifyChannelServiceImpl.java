@@ -50,13 +50,16 @@ public class NotifyChannelServiceImpl implements NotifyChannelService {
     }
 
     private ChannelHealth smsHealth() {
-        boolean stub = creds.isStub(SysNotifyLog.SMS, NotifyChannel.PROV_ALI);
-        return new ChannelHealth(SysNotifyLog.SMS, stub, !stub,
-                creds.credentials(SysNotifyLog.SMS, NotifyChannel.PROV_ALI),
-                // endpoint 与签名不是密钥：签名本就印在每条短信开头
-                List.of(new Param("endpoint", creds.value("shop.sms.ali.endpoint")),
+        String provider = creds.smsProvider();
+        boolean stub = creds.isStub(SysNotifyLog.SMS, provider);
+        List<Param> params = NotifyChannel.PROV_MITAKE.equals(provider)
+                ? List.of(new Param("provider", provider), new Param("endpoint", creds.value("shop.sms.mitake.endpoint",
+                        "https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF-8")))
+                : List.of(new Param("provider", provider), new Param("endpoint", creds.value("shop.sms.ali.endpoint")),
                         new Param("sign", creds.value("shop.sms.ali.sign")),
-                        new Param("templates.otp", creds.value("shop.sms.ali.templates.otp"))),
+                        new Param("templates.otp", creds.value("shop.sms.ali.templates.otp")));
+        return new ChannelHealth(SysNotifyLog.SMS, stub, !stub,
+                creds.credentials(SysNotifyLog.SMS, provider), params,
                 sentToday(SysNotifyLog.SMS, SysNotifyLog.SENT),
                 sentToday(SysNotifyLog.SMS, SysNotifyLog.FAILED));
     }

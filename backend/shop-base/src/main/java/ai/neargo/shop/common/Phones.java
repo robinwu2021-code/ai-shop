@@ -18,6 +18,18 @@ package ai.neargo.shop.common;
  */
 public final class Phones {
 
+    /** 台湾短信通道格式。只用于发送/市场识别，不改写已有账号或 OTP 存储键。 */
+    public static String taiwanMobile(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("[ .-]", "");
+        if (digits.startsWith("+886")) digits = digits.substring(1);
+        if (digits.startsWith("886")) {
+            digits = digits.substring(3);
+            if (!digits.startsWith("0")) digits = "0" + digits;
+        }
+        return digits.matches("09[0-9]{8}") ? digits : null;
+    }
+
     /** 中国大陆手机号。用于 {@code @Pattern(regexp = Phones.CN_MOBILE)}。 */
     public static final String CN_MOBILE = "^1[3-9]\\d{9}$";
 

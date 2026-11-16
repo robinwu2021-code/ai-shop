@@ -348,6 +348,10 @@ shop:
     # ⚠️ 改成 false 之前必须确认发码限流开着（shop.otp.rate-limit，默认 true）——
     # /mp/user/otp/send 是公网未鉴权端点，没限流 = 谁都能循环调着烧短信费。
     stub: ${SHOP_SMS_STUB:true}
+    provider: ${SHOP_SMS_PROVIDER:ali}
+    mitake:
+      config-file: ${SHOP_SMS_MITAKE_CONFIG_FILE:}
+      endpoint: ${SHOP_SMS_MITAKE_ENDPOINT:https://smsapi.mitake.com.tw/api/mtk/SmSend?CharsetURL=UTF-8}
     ali:
       endpoint: ${ALI_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
       sign: ${ALI_SMS_SIGN:}

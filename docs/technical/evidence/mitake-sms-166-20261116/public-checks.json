@@ -1,0 +1,72 @@
+[
+  {
+    "host": "https://nearshop.umeshop.ai",
+    "check": "empty-phone-rejected",
+    "httpStatus": 200,
+    "code": 10400
+  },
+  {
+    "host": "https://nearshop.umeshop.ai",
+    "check": "invalid-phone-rejected",
+    "httpStatus": 200,
+    "code": 10515
+  },
+  {
+    "host": "https://nearshop.umeshop.ai",
+    "check": "invalid-otp-rejected",
+    "httpStatus": 200,
+    "code": 10455
+  },
+  {
+    "host": "https://nearshop.umeshop.ai",
+    "check": "captcha-entry",
+    "httpStatus": 200,
+    "code": 0,
+    "challengeReturned": true,
+    "dataKeys": [
+      "challengeId",
+      "backgroundImage",
+      "templateImage",
+      "backgroundImageWidth",
+      "backgroundImageHeight",
+      "templateImageWidth",
+      "templateImageHeight",
+      "expiresInSeconds"
+    ]
+  },
+  {
+    "host": "https://twpay.umeshop.ai",
+    "check": "empty-phone-rejected",
+    "httpStatus": 200,
+    "code": 10400
+  },
+  {
+    "host": "https://twpay.umeshop.ai",
+    "check": "invalid-phone-rejected",
+    "httpStatus": 200,
+    "code": 10515
+  },
+  {
+    "host": "https://twpay.umeshop.ai",
+    "check": "invalid-otp-rejected",
+    "httpStatus": 200,
+    "code": 10455
+  },
+  {
+    "host": "https://twpay.umeshop.ai",
+    "check": "captcha-entry",
+    "httpStatus": 200,
+    "code": 0,
+    "challengeReturned": true,
+    "dataKeys": [
+      "challengeId",
+      "backgroundImage",
+      "templateImage",
+      "backgroundImageWidth",
+      "backgroundImageHeight",
+      "templateImageWidth",
+      "templateImageHeight",
+      "expiresInSeconds"
+    ]
+  }
+]

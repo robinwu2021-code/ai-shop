@@ -52,6 +52,10 @@ public class PlatformChannelCredentials {
                     new Cred("ALI_SMS_SIGN", "shop.sms.ali.sign", false),
                     new Cred("ALI_SMS_TPL_OTP", "shop.sms.ali.templates.otp", false)),
                     List.of("accessKeyId", "accessKeySecret", "sign")),
+            new ChannelSpec(NotifyChannel.TYPE_SMS, NotifyChannel.PROV_MITAKE,
+                    "shop.sms.stub", true, true,
+                    List.of(new Cred("SHOP_SMS_MITAKE_CONFIG_FILE", "shop.sms.mitake.config-file", true)),
+                    List.of("username", "password")),
             new ChannelSpec(NotifyChannel.TYPE_MAIL, NotifyChannel.PROV_SMTP,
                     "shop.mail.stub", true, true, List.of(
                     new Cred("MAIL_USERNAME", "shop.mail.username", true),
@@ -180,6 +184,12 @@ public class PlatformChannelCredentials {
     /** 非密属性的值（供运营核对，如 endpoint/sign/appId/topic）。密钥项永不经此回传。 */
     public String value(String propKey) {
         return env.getProperty(propKey, "");
+    }
+
+    /** 当前部署选中的短信供应商；健康页不能固定展示阿里云配置。 */
+    public String smsProvider() {
+        return "mitake".equals(env.getProperty("shop.sms.provider", "ali"))
+                ? NotifyChannel.PROV_MITAKE : NotifyChannel.PROV_ALI;
     }
 
     /** 带缺省的取值（如 mp-state 缺省 formal）。 */

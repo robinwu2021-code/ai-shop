@@ -31,9 +31,11 @@ public class NotifyLogWriter {
     private static final Logger log = LoggerFactory.getLogger(NotifyLogWriter.class);
 
     private final NotifyLogMapper mapper;
+    private final PlatformChannelCredentials credentials;
 
-    public NotifyLogWriter(NotifyLogMapper mapper) {
+    public NotifyLogWriter(NotifyLogMapper mapper, PlatformChannelCredentials credentials) {
         this.mapper = mapper;
+        this.credentials = credentials;
     }
 
     /** 目标地址由调用方传**明文**，这里负责掩码——省得每个调用点各写一遍、各写各的口径。 */
@@ -89,9 +91,9 @@ public class NotifyLogWriter {
     }
 
     /** 单供应商通道的固定供应商；PUSH/INAPP 由调用方显式传（PUSH 多供应商），返回 null。 */
-    private static String defaultProvider(String channel) {
+    private String defaultProvider(String channel) {
         return switch (channel) {
-            case SysNotifyLog.SMS -> ai.neargo.shop.message.entity.NotifyChannel.PROV_ALI;
+            case SysNotifyLog.SMS -> credentials.smsProvider();
             case SysNotifyLog.MAIL -> ai.neargo.shop.message.entity.NotifyChannel.PROV_SMTP;
             case SysNotifyLog.WXSUB -> ai.neargo.shop.message.entity.NotifyChannel.PROV_WECHAT;
             default -> null;

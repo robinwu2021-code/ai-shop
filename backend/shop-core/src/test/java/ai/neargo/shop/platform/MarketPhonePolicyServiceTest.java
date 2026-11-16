@@ -64,4 +64,15 @@ class MarketPhonePolicyServiceTest {
         verify(platform).validateContact("TW","raw / extension");
     }
 
+    @Test void taiwanMobileVariantsStillRequireExplicitRegionalAdmission() {
+        var s = service("TW");
+        for (String phone : List.of("0912345678", "+886912345678", "886912345678", "+886 0912-345-678")) {
+            assertThrows(BizException.class, () -> s.requireSmsEnabled(phone));
+        }
+        s.save("TW", false, true, "ops");
+        for (String phone : List.of("0912345678", "+886912345678", "886912345678", "+886 0912-345-678")) {
+            assertDoesNotThrow(() -> s.requireSmsEnabled(phone));
+        }
+        assertThrows(BizException.class, () -> s.requireSmsEnabled("091234567"));
+    }
 }
