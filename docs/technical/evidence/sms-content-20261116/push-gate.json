@@ -1,0 +1,41 @@
+{
+  "status": "BLOCKED",
+  "attemptedHead": "d9e7f7925",
+  "branch": "codex/sms-auth-20261116",
+  "pushSucceeded": false,
+  "generatedDocs": "26 generators PASS",
+  "shared": {
+    "assertions": 728,
+    "failed": 15,
+    "knownBaseline": 12,
+    "findings": [
+      "biz-contract-fields: 41 -> 47",
+      "schema-lineage: 25 -> 26",
+      "bean-validation-wired",
+      "message-placeholder",
+      "spec-completeness"
+    ]
+  },
+  "ops": {
+    "assertions": 904,
+    "failed": 2,
+    "findings": [
+      "platform-nav translations",
+      "staff-second-factor-exempt http mapping"
+    ]
+  },
+  "taskValidation": {
+    "mavenTests": 61,
+    "mavenFailures": 0,
+    "mavenSkipped": 1,
+    "opsTests": 31,
+    "opsTypecheck": "PASS",
+    "opsBuild": "PASS",
+    "mysql9": "PASS",
+    "productionOtpAndLogin": "PASS"
+  },
+  "noGateBypass": true,
+  "noFailureBaselineIncrease": true,
+  "backendWorktree": "/tmp/sales-release-20261113/shop",
+  "appEvidencePush": "9452735 SUCCESS"
+}
