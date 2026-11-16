@@ -74,6 +74,9 @@ public class SysNotifyLog {
      */
     private String templateNo;
 
+    /** 实际提交的短信正文；历史或无法获得最终正文的渠道为null。 */
+    private String content;
+
     private String status;
 
     /** 通道返回的错误码与消息，失败时才有 */

@@ -25,7 +25,7 @@ public interface SmsPort {
      * 发验证码。
      *
      * @param phone 手机号
-     * @param code  验证码明文。**实现方不得把它写进日志**
+     * @param code  验证码明文。仅发送记录正文按用户要求留档，不得写应用日志
      * @throws SmsException 通道拒绝或网络失败
      */
     SendResult sendOtp(String phone, String code);
@@ -95,11 +95,19 @@ public interface SmsPort {
     class SmsException extends RuntimeException {
 
         private final boolean retryable;
+        private final String content;
 
         public SmsException(String message, boolean retryable) {
+            this(message, retryable, null);
+        }
+
+        public SmsException(String message, boolean retryable, String content) {
             super(message);
             this.retryable = retryable;
+            this.content = content;
         }
+
+        public String content() { return content; }
 
         public boolean retryable() {
             return retryable;

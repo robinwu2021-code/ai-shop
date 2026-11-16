@@ -17428,6 +17428,7 @@ Region-specific contact recording. SMS can open only after the deployment declar
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `content` | `string,null` | 否 | 实际提交正文；历史或渠道不提供最终正文时为空。仅运营发送记录可读 |
 | `notifyNo` | `string` | 是 | 触达记录号 |
 | `channel` | [`NotifyChannel`](#notifychannel) | 是 | 通道 |
 | `provider` | `string,null` | 否 | 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空 |
