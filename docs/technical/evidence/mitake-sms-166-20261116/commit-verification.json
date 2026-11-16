@@ -1,0 +1,28 @@
+{
+  "testedCommit": "f2bb117b3e51e9a2cfbccdc9f26671c9eda068f3",
+  "parentBaseline": "a489641005dfd0cdab538d714d2e0c699a104013",
+  "backendFullRun": {
+    "modules": 37,
+    "tests": 5105,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 334
+  },
+  "failures": [
+    "EntityPlanOfflineLedgerMysqlTest.merchantSubmissionOperatorReceiptEntitlementsAndMoneyHandoffCloseOnOneLedger",
+    "FunctionPointPermAlignmentTest.everyRegisteredPointHasAnEndpoint"
+  ],
+  "parentReproducedSameFailures": true,
+  "newFailuresComparedWithParent": [],
+  "frozenFailureListModified": false,
+  "normalPrePushStatus": "BLOCKED_BY_EXISTING_FAILURES",
+  "scopedPushApproval": "PENDING",
+  "privateCredentialsCommitted": false,
+  "foodPluginGate": {
+    "tests": 1264,
+    "failures": 0,
+    "errors": 0,
+    "status": "PASS",
+    "profiles": "food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded"
+  }
+}
