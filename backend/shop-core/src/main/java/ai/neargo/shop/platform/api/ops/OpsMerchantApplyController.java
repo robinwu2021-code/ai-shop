@@ -93,7 +93,7 @@ public class OpsMerchantApplyController {
         var policy=phones.validateContact(market,req.phone());
         boolean phoneOwner="CN".equals(market) && !policy.recordOnly();
         String ownerUserNo=phoneOwner?userProvision.ensureUserByPhone(req.phone()):userProvision.registeredUserByEmail(req.ownerEmail())
-                .orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
+                .orElseThrow(()->BizException.of(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE));
         String applyNo = opsService.createApplyOnBehalf(new OpsService.SubmitApplyCommand(
                 ownerUserNo, req.name(), req.subject(),
                 // 推荐人传 null：这条是 BD 代填，来源已由 submitted_by 记下，不是「谁推荐的」

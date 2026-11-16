@@ -198,6 +198,12 @@ class OfflineHttpContractTest {
                 .andReturn().getResponse().getStatus());
         var review = (ReviewCommand) calls.getLast()[1];
         assertEquals(new OrderQuery(store, "order"), review.order());
+        assertFalse(review.testPayment(),"Legacy requests omitting testPayment retain the NORMAL path");
+        String explicitTest=confirm.substring(0,confirm.length()-1)+",\"testPayment\":true}";
+        assertEquals(200,mvc.perform(post("/ops/biz-mall/offline/orders/order/confirmations")
+                .param("storeNo","S").contentType("application/json").content(explicitTest))
+                .andReturn().getResponse().getStatus());
+        assertTrue(((ReviewCommand)calls.getLast()[1]).testPayment());
         assertEquals(ops, calls.getLast()[0]);
         String payout =
                 "{\"actualAmount\":{\"currency\":\"TWD\",\"minor\":\"4000\"},\"paidOutAt\":\"2026-11-04T03:00:00Z\","
@@ -216,6 +222,7 @@ class OfflineHttpContractTest {
                 .andReturn().getResponse().getStatus());
         assertEquals(
                 List.of(
+                        "commerce:mall:offline:confirm",
                         "commerce:mall:offline:confirm",
                         "commerce:mall:offline:refund:confirm",
                         "commerce:mall:offline:void",

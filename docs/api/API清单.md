@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1208 个接口**：后端已实现 955（79%）· 前端在调 1037
+**合计 1220 个接口**：后端已实现 967（79%）· 前端在调 1047
 
 ---
 
@@ -1163,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **597** 个接口 ｜ 后端已实现 **452**（76%）｜ 前端在调 **428**
+共 **609** 个接口 ｜ 后端已实现 **464**（76%）｜ 前端在调 **438**
 
 ### aftersale（5）
 
@@ -1175,7 +1175,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（55）
+### commerce（58）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1231,6 +1231,9 @@
 | GET | `/ops/industry-plans` | Plan 定义（每个经营类型三条） */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/industry-plans/{planNo}/off-sale` | Plan 停售（不改写已落单的快照） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | POST | `/ops/industry-plans/{planNo}/versions` | 新建/编辑 Plan 草稿版本 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/platform-mall/cash` | platformMallCash | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/platform-mall/claims` | platformMallClaims | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/platform-mall/orders` | platformMallOrders | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/stores/{storeNo}/subscription` | 门店权益来源与可访问时段 */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
 | POST | `/ops/stores/{storeNo}/subscription/grants` | 零金额独立端赠送（有期限 | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
 | POST | `/ops/stores/{storeNo}/subscription/sources/{sourceNo}/revoke` | 撤销零金额来源（付费来源必须走退款） */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
@@ -1289,6 +1292,16 @@
 | GET | `/ops/materials` | listMaterials | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
+
+### customer（5）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/customers/chains` | customerBrands | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/customers/members` | platformMembers | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/customers/members/{personNo}` | platformMember | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/customers/users` | customerRegistrations | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/customers/users/{userNo}/stores` | customerRegistrationStores | — | `数组` | — | ✅ | ⬜ |
 
 ### dashboard（12）
 
@@ -1563,7 +1576,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（69）
+### merchant（70）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1574,7 +1587,7 @@
 | PUT | `/ops/admission/pay-quotas/{merchantNo}` | 设置收款额度上限 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/admission/policies` | 三档准入策略 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/admission/policies/{legalForm}` | updateAdmissionPolicy | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/merchant-plan-purchases/{e}` | entityPlanPurchases | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}` | Authorized operator page; orderNo cursor, limit1..100. No legacy100-row fallback. */ | — | `数组` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/{o}` | entityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/cancel` | cancelEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/confirm` | confirmEntityPlanPurchase | — | `EntityPlanAction` | — | ⬜ | ⬜ |
@@ -1618,6 +1631,7 @@
 | POST | `/ops/merchants/{merchantNo}/unarchive` | unarchiveMerchant | — | `Merchant` | — | ✅ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/verified` | 认证标授予/撤销（P-11.1.2） | — | `Merchant` | — | ✅ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/violations` | 记一条违规并执行处置 | — | `Violation` | — | ✅ | ✅ |
+| GET | `/ops/merchants/admissions` | System-region admission list, trimmed by existing application/self-operation permissions. */ | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/merchants/apply-on-behalf` | **代商家提交入驻申请**（三期） | — | `ApplyOnBehalfResult` | — | ✅ | ✅ |
 | GET | `/ops/merchants/apply-on-behalf/context` | 当前登录环境统一配置的入驻地区与电话策略 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/apply-on-behalf/search` | 仅运营代办申请，服务端过滤后分页 | — | `object` | — | ✅ | ✅ |
@@ -1822,7 +1836,7 @@
 | GET | `/ops/risk-rules` | listRiskRules | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/risk-rules/{type}` | 拦截规则（P-16.2.5） | — | `RiskRule` | — | ✅ | ✅ |
 
-### store（15）
+### store（18）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1831,6 +1845,9 @@
 | POST | `/ops/stores/{merchantNo}/qrcode/print` | 登记一次店铺码印刷量（线下事实，系统无从自动知道） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/stores/{merchantNo}/qrcode/reissue` | <b>换码：旧码当场失效</b>，已经贴在店里的物料全部变成死链 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/stores/{storeNo}` | 门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号 | — | `StoreGovernDetail` | — | ✅ | ✅ |
+| GET | `/ops/stores/{storeNo}/operational-review` | Read explicit store operating admission; historic unsubmitted review stays null. */ | — | `StoreOperationalReview` | — | ✅ | ✅ |
+| POST | `/ops/stores/{storeNo}/operational-review/decide` | Decide explicit operating admission with the existing application audit authority. */ | — | `StoreOperationalReview` | — | ✅ | ✅ |
+| POST | `/ops/stores/{storeNo}/operational-review/submit` | Submit this store for operating admission without changing legal or payment review. */ | — | `StoreOperationalReview` | — | ✅ | ✅ |
 | POST | `/ops/stores/{storeNo}/restore` | 解除门店强制下线，恢复被平台压下的货架行 | — | `StoreGovern` | — | ✅ | ✅ |
 | GET | `/ops/stores/{storeNo}/stats` | 门店经营状况：今日/本月订单与 GMV，外加待发货/待自送/缺货三项待办堆积 | — | `StoreStats` | — | ✅ | ✅ |
 | GET | `/ops/stores/acquisition` | 获客漏斗「扫码 → 进店 → 首次归因 → 首单」，按**主体**聚合（P-10.1.4） | — | `object` | — | ✅ | ✅ |

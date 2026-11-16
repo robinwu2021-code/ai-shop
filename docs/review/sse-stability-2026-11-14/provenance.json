@@ -1,0 +1,31 @@
+{
+  "apiBaselineCommit": "fb7ea965c89052752d2f0c200ff03d3c3d6ca414",
+  "appBaselineCommit": "ce5ca91c2dfc3aa55bc14e23cf520bf6f60275ec",
+  "branch": "codex/sse-stability-20261114",
+  "apiChangedClassCount": 6,
+  "temporaryFixtureBase": "8851",
+  "temporaryFixtureFile": "integration_test/real_session_sse_readiness_test.dart",
+  "noAuthTokenExport": true,
+  "noAppDataClear": true,
+  "noFinancialSqlMutation": true,
+  "apk": {
+    "app-normal.apk": "47a1f6191aeb6ff5a773be7c91c4ec92d5bd234532f55fa1cf9ef3086e83c53b",
+    "app-diagnostic.apk": "938ee8aa961dbcbea7873de5d46686e0a71d2add17002a55134e5e18e5c4149a"
+  },
+  "apiManifest": {
+    "releaseId": "sse-stability-20261114",
+    "sourceCommit": "fb7ea965c89052752d2f0c200ff03d3c3d6ca414",
+    "baselineSha256": "927ccdf3da7cc9dbb124b4f5c1e0c0d1ed12eba9b62dfb0edbea0aa2e4d67c74",
+    "candidateSha256": "b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa0640",
+    "classes": {
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionDiagnosticConfiguration.class": "3ab4d68b97718a74fe9ded0df87d08e245891cedbb0a2e0553e9dd888a00bf62",
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionDiagnosticJob.class": "74e501370c0698383aa068234fdfa8e84d6707bf35bc94efacad25543bef53e5",
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionDiagnosticProperties.class": "75c0e6d3255fd8c2da4a865c038f822c1ba631ae50791dee0906fcd2cee68843",
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionStream$Frame.class": "221f8d4e27630da9d12588733794b632189b5dd4beab345dbc3e2ccec6bf6465",
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionStream$Connection.class": "b25c5bc7f1a7c8b8e93dbd1a7b8736c638e9f6633a791036eb5ecc71150bb7d3",
+      "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionStream.class": "2263cd7893c1b5dfd81b1008ef419d6d598f38a13dad18b01d9512c0a7b13f70"
+    },
+    "schemaMigration": false,
+    "paymentPerformed": false
+  }
+}

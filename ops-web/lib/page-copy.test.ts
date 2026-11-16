@@ -8,10 +8,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { traditionalCopy } from "./i18n/zh-tw";
+import type { PageCopy } from "./use-copy";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const APP = join(ROOT, "app");
 const CJK = /[一-龥]/;
+/** 常见简体专用字（繁体里字形不同）。转换后仍出现即视为回落简体。 */
+const SIMPLIFIED_ONLY = /[户账说设务发审门订费资认证开关选择请输时间项页数据这个们来对没员营销统级点击删编辑册记录详报额单码号态结应实现标签]/;
 
 /** 有 copy.ts 的页面。"" 代表根目录的工作台（app/page.tsx + app/copy.ts）。 */
 function convertedPages(): string[] {
@@ -57,6 +61,17 @@ describe("页面文案", () => {
 
   // 扫**页面目录下的每个 .tsx**，不只是 page.tsx：
   // 页面拆出 xxx-tab.tsx 之后，只看 page.tsx 就等于给裸中文开了一个后门。
+  // 繁体界面不再回落简体（TDD-运营端页面文案繁体 AC1）。
+  it.each(pages)("%s：繁体呈现不残留简体专用字", async (name) => {
+    const mod = await import(join(dirOf(name), "copy.ts"));
+    const dict = Object.values(mod).find((v): v is PageCopy<Record<string, string>> =>
+      !!v && typeof v === "object" && "zh" in v && "en" in v);
+    expect(dict, "copy.ts 没有导出 { zh, en }").toBeTruthy();
+    const tw = traditionalCopy(dict!.zh, dict!["zh-TW"]);
+    const bad = Object.entries(tw).filter(([, v]) => SIMPLIFIED_ONLY.test(v)).map(([k, v]) => `${k}: ${v}`);
+    expect(bad, `这些条目繁体下仍有简体字：\n${bad.join("\n")}`).toEqual([]);
+  });
+
   it.each(pages)("%s：目录下的 .tsx 里不许再有裸中文（注释除外）", (name) => {
     const dir = dirOf(name);
     const src = readdirSync(dir)

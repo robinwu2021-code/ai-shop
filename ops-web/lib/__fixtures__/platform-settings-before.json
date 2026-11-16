@@ -1,0 +1,1423 @@
+[
+  {
+    "key": "dashboard",
+    "label": "工作台",
+    "icon": "LayoutDashboard",
+    "modules": [
+      "dashboard"
+    ],
+    "href": "/"
+  },
+  {
+    "key": "merchant",
+    "label": "商户中心",
+    "icon": "Store",
+    "modules": [
+      "merchant",
+      "store"
+    ],
+    "href": "/merchants",
+    "match": [
+      "/merchants",
+      "/stores"
+    ],
+    "children": [
+      {
+        "href": "/merchants",
+        "label": "入驻审核",
+        "perm": "merchant:apply:audit",
+        "group": "入驻",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=on-behalf",
+        "label": "代办入驻",
+        "perm": "merchant:apply:onbehalf",
+        "group": "入驻",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=self-operated",
+        "label": "自营建档",
+        "perm": "merchant:selfop:create",
+        "group": "入驻",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=onboarding",
+        "label": "进件看板",
+        "perm": "merchant:admission:read",
+        "group": "入驻",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=list",
+        "label": "商家档案",
+        "perm": "merchant:merchant:read",
+        "group": "档案",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=stores",
+        "label": "门店档案",
+        "perm": "merchant:merchant:read",
+        "group": "档案",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=qualifications",
+        "label": "资质档案",
+        "perm": "merchant:category:read",
+        "group": "档案",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=categories",
+        "label": "类目授权",
+        "perm": "merchant:category:grant",
+        "group": "档案",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=verify",
+        "label": "认证管理",
+        "perm": "merchant:verify:grant",
+        "group": "档案",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=mode-risk",
+        "label": "自营风险",
+        "perm": "merchant:mode:read",
+        "group": "档案",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=credit",
+        "label": "信用档案",
+        "perm": "merchant:merchant:read",
+        "group": "信用",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=ban",
+        "label": "违规处置",
+        "perm": "merchant:merchant:ban",
+        "group": "信用",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=chain",
+        "label": "链条画像",
+        "perm": "merchant:merchant:read",
+        "group": "诊断",
+        "matrix": "P-11.1",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      },
+      {
+        "href": "/stores",
+        "label": "店招审核",
+        "perm": "store:page:audit",
+        "group": "展示获客",
+        "matrix": "P-10.1",
+        "ready": true
+      },
+      {
+        "href": "/stores?tab=template",
+        "label": "主页模板",
+        "perm": "store:page:read",
+        "group": "展示获客",
+        "matrix": "P-10.1"
+      },
+      {
+        "href": "/stores?tab=qrcode",
+        "label": "门店码",
+        "perm": "store:qrcode:export",
+        "group": "展示获客",
+        "matrix": "P-10.1",
+        "ready": true
+      },
+      {
+        "href": "/stores?tab=effect",
+        "label": "获客效果",
+        "perm": "store:page:audit",
+        "group": "展示获客",
+        "matrix": "P-10.1",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "product",
+    "label": "商品资料",
+    "icon": "Package",
+    "modules": [
+      "product",
+      "system",
+      "commerce"
+    ],
+    "href": "/products",
+    "match": [
+      "/products"
+    ],
+    "children": [
+      {
+        "href": "/products",
+        "label": "商品分类",
+        "perm": "product:category:read",
+        "group": "基础资料",
+        "matrix": "P-3.1",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=templates",
+        "label": "规格模板",
+        "perm": "product:category:read",
+        "group": "基础资料",
+        "matrix": "P-3.4",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=spec-common",
+        "label": "通用规格",
+        "perm": "product:spec:read",
+        "group": "基础资料",
+        "matrix": "P-3.4",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=spec-special",
+        "label": "专用规格",
+        "perm": "product:spec:read",
+        "group": "基础资料",
+        "matrix": "P-3.4",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=category-spec",
+        "label": "类目规格",
+        "perm": "product:spec:read",
+        "group": "基础资料",
+        "matrix": "P-3.4",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=spu-std",
+        "label": "标准品库",
+        "perm": "product:std:read",
+        "group": "基础资料",
+        "matrix": "P-3.5",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=topics",
+        "label": "主题分类",
+        "perm": "product:topic:read",
+        "group": "基础资料",
+        "matrix": "P-3.6",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=banned-word",
+        "label": "建品规则",
+        "perm": "product:category:read",
+        "group": "基础资料",
+        "matrix": "P-3.1",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=category-pay-mode",
+        "label": "限付类目",
+        "perm": "product:category:read",
+        "group": "基础资料",
+        "matrix": "P-3.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=storeIndustry",
+        "label": "门店行业",
+        "perm": "commerce:catalog:read",
+        "group": "经营范围",
+        "matrix": "P-17.1",
+        "ready": true,
+        "gated": "commerce.catalog.enabled"
+      },
+      {
+        "href": "/system?tab=industry",
+        "label": "行业准入",
+        "perm": "system:industry:read",
+        "group": "经营范围",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=authCode",
+        "label": "经营授权",
+        "perm": "product:category:read",
+        "group": "经营范围",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=scope",
+        "label": "范围开关",
+        "perm": "system:industry:read",
+        "group": "经营范围",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=skus",
+        "label": "商品管理",
+        "perm": "product:sku:read",
+        "group": "商品",
+        "matrix": "P-3.2",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=audit",
+        "label": "商品审核",
+        "perm": "product:sku:audit",
+        "group": "商品",
+        "matrix": "P-3.2",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=stock",
+        "label": "预售额度",
+        "perm": "product:stock:update",
+        "group": "商品",
+        "matrix": "P-3.3",
+        "ready": true
+      },
+      {
+        "href": "/products?tab=stats",
+        "label": "商品统计",
+        "perm": "product:sku:read",
+        "group": "商品",
+        "matrix": "P-3.2",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "commerce",
+    "label": "经营服务",
+    "icon": "ShoppingBag",
+    "modules": [
+      "commerce",
+      "merchant"
+    ],
+    "href": "/mall",
+    "match": [
+      "/mall"
+    ],
+    "children": [
+      {
+        "href": "/merchants?tab=plans",
+        "label": "套餐授予",
+        "perm": "merchant:merchant:read",
+        "group": "主体套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=plan-defs",
+        "label": "档位定义",
+        "perm": "merchant:merchant:read",
+        "group": "主体套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall",
+        "label": "套餐管理",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=categories",
+        "label": "服务分类",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=products",
+        "label": "服务商品",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=orders",
+        "label": "购买订单",
+        "perm": "commerce:mall:order:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=claims",
+        "label": "线下核款",
+        "perm": "commerce:mall:offline:review",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=collection",
+        "label": "收款配置",
+        "perm": "commerce:collection:profile:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=assisted",
+        "label": "运营代购",
+        "perm": "commerce:mall:assisted:purchase",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      {
+        "href": "/mall?tab=sources",
+        "label": "订阅权益",
+        "perm": "commerce:subscription:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "inventory",
+    "label": "进销存",
+    "icon": "Warehouse",
+    "modules": [
+      "inventory"
+    ],
+    "href": "/inventory",
+    "children": [
+      {
+        "href": "/inventory",
+        "label": "库存概览",
+        "perm": "inventory:stock:read",
+        "group": "库存治理",
+        "matrix": "P-18.1",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      },
+      {
+        "href": "/inventory?tab=ledger",
+        "label": "库存流水",
+        "perm": "inventory:stock:read",
+        "group": "库存治理",
+        "matrix": "P-18.2",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      },
+      {
+        "href": "/inventory?tab=recon",
+        "label": "库存对差",
+        "perm": "inventory:stock:read",
+        "group": "切换判据",
+        "matrix": "P-18.3",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      },
+      {
+        "href": "/inventory?tab=link-health",
+        "label": "链路健康",
+        "perm": "inventory:stock:read",
+        "group": "链路",
+        "matrix": "P-18.5",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      },
+      {
+        "href": "/inventory?tab=credentials",
+        "label": "开放对接",
+        "perm": "inventory:credential:read",
+        "group": "对外",
+        "matrix": "P-18.4",
+        "ready": true,
+        "gated": "shop.inventory.enabled"
+      }
+    ]
+  },
+  {
+    "key": "order",
+    "label": "订单履约",
+    "icon": "ReceiptText",
+    "modules": [
+      "order",
+      "fulfillment"
+    ],
+    "href": "/orders",
+    "match": [
+      "/orders",
+      "/fulfillment"
+    ],
+    "children": [
+      {
+        "href": "/orders",
+        "label": "订单检索",
+        "perm": "order:order:read",
+        "group": "订单",
+        "matrix": "P-4.1",
+        "ready": true
+      },
+      {
+        "href": "/orders?tab=exception",
+        "label": "异常订单",
+        "perm": "order:order:modify",
+        "group": "订单",
+        "matrix": "P-4.1"
+      },
+      {
+        "href": "/orders?tab=proxy",
+        "label": "代客下单",
+        "perm": "order:order:proxy",
+        "group": "订单",
+        "matrix": "P-4.1"
+      },
+      {
+        "href": "/orders?tab=pay",
+        "label": "收款核对",
+        "perm": "order:pay:read",
+        "group": "支付",
+        "matrix": "P-4.2"
+      },
+      {
+        "href": "/orders?tab=repair",
+        "label": "掉单补偿",
+        "perm": "order:pay:repair",
+        "group": "支付",
+        "matrix": "P-4.2"
+      },
+      {
+        "href": "/orders?tab=close",
+        "label": "关单规则",
+        "perm": "order:pay:repair",
+        "group": "支付",
+        "matrix": "P-4.2"
+      },
+      {
+        "href": "/fulfillment",
+        "label": "批次配车",
+        "perm": "fulfillment:batch:read",
+        "group": "到货分拣",
+        "matrix": "P-5.1",
+        "ready": true
+      },
+      {
+        "href": "/fulfillment?tab=sorting",
+        "label": "自提分拣",
+        "perm": "fulfillment:batch:read",
+        "group": "到货分拣",
+        "matrix": "P-5.1",
+        "ready": true
+      },
+      {
+        "href": "/fulfillment?tab=redeem",
+        "label": "核销监控",
+        "perm": "fulfillment:redeem:read",
+        "group": "核销",
+        "matrix": "P-5.1",
+        "ready": true
+      },
+      {
+        "href": "/fulfillment?tab=overdue",
+        "label": "逾期规则",
+        "perm": "fulfillment:rule:update",
+        "group": "核销",
+        "matrix": "P-5.1",
+        "ready": true
+      },
+      {
+        "href": "/fulfillment?tab=express",
+        "label": "物流轨迹",
+        "perm": "fulfillment:logistics:read",
+        "group": "物流",
+        "matrix": "P-5.2"
+      },
+      {
+        "href": "/fulfillment?tab=freight",
+        "label": "运费模板",
+        "perm": "fulfillment:rule:update",
+        "group": "物流",
+        "matrix": "P-5.2"
+      },
+      {
+        "href": "/fulfillment?tab=carrier",
+        "label": "运力配置",
+        "perm": "fulfillment:logistics:read",
+        "group": "物流",
+        "matrix": "P-5.2",
+        "phase": 2,
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "aftersale",
+    "label": "售后治理",
+    "icon": "Undo2",
+    "modules": [
+      "aftersale",
+      "ops"
+    ],
+    "href": "/after-sales",
+    "children": [
+      {
+        "href": "/after-sales",
+        "label": "售后工单",
+        "perm": "aftersale:ticket:read",
+        "group": "处置",
+        "matrix": "P-6.1",
+        "ready": true
+      },
+      {
+        "href": "/after-sales?tab=intervene",
+        "label": "平台裁决",
+        "perm": "aftersale:ticket:handle",
+        "group": "处置",
+        "matrix": "P-6.1",
+        "ready": true
+      },
+      {
+        "href": "/after-sales?tab=fastrefund",
+        "label": "售后规则",
+        "perm": "aftersale:refund:approve",
+        "group": "规则",
+        "matrix": "P-6.1",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "marketing",
+    "label": "会员营销",
+    "icon": "Ticket",
+    "modules": [
+      "marketing",
+      "group",
+      "growth",
+      "member",
+      "finance",
+      "message"
+    ],
+    "href": "/marketing",
+    "match": [
+      "/marketing",
+      "/groups",
+      "/growth",
+      "/members",
+      "/points",
+      "/points/types",
+      "/points/earning-rules",
+      "/points/budget",
+      "/points/accounts",
+      "/points/transactions"
+    ],
+    "children": [
+      {
+        "href": "/marketing",
+        "label": "券模板",
+        "perm": "marketing:coupon:read",
+        "group": "优惠券",
+        "matrix": "P-7.1",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=issues",
+        "label": "发放记录",
+        "perm": "marketing:coupon:read",
+        "group": "优惠券",
+        "matrix": "P-7.1",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=promoCoupons",
+        "label": "券敞口",
+        "perm": "marketing:coupon:read",
+        "group": "优惠券",
+        "matrix": "P-7.1",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=campaigns",
+        "label": "活动",
+        "perm": "marketing:campaign:update",
+        "group": "活动",
+        "matrix": "P-7.2",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=promoActivities",
+        "label": "活动敞口",
+        "perm": "marketing:campaign:read",
+        "group": "活动",
+        "matrix": "P-7.2",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=platform",
+        "label": "平台活动",
+        "perm": "marketing:campaign:read",
+        "group": "活动",
+        "matrix": "P-7.2",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=platformAudit",
+        "label": "报名审核",
+        "perm": "marketing:campaign:read",
+        "group": "活动",
+        "matrix": "P-7.2",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=slots",
+        "label": "首页推荐",
+        "perm": "marketing:slot:update",
+        "group": "活动",
+        "matrix": "P-7.3",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=broadcast",
+        "label": "营销广播",
+        "perm": "message:template:read",
+        "group": "活动",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/groups",
+        "label": "商家团",
+        "perm": "group:campaign:audit",
+        "group": "拼团",
+        "matrix": "P-8.1",
+        "ready": true
+      },
+      {
+        "href": "/groups?tab=demands",
+        "label": "需求指派",
+        "perm": "group:demand:read",
+        "group": "拼团",
+        "matrix": "P-8.2",
+        "ready": true
+      },
+      {
+        "href": "/groups?tab=quotes",
+        "label": "改价记录",
+        "perm": "group:demand:read",
+        "group": "拼团",
+        "matrix": "P-8.2",
+        "ready": true
+      },
+      {
+        "href": "/growth",
+        "label": "归因规则",
+        "perm": "growth:attribution:read",
+        "group": "增长",
+        "matrix": "P-9.1",
+        "ready": true
+      },
+      {
+        "href": "/growth?tab=traces",
+        "label": "归因审计",
+        "perm": "growth:attribution:read",
+        "group": "增长",
+        "matrix": "P-9.1",
+        "ready": true
+      },
+      {
+        "href": "/growth?tab=fission",
+        "label": "邀请有礼",
+        "perm": "growth:fission:update",
+        "group": "增长",
+        "matrix": "P-9.2",
+        "ready": true
+      },
+      {
+        "href": "/members",
+        "label": "会员名单",
+        "perm": "member:member:read",
+        "group": "会员",
+        "matrix": "P-7.4",
+        "ready": true
+      },
+      {
+        "href": "/members?tab=persons",
+        "label": "人档",
+        "perm": "member:person:read",
+        "group": "会员",
+        "matrix": "P-7.4",
+        "ready": true
+      },
+      {
+        "href": "/members?tab=reach",
+        "label": "触达概览",
+        "perm": "member:member:read",
+        "group": "会员",
+        "matrix": "P-7.4",
+        "ready": true
+      },
+      {
+        "href": "/marketing?tab=member",
+        "label": "会员权益",
+        "perm": "marketing:member:update",
+        "group": "会员",
+        "matrix": "P-7.4",
+        "phase": 2,
+        "ready": true
+      },
+      {
+        "href": "/points/types",
+        "label": "积分设置",
+        "perm": "finance:settle:read",
+        "group": "积分",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/points/earning-rules",
+        "label": "赠送规则",
+        "perm": "finance:settle:read",
+        "group": "积分",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/points/budget",
+        "label": "平台预算",
+        "perm": "finance:settle:read",
+        "group": "积分",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/points/accounts",
+        "label": "积分账户",
+        "perm": "finance:settle:read",
+        "group": "积分",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/points/transactions",
+        "label": "发放核销",
+        "perm": "finance:settle:read",
+        "group": "积分",
+        "matrix": "P-12.1",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "finance",
+    "label": "经营财务",
+    "icon": "Wallet",
+    "modules": [
+      "finance",
+      "pay",
+      "sec",
+      "merchant"
+    ],
+    "href": "/finance",
+    "match": [
+      "/finance",
+      "/pay-ops/orders",
+      "/pay-ops/exceptions",
+      "/pay-ops/refunds",
+      "/pay-ops/notifies",
+      "/pay-ops/qr-codes",
+      "/pay-ops/apps",
+      "/pay-ops/request-logs",
+      "/pay-ops/platform-keys"
+    ],
+    "children": [
+      {
+        "href": "/finance",
+        "label": "结算分账",
+        "perm": "finance:settle:read",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=splits",
+        "label": "分账明细",
+        "perm": "finance:settle:read",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=settle-stats",
+        "label": "经营统计",
+        "perm": "finance:settle:read",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=refund-back",
+        "label": "退款分账",
+        "perm": "finance:settle:execute",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=settle-batches",
+        "label": "批次放款",
+        "perm": "finance:settle:read",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=debts",
+        "label": "商家欠款",
+        "perm": "finance:settle:read",
+        "group": "分账结算",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=payables",
+        "label": "自营应付",
+        "perm": "finance:settle:read",
+        "group": "应付发票",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=payout-accounts",
+        "label": "供应账户",
+        "perm": "finance:payout:execute",
+        "group": "应付发票",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=purchase-invoices",
+        "label": "进项票",
+        "perm": "finance:invoice:read",
+        "group": "应付发票",
+        "matrix": "P-12.2",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=buyer-invoices",
+        "label": "开票申请",
+        "perm": "finance:invoice:read",
+        "group": "应付发票",
+        "matrix": "P-12.2",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=invoice",
+        "label": "发票个税",
+        "perm": "finance:invoice:read",
+        "group": "应付发票",
+        "matrix": "P-12.2",
+        "phase": 2,
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=rates",
+        "label": "服务费率",
+        "perm": "finance:rate:update",
+        "group": "费率对账",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=pay-channels",
+        "label": "渠道费率",
+        "perm": "finance:rate:update",
+        "group": "费率对账",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/finance?tab=channel-messages",
+        "label": "渠道报文",
+        "perm": "finance:recon:read",
+        "group": "费率对账",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/merchants?tab=admission",
+        "label": "准入押金",
+        "perm": "merchant:admission:read",
+        "group": "保证金",
+        "matrix": "P-11.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/orders",
+        "label": "支付单",
+        "perm": "pay:order:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/exceptions",
+        "label": "支付异常",
+        "perm": "pay:order:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/refunds",
+        "label": "退款复核",
+        "perm": "pay:refund:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/notifies",
+        "label": "业务通知",
+        "perm": "pay:log:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/request-logs",
+        "label": "请求记录",
+        "perm": "pay:log:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/qr-codes",
+        "label": "收款码",
+        "perm": "pay:qr:manage",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/apps",
+        "label": "应用授权",
+        "perm": "pay:app:manage",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      },
+      {
+        "href": "/pay-ops/platform-keys",
+        "label": "平台密钥",
+        "perm": "sec:key:view",
+        "group": "支付运营",
+        "matrix": "P-12.1",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "review",
+    "label": "内容客服",
+    "icon": "Star",
+    "modules": [
+      "review",
+      "content",
+      "message"
+    ],
+    "href": "/reviews",
+    "match": [
+      "/reviews",
+      "/contents",
+      "/messages"
+    ],
+    "children": [
+      {
+        "href": "/reviews",
+        "label": "评价审核",
+        "perm": "review:review:audit",
+        "group": "评价",
+        "matrix": "P-13.1",
+        "ready": true
+      },
+      {
+        "href": "/reviews?tab=appeals",
+        "label": "评价申诉",
+        "perm": "review:review:audit",
+        "group": "评价",
+        "matrix": "P-13.1",
+        "ready": true
+      },
+      {
+        "href": "/reviews?tab=score",
+        "label": "评分参数",
+        "perm": "review:score:update",
+        "group": "评价",
+        "matrix": "P-13.1",
+        "ready": true
+      },
+      {
+        "href": "/contents",
+        "label": "素材管理",
+        "perm": "content:material:read",
+        "group": "素材",
+        "matrix": "P-15.1",
+        "ready": true
+      },
+      {
+        "href": "/contents?tab=audit",
+        "label": "内容审核",
+        "perm": "content:material:audit",
+        "group": "素材",
+        "matrix": "P-15.2",
+        "phase": 2,
+        "ready": true
+      },
+      {
+        "href": "/contents?tab=rank",
+        "label": "榜单问答",
+        "perm": "content:material:update",
+        "group": "素材",
+        "matrix": "P-15.2",
+        "phase": 2,
+        "ready": true
+      },
+      {
+        "href": "/messages",
+        "label": "通道总览",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=sms",
+        "label": "短信",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=mail",
+        "label": "邮件",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=wxsub",
+        "label": "微信订阅",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=apppush",
+        "label": "应用推送",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=inapp",
+        "label": "站内模板",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=routing",
+        "label": "场景通道",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=notifyLog",
+        "label": "发送记录",
+        "perm": "message:template:read",
+        "group": "触达",
+        "matrix": "P-14.1",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=tickets",
+        "label": "客服工单",
+        "perm": "message:ticket:read",
+        "group": "客服",
+        "matrix": "P-14.2",
+        "ready": true
+      },
+      {
+        "href": "/messages?tab=faq",
+        "label": "帮助中心",
+        "perm": "message:faq:update",
+        "group": "客服",
+        "matrix": "P-14.2",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "community",
+    "label": "社区网点",
+    "icon": "MapPin",
+    "modules": [
+      "community"
+    ],
+    "href": "/communities",
+    "children": [
+      {
+        "href": "/communities",
+        "label": "社区网格",
+        "perm": "community:community:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=applies",
+        "label": "商家提报",
+        "perm": "community:community:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=regions",
+        "label": "区划维护",
+        "perm": "community:region:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=health",
+        "label": "坐标健康",
+        "perm": "community:community:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=distribution",
+        "label": "位置分布",
+        "perm": "community:community:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=places",
+        "label": "地址库",
+        "perm": "community:community:read",
+        "group": "社区网格",
+        "matrix": "P-2.1",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=pickups",
+        "label": "自提点",
+        "perm": "community:pickup:read",
+        "group": "自提点",
+        "matrix": "P-2.2",
+        "ready": true
+      },
+      {
+        "href": "/communities?tab=neighbor",
+        "label": "临时点",
+        "perm": "community:pickup:read",
+        "group": "自提点",
+        "matrix": "P-2.2",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "risk",
+    "label": "风控",
+    "icon": "ShieldAlert",
+    "modules": [
+      "risk"
+    ],
+    "href": "/risk",
+    "children": [
+      {
+        "href": "/risk",
+        "label": "风险事件",
+        "perm": "risk:rule:read",
+        "group": "识别",
+        "matrix": "P-16.2",
+        "ready": true
+      },
+      {
+        "href": "/risk?tab=blacklist",
+        "label": "名单申诉",
+        "perm": "risk:blacklist:update",
+        "group": "处置",
+        "matrix": "P-16.2",
+        "ready": true
+      },
+      {
+        "href": "/risk?tab=rules",
+        "label": "拦截规则",
+        "perm": "risk:rule:update",
+        "group": "处置",
+        "matrix": "P-16.2",
+        "ready": true
+      }
+    ]
+  },
+  {
+    "key": "iam",
+    "label": "系统设置",
+    "icon": "UserCog",
+    "modules": [
+      "iam",
+      "system",
+      "ops"
+    ],
+    "href": "/iam",
+    "match": [
+      "/iam",
+      "/jobs",
+      "/system",
+      "/printing"
+    ],
+    "children": [
+      {
+        "href": "/iam",
+        "label": "运营账号",
+        "perm": "iam:staff:read",
+        "group": "账号",
+        "matrix": "P-1.1",
+        "ready": true
+      },
+      {
+        "href": "/iam?tab=roles",
+        "label": "角色权限",
+        "perm": "iam:role:grant",
+        "group": "账号",
+        "matrix": "P-1.1",
+        "ready": true
+      },
+      {
+        "href": "/iam?tab=menu",
+        "label": "菜单顺序",
+        "perm": "iam:role:grant",
+        "group": "账号",
+        "matrix": "P-1.1",
+        "ready": true
+      },
+      {
+        "href": "/iam?tab=audit",
+        "label": "审计日志",
+        "perm": "iam:audit:read",
+        "group": "审计",
+        "matrix": "P-1.1",
+        "ready": true
+      },
+      {
+        "href": "/printing",
+        "label": "打印运营",
+        "perm": "ops:print:read",
+        "group": "打印运营",
+        "matrix": "P-17.1",
+        "ready": true,
+        "gated": "shop.print.enabled"
+      },
+      {
+        "href": "/jobs",
+        "label": "任务日志",
+        "perm": "system:job:read",
+        "group": "定时任务",
+        "matrix": "P-17.1",
+        "ready": true,
+        "gated": "shop.job.enabled"
+      },
+      {
+        "href": "/system",
+        "label": "外观文案",
+        "perm": "system:theme:update",
+        "group": "外观语言",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=market",
+        "label": "市场货币",
+        "perm": "system:param:read",
+        "group": "外观语言",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=flags",
+        "label": "开关灰度",
+        "perm": "system:param:read",
+        "group": "运行配置",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=storage",
+        "label": "存储管理",
+        "perm": "system:media:read",
+        "group": "运行配置",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=testPhone",
+        "label": "测试账号",
+        "perm": "system:testphone:read",
+        "group": "运行配置",
+        "matrix": "P-17.1",
+        "ready": true
+      },
+      {
+        "href": "/system?tab=appVersion",
+        "label": "应用版本",
+        "perm": "system:param:read",
+        "group": "运行配置",
+        "matrix": "P-17.1",
+        "ready": true
+      }
+    ]
+  }
+]

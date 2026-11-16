@@ -1,6 +1,6 @@
 # TDD-公共验证码发送服务
 
-状态：已实现（本地验证完成，统一分支发布与166模拟器验收进行中）。日期：2026-11-13。档位：1；扩展既有公共验证码能力、SPI与场景策略，不新增业务域、Maven模块或表族。
+状态：已实现（已合入统一开发分支，166部署与模拟器验收完成）。日期：2026-11-13。档位：1；扩展既有公共验证码能力、SPI与场景策略，不新增业务域、Maven模块或表族。
 
 > **For agentic workers:** 实施采用 superpowers:executing-plans；按本项目 MEMORY 及 Java规范§八集中编码、一次受影响编译与测试，修复后只重验受影响部分。验证与发布进度见复选项及§5。
 
@@ -177,11 +177,11 @@ Files：JdbcCaptchaStore搬到shop-base-auth保持现包名；新增auth/captcha
 
 #### 任务5：集中增量验证与发布
 
-- [ ] 本批编码完成后，统一编译shop-app及其实际受影响依赖；运行任务1—4相关测试、既有邮箱/短信回归和受影响架构检查。普通输入走框架，不新增通用验证引擎。
-- [ ] 共享SQL/事务与scope逻辑变更涉及的原生用例只在MySQL9验证；不使用3306 MariaDB，不改已应用V663，不因文档或提交变化重复测试。
-- [ ] 更新TDD§5实测结果与实现文件对账；只有涉及客户端scene上下文扩展时才改前端，LOGIN旧App协议优先保持兼容。
-- [ ] 合入统一开发分支后部署166：先确认运行版本/权限/策略配置；不改已有通知与其他业务配置。账户/平台阈值以启动配置为准。
-- [ ] Android模拟器验证低频直接进入发码、越阈值才弹、取消无投递、通过后只发送一次、冷却/硬限仍有效。正向发送仅使用已授权的测试身份或受控桩，不给真实陌生账号发码。
+- [x] 本批编码完成后，统一编译shop-app及其实际受影响依赖；运行任务1—4相关测试、既有邮箱/短信回归和受影响架构检查。普通输入走框架，不新增通用验证引擎。
+- [x] 共享SQL/事务与scope逻辑变更涉及的原生用例只在MySQL9验证；不使用3306 MariaDB，不改已应用V663，不因文档或提交变化重复测试。
+- [x] 更新TDD§5实测结果与实现文件对账；只有涉及客户端scene上下文扩展时才改前端，LOGIN旧App协议优先保持兼容。
+- [x] 合入统一开发分支后部署166：先确认运行版本/权限/策略配置；不改已有通知与其他业务配置。账户/平台阈值以启动配置为准。
+- [x] Android模拟器验证低频直接进入发码、越阈值才弹、取消无投递、通过后只发送一次、冷却/硬限仍有效。正向发送仅使用已授权的测试身份或受控桩，不给真实陌生账号发码。
 
 不要求每完成一个小步骤就跑整套Maven或提交；按MEMORY在一批有效改动后集中验证。构建/依赖条件未变时沿用已有证据；只扩验实际受影响范围。
 
@@ -195,21 +195,27 @@ Files：JdbcCaptchaStore搬到shop-base-auth保持现包名；新增auth/captcha
 |---|---|---|
 | AC1/AC4 | OtpScenePolicyTest 全3项；ArchitectureTest 全23项 | 策略3通过；架构22通过/1已有条件跳过；无新增域依赖 |
 | AC2/AC3 | OtpFrequencyCounterTest 全3项；OtpSendServiceTest#lowFrequencySendsSkipProofAndPassTrustedContextAndTtl、legacyEntryNeverRequiresSliderButSharesAccountCounter | 账户/平台窗口、到期、并发、容量均通过；低风险verifyNoInteractions(proofs)，不新增频率SQL |
-| AC5/AC7 | OtpSendCompatibilityTest；EmailOtpAuthTest 18项、RegionalSmsAdmissionTest、SmsMockPrefixTest 3项、BizAuthEmailLoginTest 4项 | 新旧键、SMTP失败、地区、号段模拟、旧HTTP结果、测试身份边界均通过 |
+| AC5/AC7 | OtpSendCompatibilityTest；EmailOtpAuthTest 18项、RegionalSmsAdmissionTest、SmsMockPrefixTest 3项、BizAuthEmailLoginTest 3项 | 新旧键、SMTP失败、地区、号段模拟、旧HTTP结果、测试身份边界均通过 |
 | AC6 | OtpSendServiceTest#missingProofHasNoHardGuardOrSendSideEffects、proofIsConsumedBeforeHardGuardAndAttemptCountsBeforeDeliveryFailure；BizCaptchaServiceTest；BizCaptchaNativeMysqlTest | HTTP/引擎共享测试8通过；原生MySQL9.7.4全10项通过，含新场景+业务键、一用凭据、并发、业务回滚 |
 | 新场景往返 | BizCaptchaHttpTest#enabledBusinessSceneRoundTripsThroughHttpAndRetiresProofOnRetry | 测试配置启用ORDER_PICKUP_CONFIRM，公共服务10452→HTTP发题→HTTP验题→公共服务发送→重复凭据拒绝；仅stub短信 |
 
-验证日志：`/tmp/otp-service-affected.log`（新增策略/计数/服务12项通过，core24/25通过，旧guard签名断言失败）；`/tmp/otp-service-app.log`（该失败方法修正通过，随后发现verify接口漏声明）；`/tmp/otp-service-http.log`（接口修正，架构23、HTTP7、引擎8、邮箱HTTP4，无失败）；`/tmp/otp-service-final.log`（TTL新测试1、新场景HTTP1、原生MySQL10，无失败）；`/tmp/otp-service-framework.log`（框架校验归位后，仅重验受影响公共服务/兼容/邮箱/HTTP，6+22+8项通过，BUILD SUCCESS）。
+验证日志：`/tmp/otp-service-affected.log`（新增策略/计数/服务12项通过，core24/25通过，旧guard签名断言失败）；`/tmp/otp-service-app.log`（该失败方法修正通过，随后发现verify接口漏声明）；`/tmp/otp-service-http.log`（接口修正，架构23、HTTP7、引擎8、邮箱HTTP3，无失败）；`/tmp/otp-service-final.log`（TTL新测试1、新场景HTTP1、原生MySQL10，无失败）；`/tmp/otp-service-framework.log`（框架校验归位后，仅重验受影响公共服务/兼容/邮箱/HTTP，6+22+8项通过，BUILD SUCCESS）。
 
 MySQL原生用例使用单独临时MySQL9.7.4，127.0.0.1:3319，每方法随机临时库后删除；未用3306，未改历史V663。没有因文档、提交或原样搬迁SQL重复跑无关全仓测试。
 
 ### 发布及模拟器验收
 
-进行中。166已有支付SSE发布c477fa54591c（来源5fba0e2cc），必须保留该版本全部代码/迁移/运行配置后再部署；不覆盖其他会话发布、不修改nearpay或inventory容器。模拟器仅用已授权测试身份，避免真实消息。
+2026-11-13已正常推送统一开发分支bcd8acd5c，并部署166。本轮制品SHA256为cf21b018bba92333983b2e333fa68fad15a3eacb4de469af0f30391e0f978f57；保留此前支付SSE制品c477fa54591c和最新运营代码。API18082及OPS18081均UP，本轮原容器/环境不改，nearpay/inventory不重启。V665已由Flyway成功应用（checksum -188811131），V664支付（256749001）及V663滑块（-981765053）不变。
+
+验收期间支付任务再次部署（API启动于11:26:09 UTC），运行包更新为2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024；逐类比对确认本轮全部既有类原样保留，仅新增两个支付异常处理类，限定支付控制器，不影响OTP。全部迁移资源及依赖库一致。该重启发生在首轮第三次发送后，第四次遇网关暂不可用，App明确显示结果未知，未将此当作验证码失败；按内存计数重启清零约定重新完整验收，没有回退其他发布。
+
+最终使用现有nearboss Flutter APK（0d6ba2f81、Android14/API34只读独立模拟器5558）连接真实166：重启后第1/2/3次发送均无滑块且有60秒倒计时；低频立即重复HTTP10450；第4次弹原生滑块，Android返回取消后无倒计时，立即重试仍弹。取消前后服务端测试身份发送日志均3条；真实触摸拖动通过后弹窗关闭、倒计时恢复，日志只增至4条。全部为已有受控白名单身份，通道明确跳过真实投递。最新API/OPS健康均UP。详细脱敏证据见[evidence目录](evidence/otp-service-20261113/README.md)，不声明真实邮件送达或真实业务登录成功。
+
+正常push记录：`/tmp/otp-service-unified-push-final.log`。适用UI/契约/权限/i18n/SQL等脚本及干净副本完整test-compile通过；该独立worktree没有node_modules，Hook明确跳过依赖它的前端类型/单测及部分生成物守卫，未声明它们通过。业务用例按Java规范§八及本轮实际影响定向运行（SKIP_TEST_GATE=1避免另跑无关全量），没有使用SKIP_COMPILE_GATE或force push。
 
 ## §6 对账二 · 设计 → 实现
 
-公共契约/策略/编排、既有渠道提取、旧包装、B端Controller和装配均按§2落地。JdbcCaptchaStore仅跨模块搬迁，包名及源码完全一致，无新表/历史迁移修改。具体变更文件统计在提交时登记。
+公共契约/策略/编排、既有渠道提取、旧包装、B端Controller和装配均按§2落地。JdbcCaptchaStore仅跨模块搬迁，包名及源码完全一致，OTP无新表/历史迁移修改。具体变更文件统计在提交时登记。
 
 实现裁定：
 
@@ -273,3 +279,7 @@ MySQL原生用例使用单独临时MySQL9.7.4，127.0.0.1:3319，每方法随机
 统一分支发布裁定：166在本轮期间先部署支付SSE5fba0e2cc，故保留该提交再合并OTP；首次正常push被既有SSE的Vue交付清单缺项拦截（GET /biz/payment/events）。只补该已部署接口的精确OpenAPI及Flutter/legacy-Vue交付清单，不扩大known-*欠账基线，不改支付行为；未包含原工作区未提交代码。
 
 统一分支并发更新：首次通过全部适用push检查及干净test-compile后，远端推进4a9baa006，正常拒绝更新，未force。合并该运营提交时发现其新迁移也占V664；DB61只读核对166已成功应用V664__sandbox_payment_collection_stream.sql（checksum256749001），故保留其原字节，将尚未应用的运营菜单DML迁移仅改名为V665。其内容不改；此为集成编号冲突处理，非修改历史已应用迁移。后续候选同时保留运营新代码，并定向执行其新增两组测试。
+
+最终Java受影响用例汇总：96项，95通过、0失败/错误、1项美业插件条件跳过（beauty.arch.required未设置）；含运营合并定向6项。报告按最终各测试类结果去重，见evidence/otp-service-20261113/test-summary.json。候选以166当前制品现场清单比对，78个类变更属于OTP及已合并运营代码；MarketPhonePolicyServiceImpl源码未改，新增SPI协变返回类型由javac生成两个ACC_BRIDGE方法，已核对。依赖库集合与所有历史SQL原样保留，唯一新增迁移为运营V665。
+
+后续发布文件对账：精确补齐`docs/api/biz-payment-events.openapi.json`及`backend-ui-delivery-payment-events.json`，生成器更新既有运营功能清单，未应用运营SQL仅顺延V665；本次脱敏验收目录7个文件。以上均为保留统一分支运行基线及记录交付所需，不复制其他会话未提交源文件。发布后再快进合并12308bf7a的运营测试夹具/迁移引用修正，无OTP生产代码变化，不重跑既有业务证据。

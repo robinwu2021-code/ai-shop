@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.support.TestPropertySourceUtils;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class LocalMediaHttpReadTest {
     @TempDir Path root;
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
     @Import({LocalDiskMediaStore.class, CosMediaStore.class, MediaReadController.class, UploadResourceConfig.class})
     static class WebConfig { }

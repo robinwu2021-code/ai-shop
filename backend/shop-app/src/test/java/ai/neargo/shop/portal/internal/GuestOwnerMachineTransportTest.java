@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.internal;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.ApiResponseWrapper;
@@ -31,7 +33,6 @@ import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.boot.webmvc.autoconfigure.DispatcherServletAutoConfiguration;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import tools.jackson.databind.ObjectMapper;
 
@@ -130,7 +131,7 @@ class GuestOwnerMachineTransportTest {
                 .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),
                 HttpResponse.BodyHandlers.ofString()).statusCode();
     }
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @ImportAutoConfiguration({TomcatServletWebServerAutoConfiguration.class, DispatcherServletAutoConfiguration.class,
             WebMvcAutoConfiguration.class, JacksonAutoConfiguration.class})
     @Import({InternalGuestRegistrationController.class, InternalCustomerIdentityController.class,

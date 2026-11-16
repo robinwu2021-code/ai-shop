@@ -1,0 +1,30 @@
+11-14 11:44:34.055  3239  4245 I wm_pause_activity: [0,198796186,ai.neargo.merchant_app/.MainActivity,userLeaving=true,pauseBackTasks]
+11-14 11:44:34.055  3239  4245 I wm_add_to_stopping: [0,198796186,ai.neargo.merchant_app/.MainActivity,makeInvisible]
+11-14 11:44:34.062 27163 27163 I wm_on_top_resumed_lost_called: [198796186,ai.neargo.merchant_app.MainActivity,topStateChangedWhenResumed]
+11-14 11:44:34.065 27163 27163 I wm_on_paused_called: [0,198796186,ai.neargo.merchant_app.MainActivity,performPause,3]
+11-14 11:44:34.069  3239  4245 I input_focus: [Focus leaving 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,reason=Waiting for window because NO_WINDOW]
+11-14 11:44:34.070 27163 27163 I input_focus: ViewRootImpl focus=false for ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity
+11-14 11:44:34.072 27163 27163 I input_focus: handleWindowFocusChanged:ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity mView:com.android.internal.policy.DecorView{1d981fe V.E...... R....... 0,0-1156,2510 aid=1073741824}[MainActivity]
+11-14 11:44:34.110  3239  3357 I am_pss  : [27163,10461,ai.neargo.merchant_app,470175744,446105600,8236032,597088256,0,2,29]
+11-14 11:44:34.809  3239  5197 I wm_add_to_stopping: [0,198796186,ai.neargo.merchant_app/.MainActivity,makeInvisible]
+11-14 11:44:34.812  3239  3462 I wm_stop_activity: [0,198796186,ai.neargo.merchant_app/.MainActivity]
+11-14 11:44:34.839 27163 27163 I wm_on_stop_called: [0,198796186,ai.neargo.merchant_app.MainActivity,STOP_ACTIVITY_ITEM,0]
+11-14 11:45:04.285  3239  4149 I input_focus: displayId :0, focusApplication has changed to ActivityRecord{198796186 u0 ai.neargo.merchant_app/.MainActivity t2423}
+11-14 11:45:04.286  3239  4149 I wm_set_resumed_activity: [0,ai.neargo.merchant_app/.MainActivity,resumeTopActivity - onActivityStateChanged]
+11-14 11:45:04.287  3239  4149 I wm_resume_activity: [0,198796186,2423,ai.neargo.merchant_app/.MainActivity]
+11-14 11:45:04.302 27163 27163 I wm_on_restart_called: [0,198796186,ai.neargo.merchant_app.MainActivity,,0]
+11-14 11:45:04.304 27163 27163 I wm_on_start_called: [0,198796186,ai.neargo.merchant_app.MainActivity,handleStartActivity,1]
+11-14 11:45:04.310 27163 27163 I wm_on_resume_called: [0,198796186,ai.neargo.merchant_app.MainActivity,RESUME_ACTIVITY,5]
+11-14 11:45:04.311 27163 27163 I wm_on_top_resumed_gained_called: [198796186,ai.neargo.merchant_app.MainActivity,topStateChangedWhenResumed]
+11-14 11:45:04.319  3239  3463 I input_focus: [Focus request 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,reason=UpdateInputWindows]
+11-14 11:45:04.321  2078  4653 I input_focus: sf.setTransactionState transactionId:13911399354637 focusRequests:596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity
+11-14 11:45:04.327  2078  4224 I input_focus: sf.updateInputFlinger focusRequest:596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity
+11-14 11:45:04.327  3239  5224 I input_focus: [displayId :0, Focus receive :596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,reason=setFocusedWindow]
+11-14 11:45:04.327  3239  5224 I input_focus: [At display 0,ignore set focus to 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,because NO_WINDOW,from setFocusedWindow.]
+11-14 11:45:04.328  3239  5238 I input_focus: [At display 0,ignore set focus to 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,because NOT_VISIBLE,from setInputWindows.]
+11-14 11:45:04.394 27163 27163 I wm_on_idle_called: ai.neargo.merchant_app.MainActivity
+11-14 11:45:04.406  3239  3353 I sysui_multi_action: [319,11,321,18,322,127,325,139356,757,761,758,9,759,4,806,ai.neargo.merchant_app,871,ai.neargo.merchant_app.MainActivity,904,com.android.systemui,905,0,1320,12,1321,1]
+11-14 11:45:04.434  3239  5233 I input_focus: [At display 0,focus update to 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,from setInputWindows.]
+11-14 11:45:04.436  3239  4245 I input_focus: [Focus entering 596e9ae ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity,reason=Window became focusable. Previous reason: NOT_VISIBLE]
+11-14 11:45:04.438 27163 27163 I input_focus: ViewRootImpl focus=true for ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity
+11-14 11:45:04.439 27163 27163 I input_focus: handleWindowFocusChanged:ai.neargo.merchant_app/ai.neargo.merchant_app.MainActivity mView:com.android.internal.policy.DecorView{1d981fe V.E...... R....... 0,0-1156,2510 aid=1073741824}[MainActivity]

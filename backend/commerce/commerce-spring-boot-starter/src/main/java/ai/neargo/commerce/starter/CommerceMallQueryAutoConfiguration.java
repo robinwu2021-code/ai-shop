@@ -27,6 +27,13 @@ import javax.sql.DataSource;
         havingValue = "true")
 public class CommerceMallQueryAutoConfiguration {
     @Bean
+    @ConditionalOnMissingBean(ai.neargo.commerce.api.mall.reporting.PurchaseOrderQueryPort.class)
+    @DependsOn("commerceMigrationInitializer")
+    ai.neargo.commerce.api.mall.reporting.PurchaseOrderQueryPort commercePurchaseOrderQueries(DataSource ds) {
+        return new JdbcPurchaseOrderQuery(ds);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(FulfillmentRepository.class)
     @DependsOn("commerceMigrationInitializer")
     FulfillmentRepository commerceQueryOperations(DataSource ds) {

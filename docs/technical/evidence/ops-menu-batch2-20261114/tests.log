@@ -1,0 +1,13 @@
+
+> ai-shop-ops-web@0.1.0 test
+> vitest run lib/nav-platform-settings.test.ts lib/nav-migration.test.ts lib/nav.test.ts lib/nav-alignment.test.ts lib/nav-group.test.ts lib/stores/server-menu.test.ts lib/permissions.test.ts lib/perm-map.test.ts lib/i18n/i18n.test.ts lib/use-page-tab.test.ts
+
+
+ RUN  v4.1.11 /private/tmp/ai-shop-config-release-20261113/ops-web
+
+
+ Test Files  10 passed (10)
+      Tests  121 passed (121)
+   Start at  01:47:37
+   Duration  917ms (transform 1.13s, setup 0ms, import 1.65s, tests 856ms, environment 465ms)
+

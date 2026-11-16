@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
@@ -73,7 +75,6 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.AbstractDataSource;
@@ -98,7 +99,7 @@ class ResourceBookingExecutionIT {
     private final TestClock clock = new TestClock();
     private final RegisteredSource source = new RegisteredSource();
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @MapperScan("ai.neargo.shop.merchant.mapper")
     static class Mappers {
     }

@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.auth.store.TokenHash;
@@ -29,7 +31,6 @@ import org.apache.catalina.startup.Tomcat;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -42,7 +43,7 @@ import org.springframework.web.servlet.DispatcherServlet;
     named = "NEARPAY_HOST_MYSQL_URL",
     matches = "jdbc:mysql://127\\.0\\.0\\.1:3308/.*")
 class PayBizNativeHttpTest {
-  @Configuration(proxyBeanMethods = false)
+  @TestConfiguration(proxyBeanMethods = false)
   static class NativeDatabase {
     @Bean
     JdbcTemplate jdbcTemplate(org.springframework.core.env.Environment env) {

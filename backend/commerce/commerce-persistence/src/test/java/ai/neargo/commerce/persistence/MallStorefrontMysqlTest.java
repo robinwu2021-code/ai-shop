@@ -122,7 +122,7 @@ class MallStorefrontMysqlTest {
             var offlineView = api.catalog(MallOrderConcurrencyMysqlTest.BUYER, MallOrderConcurrencyMysqlTest.STORE);
             assertEquals(1, offlineView.categories().size());
             var sku = offlineView.products().getFirst().skus().getFirst();
-            assertEquals(List.of("tenant-a/p/CNY"), requested);
+            assertEquals(List.of("tenant-a/p/CNY", "tenant-a/p-sales/CNY"), requested);
             assertFalse(sku.readiness().available());
             assertEquals(List.of("PAYER_BINDING_UNPROVEN"), sku.readiness().reasons());
             assertTrue(sku.offlineReadiness().available());

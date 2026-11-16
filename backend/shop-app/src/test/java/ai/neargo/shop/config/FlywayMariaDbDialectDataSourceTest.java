@@ -41,15 +41,36 @@ class FlywayMariaDbDialectDataSourceTest {
     }
 
     @Test
-    void mysqlConnectionAndOriginalSqlAreNotWrappedOrRewritten() throws Exception {
+    void nonMysql9ConnectionIsNotWrappedOrRewritten() throws Exception {
         var source = mock(DataSource.class);
         var original = mock(Connection.class);
         var metadata = mock(DatabaseMetaData.class);
         when(source.getConnection()).thenReturn(original);
         when(original.getMetaData()).thenReturn(metadata);
         when(metadata.getDatabaseProductName()).thenReturn("MySQL");
-        when(metadata.getDatabaseProductVersion()).thenReturn("9.7.2");
+        when(metadata.getDatabaseProductVersion()).thenReturn("8.4.0");
         assertThat(new FlywayMariaDbDialectDataSource(source).getConnection()).isSameAs(original);
+    }
+
+
+    @Test
+    void mysql9ChangesOnlyCollationTokensAndLeavesLiteralCommentsUntouched() throws Exception {
+        var source = mock(DataSource.class);
+        var original = mock(Connection.class);
+        var metadata = mock(DatabaseMetaData.class);
+        var statement = mock(Statement.class);
+        when(source.getConnection()).thenReturn(original);
+        when(original.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("MySQL");
+        when(metadata.getDatabaseProductVersion()).thenReturn("9.7.4");
+        when(original.createStatement()).thenReturn(statement);
+        var wire = new FlywayMariaDbDialectDataSource(source).getConnection();
+        String sql = "-- COLLATE utf8mb4_uca1400_ai_ci\nCREATE TABLE demo (value VARCHAR(20) "
+                + "COMMENT 'COLLATE utf8mb4_uca1400_ai_ci') COLLATE=utf8mb4_uca1400_ai_ci";
+        wire.createStatement().execute(sql);
+        verify(statement).execute(sql.replace(") COLLATE=utf8mb4_uca1400_ai_ci", ") COLLATE=utf8mb4_0900_ai_ci"));
+        wire.createStatement().execute("SELECT 'ADD COLUMN IF NOT EXISTS x'");
+        verify(statement).execute("SELECT 'ADD COLUMN IF NOT EXISTS x'");
     }
 
     private static String originalV550Set() throws Exception {
@@ -133,7 +154,7 @@ class FlywayMariaDbDialectDataSourceTest {
         when(source.getConnection()).thenReturn(original);
         when(original.getMetaData()).thenReturn(metadata);
         when(metadata.getDatabaseProductName()).thenReturn("MySQL");
-        when(metadata.getDatabaseProductVersion()).thenReturn("9.7.2");
+        when(metadata.getDatabaseProductVersion()).thenReturn("8.4.0");
         when(original.createStatement()).thenReturn(statement);
         var connection = new FlywayMariaDbDialectDataSource(source).getConnection();
         assertThat(connection).isSameAs(original);

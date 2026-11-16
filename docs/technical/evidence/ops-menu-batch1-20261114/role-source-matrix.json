@@ -1,0 +1,3138 @@
+{
+  "basis": "SOURCE_FALLBACK_ONLY_NOT_CURRENT_DB_GRANTS",
+  "backendRoles": {
+    "SUPER_ADMIN": [
+      "*"
+    ],
+    "BD": [
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "community:community:read",
+      "dashboard:overview:read",
+      "group:demand:assign",
+      "group:demand:read",
+      "growth:attribution:read",
+      "merchant:apply:audit",
+      "merchant:apply:onbehalf",
+      "merchant:category:grant",
+      "merchant:category:read",
+      "merchant:fulfillment:update",
+      "merchant:merchant:ban",
+      "merchant:merchant:nudge",
+      "merchant:merchant:read",
+      "merchant:mode:read",
+      "merchant:mode:update",
+      "merchant:verify:grant",
+      "order:order:read",
+      "store:page:audit"
+    ],
+    "GOODS_OPS": [
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "community:community:read",
+      "dashboard:overview:read",
+      "group:campaign:audit",
+      "group:campaign:read",
+      "inventory:credential:read",
+      "inventory:stock:read",
+      "marketing:campaign:read",
+      "marketing:campaign:update",
+      "marketing:coupon:issue",
+      "marketing:coupon:read",
+      "marketing:coupon:update",
+      "marketing:slot:read",
+      "member:member:read",
+      "member:person:read",
+      "order:order:read",
+      "product:category:read",
+      "product:category:update",
+      "product:sku:audit",
+      "product:sku:read",
+      "product:spec:read",
+      "product:spec:update",
+      "product:std:read",
+      "product:std:update",
+      "product:topic:read",
+      "product:topic:update"
+    ],
+    "SUPPORT": [
+      "aftersale:refund:approve",
+      "aftersale:refund:read",
+      "aftersale:ticket:handle",
+      "aftersale:ticket:read",
+      "community:community:read",
+      "dashboard:overview:read",
+      "message:template:read",
+      "message:template:update",
+      "message:ticket:handle",
+      "message:ticket:read",
+      "order:order:modify",
+      "order:order:proxy",
+      "order:order:read",
+      "review:review:audit",
+      "review:review:read",
+      "review:score:read",
+      "review:score:update"
+    ],
+    "CAMPAIGN_OPS": [
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "community:community:read",
+      "content:material:audit",
+      "content:material:read",
+      "content:material:update",
+      "dashboard:overview:read",
+      "group:campaign:audit",
+      "group:campaign:read",
+      "growth:attribution:read",
+      "growth:attribution:update",
+      "growth:fission:read",
+      "growth:fission:update",
+      "marketing:campaign:read",
+      "marketing:campaign:update",
+      "marketing:coupon:issue",
+      "marketing:coupon:read",
+      "marketing:coupon:update",
+      "marketing:slot:read",
+      "marketing:slot:update",
+      "order:order:read"
+    ],
+    "COMMUNITY_OPS": [
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "community:community:read",
+      "community:community:update",
+      "community:pickup:read",
+      "community:pickup:update",
+      "community:region:read",
+      "community:region:update",
+      "dashboard:overview:read",
+      "fulfillment:batch:read",
+      "fulfillment:logistics:read",
+      "fulfillment:logistics:replay",
+      "fulfillment:redeem:read",
+      "fulfillment:rule:update",
+      "order:order:read",
+      "system:industry:read",
+      "system:industry:update"
+    ],
+    "AUDITOR": [
+      "community:community:read",
+      "content:material:audit",
+      "content:material:read",
+      "content:material:update",
+      "dashboard:overview:read",
+      "inventory:credential:read",
+      "inventory:stock:read",
+      "product:sku:audit",
+      "product:sku:read",
+      "review:review:audit",
+      "review:review:read",
+      "review:score:read",
+      "review:score:update"
+    ],
+    "FINANCE": [
+      "aftersale:refund:approve",
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "dashboard:overview:read",
+      "finance:invoice:read",
+      "finance:invoice:verify",
+      "finance:payout:execute",
+      "finance:rate:read",
+      "finance:rate:update",
+      "finance:recon:read",
+      "finance:recon:resolve",
+      "finance:settle:execute",
+      "finance:settle:read",
+      "merchant:admission:read",
+      "merchant:admission:update",
+      "order:order:read",
+      "pay:log:view",
+      "pay:order:view",
+      "pay:refund:review",
+      "pay:refund:view"
+    ],
+    "RISK": [
+      "aftersale:refund:read",
+      "aftersale:ticket:read",
+      "dashboard:overview:read",
+      "order:order:read",
+      "risk:blacklist:read",
+      "risk:blacklist:update",
+      "risk:event:handle",
+      "risk:event:read",
+      "risk:rule:read",
+      "risk:rule:update"
+    ],
+    "ANALYST": [
+      "community:community:read"
+    ],
+    "TECH_OPS": [
+      "iam:audit:read",
+      "system:job:manage",
+      "system:job:read",
+      "system:media:purge",
+      "system:media:read",
+      "system:param:read",
+      "system:param:update",
+      "system:theme:read",
+      "system:theme:update"
+    ],
+    "ELEC_ADMIN": [
+      "dashboard:overview:read"
+    ]
+  },
+  "frontendRoleAliases": {
+    "BD": "MERCHANT_BD",
+    "GOODS_OPS": "PRODUCT_OPS",
+    "SUPPORT": "CS"
+  },
+  "currentLiveRoleGrantsClaimed": false,
+  "menuRows": [
+    {
+      "pointCode": "OPS_MERCHANT",
+      "menuPermission": "merchant:apply:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_ON_BEHALF",
+      "menuPermission": "merchant:apply:onbehalf",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_SELF_OPERATED",
+      "menuPermission": "merchant:selfop:create",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_ONBOARDING",
+      "menuPermission": "merchant:admission:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_LIST",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_STORES",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_QUALIFICATIONS",
+      "menuPermission": "merchant:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_CATEGORIES",
+      "menuPermission": "merchant:category:grant",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_VERIFY",
+      "menuPermission": "merchant:verify:grant",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_MODE_RISK",
+      "menuPermission": "merchant:mode:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_CREDIT",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_BAN",
+      "menuPermission": "merchant:merchant:ban",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_CHAIN",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_STORE",
+      "menuPermission": "store:page:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_STORE__TAB_TEMPLATE",
+      "menuPermission": "",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": null,
+        "BD": null,
+        "GOODS_OPS": null,
+        "SUPPORT": null,
+        "CAMPAIGN_OPS": null,
+        "COMMUNITY_OPS": null,
+        "AUDITOR": null,
+        "FINANCE": null,
+        "RISK": null,
+        "ANALYST": null,
+        "TECH_OPS": null,
+        "ELEC_ADMIN": null
+      }
+    },
+    {
+      "pointCode": "OPS_STORE__TAB_QRCODE",
+      "menuPermission": "store:page:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_STORE__TAB_EFFECT",
+      "menuPermission": "store:page:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT",
+      "menuPermission": "product:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_TEMPLATES",
+      "menuPermission": "product:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_SPEC_COMMON",
+      "menuPermission": "product:spec:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_SPEC_SPECIAL",
+      "menuPermission": "product:spec:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_CATEGORY_SPEC",
+      "menuPermission": "product:spec:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_SPU_STD",
+      "menuPermission": "product:std:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_TOPICS",
+      "menuPermission": "product:topic:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_BANNED_WORD",
+      "menuPermission": "product:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_CATEGORY_PAY_MODE",
+      "menuPermission": "product:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_STOREINDUSTRY",
+      "menuPermission": "commerce:catalog:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_INDUSTRY",
+      "menuPermission": "system:industry:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_AUTHCODE",
+      "menuPermission": "product:category:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_SCOPE",
+      "menuPermission": "system:industry:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_SKUS",
+      "menuPermission": "product:sku:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_AUDIT",
+      "menuPermission": "product:sku:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_STOCK",
+      "menuPermission": "product:sku:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRODUCT__TAB_STATS",
+      "menuPermission": "product:sku:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_PLANS",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_PLAN_DEFS",
+      "menuPermission": "merchant:merchant:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE",
+      "menuPermission": "commerce:catalog:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_CATEGORIES",
+      "menuPermission": "commerce:catalog:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_PRODUCTS",
+      "menuPermission": "commerce:catalog:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_ORDERS",
+      "menuPermission": "commerce:mall:order:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_CLAIMS",
+      "menuPermission": "commerce:mall:offline:review",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_COLLECTION",
+      "menuPermission": "commerce:collection:profile:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_ASSISTED",
+      "menuPermission": "commerce:mall:assisted:purchase",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMERCE__TAB_SOURCES",
+      "menuPermission": "commerce:subscription:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_INVENTORY",
+      "menuPermission": "inventory:stock:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_INVENTORY__TAB_LEDGER",
+      "menuPermission": "inventory:stock:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_INVENTORY__TAB_RECON",
+      "menuPermission": "inventory:stock:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_INVENTORY__TAB_LINK_HEALTH",
+      "menuPermission": "inventory:stock:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_INVENTORY__TAB_CREDENTIALS",
+      "menuPermission": "inventory:credential:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER",
+      "menuPermission": "order:order:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER__TAB_EXCEPTION",
+      "menuPermission": "order:order:modify",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER__TAB_PROXY",
+      "menuPermission": "order:order:proxy",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER__TAB_PAY",
+      "menuPermission": "order:order:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER__TAB_REPAIR",
+      "menuPermission": "order:order:modify",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ORDER__TAB_CLOSE",
+      "menuPermission": "order:order:modify",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT",
+      "menuPermission": "fulfillment:batch:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_SORTING",
+      "menuPermission": "fulfillment:batch:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_REDEEM",
+      "menuPermission": "fulfillment:redeem:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_OVERDUE",
+      "menuPermission": "fulfillment:rule:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_EXPRESS",
+      "menuPermission": "fulfillment:logistics:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_FREIGHT",
+      "menuPermission": "fulfillment:rule:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FULFILLMENT__TAB_CARRIER",
+      "menuPermission": "fulfillment:logistics:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_AFTERSALE",
+      "menuPermission": "aftersale:ticket:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_AFTERSALE__TAB_INTERVENE",
+      "menuPermission": "aftersale:ticket:handle",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_AFTERSALE__TAB_FASTREFUND",
+      "menuPermission": "aftersale:refund:approve",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING",
+      "menuPermission": "marketing:coupon:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_ISSUES",
+      "menuPermission": "marketing:coupon:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_PROMOCOUPONS",
+      "menuPermission": "marketing:coupon:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_CAMPAIGNS",
+      "menuPermission": "marketing:campaign:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_POINTS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_PROMOACTIVITIES",
+      "menuPermission": "marketing:campaign:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_POINTS_POLICY",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_STORE_ACCESS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_PLATFORM",
+      "menuPermission": "marketing:campaign:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_PLATFORMAUDIT",
+      "menuPermission": "marketing:campaign:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_SLOTS",
+      "menuPermission": "marketing:slot:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_BROADCAST",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROUP",
+      "menuPermission": "group:campaign:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROUP__TAB_DEMANDS",
+      "menuPermission": "group:demand:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROUP__TAB_QUOTES",
+      "menuPermission": "group:demand:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROWTH",
+      "menuPermission": "growth:attribution:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROWTH__TAB_TRACES",
+      "menuPermission": "growth:attribution:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_GROWTH__TAB_FISSION",
+      "menuPermission": "growth:fission:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MEMBER",
+      "menuPermission": "member:member:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MEMBER__TAB_PERSONS",
+      "menuPermission": "member:person:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MEMBER__TAB_REACH",
+      "menuPermission": "member:member:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": true,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MARKETING__TAB_MEMBER",
+      "menuPermission": "",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": null,
+        "BD": null,
+        "GOODS_OPS": null,
+        "SUPPORT": null,
+        "CAMPAIGN_OPS": null,
+        "COMMUNITY_OPS": null,
+        "AUDITOR": null,
+        "FINANCE": null,
+        "RISK": null,
+        "ANALYST": null,
+        "TECH_OPS": null,
+        "ELEC_ADMIN": null
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_CONFIGURATION",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_EARNING_RULES",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_TREASURY",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_QUERIES",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_POINTS__TAB_SETTLEMENTS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_SPLITS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_SETTLE_STATS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_REFUND_BACK",
+      "menuPermission": "finance:settle:execute",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_SETTLE_BATCHES",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_DEBTS",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_PAYABLES",
+      "menuPermission": "finance:settle:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_PAYOUT_ACCOUNTS",
+      "menuPermission": "finance:payout:execute",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_PURCHASE_INVOICES",
+      "menuPermission": "finance:invoice:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_BUYER_INVOICES",
+      "menuPermission": "finance:invoice:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_INVOICE",
+      "menuPermission": "finance:invoice:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_RATES",
+      "menuPermission": "finance:rate:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_PAY_CHANNELS",
+      "menuPermission": "finance:rate:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_FINANCE__TAB_CHANNEL_MESSAGES",
+      "menuPermission": "finance:recon:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MERCHANT__TAB_ADMISSION",
+      "menuPermission": "merchant:admission:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_01",
+      "menuPermission": "pay:order:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_04",
+      "menuPermission": "pay:order:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_02",
+      "menuPermission": "pay:refund:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_03",
+      "menuPermission": "pay:log:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_06",
+      "menuPermission": "pay:log:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": true,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_07",
+      "menuPermission": "pay:qr:manage",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_05",
+      "menuPermission": "pay:app:manage",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PAY_08",
+      "menuPermission": "sec:key:view",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_REVIEW",
+      "menuPermission": "review:review:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_REVIEW__TAB_APPEALS",
+      "menuPermission": "review:review:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_REVIEW__TAB_SCORE",
+      "menuPermission": "review:score:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_CONTENT",
+      "menuPermission": "content:material:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_CONTENT__TAB_AUDIT",
+      "menuPermission": "content:material:audit",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_CONTENT__TAB_RANK",
+      "menuPermission": "content:material:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_SMS",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_MAIL",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_WXSUB",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_APPPUSH",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_INAPP",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_ROUTING",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_NOTIFYLOG",
+      "menuPermission": "message:template:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_TICKETS",
+      "menuPermission": "message:ticket:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_MESSAGE__TAB_FAQ",
+      "menuPermission": "message:ticket:handle",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY",
+      "menuPermission": "community:community:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": true,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_APPLIES",
+      "menuPermission": "community:community:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": true,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_REGIONS",
+      "menuPermission": "community:region:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_HEALTH",
+      "menuPermission": "community:community:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": true,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_DISTRIBUTION",
+      "menuPermission": "community:community:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": true,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_PLACES",
+      "menuPermission": "community:community:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": true,
+        "GOODS_OPS": true,
+        "SUPPORT": true,
+        "CAMPAIGN_OPS": true,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": true,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": true,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_PICKUPS",
+      "menuPermission": "community:pickup:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_COMMUNITY__TAB_NEIGHBOR",
+      "menuPermission": "community:pickup:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": true,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_RISK",
+      "menuPermission": "risk:rule:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_RISK__TAB_BLACKLIST",
+      "menuPermission": "risk:blacklist:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_RISK__TAB_RULES",
+      "menuPermission": "risk:rule:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": true,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ELEC",
+      "menuPermission": "elec:rfq:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ELEC__TAB_SUPPLIER",
+      "menuPermission": "elec:supplier:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ELEC__TAB_PART",
+      "menuPermission": "elec:part:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_ELEC__TAB_BASE",
+      "menuPermission": "elec:base:manage",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_IAM",
+      "menuPermission": "iam:staff:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_IAM__TAB_ROLES",
+      "menuPermission": "iam:role:grant",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_IAM__TAB_MENU",
+      "menuPermission": "iam:role:grant",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_IAM__TAB_AUDIT",
+      "menuPermission": "iam:audit:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_PRINTING",
+      "menuPermission": "ops:print:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_JOBS",
+      "menuPermission": "system:job:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM",
+      "menuPermission": "system:theme:update",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_MARKET",
+      "menuPermission": "system:param:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_FLAGS",
+      "menuPermission": "system:param:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_STORAGE",
+      "menuPermission": "system:media:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_TESTPHONE",
+      "menuPermission": "system:testphone:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": false,
+        "ELEC_ADMIN": false
+      }
+    },
+    {
+      "pointCode": "OPS_SYSTEM__TAB_APPVERSION",
+      "menuPermission": "system:param:read",
+      "fallbackRolePermissionMatches": {
+        "SUPER_ADMIN": true,
+        "BD": false,
+        "GOODS_OPS": false,
+        "SUPPORT": false,
+        "CAMPAIGN_OPS": false,
+        "COMMUNITY_OPS": false,
+        "AUDITOR": false,
+        "FINANCE": false,
+        "RISK": false,
+        "ANALYST": false,
+        "TECH_OPS": true,
+        "ELEC_ADMIN": false
+      }
+    }
+  ],
+  "compoundActionRequirements": [
+    {
+      "scene": "主体代购",
+      "allOf": [
+        "merchant:merchant:ban",
+        "commerce:mall:assisted:purchase"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "主体到账核款",
+      "allOf": [
+        "merchant:merchant:ban",
+        "commerce:mall:offline:confirm"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "主体拒绝付款申报",
+      "allOf": [
+        "merchant:merchant:ban",
+        "commerce:mall:offline:review"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "主体对账作废",
+      "allOf": [
+        "merchant:merchant:ban",
+        "commerce:mall:offline:void"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "主体现金异常款退款/出款/恢复",
+      "allOf": [
+        "merchant:merchant:ban",
+        "commerce:mall:offline:refund:confirm"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsEntityPlanRefundController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "主体订单恢复/平台凭证",
+      "allOf": [
+        "merchant:merchant:ban"
+      ],
+      "anyOf": [
+        "commerce:mall:offline:confirm",
+        "commerce:mall:offline:void",
+        "commerce:mall:offline:refund:confirm"
+      ],
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "门店商城代购",
+      "allOf": [
+        "commerce:mall:assisted:purchase"
+      ],
+      "source": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "scene": "门店商城到账核款",
+      "allOf": [
+        "commerce:mall:offline:confirm"
+      ],
+      "source": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+      "basis": "SOURCE_FALLBACK_NOT_RUNTIME_GRANTS",
+      "fallbackAllowedRoles": [
+        "SUPER_ADMIN"
+      ]
+    }
+  ]
+}

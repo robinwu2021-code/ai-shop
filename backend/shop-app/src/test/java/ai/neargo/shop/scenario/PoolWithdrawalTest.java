@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.Bucket;
@@ -30,7 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -182,7 +183,7 @@ class PoolWithdrawalTest {
         return jdbc().queryForObject("SELECT "+column+" FROM pts_fund_pool WHERE type_code=?",Long.class,type);
     }
     private JdbcTemplate jdbc() { return new JdbcTemplate(dataSource); }
-    @Configuration
+    @TestConfiguration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,
             MybatisPointsConfigurationStore.class, ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class,PoolServiceImpl.class,PoolRequestServiceImpl.class})
     @ComponentScan(basePackages="ai.neargo.shop.pay.points.pool.withdrawal")

@@ -124,7 +124,11 @@ public final class PaymentCollectionStream implements AutoCloseable {
                         abortHttp);
         emitter.onCompletion(c::dispose);
         emitter.onTimeout(c::dispose);
-        emitter.onError(error -> c.dispose());
+        emitter.onError(error -> {
+            log.info("payment SSE transport error connection={} cause={}", c.writer.threadId(),
+                    error.getClass().getSimpleName());
+            c.dispose();
+        });
         c.enqueue(
                 new Frame(
                         "ready",
@@ -203,6 +207,23 @@ public final class PaymentCollectionStream implements AutoCloseable {
 
     private record Frame(String name, Object data, String id, boolean completeAfter) {}
 
+    /** Diagnostic frames share the real writer but have neither a payment cursor nor financial side effects. */
+    public int diagnostic(PaymentCollectionDiagnosticProperties target, String runId, long sequence, long sentAt) {
+        if (!properties.isEnabled() || !"SANDBOX".equals(properties.getEnvironment()))
+            throw new IllegalStateException("SSE diagnostics require SANDBOX collections");
+        int queued = 0;
+        for (Connection c : connections) {
+            if (!target.userNo().equals(c.user.userNo()) || !target.entityNo().equals(c.entity)
+                    || !target.storeNo().equals(c.store) || c.closing.get()
+                    || !c.withinWriteDeadline() || !c.authorized()) continue;
+            if (c.enqueue(new Frame("diagnostic.ping", Map.of(
+                    "schemaVersion", 1, "diagnostic", true, "runId", runId,
+                    "sequence", sequence, "sentAt", sentAt,
+                    "storeNo", c.store, "entityNo", c.entity), null, false))) queued++;
+        }
+        return queued;
+    }
+
     private final class Connection {
         final SseEmitter emitter;
         final LoginUser user;
@@ -242,9 +263,11 @@ public final class PaymentCollectionStream implements AutoCloseable {
             writer = Thread.ofVirtual().name("payment-sse-writer").unstarted(this::write);
         }
 
-        void enqueue(Frame frame) {
-            if (!closed.get() && !pending.offer(frame))
-                abort(new IOException("payment SSE send queue full"));
+        boolean enqueue(Frame frame) {
+            if (closed.get()) return false;
+            if (pending.offer(frame)) return true;
+            abort(new IOException("payment SSE send queue full"));
+            return false;
         }
 
         boolean withinWriteDeadline() {
@@ -343,6 +366,9 @@ public final class PaymentCollectionStream implements AutoCloseable {
                                     : SseEmitter.event().name(frame.name()).data(frame.data());
                     if (frame.id() != null) builder.id(frame.id());
                     emitter.send(builder);
+                    if ("diagnostic.ping".equals(frame.name()) && frame.data() instanceof Map<?, ?> sample)
+                        log.info("payment SSE diagnostic sent run={} seq={} connection={}",
+                                sample.get("runId"), sample.get("sequence"), writer.threadId());
                     initial = false;
                     if (frame.completeAfter()) {
                         emitter.complete();
@@ -361,7 +387,7 @@ public final class PaymentCollectionStream implements AutoCloseable {
         }
 
         void dispose() {
-            stop();
+            if (stop()) log.info("payment SSE completed connection={}", writer.threadId());
         }
 
         boolean stop() {
@@ -374,6 +400,8 @@ public final class PaymentCollectionStream implements AutoCloseable {
 
         void abort(Throwable reason) {
             if (!stop()) return;
+            log.info("payment SSE disconnected connection={} cause={}", writer.threadId(),
+                    reason.getClass().getSimpleName());
             // Spring completion takes its send lock too. It must never run on the shared poller.
             Thread.ofVirtual()
                     .name("payment-sse-abort")

@@ -449,6 +449,8 @@ export interface MemberMergePreview {
   applied: boolean;
 }
 export interface MerchantCustomer {
+  /** 客户注册账号业务号；匿名客户为空 */
+  userNo?: string | null;
   /** 脱敏昵称，不给完整手机号（B12） */
   /** 客户昵称 */
   nickname: string;

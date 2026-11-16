@@ -1,0 +1,13 @@
+{
+  "command": "python3 ops-web/scripts/verify-platform-menu-mysql.py",
+  "mysql": "9.7.4",
+  "builtinRoles": ["ANALYST", "AUDITOR", "BD", "CAMPAIGN_OPS", "COMMUNITY_OPS", "ELEC_ADMIN", "FINANCE", "GOODS_OPS", "RISK", "SUPER_ADMIN", "SUPPORT", "TECH_OPS"],
+  "customRoles": 2,
+  "legacyMenuPoints": 155,
+  "addedAliases": 10,
+  "applications": 2,
+  "originalPointsAndGrantsUnchanged": true,
+  "exactSourceGrantParity": true,
+  "idempotent": true,
+  "disposableSchemaDropped": true
+}

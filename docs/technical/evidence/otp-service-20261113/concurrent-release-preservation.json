@@ -1,0 +1,11 @@
+{
+  "currentRuntimeSha256": "2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024",
+  "classDifferencesFromVerifiedCandidate": [
+    "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionExceptionHandler.class",
+    "BOOT-INF/classes/ai/neargo/shop/paybridge/PaymentCollectionExceptionHandler$1.class"
+  ],
+  "migrationResourcesSame": true,
+  "librariesSame": true,
+  "allExistingCandidateClassesPreserved": true,
+  "addedClassesScope": "PaymentCollectionExceptionHandler is restricted to InternalPaymentCollectionController and BizPaymentEventsController. OTP classes and configuration are preserved."
+}

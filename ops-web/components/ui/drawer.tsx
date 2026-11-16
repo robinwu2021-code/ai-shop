@@ -11,7 +11,7 @@ const FooterSlot = React.createContext<{ el: HTMLElement | null; claim: () => ()
 
 // 右侧抽屉（详情/表单）。基于 radix dialog。
 export function Drawer({
-  open, onOpenChange, title, desc, children, footer, width = "w-[440px]", className, headerClassName, bodyClassName, onEscapeKeyDown,
+  open, onOpenChange, title, desc, children, footer, width = "w-[440px]", className, headerClassName, bodyClassName, onEscapeKeyDown, onOpenAutoFocus, onCloseAutoFocus, onInteractOutside, titleRef,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -24,6 +24,10 @@ export function Drawer({
   headerClassName?: string;
   bodyClassName?: string;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onOpenAutoFocus?: React.ComponentProps<typeof Dialog.Content>["onOpenAutoFocus"];
+  onCloseAutoFocus?: React.ComponentProps<typeof Dialog.Content>["onCloseAutoFocus"];
+  onInteractOutside?: React.ComponentProps<typeof Dialog.Content>["onInteractOutside"];
+  titleRef?: React.Ref<HTMLHeadingElement>;
 }) {
   const [footerEl, setFooterEl] = React.useState<HTMLDivElement | null>(null);
   const [claims, setClaims] = React.useState(0);
@@ -47,6 +51,9 @@ export function Drawer({
         <Dialog.Overlay className="fixed inset-0 z-[var(--z-drawer)] bg-black/40 animate-in fade-in" />
         <Dialog.Content
           onEscapeKeyDown={onEscapeKeyDown}
+          onOpenAutoFocus={onOpenAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus}
+          onInteractOutside={onInteractOutside}
           className={cn(
             /*
              * `max-w-full` 不是可选的收尾：抽屉是 `fixed right-0` + 固定宽度，
@@ -62,7 +69,7 @@ export function Drawer({
         >
           <div className={cn("flex items-start justify-between bg-muted/50 p-5", headerClassName)}>
             <div>
-              <Dialog.Title className="txt-heading">{title}</Dialog.Title>
+              <Dialog.Title ref={titleRef} tabIndex={titleRef ? -1 : undefined} className="txt-heading outline-none">{title}</Dialog.Title>
               {desc && <Dialog.Description className="mt-0.5 txt-body text-muted-foreground">{desc}</Dialog.Description>}
             </div>
             <Dialog.Close

@@ -4,6 +4,7 @@ import ai.neargo.commerce.api.port.*;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.plan.*;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 import ai.neargo.shop.merchant.plan.impl.EntityPlanPurchaseServiceImpl;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -41,6 +42,7 @@ public class EntityPlanPurchaseConfiguration {
       MoneyPolicyPort policies,
       StoreOwnershipWritePort ownership,
       MchEntityMapper entities,
+      StoreOperationalReviewService reviews,
       @Value("${commerce.mall.offline.profile-no:}") String profile) {
     return new EntityPlanPurchaseServiceImpl(
         jdbc,
@@ -53,6 +55,6 @@ public class EntityPlanPurchaseConfiguration {
         ownership,
         entity -> entities.financialVisibleEntity(entity)!=null,
         Clock.systemUTC(),
-        profile);
+        profile, reviews);
   }
 }

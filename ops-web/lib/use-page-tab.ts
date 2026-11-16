@@ -12,14 +12,17 @@
 // 还停在第 3 页但那个 tab 只有 1 页"——列表空白，看着像没数据。
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { platformContextTabKeys } from "@/lib/platform-nav";
 import { navTabs, visibleTabKeys } from "@/lib/nav";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
-import { useNavTree, useServerMenu } from "@/lib/stores/server-menu";
+import { useCatalogNavTree, useServerMenu } from "@/lib/stores/server-menu";
 
 export interface PageTab {
   key: string;
   label: string;
+  /** 不带 ?tab= 的页面入口；与菜单的显示顺序无关。 */
+  isDefault?: boolean;
   group?: string;
   href?: string;
 }
@@ -37,7 +40,8 @@ export interface PageTab {
 export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
   const { tNav } = useI18n();
   // tab 名同样以库为准：运营在权限配置页改了功能点名字，这里跟着变
-  const nav = useNavTree();
+  const nav = useCatalogNavTree();
+  const currentTab = useSearchParams().get("tab");
   /*
    * **tab 也要判权，且与菜单同一口径**（2026-08-12）。
    *
@@ -48,27 +52,34 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
   const perms = useAuth((s) => s.perms);
   const serverHrefs = useServerMenu((s) => s.hrefSet);
   const allowed = React.useMemo(
-    () => visibleTabKeys(path, keys, perms, serverHrefs, nav),
-    [path, keys, perms, serverHrefs, nav],
+    () => platformContextTabKeys(path, keys, visibleTabKeys(path, keys, perms, serverHrefs, nav), currentTab, nav),
+    [path, keys, perms, serverHrefs, nav, currentTab],
   );
   return React.useMemo(
-    () => navTabs(path, allowed, nav).map(({ key, label, group, href }) => {
-      if (!label) {
-        const msg = `[nav] ${path} 的 tab "${key}" 在 lib/nav.ts 里没有对应叶子 —— 补一条，否则它在菜单里进不去`;
-        if (process.env.NODE_ENV !== "production") throw new Error(msg);
-        console.error(msg);
-        return { key, label: key };
-      }
-      return { key, label: tNav(label), group: group ? tNav(group) : undefined, href };
-    }),
+    () => {
+      // 默认及无权访问默认项时的后备页签，均按页面原始顺序选取，不随跨模块菜单重排。
+      const labels = new Map(navTabs(path, keys, nav).map(entry => [entry.key, entry]));
+      const defaultKey = keys.find(key => allowed.includes(key));
+      return allowed.map(key => {
+        const entry = labels.get(key);
+        const label = entry?.label;
+        if (!label) {
+          const msg = `[nav] ${path} 的 tab "${key}" 在 lib/nav.ts 里没有对应叶子 —— 补一条，否则它在菜单里进不去`;
+          if (process.env.NODE_ENV !== "production") throw new Error(msg);
+          console.error(msg);
+          return { key, label: key, isDefault: key === defaultKey };
+        }
+        return { key, label: tNav(label), isDefault: key === defaultKey, href: entry?.href, group: entry?.group ? tNav(entry.group) : undefined };
+      });
+    },
     // allowed 已经是 useMemo 的产物；tNav 随 locale 变，必须进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, allowed, tNav, nav],
+    [path, keys, allowed, tNav, nav],
   );
 }
 
 /**
- * @param tabs     本页的 tab 列表（第一个是默认）
+ * @param tabs     本页的 tab 列表（isDefault标记默认；手工列表兼容第一个）
  * @param onSwitch 切 tab 时的副作用：**至少要把分页重置到第 1 页**，
  *                 通常还要清空搜索词与筛选（不同 tab 的筛选项往往不通用）
  */
@@ -78,24 +89,24 @@ export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [st
   const router = useRouter();
   const qTab = sp.get("tab");
   const valid = React.useCallback((k: string | null) => !!k && tabs.some((t) => t.key === k), [tabs]);
-
-  const defaultTab = tabs.find(({ href }) => {
-    if (!href) return false;
-    const query = new URLSearchParams(href.split("?")[1]);
+  const defaultKey = (tabs.find(t => t.isDefault) ?? tabs.find(t => {
+    if (!t.href) return false;
+    const query = new URLSearchParams(t.href.split("?")[1]);
     return !query.has("tab") && !query.has("view");
-  })?.key ?? tabs[0].key;
-  const [tab, setTabState] = React.useState(() => (valid(qTab) ? (qTab as string) : defaultTab));
+  }) ?? tabs[0])?.key ?? "";
+
+  const [tab, setTabState] = React.useState(() => (valid(qTab) ? (qTab as string) : defaultKey));
 
   // URL 变化（从别的页面深链进来、浏览器前进后退）时同步
   React.useEffect(() => {
-    const next = qTab || defaultTab;
-    if ((!qTab || valid(qTab)) && next !== tab) {
+    const next = valid(qTab) ? qTab as string : defaultKey;
+    if (next !== tab) {
       setTabState(next);
       onSwitch?.();
     }
-    // onSwitch 通常是就地箭头函数，进依赖会每次渲染都跑；这里只认 qTab 的变化
+    // onSwitch 通常是就地箭头函数，进依赖会每次渲染都跑；这里只认 URL 和默认页签的变化
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qTab, defaultTab]);
+  }, [qTab, defaultKey]);
 
   /*
    * **当前 tab 从列表里消失了** —— tab 判权之后这是会真实发生的：
@@ -105,7 +116,7 @@ export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [st
    */
   React.useEffect(() => {
     if (tabs.length && !valid(tab)) {
-      setTabState(tabs[0].key);
+      setTabState(defaultKey);
       onSwitch?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,17 +128,16 @@ export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [st
       onSwitch?.();
       const target = tabs.find((t) => t.key === k)?.href;
       const [path, search = ""] = target?.split("?")
-        ?? [pathname, k === tabs[0].key ? "" : `tab=${encodeURIComponent(k)}`];
+        ?? [pathname, k === defaultKey ? "" : `tab=${encodeURIComponent(k)}`];
       const query = new URLSearchParams(sp.toString());
-      query.delete("tab");
-      query.delete("view");
-      new URLSearchParams(search).forEach((v, key) => query.set(key, v));
+      query.delete("tab");query.delete("view");
+      new URLSearchParams(search).forEach((v,key) => query.set(key,v));
       const suffix = query.toString();
-      router.push(path + (suffix ? `?${suffix}` : ""), { scroll: false });
+      router.push(path + (suffix ? `?${suffix}` : ""), {scroll:false});
     },
-    // onSwitch 每次渲染都是新引用，路径和功能元数据须随本次视图更新。
+    // 同上：onSwitch 每次渲染都是新引用，不进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tabs, sp, pathname, router],
+    [tabs, sp, pathname, router, defaultKey],
   );
 
   return [tab, setTab];

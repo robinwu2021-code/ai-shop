@@ -1,3 +1,4 @@
+import { platformCatalog, PLATFORM_MENU_ALIASES } from "./platform-nav";
 // 导航结构单测。这里锁的是**结构约束**，不是文案：
 // 文案会随产品走，结构一破（分组不相邻、href 重复、模块与权限码对不上）界面就会出错。
 import { describe, expect, it } from "vitest";
@@ -92,6 +93,8 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    * （少一条菜单，人只会以为自己没权限，不会报障）。
    */
   const ADDED_SINCE_MERGE = new Set<string>([
+    // Platform reporting V670: only SUPER_ADMIN receives these new menu points by default.
+    "/mall?tab=global-orders", "/mall?tab=global-claims", "/mall?tab=cash-summary", "/mall?tab=cash-details",
     "/system?tab=storeIndustry", // Store industry maintenance, existing commerce catalog authority.
     "/printing", // Newly delivered, permission and runtime gated printing operations.
     /*
@@ -113,7 +116,6 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/pay-ops/platform-keys",
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
-    "/merchants?tab=self-operated",
     /*
      * 代商家进件（2026-09-17，三期）。**超管与 BD 两行都会多出它** ——
      * 与上面那条刻意不同：那个只给超管（平台自己下场经营不是招商日常），
@@ -272,7 +274,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 这条守的是「兜底那一支不该被走到」。新增一个模块前缀却忘了写进某个
      * section.modules，这里就红。
      */
-    const owned = new Set(NAV.flatMap((s) => s.modules));
+    const owned = new Set([...NAV.flatMap((s) => s.modules), ...PLATFORM_MENU_ALIASES.map(l => l.perm.split(":")[0])]);
     const orphans = new Set<string>();
     for (const [ui, back] of Object.entries(UI_PERM_MAP)) {
       // 与生成器同一条口径：UI 前缀无主时退到后端码的前缀
@@ -574,7 +576,7 @@ describe("路由归属与面包屑", () => {
       const m = readFileSync(pageFile, "utf8").match(/const TAB_KEYS = \[([^\]]*)\] as const;/);
       if (!m) continue;
       const keys = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
-      for (const t of navTabs(`/${d}`, keys)) {
+      for (const t of navTabs(`/${d}`, keys, platformCatalog())) {
         if (!t.label) missing.push(`/${d} 的 tab "${t.key}"`);
       }
     }
@@ -663,7 +665,7 @@ describe("路由归属与面包屑", () => {
       // visibleLeaves 会把它们滤掉，拿它做断言只会验到「看不见」
       const nav = overlayNav(NAV, { leaves: { "/merchants?tab=list": { name: "商户名册" } } });
       expect(navTabs("/merchants", ["audit", "list"], nav).map((t) => t.label))
-        .toEqual(["入驻申请", "商户名册"]);
+        .toEqual(["入驻管理", "商户名册"]);
       expect(breadcrumb("/merchants", "list", null, backendPermsOf("SUPER_ADMIN"), undefined, nav))
         .toContain("商户名册");
     });
@@ -814,7 +816,7 @@ describe("路由归属与面包屑", () => {
   });
 
   it("面包屑 = 一级 › 二级", () => {
-    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻申请"]);
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻管理"]);
   });
 
   it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
@@ -905,14 +907,14 @@ it("已解锁的 ?tab= 叶子，页面必须真的认这个 tab —— 否则点
   expect(offenders, `要么把叶子标 soon，要么在页面里加上这个 tab：\n${offenders.join("\n")}`).toEqual([]);
 });
 
-it("keeps finance, merged marketing and merged support sections owning their routes", () => {
+it("keeps settings, finance, marketing and support routes in their current owners", () => {
   expect(findActiveSection("/finance")?.key).toBe("finance");
-  // 2026-11-11 会员管理、积分运营并入会员营销；消息客服并入内容客服
+  // 设置归并消息通道与行业配置；广播、客服和经营页仍保留各自归属。
   expect(findActiveSection("/points")?.key).toBe("marketing");
   expect(findActiveSection("/points/budget")?.key).toBe("marketing");
   expect(findActiveSection("/members")?.key).toBe("marketing");
-  expect(findActiveSection("/messages")?.key).toBe("review");
+  expect(findActiveSection("/messages")?.key).toBe("iam");
   expect(findActiveSection("/messages", ["*"], undefined, NAV, "broadcast")?.key).toBe("marketing");
   expect(findActiveSection("/merchants", ["*"], undefined, NAV, "admission")?.key).toBe("finance");
-  expect(findActiveSection("/system", ["*"], undefined, NAV, "industry")?.key).toBe("product");
+  expect(findActiveSection("/system", ["*"], undefined, NAV, "industry")?.key).toBe("iam");
 });

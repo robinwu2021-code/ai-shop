@@ -32,6 +32,8 @@ public enum ErrorCode {
     TOKEN_EXPIRED(10402, "err.token_expired"),
     FORBIDDEN(10403, "err.forbidden"),
     NOT_FOUND(10404, "err.not_found"),
+    /** Operator owner selection failed; registration and email verification are separate facts. */
+    OWNER_ACCOUNT_UNAVAILABLE(10425, "err.user.owner_account_unavailable"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
     /**

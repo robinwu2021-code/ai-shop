@@ -1,5 +1,7 @@
 # nearshop 双域名入口
 
+UME166 商城运营端在 `ops-web` 目录构建时使用 `NEXT_PUBLIC_API_BASE=/ops-shop NEXT_PUBLIC_BASE_PATH=/ops-shop NEXT_PUBLIC_USE_MOCK=0 npm run build -- --webpack`。商城接口必须请求 `/ops-shop/ops/*`；空 API 基地址会请求另一服务的根路径 `/ops/*`。发布后在已登录浏览器核对身份与业务接口成功，参见[2026-11-13 验收记录](../../../docs/technical/evidence/ops-admission-consolidation-20261113/verification.json)。
+
 状态：2026-11-11 已在 UME 部署并通过双域名验证。设计和执行顺序见 [TDD](../../../docs/technical/TDD-nearshop双域名渐进迁移.md)。
 
 | 用途 | 新入口 | 保留入口 |

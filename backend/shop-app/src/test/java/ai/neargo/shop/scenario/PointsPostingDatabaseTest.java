@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -29,7 +31,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -520,7 +521,7 @@ class PointsPostingDatabaseTest {
         return new JdbcTemplate(dataSource);
     }
 
-    @Configuration
+    @TestConfiguration
     @EnableTransactionManagement
     @Import({PayDataSourceConfig.class, PointsPostingServiceImpl.class, MybatisPostingStore.class,
         ai.neargo.shop.pay.numbering.PayDocumentNumberConfiguration.class,

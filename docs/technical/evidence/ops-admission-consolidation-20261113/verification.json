@@ -1,0 +1,147 @@
+{
+  "frontend": {
+    "releaseId": "ops-admission-consolidated-ui-20261113-6c2590277-r2",
+    "build": {
+      "fixCommit": "6c259027775148d30f1dfdb3ac897a192ba610e8",
+      "backendTestsPassed": 38,
+      "frontendTestsPassed": 162,
+      "permissionMatrixTestsPassed": 37,
+      "frontendBuild": true,
+      "productionArtifactGuard": true,
+      "lintPassed": true,
+      "apiContractGuardPassed": true,
+      "uiCatalogGuardPassed": true,
+      "schemaProjectionPassed": true,
+      "baselineClassesMatched": 13,
+      "migration": "665",
+      "backendReusedCoordinatedRelease": true,
+      "receiptAccuracyVerified": true
+    },
+    "previousWeb": "/data/www/ai-shop-ops/releases/ops-login-error-20261113-r1",
+    "backendChanged": false,
+    "databaseChanged": false,
+    "configChanged": false,
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/ops-admission-consolidated-ui-20261113-6c2590277-r2",
+    "pagesVerified": 2,
+    "assetsVerified": 34,
+    "runtimesUnchanged": true,
+    "payWebUnchanged": true,
+    "backendSha256Unchanged": true,
+    "lockReleased": true
+  },
+  "backend": {
+    "status": "DEPLOYED",
+    "releaseId": "ops-admission-observation-20261113-12308bf7a",
+    "sourceCommit": "12308bf7a1a3226efee38aebe36e39a54bc9f9ef",
+    "reusedCoordinatedRelease": true,
+    "backendSha256": "2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024",
+    "matchingVerifiedClasses": 13,
+    "apiHealth": "UP",
+    "opsHealth": "UP",
+    "migration": "665",
+    "flyway": [
+      "665",
+      "-188811131",
+      "1"
+    ],
+    "admissionPermissionCodesAndGrantsUnchanged": true,
+    "allPreviousMigrationsUnchanged": true,
+    "menuConfigurationMatched": true,
+    "backendMutatedByThisStep": false,
+    "databaseMutatedByThisStep": false,
+    "systemMarket": "TW",
+    "concurrentReleaseLockObserved": false
+  },
+  "ui": {
+    "verified": true,
+    "menus": [
+      "入驻申请",
+      "自营建档",
+      "支付开通"
+    ],
+    "applicationColumns": [
+      "申请商家",
+      "联系人",
+      "审核状态",
+      "提交时间",
+      "操作"
+    ],
+    "legacyOnBehalfRedirected": true,
+    "applicationIntroRemoved": true,
+    "admissionForm": {
+      "bodyOnlyRecordHint": true,
+      "noMainlandPrompts": true,
+      "noRegionSelector": true,
+      "regionTW": true,
+      "taiwanSubjects": [
+        "公司",
+        "独资／行号"
+      ]
+    },
+    "selfOperation": {
+      "noMainlandPrompts": true,
+      "ownerInputType": "email",
+      "regionTW": true,
+      "selects": [
+        "so-industry",
+        "so-scope"
+      ],
+      "serviceAreaConfigurationMissing": true
+    },
+    "mobile": {
+      "documentWidth": 375,
+      "noHorizontalOverflow": true,
+      "viewport": 375
+    },
+    "paymentList": {
+      "detailsActions": 7,
+      "headers": [
+        "商家",
+        "资料审核",
+        "进件状态",
+        "卡点",
+        "操作"
+      ],
+      "technicalCodesInList": false
+    },
+    "paymentDetails": {
+      "externalLinkPreserved": true,
+      "hasCancelledState": true,
+      "hasChannelRecord": true,
+      "hasSourceAndChannelSections": true
+    },
+    "viewportRestored": true,
+    "realApplicationsCreated": false,
+    "realPaymentRequestsSubmitted": false,
+    "apiBaseVerified": "/ops-shop",
+    "restoredAfterParallelIncorrectApiBase": true,
+    "restoredApiResponses": [
+      {
+        "path": "/ops-shop/ops/auth/me",
+        "status": 200
+      },
+      {
+        "path": "/ops-shop/ops/menu",
+        "status": 200
+      },
+      {
+        "path": "/ops-shop/ops/merchants/self-operated/context",
+        "status": 200
+      },
+      {
+        "path": "/ops-shop/ops/industries",
+        "status": 200
+      },
+      {
+        "path": "/ops-shop/ops/communities",
+        "status": 200
+      }
+    ]
+  },
+  "buildEnvironment": {
+    "NEXT_PUBLIC_API_BASE": "/ops-shop",
+    "NEXT_PUBLIC_BASE_PATH": "/ops-shop",
+    "NEXT_PUBLIC_USE_MOCK": "0"
+  }
+}

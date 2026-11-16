@@ -113,7 +113,8 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
          */
         String ownerUserNo = "CN".equals(policy.market()) && !policy.recordOnly()
                 ? userProvision.ensureUserByPhone(phone)
-                : userProvision.registeredUserByEmail(cmd.ownerEmail()).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
+                : userProvision.registeredUserByEmail(cmd.ownerEmail())
+                        .orElseThrow(()->BizException.of(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE));
 
         /*
          * 幂等的判据是**人**，不是申请单 —— 与审核链路刻意相反。

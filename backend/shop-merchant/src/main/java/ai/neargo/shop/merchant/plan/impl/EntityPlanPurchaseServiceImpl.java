@@ -2,10 +2,12 @@ package ai.neargo.shop.merchant.plan.impl;
 
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
+import ai.neargo.commerce.api.mall.reporting.PurchaseReporting.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.plan.*;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 import java.time.*;
 import java.util.*;
 import java.util.function.*;
@@ -28,6 +30,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private final Predicate<String> opsVisible;
   private final Clock clock;
   private final String profileNo;
+  private final StoreOperationalReviewService reviews;
 
   public record Snapshot(
       String entityNo,
@@ -54,7 +57,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       StoreOwnershipWritePort ownership,
       Predicate<String> opsVisible,
       Clock clock,
-      String profileNo) {
+      String profileNo, StoreOperationalReviewService reviews) {
     this.db = db;
     this.tx = new TransactionTemplate(manager);
     this.json = json;
@@ -66,6 +69,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     this.opsVisible = opsVisible;
     this.clock = clock;
     this.profileNo = profileNo;
+    this.reviews = reviews;
   }
 
   private static RuntimeException bad() {
@@ -289,6 +293,79 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   }
 
   @Override
+  public List<OrderView> operatorOrders(Actor a, String afterOrderNo, int limit) {
+    operator(a);
+    if (limit < 1 || limit > 100) throw bad();
+    return db.queryForList(
+            "SELECT order_no FROM mch_plan_purchase WHERE tenant_no=? AND entity_no=?"
+                + " AND order_no>? ORDER BY order_no LIMIT ?",
+            TENANT, a.entityNo(), afterOrderNo == null ? "" : afterOrderNo, limit)
+        .stream().map(row -> order(a, str(row, "order_no"))).toList();
+  }
+
+  private static final String REPORT_SELECT = "SELECT p.*,"
+      + "(SELECT c.status FROM mch_plan_purchase_claim c WHERE c.tenant_no=p.tenant_no AND c.order_no=p.order_no"
+      + " ORDER BY CASE WHEN c.status='SUBMITTED' THEN 0 ELSE 1 END,c.claim_no DESC LIMIT 1) claim_status"
+      + " FROM mch_plan_purchase p WHERE p.tenant_no=?";
+
+  private void reportingOperator(Actor a, String tenant) {
+    if (a == null || !a.operator() || a.userNo() == null || a.userNo().isBlank()
+        || !"OPERATOR".equals(a.subjectKind()) || !TENANT.equals(tenant)) throw denied();
+  }
+
+  @Override
+  public List<Row> searchOperatorOrders(Actor a, Query q) {
+    reportingOperator(a, q.access().tenantNo());
+    var access = q.access(); var f = q.filter();
+    if (!access.allEntities() && access.entityNos().isEmpty()
+        || f.entityNo() != null && !access.allows(f.entityNo())) return List.of();
+    var sql = new StringBuilder(REPORT_SELECT); var args = new ArrayList<Object>(); args.add(TENANT);
+    if (!access.allEntities()) {
+      sql.append(" AND p.entity_no IN (").append(reportMarks(access.entityNos().size())).append(')');
+      args.addAll(access.entityNos());
+    }
+    reportEqual(sql,args,"p.entity_no",f.entityNo());
+    reportEqual(sql,args,"JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.storeNo'))",f.storeNo());
+    reportEqual(sql,args,"p.order_no",f.orderNo()); reportEqual(sql,args,"p.status",f.status());
+    reportEqual(sql,args,"JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.offer.price.currency'))",f.currency());
+    if (f.createdFrom()!=null) { sql.append(" AND p.created_at>=?"); args.add(f.createdFrom()); }
+    if (f.createdTo()!=null) { sql.append(" AND p.created_at<?"); args.add(f.createdTo()); }
+    if (f.pendingOnly()) sql.append(" AND EXISTS (SELECT 1 FROM mch_plan_purchase_claim c"
+        + " WHERE c.tenant_no=p.tenant_no AND c.order_no=p.order_no AND c.status='SUBMITTED')");
+    if (q.after()!=null) {
+      var c=q.after(); sql.append(" AND (p.created_at<? OR (p.created_at=? AND ");
+      args.add(c.createdAt()); args.add(c.createdAt());
+      if(c.model()==Model.STORE) sql.append("1=0");
+      else { sql.append("p.order_no<?"); args.add(c.orderNo()); }
+      sql.append("))");
+    }
+    sql.append(" ORDER BY p.created_at DESC,p.order_no DESC LIMIT ?"); args.add(q.limit());
+    return db.queryForList(sql.toString(),args.toArray()).stream().map(this::reportRow).toList();
+  }
+
+  @Override
+  public List<Row> findOperatorOrderOwners(Actor a, String tenant, List<String> nos) {
+    reportingOperator(a, tenant);
+    if (nos==null || nos.size()>500) throw bad();
+    if (nos.isEmpty()) return List.of();
+    var args=new ArrayList<Object>(); args.add(tenant); args.addAll(nos);
+    return db.queryForList(REPORT_SELECT+" AND p.order_no IN ("+reportMarks(nos.size())
+        +") ORDER BY p.created_at DESC,p.order_no DESC",args.toArray()).stream().map(this::reportRow).toList();
+  }
+
+  private Row reportRow(Map<String,Object> r) {
+    var snap=json.readTree(str(r,"snapshot_json")); var price=snap.path("offer").path("price");
+    var store=snap.path("storeNo");
+    return new Row(Model.ENTITY,str(r,"order_no"),str(r,"entity_no"),store.isNull() || store.isMissingNode()?null:store.asText(),
+        price.path("currency").asText(),price.path("minor").asText(),str(r,"status"),str(r,"claim_status"),number(r,"created_at"));
+  }
+
+  private static String reportMarks(int n) { return String.join(",",Collections.nCopies(n,"?")); }
+  private static void reportEqual(StringBuilder sql,List<Object> args,String column,String value) {
+    if(value!=null) { sql.append(" AND ").append(column).append("=?"); args.add(value); }
+  }
+
+  @Override
   public OrderView buy(Actor a, Buy c) {
     if (a.operator()) throw denied();
     return createPurchase(a, a, c, c, null);
@@ -317,7 +394,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         db
             .queryForList(
                 "SELECT store_no,name FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
-                    + " status='ACTIVE' AND deleted=0 ORDER BY store_no",
+                    + " status IN ('ACTIVE','PENDING_OPEN') AND deleted=0 ORDER BY store_no",
                 TENANT,
                 a.entityNo())
             .stream()
@@ -331,7 +408,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     operator(creator);
     if (one(
             "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND store_no=?"
-                + " AND status='ACTIVE' AND deleted=0",
+                + " AND status IN ('ACTIVE','PENDING_OPEN') AND deleted=0",
             TENANT,
             creator.entityNo(),
             c.storeNo())
@@ -469,7 +546,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               if (creator.operator()
                   && one(
                           "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
-                              + " store_no=? AND status='ACTIVE' AND deleted=0",
+                              + " store_no=? AND status IN ('ACTIVE','PENDING_OPEN') AND deleted=0",
                           TENANT,
                           a.entityNo(),
                           a.storeNo())
@@ -797,7 +874,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
           var old =
               one(
                   "SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
-                      + " action_no=?",
+                      + " action_no=? FOR UPDATE",
                   TENANT,
                   no,
                   c.actionNo());
@@ -964,10 +1041,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                     s.entityNo());
               db.update(
                   "UPDATE mch_store SET"
-                      + " status='ACTIVE',plan_suspended=0,version=version+1,updated_at=NOW() WHERE"
+                      + " status=CASE WHEN status='SUSPENDED' THEN status WHEN operational_review IN ('PENDING','REJECTED') THEN 'PENDING_OPEN' ELSE 'ACTIVE' END,plan_suspended=0,version=version+1,updated_at=NOW() WHERE"
                       + " tenant_no=? AND entity_no=? AND plan_suspended=1 AND deleted=0",
                   TENANT,
                   s.entityNo());
+              reviews.activatePaid(TENANT,s.entityNo(),s.storeNo(),"ENTITY",no,number(current,"created_at"),accepted);
               status = "APPLIED";
             }
           }

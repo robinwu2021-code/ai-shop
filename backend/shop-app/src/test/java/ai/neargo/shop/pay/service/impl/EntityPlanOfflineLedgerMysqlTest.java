@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.commerce.api.common.*;
@@ -21,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Real canonical stl_payment + real entity purchase SQL; no gateway or real bank accounts. */
 @EnabledIfEnvironmentVariable(named = "COMMERCE_MYSQL_URL", matches = ".+")
 class EntityPlanOfflineLedgerMysqlTest {
-  @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+  @TestConfiguration(proxyBeanMethods = false)
   @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
   static class MethodSecurity {}
 
@@ -123,7 +125,7 @@ class EntityPlanOfflineLedgerMysqlTest {
               ownership,
               e -> true,
               Clock.fixed(now, ZoneOffset.UTC),
-              "profile");
+              "profile", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.StoreOperationalReviewService.class));
       var owner = new Actor("U1", "E1", "S1", false);
       var ops = new Actor("ops", "E1", null, true);
       service.saveOffer(

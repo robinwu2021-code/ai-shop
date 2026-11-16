@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.platform.*;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.UserProvisionPort;
@@ -14,6 +16,27 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class OpsMerchantRegionalContactTest {
+    @Test void unavailableOwnerReturnsAnAccountSpecificErrorBeforeWritingAnApplication() {
+        var service = mock(OpsService.class);
+        var users = mock(UserProvisionPort.class);
+        var phones = mock(MarketPhonePolicyService.class);
+        var policy = new MarketPhonePolicyService.Policy("TW", "+886", true, false, false, true);
+        when(phones.instancePolicy()).thenReturn(policy);
+        when(phones.validateContact("TW", null)).thenReturn(policy);
+        when(users.registeredUserByEmail("missing@example.test")).thenReturn(Optional.empty());
+        var controller = new OpsMerchantApplyController(service, users, mock(AuditLogPort.class), phones);
+        try (var security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::currentUserNo).thenReturn("OPS");
+            var error = assertThrows(BizException.class, () -> controller.applyOnBehalf(
+                    new OpsMerchantApplyController.OnBehalfReq(null, "Entity", "ENTERPRISE",
+                            null, null, null, null, null, null, null, null, null, null,
+                            null, "missing@example.test", null)));
+            assertEquals(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE, error.errorCode());
+        }
+        verifyNoInteractions(service);
+        verify(users, never()).ensureUserByPhone(any());
+    }
+
     @Test void taiwanUsesRegisteredEmailAndRecordsTheContactWithoutProvisioningAPhoneIdentity() throws Exception {
         var service=mock(OpsService.class);var users=mock(UserProvisionPort.class);var phones=mock(MarketPhonePolicyService.class);
         when(phones.instancePolicy()).thenReturn(new MarketPhonePolicyService.Policy("TW","+886",true,false,false,true));

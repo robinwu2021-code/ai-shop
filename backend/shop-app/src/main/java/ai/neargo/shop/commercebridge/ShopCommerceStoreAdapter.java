@@ -167,6 +167,13 @@ WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND ? IN (%s) AND a.st
 
     record StoreFacts(StoreSnapshot snapshot, String storeStatus, String entityStatus) {}
 
+    /** Financial authorization retains persisted ownership after store/entity soft deletion. */
+    Optional<String> financialOwner(StoreRef store) {
+        return jdbc.queryForList(
+                "SELECT entity_no FROM mch_store WHERE tenant_no=? AND store_no=?",
+                String.class, store.tenantNo(), store.storeNo()).stream().findFirst();
+    }
+
     public Optional<StoreSnapshot> find(StoreRef store) {
         return details(store).map(StoreFacts::snapshot);
     }
@@ -189,10 +196,11 @@ WHERE s.tenant_no=? AND s.store_no=? AND s.deleted=0
     private static StoreFacts readFacts(String tenantNo, ResultSet rs) throws SQLException {
         var actual = new StoreRef(tenantNo, rs.getString(1));
         var model = rs.getString(4);
-        var active = "ACTIVE".equals(rs.getString(5))
-                && ("ACTIVE".equals(rs.getString(6)) || "PENDING_LICENSE".equals(rs.getString(6)));
+        var entityActive = "ACTIVE".equals(rs.getString(6)) || "PENDING_LICENSE".equals(rs.getString(6));
+        var status = entityActive && "ACTIVE".equals(rs.getString(5)) ? StoreStatus.ACTIVE
+                : entityActive && "PENDING_OPEN".equals(rs.getString(5)) ? StoreStatus.SETUP : StoreStatus.DISABLED;
         return new StoreFacts(new StoreSnapshot(actual, rs.getString(2), rs.getString(3),
-                active ? StoreStatus.ACTIVE : StoreStatus.DISABLED,
+                status,
                 model == null ? CommerceModel.LEGACY : CommerceModel.valueOf(model)),
                 rs.getString(5), rs.getString(6));
     }

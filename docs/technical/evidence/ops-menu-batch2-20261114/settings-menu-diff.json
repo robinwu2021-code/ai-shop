@@ -1,0 +1,461 @@
+{
+  "basis": "Local source before/after, not live database snapshot",
+  "beforeSectionCount": 13,
+  "afterSectionCount": 13,
+  "beforeLeafCount": 151,
+  "afterLeafCount": 151,
+  "settingsLeafCount": 25,
+  "movedFromOtherSections": 13,
+  "rows": [
+    {
+      "href": "/system?tab=market",
+      "before": {
+        "section": "iam",
+        "label": "市场货币",
+        "group": "外观语言",
+        "sort": 80
+      },
+      "after": {
+        "section": "iam",
+        "label": "地区配置",
+        "group": "基础配置",
+        "sort": 10
+      },
+      "perm": "system:param:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system",
+      "before": {
+        "section": "iam",
+        "label": "外观文案",
+        "group": "外观语言",
+        "sort": 70
+      },
+      "after": {
+        "section": "iam",
+        "label": "外观文案",
+        "group": "基础配置",
+        "sort": 20
+      },
+      "perm": "system:theme:update",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=storeIndustry",
+      "before": {
+        "section": "product",
+        "label": "门店行业",
+        "group": "经营范围",
+        "sort": 100
+      },
+      "after": {
+        "section": "iam",
+        "label": "门店行业",
+        "group": "基础配置",
+        "sort": 30
+      },
+      "perm": "commerce:catalog:read",
+      "gated": "commerce.catalog.enabled",
+      "ready": true
+    },
+    {
+      "href": "/system?tab=industry",
+      "before": {
+        "section": "product",
+        "label": "行业准入",
+        "group": "经营范围",
+        "sort": 110
+      },
+      "after": {
+        "section": "iam",
+        "label": "行业准入",
+        "group": "基础配置",
+        "sort": 40
+      },
+      "perm": "system:industry:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=authCode",
+      "before": {
+        "section": "product",
+        "label": "经营授权",
+        "group": "经营范围",
+        "sort": 120
+      },
+      "after": {
+        "section": "iam",
+        "label": "经营授权",
+        "group": "基础配置",
+        "sort": 50
+      },
+      "perm": "product:category:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=scope",
+      "before": {
+        "section": "product",
+        "label": "范围开关",
+        "group": "经营范围",
+        "sort": 130
+      },
+      "after": {
+        "section": "iam",
+        "label": "范围开关",
+        "group": "基础配置",
+        "sort": 60
+      },
+      "perm": "system:industry:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/iam",
+      "before": {
+        "section": "iam",
+        "label": "运营账号",
+        "group": "账号",
+        "sort": 10
+      },
+      "after": {
+        "section": "iam",
+        "label": "运营账号",
+        "group": "权限管理",
+        "sort": 70
+      },
+      "perm": "iam:staff:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/iam?tab=roles",
+      "before": {
+        "section": "iam",
+        "label": "角色权限",
+        "group": "账号",
+        "sort": 20
+      },
+      "after": {
+        "section": "iam",
+        "label": "角色权限",
+        "group": "权限管理",
+        "sort": 80
+      },
+      "perm": "iam:role:grant",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/iam?tab=menu",
+      "before": {
+        "section": "iam",
+        "label": "菜单顺序",
+        "group": "账号",
+        "sort": 30
+      },
+      "after": {
+        "section": "iam",
+        "label": "菜单配置",
+        "group": "权限管理",
+        "sort": 90
+      },
+      "perm": "iam:role:grant",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=flags",
+      "before": {
+        "section": "iam",
+        "label": "开关灰度",
+        "group": "运行配置",
+        "sort": 90
+      },
+      "after": {
+        "section": "iam",
+        "label": "系统参数",
+        "group": "系统维护",
+        "sort": 100
+      },
+      "perm": "system:param:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=storage",
+      "before": {
+        "section": "iam",
+        "label": "存储管理",
+        "group": "运行配置",
+        "sort": 100
+      },
+      "after": {
+        "section": "iam",
+        "label": "存储管理",
+        "group": "系统维护",
+        "sort": 110
+      },
+      "perm": "system:media:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=testPhone",
+      "before": {
+        "section": "iam",
+        "label": "测试账号",
+        "group": "运行配置",
+        "sort": 110
+      },
+      "after": {
+        "section": "iam",
+        "label": "测试账号",
+        "group": "系统维护",
+        "sort": 120
+      },
+      "perm": "system:testphone:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/system?tab=appVersion",
+      "before": {
+        "section": "iam",
+        "label": "应用版本",
+        "group": "运行配置",
+        "sort": 120
+      },
+      "after": {
+        "section": "iam",
+        "label": "应用版本",
+        "group": "系统维护",
+        "sort": 130
+      },
+      "perm": "system:param:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages",
+      "before": {
+        "section": "review",
+        "label": "通道总览",
+        "group": "触达",
+        "sort": 70
+      },
+      "after": {
+        "section": "iam",
+        "label": "消息配置",
+        "group": "系统维护",
+        "sort": 140
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=sms",
+      "before": {
+        "section": "review",
+        "label": "短信",
+        "group": "触达",
+        "sort": 80
+      },
+      "after": {
+        "section": "iam",
+        "label": "短信",
+        "group": "系统维护",
+        "sort": 150
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=mail",
+      "before": {
+        "section": "review",
+        "label": "邮件",
+        "group": "触达",
+        "sort": 90
+      },
+      "after": {
+        "section": "iam",
+        "label": "邮件",
+        "group": "系统维护",
+        "sort": 160
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=wxsub",
+      "before": {
+        "section": "review",
+        "label": "微信订阅",
+        "group": "触达",
+        "sort": 100
+      },
+      "after": {
+        "section": "iam",
+        "label": "微信订阅",
+        "group": "系统维护",
+        "sort": 170
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=apppush",
+      "before": {
+        "section": "review",
+        "label": "应用推送",
+        "group": "触达",
+        "sort": 110
+      },
+      "after": {
+        "section": "iam",
+        "label": "应用推送",
+        "group": "系统维护",
+        "sort": 180
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=inapp",
+      "before": {
+        "section": "review",
+        "label": "站内模板",
+        "group": "触达",
+        "sort": 120
+      },
+      "after": {
+        "section": "iam",
+        "label": "站内模板",
+        "group": "系统维护",
+        "sort": 190
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=routing",
+      "before": {
+        "section": "review",
+        "label": "场景通道",
+        "group": "触达",
+        "sort": 130
+      },
+      "after": {
+        "section": "iam",
+        "label": "场景通道",
+        "group": "系统维护",
+        "sort": 200
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/messages?tab=notifyLog",
+      "before": {
+        "section": "review",
+        "label": "发送记录",
+        "group": "触达",
+        "sort": 140
+      },
+      "after": {
+        "section": "iam",
+        "label": "发送记录",
+        "group": "系统维护",
+        "sort": 210
+      },
+      "perm": "message:template:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/iam?tab=audit",
+      "before": {
+        "section": "iam",
+        "label": "审计日志",
+        "group": "审计",
+        "sort": 40
+      },
+      "after": {
+        "section": "iam",
+        "label": "审计日志",
+        "group": "系统维护",
+        "sort": 220
+      },
+      "perm": "iam:audit:read",
+      "gated": null,
+      "ready": true
+    },
+    {
+      "href": "/jobs",
+      "before": {
+        "section": "iam",
+        "label": "任务日志",
+        "group": "定时任务",
+        "sort": 60
+      },
+      "after": {
+        "section": "iam",
+        "label": "运行监控",
+        "group": "系统维护",
+        "sort": 230
+      },
+      "perm": "system:job:read",
+      "gated": "shop.job.enabled",
+      "ready": true
+    },
+    {
+      "href": "/inventory?tab=link-health",
+      "before": {
+        "section": "inventory",
+        "label": "链路健康",
+        "group": "链路",
+        "sort": 40
+      },
+      "after": {
+        "section": "iam",
+        "label": "链路健康",
+        "group": "系统维护",
+        "sort": 240
+      },
+      "perm": "inventory:stock:read",
+      "gated": "shop.inventory.enabled",
+      "ready": true
+    },
+    {
+      "href": "/printing",
+      "before": {
+        "section": "iam",
+        "label": "打印运营",
+        "group": "打印运营",
+        "sort": 50
+      },
+      "after": {
+        "section": "iam",
+        "label": "打印运营",
+        "group": "系统维护",
+        "sort": 250
+      },
+      "perm": "ops:print:read",
+      "gated": "shop.print.enabled",
+      "ready": true
+    }
+  ]
+}

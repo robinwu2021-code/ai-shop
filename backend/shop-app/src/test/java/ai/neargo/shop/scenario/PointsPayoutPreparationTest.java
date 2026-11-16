@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -109,7 +111,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -3561,7 +3562,7 @@ class PointsPayoutPreparationTest {
         return new JdbcTemplate(dataSource);
     }
 
-    @Configuration
+    @TestConfiguration
     @Import({
         PointsFactPortImpl.class,
         PointsPostingDatabaseTest.Config.class,

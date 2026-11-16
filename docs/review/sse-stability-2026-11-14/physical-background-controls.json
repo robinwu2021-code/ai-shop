@@ -1,0 +1,12 @@
+{
+  "utc": "2026-11-14T03:44:58.283877+00:00",
+  "phase": "second payment submitted while normal app background",
+  "pid": "27163",
+  "launcherForeground": false,
+  "debugTestRunnerConnected": false,
+  "backgroundVerifiedByActivityEvents": true,
+  "lifecycleSource": "physical-background-lifecycle.log",
+  "pausedLocal": "2026-11-14 11:44:34.055",
+  "resumedLocal": "2026-11-14 11:45:04.287",
+  "note": "Single window snapshot did not identify launcher; authoritative activity pause/stop/resume records bracket the payment."
+}

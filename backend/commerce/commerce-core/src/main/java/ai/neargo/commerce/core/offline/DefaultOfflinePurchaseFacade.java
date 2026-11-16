@@ -147,7 +147,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             var account=accounts.lockSubscriptionAccount(q.store());
             // Merchants act only on a live store. Operators must still record or fence real money
             // after a store is suspended, so they are bound to the order's frozen store/entity instead.
-            if(a.subjectKind()==SubjectKind.ACCOUNT && (live.isEmpty() || live.get().status()!=StoreStatus.ACTIVE
+            if(a.subjectKind()==SubjectKind.ACCOUNT && (live.isEmpty() || (live.get().status()!=StoreStatus.ACTIVE && live.get().status()!=StoreStatus.SETUP)
                     || live.get().model()!=CommerceModel.STORE_V1 || !live.get().merchantNo().equals(account.entityNo())))
                 throw fail("STORE_UNAVAILABLE");
             String currency=operations.locate(a.tenantNo(),q.orderNo()).filter(l->q.store().equals(l.store()))

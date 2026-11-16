@@ -52,10 +52,13 @@ class EntityPlanPurchaseMysqlTest {
         "CREATE TABLE mch_entity(tenant_no varchar(32),entity_no varchar(64),owner_user_no"
             + " varchar(64),market varchar(8),deleted int,ownership_change_no varchar(64) DEFAULT"
             + " NULL,PRIMARY KEY(tenant_no,entity_no))");
-    db.execute(
-        "CREATE TABLE mch_store(tenant_no varchar(32),store_no varchar(64),entity_no"
-            + " varchar(64),status varchar(16),plan_suspended boolean,deleted int,version"
-            + " bigint,updated_at datetime,PRIMARY KEY(tenant_no,store_no))");
+    var baseline=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V1__baseline.sql"));
+    var storeDdl=java.util.regex.Pattern.compile("(?is)CREATE TABLE IF NOT EXISTS mch_store\\s*\\(.*?\\)\\s*ENGINE[^;]*;").matcher(baseline);
+    assertTrue(storeDdl.find());
+    db.execute(storeDdl.group().replace("utf8mb4_uca1400_ai_ci","utf8mb4_unicode_520_ci"));
+    db.execute("ALTER TABLE mch_store ADD COLUMN plan_suspended BOOLEAN NOT NULL DEFAULT 0");
+    for(var statement:Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V672__store_operational_review.sql")).replaceAll("(?m)^--.*$", "").split(";"))
+      if(!statement.isBlank())db.execute(statement);
     String old =
         Files.readString(
             Path.of("../shop-app/src/main/resources/db/migration/V150__merchant_plan.sql"));
@@ -77,14 +80,15 @@ class EntityPlanPurchaseMysqlTest {
     for (String s : creatorSql.replaceAll("(?m)^--.*$", "").split(";"))
       if (!s.isBlank()) db.execute(s);
     db.execute("ALTER TABLE mch_account ADD COLUMN display_name varchar(100) DEFAULT 'Owner'");
-    db.execute("ALTER TABLE mch_store ADD COLUMN name varchar(100) DEFAULT 'Store'");
+
     db.update(
         "INSERT INTO mch_entity(tenant_no,entity_no,owner_user_no,market,deleted)"
             + " VALUES('MAIN','E1','U1','TW',0),('MAIN','E2','U2','TW',0)");
     db.update(
         "INSERT INTO"
-            + " mch_store(tenant_no,store_no,entity_no,status,plan_suspended,deleted,version,updated_at)"
-            + " VALUES('MAIN','S1','E1','ACTIVE',0,0,0,NOW()),('MAIN','S2','E1','READONLY',1,0,0,NOW()),('MAIN','S3','E1','READONLY',0,0,0,NOW())");
+            + " mch_store(tenant_no,store_no,entity_no,status,plan_suspended,deleted,version,created_at,updated_at)"
+            + " VALUES('MAIN','S1','E1','ACTIVE',0,0,0,NOW(),NOW()),('MAIN','S2','E1','READONLY',1,0,0,NOW(),NOW()),('MAIN','S3','E1','READONLY',0,0,0,NOW(),NOW())");
+    db.update("UPDATE mch_store SET name='Store'");
     db.update(
         "INSERT INTO"
             + " sys_merchant_plan_def(plan_code,name,store_quota,staff_quota,cross_store_stats,enabled,created_at,updated_at)"
@@ -216,7 +220,7 @@ class EntityPlanPurchaseMysqlTest {
                 return Instant.ofEpochMilli(currentTime);
               }
             },
-            "P");
+            "P", new ai.neargo.shop.merchant.service.impl.StoreOperationalReviewServiceImpl(db,org.mockito.Mockito.mock(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),ownership,org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class)));
     svc.saveOffer(ops, new OfferEdit("PRO30", 0, "PRO", "成长月包", 30, new Money("TWD", 19900), true));
   }
 
@@ -252,6 +256,57 @@ class EntityPlanPurchaseMysqlTest {
         "BANK1",
         evidence(ops, order),
         "已核对银行流水");
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
+  void merchantAndAssistedPaidApplicationOpenOnlyExplicitTarget(boolean assisted) {
+    db.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='PENDING',operational_submitted_at=? WHERE store_no='S1'",now.toEpochMilli()-1);
+    String no=assisted?svc.assistedBuy(ops,new AssistedBuy("ASSIST-OPEN","PRO30",1,"S1","MA1")).orderNo():purchase();
+    assertEquals("PENDING_OPEN",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S1'",String.class));
+    claim(no);
+    assertEquals("PENDING_OPEN",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S1'",String.class));
+    var command=confirm(no);
+    var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+    try {
+      var first=pool.submit(()->svc.confirm(ops,no,command));
+      var second=pool.submit(()->svc.confirm(ops,no,command));
+      assertEquals("APPLIED",first.get().status());assertEquals("APPLIED",second.get().status());
+    } catch(Exception e){throw new AssertionError(e);} finally {pool.shutdownNow();}
+    assertEquals("APPROVED",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals(no,db.queryForObject("SELECT operational_order_no FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals(1,db.queryForObject("SELECT version FROM mch_store WHERE store_no='S1'",Integer.class));
+    assertNull(db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S2'",String.class));
+    assertEquals("ACTIVE",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S2'",String.class));
+    assertEquals("READONLY",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S3'",String.class));
+  }
+
+  @Test void quotaRestorationCannotBypassRejectedSiblingAdmission() {
+    db.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='PENDING',operational_submitted_at=?,plan_suspended=1 WHERE store_no='S1'",now.toEpochMilli()-1);
+    db.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='REJECTED' WHERE store_no='S2'");
+    var no=purchase();claim(no);svc.confirm(ops,no,confirm(no));
+    assertEquals("ACTIVE",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals("APPROVED",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals("PENDING_OPEN",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S2'",String.class));
+    assertEquals("REJECTED",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S2'",String.class));
+    assertEquals(0,db.queryForObject("SELECT plan_suspended FROM mch_store WHERE store_no='S2'",Integer.class));
+  }
+
+  @Test void quotaRestorationAndPaidFulfillmentCannotLiftGovernanceSuspension() {
+    db.update("UPDATE mch_store SET status='SUSPENDED',operational_review='PENDING',operational_submitted_at=?,plan_suspended=1 WHERE store_no='S1'",now.toEpochMilli()-1);
+    var no=purchase();claim(no);svc.confirm(ops,no,confirm(no));
+    assertEquals("SUSPENDED",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals("PENDING",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S1'",String.class));
+    assertNull(db.queryForObject("SELECT operational_order_no FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals(0,db.queryForObject("SELECT plan_suspended FROM mch_store WHERE store_no='S1'",Integer.class));
+  }
+
+  @Test void rejectedReceiptDoesNotOpenSubmittedStore() {
+    db.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='PENDING',operational_submitted_at=? WHERE store_no='S1'",now.toEpochMilli()-1);
+    var no=purchase();claim(no);mismatch=true;
+    assertEquals("UNMATCHED",svc.confirm(ops,no,confirm(no)).status());
+    assertEquals("PENDING_OPEN",db.queryForObject("SELECT status FROM mch_store WHERE store_no='S1'",String.class));
+    assertEquals("FREE",db.queryForObject("SELECT plan_code FROM mch_entity_plan",String.class));
   }
 
   @Test void directAssistedReceiptCanBeCorrectedAfterDefiniteBankRefusal(){var order=svc.assistedBuy(ops,new AssistedBuy("DIRECT-REFUSED","PRO30",1,"S1","MA1"));var c=new Confirm("DIRECT-A1",null,order.offer().price(),now,"USED-REFERENCE",evidence(ops,order.orderNo()),"bank checked");refusal="OFFLINE_BANK_REFERENCE_CONFLICT";assertEquals("REJECTED",svc.confirm(ops,order.orderNo(),c).status());assertEquals("AWAITING_PAYMENT",svc.order(ops,order.orderNo()).status());refusal=null;assertEquals("APPLIED",svc.confirm(ops,order.orderNo(),new Confirm("DIRECT-A2",null,c.amount(),c.paidAt(),"CORRECTED-REFERENCE",c.evidenceKey(),c.reason())).status());}

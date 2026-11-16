@@ -125,6 +125,11 @@ export interface DataTableProps<T> {
   rowProps?: (row: T) => React.HTMLAttributes<HTMLTableRowElement>;
   /** 关掉隔行底色（行底色已被 `rowClassName` 用来表达语义时）。见 `TBody.striped` */
   striped?: boolean;
+  /**
+   * 嵌在抽屉里的窄表：去掉 `min-w-[56rem]` 下限，按容器宽排。
+   * 页面级列表不要用 —— 那个下限是为了窄屏横滚而不是挤压列宽。
+   */
+  compact?: boolean;
 }
 
 // 通用列表表格：列配置 + 行数据 + 加载/空态。让新列表页保持一致、精简。
@@ -134,7 +139,7 @@ export function DataTable<T>({
   selectable, selectedKeys, onSelectedChange,
   expandable,
   sortKey, sortDir, onSortChange,
-  rowClassName, rowProps, striped = true,
+  rowClassName, rowProps, striped = true, compact,
 }: DataTableProps<T>) {
   const { t } = useI18n();
   const emptyText = empty ?? t("common.empty");
@@ -226,7 +231,7 @@ export function DataTable<T>({
         // 骨架要长成**这张表**的样子：表头照常渲染，占位格按各列宽度铺。
         // 原先是 6 条等宽灰条，加载完成时列宽一变整张表会跳一下，
         // 而且看不出这页在等什么 —— 现在表头先到，等的是哪几列一目了然。
-        <Table>
+        <Table className={compact ? "min-w-0" : undefined}>
           <THead>
             <TR>
               {selectable && <TH className="w-10" />}
@@ -252,7 +257,7 @@ export function DataTable<T>({
       ) : !rows || rows.length === 0 ? (
         <div className="p-4"><EmptyState title={emptyText} action={emptyAction} /></div>
       ) : (
-        <Table>
+        <Table className={compact ? "min-w-0" : undefined}>
           <THead>
             <TR>
               {selectable && (

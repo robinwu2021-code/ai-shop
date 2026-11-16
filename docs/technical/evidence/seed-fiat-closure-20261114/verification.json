@@ -1,0 +1,50 @@
+{
+  "seedEntityNo": "MUME02380159443150569472",
+  "seedOwnerUserNo": "UUMEU380162366651760640",
+  "originalSeedStores": 5,
+  "applicationNo": "MA261113R8RX11JGXD",
+  "testEntityName": "TEST ONLY 創科種子閉環驗收 20261113",
+  "realChannelDispatch": false,
+  "applicationStatus": "APPROVED",
+  "entityNo": "M261113MT4S4C2QGY",
+  "storeNo": "ST261113AEY13ZSKT0",
+  "initialEntitlement": "FREE / TWD / FOOD",
+  "platformMerchantNo": "PM2026111323480001",
+  "sourceLinkNo": "SL75D5B831D8364A71",
+  "profileRevisionNo": "PM2026111323480001-R1",
+  "sourceStatus": "VERIFIED",
+  "profileApprovalNo": "AP22E1C97FA5474357",
+  "profileStatus": "APPROVED",
+  "profileApprovalExecution": "PM2026111323480001-R1@v1",
+  "testChannelDraftNo": "OBB1B740C6BC394777",
+  "testChannelDraftIssue": "NEWEBPAY_TEST is shown as manual onboarding but no material editor is available in OPS",
+  "testChannelDraftStatus": "CANCELLED",
+  "onboardingNo": "OB78E5D407C7F34708",
+  "onboardingApprovalNo": "APF76500A26A3E4DCC",
+  "onboardingApprovalExecution": "OB78E5D407C7F34708-V1",
+  "sandboxRegistration": {
+    "status": "BLOCKED",
+    "reasonCode": "STATE_CONFLICT",
+    "channel": "NEWEBPAY_TEST",
+    "message": "Configured sandbox MID already belongs to another merchant; no account created for this merchant."
+  },
+  "nextTestMerchant": {
+    "merchantNo": "PM082A02251BC147CA",
+    "name": "TEST ONLY 創勢科技股份有限公司（獨立流程驗收）",
+    "sandboxAccountNo": "PM5731C712FF9145B8",
+    "channel": "NEWEBPAY_TEST",
+    "accountStatus": "ACTIVE",
+    "verificationStatus": "VERIFIED",
+    "product": "NEWEBPAY_TEST_CARD_ONETIME",
+    "storeNo": "ST261112G3TMS4DWM7",
+    "missing": "SANDBOX store-to-merchant association; existing association only PRODUCTION per read-only boundary proof"
+  },
+  "uiRelease": {
+    "commit": "42a0670a70e3ef1ed7180677ff02299d8731a525",
+    "testChannelCreateDisabled": true,
+    "navigateKeepsMerchantKeyword": true,
+    "registrationInlineError": "covered by incremental tests; live mutation not repeated after merchant scope clarification"
+  },
+  "paymentPerformed": false,
+  "refundPerformed": false
+}

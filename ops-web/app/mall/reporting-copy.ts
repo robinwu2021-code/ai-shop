@@ -1,0 +1,26 @@
+const zh = {
+  orders: "全局订单", claims: "核款队列", summary: "收入概况", details: "收入明细", all: "全部", model: "套餐类型", entity: "主体套餐", store: "门店套餐",
+  entityNo: "主体编号", storeNo: "门店编号", orderNo: "订单号", status: "订单状态", claimStatus: "申报状态", currency: "币种", query: "查询", refresh: "刷新",
+  previous: "上一页", next: "下一页", detail: "详情", amount: "应付金额", createdAt: "创建时间", createdFrom: "创建起始", createdTo: "创建截止（不含）", empty: "没有符合条件的记录。", close: "关闭", retry: "重试",
+  orderHint: "跨主体与门店查询授权范围内的商城订单。详情办理沿用原核款、退款和权益权限。",
+  claimHint: "按订单展示已提交或审核中的付款申报；进入详情核对凭证。申报不代表到账。",
+  cashHint: "按实际收款、退款成功时间统计整段查询区间，按币种、套餐类型和资金分类分别展示。净收入为收款减退款。",
+  cashCoverage: "每次查询使用独立账本快照；翻页期间可能有新入账，刷新可重新查询。金额仅代表平台商城已验证账本。",
+  from: "开始时间", to: "结束时间（不含）", invalidRange: "请选择有效区间，最长366天。", received: "收款金额", refunded: "退款金额", net: "净收入", receiptCount: "收款笔数", refundCount: "退款笔数",
+  classification: "资金分类", normal: "正常收款", unmatched: "异常收款", closed: "关单收款", direction: "方向", pay: "收款", refund: "退款", paymentNo: "资金单号", originalPaymentNo: "原收款单号", occurredAt: "成功时间", actualAmount: "实际金额",
+  denied: "没有该查询权限。", noDetail: "没有对应订单详情权限。", error: "查询失败，请重试。", included: "本次查询类型", missingStore: "历史订单缺少门店编号，无法打开原办理详情。",
+};
+export const REPORTING_COPY = {
+  zh,
+  en: { orders: "All orders", claims: "Verification queue", summary: "Income summary", details: "Income details", all: "All", model: "Plan type", entity: "Entity plans", store: "Store plans",
+    entityNo: "Entity number", storeNo: "Store number", orderNo: "Order number", status: "Order status", claimStatus: "Claim status", currency: "Currency", query: "Search", refresh: "Refresh",
+    previous: "Previous", next: "Next", detail: "Details", amount: "Payable", createdAt: "Created", createdFrom: "Created from", createdTo: "Created to (exclusive)", empty: "No matching records.", close: "Close", retry: "Retry",
+    orderHint: "Query authorized entity and store purchases. Verification, refunds and fulfillment keep their original permissions.",
+    claimHint: "Orders with submitted or reviewing payment claims. Open details to verify evidence. A claim does not prove receipt.",
+    cashHint: "Full-window totals use successful receipt and refund times, grouped by currency, plan type and classification. Net income is receipts minus refunds.",
+    cashCoverage: "Each query uses its own ledger snapshot. New entries may arrive while paging; refresh to query again. Only verified platform mall ledger facts are included.",
+    from: "From", to: "To (exclusive)", invalidRange: "Choose a valid range of up to 366 days.", received: "Receipts", refunded: "Refunds", net: "Net income", receiptCount: "Receipt count", refundCount: "Refund count",
+    classification: "Classification", normal: "Normal receipt", unmatched: "Unmatched receipt", closed: "Closed-order receipt", direction: "Direction", pay: "Receipt", refund: "Refund", paymentNo: "Payment number", originalPaymentNo: "Original receipt", occurredAt: "Succeeded", actualAmount: "Actual amount",
+    denied: "Read permission is required.", noDetail: "Order detail permission is required.", error: "Query failed. Please retry.", included: "Included plan types", missingStore: "This historical order has no store number; its original workflow cannot be opened.", },
+  "zh-TW": { ...zh, orders: "全域訂單", claims: "核款佇列", summary: "收入概況", details: "收入明細", model: "套餐類型", entity: "主體套餐", store: "門市套餐", entityNo: "主體編號", storeNo: "門市編號", orderNo: "訂單號", status: "訂單狀態", claimStatus: "申報狀態", currency: "幣別", query: "查詢", refresh: "重新整理", previous: "上一頁", next: "下一頁", detail: "詳情", amount: "應付金額", createdAt: "建立時間", createdFrom: "建立起始", createdTo: "建立截止（不含）", empty: "沒有符合條件的紀錄。", close: "關閉", retry: "重試", orderHint: "跨主體與門市查詢授權範圍內的商城訂單。詳情辦理沿用原核款、退款和權益權限。", claimHint: "依訂單展示已提交或審核中的付款申報；進入詳情核對憑證。申報不代表入帳。", cashHint: "依實際收款、退款成功時間統計整段查詢區間，依幣別、套餐類型和資金分類分別展示。淨收入為收款減退款。", cashCoverage: "每次查詢使用獨立帳本快照；翻頁期間可能有新入帳，重新整理可重新查詢。金額僅代表平台商城已驗證帳本。", from: "開始時間", to: "結束時間（不含）", invalidRange: "請選擇有效區間，最長366天。", received: "收款金額", refunded: "退款金額", net: "淨收入", receiptCount: "收款筆數", refundCount: "退款筆數", classification: "資金分類", normal: "正常收款", unmatched: "異常收款", closed: "關單收款", direction: "方向", pay: "收款", refund: "退款", paymentNo: "資金單號", originalPaymentNo: "原收款單號", occurredAt: "成功時間", actualAmount: "實際金額", denied: "沒有該查詢權限。", noDetail: "沒有對應訂單詳情權限。", error: "查詢失敗，請重試。", included: "本次查詢類型", missingStore: "歷史訂單缺少門市編號，無法開啟原辦理詳情。" },
+} as const;

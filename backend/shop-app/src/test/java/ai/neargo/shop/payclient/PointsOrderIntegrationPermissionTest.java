@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -109,7 +111,7 @@ class PointsOrderIntegrationPermissionTest {
                 "B", admission, OrderPointsBindingService.Phase.BOUND, 0, "H");
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableMethodSecurity
     static class Config {
         @Bean

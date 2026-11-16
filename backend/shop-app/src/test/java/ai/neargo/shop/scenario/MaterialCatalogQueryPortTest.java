@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -28,7 +30,6 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -194,7 +195,7 @@ class MaterialCatalogQueryPortTest {
             return invocation.proceed();
         }
     }
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableTransactionManagement(proxyTargetClass = true)
     @Import({InventoryDataSourceConfig.class, InventoryAclServiceImpl.class, LocationServiceImpl.class,
             MaterialCatalogQueryPortImpl.class})

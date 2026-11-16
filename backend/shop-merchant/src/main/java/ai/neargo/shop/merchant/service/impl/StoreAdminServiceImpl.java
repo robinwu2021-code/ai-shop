@@ -251,6 +251,10 @@ public class StoreAdminServiceImpl implements StoreAdminService {
          * 平台强制下线（SUSPENDED）商家不能自救：解除只能由平台做（V96）。
          * 不拦的话，处置就是「商家点两下启用」能绕开的东西。
          */
+        if (MchStore.PENDING_OPEN.equals(s.getStatus()) || "PENDING".equals(s.getOperationalReview())
+                || "REJECTED".equals(s.getOperationalReview())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         if (MchStore.SUSPENDED.equals(s.getStatus())) {
             throw BizException.of(ErrorCode.STORE_SUSPENDED_BY_PLATFORM);
         }

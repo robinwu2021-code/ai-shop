@@ -1,0 +1,42 @@
+id,targetPath,alignment,sourceReferences,sourcePointCodes,sourceMenuPermissions,deliveryBatch,note
+T01,平台设置/基础配置/地区配置,整合,"[""shop:/system?tab=market"", ""shop:/system""]","[""OPS_SYSTEM"", ""OPS_SYSTEM__TAB_MARKET""]","[""system:param:read"", ""system:theme:update""]",2,有市场货币/外观语言页面；方案中的地区、默认语言和单位需核对字段并整合。
+T02,平台设置/基础配置/业务配置,整合,"[""shop:/system?tab=storeIndustry"", ""shop:/system?tab=authCode"", ""shop:/system?tab=scope"", ""shop:/products""]","[""OPS_PRODUCT"", ""OPS_SYSTEM__TAB_STOREINDUSTRY"", ""OPS_SYSTEM__TAB_AUTHCODE"", ""OPS_SYSTEM__TAB_SCOPE""]","[""commerce:catalog:read"", ""product:category:read"", ""system:industry:read""]",2,行业、授权字典、经营范围及商品规则分散；无同名统一入口。
+T03,平台设置/渠道费率/支付渠道,待接,"[""pay:/ops/channels""]",[],[],6,独立支付OP03已部署；尚不是ai-shop设置下的统一入口。
+T04,平台设置/渠道费率/费率配置,整合,"[""shop:/finance?tab=rates"", ""shop:/finance?tab=pay-channels"", ""pay:/ops/channel-costs"", ""pay:/ops/fee-plans""]","[""OPS_FINANCE__TAB_RATES"", ""OPS_FINANCE__TAB_PAY_CHANNELS""]","[""finance:rate:update""]",6,经营服务费率和旧通道费率有入口；独立支付OP05/OP06不在当前live页面中，不能当完整费率配置已上线。
+T05,平台设置/权限管理/运营账号,已有,"[""shop:/iam""]","[""OPS_IAM""]","[""iam:staff:read""]",2,线上已有运营账号。
+T06,平台设置/权限管理/角色权限,已有,"[""shop:/iam?tab=roles""]","[""OPS_IAM__TAB_ROLES""]","[""iam:role:grant""]",2,线上已有角色权限。
+T07,平台设置/权限管理/数据范围,整合,"[""shop:/iam"", ""pay:/system/data-scope""]","[""OPS_IAM""]","[""iam:staff:read""]",2,员工范围配置与独立支付SY04均有相关能力；没有统一覆盖两域的同名ai-shop页面。
+T08,平台设置/权限管理/菜单配置,整合,"[""shop:/iam?tab=menu""]","[""OPS_IAM__TAB_MENU""]","[""iam:role:grant""]",2,已有菜单顺序/文案等配置；新五模块三级结构仍未实现。
+T09,平台设置/系统维护/系统参数,整合,"[""shop:/system"", ""shop:/system?tab=flags"", ""shop:/system?tab=storage"", ""shop:/system?tab=appVersion""]","[""OPS_SYSTEM"", ""OPS_SYSTEM__TAB_FLAGS"", ""OPS_SYSTEM__TAB_STORAGE"", ""OPS_SYSTEM__TAB_APPVERSION""]","[""system:media:read"", ""system:param:read"", ""system:theme:update""]",2,多个已有配置页需聚合，不是一项已存在的统一入口。
+T10,平台设置/系统维护/消息配置,整合,"[""shop:/messages""]","[""OPS_MESSAGE""]","[""message:template:read""]",2,已有通道总览及短信/邮件等分散页；目标为平台消息配置聚合。
+T11,平台设置/系统维护/审计日志,已有,"[""shop:/iam?tab=audit""]","[""OPS_IAM__TAB_AUDIT""]","[""iam:audit:read""]",2,线上已有审计日志。
+T12,平台设置/系统维护/运行监控,整合,"[""shop:/jobs"", ""shop:/inventory?tab=link-health""]","[""OPS_INVENTORY__TAB_LINK_HEALTH"", ""OPS_JOBS""]","[""inventory:stock:read"", ""system:job:read""]",2,已有任务日志、库存链路等局部监控，无统一平台运行监控页。
+T13,平台商城/套餐方案/主体套餐,已有,"[""shop:/merchants?tab=plans"", ""shop:/merchants?tab=plan-defs""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_MERCHANT__TAB_PLAN_DEFS""]","[""merchant:merchant:read""]",3,可对应套餐授予/档位定义及现有主体套餐工作区，不代表新导航已改名。
+T14,平台商城/套餐方案/门店套餐,已有,"[""shop:/mall""]","[""OPS_COMMERCE""]","[""commerce:catalog:read""]",3,可对应现有套餐管理。
+T15,平台商城/商品目录/平台商品,已有,"[""shop:/mall?tab=products""]","[""OPS_COMMERCE__TAB_PRODUCTS""]","[""commerce:catalog:read""]",3,可对应服务商品；不是经营门店商品。
+T16,平台商城/商品目录/商品分类,已有,"[""shop:/mall?tab=categories""]","[""OPS_COMMERCE__TAB_CATEGORIES""]","[""commerce:catalog:read""]",3,可对应服务分类；不是/products中的经营商品分类。
+T17,平台商城/权益管理/权益定义,整合,"[""shop:/merchants?tab=plan-defs"", ""shop:/mall?tab=products""]","[""OPS_MERCHANT__TAB_PLAN_DEFS"", ""OPS_COMMERCE__TAB_PRODUCTS""]","[""commerce:catalog:read"", ""merchant:merchant:read""]",3,权益定义分布在套餐档位/商品等配置中，未见独立统一菜单。
+T18,平台商城/权益管理/订阅权益,已有,"[""shop:/mall?tab=sources""]","[""OPS_COMMERCE__TAB_SOURCES""]","[""commerce:subscription:read""]",3,线上已有订阅权益。
+T19,平台商城/商城订单/购买订单,已有,"[""shop:/mall?tab=orders""]","[""OPS_COMMERCE__TAB_ORDERS""]","[""commerce:mall:order:read""]",3,线上已有购买订单；主体套餐订单仍在对应主体套餐工作区。
+T20,平台商城/商城订单/运营代购,整合,"[""shop:/mall?tab=assisted"", ""shop:/merchants?tab=plans""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_COMMERCE__TAB_ASSISTED""]","[""commerce:mall:assisted:purchase"", ""merchant:merchant:read""]",3,门店套餐有运营代购入口，主体套餐也有对应办理；两套统一入口仍需整合。
+T21,平台商城/商城订单/核款审核,整合,"[""shop:/mall?tab=claims"", ""shop:/merchants?tab=plans""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_COMMERCE__TAB_CLAIMS""]","[""commerce:mall:offline:review"", ""merchant:merchant:read""]",3,商城线下核款已有，主体套餐确认在对应工作区；不能当成新统一核款页已完成。
+T22,平台商城/商城订单/退款处理,整合,"[""shop:/mall?tab=orders"", ""shop:/merchants?tab=plans""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_COMMERCE__TAB_ORDERS""]","[""commerce:mall:order:read"", ""merchant:merchant:read""]",3,对应订单详情已有退款等办理；目标全局退款入口待聚合。
+T23,平台商城/收入统计/收入概况,整合,"[""shop:/mall?tab=orders"", ""shop:/mall?tab=claims"", ""shop:/merchants?tab=plans""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_COMMERCE__TAB_ORDERS"", ""OPS_COMMERCE__TAB_CLAIMS""]","[""commerce:mall:offline:review"", ""commerce:mall:order:read"", ""merchant:merchant:read""]",3,聚合平台套餐/商品销售的收款、退款、净收款；现有商城/主体套餐订单可作来源，独立收入概况尚未核对上线。
+T24,平台商城/收入统计/收入明细,整合,"[""shop:/mall?tab=orders"", ""shop:/mall?tab=claims"", ""shop:/merchants?tab=plans""]","[""OPS_MERCHANT__TAB_PLANS"", ""OPS_COMMERCE__TAB_ORDERS"", ""OPS_COMMERCE__TAB_CLAIMS""]","[""commerce:mall:offline:review"", ""commerce:mall:order:read"", ""merchant:merchant:read""]",3,按平台商城订单追溯收款及退款，不能以门店营业额或全部支付交易金额替代；新收入明细需整合。
+T25,平台商城/销售设置/收款配置,已有,"[""shop:/mall?tab=collection""]","[""OPS_COMMERCE__TAB_COLLECTION""]","[""commerce:collection:profile:read""]",3,线上已有平台商城收款配置；本轮未核查收款资料或资金流程。
+T26,客户管理/数据概览/经营概况,整合,"[""shop:/""]",[],[],5,旧首页有概览；新用户/门店/连锁只读统计范围和口径需整合，不能把整项标成现成。
+T27,客户管理/用户会员/用户数据,待建,[],[],[],5,需覆盖未建店SaaS账号的只读统计与明细；会员、测试身份或运营员工不能代替。
+T28,客户管理/用户会员/会员列表,整合,"[""shop:/members""]","[""OPS_MEMBER""]","[""member:member:read""]",5,复用现有会员名单来源；用户已确认门店/连锁会员统一属于平台会员，需展示真实来源门店及关联关系，字段、去重及筛选尚未验收。
+T29,客户管理/门店连锁/门店列表,整合,"[""shop:/merchants?tab=stores""]","[""OPS_MERCHANT__TAB_STORES""]","[""merchant:merchant:read""]",4,可复用门店档案来源，需整合审核、套餐代购及经营详情。业务规则已确认：套餐购买并履约成功后自动通过对应门店审核并开通；实现和验收尚未进行。
+T30,客户管理/门店连锁/连锁数据,待建,[],[],[],5,需补平台只读连锁/品牌/关联门店统计接口与页面，不建设连锁运营写入功能。
+T31,商户管理/商户资料/商户列表,待接,"[""pay:/merchants""]",[],[],6,支付端现有商户工作区可作入口来源；新方案还需核对平台代建、代填、草稿、提交和补件动作的API及权限，不宣称动作已全接通。
+T32,商户管理/审核办理/商户审核,待接,"[""pay:/merchants/onboarding-review""]",[],[],6,独立支付ME03开通审核工作区已部署；统一平台入口尚需接入。
+T33,商户管理/审核办理/资料变更,未开放,"[""pay:/merchants/change-review""]",[],[],6,ME04敏感变更审核页不在当前live部署中；不否认现有商户工作区可有资料修订操作。
+T34,商户管理/收款开通/渠道进件,待接,"[""pay:/merchants"", ""pay:/merchants/onboarding-review""]",[],[],6,已部署支付工作区有相关进件办理，不是独立ai-shop子菜单；本轮未重验全流程。
+T35,商户管理/收款开通/收款绑定,待接,"[""pay:/merchants/stores""]",[],[],6,可对应支付门店ME02工作区内收款/绑定内容，不是独立ai-shop子菜单；本轮未验收全部渠道绑定。
+T36,订单中心/经营订单/订单监控,已有,"[""shop:/orders""]","[""OPS_ORDER""]","[""order:order:read""]",7,可对应订单检索；全业态和数据范围不在本轮验收范围。
+T37,订单中心/经营订单/异常处置,已有,"[""shop:/orders?tab=exception""]","[""OPS_ORDER__TAB_EXCEPTION""]","[""order:order:modify""]",7,可对应异常订单入口；本轮未执行处置动作。
+T38,订单中心/经营订单/售后处理,已有,"[""shop:/after-sales"", ""shop:/after-sales?tab=intervene""]","[""OPS_AFTERSALE"", ""OPS_AFTERSALE__TAB_INTERVENE""]","[""aftersale:ticket:handle"", ""aftersale:ticket:read""]",7,可对应售后工单及平台裁决；本轮未执行售后动作。
+T39,订单中心/支付记录/支付订单,待接,"[""pay:/trade/payments""]",[],[],7,独立支付TR01已部署；ai-shop/pay-ops/orders仍是旧兼容入口，不能混同。
+T40,订单中心/支付记录/交易流水,未开放,"[""pay:/trade/attempts""]",[],[],7,TR02已登记源码，但当前live静态页面未开放；旧请求日志不能代替交易流水。
+T41,订单中心/支付记录/退款记录,未开放,"[""pay:/trade/refunds""]",[],[],7,TR03独立页未进入当前live静态部署；支付订单内可能已有退款相关操作，不等于独立退款记录页已开放。

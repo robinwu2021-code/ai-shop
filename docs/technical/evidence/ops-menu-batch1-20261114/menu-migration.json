@@ -1,0 +1,6275 @@
+{
+  "meta": {
+    "date": "2026-11-14",
+    "scope": "BATCH1_DOCUMENTATION_AND_SOURCE_AUDIT",
+    "sourceCommit": "4148e159adf33b012c7fdfd9ee9f0dbb39c6ef01",
+    "nearPaySourceCommit": "90895ac4daf183a9d51cf4835da2b43b4ded31b3",
+    "liveMenuEvidence": "../ops-platform-menu-proposal-20261114/live-menu-registry-and-static-20261114.json",
+    "liveMenuEvidenceReused": true,
+    "newLiveQueriesExecuted": false,
+    "roleMatrixBasis": "SOURCE_FALLBACK_ONLY_NOT_CURRENT_DB_GRANTS",
+    "runtimeRoleGrantAndScopeVerification": "REQUIRED_BEFORE_ROLLOUT",
+    "runtimeChanged": false,
+    "deploymentExecuted": false,
+    "sourceFiles": [
+      {
+        "path": "ops-web/lib/nav.ts",
+        "sha256": "d293a33fea131dbd0d57292d59965a7c04ac9de545f2fc8930238204b26f4b90"
+      },
+      {
+        "path": "ops-web/lib/permissions.ts",
+        "sha256": "2bc9764afc5d0e25f2a3822e370f4e29c815d01f0697012a2627e42cf2f3695b"
+      },
+      {
+        "path": "ops-web/lib/perm-map.ts",
+        "sha256": "4d64f08383900101300f4aeb90932806bd5db236474b2cb41a140a4f4e3d083c"
+      },
+      {
+        "path": "ops-web/lib/stores/server-menu.ts",
+        "sha256": "7c4abab37b60f88ca005b0d7d4b6d1aae225be77b045495933c870c5a4811943"
+      },
+      {
+        "path": "ops-web/lib/api/https/dashboard.ts",
+        "sha256": "826c9bcc6d1c812f99702672c8834c47cbea54fee17e4082dbb6bb4a490ed3f9"
+      },
+      {
+        "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java",
+        "sha256": "4a1ee6b54ea4b90091007f091bb1d6f0e4996fccf06e8ba8e4b25041c682bb59"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/perm/RolePermResolver.java",
+        "sha256": "cb5673cfe9e914871bd8ccd7f0af1e969a8803848e22eae67811d04cd86e3785"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/perm/impl/PermConfigServiceImpl.java",
+        "sha256": "b0de2334a9942a60852856eac56c9d2201656341e4942b4e3495fdbc4077fd2c"
+      },
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V625__commerce_mall_permissions.sql",
+        "sha256": "a7ab2f2a67c4272c346518be8140ebdb42b3a6443f9429f518b82239e88272cb"
+      },
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V627__commerce_offline_permissions.sql",
+        "sha256": "12842e6b4babb3e96f95d0a55d107040852bb14446a7c3110924fd62d56ee7a3"
+      },
+      {
+        "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsMerchantPlanController.java",
+        "sha256": "0a7139f41470695a7220ec72385759771f2fe596b3e1024cb8f3f80d33644d3f"
+      },
+      {
+        "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineOpsHttpController.java",
+        "sha256": "94e983ce7d8803782830cdab9856e82f3eae1a1877a7f67217be83d90a4f6d41"
+      },
+      {
+        "path": "scripts/perm-endpoint-map.mjs",
+        "sha256": "88297d1c8b91f823d4396123ad3bd8df34c690758b160aaad82d3ea3d3bf94b8"
+      },
+      {
+        "path": "deploy/ume/ops-navigation/verify_menu_migration.py",
+        "sha256": "be46f1ef6f65e482fea5ceb5349a83985ac042345a13b5d4e6d05b895e5294b5"
+      },
+      {
+        "path": "ops-web/lib/points-ops-routes.ts",
+        "sha256": "fa1fe495f1645b9d3bd788e351e7b7cd62b6efc57597a8b60b9704e40851acf9"
+      },
+      {
+        "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+        "sha256": "426d9de752f217324db06f3dd284786ace8af01b848795e89302cf10f15d4c59"
+      },
+      {
+        "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsEntityPlanRefundController.java",
+        "sha256": "becdc49fdabcdf0d2a750a57084188bd681ccafd9b56f73e8a99d9e6b2d20bef"
+      }
+    ],
+    "oldMenuCount": 158,
+    "targetCount": 41,
+    "dispositionCounts": {
+      "DETAIL_CANDIDATE": 16,
+      "REUSE_SOURCE": 34,
+      "KEEP_PENDING_SCOPE": 83,
+      "SETTINGS_CANDIDATE": 8,
+      "ORDER_DETAIL_CANDIDATE": 5,
+      "KEEP_PAYMENT_COMPAT": 8,
+      "KEEP_DISABLED": 4
+    },
+    "nearPaySourceFiles": [
+      {
+        "path": "ops-web/lib/catalog.ts",
+        "sha256": "20d9c8731090c3d73904d96d9752f016950e3732cb2ef38a6fbcdcc82666c8e0"
+      },
+      {
+        "path": "backend/pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/access/PayPermissionEvaluator.java",
+        "sha256": "c88d0364d13e15245d9f74be5cd4fdedd3e978cda2d4f00e39bf28d0a1d98448"
+      },
+      {
+        "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsMerchantController.java",
+        "sha256": "e4e62cb62849d6a34f7837e87dcc6d242047a6a72fd801982aa8f6028fb82e1f"
+      },
+      {
+        "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsStoreBindingController.java",
+        "sha256": "da32e11aa81fd139ef311c6c1f286f741693977d61facd0a4b5b33e3936cf425"
+      },
+      {
+        "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsV2.java",
+        "sha256": "c0a48272b991b70527299bea33037a83f8bde6ef7951f7b072227b15e39ff22f"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "id": "T01",
+      "targetPath": "平台设置/基础配置/地区配置",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/system?tab=market",
+        "shop:/system"
+      ],
+      "sourcePointCodes": [
+        "OPS_SYSTEM",
+        "OPS_SYSTEM__TAB_MARKET"
+      ],
+      "sourceMenuPermissions": [
+        "system:param:read",
+        "system:theme:update"
+      ],
+      "note": "有市场货币/外观语言页面；方案中的地区、默认语言和单位需核对字段并整合。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T02",
+      "targetPath": "平台设置/基础配置/业务配置",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/system?tab=storeIndustry",
+        "shop:/system?tab=authCode",
+        "shop:/system?tab=scope",
+        "shop:/products"
+      ],
+      "sourcePointCodes": [
+        "OPS_PRODUCT",
+        "OPS_SYSTEM__TAB_STOREINDUSTRY",
+        "OPS_SYSTEM__TAB_AUTHCODE",
+        "OPS_SYSTEM__TAB_SCOPE"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:catalog:read",
+        "product:category:read",
+        "system:industry:read"
+      ],
+      "note": "行业、授权字典、经营范围及商品规则分散；无同名统一入口。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T03",
+      "targetPath": "平台设置/渠道费率/支付渠道",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/ops/channels"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "独立支付OP03已部署；尚不是ai-shop设置下的统一入口。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T04",
+      "targetPath": "平台设置/渠道费率/费率配置",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/finance?tab=rates",
+        "shop:/finance?tab=pay-channels",
+        "pay:/ops/channel-costs",
+        "pay:/ops/fee-plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_FINANCE__TAB_RATES",
+        "OPS_FINANCE__TAB_PAY_CHANNELS"
+      ],
+      "sourceMenuPermissions": [
+        "finance:rate:update"
+      ],
+      "note": "经营服务费率和旧通道费率有入口；独立支付OP05/OP06不在当前live页面中，不能当完整费率配置已上线。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T05",
+      "targetPath": "平台设置/权限管理/运营账号",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/iam"
+      ],
+      "sourcePointCodes": [
+        "OPS_IAM"
+      ],
+      "sourceMenuPermissions": [
+        "iam:staff:read"
+      ],
+      "note": "线上已有运营账号。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T06",
+      "targetPath": "平台设置/权限管理/角色权限",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/iam?tab=roles"
+      ],
+      "sourcePointCodes": [
+        "OPS_IAM__TAB_ROLES"
+      ],
+      "sourceMenuPermissions": [
+        "iam:role:grant"
+      ],
+      "note": "线上已有角色权限。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T07",
+      "targetPath": "平台设置/权限管理/数据范围",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/iam",
+        "pay:/system/data-scope"
+      ],
+      "sourcePointCodes": [
+        "OPS_IAM"
+      ],
+      "sourceMenuPermissions": [
+        "iam:staff:read"
+      ],
+      "note": "员工范围配置与独立支付SY04均有相关能力；没有统一覆盖两域的同名ai-shop页面。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T08",
+      "targetPath": "平台设置/权限管理/菜单配置",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/iam?tab=menu"
+      ],
+      "sourcePointCodes": [
+        "OPS_IAM__TAB_MENU"
+      ],
+      "sourceMenuPermissions": [
+        "iam:role:grant"
+      ],
+      "note": "已有菜单顺序/文案等配置；新五模块三级结构仍未实现。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T09",
+      "targetPath": "平台设置/系统维护/系统参数",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/system",
+        "shop:/system?tab=flags",
+        "shop:/system?tab=storage",
+        "shop:/system?tab=appVersion"
+      ],
+      "sourcePointCodes": [
+        "OPS_SYSTEM",
+        "OPS_SYSTEM__TAB_FLAGS",
+        "OPS_SYSTEM__TAB_STORAGE",
+        "OPS_SYSTEM__TAB_APPVERSION"
+      ],
+      "sourceMenuPermissions": [
+        "system:media:read",
+        "system:param:read",
+        "system:theme:update"
+      ],
+      "note": "多个已有配置页需聚合，不是一项已存在的统一入口。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T10",
+      "targetPath": "平台设置/系统维护/消息配置",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/messages"
+      ],
+      "sourcePointCodes": [
+        "OPS_MESSAGE"
+      ],
+      "sourceMenuPermissions": [
+        "message:template:read"
+      ],
+      "note": "已有通道总览及短信/邮件等分散页；目标为平台消息配置聚合。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T11",
+      "targetPath": "平台设置/系统维护/审计日志",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/iam?tab=audit"
+      ],
+      "sourcePointCodes": [
+        "OPS_IAM__TAB_AUDIT"
+      ],
+      "sourceMenuPermissions": [
+        "iam:audit:read"
+      ],
+      "note": "线上已有审计日志。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T12",
+      "targetPath": "平台设置/系统维护/运行监控",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/jobs",
+        "shop:/inventory?tab=link-health"
+      ],
+      "sourcePointCodes": [
+        "OPS_INVENTORY__TAB_LINK_HEALTH",
+        "OPS_JOBS"
+      ],
+      "sourceMenuPermissions": [
+        "inventory:stock:read",
+        "system:job:read"
+      ],
+      "note": "已有任务日志、库存链路等局部监控，无统一平台运行监控页。",
+      "deliveryBatch": 2,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T13",
+      "targetPath": "平台商城/套餐方案/主体套餐",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/merchants?tab=plans",
+        "shop:/merchants?tab=plan-defs"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_MERCHANT__TAB_PLAN_DEFS"
+      ],
+      "sourceMenuPermissions": [
+        "merchant:merchant:read"
+      ],
+      "note": "可对应套餐授予/档位定义及现有主体套餐工作区，不代表新导航已改名。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T14",
+      "targetPath": "平台商城/套餐方案/门店套餐",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:catalog:read"
+      ],
+      "note": "可对应现有套餐管理。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T15",
+      "targetPath": "平台商城/商品目录/平台商品",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall?tab=products"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE__TAB_PRODUCTS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:catalog:read"
+      ],
+      "note": "可对应服务商品；不是经营门店商品。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T16",
+      "targetPath": "平台商城/商品目录/商品分类",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall?tab=categories"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE__TAB_CATEGORIES"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:catalog:read"
+      ],
+      "note": "可对应服务分类；不是/products中的经营商品分类。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T17",
+      "targetPath": "平台商城/权益管理/权益定义",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/merchants?tab=plan-defs",
+        "shop:/mall?tab=products"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLAN_DEFS",
+        "OPS_COMMERCE__TAB_PRODUCTS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:catalog:read",
+        "merchant:merchant:read"
+      ],
+      "note": "权益定义分布在套餐档位/商品等配置中，未见独立统一菜单。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T18",
+      "targetPath": "平台商城/权益管理/订阅权益",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall?tab=sources"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE__TAB_SOURCES"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:subscription:read"
+      ],
+      "note": "线上已有订阅权益。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T19",
+      "targetPath": "平台商城/商城订单/购买订单",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall?tab=orders"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE__TAB_ORDERS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:order:read"
+      ],
+      "note": "线上已有购买订单；主体套餐订单仍在对应主体套餐工作区。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T20",
+      "targetPath": "平台商城/商城订单/运营代购",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/mall?tab=assisted",
+        "shop:/merchants?tab=plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_COMMERCE__TAB_ASSISTED"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:assisted:purchase",
+        "merchant:merchant:read"
+      ],
+      "note": "门店套餐有运营代购入口，主体套餐也有对应办理；两套统一入口仍需整合。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T21",
+      "targetPath": "平台商城/商城订单/核款审核",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/mall?tab=claims",
+        "shop:/merchants?tab=plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_COMMERCE__TAB_CLAIMS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:offline:review",
+        "merchant:merchant:read"
+      ],
+      "note": "商城线下核款已有，主体套餐确认在对应工作区；不能当成新统一核款页已完成。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T22",
+      "targetPath": "平台商城/商城订单/退款处理",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/mall?tab=orders",
+        "shop:/merchants?tab=plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_COMMERCE__TAB_ORDERS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:order:read",
+        "merchant:merchant:read"
+      ],
+      "note": "对应订单详情已有退款等办理；目标全局退款入口待聚合。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T23",
+      "targetPath": "平台商城/收入统计/收入概况",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/mall?tab=orders",
+        "shop:/mall?tab=claims",
+        "shop:/merchants?tab=plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_COMMERCE__TAB_ORDERS",
+        "OPS_COMMERCE__TAB_CLAIMS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:offline:review",
+        "commerce:mall:order:read",
+        "merchant:merchant:read"
+      ],
+      "note": "聚合平台套餐/商品销售的收款、退款、净收款；现有商城/主体套餐订单可作来源，独立收入概况尚未核对上线。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T24",
+      "targetPath": "平台商城/收入统计/收入明细",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/mall?tab=orders",
+        "shop:/mall?tab=claims",
+        "shop:/merchants?tab=plans"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_PLANS",
+        "OPS_COMMERCE__TAB_ORDERS",
+        "OPS_COMMERCE__TAB_CLAIMS"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:mall:offline:review",
+        "commerce:mall:order:read",
+        "merchant:merchant:read"
+      ],
+      "note": "按平台商城订单追溯收款及退款，不能以门店营业额或全部支付交易金额替代；新收入明细需整合。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T25",
+      "targetPath": "平台商城/销售设置/收款配置",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/mall?tab=collection"
+      ],
+      "sourcePointCodes": [
+        "OPS_COMMERCE__TAB_COLLECTION"
+      ],
+      "sourceMenuPermissions": [
+        "commerce:collection:profile:read"
+      ],
+      "note": "线上已有平台商城收款配置；本轮未核查收款资料或资金流程。",
+      "deliveryBatch": 3,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T26",
+      "targetPath": "客户管理/数据概览/经营概况",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "旧首页有概览；新用户/门店/连锁只读统计范围和口径需整合，不能把整项标成现成。",
+      "deliveryBatch": 5,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T27",
+      "targetPath": "客户管理/用户会员/用户数据",
+      "alignment": "待建",
+      "sourceReferences": [],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "需覆盖未建店SaaS账号的只读统计与明细；会员、测试身份或运营员工不能代替。",
+      "deliveryBatch": 5,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T28",
+      "targetPath": "客户管理/用户会员/会员列表",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/members"
+      ],
+      "sourcePointCodes": [
+        "OPS_MEMBER"
+      ],
+      "sourceMenuPermissions": [
+        "member:member:read"
+      ],
+      "note": "复用现有会员名单来源；用户已确认门店/连锁会员统一属于平台会员，需展示真实来源门店及关联关系，字段、去重及筛选尚未验收。",
+      "deliveryBatch": 5,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T29",
+      "targetPath": "客户管理/门店连锁/门店列表",
+      "alignment": "整合",
+      "sourceReferences": [
+        "shop:/merchants?tab=stores"
+      ],
+      "sourcePointCodes": [
+        "OPS_MERCHANT__TAB_STORES"
+      ],
+      "sourceMenuPermissions": [
+        "merchant:merchant:read"
+      ],
+      "note": "可复用门店档案来源，需整合审核、套餐代购及经营详情。业务规则已确认：套餐购买并履约成功后自动通过对应门店审核并开通；实现和验收尚未进行。",
+      "deliveryBatch": 4,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T30",
+      "targetPath": "客户管理/门店连锁/连锁数据",
+      "alignment": "待建",
+      "sourceReferences": [],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "需补平台只读连锁/品牌/关联门店统计接口与页面，不建设连锁运营写入功能。",
+      "deliveryBatch": 5,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T31",
+      "targetPath": "商户管理/商户资料/商户列表",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/merchants"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "支付端现有商户工作区可作入口来源；新方案还需核对平台代建、代填、草稿、提交和补件动作的API及权限，不宣称动作已全接通。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T32",
+      "targetPath": "商户管理/审核办理/商户审核",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/merchants/onboarding-review"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "独立支付ME03开通审核工作区已部署；统一平台入口尚需接入。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T33",
+      "targetPath": "商户管理/审核办理/资料变更",
+      "alignment": "未开放",
+      "sourceReferences": [
+        "pay:/merchants/change-review"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "ME04敏感变更审核页不在当前live部署中；不否认现有商户工作区可有资料修订操作。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T34",
+      "targetPath": "商户管理/收款开通/渠道进件",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/merchants",
+        "pay:/merchants/onboarding-review"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "已部署支付工作区有相关进件办理，不是独立ai-shop子菜单；本轮未重验全流程。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T35",
+      "targetPath": "商户管理/收款开通/收款绑定",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/merchants/stores"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "可对应支付门店ME02工作区内收款/绑定内容，不是独立ai-shop子菜单；本轮未验收全部渠道绑定。",
+      "deliveryBatch": 6,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T36",
+      "targetPath": "订单中心/经营订单/订单监控",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/orders"
+      ],
+      "sourcePointCodes": [
+        "OPS_ORDER"
+      ],
+      "sourceMenuPermissions": [
+        "order:order:read"
+      ],
+      "note": "可对应订单检索；全业态和数据范围不在本轮验收范围。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T37",
+      "targetPath": "订单中心/经营订单/异常处置",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/orders?tab=exception"
+      ],
+      "sourcePointCodes": [
+        "OPS_ORDER__TAB_EXCEPTION"
+      ],
+      "sourceMenuPermissions": [
+        "order:order:modify"
+      ],
+      "note": "可对应异常订单入口；本轮未执行处置动作。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T38",
+      "targetPath": "订单中心/经营订单/售后处理",
+      "alignment": "已有",
+      "sourceReferences": [
+        "shop:/after-sales",
+        "shop:/after-sales?tab=intervene"
+      ],
+      "sourcePointCodes": [
+        "OPS_AFTERSALE",
+        "OPS_AFTERSALE__TAB_INTERVENE"
+      ],
+      "sourceMenuPermissions": [
+        "aftersale:ticket:handle",
+        "aftersale:ticket:read"
+      ],
+      "note": "可对应售后工单及平台裁决；本轮未执行售后动作。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T39",
+      "targetPath": "订单中心/支付记录/支付订单",
+      "alignment": "待接",
+      "sourceReferences": [
+        "pay:/trade/payments"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "独立支付TR01已部署；ai-shop/pay-ops/orders仍是旧兼容入口，不能混同。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T40",
+      "targetPath": "订单中心/支付记录/交易流水",
+      "alignment": "未开放",
+      "sourceReferences": [
+        "pay:/trade/attempts"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "TR02已登记源码，但当前live静态页面未开放；旧请求日志不能代替交易流水。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    },
+    {
+      "id": "T41",
+      "targetPath": "订单中心/支付记录/退款记录",
+      "alignment": "未开放",
+      "sourceReferences": [
+        "pay:/trade/refunds"
+      ],
+      "sourcePointCodes": [],
+      "sourceMenuPermissions": [],
+      "note": "TR03独立页未进入当前live静态部署；支付订单内可能已有退款相关操作，不等于独立退款记录页已开放。",
+      "deliveryBatch": 7,
+      "targetRouteAllocated": false
+    }
+  ],
+  "existingMenus": [
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT",
+      "name": "入驻管理",
+      "groupName": "入驻",
+      "href": "/merchants",
+      "uiPerm": "merchant:apply:audit",
+      "perm": "merchant:apply:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants",
+          "label": "入驻审核",
+          "uiPerm": "merchant:apply:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_ON_BEHALF",
+      "name": "入驻管理",
+      "groupName": "入驻",
+      "href": "/merchants",
+      "uiPerm": "merchant:apply:onbehalf",
+      "perm": "merchant:apply:onbehalf",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants",
+          "label": "入驻审核",
+          "uiPerm": "merchant:apply:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_SELF_OPERATED",
+      "name": "入驻管理",
+      "groupName": "入驻",
+      "href": "/merchants",
+      "uiPerm": "merchant:selfop:create",
+      "perm": "merchant:selfop:create",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants",
+          "label": "入驻审核",
+          "uiPerm": "merchant:apply:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_ONBOARDING",
+      "name": "支付开通",
+      "groupName": "入驻",
+      "href": "/merchants?tab=onboarding",
+      "uiPerm": "merchant:admission:read",
+      "perm": "merchant:admission:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=onboarding",
+          "label": "进件看板",
+          "uiPerm": "merchant:admission:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_LIST",
+      "name": "商家档案",
+      "groupName": "档案",
+      "href": "/merchants?tab=list",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=list",
+          "label": "商家档案",
+          "uiPerm": "merchant:merchant:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_STORES",
+      "name": "门店档案",
+      "groupName": "档案",
+      "href": "/merchants?tab=stores",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T29"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=stores",
+          "label": "门店档案",
+          "uiPerm": "merchant:merchant:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_QUALIFICATIONS",
+      "name": "资质档案",
+      "groupName": "档案",
+      "href": "/merchants?tab=qualifications",
+      "uiPerm": "merchant:category:read",
+      "perm": "merchant:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=qualifications",
+          "label": "资质档案",
+          "uiPerm": "merchant:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_CATEGORIES",
+      "name": "类目授权",
+      "groupName": "档案",
+      "href": "/merchants?tab=categories",
+      "uiPerm": "merchant:category:grant",
+      "perm": "merchant:category:grant",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=categories",
+          "label": "类目授权",
+          "uiPerm": "merchant:category:grant",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_VERIFY",
+      "name": "认证管理",
+      "groupName": "档案",
+      "href": "/merchants?tab=verify",
+      "uiPerm": "merchant:verify:grant",
+      "perm": "merchant:verify:grant",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=verify",
+          "label": "认证管理",
+          "uiPerm": "merchant:verify:grant",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_MODE_RISK",
+      "name": "自营风险",
+      "groupName": "档案",
+      "href": "/merchants?tab=mode-risk",
+      "uiPerm": "merchant:mode:read",
+      "perm": "merchant:mode:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=mode-risk",
+          "label": "自营风险",
+          "uiPerm": "merchant:mode:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_CREDIT",
+      "name": "信用档案",
+      "groupName": "信用",
+      "href": "/merchants?tab=credit",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=credit",
+          "label": "信用档案",
+          "uiPerm": "merchant:merchant:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_BAN",
+      "name": "违规处置",
+      "groupName": "信用",
+      "href": "/merchants?tab=ban",
+      "uiPerm": "merchant:merchant:ban",
+      "perm": "merchant:merchant:ban",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=ban",
+          "label": "违规处置",
+          "uiPerm": "merchant:merchant:ban",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_CHAIN",
+      "name": "链条画像",
+      "groupName": "诊断",
+      "href": "/merchants?tab=chain",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=chain",
+          "label": "链条画像",
+          "uiPerm": "merchant:merchant:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_STORE",
+      "name": "店招审核",
+      "groupName": "展示获客",
+      "href": "/stores",
+      "uiPerm": "store:page:audit",
+      "perm": "store:page:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/stores",
+          "label": "店招审核",
+          "uiPerm": "store:page:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/stores/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_STORE__TAB_TEMPLATE",
+      "name": "主页模板",
+      "groupName": "展示获客",
+      "href": "/stores?tab=template",
+      "uiPerm": "store:page:read",
+      "perm": "",
+      "backendStatus": "NOT_IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/stores?tab=template",
+          "label": "主页模板",
+          "uiPerm": "store:page:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [],
+      "sourcePagePath": "ops-web/app/stores/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_STORE__TAB_QRCODE",
+      "name": "门店码",
+      "groupName": "展示获客",
+      "href": "/stores?tab=qrcode",
+      "uiPerm": "store:page:audit",
+      "perm": "store:page:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/stores?tab=qrcode",
+          "label": "门店码",
+          "uiPerm": "store:qrcode:export",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/stores/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MERCHANT",
+      "sectionName": "商户中心",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_STORE__TAB_EFFECT",
+      "name": "获客效果",
+      "groupName": "展示获客",
+      "href": "/stores?tab=effect",
+      "uiPerm": "store:page:audit",
+      "perm": "store:page:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/stores?tab=effect",
+          "label": "获客效果",
+          "uiPerm": "store:page:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/stores/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT",
+      "name": "商品分类",
+      "groupName": "基础资料",
+      "href": "/products",
+      "uiPerm": "product:category:read",
+      "perm": "product:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T02"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/products",
+          "label": "商品分类",
+          "uiPerm": "product:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_TEMPLATES",
+      "name": "规格模板",
+      "groupName": "基础资料",
+      "href": "/products?tab=templates",
+      "uiPerm": "product:category:read",
+      "perm": "product:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=templates",
+          "label": "规格模板",
+          "uiPerm": "product:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_SPEC_COMMON",
+      "name": "通用规格",
+      "groupName": "基础资料",
+      "href": "/products?tab=spec-common",
+      "uiPerm": "product:spec:read",
+      "perm": "product:spec:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=spec-common",
+          "label": "通用规格",
+          "uiPerm": "product:spec:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_SPEC_SPECIAL",
+      "name": "专用规格",
+      "groupName": "基础资料",
+      "href": "/products?tab=spec-special",
+      "uiPerm": "product:spec:read",
+      "perm": "product:spec:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=spec-special",
+          "label": "专用规格",
+          "uiPerm": "product:spec:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_CATEGORY_SPEC",
+      "name": "类目规格",
+      "groupName": "基础资料",
+      "href": "/products?tab=category-spec",
+      "uiPerm": "product:spec:read",
+      "perm": "product:spec:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=category-spec",
+          "label": "类目规格",
+          "uiPerm": "product:spec:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_SPU_STD",
+      "name": "标准品库",
+      "groupName": "基础资料",
+      "href": "/products?tab=spu-std",
+      "uiPerm": "product:std:read",
+      "perm": "product:std:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=spu-std",
+          "label": "标准品库",
+          "uiPerm": "product:std:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_TOPICS",
+      "name": "主题分类",
+      "groupName": "基础资料",
+      "href": "/products?tab=topics",
+      "uiPerm": "product:topic:read",
+      "perm": "product:topic:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=topics",
+          "label": "主题分类",
+          "uiPerm": "product:topic:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_BANNED_WORD",
+      "name": "建品规则",
+      "groupName": "基础资料",
+      "href": "/products?tab=banned-word",
+      "uiPerm": "product:category:read",
+      "perm": "product:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=banned-word",
+          "label": "建品规则",
+          "uiPerm": "product:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_CATEGORY_PAY_MODE",
+      "name": "限付类目",
+      "groupName": "基础资料",
+      "href": "/products?tab=category-pay-mode",
+      "uiPerm": "product:category:read",
+      "perm": "product:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=category-pay-mode",
+          "label": "限付类目",
+          "uiPerm": "product:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "SETTINGS_CANDIDATE",
+      "reason": "平台公共商品规则候选归业务配置；不混入平台商城商品分类；原入口保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_STOREINDUSTRY",
+      "name": "门店行业",
+      "groupName": "经营范围",
+      "href": "/system?tab=storeIndustry",
+      "uiPerm": "commerce:catalog:read",
+      "perm": "commerce:catalog:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "commerce.catalog.enabled",
+      "targetIds": [
+        "T02"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=storeIndustry",
+          "label": "门店行业",
+          "uiPerm": "commerce:catalog:read",
+          "gated": "commerce.catalog.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_INDUSTRY",
+      "name": "行业准入",
+      "groupName": "经营范围",
+      "href": "/system?tab=industry",
+      "uiPerm": "system:industry:read",
+      "perm": "system:industry:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=industry",
+          "label": "行业准入",
+          "uiPerm": "system:industry:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_AUTHCODE",
+      "name": "经营授权",
+      "groupName": "经营范围",
+      "href": "/system?tab=authCode",
+      "uiPerm": "product:category:read",
+      "perm": "product:category:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T02"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=authCode",
+          "label": "经营授权",
+          "uiPerm": "product:category:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_SCOPE",
+      "name": "范围开关",
+      "groupName": "经营范围",
+      "href": "/system?tab=scope",
+      "uiPerm": "system:industry:read",
+      "perm": "system:industry:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T02"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=scope",
+          "label": "范围开关",
+          "uiPerm": "system:industry:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_SKUS",
+      "name": "商品管理",
+      "groupName": "商品",
+      "href": "/products?tab=skus",
+      "uiPerm": "product:sku:read",
+      "perm": "product:sku:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=skus",
+          "label": "商品管理",
+          "uiPerm": "product:sku:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_AUDIT",
+      "name": "商品审核",
+      "groupName": "商品",
+      "href": "/products?tab=audit",
+      "uiPerm": "product:sku:audit",
+      "perm": "product:sku:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=audit",
+          "label": "商品审核",
+          "uiPerm": "product:sku:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_STOCK",
+      "name": "预售额度",
+      "groupName": "商品",
+      "href": "/products?tab=stock",
+      "uiPerm": "product:stock:update",
+      "perm": "product:sku:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=stock",
+          "label": "预售额度",
+          "uiPerm": "product:stock:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_PRODUCT",
+      "sectionName": "商品资料",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRODUCT__TAB_STATS",
+      "name": "商品统计",
+      "groupName": "商品",
+      "href": "/products?tab=stats",
+      "uiPerm": "product:sku:read",
+      "perm": "product:sku:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/products?tab=stats",
+          "label": "商品统计",
+          "uiPerm": "product:sku:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/products/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_PLANS",
+      "name": "套餐授予",
+      "groupName": "主体套餐",
+      "href": "/merchants?tab=plans",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T13",
+        "T20",
+        "T21",
+        "T22",
+        "T23",
+        "T24"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=plans",
+          "label": "套餐授予",
+          "uiPerm": "merchant:merchant:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_PLAN_DEFS",
+      "name": "档位定义",
+      "groupName": "主体套餐",
+      "href": "/merchants?tab=plan-defs",
+      "uiPerm": "merchant:merchant:read",
+      "perm": "merchant:merchant:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T13",
+        "T17"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=plan-defs",
+          "label": "档位定义",
+          "uiPerm": "merchant:merchant:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE",
+      "name": "套餐管理",
+      "groupName": "门店套餐",
+      "href": "/mall",
+      "uiPerm": "commerce:catalog:read",
+      "perm": "commerce:catalog:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T14"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall",
+          "label": "套餐管理",
+          "uiPerm": "commerce:catalog:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_CATEGORIES",
+      "name": "服务分类",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=categories",
+      "uiPerm": "commerce:catalog:read",
+      "perm": "commerce:catalog:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T16"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=categories",
+          "label": "服务分类",
+          "uiPerm": "commerce:catalog:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_PRODUCTS",
+      "name": "服务商品",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=products",
+      "uiPerm": "commerce:catalog:read",
+      "perm": "commerce:catalog:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T15",
+        "T17"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=products",
+          "label": "服务商品",
+          "uiPerm": "commerce:catalog:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_ORDERS",
+      "name": "购买订单",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=orders",
+      "uiPerm": "commerce:mall:order:read",
+      "perm": "commerce:mall:order:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T19",
+        "T22",
+        "T23",
+        "T24"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=orders",
+          "label": "购买订单",
+          "uiPerm": "commerce:mall:order:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_CLAIMS",
+      "name": "线下核款",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=claims",
+      "uiPerm": "commerce:mall:offline:review",
+      "perm": "commerce:mall:offline:review",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T21",
+        "T23",
+        "T24"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=claims",
+          "label": "线下核款",
+          "uiPerm": "commerce:mall:offline:review",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_COLLECTION",
+      "name": "收款配置",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=collection",
+      "uiPerm": "commerce:collection:profile:read",
+      "perm": "commerce:collection:profile:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T25"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=collection",
+          "label": "收款配置",
+          "uiPerm": "commerce:collection:profile:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_ASSISTED",
+      "name": "运营代购",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=assisted",
+      "uiPerm": "commerce:mall:assisted:purchase",
+      "perm": "commerce:mall:assisted:purchase",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T20"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=assisted",
+          "label": "运营代购",
+          "uiPerm": "commerce:mall:assisted:purchase",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMERCE",
+      "sectionName": "经营服务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMERCE__TAB_SOURCES",
+      "name": "订阅权益",
+      "groupName": "门店套餐",
+      "href": "/mall?tab=sources",
+      "uiPerm": "commerce:subscription:read",
+      "perm": "commerce:subscription:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T18"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/mall?tab=sources",
+          "label": "订阅权益",
+          "uiPerm": "commerce:subscription:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/mall/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_INVENTORY",
+      "sectionName": "进销存",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_INVENTORY",
+      "name": "库存概览",
+      "groupName": "库存治理",
+      "href": "/inventory",
+      "uiPerm": "inventory:stock:read",
+      "perm": "inventory:stock:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/inventory",
+          "label": "库存概览",
+          "uiPerm": "inventory:stock:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/inventory/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_INVENTORY",
+      "sectionName": "进销存",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_INVENTORY__TAB_LEDGER",
+      "name": "库存流水",
+      "groupName": "库存治理",
+      "href": "/inventory?tab=ledger",
+      "uiPerm": "inventory:stock:read",
+      "perm": "inventory:stock:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/inventory?tab=ledger",
+          "label": "库存流水",
+          "uiPerm": "inventory:stock:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/inventory/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_INVENTORY",
+      "sectionName": "进销存",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_INVENTORY__TAB_RECON",
+      "name": "库存对差",
+      "groupName": "切换判据",
+      "href": "/inventory?tab=recon",
+      "uiPerm": "inventory:stock:read",
+      "perm": "inventory:stock:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/inventory?tab=recon",
+          "label": "库存对差",
+          "uiPerm": "inventory:stock:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/inventory/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_INVENTORY",
+      "sectionName": "进销存",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_INVENTORY__TAB_LINK_HEALTH",
+      "name": "链路健康",
+      "groupName": "链路",
+      "href": "/inventory?tab=link-health",
+      "uiPerm": "inventory:stock:read",
+      "perm": "inventory:stock:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [
+        "T12"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/inventory?tab=link-health",
+          "label": "链路健康",
+          "uiPerm": "inventory:stock:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/inventory/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_INVENTORY",
+      "sectionName": "进销存",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_INVENTORY__TAB_CREDENTIALS",
+      "name": "开放对接",
+      "groupName": "对外",
+      "href": "/inventory?tab=credentials",
+      "uiPerm": "inventory:credential:read",
+      "perm": "inventory:credential:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.inventory.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/inventory?tab=credentials",
+          "label": "开放对接",
+          "uiPerm": "inventory:credential:read",
+          "gated": "shop.inventory.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/inventory/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER",
+      "name": "订单检索",
+      "groupName": "订单",
+      "href": "/orders",
+      "uiPerm": "order:order:read",
+      "perm": "order:order:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T36"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/orders",
+          "label": "订单检索",
+          "uiPerm": "order:order:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "FINANCE",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER__TAB_EXCEPTION",
+      "name": "异常订单",
+      "groupName": "订单",
+      "href": "/orders?tab=exception",
+      "uiPerm": "order:order:modify",
+      "perm": "order:order:modify",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [
+        "T37"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/orders?tab=exception",
+          "label": "异常订单",
+          "uiPerm": "order:order:modify",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER__TAB_PROXY",
+      "name": "代客下单",
+      "groupName": "订单",
+      "href": "/orders?tab=proxy",
+      "uiPerm": "order:order:proxy",
+      "perm": "order:order:proxy",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/orders?tab=proxy",
+          "label": "代客下单",
+          "uiPerm": "order:order:proxy",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "ORDER_DETAIL_CANDIDATE",
+      "reason": "候选进入经营订单的查询/详情或异常处置；原读、写、代客、售后权限分别保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER__TAB_PAY",
+      "name": "收款核对",
+      "groupName": "支付",
+      "href": "/orders?tab=pay",
+      "uiPerm": "order:pay:read",
+      "perm": "order:order:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/orders?tab=pay",
+          "label": "收款核对",
+          "uiPerm": "order:pay:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "ORDER_DETAIL_CANDIDATE",
+      "reason": "候选进入经营订单的查询/详情或异常处置；原读、写、代客、售后权限分别保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "FINANCE",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER__TAB_REPAIR",
+      "name": "掉单补偿",
+      "groupName": "支付",
+      "href": "/orders?tab=repair",
+      "uiPerm": "order:pay:repair",
+      "perm": "order:order:modify",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/orders?tab=repair",
+          "label": "掉单补偿",
+          "uiPerm": "order:pay:repair",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "ORDER_DETAIL_CANDIDATE",
+      "reason": "候选进入经营订单的查询/详情或异常处置；原读、写、代客、售后权限分别保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_ORDER__TAB_CLOSE",
+      "name": "关单规则",
+      "groupName": "支付",
+      "href": "/orders?tab=close",
+      "uiPerm": "order:pay:repair",
+      "perm": "order:order:modify",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/orders?tab=close",
+          "label": "关单规则",
+          "uiPerm": "order:pay:repair",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "ORDER_DETAIL_CANDIDATE",
+      "reason": "候选进入经营订单的查询/详情或异常处置；原读、写、代客、售后权限分别保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT",
+      "name": "批次配车",
+      "groupName": "到货分拣",
+      "href": "/fulfillment",
+      "uiPerm": "fulfillment:batch:read",
+      "perm": "fulfillment:batch:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment",
+          "label": "批次配车",
+          "uiPerm": "fulfillment:batch:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_SORTING",
+      "name": "自提分拣",
+      "groupName": "到货分拣",
+      "href": "/fulfillment?tab=sorting",
+      "uiPerm": "fulfillment:batch:read",
+      "perm": "fulfillment:batch:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=sorting",
+          "label": "自提分拣",
+          "uiPerm": "fulfillment:batch:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_REDEEM",
+      "name": "核销监控",
+      "groupName": "核销",
+      "href": "/fulfillment?tab=redeem",
+      "uiPerm": "fulfillment:redeem:read",
+      "perm": "fulfillment:redeem:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=redeem",
+          "label": "核销监控",
+          "uiPerm": "fulfillment:redeem:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_OVERDUE",
+      "name": "逾期规则",
+      "groupName": "核销",
+      "href": "/fulfillment?tab=overdue",
+      "uiPerm": "fulfillment:rule:update",
+      "perm": "fulfillment:rule:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=overdue",
+          "label": "逾期规则",
+          "uiPerm": "fulfillment:rule:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_EXPRESS",
+      "name": "物流轨迹",
+      "groupName": "物流",
+      "href": "/fulfillment?tab=express",
+      "uiPerm": "fulfillment:logistics:read",
+      "perm": "fulfillment:logistics:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=express",
+          "label": "物流轨迹",
+          "uiPerm": "fulfillment:logistics:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_FREIGHT",
+      "name": "运费模板",
+      "groupName": "物流",
+      "href": "/fulfillment?tab=freight",
+      "uiPerm": "fulfillment:rule:update",
+      "perm": "fulfillment:rule:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=freight",
+          "label": "运费模板",
+          "uiPerm": "fulfillment:rule:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ORDER",
+      "sectionName": "订单履约",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FULFILLMENT__TAB_CARRIER",
+      "name": "运力配置",
+      "groupName": "物流",
+      "href": "/fulfillment?tab=carrier",
+      "uiPerm": "fulfillment:logistics:read",
+      "perm": "fulfillment:logistics:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/fulfillment?tab=carrier",
+          "label": "运力配置",
+          "uiPerm": "fulfillment:logistics:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/fulfillment/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_AFTERSALE",
+      "sectionName": "售后治理",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_AFTERSALE",
+      "name": "售后工单",
+      "groupName": "处置",
+      "href": "/after-sales",
+      "uiPerm": "aftersale:ticket:read",
+      "perm": "aftersale:ticket:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T38"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/after-sales",
+          "label": "售后工单",
+          "uiPerm": "aftersale:ticket:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "FINANCE",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/after-sales/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_AFTERSALE",
+      "sectionName": "售后治理",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_AFTERSALE__TAB_INTERVENE",
+      "name": "平台裁决",
+      "groupName": "处置",
+      "href": "/after-sales?tab=intervene",
+      "uiPerm": "aftersale:ticket:handle",
+      "perm": "aftersale:ticket:handle",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T38"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/after-sales?tab=intervene",
+          "label": "平台裁决",
+          "uiPerm": "aftersale:ticket:handle",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/after-sales/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_AFTERSALE",
+      "sectionName": "售后治理",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_AFTERSALE__TAB_FASTREFUND",
+      "name": "售后规则",
+      "groupName": "规则",
+      "href": "/after-sales?tab=fastrefund",
+      "uiPerm": "aftersale:refund:approve",
+      "perm": "aftersale:refund:approve",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/after-sales?tab=fastrefund",
+          "label": "售后规则",
+          "uiPerm": "aftersale:refund:approve",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "ORDER_DETAIL_CANDIDATE",
+      "reason": "候选进入经营订单的查询/详情或异常处置；原读、写、代客、售后权限分别保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/after-sales/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING",
+      "name": "券模板",
+      "groupName": "优惠券",
+      "href": "/marketing",
+      "uiPerm": "marketing:coupon:read",
+      "perm": "marketing:coupon:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing",
+          "label": "券模板",
+          "uiPerm": "marketing:coupon:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_ISSUES",
+      "name": "发放记录",
+      "groupName": "优惠券",
+      "href": "/marketing?tab=issues",
+      "uiPerm": "marketing:coupon:read",
+      "perm": "marketing:coupon:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=issues",
+          "label": "发放记录",
+          "uiPerm": "marketing:coupon:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_PROMOCOUPONS",
+      "name": "券敞口",
+      "groupName": "优惠券",
+      "href": "/marketing?tab=promoCoupons",
+      "uiPerm": "marketing:coupon:read",
+      "perm": "marketing:coupon:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=promoCoupons",
+          "label": "券敞口",
+          "uiPerm": "marketing:coupon:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_CAMPAIGNS",
+      "name": "活动",
+      "groupName": "活动",
+      "href": "/marketing?tab=campaigns",
+      "uiPerm": "marketing:campaign:update",
+      "perm": "marketing:campaign:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=campaigns",
+          "label": "活动",
+          "uiPerm": "marketing:campaign:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_POINTS",
+      "name": "积分总览",
+      "groupName": "配置与接入",
+      "href": "/points",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_PROMOACTIVITIES",
+      "name": "活动敞口",
+      "groupName": "活动",
+      "href": "/marketing?tab=promoActivities",
+      "uiPerm": "marketing:campaign:read",
+      "perm": "marketing:campaign:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=promoActivities",
+          "label": "活动敞口",
+          "uiPerm": "marketing:campaign:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_POINTS_POLICY",
+      "name": "积分范围开关",
+      "groupName": "资金与日常（旧版）",
+      "href": "/points?tab=switches",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_STORE_ACCESS",
+      "name": "门店协议与接入",
+      "groupName": "配置与接入",
+      "href": "/points/store-access",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/store-access/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_PLATFORM",
+      "name": "平台活动",
+      "groupName": "活动",
+      "href": "/marketing?tab=platform",
+      "uiPerm": "marketing:campaign:read",
+      "perm": "marketing:campaign:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=platform",
+          "label": "平台活动",
+          "uiPerm": "marketing:campaign:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_PLATFORMAUDIT",
+      "name": "报名审核",
+      "groupName": "活动",
+      "href": "/marketing?tab=platformAudit",
+      "uiPerm": "marketing:campaign:read",
+      "perm": "marketing:campaign:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=platformAudit",
+          "label": "报名审核",
+          "uiPerm": "marketing:campaign:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_SLOTS",
+      "name": "首页推荐",
+      "groupName": "活动",
+      "href": "/marketing?tab=slots",
+      "uiPerm": "marketing:slot:update",
+      "perm": "marketing:slot:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=slots",
+          "label": "首页推荐",
+          "uiPerm": "marketing:slot:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_BROADCAST",
+      "name": "营销广播",
+      "groupName": "活动",
+      "href": "/messages?tab=broadcast",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=broadcast",
+          "label": "营销广播",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROUP",
+      "name": "商家团",
+      "groupName": "拼团",
+      "href": "/groups",
+      "uiPerm": "group:campaign:audit",
+      "perm": "group:campaign:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/groups",
+          "label": "商家团",
+          "uiPerm": "group:campaign:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/groups/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROUP__TAB_DEMANDS",
+      "name": "需求指派",
+      "groupName": "拼团",
+      "href": "/groups?tab=demands",
+      "uiPerm": "group:demand:read",
+      "perm": "group:demand:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/groups?tab=demands",
+          "label": "需求指派",
+          "uiPerm": "group:demand:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/groups/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROUP__TAB_QUOTES",
+      "name": "改价记录",
+      "groupName": "拼团",
+      "href": "/groups?tab=quotes",
+      "uiPerm": "group:demand:read",
+      "perm": "group:demand:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/groups?tab=quotes",
+          "label": "改价记录",
+          "uiPerm": "group:demand:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD"
+      ],
+      "sourcePagePath": "ops-web/app/groups/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROWTH",
+      "name": "归因规则",
+      "groupName": "增长",
+      "href": "/growth",
+      "uiPerm": "growth:attribution:read",
+      "perm": "growth:attribution:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/growth",
+          "label": "归因规则",
+          "uiPerm": "growth:attribution:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/growth/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROWTH__TAB_TRACES",
+      "name": "归因审计",
+      "groupName": "增长",
+      "href": "/growth?tab=traces",
+      "uiPerm": "growth:attribution:read",
+      "perm": "growth:attribution:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/growth?tab=traces",
+          "label": "归因审计",
+          "uiPerm": "growth:attribution:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/growth/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_GROWTH__TAB_FISSION",
+      "name": "邀请有礼",
+      "groupName": "增长",
+      "href": "/growth?tab=fission",
+      "uiPerm": "growth:fission:update",
+      "perm": "growth:fission:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/growth?tab=fission",
+          "label": "邀请有礼",
+          "uiPerm": "growth:fission:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "CAMPAIGN_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/growth/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MEMBER",
+      "name": "会员名单",
+      "groupName": "会员",
+      "href": "/members",
+      "uiPerm": "member:member:read",
+      "perm": "member:member:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T28"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/members",
+          "label": "会员名单",
+          "uiPerm": "member:member:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/members/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MEMBER__TAB_PERSONS",
+      "name": "人档",
+      "groupName": "会员",
+      "href": "/members?tab=persons",
+      "uiPerm": "member:person:read",
+      "perm": "member:person:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/members?tab=persons",
+          "label": "人档",
+          "uiPerm": "member:person:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/members/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MEMBER__TAB_REACH",
+      "name": "触达概览",
+      "groupName": "会员",
+      "href": "/members?tab=reach",
+      "uiPerm": "member:member:read",
+      "perm": "member:member:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/members?tab=reach",
+          "label": "触达概览",
+          "uiPerm": "member:member:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "DETAIL_CANDIDATE",
+      "reason": "候选收敛到客户管理的门店/会员详情或关联办理；暂不隐藏原入口，按真实场景与独立权限验收。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "GOODS_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/members/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MARKETING__TAB_MEMBER",
+      "name": "会员权益",
+      "groupName": "会员",
+      "href": "/marketing?tab=member",
+      "uiPerm": "marketing:member:update",
+      "perm": "",
+      "backendStatus": "NOT_IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/marketing?tab=member",
+          "label": "会员权益",
+          "uiPerm": "marketing:member:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [],
+      "sourcePagePath": "ops-web/app/marketing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_CONFIGURATION",
+      "name": "积分设置",
+      "groupName": "积分",
+      "href": "/points/types",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/points/types",
+          "label": "积分设置",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/types/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_EARNING_RULES",
+      "name": "赠送规则",
+      "groupName": "积分",
+      "href": "/points/earning-rules",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/points/earning-rules",
+          "label": "赠送规则",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/earning-rules/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_TREASURY",
+      "name": "平台预算",
+      "groupName": "积分",
+      "href": "/points/budget",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/points/budget",
+          "label": "平台预算",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/budget/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_QUERIES",
+      "name": "积分账户",
+      "groupName": "积分",
+      "href": "/points/accounts",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/points/accounts",
+          "label": "积分账户",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/accounts/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_MARKETING",
+      "sectionName": "会员营销",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_POINTS__TAB_SETTLEMENTS",
+      "name": "发放核销",
+      "groupName": "积分",
+      "href": "/points/transactions",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/points/transactions",
+          "label": "发放核销",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/points/transactions/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE",
+      "name": "结算分账",
+      "groupName": "分账结算",
+      "href": "/finance",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance",
+          "label": "结算分账",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_SPLITS",
+      "name": "分账明细",
+      "groupName": "分账结算",
+      "href": "/finance?tab=splits",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=splits",
+          "label": "分账明细",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_SETTLE_STATS",
+      "name": "经营统计",
+      "groupName": "分账结算",
+      "href": "/finance?tab=settle-stats",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=settle-stats",
+          "label": "经营统计",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_REFUND_BACK",
+      "name": "退款分账",
+      "groupName": "分账结算",
+      "href": "/finance?tab=refund-back",
+      "uiPerm": "finance:settle:execute",
+      "perm": "finance:settle:execute",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=refund-back",
+          "label": "退款分账",
+          "uiPerm": "finance:settle:execute",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_SETTLE_BATCHES",
+      "name": "批次放款",
+      "groupName": "分账结算",
+      "href": "/finance?tab=settle-batches",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=settle-batches",
+          "label": "批次放款",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_DEBTS",
+      "name": "商家欠款",
+      "groupName": "分账结算",
+      "href": "/finance?tab=debts",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=debts",
+          "label": "商家欠款",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_PAYABLES",
+      "name": "自营应付",
+      "groupName": "应付发票",
+      "href": "/finance?tab=payables",
+      "uiPerm": "finance:settle:read",
+      "perm": "finance:settle:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=payables",
+          "label": "自营应付",
+          "uiPerm": "finance:settle:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_PAYOUT_ACCOUNTS",
+      "name": "供应账户",
+      "groupName": "应付发票",
+      "href": "/finance?tab=payout-accounts",
+      "uiPerm": "finance:payout:execute",
+      "perm": "finance:payout:execute",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=payout-accounts",
+          "label": "供应账户",
+          "uiPerm": "finance:payout:execute",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_PURCHASE_INVOICES",
+      "name": "进项票",
+      "groupName": "应付发票",
+      "href": "/finance?tab=purchase-invoices",
+      "uiPerm": "finance:invoice:read",
+      "perm": "finance:invoice:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=purchase-invoices",
+          "label": "进项票",
+          "uiPerm": "finance:invoice:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_BUYER_INVOICES",
+      "name": "开票申请",
+      "groupName": "应付发票",
+      "href": "/finance?tab=buyer-invoices",
+      "uiPerm": "finance:invoice:read",
+      "perm": "finance:invoice:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=buyer-invoices",
+          "label": "开票申请",
+          "uiPerm": "finance:invoice:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_INVOICE",
+      "name": "发票个税",
+      "groupName": "应付发票",
+      "href": "/finance?tab=invoice",
+      "uiPerm": "finance:invoice:read",
+      "perm": "finance:invoice:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=invoice",
+          "label": "发票个税",
+          "uiPerm": "finance:invoice:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_RATES",
+      "name": "服务费率",
+      "groupName": "费率对账",
+      "href": "/finance?tab=rates",
+      "uiPerm": "finance:rate:update",
+      "perm": "finance:rate:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T04"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=rates",
+          "label": "服务费率",
+          "uiPerm": "finance:rate:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_PAY_CHANNELS",
+      "name": "渠道费率",
+      "groupName": "费率对账",
+      "href": "/finance?tab=pay-channels",
+      "uiPerm": "finance:rate:update",
+      "perm": "finance:rate:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T04"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=pay-channels",
+          "label": "渠道费率",
+          "uiPerm": "finance:rate:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_FINANCE__TAB_CHANNEL_MESSAGES",
+      "name": "渠道报文",
+      "groupName": "费率对账",
+      "href": "/finance?tab=channel-messages",
+      "uiPerm": "finance:recon:read",
+      "perm": "finance:recon:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/finance?tab=channel-messages",
+          "label": "渠道报文",
+          "uiPerm": "finance:recon:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/finance/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MERCHANT__TAB_ADMISSION",
+      "name": "准入押金",
+      "groupName": "保证金",
+      "href": "/merchants?tab=admission",
+      "uiPerm": "merchant:admission:read",
+      "perm": "merchant:admission:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/merchants?tab=admission",
+          "label": "准入押金",
+          "uiPerm": "merchant:admission:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/merchants/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_01",
+      "name": "支付单",
+      "groupName": "支付运营",
+      "href": "/pay-ops/orders",
+      "uiPerm": "pay:order:view",
+      "perm": "pay:order:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/orders",
+          "label": "支付单",
+          "uiPerm": "pay:order:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/orders/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_04",
+      "name": "支付异常",
+      "groupName": "支付运营",
+      "href": "/pay-ops/exceptions",
+      "uiPerm": "pay:order:view",
+      "perm": "pay:order:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/exceptions",
+          "label": "支付异常",
+          "uiPerm": "pay:order:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/exceptions/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_02",
+      "name": "退款复核",
+      "groupName": "支付运营",
+      "href": "/pay-ops/refunds",
+      "uiPerm": "pay:refund:view",
+      "perm": "pay:refund:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/refunds",
+          "label": "退款复核",
+          "uiPerm": "pay:refund:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/refunds/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_03",
+      "name": "业务通知",
+      "groupName": "支付运营",
+      "href": "/pay-ops/notifies",
+      "uiPerm": "pay:log:view",
+      "perm": "pay:log:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/notifies",
+          "label": "业务通知",
+          "uiPerm": "pay:log:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/notifies/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_06",
+      "name": "请求记录",
+      "groupName": "支付运营",
+      "href": "/pay-ops/request-logs",
+      "uiPerm": "pay:log:view",
+      "perm": "pay:log:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/request-logs",
+          "label": "请求记录",
+          "uiPerm": "pay:log:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "FINANCE"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/request-logs/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_07",
+      "name": "收款码",
+      "groupName": "支付运营",
+      "href": "/pay-ops/qr-codes",
+      "uiPerm": "pay:qr:manage",
+      "perm": "pay:qr:manage",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/qr-codes",
+          "label": "收款码",
+          "uiPerm": "pay:qr:manage",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/qr-codes/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_05",
+      "name": "应用授权",
+      "groupName": "支付运营",
+      "href": "/pay-ops/apps",
+      "uiPerm": "pay:app:manage",
+      "perm": "pay:app:manage",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/apps",
+          "label": "应用授权",
+          "uiPerm": "pay:app:manage",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/apps/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_FINANCE",
+      "sectionName": "经营财务",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PAY_08",
+      "name": "平台密钥",
+      "groupName": "支付运营",
+      "href": "/pay-ops/platform-keys",
+      "uiPerm": "sec:key:view",
+      "perm": "sec:key:view",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/pay-ops/platform-keys",
+          "label": "平台密钥",
+          "uiPerm": "sec:key:view",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PAYMENT_COMPAT",
+      "reason": "旧内嵌支付兼容入口；独立支付替代能力、权限和调用方验收前保留。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/pay-ops/platform-keys/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_REVIEW",
+      "name": "评价审核",
+      "groupName": "评价",
+      "href": "/reviews",
+      "uiPerm": "review:review:audit",
+      "perm": "review:review:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/reviews",
+          "label": "评价审核",
+          "uiPerm": "review:review:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/reviews/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_REVIEW__TAB_APPEALS",
+      "name": "评价申诉",
+      "groupName": "评价",
+      "href": "/reviews?tab=appeals",
+      "uiPerm": "review:review:audit",
+      "perm": "review:review:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/reviews?tab=appeals",
+          "label": "评价申诉",
+          "uiPerm": "review:review:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/reviews/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_REVIEW__TAB_SCORE",
+      "name": "评分参数",
+      "groupName": "评价",
+      "href": "/reviews?tab=score",
+      "uiPerm": "review:score:update",
+      "perm": "review:score:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/reviews?tab=score",
+          "label": "评分参数",
+          "uiPerm": "review:score:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/reviews/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_CONTENT",
+      "name": "素材管理",
+      "groupName": "素材",
+      "href": "/contents",
+      "uiPerm": "content:material:read",
+      "perm": "content:material:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/contents",
+          "label": "素材管理",
+          "uiPerm": "content:material:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "CAMPAIGN_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/contents/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_CONTENT__TAB_AUDIT",
+      "name": "内容审核",
+      "groupName": "素材",
+      "href": "/contents?tab=audit",
+      "uiPerm": "content:material:audit",
+      "perm": "content:material:audit",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/contents?tab=audit",
+          "label": "内容审核",
+          "uiPerm": "content:material:audit",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "CAMPAIGN_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/contents/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_CONTENT__TAB_RANK",
+      "name": "榜单问答",
+      "groupName": "素材",
+      "href": "/contents?tab=rank",
+      "uiPerm": "content:material:update",
+      "perm": "content:material:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/contents?tab=rank",
+          "label": "榜单问答",
+          "uiPerm": "content:material:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "CAMPAIGN_OPS",
+        "AUDITOR"
+      ],
+      "sourcePagePath": "ops-web/app/contents/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE",
+      "name": "通道总览",
+      "groupName": "触达",
+      "href": "/messages",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T10"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/messages",
+          "label": "通道总览",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_SMS",
+      "name": "短信",
+      "groupName": "触达",
+      "href": "/messages?tab=sms",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=sms",
+          "label": "短信",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_MAIL",
+      "name": "邮件",
+      "groupName": "触达",
+      "href": "/messages?tab=mail",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=mail",
+          "label": "邮件",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_WXSUB",
+      "name": "微信订阅",
+      "groupName": "触达",
+      "href": "/messages?tab=wxsub",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=wxsub",
+          "label": "微信订阅",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_APPPUSH",
+      "name": "应用推送",
+      "groupName": "触达",
+      "href": "/messages?tab=apppush",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=apppush",
+          "label": "应用推送",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_INAPP",
+      "name": "站内模板",
+      "groupName": "触达",
+      "href": "/messages?tab=inapp",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=inapp",
+          "label": "站内模板",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_ROUTING",
+      "name": "场景通道",
+      "groupName": "触达",
+      "href": "/messages?tab=routing",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=routing",
+          "label": "场景通道",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_NOTIFYLOG",
+      "name": "发送记录",
+      "groupName": "触达",
+      "href": "/messages?tab=notifyLog",
+      "uiPerm": "message:template:read",
+      "perm": "message:template:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=notifyLog",
+          "label": "发送记录",
+          "uiPerm": "message:template:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_TICKETS",
+      "name": "客服工单",
+      "groupName": "客服",
+      "href": "/messages?tab=tickets",
+      "uiPerm": "message:ticket:read",
+      "perm": "message:ticket:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=tickets",
+          "label": "客服工单",
+          "uiPerm": "message:ticket:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_REVIEW",
+      "sectionName": "内容客服",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_MESSAGE__TAB_FAQ",
+      "name": "帮助中心",
+      "groupName": "客服",
+      "href": "/messages?tab=faq",
+      "uiPerm": "message:ticket:handle",
+      "perm": "message:ticket:handle",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/messages?tab=faq",
+          "label": "帮助中心",
+          "uiPerm": "message:faq:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "SUPPORT"
+      ],
+      "sourcePagePath": "ops-web/app/messages/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY",
+      "name": "社区网格",
+      "groupName": "社区网格",
+      "href": "/communities",
+      "uiPerm": "community:community:read",
+      "perm": "community:community:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities",
+          "label": "社区网格",
+          "uiPerm": "community:community:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "AUDITOR",
+        "ANALYST"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_APPLIES",
+      "name": "商家提报",
+      "groupName": "社区网格",
+      "href": "/communities?tab=applies",
+      "uiPerm": "community:community:read",
+      "perm": "community:community:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=applies",
+          "label": "商家提报",
+          "uiPerm": "community:community:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "AUDITOR",
+        "ANALYST"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_REGIONS",
+      "name": "区划维护",
+      "groupName": "社区网格",
+      "href": "/communities?tab=regions",
+      "uiPerm": "community:region:read",
+      "perm": "community:region:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=regions",
+          "label": "区划维护",
+          "uiPerm": "community:region:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_HEALTH",
+      "name": "坐标健康",
+      "groupName": "社区网格",
+      "href": "/communities?tab=health",
+      "uiPerm": "community:community:read",
+      "perm": "community:community:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=health",
+          "label": "坐标健康",
+          "uiPerm": "community:community:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "AUDITOR",
+        "ANALYST"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_DISTRIBUTION",
+      "name": "位置分布",
+      "groupName": "社区网格",
+      "href": "/communities?tab=distribution",
+      "uiPerm": "community:community:read",
+      "perm": "community:community:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=distribution",
+          "label": "位置分布",
+          "uiPerm": "community:community:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "AUDITOR",
+        "ANALYST"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_PLACES",
+      "name": "地址库",
+      "groupName": "社区网格",
+      "href": "/communities?tab=places",
+      "uiPerm": "community:community:read",
+      "perm": "community:community:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=places",
+          "label": "地址库",
+          "uiPerm": "community:community:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "BD",
+        "GOODS_OPS",
+        "SUPPORT",
+        "CAMPAIGN_OPS",
+        "COMMUNITY_OPS",
+        "AUDITOR",
+        "ANALYST"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_PICKUPS",
+      "name": "自提点",
+      "groupName": "自提点",
+      "href": "/communities?tab=pickups",
+      "uiPerm": "community:pickup:read",
+      "perm": "community:pickup:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=pickups",
+          "label": "自提点",
+          "uiPerm": "community:pickup:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_COMMUNITY",
+      "sectionName": "社区网点",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_COMMUNITY__TAB_NEIGHBOR",
+      "name": "临时点",
+      "groupName": "自提点",
+      "href": "/communities?tab=neighbor",
+      "uiPerm": "community:pickup:read",
+      "perm": "community:pickup:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/communities?tab=neighbor",
+          "label": "临时点",
+          "uiPerm": "community:pickup:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "COMMUNITY_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/communities/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_RISK",
+      "sectionName": "风控",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_RISK",
+      "name": "风险事件",
+      "groupName": "识别",
+      "href": "/risk",
+      "uiPerm": "risk:rule:read",
+      "perm": "risk:rule:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/risk",
+          "label": "风险事件",
+          "uiPerm": "risk:rule:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/risk/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_RISK",
+      "sectionName": "风控",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_RISK__TAB_BLACKLIST",
+      "name": "名单申诉",
+      "groupName": "处置",
+      "href": "/risk?tab=blacklist",
+      "uiPerm": "risk:blacklist:update",
+      "perm": "risk:blacklist:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/risk?tab=blacklist",
+          "label": "名单申诉",
+          "uiPerm": "risk:blacklist:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/risk/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_RISK",
+      "sectionName": "风控",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_RISK__TAB_RULES",
+      "name": "拦截规则",
+      "groupName": "处置",
+      "href": "/risk?tab=rules",
+      "uiPerm": "risk:rule:update",
+      "perm": "risk:rule:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/risk?tab=rules",
+          "label": "拦截规则",
+          "uiPerm": "risk:rule:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "RISK"
+      ],
+      "sourcePagePath": "ops-web/app/risk/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ELEC",
+      "sectionName": "元器件",
+      "sectionEnabled": "0",
+      "pointCode": "OPS_ELEC",
+      "name": "询报价",
+      "groupName": "撮合",
+      "href": "/elec",
+      "uiPerm": "elec:rfq:read",
+      "perm": "elec:rfq:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_DISABLED",
+      "reason": "保持既有停用状态；不恢复、不删除功能点。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/elec/page.tsx",
+      "sourcePageExists": false,
+      "historicalStaticPageExists": false,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ELEC",
+      "sectionName": "元器件",
+      "sectionEnabled": "0",
+      "pointCode": "OPS_ELEC__TAB_SUPPLIER",
+      "name": "供应商",
+      "groupName": "货源",
+      "href": "/elec?tab=supplier",
+      "uiPerm": "elec:supplier:read",
+      "perm": "elec:supplier:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_DISABLED",
+      "reason": "保持既有停用状态；不恢复、不删除功能点。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/elec/page.tsx",
+      "sourcePageExists": false,
+      "historicalStaticPageExists": false,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ELEC",
+      "sectionName": "元器件",
+      "sectionEnabled": "0",
+      "pointCode": "OPS_ELEC__TAB_PART",
+      "name": "料号与库存",
+      "groupName": "货源",
+      "href": "/elec?tab=part",
+      "uiPerm": "elec:part:read",
+      "perm": "elec:part:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_DISABLED",
+      "reason": "保持既有停用状态；不恢复、不删除功能点。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/elec/page.tsx",
+      "sourcePageExists": false,
+      "historicalStaticPageExists": false,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_ELEC",
+      "sectionName": "元器件",
+      "sectionEnabled": "0",
+      "pointCode": "OPS_ELEC__TAB_BASE",
+      "name": "基础数据",
+      "groupName": "主数据",
+      "href": "/elec?tab=base",
+      "uiPerm": "elec:base:manage",
+      "perm": "elec:base:manage",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "0",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_DISABLED",
+      "reason": "保持既有停用状态；不恢复、不删除功能点。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/elec/page.tsx",
+      "sourcePageExists": false,
+      "historicalStaticPageExists": false,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_IAM",
+      "name": "运营账号",
+      "groupName": "账号",
+      "href": "/iam",
+      "uiPerm": "iam:staff:read",
+      "perm": "iam:staff:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T05",
+        "T07"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/iam",
+          "label": "运营账号",
+          "uiPerm": "iam:staff:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/iam/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_IAM__TAB_ROLES",
+      "name": "角色权限",
+      "groupName": "账号",
+      "href": "/iam?tab=roles",
+      "uiPerm": "iam:role:grant",
+      "perm": "iam:role:grant",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T06"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/iam?tab=roles",
+          "label": "角色权限",
+          "uiPerm": "iam:role:grant",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/iam/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_IAM__TAB_MENU",
+      "name": "菜单顺序",
+      "groupName": "账号",
+      "href": "/iam?tab=menu",
+      "uiPerm": "iam:role:grant",
+      "perm": "iam:role:grant",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T08"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/iam?tab=menu",
+          "label": "菜单顺序",
+          "uiPerm": "iam:role:grant",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/iam/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_IAM__TAB_AUDIT",
+      "name": "审计日志",
+      "groupName": "审计",
+      "href": "/iam?tab=audit",
+      "uiPerm": "iam:audit:read",
+      "perm": "iam:audit:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T11"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/iam?tab=audit",
+          "label": "审计日志",
+          "uiPerm": "iam:audit:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/iam/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_PRINTING",
+      "name": "打印运营",
+      "groupName": "打印运营",
+      "href": "/printing",
+      "uiPerm": "ops:print:read",
+      "perm": "ops:print:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.print.enabled",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/printing",
+          "label": "打印运营",
+          "uiPerm": "ops:print:read",
+          "gated": "shop.print.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/printing/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_JOBS",
+      "name": "任务日志",
+      "groupName": "定时任务",
+      "href": "/jobs",
+      "uiPerm": "system:job:read",
+      "perm": "system:job:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "shop.job.enabled",
+      "targetIds": [
+        "T12"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/jobs",
+          "label": "任务日志",
+          "uiPerm": "system:job:read",
+          "gated": "shop.job.enabled"
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/jobs/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM",
+      "name": "外观文案",
+      "groupName": "外观语言",
+      "href": "/system",
+      "uiPerm": "system:theme:update",
+      "perm": "system:theme:update",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T01",
+        "T09"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system",
+          "label": "外观文案",
+          "uiPerm": "system:theme:update",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_MARKET",
+      "name": "市场货币",
+      "groupName": "外观语言",
+      "href": "/system?tab=market",
+      "uiPerm": "system:param:read",
+      "perm": "system:param:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T01"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=market",
+          "label": "市场货币",
+          "uiPerm": "system:param:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_FLAGS",
+      "name": "开关灰度",
+      "groupName": "运行配置",
+      "href": "/system?tab=flags",
+      "uiPerm": "system:param:read",
+      "perm": "system:param:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T09"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=flags",
+          "label": "开关灰度",
+          "uiPerm": "system:param:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_STORAGE",
+      "name": "存储管理",
+      "groupName": "运行配置",
+      "href": "/system?tab=storage",
+      "uiPerm": "system:media:read",
+      "perm": "system:media:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T09"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=storage",
+          "label": "存储管理",
+          "uiPerm": "system:media:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_TESTPHONE",
+      "name": "测试账号",
+      "groupName": "运行配置",
+      "href": "/system?tab=testPhone",
+      "uiPerm": "system:testphone:read",
+      "perm": "system:testphone:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=testPhone",
+          "label": "测试账号",
+          "uiPerm": "system:testphone:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "KEEP_PENDING_SCOPE",
+      "reason": "本版41项目录未明确承接此能力；本批逐项登记并保留原入口，后续处置确认前不隐藏、不删除、不擅自迁至经营端。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    },
+    {
+      "sectionCode": "OPS_IAM",
+      "sectionName": "系统设置",
+      "sectionEnabled": "1",
+      "pointCode": "OPS_SYSTEM__TAB_APPVERSION",
+      "name": "应用版本",
+      "groupName": "运行配置",
+      "href": "/system?tab=appVersion",
+      "uiPerm": "system:param:read",
+      "perm": "system:param:read",
+      "backendStatus": "IMPLEMENTED",
+      "uiReady": "1",
+      "gatedBy": "",
+      "targetIds": [
+        "T09"
+      ],
+      "sourceNavMatches": [
+        {
+          "href": "/system?tab=appVersion",
+          "label": "应用版本",
+          "uiPerm": "system:param:read",
+          "gated": ""
+        }
+      ],
+      "execution": "NONE_BATCH1_AUDIT_ONLY",
+      "disposition": "REUSE_SOURCE",
+      "reason": "作为所列目标的复用来源；多目标只表示来源关联，不自动复制页面或合并授权。",
+      "builtinFallbackRolesWithMenuPermission": [
+        "SUPER_ADMIN",
+        "TECH_OPS"
+      ],
+      "sourcePagePath": "ops-web/app/system/page.tsx",
+      "sourcePageExists": true,
+      "historicalStaticPageExists": true,
+      "routeAvailabilityNote": "仅文件/静态路由证据，不证明tab/API/运行开关或角色访问通过"
+    }
+  ]
+}

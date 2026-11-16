@@ -10,7 +10,7 @@
 // **只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」，
 // 不替商家运营。唯一的写动作是解除强制下线；压下那一侧在「违规处置与封禁」，
 // 因为处置动作与它的留痕必须是同一次提交。
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,8 +19,8 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
 import { usePaging } from "@/lib/use-paging";
-import { money } from "@/lib/utils";
-import type { StoreGovern, StoreGovernStatus } from "@/lib/types";
+import { fmtTime, money } from "@/lib/utils";
+import type { Order, StoreGovern, StoreGovernStatus, StoreStats } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { type Column } from "@/components/ui/data-table";
@@ -31,15 +31,21 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { PagedTable } from "@/components/ui/paged-table";
-import { IdCell } from "@/components/ui/misc";
-import type { MerchantsCopy as Copy } from "./copy";
+import { ErrorState, IdCell, Skeleton } from "@/components/ui/misc";
+import { Tabs } from "@/components/ui/tabs";
+import { OrderStatusBadge, useOrderStatusMap } from "@/components/status";
 import { useI18n } from "@/lib/i18n";
+import type { MerchantsCopy as Copy } from "./copy";
+import { useCopy } from "@/lib/use-copy";
+import { STORE_REVIEW_COPY } from "./operational-review-copy";
+import { OperationalReview } from "./operational-review";
 
 /**
  * 三档状态**不能压成「营业 / 停业」两档**：
  * READONLY 是商家自己关的，SUSPENDED 是平台压下的 —— 运营对这两者要做的事相反。
  */
-const useStatusMap = (c: Copy): StatusMap<StoreGovernStatus> => ({
+const useStatusMap = (c: Copy, pending: string): StatusMap<StoreGovernStatus> => ({
+  PENDING_OPEN: { label: pending, tone: "warning" },
   ACTIVE: { label: c.stStatusActive, tone: "success" },
   READONLY: { label: c.stStatusReadonly, tone: "muted" },
   SUSPENDED: { label: c.stStatusSuspended, tone: "danger" },
@@ -50,11 +56,11 @@ const MODE_OPTIONS = (c: Copy) => [
   { value: "THIRD_PARTY", label: c.stModeThird },
 ];
 
-export function StoresTab({ c }: { c: Copy }) {
+export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (store: StoreGovern) => ReactNode }) {
   const qc = useQueryClient();
   const i18n = useI18n();
   const allow = useCan();
-  const statusMap = useStatusMap(c);
+  const statusMap = useStatusMap(c, useCopy(STORE_REVIEW_COPY).pending);
   const modeOptions = MODE_OPTIONS(c);
 
   const [keyword, setKeyword] = useState("");
@@ -70,6 +76,9 @@ export function StoresTab({ c }: { c: Copy }) {
   const [communityNo, setCommunityNo] = useState("");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<StoreGovern | null>(null);
+  /** 抽屉页签：门店档案 / 经营状况 / 订单 / 经营审核 / 覆盖与取货。换一家店时回到档案 */
+  const [panel, setPanel] = useState<"summary" | "stats" | "orders" | "review" | "reach">("summary");
+  const review = useCopy(STORE_REVIEW_COPY);
 
   const canBan = allow("merchant:merchant:ban");
 
@@ -86,23 +95,21 @@ export function StoresTab({ c }: { c: Copy }) {
   });
 
   /*
-   * 经营状况单独一条请求，只在抽屉打开时发：它在后端是另一个域（trade），
-   * 列表里每行都带上等于把商品池那份统计查询乘以一页的行数。
-   */
-  /*
-   * 门店详情（P-11.2.1c）。`getStore` 这个调用**此前声明了、实现了、从没被调用过** ——
-   * 抽屉一直只画列表行上的字段，于是覆盖社区/挂靠自提点/扫码数三样在界面上没有。
+   * 门店详情（P-11.2.1c）：覆盖社区 / 挂靠自提点 / 扫码数，只在打开「覆盖与取货」时取。
    */
   const detail = useQuery({
     queryKey: ["store-detail", current?.storeNo],
     queryFn: () => api.getStore(current!.storeNo),
-    enabled: !!current,
+    enabled: !!current && panel === "reach",
   });
 
+  /*
+   * 经营状况是另一个域（trade）的统计，只在打开「经营状况」时取 —— 详情摘要里不放统计。
+   */
   const stats = useQuery({
     queryKey: ["store-stats", current?.storeNo],
     queryFn: () => api.getStoreStats(current!.storeNo),
-    enabled: !!current,
+    enabled: !!current && panel === "stats",
   });
 
   const restore = useMutation({
@@ -143,7 +150,7 @@ export function StoresTab({ c }: { c: Copy }) {
     },
     {
       header: c.stColActions,
-      cell: (s) => <Button size="sm" variant="ghost" onClick={() => setCurrent(s)}>{c.stDetail}</Button>,
+      cell: (s) => <Button size="sm" variant="ghost" onClick={() => { setPanel("summary"); setCurrent(s); }}>{c.stDetail}</Button>,
     },
   ];
 
@@ -190,72 +197,76 @@ export function StoresTab({ c }: { c: Copy }) {
 
       <Drawer
         open={!!current}
-        onOpenChange={(o) => !o && setCurrent(null)}
+        onOpenChange={(o) => { if (!o) { setCurrent(null); setPanel("summary"); } }}
         title={current?.name ?? ""}
         desc={current ? `${current.storeNo} · ${current.merchantName}` : undefined}
-        width="w-[560px]"
+        // 订单页签里嵌一张表：按「列表与抽屉」规范取 720 档
+        width="w-[720px]"
         footer={current?.status === "SUSPENDED" && canBan ? (
           <>
-            <Button variant="outline" onClick={() => setCurrent(null)}>{i18n.t("common.cancel")}</Button>
-            <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>
-              {c.stBtnRestore}
-            </Button>
+            <Button variant="outline" onClick={() => { setCurrent(null); setPanel("summary"); }}>{i18n.t("common.cancel")}</Button>
+            <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>{c.stBtnRestore}</Button>
           </>
         ) : null}
       >
         {current && (
           <div>
-            <DrawerSection first title={c.stSecProfile}>
-              <FieldGrid>
-                <Field className="mb-3" label={c.stColStatus}><StatusBadge map={statusMap} value={current.status} /></Field>
-                <Field className="mb-3" label={c.stColMode}>
-                  {current.businessMode === "SELF_OPERATED" ? c.stModeSelf : c.stModeThird}
-                </Field>
-                <Field className="mb-3" label={c.stColMerchant}>{current.merchantName}</Field>
-                <Field className="mb-3" label={c.stColPayMerchant}>
-                  {current.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>}
-                </Field>
-              </FieldGrid>
-              <Field label={c.stFieldAddress}>{current.address}</Field>
-              <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
-              <Field label={c.stFieldAnnouncement}>
-                {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
-              </Field>
-              {/* 配送四个数摆在一起：单看任何一个都判断不了这家店的配送划不划得来 */}
-              <FieldGrid>
-                <Field className="mb-3" label={c.stFieldRadius}>{fill(c.stMeters, { n: current.deliveryRadiusM })}</Field>
-                <Field className="mb-3" label={c.stFieldMinOrder}>{money(current.deliveryMinOrderMinor)}</Field>
-                <Field className="mb-3" label={c.stFieldFee}>{money(current.deliveryFeeMinor)}</Field>
-                <Field className="mb-3" label={c.stFieldFreeThreshold}>{money(current.deliveryFreeThresholdMinor)}</Field>
-              </FieldGrid>
-            </DrawerSection>
-
-            <DrawerSection title={c.stSecStats}>
-              {stats.isLoading && <p className="txt-caption text-muted-foreground">{c.stStatsLoading}</p>}
-              {stats.data && (
-                <FieldGrid>
-                  <Field className="mb-3" label={c.stStatTodayOrders}>{stats.data.todayOrders}</Field>
-                  <Field className="mb-3" label={c.stStatTodayGmv}>{money(stats.data.todayGmvMinor)}</Field>
-                  <Field className="mb-3" label={c.stStatMonthOrders}>{stats.data.monthOrders}</Field>
-                  <Field className="mb-3" label={c.stStatMonthGmv}>{money(stats.data.monthGmvMinor)}</Field>
-                  {/* 自带客流占比直接对应这家店少付的佣金（ADR-004），所以与经营数摆在一起 */}
-                  <Field className="mb-3" label={c.stStatOwnedTraffic}>{Math.round(stats.data.ownedTrafficRate * 100)}%</Field>
-                  <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
-                  <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
-                  <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
-                  {/* 待售后与前三项摆在一起：运营看的是「这家店是不是没人管了」 */}
-                  <Field className="mb-3" label={c.stStatToAfterSale}>{stats.data.toAfterSale}</Field>
-                </FieldGrid>
-              )}
-            </DrawerSection>
-
             {/*
-              门店订单入口（P-11.2.1f）。后端与 OrderQ 早就支持 storeNo，
-              **只是没有任何地方发它** —— 运营要看这家店的单，此前只能去订单页
-              自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
+              一个抽屉、多个页签（规范：不叠抽屉）。经营数、覆盖、审核仍只在切到对应页签时才请求。
             */}
-            {/* 覆盖社区挂在**主体**上：同主体的门店看到同一份，所以标题不写「本店覆盖」 */}
-            <DrawerSection title={c.stSecReach}>
+            <Tabs value={panel} onChange={(k) => setPanel(k as typeof panel)} tabs={[
+              { key: "summary", label: c.stSecProfile },
+              { key: "stats", label: c.stSecStats },
+              { key: "orders", label: c.stTabOrders },
+              { key: "review", label: review.title },
+              { key: "reach", label: c.stSecReach },
+            ]} />
+
+            {panel === "summary" && <>
+              <DrawerSection first title={c.stSecProfile}>
+                <FieldGrid>
+                  <Field className="mb-3" label={c.stColStatus}><StatusBadge map={statusMap} value={current.status} /></Field>
+                  <Field className="mb-3" label={c.stColMode}>
+                    {current.businessMode === "SELF_OPERATED" ? c.stModeSelf : c.stModeThird}
+                  </Field>
+                  <Field className="mb-3" label={c.stColMerchant}>{current.merchantName}</Field>
+                  <Field className="mb-3" label={c.stColPayMerchant}>
+                    {current.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>}
+                  </Field>
+                </FieldGrid>
+                <Field label={c.stFieldAddress}>{current.address}</Field>
+                <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
+                <Field label={c.stFieldAnnouncement}>
+                  {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
+                </Field>
+                {/* 配送四个数摆在一起：单看任何一个都判断不了这家店的配送划不划得来 */}
+                <FieldGrid>
+                  <Field className="mb-3" label={c.stFieldRadius}>{fill(c.stMeters, { n: current.deliveryRadiusM })}</Field>
+                  <Field className="mb-3" label={c.stFieldMinOrder}>{money(current.deliveryMinOrderMinor)}</Field>
+                  <Field className="mb-3" label={c.stFieldFee}>{money(current.deliveryFeeMinor)}</Field>
+                  <Field className="mb-3" label={c.stFieldFreeThreshold}>{money(current.deliveryFreeThresholdMinor)}</Field>
+                </FieldGrid>
+              </DrawerSection>
+              {detailActions && (
+                <DrawerSection title={c.stSecActions}>{detailActions(current)}</DrawerSection>
+              )}
+              {current.status === "SUSPENDED" && !canBan && (
+                <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" className="mt-4" />
+              )}
+            </>}
+
+            {panel === "stats" && <StoreBusiness c={c} store={current} stats={stats} statusLabel={<StatusBadge map={statusMap} value={current.status} />} />}
+
+            {panel === "orders" && <StoreOrders key={current.storeNo} c={c} storeNo={current.storeNo} />}
+
+            {panel === "review" && (
+              <div className="mt-4">
+                <OperationalReview key={current.storeNo} storeNo={current.storeNo} onChanged={(r) => setCurrent((store) => store?.storeNo === r.storeNo ? { ...store, status: r.status } : store)} />
+              </div>
+            )}
+
+            {panel === "reach" && (
+              <DrawerSection first title={c.stSecReach}>
               <FieldGrid>
                 {/*
                   ⚠️ 这一栏此前读的是 mch_entity_community，而那张表线上是 **0 行**
@@ -328,47 +339,112 @@ export function StoresTab({ c }: { c: Copy }) {
                     : <span className="text-muted-foreground">{c.stNoRating}</span>}
                 </Field>
               </FieldGrid>
-            </DrawerSection>
-
-            <DrawerSection title={c.stSecOrders}>
-              <div className="flex gap-2">
-                {/*
-                  用 asChild 让 Button 把样式套在 <Link> 上，而不是 <Link> 包一个 <button>：
-                  后者会有**两个可聚焦元素**（外层链接没有焦点环），键盘上要按两次 Tab
-                  才走得过一个按钮，且第一次停下来时看不见自己停在哪。
-
-                  `data-audit-skip="button-aschild"`：焦点环那道闸静态扫 JSX 里的
-                  className 字面量，看不到 asChild 在运行时合成的类名。
-                  **不是白名单式豁免** —— 浏览器实测这个 <a> 的 className 确实含
-                  focus-ring（Button 的基础类经 Slot 传了下来）。
-                */}
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
-                    {c.stViewOrders}
-                  </Link>
-                </Button>
-                {/* 门店商品投影（P-11.2.1e）：后端与 SkuQ 早就支持，只是没入口 */}
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
-                    {c.stViewGoods}
-                  </Link>
-                </Button>
-              </div>
-            </DrawerSection>
-
-            <DrawerSection title={c.stSecActions}>
-              {current.status !== "SUSPENDED"
-                ? <p className="txt-caption text-muted-foreground">{c.stNoAction}</p>
-                : canBan
-                  // 「恢复营业」按钮在底栏（规范：动作一律进 footer），这里只留说明
-                  ? null
-                  // 有动作但你做不了：置灰说明「有，只是现在不能用」，
-                  // 直接藏起来会让人以为这家店解不开
-                  : <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" />}
-            </DrawerSection>
+              </DrawerSection>
+            )}
           </div>
         )}
       </Drawer>
     </>
+  );
+}
+
+/**
+ * 经营状况页签：营业状态 + 今日 / 本月经营数 + 待处理积压。
+ * 待处理四项摆在一起，运营看的是「这家店是不是没人管了」。
+ */
+function StoreBusiness({ c, store, stats, statusLabel }: {
+  c: Copy;
+  store: StoreGovern;
+  stats: { data?: StoreStats; isLoading: boolean; error: unknown; refetch: () => unknown };
+  statusLabel: ReactNode;
+}) {
+  return (
+    <>
+      <DrawerSection first title={c.stSecStats}>
+        <FieldGrid>
+          <Field className="mb-3" label={c.stColStatus}>{statusLabel}</Field>
+          <Field className="mb-3" label={c.stFieldOpenHours}>{store.openHours}</Field>
+        </FieldGrid>
+        {stats.isLoading && <Skeleton className="h-24 w-full" />}
+        {stats.error ? <ErrorState error={stats.error} onRetry={() => void stats.refetch()} /> : null}
+        {stats.data && (
+          <FieldGrid>
+            <Field className="mb-3" label={c.stStatTodayOrders}>{stats.data.todayOrders}</Field>
+            <Field className="mb-3" label={c.stStatTodayGmv}>{money(stats.data.todayGmvMinor)}</Field>
+            <Field className="mb-3" label={c.stStatMonthOrders}>{stats.data.monthOrders}</Field>
+            <Field className="mb-3" label={c.stStatMonthGmv}>{money(stats.data.monthGmvMinor)}</Field>
+            {/* 自带客流占比直接对应这家店少付的佣金（ADR-004），所以与经营数摆在一起 */}
+            <Field className="mb-3" label={c.stStatOwnedTraffic}>{Math.round(stats.data.ownedTrafficRate * 100)}%</Field>
+          </FieldGrid>
+        )}
+      </DrawerSection>
+      {stats.data && (
+        <DrawerSection title={c.stBizTodo}>
+          <FieldGrid>
+            <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
+            <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
+            <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
+            <Field className="mb-3" label={c.stStatToAfterSale}>{stats.data.toAfterSale}</Field>
+          </FieldGrid>
+          {/* 门店商品投影（P-11.2.1e）：缺货待补要能直接点过去看是哪几件 */}
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(store.storeNo)}`} data-audit-skip="button-aschild">
+              {c.stViewGoods}
+            </Link>
+          </Button>
+        </DrawerSection>
+      )}
+    </>
+  );
+}
+
+/**
+ * 订单页签：这家店的订单，分页 + 按状态筛。
+ * 后端与 OrderQ 早就支持 storeNo（P-11.2.1f）。不点开订单详情 —— 那会在门店抽屉上再叠一层；
+ * 要处理某一单，用「看这家店的订单」去订单管理，那里带着门店筛选。
+ */
+function StoreOrders({ c, storeNo }: { c: Copy; storeNo: string }) {
+  const orderStatusMap = useOrderStatusMap();
+  const [status, setStatus] = useState("");
+  const { page, setPage, size, setSize } = usePaging();
+  const q = { storeNo, status: status || undefined, page, size };
+  const orders = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q) });
+
+  const columns: Column<Order>[] = [
+    { header: c.stOrderColNo, cell: (o) => <IdCell value={o.orderNo} />, numeric: true, align: "start" },
+    { header: c.stOrderColAt, cell: (o) => fmtTime(o.createdAt) },
+    { header: c.stOrderColBuyer, cell: (o) => o.buyerNickname },
+    { header: c.stOrderColPay, cell: (o) => money(o.payAmount), numeric: true },
+    { header: c.stOrderColStatus, cell: (o) => <OrderStatusBadge value={o.status} /> },
+  ];
+
+  return (
+    <div className="mt-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <FilterSelect
+          aria-label={c.stOrderColStatus}
+          value={status}
+          onChange={(v) => { setStatus(v); setPage(1); }}
+          allLabel={c.stOrdersAllStatus}
+          options={orderStatusMap}
+        />
+        <Button size="sm" variant="outline" className="ms-auto" asChild>
+          <Link href={`/orders?storeNo=${encodeURIComponent(storeNo)}`} data-audit-skip="button-aschild">
+            {c.stViewOrders}
+          </Link>
+        </Button>
+      </div>
+      <PagedTable
+        query={orders}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        columns={columns}
+        rowKey={(o) => o.orderNo}
+        empty={c.stOrdersEmpty}
+        compact
+      />
+    </div>
   );
 }

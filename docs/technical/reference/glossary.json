@@ -32841,6 +32841,12 @@
           "ar": "لديك طلبات أو مرتجعات قيد التنفيذ — أنهِها أولاً"
         },
         {
+          "key": "err.user.owner_account_unavailable",
+          "zh-CN": "店主账号不存在或状态不可用，请填写已注册且正常的账号邮箱",
+          "en": "Owner account not found or unavailable. Enter the email of an active registered account.",
+          "ar": "حساب المالك غير موجود أو غير متاح. أدخل البريد الإلكتروني لحساب مسجل ونشط."
+        },
+        {
           "key": "err.user.person_phone_taken",
           "zh-CN": "这个手机号已绑定其它账号，请联系客服处理",
           "en": "This phone number is already linked to another account — contact support",
@@ -43857,6 +43863,13 @@
         "module": "shop-merchant"
       },
       {
+        "host": "MchStore",
+        "name": "PENDING_OPEN",
+        "value": "PENDING_OPEN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
         "host": "MchStoreAudit",
         "name": "PENDING",
         "value": "PENDING",
@@ -45025,6 +45038,7 @@
           "TOKEN_EXPIRED",
           "FORBIDDEN",
           "NOT_FOUND",
+          "OWNER_ACCOUNT_UNAVAILABLE",
           "CONFLICT",
           "TOO_MANY_REQUESTS",
           "CLIENT_UPGRADE_REQUIRED",
@@ -46170,6 +46184,15 @@
         ],
         "zh": "",
         "module": "shop-store-mybatis"
+      },
+      {
+        "name": "Model",
+        "values": [
+          "ENTITY",
+          "STORE"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "MoveDirection",
@@ -47725,6 +47748,7 @@
         "name": "StoreStatus",
         "values": [
           "ACTIVE",
+          "SETUP",
           "DISABLED",
           "CLOSED"
         ],
@@ -48005,6 +48029,15 @@
           "COMBO"
         ],
         "zh": "活动的触发。"
+      },
+      {
+        "name": "AdmissionEntryType",
+        "client": "ops-web",
+        "values": [
+          "ON_BEHALF",
+          "SELF_OPERATED"
+        ],
+        "zh": "统一准入列表来源。"
       },
       {
         "name": "AfterSaleReason",
@@ -50194,6 +50227,15 @@
         "zh": "种草内容状态。"
       },
       {
+        "name": "PurchaseModel",
+        "client": "ops-web",
+        "values": [
+          "ENTITY",
+          "STORE"
+        ],
+        "zh": "Money is an exact decimal string in minor units, including aggregate values beyond int64."
+      },
+      {
         "name": "PushPlatform",
         "client": "shared",
         "values": [
@@ -50977,9 +51019,30 @@
         "values": [
           "ACTIVE",
           "READONLY",
-          "SUSPENDED"
+          "SUSPENDED",
+          "PENDING_OPEN"
         ],
         "zh": "门店经营状态。"
+      },
+      {
+        "name": "StoreOperationalReviewSource",
+        "client": "ops-web",
+        "values": [
+          "MANUAL",
+          "STORE",
+          "ENTITY"
+        ],
+        "zh": "开业审核来源：人工、门店商城订单或主体商城订单。"
+      },
+      {
+        "name": "StoreOperationalReviewStatus",
+        "client": "ops-web",
+        "values": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "zh": "开业审核结论。"
       },
       {
         "name": "StorePointAgreementSettleMode",
@@ -51211,6 +51274,14 @@
     ]
   },
   "constants": [
+    {
+      "host": "PurchaseReporting",
+      "name": "ORDER",
+      "type": "Comparator<Row>",
+      "value": "Comparator.comparingLong(Row::createdAt).reversed() .thenComparing(Row::model).thenComparing(Row::orderNo, Comparator.reverseOrder())",
+      "zh": "",
+      "module": "commerce"
+    },
     {
       "host": "CategoryService",
       "name": "MAX_DEPTH",
@@ -55165,10 +55236,42 @@
     },
     {
       "host": "Perms",
+      "name": "CUSTOMER_USER_READ",
+      "type": "String",
+      "value": "\"customer:user:read\"",
+      "zh": "平台客户数据。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_VIEW",
+      "type": "String",
+      "value": "\"pay:merchant:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_VIEW",
+      "type": "String",
+      "value": "\"pay:onboarding:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_VIEW",
+      "type": "String",
+      "value": "\"pay:channel:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "PAY_ORDER_VIEW",
       "type": "String",
       "value": "\"pay:order:view\"",
-      "zh": "支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -55961,6 +56064,30 @@
       "type": "String",
       "value": "\"system:testphone:update\"",
       "zh": "测试号固定验证码白名单 —— 增 / 改 / 删 / 启停。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_ORDERS_READ",
+      "type": "String",
+      "value": "\"commerce:platform:orders:read\"",
+      "zh": "Platform purchase reporting; source reads and financial actions retain their separate grants.",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_CLAIMS_READ",
+      "type": "String",
+      "value": "\"commerce:platform:claims:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "COMMERCE_PLATFORM_CASH_READ",
+      "type": "String",
+      "value": "\"commerce:platform:cash:read\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

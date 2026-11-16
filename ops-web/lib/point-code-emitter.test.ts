@@ -13,7 +13,7 @@ it("emitting a new menu preserves every frozen code across merged sections", () 
   const ops = new URL("..", import.meta.url).pathname;
   const root = mkdtempSync(join(tmpdir(), "ops-point-emitter-"));
   try {
-    for (const file of ["ops-web/scripts/gen-perm-seed.mjs", "ops-web/lib/nav.ts", "ops-web/lib/perm-map.ts", "ops-web/lib/point-codes.ts", "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java"]) {
+    for (const file of ["ops-web/scripts/gen-perm-seed.mjs", "ops-web/lib/nav.ts", "ops-web/lib/platform-menu-aliases.json", "ops-web/lib/perm-map.ts", "ops-web/lib/point-codes.ts", "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java"]) {
       const target = join(root, file);
       mkdirSync(join(target, ".."), { recursive: true });
       writeFileSync(target, readFileSync(join(ops, "..", file)));

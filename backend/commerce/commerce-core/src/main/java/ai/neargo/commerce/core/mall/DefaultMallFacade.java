@@ -116,7 +116,7 @@ public final class DefaultMallFacade implements MallFacade {
                 stores.find(s)
                         .filter(v -> s.equals(v.store()))
                         .orElseThrow(() -> fail("NOT_FOUND"));
-        if (store.status() != StoreStatus.ACTIVE || store.model() != CommerceModel.STORE_V1)
+        if ((store.status() != StoreStatus.ACTIVE && store.status() != StoreStatus.SETUP) || store.model() != CommerceModel.STORE_V1)
             throw fail("STORE_UNAVAILABLE");
         return store;
     }

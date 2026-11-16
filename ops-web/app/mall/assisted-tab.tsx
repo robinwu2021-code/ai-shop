@@ -6,6 +6,7 @@
 // 报价由服务器冻结（15 分钟有效），金额以报价回执为准；这里不做任何前端算价。
 // 下单幂等键在报价那一刻生成并保持不变：网络抖动重点一次不会下两单。
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {useFinancialLock} from "@/components/offline/financial-lock";
 import {isApiError} from "@/lib/api/error";
@@ -26,7 +27,8 @@ import { OrderDrawer } from "./order-drawer";
 
 export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSubscription: boolean }) {
   const catalog = useQuery({ queryKey: ["mall-catalog"], queryFn: () => api.mallCatalog() });
-  const [storeNo, setStoreNo] = React.useState("");
+  const sp = useSearchParams();
+  const [storeNo, setStoreNo] = React.useState(() => sp.get("store") ?? "");
   const context = useQuery({ queryKey: ["mall-subscription", storeNo], queryFn: () => api.mallSubscription(storeNo), enabled: !!storeNo && canReadSubscription });
   const [address, setAddress] = React.useState<MallShippingAddress>({ recipient: "", phone: "", countryCode: "", region: "", city: "", addressLine: "", postalCode: "" });
   const [frozenAddress, setFrozenAddress] = React.useState<MallShippingAddress | null>(null);

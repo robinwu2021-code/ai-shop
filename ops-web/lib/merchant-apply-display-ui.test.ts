@@ -5,7 +5,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {MerchantApply} from './types';
 const state=vi.hoisted(()=>({rows:[] as MerchantApply[],audit:vi.fn(),selfContext:vi.fn(),selfCreate:vi.fn()}));
-vi.mock('@/lib/api',()=>({api:{selfOperatedContext:state.selfContext,createSelfOperated:state.selfCreate,listApplies:async()=>({records:state.rows,total:state.rows.length}),listCommunities:async()=>({records:[],total:0}),listAuthCodes:async()=>[],auditApply:state.audit,acceptApply:vi.fn(),listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[],marketPhonePolicies:async()=>[]}}));
+vi.mock('@/lib/api',()=>({api:{listAdmissions:async()=>({records:state.rows.map(a=>({...a,key:"APPLY:"+a.applyNo,type:"ON_BEHALF",application:a})),total:state.rows.length}),selfOperatedContext:state.selfContext,createSelfOperated:state.selfCreate,listApplies:async()=>({records:state.rows,total:state.rows.length}),listCommunities:async()=>({records:[],total:0}),listAuthCodes:async()=>[],auditApply:state.audit,acceptApply:vi.fn(),listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[],marketPhonePolicies:async()=>[]}}));
 vi.mock('@/lib/api/master-data',()=>({useCodeLabel:()=>({industry:()=> '餐饮',subject:()=> '企业'})}));
 vi.mock('@/lib/i18n',()=>({useI18n:()=>({locale:'zh',t:(k:string)=>k}),useT:()=>((k:string)=>k)}));
 vi.mock('@/lib/notify',()=>({notify:{success:vi.fn()}}));
@@ -31,7 +31,7 @@ it('groups store details separately and keeps the existing approval command',asy
  state.audit.mockImplementation(async()=>({...state.rows[0],status:'APPROVED',merchantNo:'M1',storeNo:'S1'}));
  await render(h(ApplyTab,{c,canAudit:true}));await open();
  const dialog=document.querySelector('[role="dialog"]')!;
- expect(dialog.textContent).toContain('经营主体与申请人');expect(dialog.textContent).toContain('开店资料');expect(dialog.textContent).toContain('门店地址');
+ expect(dialog.textContent).toContain('申请信息');expect(dialog.textContent).toContain('经营主体与联系人');expect(dialog.textContent).toContain('开店资料');expect(dialog.textContent).toContain('门店地址');
  const approve=[...dialog.querySelectorAll('button')].find(b=>b.textContent===c.applyActionApprove)!;
  await act(async()=>approve.click());
  expect(state.audit).toHaveBeenCalledWith('A1',true,'','CITY',[],[]);
@@ -78,4 +78,11 @@ it('uses a registered email for Taiwan self-operation without mainland prompts o
 });
 it('keeps audit-only users in the unified application list without exposing creation',async()=>{
  await render(h(OnBehalfTab,{c,canSubmit:false,canAudit:true}));expect(host.querySelector('table')).not.toBeNull();expect([...host.querySelectorAll('button')].some(b=>b.textContent===c.obNew)).toBe(false);expect(host.textContent).toContain(c.applyActionAccept);
+});
+it('does not invent a stored default-store name from an idempotent creation request',async()=>{
+ state.selfCreate.mockResolvedValue({merchantNo:'M-idem',storeNo:'S-existing',ownerUserNo:'U-owner',created:false,reachableCommunities:1,selfOperated:true,fundsMode:'AGGREGATED',businessMode:'SELF_OPERATED',serviceScope:'CITY'});
+ await render(h(SelfOperatedTab,{c,canCreate:true}));
+ for(const [id,value] of [['so-owner','owner@example.test'],['so-name','Unstored requested name'],['so-scope','CITY']]){const el=document.getElementById(id) as HTMLInputElement;await act(async()=>{Object.getOwnPropertyDescriptor(el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype,'value')!.set!.call(el,value);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));});}
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===c.soSubmit)!.click());
+ expect(host.textContent).toContain('S-existing');expect(host.textContent).not.toContain('Unstored requested name');
 });

@@ -1,0 +1,134 @@
+{
+  "date": "2026-11-14",
+  "status": "SCOPED_PURCHASE_WORKSPACE_LOCAL_VALIDATION_PASS",
+  "scope": "Selected authorized entity/store; no cross-entity aggregate or income views",
+  "frontendTests": {
+    "suites": 17,
+    "passed": 170
+  },
+  "backendTests": {
+    "classes": 2,
+    "passed": 4,
+    "basis": "H2 narrow SQL + controller direct invocation; existing detail loader spied"
+  },
+  "actorIsolationStrengthened": {
+    "passed": 3,
+    "sameMountedComponentActorSwitch": true
+  },
+  "typecheck": "PASS",
+  "webpackStaticBuild": "PASS",
+  "defaultTurbopack": "PREEXISTING_EXTERNAL_DEPENDENCY_SYMLINK_LIMITATION",
+  "preexistingDirtyFilesPreserved": 53,
+  "historicalAndEarlierPendingSqlPreserved": 577,
+  "frozenPointCodesUnchanged": true,
+  "permissionsOrRoleGrantsChanged": false,
+  "financialWriteApiChanged": false,
+  "legacyNoQueryPurchaseListPreserved": true,
+  "unresolvedAssistedRequestCache": "Root QueryClient per tenant/username/entity; survives SPA unmount, no automatic retry, not hard-reload durable",
+  "independentReview": {
+    "agent": "review_purchase_workspace",
+    "P1Findings": 1,
+    "fixed": 1,
+    "proof": "Real form lost request across unmount before fix; now keeps original key, operator isolation and authoritative completion cleanup"
+  },
+  "nativeMysql9Executed": false,
+  "realSpringHttpSecurityExecuted": false,
+  "environment166Changed": false,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "changedOrAddedTaskFiles": [
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/plan/EntityPlanOperatorPagingControllerTest.java",
+      "sha256": "f9e6c29d7e14198345f0cadb53e9dda4387c30005f3942ef5fbd20b99a9f43a4"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/plan/EntityPlanOperatorPagingTest.java",
+      "sha256": "5442b12810ebebd519a998ab4bf79753bcb6f5ae20e3717b261e102c8ccfe4cc"
+    },
+    {
+      "path": "docs/technical/TDD-平台商城购买工作区.md",
+      "sha256": "193b1fafe50ac6556c11a13e84e78da028be31d179a07763fe7d7d3ad0301d9a"
+    },
+    {
+      "path": "ops-web/app/mall/entity-orders-tab.tsx",
+      "sha256": "a543b93a1fb30eb0938df928ac587ceb98964a28b333365cd2f049a9d1894847"
+    },
+    {
+      "path": "ops-web/app/mall/purchase-workspace-copy.ts",
+      "sha256": "fbe61c971cb4c4d1bdd718be6d13c656d5d42bd53ebeff74b34833cb7962d538"
+    },
+    {
+      "path": "ops-web/app/mall/purchase-workspace.tsx",
+      "sha256": "ea2c4684ccfea24bcda30afcf4b53b9d5a19f25e85e410166aa81fd24636d631"
+    },
+    {
+      "path": "ops-web/lib/entity-assisted-navigation.test.ts",
+      "sha256": "7d0963574f6336303e5bcbe2c968b1e8c3ef8283be83ad9640e1413e95f8f7a6"
+    },
+    {
+      "path": "ops-web/lib/purchase-workspace.test.ts",
+      "sha256": "4510211a7eea898a2713c72f15704b65e422c5f1f144e6f2c3dcfe8de58d4724"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/ops/OpsPlanPurchaseController.java",
+      "sha256": "b411675f56e2ac0fe2324739f3b8d7f8370ce84936576dfd4acd654c1ac96994"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/EntityPlanPurchaseService.java",
+      "sha256": "f31f39f2f002ba278c7c3727d7cfad88e0a03ddf384b33a7772690fa5f67eaab"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/impl/EntityPlanPurchaseServiceImpl.java",
+      "sha256": "cea6e89116af33770bf01ca9760e2ac52aa7ed7e45cba7f742cc941c7aea8651"
+    },
+    {
+      "path": "docs/api/backend-ui-delivery-entity-plan-purchase.json",
+      "sha256": "845ed801fd3bc480f418b279f76aae8b8271b9d961c72aa60cf8c0da032b4583"
+    },
+    {
+      "path": "docs/api/entity-plan-offline-purchase.md",
+      "sha256": "b9fa3d5b55690f9d081e8156d9abf80aa3893ce31af4914f2cf1fa0d55a677a7"
+    },
+    {
+      "path": "docs/api/entity-plan-offline-purchase.openapi.json",
+      "sha256": "916382d6caa01fb3ff92bf220d7abb091058826c962e9afb5d4e989c6aa06470"
+    },
+    {
+      "path": "ops-web/app/mall/orders-tab.tsx",
+      "sha256": "874f8816ffdc995b16cf2b9f9a04f8b3943b47dd47639f3c532f272f9ca6ddbe"
+    },
+    {
+      "path": "ops-web/app/mall/page.tsx",
+      "sha256": "2234a6fd1395dae7c0bcdda70a9502cdcfc9341ff87b1ec3ce664e45bbf3c581"
+    },
+    {
+      "path": "ops-web/app/merchants/plan-assisted-purchase.tsx",
+      "sha256": "0e0be1b96c51482a8d3ffe6ca01f669643865ac8475a3fa59e5620316ef4fcad"
+    },
+    {
+      "path": "ops-web/app/merchants/plan-purchases.tsx",
+      "sha256": "b9678085d05fe08c7679da8e71e8f00aca1e0212fe80a06fd1e33aa699ae7883"
+    },
+    {
+      "path": "ops-web/app/merchants/plans-tab.tsx",
+      "sha256": "a719983fdb0f126f086c1ede0a520bbc3a6b2fb11097895bc5eee821d8a3197d"
+    },
+    {
+      "path": "ops-web/lib/api/contracts/entity-plan-purchase.ts",
+      "sha256": "d0835ecfbd88b339dc12438b5b678ea93895ca8269a3531f1ce6a01b6d79f9da"
+    },
+    {
+      "path": "ops-web/lib/api/https/entity-plan-purchase.test.ts",
+      "sha256": "0dd4e9dcdf2b8bf9472c771e81b217c6247bbebffe91c2553befadb2efb024c6"
+    },
+    {
+      "path": "ops-web/lib/api/https/merchant.ts",
+      "sha256": "3fee8581d7d391bb691e490242951b64f8a3a085e911075ada240263b2ceebf4"
+    },
+    {
+      "path": "ops-web/lib/api/mocks/merchant.ts",
+      "sha256": "39b90a5b4400223f4bdcbacce59a650e4df6f3017d213c2ad2bf5c513f379b62"
+    }
+  ]
+}

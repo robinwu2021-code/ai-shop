@@ -4,6 +4,7 @@ import {act,createElement as h} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 const fixture=vi.hoisted(()=>({canPay:true,merchant:{merchantNo:'MUME-test',name:'Seed merchant',status:'PENDING_LICENSE',createdAt:0,communityNos:[],categoryCodes:[],contactName:null,contactPhone:null}}));
+vi.mock('next/navigation',()=>({useRouter:()=>({replace:vi.fn()}),useSearchParams:()=>new URLSearchParams()}));
 vi.mock('@/lib/api',()=>({api:{listMerchants:async()=>({records:[fixture.merchant],total:1}),listCommunities:async()=>({records:[],total:0})}}));
 vi.mock('@/lib/use-page-tab',()=>({usePageTab:()=>['list',vi.fn()],useNavTabs:()=>[{key:'list',label:'Merchants'},{key:'stores',label:'Stores'}]}));
 vi.mock('@/lib/stores/locale',async()=>{const {create}=await import('zustand');return {useLocaleStore:create(()=>({locale:'zh'}))};});

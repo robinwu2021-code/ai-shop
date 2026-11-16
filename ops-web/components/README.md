@@ -48,7 +48,7 @@
 
 | 组件 | 文件 | 说明 |
 |---|---|---|
-| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式。入参具名导出为 `DataTableProps` |
+| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式。入参具名导出为 `DataTableProps`。嵌在抽屉里的窄表传 `compact` 去掉 56rem 宽度下限 |
 | `PagedTable` | `ui/paged-table.tsx` | **分页列表就用它**：`DataTable` + `Pagination` 绑同一份 `query`。rows / loading / error / onRetry / total 由 `query` 接出，`onSize` 是**必填** —— 漏了编译不过，不必再靠正则去追 |
 | `SectionHeader` | `ui/section-header.tsx` | 页内小节标题（标题 + 右侧概要 + 说明行）。收编前 13 处 `<h3>` 长出五种写法，其中两处写的 `txt-h3` **是个不存在的类** |
 | `FormDrawer` | `ui/form-drawer.tsx` | 配置化编辑抽屉（`FieldDef[]` → 表单 + 校验 + 分区 + 联动）。传 `inDrawer` 时在**已打开的抽屉里**原地展开、按钮进外层底栏，不叠第二层 |
@@ -73,6 +73,8 @@
 | `MerchantStatusBadge` / `OrderStatusBadge` / `VerifiedBadge` | `status.tsx` | 域内固定枚举的徽标，文案走 i18n |
 | `useFulfillmentTypeMap` / `useTrafficSourceMap` | `status.tsx` | 履约方式 / 流量来源的映射表（同时喂 `StatusBadge` 与 `FilterSelect`） |
 | `useMerchantTierLabel` | `status.tsx` | 商家主体分层文案 |
+| `PaymentOpsEntry` | `payment-ops-entry.tsx` | 按现有权限打开支付端工作区，复用支付端会话桥接 |
+| `CompatibilityCatalog` | `layout/compatibility-catalog.tsx` | 兼容入口目录，供旧地址恢复到现有工作区 |
 | `ReadOnlyNotice` | `read-only-notice.tsx` | 权限降级提示，句式统一 |
 | `ShowArchivedToggle` / `ArchiveActions` / `ArchivedAt` / `archivedRowClass` / `archiveConfirm` | `archive.tsx` | G1 软删除的页面侧统一件 |
 | `Providers` | `providers.tsx` | React Query / 主题 / toast 的挂载点 |
@@ -162,6 +164,7 @@
 | `usePaging()` | `lib/use-paging.ts` | 页码 + 每页条数。`setSize` 内部一定复位到第 1 页 |
 | `useEditableConfig(data, toForm)` | `lib/use-editable-config.ts` | 配置表单的 `form ?? 派生` 模式。`patch/set` **内部就是函数式更新**，写不出 stale closure |
 | `useCopy(COPY)` | `lib/use-copy.ts` | 页面正文的中英对照。文案表按页就近放 `app/xxx/copy.ts`，不塞进全站 catalog |
+| `useReportingIdentity()` | `lib/use-reporting-identity.ts` | 给报表查询缓存附加当前身份与数据范围，避免账号切换时复用旧结果 |
 | `useCan()` | `lib/use-can.ts` | 权限判定（`can` / `canModule` / `scopeOf` 的 React 侧入口） |
 | `useOpsStream(event, onData)` | `lib/use-ops-stream.ts` | 订阅服务端推送。**整页共用一条连接**（内部引用计数）—— 每个组件各开一条的话，后端看到的在线数是「打开的组件数」而不是「打开的人数」，而那个数会拿去判负载 |
 

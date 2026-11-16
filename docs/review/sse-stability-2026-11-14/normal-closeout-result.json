@@ -1,0 +1,143 @@
+{
+  "scope": "166 SANDBOX, actual normal Flutter main, robin account, no QoS1/JetStream/App ACK",
+  "testResult": "PASS (1 integration test)",
+  "foregroundOrder": "PYO261114101752261",
+  "backgroundOrder": "PYO261114102023262",
+  "baselineUnread": 1,
+  "finalUnread": 3,
+  "paidCount": 3,
+  "paidAmountMinor": 300,
+  "currency": "TWD",
+  "nativeSpeechStarted": 1,
+  "nativeSpeechCompleted": 1,
+  "backgroundReplaySpeech": 0,
+  "events": [
+    {
+      "stage": "NORMAL_SESSION",
+      "utc": "2026-11-14T02:15:51.899381Z",
+      "signedIn": true,
+      "profileLoaded": true,
+      "userMatches": true
+    },
+    {
+      "stage": "NORMAL_BASELINE",
+      "utc": "2026-11-14T02:16:21.485715Z",
+      "knownPaidOrders": [
+        "PYO261114084336221"
+      ],
+      "unread": 1,
+      "originalPaymentMessageUnread": true,
+      "available": true,
+      "started": 0,
+      "completed": 0,
+      "stopped": 0
+    },
+    {
+      "stage": "WAIT_FOREGROUND_PAYMENT",
+      "utc": "2026-11-14T02:16:21.487360Z"
+    },
+    {
+      "stage": "NORMAL_FOREGROUND_VERIFIED",
+      "utc": "2026-11-14T02:19:13.018611Z",
+      "paymentNo": "PYO261114101752261",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "WAIT_BACKGROUND_PAYMENT",
+      "utc": "2026-11-14T02:19:13.018816Z"
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:19:38.186395Z",
+      "state": "inactive",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:19:40.040616Z",
+      "state": "hidden",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:19:40.041234Z",
+      "state": "paused",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:21:16.638055Z",
+      "state": "hidden",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:21:16.639833Z",
+      "state": "inactive",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "LIFECYCLE",
+      "utc": "2026-11-14T02:21:16.857737Z",
+      "state": "resumed",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "NORMAL_BACKGROUND_VERIFIED",
+      "utc": "2026-11-14T02:21:51.033688Z",
+      "paymentNo": "PYO261114102023262",
+      "unread": 3,
+      "paidCount": 3,
+      "paidAmountMinor": "300",
+      "available": true,
+      "started": 1,
+      "completed": 1,
+      "stopped": 0
+    },
+    {
+      "stage": "NORMAL_CLOSEOUT_PASSED",
+      "utc": "2026-11-14T02:21:51.034095Z"
+    }
+  ],
+  "limitations": [
+    "Not a long duration production SLA or QoS delivery guarantee",
+    "Old expired/missing login root cause remains unproven",
+    "Test is limited to Android emulator and official NewebPay sandbox",
+    "No OS background notification provider integrated"
+  ],
+  "normalPackageRestore": {
+    "installed": true,
+    "pending": null,
+    "testCleanupIssue": "Flutter test defaults uninstall=true; current run omitted --no-uninstall and SDK did not use intended ADB wrapper",
+    "runbookCorrected": true,
+    "beforeIntegrationTestForceStopRestorePassed": true,
+    "reloginAndTargetHomeVerified": true,
+    "observedTodayPaidCount": 3,
+    "observedTodayAmountTWD": 3,
+    "finalForceStopRestartVerified": true,
+    "normalMessageListCount": 3,
+    "normalMeUnreadBadge": 3,
+    "finalScreen": "message list, no read action"
+  }
+}

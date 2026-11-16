@@ -165,6 +165,11 @@ public final class Perms {
      * 支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。码一开始就是细的：看与动分开，复核单列 ——
      * 复核要两个不同的人先后通过（RefundService#review），所以授给一个人也执行不了。
      */
+    /** 平台客户数据；新增能力不默认授给既有岗位。 */
+    public static final String CUSTOMER_USER_READ = "customer:user:read";
+    public static final String PAY_MERCHANT_VIEW = "pay:merchant:view";
+    public static final String PAY_ONBOARDING_VIEW = "pay:onboarding:view";
+    public static final String PAY_CHANNEL_VIEW = "pay:channel:view";
     public static final String PAY_ORDER_VIEW = "pay:order:view";
     public static final String PAY_ORDER_MANAGE = "pay:order:manage";
     public static final String PAY_REFUND_VIEW = "pay:refund:view";
@@ -591,6 +596,11 @@ public final class Perms {
      * 只有权限码的话，超管账号一旦被借用就是全平台任意账号登录。
      */
     public static final String SYSTEM_TESTPHONE_UPDATE = "system:testphone:update";
+
+    /** Platform purchase reporting; source reads and financial actions retain their separate grants. */
+    public static final String COMMERCE_PLATFORM_ORDERS_READ = "commerce:platform:orders:read";
+    public static final String COMMERCE_PLATFORM_CLAIMS_READ = "commerce:platform:claims:read";
+    public static final String COMMERCE_PLATFORM_CASH_READ = "commerce:platform:cash:read";
 
     /** Scoped channel technical evidence; no merchant funds or recipient payload. */
     public static final String SYSTEM_COMMERCE_READ = "system:commerce:read";

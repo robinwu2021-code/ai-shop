@@ -1,0 +1,346 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] commerce-parent                                                    [pom]
+[INFO] commerce-api                                                       [jar]
+[INFO] shop-parent                                                        [pom]
+[INFO] shop-auth-store                                                    [jar]
+[INFO] job-api                                                            [jar]
+[INFO] svc-client                                                         [jar]
+[INFO] shop-base                                                          [jar]
+[INFO] shop-base-auth                                                     [jar]
+[INFO] shop-store-mybatis                                                 [jar]
+[INFO] print-api                                                          [jar]
+[INFO] shop-merchant                                                      [jar]
+[INFO] 
+[INFO] -----------------< ai.neargo.commerce:commerce-parent >-----------------
+[INFO] Building commerce-parent 0.1.0-SNAPSHOT                           [1/11]
+[INFO]   from commerce/pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.9.0:build-classpath (runtime-boundary) @ commerce-parent ---
+[INFO] No dependencies found.
+[INFO] Skipped writing classpath file '/private/tmp/ai-shop-config-release-20261113/backend/commerce/target/runtime-classpath.txt'.  No changes found.
+[INFO] 
+[INFO] ------------------< ai.neargo.commerce:commerce-api >-------------------
+[INFO] Building commerce-api 0.1.0-SNAPSHOT                              [2/11]
+[INFO]   from commerce/commerce-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ commerce-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/commerce/commerce-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ commerce-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 161 source files with javac [debug release 21 module-path] to target/classes
+[INFO] 
+[INFO] --- dependency:3.9.0:build-classpath (runtime-boundary) @ commerce-api ---
+[INFO] No dependencies found.
+[INFO] Skipped writing classpath file '/private/tmp/ai-shop-config-release-20261113/backend/commerce/commerce-api/target/runtime-classpath.txt'.  No changes found.
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ commerce-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/commerce/commerce-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ commerce-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug release 21] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ commerce-api ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:shop-parent >---------------------
+[INFO] Building shop-parent 0.1.0-SNAPSHOT                               [3/11]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< ai.neargo.shop:shop-auth-store >-------------------
+[INFO] Building shop-auth-store 0.1.0-SNAPSHOT                           [4/11]
+[INFO]   from shop-auth-store/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-auth-store ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-auth-store ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-auth-store ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-auth-store/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-auth-store/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-auth-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-auth-store ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-auth-store/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-auth-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-auth-store ---
+[INFO] 
+[INFO] -----------------------< ai.neargo.shop:job-api >-----------------------
+[INFO] Building job-api 0.1.0-SNAPSHOT                                   [5/11]
+[INFO]   from job/job-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ job-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ job-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ job-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/job/job-api/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/job/job-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ job-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ job-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/job/job-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ job-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ job-api ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:svc-client >----------------------
+[INFO] Building svc-client 0.1.0-SNAPSHOT                                [6/11]
+[INFO]   from svc-client/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ svc-client ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ svc-client ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ svc-client ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/svc-client/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/svc-client/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ svc-client ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ svc-client ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/svc-client/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ svc-client ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ svc-client ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:shop-base >----------------------
+[INFO] Building shop-base 0.1.0-SNAPSHOT                                 [7/11]
+[INFO]   from shop-base/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-base ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-base ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-base ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-base ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-base ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-base ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-base ---
+[INFO] 
+[INFO] -------------------< ai.neargo.shop:shop-base-auth >--------------------
+[INFO] Building shop-base-auth 0.1.0-SNAPSHOT                            [8/11]
+[INFO]   from shop-base-auth/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-base-auth ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-base-auth ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-base-auth ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base-auth/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base-auth/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-base-auth ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-base-auth ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-base-auth/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-base-auth ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-base-auth ---
+[INFO] 
+[INFO] -----------------< ai.neargo.shop:shop-store-mybatis >------------------
+[INFO] Building shop-store-mybatis 0.1.0-SNAPSHOT                        [9/11]
+[INFO]   from shop-store-mybatis/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-store-mybatis ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-store-mybatis ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-store-mybatis ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-store-mybatis/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-store-mybatis/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-store-mybatis ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-store-mybatis ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-store-mybatis ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-store-mybatis ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:print-api >----------------------
+[INFO] Building print-api 0.1.0-SNAPSHOT                                [10/11]
+[INFO]   from print/print-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ print-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ print-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ print-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/print/print-api/src/main/resources
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/print/print-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ print-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ print-api ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/print/print-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ print-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ print-api ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --------------------< ai.neargo.shop:shop-merchant >--------------------
+[INFO] Building shop-merchant 0.1.0-SNAPSHOT                            [11/11]
+[INFO]   from shop-merchant/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-merchant ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-merchant ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-merchant ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-merchant ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 287 source files with javac [debug parameters release 21] to target/classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantServiceImpl.java: /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantServiceImpl.java使用了未经检查或不安全的操作。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantServiceImpl.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-merchant ---
+[INFO] skip non existing resourceDirectory /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-merchant ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 38 source files with javac [debug parameters release 21] to target/test-classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandBindingConcurrencyTest.java: /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandBindingConcurrencyTest.java使用或覆盖了已过时的 API。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandBindingConcurrencyTest.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandScopeAuthorizationTest.java: /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandScopeAuthorizationTest.java使用了未经检查或不安全的操作。
+[INFO] /private/tmp/ai-shop-config-release-20261113/backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/BrandScopeAuthorizationTest.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-merchant ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running ai.neargo.shop.merchant.plan.EntityPlanOperatorPagingControllerTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.371 s -- in ai.neargo.shop.merchant.plan.EntityPlanOperatorPagingControllerTest
+[INFO] Running ai.neargo.shop.merchant.plan.EntityPlanOperatorPagingTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.710 s -- in ai.neargo.shop.merchant.plan.EntityPlanOperatorPagingTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for shop-parent 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] commerce-parent .................................... SUCCESS [  0.846 s]
+[INFO] commerce-api ....................................... SUCCESS [  2.191 s]
+[INFO] shop-parent ........................................ SUCCESS [  0.206 s]
+[INFO] shop-auth-store .................................... SUCCESS [  0.142 s]
+[INFO] job-api ............................................ SUCCESS [  0.046 s]
+[INFO] svc-client ......................................... SUCCESS [  0.042 s]
+[INFO] shop-base .......................................... SUCCESS [  0.229 s]
+[INFO] shop-base-auth ..................................... SUCCESS [  0.207 s]
+[INFO] shop-store-mybatis ................................. SUCCESS [  0.122 s]
+[INFO] print-api .......................................... SUCCESS [  0.053 s]
+[INFO] shop-merchant ...................................... SUCCESS [  7.494 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.263 s
+[INFO] Finished at: 2026-11-14T02:42:32+08:00
+[INFO] ------------------------------------------------------------------------

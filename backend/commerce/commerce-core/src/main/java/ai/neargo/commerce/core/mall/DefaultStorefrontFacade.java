@@ -81,7 +81,7 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                                     .filter(v -> ref.equals(v.store()))
                                     .orElseThrow(() -> new MallException("NOT_FOUND"));
                     if (store.model() != CommerceModel.STORE_V1
-                            || store.status() != StoreStatus.ACTIVE)
+                            || (store.status() != StoreStatus.ACTIVE && store.status() != StoreStatus.SETUP))
                         throw new MallException("STORE_UNAVAILABLE");
                     var account = accounts.lockSubscriptionAccount(ref);
                     if (!ref.equals(account.store())

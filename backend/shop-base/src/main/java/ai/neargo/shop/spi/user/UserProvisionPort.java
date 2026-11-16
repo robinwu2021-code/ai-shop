@@ -24,6 +24,6 @@ public interface UserProvisionPort {
      */
     String ensureUserByPhone(String phone);
 
-    /** Resolve an existing, verified email owner; does not create identities or issue tokens. */
+    /** Resolve an active registered account by email; never verifies email, creates identities or issues tokens. */
     default Optional<String> registeredUserByEmail(String email) { throw new UnsupportedOperationException(); }
 }

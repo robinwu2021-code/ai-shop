@@ -8,7 +8,7 @@ vi.mock('next/navigation',()=>({usePathname:()=>'/merchants',useSearchParams:()=
 vi.mock('next/link',()=>({default:({children,...p}:React.ComponentProps<'a'>)=>h('a',p,children)}));
 vi.mock('@/lib/auth',()=>({useAuth:(s:(v:unknown)=>unknown)=>s({perms:['*']})}));
 vi.mock('@/lib/stores/nav-prefs',()=>({useNavPrefs:(s:(v:unknown)=>unknown)=>s({panelCollapsed:false})}));
-vi.mock('@/lib/stores/server-menu',()=>({useNavTree:()=>state.nav,useServerMenu:(s:(v:unknown)=>unknown)=>s({byHref:{}}),isPointUnimplemented:()=>false}));
+vi.mock('@/lib/stores/server-menu',()=>({usePlatformNavTree:()=>state.nav,useServerMenu:(s:(v:unknown)=>unknown)=>s({byHref:{}}),isPointUnimplemented:()=>false}));
 vi.mock('@/lib/i18n',()=>({useI18n:()=>({t:(k:string)=>k,tNav:(k:string)=>k})}));
 import {navTabs} from './nav';
 import {SecondaryNav} from '@/components/layout/secondary-nav';

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
@@ -30,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -45,7 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Production writer/mapper concurrency only; authenticated source comparison has separate real two-JVM acceptance. */
 @EnabledIfEnvironmentVariable(named="ALIAS_NATIVE_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:.*")
 class EntitlementMigrationAliasNativeMysqlTest {
-    @Configuration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions {}
+    @TestConfiguration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions {}
     @Test void recognitionIsUniqueAndStaleRepeatableReadCannotRetainAPendingCommand() throws Exception {
         String url=System.getenv("ALIAS_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/alias_native_fixture\\?.*");

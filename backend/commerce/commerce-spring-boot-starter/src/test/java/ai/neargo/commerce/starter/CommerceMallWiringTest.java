@@ -72,6 +72,7 @@ class CommerceMallWiringTest {
                         () -> unused(SubscriptionAccountRepository.class))
                 .withBean(CommerceUnitOfWork.class, () -> unused(CommerceUnitOfWork.class))
                 .withBean(StoreDirectoryPort.class, () -> s -> java.util.Optional.empty())
+                .withBean(PaidStoreActivationPort.class, () -> (store,entity,order,purchasedAt,at)->{})
                 .withBean(
                         CommerceIdGenerator.class,
                         () -> n -> java.util.UUID.randomUUID().toString());

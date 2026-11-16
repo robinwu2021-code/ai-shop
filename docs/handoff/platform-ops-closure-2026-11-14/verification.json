@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-14T08:03:00.378939+00:00",
+  "scope": "Documentation only; no service, configuration, database or business operation",
+  "markdownFilesChecked": 9,
+  "localLinksResolved": 77,
+  "taskCounts": {
+    "P0": 5,
+    "P1": 5,
+    "P2": 2
+  },
+  "csvIdsUnique": true,
+  "svgXmlTitleDescription": "PASS",
+  "crossRepoReferences": "Pinned published ai-shop c51949449 paths checked with git cat-file",
+  "releaseEvidence": "SHOP db59b46c5 / PAY bfbd4a682; schemas672/101",
+  "gitDiffCheck": "PASS in all3 workspaces",
+  "runtimeCodeChanges": false,
+  "businessTestsRerun": false,
+  "committed": false,
+  "pushed": false
+}

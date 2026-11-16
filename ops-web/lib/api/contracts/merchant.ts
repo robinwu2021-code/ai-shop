@@ -233,6 +233,9 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    */
   listApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
 
+  /** System-region admission list, trimmed by existing application/self-operation permissions. */
+  listAdmissions(q?: {type?: "ON_BEHALF"|"SELF_OPERATED"; status?: string; keyword?: string; page?: number; size?: number}): Promise<Page<import("@/lib/types").AdmissionEntry>>;
+
   /** 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤 */
   acceptApply(applyNo: string): Promise<void>;
 

@@ -15,7 +15,8 @@ import jakarta.servlet.http.*;
 import jakarta.validation.Validation;
 
 import org.springframework.boot.tomcat.servlet.TomcatServletWebServerFactory;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.context.TestComponent;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,7 +36,7 @@ import java.util.concurrent.CountDownLatch;
  * and SSE.
  */
 public final class PaymentCollectionSandboxHost implements AutoCloseable {
-    @Configuration
+    @TestConfiguration
     @EnableWebMvc
     static class Web {}
 
@@ -155,6 +156,7 @@ public final class PaymentCollectionSandboxHost implements AutoCloseable {
         fixture.runner.start();
     }
 
+    @TestComponent
     @RestController
     static class Queries {
         final PaymentCollectionMysqlFixture f;

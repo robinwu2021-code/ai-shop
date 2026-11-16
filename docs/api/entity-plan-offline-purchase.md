@@ -22,6 +22,7 @@
 |接口|权限及输入|
 |---|---|
 |GET /offers，GET根，GET /{orderNo}|merchant:merchant:read|
+|GET根 ?afterOrderNo=...&limit=20|同一运营读取权限及主体数据范围；分页按order_no升序，limit为1..100；下一页传最后orderNo。两个参数均省略时保留原最近100笔行为，不用于分页|
 |PUT /offers|system:param:update；`{offerNo,expectedVersion,planCode,name,days,price,enabled}`。保存当前档位容量快照，版本递增；仅PRO/CHAIN付费报价；不覆盖旧单|
 |POST /{orderNo}/confirm|merchant:merchant:ban + commerce:mall:offline:confirm；`{actionNo,claimNo,amount,paidAt,bankReference,evidenceKey,reason}`。接收者由原单冻结，不接收客户端自填。NORMAL核款不支持早于订单准备时间的历史转账|
 |POST /{orderNo}/decline|merchant:merchant:ban + commerce:mall:offline:review；`{claimNo,reason}`|
@@ -54,3 +55,5 @@
 |POST /{orderNo}/cash-refunds/{refundNo}/recover|同上；无新命令体，恢复原退款或原核验动作|
 
 退款状态：PREPARED→AWAITING_PAYOUT→PAYOUT_ACCEPTED→REFUNDED；申请明确拒绝为REJECTED，核验明确拒绝返回AWAITING_PAYOUT并保留REJECTED动作。未知保持原命令，不改参数复用原键。HTTP成功不能表示已退款。只有原款完整退款事实可信且无待处理退款，才允许通过原cancel对账关闭解除占用，订单最终REFUNDED；不改既有主体权益、不覆盖后续新单。已关闭单迟到收款仍可处理。真实账户/售价尚未配置，166部署以交接记录为准。
+
+运营购买工作区可按主体/门店切换；主体分页仍限定entityNo，不提供跨主体聚合。本次仅增加读取参数，原核款、出款、占用解除及私有凭证契约不变。

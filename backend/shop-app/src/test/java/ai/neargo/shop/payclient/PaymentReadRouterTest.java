@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -151,7 +153,7 @@ class PaymentReadRouterTest {
                 .isInstanceOfSatisfying(BizException.class,e->assertThat(e.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
         verifyNoInteractions(normal,audit);
     }
-    @Configuration(proxyBeanMethods=false) @EnableMethodSecurity(proxyTargetClass=true)
+    @TestConfiguration(proxyBeanMethods=false) @EnableMethodSecurity(proxyTargetClass=true)
     static class SecurityConfiguration {}
     @Test void realMethodSecurityRejectsPermissionlessReadsAndHeaderDoesNotRouteWrites() throws Exception {
         try(var context = new AnnotationConfigApplicationContext()) {
@@ -169,7 +171,7 @@ class PaymentReadRouterTest {
             verify(normal).paymentRefresh("S1","ORDER1");verifyNoInteractions(sandbox);
         }
     }
-    @Configuration(proxyBeanMethods=false) @EnableConfigurationProperties(PaymentReadProperties.class)
+    @TestConfiguration(proxyBeanMethods=false) @EnableConfigurationProperties(PaymentReadProperties.class)
     static class PropertiesConfiguration {}
     @Test void oldSseEnabledConfigurationStartsWithoutNewCredentialsButExplicitReadRequiresThem() {
         var runner=new ApplicationContextRunner().withUserConfiguration(PropertiesConfiguration.class)

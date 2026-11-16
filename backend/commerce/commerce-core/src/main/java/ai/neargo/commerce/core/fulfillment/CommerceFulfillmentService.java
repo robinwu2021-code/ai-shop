@@ -33,6 +33,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
     private final String recipient;
     private final Set<String> routes;
     private final ActorAuthorizationPort authorization;
+    private final PaidStoreActivationPort activation;
 
     public CommerceFulfillmentService(
             MallRepository orders,
@@ -47,7 +48,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
             CommerceIdGenerator ids,
             String recipient,
             Set<String> routes,
-            ActorAuthorizationPort authorization) {
+            ActorAuthorizationPort authorization, PaidStoreActivationPort activation) {
         this.orders = orders;
         this.repo = repo;
         this.accounts = accounts;
@@ -61,6 +62,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         this.recipient = recipient;
         this.routes = Set.copyOf(routes);
         this.authorization = authorization;
+        this.activation = Objects.requireNonNull(activation);
         if (recipient == null || recipient.isBlank() || routes.isEmpty())
             throw new IllegalArgumentException("platform collection configuration required");
     }
@@ -599,6 +601,12 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         Payment.PAID,
                         all ? Fulfillment.COMPLETED : Fulfillment.PARTIAL,
                         o.axes().refund());
+        if (all && o.axes().refund() == Refund.NONE
+                && orders.components(o.quote().store(),o.orderNo()).stream().anyMatch(part ->
+                    part.snapshot().allocation().component().kind() == ComponentKind.PLAN
+                    && part.snapshot().plan().tier() != PlanTier.FREE)) {
+            activation.activate(o.quote().store(),o.quote().entityNo(),o.orderNo(),o.quote().valuationAt(),clock.millis());
+        }
         return result(after);
     }
 

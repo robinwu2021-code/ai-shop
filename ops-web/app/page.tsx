@@ -4,7 +4,7 @@
 // 其中获客漏斗对应 P-16.1.4 —— 门店获客是一期的主路径，看板要能证明它在跑。
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "@/lib/api";
+import { api, IS_MOCK } from "@/lib/api";
 import { money } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,7 +202,7 @@ export default function DashboardPage() {
       </Card>
 
       <p className="mt-4 txt-caption text-muted-foreground">
-        {t("common.mockData")} · {c.soon}
+        {IS_MOCK && <>{t("common.mockData")} · </>}{c.soon}
       </p>
     </div>
   );

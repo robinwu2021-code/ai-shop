@@ -1,5 +1,7 @@
 package ai.neargo.shop.support;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.*;
 
 import com.zaxxer.hikari.HikariDataSource;
@@ -7,7 +9,6 @@ import java.sql.DriverManager;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext.HierarchyMode;
@@ -82,7 +83,7 @@ class IsolatedH2ContextCustomizerFactoryTest {
     @TestPropertySource(properties = {"context.marker=second", "spring.datasource.url=jdbc:h2:mem:shared_fixture;DB_CLOSE_DELAY=-1"})
     static class Second {}
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     static class Pool {
         @Bean(destroyMethod = "close") HikariDataSource dataSource(Environment environment) {
             var pool = new HikariDataSource();

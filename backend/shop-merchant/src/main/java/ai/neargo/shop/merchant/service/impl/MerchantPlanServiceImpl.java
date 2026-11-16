@@ -444,7 +444,9 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
                 storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getPlanSuspended, true)))) {
-            st.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
+            if (!ai.neargo.shop.merchant.entity.MchStore.SUSPENDED.equals(st.getStatus()))
+                st.setStatus("PENDING".equals(st.getOperationalReview()) || "REJECTED".equals(st.getOperationalReview())
+                    ? ai.neargo.shop.merchant.entity.MchStore.PENDING_OPEN : ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
             st.setPlanSuspended(false);
             DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(st));
         }

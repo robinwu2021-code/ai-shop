@@ -1,0 +1,213 @@
+{
+  "mode": "real HTTP login + native MySQL9 + live role permissions",
+  "roles": [
+    {
+      "user": "bd",
+      "roots": [
+        "平台商城",
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "goods",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "support",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "campaign",
+      "roots": [
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "community",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "auditor",
+      "roots": [
+        "平台设置",
+        "客户管理"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "finance",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true
+    },
+    {
+      "user": "risk",
+      "roots": [
+        "客户管理",
+        "订单中心"
+      ],
+      "realHttp": true,
+      "catalog": true
+    },
+    {
+      "user": "analyst",
+      "roots": [],
+      "realHttp": true,
+      "catalog": true
+    },
+    {
+      "user": "tech",
+      "roots": [
+        "平台设置"
+      ],
+      "realHttp": true,
+      "catalog": true
+    },
+    {
+      "user": "elec",
+      "roots": [
+        "客户管理"
+      ],
+      "realHttp": true,
+      "catalog": true
+    },
+    {
+      "user": "admin",
+      "roots": [
+        "平台设置",
+        "平台商城",
+        "客户管理",
+        "商户管理",
+        "订单中心"
+      ],
+      "realHttp": true,
+      "catalog": true
+    }
+  ],
+  "mockUiRoles": [
+    {
+      "user": "bd",
+      "roots": [
+        "平台商城",
+        "客户管理",
+        "订单中心"
+      ]
+    },
+    {
+      "user": "goods",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/system/?tab=authCode"
+    },
+    {
+      "user": "support",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/messages/"
+    },
+    {
+      "user": "campaign",
+      "roots": [
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/customers/?tab=overview"
+    },
+    {
+      "user": "community",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/system/?tab=industry"
+    },
+    {
+      "user": "auditor",
+      "roots": [
+        "平台设置",
+        "客户管理"
+      ],
+      "url": "http://127.0.0.1:34110/inventory/?tab=link-health"
+    },
+    {
+      "user": "finance",
+      "roots": [
+        "平台设置",
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/finance/?tab=pay-channels"
+    },
+    {
+      "user": "risk",
+      "roots": [
+        "客户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/customers/?tab=overview"
+    },
+    {
+      "user": "analyst",
+      "roots": [],
+      "url": "http://127.0.0.1:34110/communities/",
+      "catalog": true
+    },
+    {
+      "user": "tech",
+      "roots": [
+        "平台设置"
+      ],
+      "url": "http://127.0.0.1:34110/system/?tab=market",
+      "catalog": true
+    },
+    {
+      "user": "elec",
+      "roots": [
+        "客户管理"
+      ],
+      "url": "http://127.0.0.1:34110/customers/?tab=overview",
+      "catalog": true
+    },
+    {
+      "user": "admin",
+      "roots": [
+        "平台设置",
+        "平台商城",
+        "客户管理",
+        "商户管理",
+        "订单中心"
+      ],
+      "url": "http://127.0.0.1:34110/system/?tab=market",
+      "catalog": true
+    }
+  ]
+}

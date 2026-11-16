@@ -7,7 +7,6 @@ import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.merchant.paysync.StoreSnapshotReader.Changed;
 import ai.neargo.shop.merchant.paysync.StoreSnapshotReader.Cursor;
 import ai.neargo.shop.spi.merchant.StoreChanged;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -82,10 +83,11 @@ public class StoreSyncPublisher {
     }
 
     /**
+     * 应用就绪后启动定时器，确保 unified outbox 已完成注册，避免启动期间写入旧协议事件。
      * 自带单线程定时器：ai-shop 的 {@code @Scheduled} 只在 worker profile 生效，而 UME 只跑 ops。
      * 每次触发都经 {@link #tick()} 进分布式锁，所以多实例同时开启也安全。
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     void start() {
         timer = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, LOCK);

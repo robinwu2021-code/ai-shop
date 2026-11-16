@@ -67,6 +67,7 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  { concept: "门店开业审核来源", field: "mch_store.operational_source", backend: { ddl: ["mch_store", "operational_source"] }, clients: [{ file: "ops-web/lib/types/store.ts", type: "StoreOperationalReviewSource" }] },
   // NULL preserves legacy fulfillment ownership; SERVICE_EXECUTION selects the managed execution owner.
   // This internal routing fact is not exposed as a finite client field.
   { concept: "ord_sub_order.fulfillment_authority（履约权属）", field: "ord_sub_order.fulfillment_authority",

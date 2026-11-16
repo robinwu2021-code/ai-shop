@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.internal;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,7 +33,6 @@ import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.boot.webmvc.autoconfigure.DispatcherServletAutoConfiguration;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -399,7 +400,7 @@ class CheckoutBoundOwnerTransportTest {
                 });
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @ImportAutoConfiguration({
         TomcatServletWebServerAutoConfiguration.class,
         DispatcherServletAutoConfiguration.class,

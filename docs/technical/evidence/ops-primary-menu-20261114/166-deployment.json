@@ -1,0 +1,194 @@
+{
+  "releaseId": "ops-recovery-20261114-qdrrf23p",
+  "status": "DEPLOYED_VERIFIED",
+  "recordedAt": "2026-11-14T07:10:53.713951+00:00",
+  "environment": "UME166",
+  "sourceCommits": {
+    "ai-shop": "db59b46c51806646c43813801cbc508b3ce0466f",
+    "near-pay": "bfbd4a6820b24e16b0426a20380e55560cef485a"
+  },
+  "remoteBranches": {
+    "ai-shop": "codex/ai-shop-codex",
+    "near-pay": "codex/near-pay-migration"
+  },
+  "artifacts": {
+    "shop": {
+      "beforeJarSha256": "b0392ff0697aa0e9af2cb31a0f5e461aff89fbe2614c18f9d1c15d907450e712",
+      "candidateJarSha256": "2ff349826b1946cf63e79fbaa103d6d91ae6a526fad2357daa36fe49392db108",
+      "frozenMigrationResourceChanges": [],
+      "removedMigrationResources": [],
+      "removedMainClasses": [],
+      "newMigrationResources": [
+        "BOOT-INF/classes/db/migration/V668__ops_platform_settings_navigation.sql",
+        "BOOT-INF/classes/db/migration/V669__ops_platform_mall_navigation.sql",
+        "BOOT-INF/classes/db/migration/V670__ops_platform_purchase_reporting.sql",
+        "BOOT-INF/classes/db/migration/V671__ops_platform_primary_navigation.sql",
+        "BOOT-INF/classes/db/migration/V672__store_operational_review.sql"
+      ],
+      "originalPreReleaseJarSha256": "b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa0640"
+    },
+    "pay": {
+      "beforeJarSha256": "96499ce1ce56456c1616590b5d55326f22dd64fd6168679435bd59773040a391",
+      "candidateJarSha256": "1c6c041d6b0131d3693466337891b42ce82a44fe42b91c75b946109eb54a208d",
+      "frozenMigrationResourceChanges": [],
+      "removedMigrationResources": [],
+      "removedMainClasses": [],
+      "newMigrationResources": [
+        "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar!/db/pay/V100__pay_merchant_assisted_profile.sql",
+        "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar!/db/pay/V101__pay_assisted_profile_receipts.sql"
+      ]
+    }
+  },
+  "database": {
+    "ai-shop-api": {
+      "version": "672",
+      "addedVersions": [
+        "668",
+        "669",
+        "670",
+        "671",
+        "672"
+      ],
+      "originalHistoryUnchanged": true,
+      "rolesUnchanged": true,
+      "roleMembersUnchanged": true,
+      "existingPointPermissionMetadataUnchanged": true,
+      "existingGrantsPreserved": true,
+      "newGrants": 26,
+      "newGrantsMatchDeclaredSuperadminOrInheritedSource": true,
+      "storeStatusAndVersionsUnchanged": true
+    },
+    "nearpay-prod": {
+      "version": "101",
+      "addedVersions": [
+        "100",
+        "101"
+      ],
+      "originalHistoryUnchanged": true,
+      "pay_merchant_assisted_profile_draftRows": 0,
+      "pay_merchant_assisted_profile_receiptRows": 0
+    }
+  },
+  "public": {
+    "releaseId": "ops-recovery-20261114-qdrrf23p",
+    "verifiedAt": "2026-11-14T07:07:14.358838+00:00",
+    "domains": [
+      "https://nearshop.umeshop.ai",
+      "https://twpay.umeshop.ai"
+    ],
+    "exactHtmlAndAssetMatches": 124,
+    "protectedApis": [
+      {
+        "url": "https://nearshop.umeshop.ai/ops-shop/ops/auth/me",
+        "status": 401
+      },
+      {
+        "url": "https://nearshop.umeshop.ai/oms-api/pay-ops/v2/settings",
+        "status": 401
+      },
+      {
+        "url": "https://twpay.umeshop.ai/ops-shop/ops/auth/me",
+        "status": 401
+      },
+      {
+        "url": "https://twpay.umeshop.ai/oms-api/pay-ops/v2/settings",
+        "status": 401
+      }
+    ]
+  },
+  "browser": {
+    "verifiedAt": "2026-11-14T07:10:03.604790+00:00",
+    "mode": "Read-only existing authorized administrator session",
+    "primaryMenus": [
+      "平台设置",
+      "平台商城",
+      "客户管理",
+      "商户管理",
+      "订单中心"
+    ],
+    "checks": {
+      "storeListLoaded": true,
+      "chainListLoaded": true,
+      "platformMemberSourceColumnsVisible": true,
+      "bothPlanModelsInGlobalOrders": true,
+      "bothPlanModelsInCashReviewQueue": true,
+      "cashSummaryLoadedAfterTestExclusion": true,
+      "cashDetailsLoadedAfterTestExclusion": true,
+      "businessOrderAndPaymentEntrySeparated": true,
+      "paySingleSignOnAndReturn": true,
+      "independentPayMerchantListLoaded": true,
+      "maskedProfileRevisionAndOnboardingEntryLoaded": true
+    },
+    "businessWrites": false,
+    "channelOrPaymentCalls": false,
+    "privateScreenshotSha256": "4ecf779ed4a75e2e23a348465f741f51d7e9fee5866b14bb5c7abf5544e9e5af"
+  },
+  "incidentsAndCorrections": {
+    "releaseId": "ops-recovery-20261114-qdrrf23p",
+    "observedFailures": [
+      {
+        "phase": "preflight",
+        "cause": "Docker mount array ordering changed; canonical mount attributes identical",
+        "mutation": false
+      },
+      {
+        "phase": "pay-first-cutover",
+        "cause": "Atomic copy omitted existing POSIX ACL; restored original ACL; installer now preserves and verifies extended attributes",
+        "oldPayRollbackCompatibility": "Old environment table policy cannot boot with V100/101; healthy schema-compatible PAY artifact retained"
+      },
+      {
+        "phase": "shop-restart",
+        "cause": "Store sync timer fired before unified registration; one legacy metadata event blocked startup",
+        "productionFixCommit": "328eea3e3ae4d43f9874b2668e9944fe091eea27"
+      },
+      {
+        "phase": "browser-acceptance",
+        "cause": "Explicit TEST receipts entered real-cash reporting and triggered authority rejection",
+        "productionFixCommit": "db59b46c51806646c43813801cbc508b3ce0466f",
+        "financialRecordsChanged": false,
+        "verified": "TEST originals and refunds excluded; remaining facts verified and uniquely attributed"
+      }
+    ],
+    "singleEventReconciliation": {
+      "count": 1,
+      "basis": "Exact production-generated canonical profile/request hash matched committed APPLIED PAY receipt and projection",
+      "noHttpOrChannelCall": true,
+      "sameTransactionAudit": true,
+      "privateEvidenceSha256": "7eccd2494b02f25d1b9e386291712f722080ada86ca31f3565ed0a8ca458c2be"
+    },
+    "deploymentRunnerSha256": "bc062c020203e58b7a951c438ed0bc6ce1d9890dbfbe24d078b1f545b7bdc579"
+  },
+  "regressionBaseline": {
+    "basis": "Three clean HEAD pre-push executions, latest shop-reporting-push.log:728 assertions,12 existing failures",
+    "removed": [
+      "doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=1",
+      "wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上 @<=1"
+    ],
+    "tightened": [
+      {
+        "test": "biz-contract-fields",
+        "before": 42,
+        "after": 41
+      },
+      {
+        "test": "schema-lineage",
+        "before": 26,
+        "after": 25
+      }
+    ],
+    "newExemptions": 0,
+    "localUpdateAttempt": "Local update produced an additional token scan failure absent from clean HEAD checks; original baseline restored rather than accepting a new exemption"
+  },
+  "releaseControls": {
+    "finalHealthAndJarHashVerified": true,
+    "originalConfigurationHashesVerifiedUnchanged": true,
+    "inventoryNotRestarted": true,
+    "paymentH5LinkUnchanged": true,
+    "ipsNotDeployedByThisTask": true,
+    "temporaryDdlIdentityRemoved": true,
+    "locksReleased": true,
+    "privateDatabaseAndArtifactBackupsRetained": true,
+    "existingWorkBackupsAndStashesRetained": true
+  },
+  "verificationLimit": "Composed existing module, native and focused regressions; existing shared/beauty baseline debt is recorded separately, not claimed as zero failures."
+}

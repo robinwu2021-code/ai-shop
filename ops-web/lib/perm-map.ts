@@ -48,6 +48,9 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "commerce:catalog:read": "commerce:catalog:read",
   "commerce:catalog:edit": "commerce:catalog:edit",
   "commerce:catalog:publish": "commerce:catalog:publish",
+  "commerce:platform:orders:read": "commerce:platform:orders:read",
+  "commerce:platform:claims:read": "commerce:platform:claims:read",
+  "commerce:platform:cash:read": "commerce:platform:cash:read",
   "commerce:mall:order:read": "commerce:mall:order:read",
   "commerce:mall:shipment:write": "commerce:mall:shipment:write",
   "commerce:refund:review": "commerce:refund:review",
@@ -122,6 +125,11 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 就是这张表注释里说的「按钮神秘消失」。两个码在 Perms.java 里一直都有。
   "finance:payout:execute": "finance:payout:execute",
   // 支付运营端（S9）：UI 码与后端码同名
+  "dashboard:overview:read": "dashboard:overview:read",
+  "customer:user:read": "customer:user:read",
+  "pay:merchant:view": "pay:merchant:view",
+  "pay:onboarding:view": "pay:onboarding:view",
+  "pay:channel:view": "pay:channel:view",
   "pay:order:view": "pay:order:view",
   "pay:order:manage": "pay:order:manage",
   "pay:refund:view": "pay:refund:view",

@@ -11,22 +11,31 @@
 //
 // 约束由 `lib/page-copy.test.ts` 锁：zh/en 的 key 必须齐平、英文里不许残留汉字、
 // 页面 JSX 里不许再出现裸中文。
+import { useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
+import { traditionalCopy } from "@/lib/i18n/zh-tw";
 
-/** 一页的文案表：两种语言，key 必须完全一致（测试会比对）。 */
+/**
+ * 一页的文案表：zh / en 两份，key 必须完全一致（测试会比对）。
+ * 繁体由 zh 转换得到（lib/i18n/zh-tw.ts）；个别需要人工润色的条目放 `"zh-TW"`。
+ */
 export interface PageCopy<T extends Record<string, string>> {
   zh: T;
   en: T;
+  "zh-TW"?: Partial<T>;
 }
 
 /**
  * 取当前语言的这一页文案。
  *
- * 缺语言时回落 zh 而不是报错：漏译只该让界面出现中文，不该让页面白屏。
+ * 繁体不回落简体（TDD-运营端页面文案繁体）；其余缺语言时回落 zh：漏译只该让界面出现中文，不该让页面白屏。
  */
 export function useCopy<T extends Record<string, string>>(dict: PageCopy<T>): T {
   const { locale } = useI18n();
-  return (dict as unknown as Record<string, T>)[locale] ?? dict.zh;
+  return useMemo(
+    () => (locale === "zh-TW" ? traditionalCopy(dict.zh, dict["zh-TW"]) : locale === "en" ? dict.en : dict.zh),
+    [locale, dict],
+  );
 }
 
 /** 带占位符的文案：`fill(c.totalN, { n: 5 })`。与 i18n 的 `t()` 用同一套 `{name}` 语法。 */

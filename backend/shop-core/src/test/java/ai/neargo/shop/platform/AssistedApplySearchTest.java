@@ -16,6 +16,20 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class AssistedApplySearchTest {
+    @Test void unifiedSearchAppliesSystemMarketAndStableNewestOrderBeforePagination() {
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(),""),MchEntityApply.class);
+        var mapper=mock(MerchantApplyMapper.class);
+        var service=mock(OpsServiceImpl.class,CALLS_REAL_METHODS);
+        ReflectionTestUtils.setField(service,"applyMapper",mapper);
+        when(mapper.selectPage(any(Page.class),any())).thenAnswer(i->i.getArgument(0));
+        service.searchApplies("APPROVED",null,1,40,true,"TW",true);
+        var where=ArgumentCaptor.forClass(Wrapper.class);
+        verify(mapper).selectPage(any(Page.class),where.capture());
+        String sql=where.getValue().getSqlSegment();
+        assertTrue(sql.contains("market_code ="));assertTrue(sql.contains("submitted_by IS NOT NULL"));
+        assertTrue(sql.contains("created_at DESC,apply_no DESC"));
+        assertTrue(((com.baomidou.mybatisplus.core.conditions.AbstractWrapper<?,?,?>)where.getValue()).getParamNameValuePairs().containsValue("TW"));
+    }
     @Test void assistedScopeIsAppliedInSqlBeforePaginationAndLegacySearchKeepsAllSources() {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(),""),MchEntityApply.class);
         var mapper=mock(MerchantApplyMapper.class);

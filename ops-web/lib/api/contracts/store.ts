@@ -1,9 +1,15 @@
 // 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧；
 // 以及门店档案与经营状况（P-11.2.1）—— 平台看一家店的全貌。
-import type { Page, StoreAcquisition, StoreGovern, StoreGovernDetail, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
+import type { Page, StoreOperationalReview, StoreAcquisition, StoreGovern, StoreGovernDetail, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
 import type { AcquisitionQ, QrcodeQ, StoreAuditQ, StoreQ } from "../query";
 
 export interface StoreApi {
+  /** Read explicit store operating admission; historic unsubmitted review stays null. */
+  getStoreOperationalReview(storeNo: string): Promise<StoreOperationalReview>;
+  /** Submit this store for operating admission without changing legal or payment review. */
+  submitStoreOperationalReview(storeNo: string): Promise<StoreOperationalReview>;
+  /** Decide explicit operating admission with the existing application audit authority. */
+  decideStoreOperationalReview(storeNo: string, approved: boolean, reason: string): Promise<StoreOperationalReview>;
   // ── 门店档案（P-11.2.1）——**已接真后端** `/ops/stores`
 
   /** 跨主体门店检索。含停用与强制下线的店 —— 治理视角更不能看不见 */

@@ -71,8 +71,14 @@ public class OpsPlanPurchaseController {
 
   @GetMapping
   @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
-  public List<OrderView> orders(@PathVariable String entityNo) {
-    return service.orders(actor(entityNo));
+  public List<OrderView> orders(
+      @PathVariable String entityNo,
+      @RequestParam(required = false) String afterOrderNo,
+      @RequestParam(required = false) Integer limit) {
+    var operator = actor(entityNo);
+    return afterOrderNo == null && limit == null
+        ? service.orders(operator)
+        : service.operatorOrders(operator, afterOrderNo, limit == null ? 20 : limit);
   }
 
   @GetMapping("/{orderNo}")

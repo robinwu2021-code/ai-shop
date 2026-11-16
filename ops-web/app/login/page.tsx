@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { platformLandingHref } from "@/lib/platform-nav";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { verifyLoginChallenge } from "@/lib/api/https/dashboard";
@@ -49,7 +50,7 @@ function LoginForm() {
   const [paymentSource, setPaymentSource] = useState(false);
 
   function finishLogin() {
-    returnAfterLogin(params.get("returnTo"), window.location, () => router.replace("/"), useLocaleStore.getState().locale);
+    returnAfterLogin(params.get("returnTo"), window.location, () => router.replace(platformLandingHref(useAuth.getState().perms, useServerMenu.getState().hrefSet) ?? "/"), useLocaleStore.getState().locale);
   }
 
   useEffect(() => {

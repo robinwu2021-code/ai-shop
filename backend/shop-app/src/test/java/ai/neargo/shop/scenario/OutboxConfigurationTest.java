@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.config.OutboxConfiguration;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
@@ -7,7 +9,6 @@ import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -36,7 +37,7 @@ class OutboxConfigurationTest {
         context.withPropertyValues("shop.outbox.sources.platform.mode=unified", "shop.outbox.legacy-scan.enabled=true")
                 .run(c -> assertThat(c).hasFailed());
     }
-    @Configuration
+    @TestConfiguration
     static class Dependencies {
         @Bean ObjectMapper json() { return new ObjectMapper(); }
         @Bean DataSource dataSource() {

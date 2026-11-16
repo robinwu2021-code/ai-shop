@@ -8,15 +8,59 @@
 // 这是 §九 M7「运营界面仅中文」那条决定的遗留，切到 EN 时正文不会跟着变。
 // `nav.test.ts` 会断言这张表覆盖 nav.ts 的全部 label，漏一条就红。
 import { NAV_ZH_TW } from "./nav-zh-TW";
+import { toTraditional, twTerms } from "./zh-tw";
 import type { Locale } from "@/lib/stores/locale";
 
 /** label → { locale: 译文 }。zh 不入表（源串即中文）。 */
 const OVERLAY: Record<string, Record<string, string>> = {
+  "经营概况": { en: "Operating Overview" },
+  "会员列表": { en: "Members" },
+  "支付订单": { en: "Payment Orders" },
+  "原业务入口保留，按既有授权访问": { en: "Original business entries remain available under existing permissions" },
+  "完整功能目录": { en: "Full Feature Catalog" },
+  "订单中心": { en: "Orders" },
+  "支付记录": { en: "Payment Records" },
+  "经营订单": { en: "Operating Orders" },
+  "门店连锁": { en: "Stores and Chains" },
+  "用户会员": { en: "Users and Members" },
+  "数据概览": { en: "Overview" },
+  "支付渠道": { en: "Payment Channels" },
+  "渠道进件": { en: "Channel Onboarding" },
+  "收款开通": { en: "Payment Activation" },
+  "商户资料": { en: "Merchant Profiles" },
+  "商户列表": { en: "Payment Merchants" },
+  "商户管理": { en: "Payment Merchants" },
+  "连锁数据": { en: "Chains" },
+  "门店列表": { en: "Stores" },
+  "用户数据": { en: "User Data" },
+  "客户管理": { en: "Customers" },
+  "全局订单": { en: "Global Orders" },
+  "核款队列": { en: "Payment Queue" },
+  "收入概况": { en: "Revenue Overview" },
+  "收入明细": { en: "Revenue Details" },
+  "收入统计": { en: "Revenue Reports" },
+  "平台商城": { en: "Platform Store" },
+  "套餐方案": { en: "Plans" },
+  "商品目录": { en: "Products" },
+  "权益管理": { en: "Entitlements" },
+  "销售设置": { en: "Sales Settings" },
+  "平台商品": { en: "Platform Products" },
+  "核款审核": { en: "Payment Review" },
+  "平台设置": { en: "Settings" },
+  "基础配置": { en: "General" },
+  "权限管理": { en: "Access" },
+  "系统维护": { en: "Maintenance" },
+  "地区配置": { en: "Markets" },
+  "系统参数": { en: "Parameters" },
+  "消息配置": { en: "Messaging" },
+  "运行监控": { en: "Monitoring" },
+  "菜单配置": { en: "Navigation" },
   "工作台": { en: "Home" },
   "商户中心": { en: "Merchants" },
   "入驻资质": { en: "Onboarding" },
   "准入押金": { en: "Admission" },
   "入驻申请": { en: "Admission applications" },
+  "入驻管理": { en: "Admissions" },
   "支付开通": { en: "Payment activation" },
   "自营建档": { en: "Self-operated" },
   "代办入驻": { en: "Assisted Entry" },
@@ -418,7 +462,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
 export function tNav(label: string, locale: Locale): string {
   if (locale === "zh") return label;
-  if (locale === "zh-TW") return NAV_ZH_TW[label] ?? label;
+  if (locale === "zh-TW") return label in NAV_ZH_TW ? twTerms(NAV_ZH_TW[label]) : toTraditional(label);
   return OVERLAY[label]?.[locale] ?? label;
 }
 

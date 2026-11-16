@@ -1,0 +1,32 @@
+{
+  "diagnosticWindowSeconds": 1800,
+  "generated": 179,
+  "queued": 175,
+  "writerSent": 174,
+  "appReceived": 174,
+  "duplicate": 0,
+  "unexplainedMissing": 0,
+  "preConnectionNotSent": [
+    1
+  ],
+  "controlledBackgroundNotReceived": [
+    105,
+    106,
+    107,
+    108
+  ],
+  "realPaymentOrder": "PYO261114084336221",
+  "httpStatus": 200,
+  "ack": "APPLIED",
+  "receiptMatch": true,
+  "realAppEvent": 1,
+  "nativeTtsStarted": 1,
+  "nativeTtsCompleted": 1,
+  "autoStopped": true,
+  "diagnosticDisabledForNextRestart": true,
+  "realMoneyPaid": false,
+  "normalAppRestored": true,
+  "normalAppSessionRestored": false,
+  "observerEndedByHostAfterWindow": true,
+  "notClaimingFull45MinuteFixturePass": true
+}

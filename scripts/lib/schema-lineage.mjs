@@ -4,6 +4,7 @@ import { AUDIT } from './ddl.mjs';
 const tenant = [{ from: "tenant_no", to: "tenant_no" }];
 
 export const KEY_OWNERS = {
+  "ownership_change_no": { "table": "mch_store_entity_claim", "col": "claim_no", "scope": tenant },
   "active_job_no": {
     "table": "prn_job",
     "col": "job_no"
@@ -453,9 +454,10 @@ export const KEY_OWNERS = {
 
 
 export const NAME_COLLISIONS = {
+  "pay_order_no": "payment_collection_receipt与payment_collection_stream保存独立PAY服务签发的订单号；必须按environment+pay_order_no关联，不是本地商城订单或本地表的单列外键。",
   "print_fact_no": "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
   "trace_no": "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
-  "receipt_no": "stl_payment支付收据、ent_migration_return旧券恢复凭证、prn_receipt打印设备回执独立发号，按来源族及tenant限定；恢复按tenant+return_no引用pmt_migration_return，不能仅按receipt_no跨族关联。",
+  "receipt_no": "payment_collection_receipt是独立PAY事件投影的本地幂等收据（environment+event_id），不属于支付/打印收据族；stl_payment支付收据、ent_migration_return旧券恢复凭证、prn_receipt打印设备回执独立发号，按来源族及tenant限定；恢复按tenant+return_no引用pmt_migration_return，不能仅按receipt_no跨族关联。",
   "route_no": "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
   "policy_version_no": "储值发行政策版本与打印场景政策版本各自发布，必须结合来源表选择所属版本族。",
   "source_event_no": "来源协议键：sys_outbox 需 (source_system,source_event_no)；pmt_effect_projection 还接收旧申请号，不能全局连接 outbox。；统一扩展：来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
@@ -509,7 +511,7 @@ export const NAME_COLLISIONS = {
   "flow_no": "stl_points_pool 的是**积分池流水号**（平台自己发号，记池子的每一次增减）；stl_bank_flow 的是**银行给的流水号**（人工从网银导出，是出款对账的外部判据）。\n  两者的发号方不同、值域也不同，按名字 join 会把一笔积分变动连到一笔银行付款上。\n  与银行流水真正对勾的是 stl_bill.payment_ref —— 那一列才是同一个号。",
   "slot_no": "mch_appointment_slot 是**预约时段**（到店服务：周三 14:00–15:00 这一格）；mkt_content_slot 是**内容位**（运营：首页第一屏那个楼层）。\n  两族毫不相干，只是中文都能叫「位」。按名字 join 会把某个商家的预约时段连到一个首页楼层上，而两边都有 slot_no 且都非空 —— 连错了不报错。",
   "sort_no": "两张表各自的**排序序号**，不是任何东西的键：sys_market 是国家/地区在选择器里的顺序，mkt_content_slot 是同类内容位之间的先后。\n  同名同义（都是「小的在前」）但**没有共同的定义域**，按它 join 只会得到笛卡尔积。",
-  "message_no": "stl_channel_message 是**渠道报文**（支付：通道推给我方的回调、我方发给通道的调用）；notify_message 是**站内消息**（通知：发给用户看的那条）。\n  两族毫不相干，只是都叫「消息」。按名字 join 会把一条支付回调连到某个用户的收件箱上，而两边都有 message_no 且都非空 —— 连错了不会报错，只会安静地少几行或多几行。",
+  "message_no": "payment_collection_stream.message_no指向notify_message.message_no，必须结合支付环境与已授权scope_key验证事件可见性；stl_channel_message 是**渠道报文**（支付：通道推给我方的回调、我方发给通道的调用）；notify_message 是**站内消息**（通知：发给用户看的那条）。\n  两族毫不相干，只是都叫「消息」。按名字 join 会把一条支付回调连到某个用户的收件箱上，而两边都有 message_no 且都非空 —— 连错了不会报错，只会安静地少几行或多几行。",
   "batch_no": "ful_batch 是**到货批次**（履约：一车货到自提点）；sys_media_purge_batch 是**媒体清理批次**（运维：一次对象存储回收）。\n  两族毫不相干，只是都叫「批次」。按名字 join 会把一次清理任务连到一车货上。",
   "user_coupon_no": "mkt_user_coupon 与 pmt_user_coupon 是**两套并行的券模型**：\n  mkt_* 是 marketing 那一族（CouponServiceImpl 用它），pmt_* 是 promotion 那一族（OpsPromotionServiceImpl 用它）。\n  **只有 pmt_* 登记进了数据域**，mkt_* 没有 —— 所以按名字混用两族，除了连错行，还会让一半查询悄悄不受数据域约束。",
   "issue_no": "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
@@ -612,7 +614,8 @@ export const COLLISION_MEMBERS = {
   "receipt_no": [
     "stl_payment",
     "ent_migration_return",
-    "prn_receipt"
+    "prn_receipt",
+    "payment_collection_receipt"
   ],
   "source_event_no": [
     "sys_outbox",
@@ -1011,6 +1014,7 @@ export const COLLISION_MEMBERS = {
   ],
   "message_no": [
     "stl_channel_message",
+    "payment_collection_stream",
     "notify_message"
   ],
   "batch_no": [

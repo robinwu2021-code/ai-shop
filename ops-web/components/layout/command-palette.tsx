@@ -14,7 +14,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Search, CornerDownLeft } from "lucide-react";
 import { navSearchEntries, matchesQuery, type NavSearchEntry } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
-import { useServerMenu, useNavTree } from "@/lib/stores/server-menu";
+import { useServerMenu, useCatalogNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const router = useRouter();
   const perms = useAuth((s) => s.perms);
   const serverHrefs = useServerMenu((s) => s.hrefSet);
-  const nav = useNavTree();
+  const nav = useCatalogNavTree();
   const { t, tNav } = useI18n();
   const [query, setQuery] = React.useState("");
   const [cursor, setCursor] = React.useState(0);

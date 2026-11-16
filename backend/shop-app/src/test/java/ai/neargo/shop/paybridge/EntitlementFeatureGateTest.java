@@ -1,5 +1,7 @@
 package ai.neargo.shop.paybridge;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.config.PayEntitlementProperties;
@@ -16,7 +18,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class EntitlementFeatureGateTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(Features.class);
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableConfigurationProperties({PayEntitlementProperties.class, PromotionFeatureProperties.class})
     @Import({PayEntitlementFeatureGate.class, PromotionFeatureGate.class})
     static class Features {

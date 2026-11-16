@@ -8,6 +8,17 @@ import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
 type ImpactMockOrder = Order & { storeNo?: string; storeName?: string; currency?: string };
+
+/**
+ * 按门店筛。种子订单大多没带 storeNo（早于「一单一店」），
+ * 这种单退一步按门店所属主体匹配 —— 否则门店详情里的订单页签在 mock 下永远是空的。
+ */
+function storeHit(storeNo: string | undefined, o: ImpactMockOrder): boolean {
+  if (!storeNo) return true;
+  if (o.storeNo) return o.storeNo === storeNo;
+  const store = db.stores.find((s) => s.storeNo === storeNo);
+  return !!store && store.merchantNo === o.merchantNo;
+}
 function cancellationGroup(orderNo: string): ImpactMockOrder[] {
   const target = db.orders.find((o) => o.orderNo === orderNo || o.parentNo === orderNo);
   if (!target) notFound("订单", "Order", orderNo);
@@ -55,6 +66,7 @@ export const orderMock: OrderApi = {
         db.eqHit(q.status, o.status) &&
         db.eqHit(q.fulfillType, o.fulfillType) &&
         db.eqHit(q.trafficSource, o.trafficSource) &&
+        storeHit(q.storeNo, o) &&
         db.kwHit(q.keyword, o.orderNo, o.parentNo, o.merchantName, o.buyerNickname),
       ),
     ),

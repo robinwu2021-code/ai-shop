@@ -16,11 +16,17 @@ import { OrderDrawer } from "./order-drawer";
 
 const PAGE = 20;
 
-export function OrdersTab({ c }: { c: MallCopy }) {
+export function OrdersTab({ c, scopedStoreNo, initialOrderNo, onDetailOpenChange }: {
+  c: MallCopy; scopedStoreNo?: string; initialOrderNo?: string | null; onDetailOpenChange?: (open: boolean) => void;
+}) {
   const sp = useSearchParams();
-  const [storeNo, setStoreNo] = React.useState(sp.get("store") ?? "");
+  const [storeNo, setStoreNo] = React.useState(scopedStoreNo ?? sp.get("store") ?? "");
   const [cursors, setCursors] = React.useState<string[]>([]); // 每一页的 afterOrderNo
-  const [open, setOpen] = React.useState<string | null>(sp.get("order"));
+  const [open, setOpen] = React.useState<string | null>(initialOrderNo === undefined ? sp.get("order") : initialOrderNo);
+  React.useEffect(() => {
+    onDetailOpenChange?.(!!open);
+    return () => onDetailOpenChange?.(false);
+  }, [open, onDetailOpenChange]);
   const after = cursors[cursors.length - 1];
   const q = useQuery({ queryKey: ["mall-orders", storeNo, after ?? ""], enabled: !!storeNo,
     queryFn: () => api.mallOrders(storeNo, { afterOrderNo: after, limit: PAGE }) });
@@ -37,7 +43,7 @@ export function OrdersTab({ c }: { c: MallCopy }) {
   return (
     <div className="space-y-3">
       <HelpNote>{c.ordersHelp}</HelpNote>
-      <StoreBar c={c} id="orders-store" value={storeNo} onSubmit={(v) => { setStoreNo(v); setCursors([]); }} />
+      {!scopedStoreNo && <StoreBar c={c} id="orders-store" value={storeNo} onSubmit={(v) => { setStoreNo(v); setCursors([]); }} />}
       {!storeNo ? <p className="txt-caption text-muted-foreground">{c.storeFirst}</p> : (
         <>
           <DataTable columns={columns} rows={q.data} loading={q.isLoading} error={showErr(q.error)} onRetry={() => q.refetch()}

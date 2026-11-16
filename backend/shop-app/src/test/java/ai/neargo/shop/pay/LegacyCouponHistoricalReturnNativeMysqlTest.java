@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import ai.neargo.shop.pay.migration.service.impl.EntitlementMigrationPlanServiceImpl;
 import ai.neargo.shop.pay.migration.service.impl.LegacyCouponHistoricalReturnServiceImpl;
 import ai.neargo.shop.pay.migration.service.impl.LegacyCouponMigrationImportServiceImpl;
@@ -46,7 +48,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Real pay plan/import/ownership/ledger on MySQL. Core evidence and its permanent proof are explicit fixtures. */
 @EnabledIfEnvironmentVariable(named="LEGACY_IMPORT_NATIVE_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:.*")
 class LegacyCouponHistoricalReturnNativeMysqlTest {
-    @Configuration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions { }
+    @TestConfiguration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions { }
     @Test void concurrentHistoricalReturnsRestoreOnceFromTheOriginalBaseline() throws Exception {
         String url=System.getenv("LEGACY_IMPORT_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_import_native_fixture\\?.*");

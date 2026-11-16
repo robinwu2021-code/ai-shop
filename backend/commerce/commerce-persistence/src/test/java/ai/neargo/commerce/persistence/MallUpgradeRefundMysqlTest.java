@@ -158,7 +158,7 @@ class MallUpgradeRefundMysqlTest {
                                 "platform",
                                 Set.of("APP:WECHAT"),
                                 (a, st, cap) ->
-                                        new AuthorizationDecision(true, "OWNER", Optional.empty()));
+                                        new AuthorizationDecision(true, "OWNER", Optional.empty()), (activationStore,activationEntity,activationOrder,purchasedAt,at)->{});
                 fulfillment.startPayment(
                         BUYER,
                         new StartPaymentCommand(STORE, order.orderNo(), "APP", "WECHAT", null));
@@ -1326,7 +1326,7 @@ class MallUpgradeRefundMysqlTest {
                             "platform",
                             Set.of("APP:WECHAT"),
                             (a, st, cap) ->
-                                    new AuthorizationDecision(true, "OWNER", Optional.empty()));
+                                    new AuthorizationDecision(true, "OWNER", Optional.empty()), (activationStore,activationEntity,activationOrder,purchasedAt,at)->{});
             fulfillment.startPayment(
                     BUYER, new StartPaymentCommand(STORE, order.orderNo(), "APP", "WECHAT", null));
             fulfillment.fulfill(new FulfillmentQuery("tenant-a", order.orderNo()));

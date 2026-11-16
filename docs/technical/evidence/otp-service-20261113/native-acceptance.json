@@ -1,0 +1,111 @@
+{
+  "device": "emulator-5558",
+  "android": "14 API34 ARM64",
+  "appSource": "0d6ba2f81a31e66ebfcd571579dbf08108563524",
+  "apkSha256": "a592fe218b34981470e413fdb45f21f853d9852bd4af17c17c4b558c1c7bcd40",
+  "backendRuntimeSha256": "2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024",
+  "hardCooldownHttpCode": 10450,
+  "cancelSendCountBefore": 3,
+  "cancelSendCountAfter": 3,
+  "solvedSendCountAfter": 4,
+  "realDelivery": false,
+  "interruption": {
+    "cause": "Concurrent payment release restarted API between the first three free sends and fourth attempt. App displayed uncertain result; in-memory counts reset as designed. Stable acceptance was repeated after that deployment completed.",
+    "newApiStartedAt": "2026-11-13T11:26:09.087579969Z"
+  },
+  "steps": [
+    {
+      "step": "first-free-send",
+      "time": "2026-11-13T11:20:37.192223+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "second-free-send",
+      "time": "2026-11-13T11:22:33.015144+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "third-free-send",
+      "time": "2026-11-13T11:24:32.673232+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "after-restart-first-free",
+      "time": "2026-11-13T11:30:30.358526+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "after-restart-second-free",
+      "time": "2026-11-13T11:31:49.022448+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "after-restart-third-free",
+      "time": "2026-11-13T11:33:31.606200+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "stable-fourth-requires-slider",
+      "time": "2026-11-13T11:34:56.967748+00:00",
+      "captcha": true,
+      "cooldown": false,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "stable-cancel-no-send",
+      "time": "2026-11-13T11:35:00.845269+00:00",
+      "captcha": false,
+      "cooldown": false,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "stable-retry-after-cancel",
+      "time": "2026-11-13T11:35:08.008817+00:00",
+      "captcha": true,
+      "cooldown": false,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    },
+    {
+      "step": "slider-passed-one-retry",
+      "time": "2026-11-13T11:36:42.030223+00:00",
+      "captcha": false,
+      "cooldown": true,
+      "existingTestIdentity": true,
+      "realDelivery": false
+    }
+  ],
+  "finalRuntime": {
+    "apiStartedAt": "2026-11-13T11:26:09.087579969Z",
+    "runtimeSha256": "2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024",
+    "testIdentitySendCountSinceStart": 4,
+    "sendTimes": [
+      "2026-11-13T11:30:26.311Z",
+      "2026-11-13T11:31:43.944Z",
+      "2026-11-13T11:33:21.999Z",
+      "2026-11-13T11:36:37.845Z"
+    ],
+    "18082": "UP",
+    "18081": "UP"
+  }
+}

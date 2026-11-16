@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.boot.test.context.TestConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -202,7 +204,7 @@ class PointsOrderRefundNativeRaceTest {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableTransactionManagement
     @MapperScan(basePackages = {"ai.neargo.shop.trade.mapper", "ai.neargo.shop.trade.order.mapper"})
     @Import(OrderPointsRefundCoordinatorImpl.class)

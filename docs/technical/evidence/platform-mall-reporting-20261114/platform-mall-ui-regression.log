@@ -1,0 +1,13 @@
+
+ RUN  v4.1.11 /private/tmp/ai-shop-config-release-20261113/ops-web
+
+(node:8152) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8153) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  7 passed (7)
+      Tests  113 passed (113)
+   Start at  08:04:28
+   Duration  3.13s (transform 1.32s, setup 0ms, import 2.83s, tests 4.59s, environment 618ms)
+

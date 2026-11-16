@@ -5,6 +5,8 @@ import ai.neargo.commerce.api.mall.RefundFacade;
 import ai.neargo.commerce.api.port.CheckoutReadinessPort;
 import ai.neargo.commerce.api.port.OfflineCollectionPort;
 import ai.neargo.commerce.api.port.PrivateEvidencePort;
+import ai.neargo.commerce.api.port.PaidStoreActivationPort;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.common.security.rbac.Permissions;
@@ -38,6 +40,12 @@ import java.util.*;
         havingValue = "true")
 @EnableConfigurationProperties(ShopMallProperties.class)
 class ShopMallConfiguration {
+    @Bean
+    PaidStoreActivationPort mallPaidStoreActivation(
+            StoreOperationalReviewService reviews) {
+        return (store,entity,order,purchasedAt,at) -> reviews.activatePaid(store.tenantNo(),entity,store.storeNo(),"STORE",order,purchasedAt,at);
+    }
+
     @Bean
     @ConditionalOnMissingBean(ai.neargo.commerce.api.port.MoneyPolicyPort.class)
     ai.neargo.commerce.api.port.MoneyPolicyPort mallMoneyPolicy() {

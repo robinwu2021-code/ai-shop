@@ -15,6 +15,7 @@ export const merchantHttp: MerchantApi = {
   entityPlanOffers: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`),
   saveEntityPlanOffer: (e,c) => client.put(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`,c),
   entityPlanPurchases: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`),
+  entityPlanPurchasePage: (e,q) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`, {...q,limit:q?.limit??20}),
   entityPlanPurchase: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}`),
   confirmEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/confirm`,c),
   declineEntityPlanPurchase: (e,o,claimNo,reason) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/decline`,{claimNo,reason}),
@@ -60,6 +61,7 @@ export const merchantHttp: MerchantApi = {
    * 也把「申请单」与「主体」两个资源分开：混用是之前模型对不上的根源。
    */
   listApplies: (q) => client.get("/ops/merchant/apply/search", q),
+  listAdmissions: (q) => client.get("/ops/merchants/admissions", q),
   acceptApply: (applyNo) => client.post(`/ops/merchant/apply/${applyNo}/accept`),
   auditApply: (applyNo, approved, reason, serviceScope, communityNos, grantCodes) =>
     client.post(`/ops/merchant/apply/${applyNo}/audit`, {

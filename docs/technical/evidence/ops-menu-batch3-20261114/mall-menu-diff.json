@@ -1,0 +1,238 @@
+{
+  "basis": "Local source before/after, not live database snapshot",
+  "beforeRootOrder": [
+    "iam",
+    "dashboard",
+    "merchant",
+    "product",
+    "commerce",
+    "inventory",
+    "order",
+    "aftersale",
+    "marketing",
+    "finance",
+    "review",
+    "community",
+    "risk"
+  ],
+  "afterRootOrder": [
+    "iam",
+    "commerce",
+    "dashboard",
+    "merchant",
+    "product",
+    "inventory",
+    "order",
+    "aftersale",
+    "marketing",
+    "finance",
+    "review",
+    "community",
+    "risk"
+  ],
+  "leafCount": 151,
+  "leafIdentityPermissionsAndGatesUnchanged": true,
+  "settingsContentUnchanged": true,
+  "rows": [
+    {
+      "href": "/merchants?tab=plans",
+      "before": {
+        "href": "/merchants?tab=plans",
+        "label": "套餐授予",
+        "perm": "merchant:merchant:read",
+        "group": "主体套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/merchants?tab=plans",
+        "label": "主体套餐",
+        "perm": "merchant:merchant:read",
+        "group": "套餐方案",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 10
+      }
+    },
+    {
+      "href": "/mall",
+      "before": {
+        "href": "/mall",
+        "label": "套餐管理",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall",
+        "label": "门店套餐",
+        "perm": "commerce:catalog:read",
+        "group": "套餐方案",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 20
+      }
+    },
+    {
+      "href": "/merchants?tab=plan-defs",
+      "before": {
+        "href": "/merchants?tab=plan-defs",
+        "label": "档位定义",
+        "perm": "merchant:merchant:read",
+        "group": "主体套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/merchants?tab=plan-defs",
+        "label": "档位定义",
+        "perm": "merchant:merchant:read",
+        "group": "套餐方案",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 30
+      }
+    },
+    {
+      "href": "/mall?tab=products",
+      "before": {
+        "href": "/mall?tab=products",
+        "label": "服务商品",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=products",
+        "label": "平台商品",
+        "perm": "commerce:catalog:read",
+        "group": "商品目录",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 40
+      }
+    },
+    {
+      "href": "/mall?tab=categories",
+      "before": {
+        "href": "/mall?tab=categories",
+        "label": "服务分类",
+        "perm": "commerce:catalog:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=categories",
+        "label": "商品分类",
+        "perm": "commerce:catalog:read",
+        "group": "商品目录",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 50
+      }
+    },
+    {
+      "href": "/mall?tab=sources",
+      "before": {
+        "href": "/mall?tab=sources",
+        "label": "订阅权益",
+        "perm": "commerce:subscription:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=sources",
+        "label": "订阅权益",
+        "perm": "commerce:subscription:read",
+        "group": "权益管理",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 60
+      }
+    },
+    {
+      "href": "/mall?tab=orders",
+      "before": {
+        "href": "/mall?tab=orders",
+        "label": "购买订单",
+        "perm": "commerce:mall:order:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=orders",
+        "label": "购买订单",
+        "perm": "commerce:mall:order:read",
+        "group": "商城订单",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 70
+      }
+    },
+    {
+      "href": "/mall?tab=assisted",
+      "before": {
+        "href": "/mall?tab=assisted",
+        "label": "运营代购",
+        "perm": "commerce:mall:assisted:purchase",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=assisted",
+        "label": "运营代购",
+        "perm": "commerce:mall:assisted:purchase",
+        "group": "商城订单",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 80
+      }
+    },
+    {
+      "href": "/mall?tab=claims",
+      "before": {
+        "href": "/mall?tab=claims",
+        "label": "线下核款",
+        "perm": "commerce:mall:offline:review",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=claims",
+        "label": "核款审核",
+        "perm": "commerce:mall:offline:review",
+        "group": "商城订单",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 90
+      }
+    },
+    {
+      "href": "/mall?tab=collection",
+      "before": {
+        "href": "/mall?tab=collection",
+        "label": "收款配置",
+        "perm": "commerce:collection:profile:read",
+        "group": "门店套餐",
+        "matrix": "P-11.2",
+        "ready": true
+      },
+      "after": {
+        "href": "/mall?tab=collection",
+        "label": "收款配置",
+        "perm": "commerce:collection:profile:read",
+        "group": "销售设置",
+        "matrix": "P-11.2",
+        "ready": true,
+        "sort": 100
+      }
+    }
+  ]
+}

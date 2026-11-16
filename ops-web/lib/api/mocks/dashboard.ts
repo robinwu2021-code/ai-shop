@@ -7,7 +7,8 @@ import { ApiError } from "../error";
 import { useLocaleStore } from "@/lib/stores/locale";
 import { wait } from "./_wait";
 import { currentAuth, type Role } from "@/lib/auth";
-import { NAV } from "@/lib/nav";
+import { platformCatalog, PLATFORM_MENU_ALIASES } from "@/lib/platform-nav";
+import { POINT_CODES } from "@/lib/point-codes";
 import { can } from "@/lib/permissions";
 
 /** 与后端 DevSeeder 的四个运营账号一一对应 */
@@ -16,6 +17,14 @@ const MOCK_ROLE_OF: Record<string, Role> = {
   bd: "MERCHANT_BD",
   goods: "PRODUCT_OPS",
   support: "CS",
+  campaign: "CAMPAIGN_OPS",
+  community: "COMMUNITY_OPS",
+  auditor: "AUDITOR",
+  finance: "FINANCE",
+  risk: "RISK",
+  analyst: "ANALYST",
+  tech: "TECH_OPS",
+  elec: "ELEC_ADMIN",
 };
 
 /**
@@ -83,13 +92,13 @@ export const dashboardMock: DashboardApi = {
   },
   menu: () => {
     const a = currentAuth();
-    const fns = NAV.map((s, i) => ({
+    const fns = platformCatalog().map((s, i) => ({
       functionCode: `OPS_${s.key.toUpperCase()}`,
       name: s.label, icon: s.icon, href: s.href, sort: (i + 1) * 10,
       points: (s.children ?? [])
         .filter((l) => !l.perm || can(a?.perms, l.perm))
         .map((l, j) => ({
-          pointCode: `OPS_${s.key.toUpperCase()}_${j}`, name: l.label,
+          pointCode: PLATFORM_MENU_ALIASES.find(a => a.href === l.href)?.pointCode ?? POINT_CODES[`OPS_${s.key.toUpperCase()}\t${l.href}`] ?? POINT_CODES[l.href], name: l.label,
           groupName: l.group ?? null, href: l.href, uiPermCode: l.perm ?? null,
           permCode: null, backendStatus: "IMPLEMENTED", uiReady: l.ready !== false,
           matrixCode: l.matrix ?? null, pointType: "MENU", sort: (j + 1) * 10,

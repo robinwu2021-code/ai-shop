@@ -45,7 +45,8 @@ public final class FlywayMariaDbDialectDataSource extends DelegatingDataSource {
             String engine =
                     (metadata.getDatabaseProductName() + " " + metadata.getDatabaseProductVersion())
                             .toLowerCase(Locale.ROOT);
-            if (!engine.contains("mariadb")) return connection;
+            boolean mysql9 = engine.startsWith("mysql 9.") && !engine.contains("mariadb");
+            if (!mysql9 && !engine.contains("mariadb")) return connection;
             return (Connection)
                     Proxy.newProxyInstance(
                             Connection.class.getClassLoader(),
@@ -58,14 +59,14 @@ public final class FlywayMariaDbDialectDataSource extends DelegatingDataSource {
                                         && args.length > 0
                                         && args[0] instanceof String sql) {
                                     effective = args.clone();
-                                    effective[0] = rewrite(sql);
+                                    effective[0] = mysql9 ? FlywayMysql9MigrationSql.rewrite(connection, sql) : rewrite(sql);
                                 }
                                 Object result = invoke(connection, method, effective);
                                 if (result instanceof Statement statement
                                         && (method.getName().equals("createStatement")
                                                 || method.getName().equals("prepareStatement")
                                                 || method.getName().equals("prepareCall")))
-                                    return statement(statement);
+                                    return statement(statement, connection, mysql9);
                                 return result;
                             });
         } catch (SQLException | RuntimeException failure) {
@@ -78,7 +79,7 @@ public final class FlywayMariaDbDialectDataSource extends DelegatingDataSource {
         }
     }
 
-    private static Object statement(Statement statement) {
+    private static Object statement(Statement statement, Connection connection, boolean mysql9) {
         Class<?> type =
                 statement instanceof CallableStatement
                         ? CallableStatement.class
@@ -96,7 +97,7 @@ public final class FlywayMariaDbDialectDataSource extends DelegatingDataSource {
                             && (method.getName().startsWith("execute")
                                     || method.getName().equals("addBatch"))) {
                         effective = args.clone();
-                        effective[0] = rewrite(sql);
+                        effective[0] = mysql9 ? FlywayMysql9MigrationSql.rewrite(connection, sql) : rewrite(sql);
                     }
                     return invoke(statement, method, effective);
                 });
