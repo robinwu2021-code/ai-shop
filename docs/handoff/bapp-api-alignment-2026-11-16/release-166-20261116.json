@@ -67,6 +67,7 @@
     "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-v46-20261116",
     "aiShop": "unchanged (already calls contact, revision-discards, preview and forwards channelMaterials)",
     "rollback": "/home/ume/entity-v46-20261116/pay-before-v46.jar written back in place; V104 table can stay; oms symlink back to entity-tw2-20261116",
-    "notVerified": "logged-in App use of contact, discard, preview and channelMaterials on 166"
+    "notVerified": "actual review submission, operator review and discard on 166 (not exercised)",
+    "verified": "2026-11-16 by the onboarding session, App with ENTITY_WORKSPACE_V46_SERVER on, V40 test entity: contact saved and read back; channelMaterials stored, NEWEBPAY complete after 8 items; thumbnails served; all four sections complete and submit enabled (not submitted, per user). Evidence: ai-shop-bapp feat/core-flow-ui docs/api/经营实体证件识别接口.md §9"
   }
 }
