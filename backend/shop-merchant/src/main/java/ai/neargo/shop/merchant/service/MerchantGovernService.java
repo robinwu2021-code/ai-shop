@@ -189,6 +189,12 @@ public interface MerchantGovernService {
     /** 新增或更新一条资质。{@code qualNo} 为空 = 新增。 */
     QualificationVO saveQualification(String merchantNo, SaveQualificationCommand cmd, String operatorNo);
 
+    /**
+     * 只新建一条资质：同类型已有 {@code VALID} 记录即 {@code CONFLICT}，不覆盖。
+     * 迁移脚本先查后建，用它保证「已有的事实不被新建接口改写」（TDD-商户迁移同步与渠道关联 N2）。
+     */
+    QualificationVO createQualification(String merchantNo, SaveQualificationCommand cmd, String operatorNo);
+
     /** 撤销一条资质（如证件作废）。不物理删——撤销本身是要留痕的事实。 */
     QualificationVO revokeQualification(String qualNo, String operatorNo);
 

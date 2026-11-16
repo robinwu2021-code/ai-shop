@@ -1,0 +1,238 @@
+# TDD-商户迁移同步与渠道关联
+
+状态：已确认（2026-11-16，用户「按建议确认并开发」）；N2、N3、N5 已实现（near-pay 在分支 `feat/oscar-entity-merchant-repair`），未部署
+关联需求：[运营端-账户商户门店渠道-功能矩阵](../requirements/运营端-账户商户门店渠道-功能矩阵.md) §3.1–3.4、§六 D4；[PRD-支付域](../requirements/PRD-支付域.md)；交接 [oscar-channel-sync-2026-11-16](../handoff/oscar-channel-sync-2026-11-16/README.md)
+档位：2（跨 ai-shop 与 near-pay 两个仓库；新资源与新表；历史归属修复不可逆，另见 [ADR-060](ADR/ADR-060-迁移归属冲突走修复申请不按名称合并.md)）
+创建：2026-11-16 · 最后更新：2026-11-16
+
+## 目标
+
+把迁移来源中的**账号、经营主体（含资质）、门店、渠道商户信息**迁入 nearshop，每类对象提供**只查询**与**只新建**两组运营 API；全部对象到位后，再按关联清单逐条建立关联。查重、分支、顺序与重跑由脚本负责，接口不做「查到就合并」。
+
+落点约定：账号、经营主体、资质、门店在商城 ai-shop（`/ops-shop/ops/...`）；支付商户、渠道账户、凭据、门店绑定在 near-pay（`/oms-api/pay-ops/v2/...`，下文记作 `P`）。所有写入都经运营 API，脚本不连库。
+
+首户：Oscar（`oscar@umeshop.ai`）／創勢科技股份有限公司／ume 早餐店。
+
+### 验收标准（PRD 无「迁移」条目，此处临时补 AC）
+
+- AC1：Given 来源对象在 nearshop 中**零条**，When 脚本执行，Then 调用新建 API 建出一条，回读字段与来源一致。
+- AC2：Given 已有**唯一且归属一致**的记录，When 脚本执行，Then 不调用任何新建 API，报告该项为「复用」。
+- AC3：Given 查到**多条或归属/字段不一致**，When 脚本执行，Then 该项报告「冲突」并停止该项，其余互不依赖的项继续。
+- AC4：Given 查询返回 HTTP 错误、超时或无权限，Then 报告「阻断」，**不得**当作零条进入新建。
+- AC5：Given 新建请求超时，When 重跑，Then 先用**同一 requestNo** 查回执，不换号重建；同 requestNo 不同载荷返回幂等冲突。
+- AC6：Given 资质已有同类型有效记录，When 调用资质新建 API，Then 返回冲突码，不覆盖原记录。
+- AC7：Given 经营主体已有支付商户，When 调用 `merchant-creations`，Then 返回冲突并带出已有 `merchantNo`，不建第二个。
+- AC8：Given 支付商户的来源关联指向旧主体，When 运营提交归属修复申请并经审批执行，Then 只改本次申请范围内的关联并留历史；不迁其他门店、不转移 MID。
+- AC9：关联清单 A–G 每条执行后回读，脚本输出编号对照表（userNo / entityNo / storeNo / merchantNo / accountNo / bindingNo）。
+
+### 不做（Out of Scope）
+
+- 门店归属迁移（矩阵 S09，D4 已定先不做）；
+- 通用数据迁移平台、批量导入界面；
+- 正式环境支付测试会话 `payment-test-sessions` 与渠道受理验收——关联完成后另开 TDD；
+- 已有记录的字段修订（差异只报告，走现有业务维护流程）。
+
+## §0 对账一 · 需求 → 设计
+
+### 0.1 迁移对象清单
+
+✅ 已有（源码已核对，2026-11-16）　❌ 待补　⚠️ 已有但语义不符
+
+| # | 对象 | 判重键 | 查询 API | 新建 API |
+|---|---|---|---|---|
+| O1 | 账号 | 邮箱或手机 + 地区 | `GET /ops/customers/users?keyword=` ✅ | `POST /ops/customers/users` ❌（N1） |
+| O2 | 经营主体 | 统一编号 + 地区 | `GET /ops/merchants?keyword=`、`GET /ops/merchants/{entityNo}`、`GET /ops/customers/operating-entities/{entityNo}` ✅ | `POST /ops/merchants/apply-on-behalf` ✅ → `POST /ops/merchant/apply/{applyNo}/accept`、`/audit` ✅ |
+| O3 | 资质 | 主体 + 资质类型（有效） | `GET /ops/merchants/{entityNo}/qualifications` ✅ | 现 `POST` 为登记或更新 ⚠️ → 新增只新建 `POST .../qualification-creations` ❌（N2） |
+| O4 | 门店 | 主体 + 门店名 + 地址 | `GET /ops/stores`、`GET /ops/stores/{storeNo}` ✅ | `POST /ops/merchants/{entityNo}/stores` ✅ |
+| O5 | 支付商户 | 经营主体编号 | `GET P/merchants`、`GET P/merchants/{merchantNo}`、`GET /ops/merchant/{entityNo}/pay-service` ✅ | `POST P/merchant-creations` ✅ 已在 166 运行版本；缺主体级唯一 ⚠️（N3） |
+| O6 | 渠道商户账户 | 环境 + 渠道 + MID | `GET P/channel-accounts` ✅ | `POST P/channel-accounts` ✅ |
+| O7 | 渠道凭据 | 渠道账户 + 用途 + 版本 | `GET P/credentials` ✅ | `POST P/credentials` ✅（密钥只读受控配置） |
+| O8 | 渠道产品 | 渠道账户 + 产品编码 | `GET P/channel-accounts/{accountNo}` ✅ | `POST P/channel-accounts/{accountNo}/products/{productCode}/open` ✅（命令） |
+| O9 | 迁移来源 | 原系统商户 ID | ❌（N4，待定来源系统） | 无（只读） |
+
+### 0.2 关联清单
+
+| # | 关联 | API | 状态 |
+|---|---|---|---|
+| A | 账号 ↔ 经营主体（店主） | 代建申请时指定店主；回读 `GET /ops/customers/users/{userNo}/stores` | ✅；已有主体补店主暂无接口，Oscar 已是店主，本期不做 |
+| B | 经营主体 ↔ 门店 | 门店在主体下新建 | ✅ |
+| C | 经营主体 ↔ 支付商户 | `merchant-creations` 带 `operatingEntityId` | ✅ |
+| D | 门店 ↔ 支付门店投影 | `POST /ops/stores/nearpay-sync`，回读 `GET P/stores/{storeNo}` | ✅ |
+| E | 支付商户 ↔ 迁移来源 | `POST P/merchants/{merchantNo}/source-links/{linkNo}/verify` | ✅（需真实来源依据） |
+| F | 支付商户 ↔ 渠道账户 | 渠道账户新建时指定商户 | ✅ |
+| G | 门店 ↔ 渠道账户 | `GET/POST P/stores/{storeNo}/bindings` | ✅；已有不同绑定走换绑审批 |
+| H | 历史关联修复 | `P/source-association-repair-requests` | ❌（N5） |
+
+### 0.3 AC → 落点
+
+| AC | 落点 |
+|---|---|
+| AC1–AC4、AC9 | 同步脚本 `deploy/ume/oscar-sync/sync.py`（查询—选择—新建/复用—回读） |
+| AC5 | 各新建 API 的 `requestNo` 回执（N1、N2、N5 照 `merchant-creations` 的 `request_hash` 做法） |
+| AC6 | N2 |
+| AC7 | N3 |
+| AC8 | N5 + ADR-060 |
+
+**孤立项**：O9 无落点——来源系统未定（见 §4 待决 Q1）；在定之前 E 的来源依据由运营人工提供。
+
+## §1 现状与影响面
+
+- 账号：`OpsCustomerController` 只读（`users`、`users/{userNo}/stores`）。
+- 资质：`OpsQualificationController#save` 带 `qualNo` 为更新、不带为新增，同类型不判重。
+- 支付商户代建：near-pay `OpsMerchantAssistanceController` + `OpsMerchantCreationService`，`requestNo` + `request_hash` 幂等；只校验主体可用与地区范围，**不查该主体是否已有商户**。已在 near-pay 主线 `codex/near-pay-migration` 与 166 运行版本 `release/166-collection-sse-20261116` 上。
+- 门店投影、来源核验、渠道账户、凭据、绑定、产品开通：near-pay `pay-ops/v2` 已有。
+- 会被改到的：资质登记（只加新端点，不改现 `POST` 语义，运营前端不受影响）；代建支付商户（加唯一校验，影响运营代建与 B 端 `biz/pay/v2/merchant-creations`，两者共用服务）。
+- 明确不受影响：入驻审核流程、门店新建、渠道进件流程、支付下单。
+
+## §2 方案
+
+### 契约变更
+
+| 编号 | 仓库 | 端点 | 库表 / 迁移 | 权限码 | 错误码（三语） | 优先级 |
+|---|---|---|---|---|---|---|
+| N1 | ai-shop | `POST /ops/customers/users`；`GET /ops/customers/users/creations/{requestNo}` | `usr_account_creation`（请求回执） | `customer:user:create` | 账号已存在、幂等冲突 | P2（Oscar 不需要） |
+| N2 | ai-shop | `POST /ops/merchants/{entityNo}/qualification-creations` | 无新表（`qualNo` 由服务生成） | 复用 `merchant:category:grant` | 复用通用 `CONFLICT`（同类型 `VALID` 资质已存在），无新词条 | P1 |
+| N3 | near-pay | `POST P/merchant-creations` 与 `biz/pay/v2/merchant-creations` 行为变更 | 无；建前查代建回执 `operating_entity_no` 与来源关联 `external_entity_id`（均排除 `CLOSED` 商户） | 不变 | 复用 `STATE_CONFLICT`，说明「经营主体已有支付商户 PM…」 | P0 |
+| N4 | ai-shop | `GET /ops/migration-sources/merchants?registrationNo=`、`/{sourceId}`、`/{sourceId}/channel-accounts` | 视来源系统而定 | `merchant:read` | — | 待 Q1 |
+| N5 | near-pay | `GET P/source-association-repair-requests`、`GET .../{repairNo}`、`POST ...`、`POST .../{repairNo}/approve`、`/reject`、`/execute` | `pay_source_association_repair`（申请、范围、前后快照、审批、执行结果） | `pay:merchant:repair`（申请）、`pay:merchant:repair:approve`（审批，申请人不可自批） | 范围外对象、状态不允许、版本冲突 | P0 |
+
+配置项：无。脚本连接参数走环境变量 `NEARSHOP_BASE`、`NEARSHOP_TOKEN`，不入库不入 Git。
+
+### 模块设计
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `deploy/ume/oscar-sync/sync.py` | 只读同步：按 O1–O8、A–G 查询并输出复用 / 待建 / 冲突 / 阻断报告（WP1，本期先交付） |
+| 新增 | `deploy/ume/oscar-sync/test_sync.py` | 判定规则单测（零条、唯一、多条、归属不一致、HTTP 失败） |
+| 新增 | `deploy/ume/oscar-sync/oscar.example.json` | 首户目标描述（只有编号与判重键，无证件、银行账号、密钥） |
+| 新增 | ai-shop `shop-merchant/.../OpsQualificationController#create` | N2 |
+| 修改 | ai-shop `MerchantGovernService` / Impl | N2：新增 `createQualification`，同类型有效记录存在即抛冲突 |
+| 修改 | near-pay `pay-domain/.../OpsMerchantCreationService` | N3：建前按主体查已有商户 |
+| 新增 | near-pay `pay-domain/.../platmch/repair/*`、`pay-portal/.../OpsSourceAssociationRepairController` | N5 |
+| 新增 | near-pay 迁移 `V1xx__source_association_repair.sql` | N5 |
+| 后续 | `deploy/ume/oscar-sync/sync.py --apply` | WP6：在契约落地后接入新建与关联命令 |
+
+### 关键接口
+
+N3 冲突：沿用 `CatalogException.stateConflict`，`reasonCode=STATE_CONFLICT`，说明文字带已有 `merchantNo`；脚本收到冲突后按主体回查 `GET P/merchants` 取已有商户复用，不解析文字。同 `requestNo` 重放仍返回原回执（校验在重放判断之后）。
+
+N5 申请体（范围必须显式列举，执行时逐项比对前快照，任一不符整单失败）：
+
+```json
+{
+  "requestNo": "oscar-repair-001",
+  "merchantNo": "PM13A13B737D7C4A57",
+  "fromOperatingEntityId": "M261106BF7GK8052W",
+  "toOperatingEntityId": "M261113Y3QW5XKEFW",
+  "storeNos": ["ST2611132NS49C2EPQ"],
+  "evidence": "资料依据说明（不含证件原文）",
+  "expectedVersion": 3
+}
+```
+
+脚本单项算法：
+
+```text
+query exact identity
+  error/timeout/denied -> BLOCKED
+  zero    -> PLAN_CREATE（--apply 时：create(requestNo) -> query receipt -> query resource）
+  one & same owner/data -> REUSE
+  many / different owner / different fields -> CONFLICT（停本项）
+```
+
+### 实施顺序
+
+1. **WP1 只读脚本**（不动契约，本期先交付）→ 在 166 跑出 Oscar 编号对照与冲突清单。
+2. **N3、N5**（near-pay，P0）与 **N2**（ai-shop，P1）并行；各自单测 + 本仓闸门。
+3. 部署 166 后，**WP6** 给脚本加 `--apply`：依次 O1–O8、A–G，冲突处插入 H。
+4. N1、N4 等 Q1 定论后再排。
+
+## §3 选型
+
+| 方案 | 优点 | 缺点 | 结论 |
+|---|---|---|---|
+| A 查询 / 新建分离，脚本判重 | 接口语义单一；冲突可见；可重跑 | 脚本逻辑多 | ✅ 用户 2026-11-16 指定 |
+| B 一个 `sync`/upsert 接口 | 调用少 | 隐式合并，按名称匹配易错并 | ❌ |
+| C 脚本直接写库 / SQL copy | 快 | 绕过权限、审计与业务校验 | ❌ |
+| 历史归属：修复申请 + 审批执行 | 有范围、有快照、可审计 | 多一个资源 | ✅ 见 ADR-060 |
+| 历史归属：普通保存覆盖 | 无新开发 | 无审批、丢历史 | ❌ |
+
+## §4 风险与待决
+
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| 统一编号与 `tax_no` 位数不一致 | 主体误判重复或漏判 | 判重只用营业登记编号原字段；不一致报冲突，不按名称兜底 |
+| N3 改变 B 端代建行为 | App 侧重复代建由成功变冲突 | 冲突带已有 `merchantNo`；B 端与运营端同测 |
+| 修复执行半途失败 | 关联处于中间态 | 单事务执行；前快照比对不符整单拒绝 |
+| 蓝新 MID `PMD3A0C5A8C8FB4F92` 被误转移 | 资金归属错误 | N5 范围不含渠道账户；执行器对渠道账户只读 |
+
+已决（2026-11-16，用户按建议确认）：
+
+- Q1 迁移来源系统未定：N4 暂缓，来源核验（关联 E）由运营人工提供依据。
+- Q2 归属修复审批：持 `pay:merchant:repair:approve` 的运营，申请人不得自批。
+- Q3 一个经营主体只允许一个支付商户：N3 照此实现。
+- Q4 N1（运营新建账号）本期不做。
+
+残余风险：N3 为事务内先查后插，不加库级唯一键（166 存量可能已有同主体多商户，加唯一键会使迁移失败）；同主体两个不同 `requestNo` 并发代建仍可能各建一个，由脚本串行执行规避。
+
+## §5 对账三 · 实现 → 需求（测试）
+
+| AC | 测试方法 | 跑过 |
+|---|---|---|
+| AC1–AC4 | `deploy/ume/oscar-sync/test_sync.py` | WP1 |
+| AC5 | N2/N5 幂等测试；脚本 `--apply` 回执测试 | 待实现 |
+| AC6 | ai-shop `QualificationCreateOnlyTest`（3 条：同类型有效即冲突且不写；无则新建；带 `qualNo` 拒绝） | ✅ 3/3 |
+| AC7 | near-pay `MerchantCreationMySqlTest#secondMerchantForSameOperatingEntityConflictsAndNamesTheExistingOne`、`#sourceLinkedEntityAlsoCountsAsHavingAMerchant`（MySQL 9.7@3308） | ✅ 全类 17/17 |
+| AC8 | near-pay `SourceAssociationRepairServiceTest`（H2）7/7、`SourceAssociationRepairMySqlTest`（MySQL 9.7）7/7、`OpsSourceAssociationRepairControllerTest` 4/4；自批拦截做过消融（去掉即红） | ✅ |
+| AC9 | 166 只读运行报告 | 待运行 |
+
+## §6 对账二 · 设计 → 实现（实现完再填）
+
+两仓库各一个提交（ai-shop 当前分支；near-pay `feat/oscar-entity-merchant-repair`），文件清单：
+
+```
+ai-shop
+  M backend/shop-merchant/.../api/ops/OpsQualificationController.java       N2 端点
+  M backend/shop-merchant/.../service/MerchantGovernService.java            N2 接口
+  M backend/shop-merchant/.../service/impl/MerchantGovernServiceImpl.java   N2 实现
+  A backend/shop-merchant/src/test/.../QualificationCreateOnlyTest.java     AC6
+  M ops-web/known-orphan-endpoints.txt                                       N2 脚本专用端点登记
+  M 生成物：docs/technical/README.md、reference/三端权限矩阵-按业务域.md、reference/运营端-角色×端点矩阵.md、packages/shared/tests/fixtures/ops-role-endpoint-matrix.json
+  A deploy/ume/oscar-sync/{sync.py,test_sync.py,oscar.example.json}         WP1
+near-pay（feat/oscar-entity-merchant-repair）
+  M pay-domain/.../platmch/PlatmchStore.java                                N3 主体→商户查询
+  M pay-domain/.../platmch/creation/{MerchantCreationService,OpsMerchantCreationService}.java  N3
+  M pay-domain/src/test/.../MerchantCreationMySqlTest.java                  AC7
+  A pay-domain/.../db/pay/V102__source_association_repair.sql               N5 表
+  A pay-domain/.../platmch/repair/{SourceAssociationRepairStore,Service,Subject}.java  N5
+  A pay-portal/.../api/ops/v2/OpsSourceAssociationRepairController.java     N5 端点
+  M pay-domain/.../access/PayResourceCatalog.java                           N5 权限码
+  M pay-domain/.../audit/AuditResourceType.java、environment/EnvironmentTablePolicy.java  N5 审计类型 / 共享表
+  A pay-portal|pay-svc 测试 3 个                                            AC8
+```
+
+| 差异 | 说明 |
+|---|---|
+| §2 列了 `GET .../repair-requests/by-request` 未单列 | 列表接口带 `requestNo` 过滤即可回查回执 |
+| N5 新增 `PayResourceCatalog`、`AuditResourceType`、`EnvironmentTablePolicy` 三处 | 权限码由资源目录生成；审计类型与环境表策略为新表必登记项 |
+| N2 未带 `requestNo` | 超时重试由「先查」或冲突兜底，不新增回执表 |
+
+### 偏差说明
+
+- **N5 修复语义**：执行时原行原号改 `pay_merchant_source_link.external_entity_id`（原主体→目标主体），`link_no`、`platform_merchant_id` 不变，`source_revision` 归 0 以便目标主体下一版来源受理能被应用；不删行、不插新行（表无状态列，插新行会让旧主体继续解析到该商户）。V23 注释称该列「来源主体不可变 ID」，此处是经审批的唯一例外，历史由修复单前后快照与两条审计保留，已写入 ADR-060。
+- **N5 范围门店**：`storeNos` 中未关联的门店补关联（`origin=APPROVAL`，带审批号）；旧主体与目标主体下未列出的门店不动。
+- **审批**：接入现有审批框架（类型 `SOURCE_ASSOCIATION_REPAIR`，单节点）；审批人须同时有 `pay:approval:review` 与 `pay:merchant:repair:approve`；申请人自批无条件拒绝，不受 `near-pay.approval.single-operator` 影响。
+
+### 遗留
+
+- 修复后旧主体不再对应商户；ai-shop 若再按旧主体发来源受理，near-pay 会为其新建平台商户——执行修复前须确认旧主体已停用或不再同步。
+- near-pay V22 建表 `sensitive` 列未加反引号，MySQL 9.7 下建不了（测试夹具已绕过），生产库须另行核实。
+- near-pay ops-web 未展示新审批类型名称；数据库/接口设计文档未更新（该仓库文档校验原本就不通过）。
+- ai-shop `ArchitectureTest#domainsMustNotTouchWebRuntime` 失败于 `OpsPlatformController.logout(HttpServletRequest)`，为合入的统一登录分支带入，与本 TDD 无关。
+
+## §7 确认与完成
+
+| 日期 | 事件 |
+|---|---|
+| 2026-11-16 | 草稿；WP1 只读脚本先行 |
+| 2026-11-16 | 方案确认（Q1–Q4 按建议）；N2、N3、N5 实现，相关测试全绿，已提交、未部署 |
