@@ -330,6 +330,16 @@ class CommerceStoreCreationFlowTest {
                                             created,
                                             second.get(15, java.util.concurrent.TimeUnit.SECONDS));
                                     assertEquals(created, port.quickStart(cmd));
+                                    assertEquals(created, port.quickStart(new QuickStartCommand(
+                                            "owner", "Shop", null, "RETAIL", "CN", null, null, null,
+                                            null, null, null, null, null, "Shop")));
+                                    assertEquals(ErrorCode.BAD_REQUEST, assertThrows(BizException.class,
+                                            () -> port.quickStart(new QuickStartCommand(
+                                                    "owner", "Shop", null, "RETAIL", "TW"))).errorCode());
+                                    assertEquals(ErrorCode.CONFLICT, assertThrows(BizException.class,
+                                            () -> port.quickStart(new QuickStartCommand(
+                                                    "owner", "Shop", null, "RETAIL", "CN", null, null, null,
+                                                    null, null, null, null, null, "Other entity"))).errorCode());
                                     assertThrows(
                                             BizException.class,
                                             () ->
@@ -576,17 +586,20 @@ class CommerceStoreCreationFlowTest {
             assertEquals(beforeRollbackStores,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store",Integer.class));
             assertEquals(beforeRollbackPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
             jdbc.execute("ALTER TABLE commerce_outbox DROP CHECK reject_ops_event");
-            // Operator on-behalf creates an independent entity; the old LEGACY store remains untouched.
+            // Merchant licence certification upgrades the selected entity and preserves its LEGACY store.
             var previousName=jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo());
             var previousPeriods=jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo());
+            var previousEntityStores=jdbc.queryForObject("SELECT COUNT(*) FROM mch_store WHERE entity_no=?",Integer.class,store.entityNo());
             setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_ONBEHALF);
             var legacyCommand=new ai.neargo.shop.platform.OpsService.SubmitApplyCommand("owner","Legacy certification","NATURAL_PERSON",null,null,null,null,null,"PLATFORM",List.of(),List.of(),false,null,null,List.of(),"CN",draft);
             login("owner");
             String legacyApplication=ops.createMerchantApply(legacyCommand,store.entityNo());
             setOperator("reviewer","merchant:*");
             var certified=ops.auditApply(legacyApplication,true,null,"PLATFORM",List.of(),List.of());
-            assertNotEquals(store.storeNo(),certified.storeNo());
-            assertEquals("STORE_V1",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,certified.storeNo()));
+            assertEquals(store.storeNo(),certified.storeNo());
+            assertEquals(store.entityNo(),certified.merchantNo());
+            assertEquals(previousEntityStores,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store WHERE entity_no=?",Integer.class,store.entityNo()));
+            assertNull(jdbc.queryForObject("SELECT business_type_code FROM mch_store WHERE store_no=?",String.class,certified.storeNo()));
             assertEquals("LEGACY",jdbc.queryForObject("SELECT commerce_model FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousName,jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?",String.class,store.storeNo()));
             assertEquals(previousPeriods,jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE store_no=?",Integer.class,store.storeNo()));

@@ -525,8 +525,6 @@ class CommerceAccessSecurityFlowTest {
                                     StoreCategoryService.class,
                                     MerchantGovernService.class,
                                     StoreOpeningService.class,
-                                    ai.neargo.shop.auth.captcha.BizCaptchaService.class,
-                                    ai.neargo.shop.common.otp.service.OtpSendService.class,
                                     MerchantAdminPort.class,
                                     DebtService.class,
                                     StoreFavoriteService.class,
