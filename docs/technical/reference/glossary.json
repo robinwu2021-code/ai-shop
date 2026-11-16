@@ -29423,12 +29423,6 @@
           "ar": null
         },
         {
-          "key": "bell.desktopTitle",
-          "zh-CN": "邻里购 运营",
-          "en": "NeighborShop Ops",
-          "ar": null
-        },
-        {
           "key": "bell.empty",
           "zh-CN": "没有新通知",
           "en": "No new notifications",
@@ -29528,18 +29522,6 @@
           "key": "common.all",
           "zh-CN": "全部",
           "en": "All",
-          "ar": null
-        },
-        {
-          "key": "common.appName",
-          "zh-CN": "邻里购 运营",
-          "en": "Linligou Ops",
-          "ar": null
-        },
-        {
-          "key": "common.appTitle",
-          "zh-CN": "平台运营管理后台",
-          "en": "Platform operations console",
           "ar": null
         },
         {
@@ -30035,6 +30017,12 @@
           "ar": null
         },
         {
+          "key": "login.backToLogin",
+          "zh-CN": "返回登录",
+          "en": "Back to sign in",
+          "ar": null
+        },
+        {
           "key": "login.codeBack",
           "zh-CN": "换个账号",
           "en": "Use another account",
@@ -30065,6 +30053,18 @@
           "ar": null
         },
         {
+          "key": "login.envStaging",
+          "zh-CN": "预发环境",
+          "en": "Staging",
+          "ar": null
+        },
+        {
+          "key": "login.envTest",
+          "zh-CN": "测试环境",
+          "en": "Test",
+          "ar": null
+        },
+        {
           "key": "login.forgot",
           "zh-CN": "忘记密码？",
           "en": "Forgot password?",
@@ -30074,6 +30074,12 @@
           "key": "login.forgotDesc",
           "zh-CN": "输入你的登录邮箱，我们会把一次性重置码发到那个邮箱。",
           "en": "Enter your login email and we will send a one-time reset code to it.",
+          "ar": null
+        },
+        {
+          "key": "login.forgotEmail",
+          "zh-CN": "登录邮箱",
+          "en": "Sign-in email",
           "ar": null
         },
         {
@@ -30098,6 +30104,18 @@
           "key": "login.forgotTitle",
           "zh-CN": "重置密码",
           "en": "Reset password",
+          "ar": null
+        },
+        {
+          "key": "login.hidePassword",
+          "zh-CN": "隐藏密码",
+          "en": "Hide password",
+          "ar": null
+        },
+        {
+          "key": "login.hint",
+          "zh-CN": "请使用运营账号登录",
+          "en": "Sign in with your operations account",
           "ar": null
         },
         {
@@ -30167,15 +30185,15 @@
           "ar": null
         },
         {
-          "key": "login.submit",
-          "zh-CN": "登录",
-          "en": "Sign in",
+          "key": "login.showPassword",
+          "zh-CN": "显示密码",
+          "en": "Show password",
           "ar": null
         },
         {
-          "key": "login.subtitle",
-          "zh-CN": "社区电商平台 · 运营管理后台",
-          "en": "Community commerce · operations console",
+          "key": "login.submit",
+          "zh-CN": "登录",
+          "en": "Sign in",
           "ar": null
         },
         {

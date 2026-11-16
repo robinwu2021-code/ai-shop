@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NearGo 运营登录</title>
+<!-- 真源在仓库 prototypes/ops-login.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">运营端 ops-web · 界面原型 · 2026-11-16 · v3</div>
+  <h1>NearGo平台运营 · 登录页</h1>
+  <p class="sub">保持线上「浅底 + 居中卡片」的布局，只做整洁化：标题改为 NearGo平台运营，标识换成 N，语言切换移出卡片，字段和按钮统一高度与圆角，去掉多余说明。名称可配置。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>登录流程</h2></div>
+  <div class="grid one">
+
+    <figure id="s01">
+      <div class="lc-wrap"><div class="lc">
+        <span class="lc-lang"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.9 1.8 10.5 0 12.4M8 1.8c-1.8 1.9-1.8 10.5 0 12.4"/></svg>简体中文</span>
+        <div class="lc-card">
+          <div class="lc-brand"><span class="lc-mark">N</span><h5>NearGo平台运营</h5></div>
+          <p class="lc-sub">请使用运营账号登录</p>
+          <label class="lc-f"><span>用户名</span><span class="lc-in focus"><span class="v">ops_zhang</span></span></label>
+          <label class="lc-f"><span>密码<a>忘记密码？</a></span><span class="lc-in">请输入密码<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="1.9"/></svg></span></label>
+          <span class="lc-btn">登录</span>
+        </div>
+        <span class="lc-foot">© NearGo · v2026.11.16</span>
+      </div></div>
+      <figcaption class="cap"><b>01 账号密码登录</b>同一张居中卡片：标识 + 名称一行，一句提示，两个字段，一个按钮。</figcaption>
+      <p class="why">相比线上：标题「平台运营管理后台」改为「NearGo平台运营」，「邻」字标识换成 N；副标题「社区电商平台 · 运营管理后台」缩成一句操作提示；语言切换从卡片里移到页面右上角；「忘记密码」从按钮下方移到密码标签右侧；密码框加「显示密码」。底色从灰调改成更浅的冷灰，卡片用细边 + 轻阴影。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="lc-wrap"><div class="lc">
+        <span class="lc-lang"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.9 1.8 10.5 0 12.4M8 1.8c-1.8 1.9-1.8 10.5 0 12.4"/></svg>简体中文</span>
+        <div class="lc-card">
+          <div class="lc-brand"><span class="lc-mark">N</span><h5>NearGo平台运营</h5></div>
+          <p class="lc-note">验证码已发送至 <b>ad***@neargo.ai</b></p>
+          <div class="lc-otp"><i>3</i><i>8</i><i>1</i><i class="cur"></i><i></i><i></i></div>
+          <span class="lc-btn busy">验证并登录</span>
+          <span class="lc-btn quiet">返回账号密码登录</span>
+        </div>
+        <span class="lc-foot">© NearGo · v2026.11.16</span>
+      </div></div>
+      <figcaption class="cap"><b>02 邮箱验证码</b>同一张卡片里换成 6 格验证码，输满才可提交。</figcaption>
+      <p class="why">流程不变。单个输入框换成 6 格，位数一眼可见，支持整串粘贴。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="lc-wrap"><div class="lc">
+        <span class="lc-lang"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.9 1.8 10.5 0 12.4M8 1.8c-1.8 1.9-1.8 10.5 0 12.4"/></svg>简体中文</span>
+        <div class="lc-card">
+          <div class="lc-brand"><span class="lc-mark">N</span><h5>NearGo平台运营</h5><span class="lc-tag">测试环境</span></div>
+          <p class="lc-sub">请使用运营账号登录</p>
+          <label class="lc-f"><span>用户名</span><span class="lc-in"><span class="v">ops_zhang</span></span></label>
+          <label class="lc-f"><span>密码<a>忘记密码？</a></span><span class="lc-in bad"><span class="v">••••••••••</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="1.9"/></svg></span></label>
+          <div class="lc-err">用户名或密码不正确</div>
+          <span class="lc-btn">登录</span>
+        </div>
+        <span class="lc-foot">© NearGo · v2026.11.16</span>
+      </div></div>
+      <figcaption class="cap"><b>03 出错 · 测试环境</b>错误在按钮上方，对应输入框标红；非生产环境在名称右侧显示环境标签。</figcaption>
+      <p class="why">生产环境不显示标签，保持干净；测试、预发环境才出现琥珀色标签，避免把测试当生产。错误文案直接用后端返回的原话。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 06</span><h2>忘记密码、窄屏与名称配置</h2></div>
+  <div class="grid one">
+
+    <figure id="s04">
+      <div class="lc-wrap"><div class="lc">
+        <span class="lc-lang"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.9 1.8 10.5 0 12.4M8 1.8c-1.8 1.9-1.8 10.5 0 12.4"/></svg>简体中文</span>
+        <div class="lc-card">
+          <div class="lc-brand"><span class="lc-mark">N</span><h5>重置密码</h5></div>
+          <p class="lc-note">重置码已发至登录邮箱，15 分钟内有效</p>
+          <label class="lc-f"><span>重置码</span><span class="lc-in focus"><span class="v">7140</span></span></label>
+          <label class="lc-f"><span>新密码</span><span class="lc-in">至少 8 位<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="1.9"/></svg></span></label>
+          <span class="lc-btn">设置新密码</span>
+          <span class="lc-btn quiet">返回登录</span>
+        </div>
+        <span class="lc-foot">© NearGo · v2026.11.16</span>
+      </div></div>
+      <figcaption class="cap"><b>04 忘记密码</b>在同一张卡片里原地切换（先填邮箱发码，再填重置码和新密码），不再弹抽屉。</figcaption>
+      <p class="why">线上是在登录卡片上再拉出一个抽屉。原地切换后页面始终只有一张卡片；「无论账号是否存在都显示已发送」的规则保留。</p>
+    </figure>
+
+  </div>
+  <div class="grid two">
+
+    <figure id="s05">
+      <div class="lcm-wrap"><div class="lcm">
+        <div class="lc-brand"><span class="lc-mark">N</span><h5>NearGo平台运营</h5></div>
+        <p class="lc-sub">请使用运营账号登录</p>
+        <label class="lc-f"><span>用户名</span><span class="lc-in">请输入用户名</span></label>
+        <label class="lc-f"><span>密码</span><span class="lc-in">请输入密码<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="1.9"/></svg></span></label>
+        <span class="lc-btn">登录</span>
+        <span class="lc-link">忘记密码？</span>
+        <span class="lc-foot">简体中文 · © NearGo</span>
+      </div></div>
+      <figcaption class="cap"><b>05 窄屏</b>卡片去掉外框铺满屏幕，输入框和按钮 48px 高。</figcaption>
+    </figure>
+
+    <figure id="s06">
+      <table class="cfgtbl">
+        <tr><th>配置项</th><th>默认值</th><th>出现在哪</th></tr>
+        <tr><td><code>name</code></td><td>NearGo平台运营</td><td>登录卡片标题、浏览器标签、侧栏顶部、桌面通知标题</td></tr>
+        <tr><td><code>mark</code></td><td>N</td><td>登录卡片与侧栏的方形标识（可改用 <code>logoUrl</code> 图片）</td></tr>
+        <tr><td><code>env</code></td><td>空（生产）</td><td><code>test</code> / <code>staging</code> 时在名称右侧显示环境标签</td></tr>
+        <tr><td><code>locales</code></td><td><code>{"en": {"name": "NearGo Ops"}}</code></td><td>按语言覆盖以上任意一项</td></tr>
+      </table>
+      <figcaption class="cap"><b>06 名称配置</b>公开文件 <code>/ops-shop/brand.json</code>，随页面部署，改它不用重新构建。</figcaption>
+      <p class="why">登录前就要显示名称，所以不放在要登录才能读的后台接口里。取值顺序：<code>brand.json</code> → 构建时环境变量 → 默认值「NearGo平台运营」，读不到也不影响登录。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/ops-login.html · 登记：prototypes/registry.json · 现状页面：ops-web/app/login/page.tsx</footer>
+</div>
+</html>

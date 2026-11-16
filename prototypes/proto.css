@@ -1295,3 +1295,63 @@ a{color:inherit}
 .brand-sv .store-switch{font:inherit;font-size:10.4px;background:transparent;border:0;color:var(--sh-sub);padding:0;min-height:35.2px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6.4px}
 .brand-sv .check-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:35.2px;margin-bottom:9.6px;font-size:11.2px}.brand-sv .check-row input{width:19.2px;height:19.2px;min-height:0;padding:0;accent-color:var(--sh-primary)}
 .brand-sv #settlement-content,.brand-sv #member-results{display:flex;flex-direction:column;gap:8px}
+
+/* ── 运营端登录页（ops-login）：沿用线上「浅底 + 居中卡片」布局，只做整洁化。
+ *    .lc-wrap 是容器，屏内尺寸按容器宽（cqw）缩放；屏内令牌 --lc-* 对齐运营端默认黑白皮肤。 ── */
+.grid.one{grid-template-columns:1fr}
+.grid.two{grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}
+@media (max-width:760px){ .grid.two{grid-template-columns:1fr} }
+.lc-wrap{container-type:inline-size;width:100%}
+.lc{--lc-bg:#F5F6F8;--lc-card:#fff;--lc-line:#E4E6EA;--lc-text:#16181D;--lc-sub:#636A75;--lc-faint:#9AA0AA;--lc-ink:#16181D;
+  --lc-ring:rgba(22,24,29,.14);--lc-danger:#C8322B;--lc-danger-tint:#FCEEED;--lc-amber:#B86E00;--lc-amber-tint:#FFF3DF;
+  position:relative;width:100%;aspect-ratio:16/9.4;background:var(--lc-bg);border-radius:12px;overflow:hidden;display:grid;place-items:center;
+  color:var(--lc-text);font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:1.1cqw;line-height:1.5;
+  box-shadow:0 0 0 1px var(--rule)}
+figure:target .lc,figure:target .lcm{outline:3px solid var(--ink);outline-offset:5px}
+.lc-lang{position:absolute;top:2cqw;right:2.4cqw;display:inline-flex;align-items:center;gap:.5cqw;font-size:.95cqw;color:var(--lc-sub)}
+.lc-lang svg{width:1.1cqw;height:1.1cqw}
+.lc-card{width:30cqw;background:var(--lc-card);border-radius:1.1cqw;box-shadow:0 0 0 1px var(--lc-line),0 1.2cqw 3cqw -1.6cqw rgba(22,24,29,.18);
+  padding:2.8cqw 2.6cqw 2.4cqw;display:flex;flex-direction:column;gap:1.4cqw}
+.lc-brand{display:flex;align-items:center;gap:.9cqw}
+.lc-mark{width:2.6cqw;height:2.6cqw;border-radius:.7cqw;background:var(--lc-ink);color:#fff;display:grid;place-items:center;
+  font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:1.25cqw}
+.lc-brand h5{margin:0;font-size:1.55cqw;font-weight:600;letter-spacing:.01em}
+.lc-tag{margin-left:auto;font-size:.85cqw;font-weight:500;padding:.15cqw .7cqw;border-radius:99px;background:var(--lc-amber-tint);color:var(--lc-amber)}
+.lc-sub{margin:-.6cqw 0 .4cqw;font-size:1cqw;color:var(--lc-sub)}
+.lc-f{display:flex;flex-direction:column;gap:.5cqw}
+.lc-f>span{font-size:.95cqw;color:var(--lc-sub);display:flex;justify-content:space-between}
+.lc-f>span a{color:var(--lc-sub);text-decoration:none}
+.lc-in{height:3.2cqw;border-radius:.65cqw;box-shadow:inset 0 0 0 1px var(--lc-line);display:flex;align-items:center;padding:0 1cqw;
+  font-size:1.05cqw;color:var(--lc-faint);background:#fff}
+.lc-in .v{color:var(--lc-text)}
+.lc-in svg{width:1.15cqw;height:1.15cqw;margin-left:auto;color:var(--lc-faint)}
+.lc-in.focus{box-shadow:inset 0 0 0 1.5px var(--lc-ink),0 0 0 .3cqw var(--lc-ring)}
+.lc-in.bad{box-shadow:inset 0 0 0 1.5px var(--lc-danger)}
+.lc-err{font-size:.95cqw;color:var(--lc-danger);background:var(--lc-danger-tint);border-radius:.55cqw;padding:.7cqw .9cqw}
+.lc-btn{height:3.2cqw;border-radius:.65cqw;background:var(--lc-ink);color:#fff;display:grid;place-items:center;font-size:1.1cqw;font-weight:600;margin-top:.4cqw}
+.lc-btn.busy{opacity:.5}
+.lc-btn.quiet{background:transparent;color:var(--lc-sub);font-weight:400;margin-top:-.4cqw}
+.lc-link{font-size:.95cqw;color:var(--lc-sub);text-align:center}
+.lc-note{font-size:.95cqw;color:var(--lc-sub)}
+.lc-note b{color:var(--lc-text);font-weight:500}
+.lc-otp{display:grid;grid-template-columns:repeat(6,1fr);gap:.6cqw}
+.lc-otp i{height:3.6cqw;border-radius:.65cqw;box-shadow:inset 0 0 0 1px var(--lc-line);display:grid;place-items:center;font-style:normal;
+  font-family:"IBM Plex Mono",monospace;font-size:1.5cqw}
+.lc-otp i.cur{box-shadow:inset 0 0 0 1.5px var(--lc-ink),0 0 0 .3cqw var(--lc-ring)}
+.lc-foot{position:absolute;bottom:1.8cqw;left:0;right:0;text-align:center;font-size:.85cqw;color:var(--lc-faint)}
+.lcm-wrap{container-type:inline-size;width:100%;max-width:340px}
+.lcm{--lc-bg:#F5F6F8;--lc-line:#E4E6EA;--lc-text:#16181D;--lc-sub:#636A75;--lc-faint:#9AA0AA;--lc-ink:#16181D;--lc-ring:rgba(22,24,29,.14);
+  aspect-ratio:9/18.5;border-radius:28px;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:5cqw;padding:16cqw 7cqw 7cqw;
+  font-family:"PingFang SC","Hiragino Sans GB",system-ui,sans-serif;color:var(--lc-text);box-shadow:0 0 0 1px var(--rule)}
+.lcm .lc-brand{gap:3cqw}.lcm .lc-mark{width:10cqw;height:10cqw;border-radius:2.6cqw;font-size:4.6cqw}
+.lcm .lc-brand h5{font-size:5.6cqw}.lcm .lc-sub{font-size:3.7cqw;margin:-2cqw 0 1cqw}
+.lcm .lc-f{gap:1.8cqw}.lcm .lc-f>span{font-size:3.6cqw}
+.lcm .lc-in{height:12cqw;border-radius:2.4cqw;font-size:3.9cqw;padding:0 3.6cqw}.lcm .lc-in svg{width:4.4cqw;height:4.4cqw}
+.lcm .lc-btn{height:12cqw;border-radius:2.4cqw;font-size:4.1cqw;margin-top:1cqw}
+.lcm .lc-link{font-size:3.5cqw}
+.lcm .lc-foot{position:static;margin-top:auto;font-size:3.2cqw}
+/* 名称配置表 */
+.cfgtbl{width:100%;border-collapse:collapse;font-size:13px}
+.cfgtbl th,.cfgtbl td{border-top:1px solid var(--rule);padding:8px 10px 8px 0;text-align:left;vertical-align:top}
+.cfgtbl th{color:var(--muted);font-weight:500;border-top:0;font-size:12px}
+.cfgtbl code{font-family:"IBM Plex Mono",monospace;font-size:12px}

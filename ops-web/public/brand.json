@@ -1,0 +1,10 @@
+{
+  "name": "NearGo平台运营",
+  "mark": "N",
+  "logoUrl": "",
+  "env": "",
+  "locales": {
+    "zh-TW": { "name": "NearGo平臺運營" },
+    "en": { "name": "NearGo Ops" }
+  }
+}

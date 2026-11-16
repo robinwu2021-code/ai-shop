@@ -19,6 +19,7 @@ import { useOpsStream } from "@/lib/use-ops-stream";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
+import { useBrand } from "@/lib/stores/brand";
 import type { InboxMessage } from "@/lib/types";
 
 const SHOWN = 10;
@@ -32,6 +33,7 @@ function fmt(at: number): string {
 export function NotifyBell() {
   const loggedIn = useAuth((s) => !!s.token);
   const { t } = useI18n();
+  const brandName = useBrand().name;
   const router = useRouter();
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -44,11 +46,11 @@ export function NotifyBell() {
     // 具体内容不放进横幅 —— 桌面通知可能出现在投屏/共享屏幕上
     if (n > prevUnread.current && typeof Notification !== "undefined"
         && Notification.permission === "granted" && document.visibilityState !== "visible") {
-      new Notification(t("bell.desktopTitle"), { body: t("bell.desktopBody", { n }), tag: "ops-inbox" });
+      new Notification(brandName, { body: t("bell.desktopBody", { n }), tag: "ops-inbox" });
     }
     prevUnread.current = n;
     setUnread(n);
-  }, [t]);
+  }, [t, brandName]);
 
   // 推送来的就是数字本身，不必再发一次请求去拿
   useOpsStream("unread", (d) => applyUnread(Number(d)), loggedIn);

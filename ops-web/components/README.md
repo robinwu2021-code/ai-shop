@@ -76,6 +76,7 @@
 | `PaymentOpsEntry` | `payment-ops-entry.tsx` | 按现有权限打开支付端工作区，复用支付端会话桥接 |
 | `CompatibilityCatalog` | `layout/compatibility-catalog.tsx` | 兼容入口目录，供旧地址恢复到现有工作区 |
 | `ReadOnlyNotice` | `read-only-notice.tsx` | 权限降级提示，句式统一 |
+| `BrandMark` | `brand-mark.tsx` | 运营端品牌标识（字或图片），侧栏与登录页共用；名称与标识读 `brand.json`（`lib/stores/brand.ts` 的 `useBrand()`） |
 | `ShowArchivedToggle` / `ArchiveActions` / `ArchivedAt` / `archivedRowClass` / `archiveConfirm` | `archive.tsx` | G1 软删除的页面侧统一件 |
 | `Providers` | `providers.tsx` | React Query / 主题 / toast 的挂载点 |
 | `CashRefundsSection` | `offline/cash-refunds.tsx` | 两套线下购买订单共用的异常实收退款、原动作恢复与银行对账解除占用；资金状态以服务器核验为准 |

@@ -809,6 +809,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [TDD-ops-主菜单合并](./design/ops/TDD-ops-主菜单合并.md) | **已验收**（库 + 真实登录态的界面两侧都验过）· 创建 2026-09-09 · 最后更新 2026-09-09 |
 | [运营代办入驻：表格与弹框](./design/ops/TDD-ops-代办入驻表格与弹框.md) | 已实现；部署与验收证据见本文各次发布记录。 |
 | [TDD · 运营端 · 功能开关与菜单状态](./design/ops/TDD-ops-功能开关与菜单状态.md) | **已实现**（AC1/AC2 单测 + AC3/AC4 闸门；AC2 现场验过）· 创建 2026-09-09 |
+| [TDD · 运营端 · 品牌名称配置与登录页整洁化](./design/ops/TDD-ops-品牌名称与登录页.md) | **已实现**（2026-11-16）· 档位 1：新增配置文件 `brand.json`、增删 i18n 词条；不改接口、库表、权限码。 |
 | [种子商户：入驻、NearPay 与测试支付闭环](./design/ops/TDD-ops-种子商户法币闭环验收.md) | 已实现；部署与验收证据见本文各次发布记录。 |
 | [UI 推送阻塞修复 · 2026-10-28](./design/reviews/b-app-ui/2026-10-28-push-repairs.md) | 修复已实现并通过提交前检查；正式远端推送仍受完整 pre-push 门禁约束，结果以 Git 远端分支及本地门禁回执为准。 |
 | [B 端 UI 本地提交范围 · 2026-10-26](./design/reviews/b-app-ui/commit-scope.md) | 历史提交范围记录；后续修复与推送检查以 push-checks.md 为准。 |

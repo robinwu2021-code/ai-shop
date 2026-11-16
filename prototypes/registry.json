@@ -3400,7 +3400,58 @@
      "route": "/pay-ops/platform-keys"
     }
    ]
+  },
+  {
+   "slug": "ops-login",
+   "artifact": "https://claude.ai/artifact/Pyz6pDYjBksEhyJwr5XqJ9",
+   "file": "ops-login.html",
+   "title": "NearGo平台运营 · 登录页",
+   "kind": "pages",
+   "clients": [
+    "ops-web"
+   ],
+   "status": "已落地",
+   "date": "2026-11-16",
+   "summary": "6屏：沿用线上居中卡片布局并整洁化，标题改为 NearGo平台运营；邮箱验证码、出错与测试环境标签、忘记密码原地切换、窄屏、brand.json 名称配置。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "账号密码登录",
+     "client": "ops-web",
+     "route": "/login"
+    },
+    {
+     "id": "s02",
+     "title": "邮箱验证码",
+     "client": "ops-web",
+     "route": "/login"
+    },
+    {
+     "id": "s03",
+     "title": "出错 · 测试环境",
+     "client": "ops-web",
+     "route": "/login"
+    },
+    {
+     "id": "s04",
+     "title": "忘记密码",
+     "client": "ops-web",
+     "route": "/login"
+    },
+    {
+     "id": "s05",
+     "title": "窄屏",
+     "client": "ops-web",
+     "route": "/login"
+    },
+    {
+     "id": "s06",
+     "title": "名称配置",
+     "client": "ops-web"
+    }
+   ]
   }
- ],
+],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"
 }

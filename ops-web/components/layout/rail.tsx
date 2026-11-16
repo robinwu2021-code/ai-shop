@@ -22,6 +22,8 @@ import { useI18n } from "@/lib/i18n";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ScrollHint, useScrollHint } from "./scroll-hint";
+import { BrandMark } from "@/components/brand-mark";
+import { useBrand } from "@/lib/stores/brand";
 
 function iconOf(name: string) {
   return (Icons[name as keyof typeof Icons] ?? Icons.Circle) as React.ComponentType<{ className?: string }>;
@@ -90,6 +92,7 @@ export function Rail() {
   const scrollRef = React.useRef<HTMLElement>(null);
   const hint = useScrollHint(scrollRef);
   const { t } = useI18n();
+  const brand = useBrand();
 
   const serverHrefs = useServerMenu((s) => s.hrefSet);
   const nav = usePlatformNavTree();
@@ -117,8 +120,8 @@ export function Rail() {
       style={{ width: railExpanded ? RAIL_EXPANDED_WIDTH : RAIL_WIDTH }}
     >
       <div className={cn("flex h-14 items-center gap-2", railExpanded ? "px-4" : "justify-center")}>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary txt-caption text-primary-foreground">邻</span>
-        {railExpanded && <span className="truncate txt-strong">{t("common.appName")}</span>}
+        <BrandMark />
+        {railExpanded && <span className="truncate txt-strong">{brand.name}</span>}
       </div>
       {/* relative：渐隐条挂在容器的定位父级上，跟着容器一起滚就没意义了 */}
       <div className="relative flex min-h-0 flex-1 flex-col">

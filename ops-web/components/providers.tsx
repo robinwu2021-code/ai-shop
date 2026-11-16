@@ -8,6 +8,7 @@ import { notify } from "@/lib/notify";
 import { describeError } from "@/lib/commerce-reason";
 import { Toaster } from "@/components/ui/toaster";
 import { refreshPerms, useAuth } from "@/lib/auth";
+import { useBrand, useBrandStore } from "@/lib/stores/brand";
 
 /**
  * 权限与菜单的刷新时机：**挂载时一次 + 切回窗口时一次。没有轮询。**
@@ -118,6 +119,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => applyTheme(themeKey), [themeKey]);
   useEffect(() => applyLocale(locale), [locale]);
   useRefreshPerms();
+  // 品牌（名称）来自公开的 brand.json：启动时取一次，浏览器标签标题跟着名称与语言走
+  const brandName = useBrand().name;
+  useEffect(() => { void useBrandStore.getState().load(); }, []);
+  useEffect(() => { document.title = brandName; }, [brandName]);
 
   return (
     <QueryClientProvider client={qc}>

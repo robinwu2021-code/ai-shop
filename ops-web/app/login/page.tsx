@@ -15,10 +15,12 @@ import { LangSwitcher } from "@/components/layout/lang-switcher";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Drawer } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { BrandMark } from "@/components/brand-mark";
+import { useBrand } from "@/lib/stores/brand";
+import { cn } from "@/lib/utils";
+import { Eye, EyeOff } from "lucide-react";
 
 /*
  * 登录：用户名 + 密码，**角色由后端返回**。
@@ -44,7 +46,10 @@ function LoginForm() {
   const [challenge, setChallenge] = useState("");
   const [challengeTo, setChallengeTo] = useState("");
   const [code, setCode] = useState("");
-  const [forgot, setForgot] = useState(false);
+  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [showPwd, setShowPwd] = useState(false);
+  const [notice, setNotice] = useState("");
+  const brand = useBrand();
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [paymentSource, setPaymentSource] = useState(false);
@@ -102,74 +107,107 @@ function LoginForm() {
     await doLogin(username, password);
   }
 
+  const envLabel = brand.env === "test" ? t("login.envTest") : brand.env === "staging" ? t("login.envStaging") : "";
+
+  /*
+   * 布局沿用线上「浅底 + 居中卡片」（原型 prototypes/ops-login.html v3）。
+   * 名称、标识、环境来自 brand.json（TDD-ops-品牌名称与登录页）；生产环境不显示环境标签。
+   * 窄屏（< sm）卡片去掉外框铺满，字段与按钮保持触控高度。
+   */
   return (
-    <div className="flex h-screen items-center justify-center bg-muted/30">
-      <Card className="w-[360px]">
-        <CardHeader>
-          <div className="flex justify-end"><LangSwitcher /></div>
-          <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary txt-strong text-primary-foreground">
-            邻
-          </div>
-          <CardTitle>{t("common.appTitle")}</CardTitle>
-          <p className="txt-body text-muted-foreground">{t("login.subtitle")}</p>
-          {paymentSource && <p className="txt-body text-muted-foreground">{process.env.NEXT_PUBLIC_NEARPAY_LOGIN_HINT || t("login.paymentSource")}</p>}
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-3" onSubmit={submit}>
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-16">
+      <div className="absolute end-4 top-4 sm:end-6 sm:top-5"><LangSwitcher /></div>
+      <div className="flex w-full max-w-[380px] flex-col gap-5 sm:rounded-card sm:border sm:border-[var(--card-border)] sm:bg-card sm:p-7 sm:shadow-pop">
+        <div className="flex items-center gap-3">
+          <BrandMark />
+          <h1 className="min-w-0 truncate txt-title">{mode === "forgot" ? t("login.forgotTitle") : brand.name}</h1>
+          {envLabel && <span className="ms-auto shrink-0 rounded-chip bg-warning-tint px-2.5 py-0.5 txt-label text-warning-ink">{envLabel}</span>}
+        </div>
+
+        {mode === "forgot" ? (
+          <ForgotPanel onBack={(done) => { setMode("login"); setNotice(done ?? ""); }} />
+        ) : (
+          <form className="flex flex-col gap-4" onSubmit={submit}>
             {!challenge ? <>
-            <div className="space-y-1">
-              <label className="txt-body text-muted-foreground">{t("login.username")}</label>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
-            </div>
-            <div className="space-y-1">
-              <label className="txt-body text-muted-foreground">{t("login.password")}</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("login.password")}
-              />
-            </div>
-            </> : <div className="space-y-2">
-              <p className="txt-body text-muted-foreground">{t("login.codeSent", { email: challengeTo })}</p>
-              <label htmlFor="login-code" className="txt-body">{t("login.emailCode")}</label>
-              <Input id="login-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                     inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required autoFocus />
-            </div>}
-            {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
-            <Button className="w-full" type="submit" disabled={busy || (!!challenge && !/^\d{6}$/.test(code))}>
+              <p className="-mt-2 txt-body text-muted-foreground">{t("login.hint")}</p>
+              {paymentSource && <p className="-mt-2 txt-body text-muted-foreground">{process.env.NEXT_PUBLIC_NEARPAY_LOGIN_HINT || t("login.paymentSource")}</p>}
+              {notice && <Notice tone="info">{notice}</Notice>}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="login-username">{t("login.username")}</Label>
+                <Input id="login-username" autoComplete="username" autoFocus value={username} invalid={!!err}
+                       onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between">
+                  <Label htmlFor="login-password">{t("login.password")}</Label>
+                  {/* 忘记密码贴着密码标签：需要它的人此刻正盯着这一栏 */}
+                  <button type="button" onClick={() => { setErr(""); setNotice(""); setMode("forgot"); }}
+                          className="focus-ring rounded-field txt-caption text-muted-foreground hover:text-foreground">
+                    {t("login.forgot")}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input id="login-password" type={showPwd ? "text" : "password"} autoComplete="current-password"
+                         value={password} invalid={!!err} className="pe-10"
+                         onChange={(e) => setPassword(e.target.value)} placeholder={t("login.password")} />
+                  <button type="button" onClick={() => setShowPwd((v) => !v)}
+                          aria-label={t(showPwd ? "login.hidePassword" : "login.showPassword")}
+                          className="focus-ring absolute end-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-field text-muted-foreground hover:text-foreground">
+                    {showPwd ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+            </> : <>
+              <p className="-mt-2 txt-body text-muted-foreground">{t("login.codeSent", { email: challengeTo })}</p>
+              <OtpInput value={code} onChange={setCode} label={t("login.emailCode")} />
+            </>}
+            {err && <div role="alert" className="rounded-field bg-destructive-tint px-3.5 py-2 txt-body text-destructive">{err}</div>}
+            <Button size="lg" className="w-full" type="submit" disabled={busy || (!!challenge && !/^\d{6}$/.test(code))}>
               {busy ? t("common.loading") : t(challenge ? "login.verifyCode" : "login.submit")}
             </Button>
-            {challenge && <Button type="button" variant="ghost" className="w-full" disabled={busy}
+            {challenge && <Button type="button" variant="ghost" className="-mt-2 w-full" disabled={busy}
               onClick={() => { setChallenge(""); setChallengeTo(""); setCode(""); setPassword(""); setErr(""); }}>
               {t("login.restart")}
             </Button>}
           </form>
-
-          {/*
-            忘记密码。这条路径此前完全不存在 —— 后端只有登录与改自己的密码，
-            运营忘了密码只能找人改库。放在登录按钮下面而不是藏进菜单：
-            需要它的人此刻正被挡在门外，看不到任何菜单。
-          */}
-          <button type="button" onClick={() => setForgot(true)}
-                  className="focus-ring mt-3 w-full txt-caption text-muted-foreground hover:text-foreground">
-            {t("login.forgot")}
-          </button>
-        </CardContent>
-      </Card>
-
-      <ForgotDialog open={forgot} onClose={() => setForgot(false)} />
+        )}
+      </div>
     </div>
   );
 }
 
 /**
- * 忘记密码 → 收码 → 设新密码，两步在同一个抽屉里完成。
+ * 6 格验证码：一个真实的 <input>（透明地盖在格子上，负责输入、粘贴与读屏），格子只做显示。
+ * 输满 6 位前提交按钮是灰的，这一点由上层的 disabled 判定负责。
+ */
+function OtpInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const [focused, setFocused] = useState(true);
+  return (
+    <div className="relative">
+      <input id="login-code" aria-label={label} value={value} autoFocus required
+             inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
+             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+             onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+             className="absolute inset-0 z-10 w-full cursor-text opacity-0" />
+      <div aria-hidden className="grid grid-cols-6 gap-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className={cn(
+            "flex h-12 items-center justify-center rounded-field border border-[var(--card-border)] bg-card txt-title tabular-nums",
+            focused && i === Math.min(value.length, 5) && "border-foreground ring-2 ring-ring",
+          )}>{value[i] ?? ""}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 忘记密码 → 收码 → 设新密码，在登录卡片里原地切换（原先是另弹一个抽屉）。
  *
  * 不做成两个页面：重置码在邮件里，用户要在邮箱与浏览器之间切一次，
  * 中间再穿一次页面跳转，很容易丢掉上下文（尤其手机上）。
  */
-function ForgotDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ForgotPanel({ onBack }: { onBack: (done?: string) => void }) {
   const { t } = useI18n();
   const [step, setStep] = useState<"ask" | "reset">("ask");
   const [email, setEmail] = useState("");
@@ -178,8 +216,6 @@ function ForgotDialog({ open, onClose }: { open: boolean; onClose: () => void })
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
-
-  const close = () => { setStep("ask"); setToken(""); setPwd(""); setMsg(""); setErr(""); onClose(); };
 
   const sendCode = async () => {
     setBusy(true); setErr("");
@@ -197,51 +233,38 @@ function ForgotDialog({ open, onClose }: { open: boolean; onClose: () => void })
     setBusy(true); setErr("");
     try {
       await api.resetPassword(token.trim(), pwd);
-      setMsg(t("login.resetDone"));
-      setStep("ask");
-      setToken(""); setPwd("");
+      onBack(t("login.resetDone"));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally { setBusy(false); }
   };
 
   return (
-    <Drawer open={open} onOpenChange={(o) => !o && close()}
-            title={t("login.forgotTitle")} desc={t("login.forgotDesc")}>
-      <div className="space-y-4">
-        <Notice tone="info">{t("login.forgotNote")}</Notice>
-
-        <div className="space-y-1">
-          <Label>{t("login.username")}</Label>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)}
-                 placeholder="name@neargo.ai" disabled={step === "reset"} />
+    <div className="flex flex-col gap-4">
+      {step === "ask" ? <>
+        <p className="-mt-2 txt-body text-muted-foreground">{t("login.forgotDesc")}</p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="forgot-email">{t("login.forgotEmail")}</Label>
+          <Input id="forgot-email" type="email" autoComplete="email" autoFocus value={email}
+                 onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
         </div>
-
-        {step === "ask" ? (
-          <Button className="w-full" disabled={!email.trim() || busy} onClick={sendCode}>
-            {t("login.forgotSend")}
-          </Button>
-        ) : (
-          <>
-            <div className="space-y-1">
-              <Label>{t("login.resetToken")}</Label>
-              <Input value={token} onChange={(e) => setToken(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>{t("login.resetNew")}</Label>
-              <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)}
-                     placeholder={t("login.resetNewHint")} />
-            </div>
-            <Button className="w-full" disabled={!token.trim() || pwd.length < 8 || busy}
-                    onClick={doReset}>
-              {t("login.resetSubmit")}
-            </Button>
-          </>
-        )}
-
-        {msg && <Notice tone="info">{msg}</Notice>}
-        {err && <Notice tone="danger">{err}</Notice>}
-      </div>
-    </Drawer>
+        {err && <div role="alert" className="rounded-field bg-destructive-tint px-3.5 py-2 txt-body text-destructive">{err}</div>}
+        <Button size="lg" className="w-full" disabled={!email.trim() || busy} onClick={sendCode}>{t("login.forgotSend")}</Button>
+      </> : <>
+        <p className="-mt-2 txt-body text-muted-foreground">{msg}</p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="reset-token">{t("login.resetToken")}</Label>
+          <Input id="reset-token" autoFocus autoComplete="one-time-code" value={token} onChange={(e) => setToken(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="reset-password">{t("login.resetNew")}</Label>
+          <Input id="reset-password" type="password" autoComplete="new-password" value={pwd}
+                 onChange={(e) => setPwd(e.target.value)} placeholder={t("login.resetNewHint")} />
+        </div>
+        {err && <div role="alert" className="rounded-field bg-destructive-tint px-3.5 py-2 txt-body text-destructive">{err}</div>}
+        <Button size="lg" className="w-full" disabled={!token.trim() || pwd.length < 8 || busy} onClick={doReset}>{t("login.resetSubmit")}</Button>
+      </>}
+      <Button type="button" variant="ghost" className="-mt-2 w-full" onClick={() => onBack()}>{t("login.backToLogin")}</Button>
+    </div>
   );
 }

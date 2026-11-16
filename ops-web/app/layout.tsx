@@ -20,8 +20,9 @@ const plex = IBM_Plex_Sans({
 // 且肉眼看不出来。已知代价：受限网络/内网部署下会静默回退到 PingFang SC / 微软雅黑。
 
 export const metadata: Metadata = {
-  title: "邻里购 · 平台运营端",
-  description: "社区电商平台运营管理后台（ops-web）",
+  // 运行时由 Providers 按 brand.json 改写 document.title；这里是首帧与读不到配置时的默认名称
+  title: "NearGo平台运营",
+  description: "NearGo 平台运营后台（ops-web）",
   // 图标产物由 brand/build.py 生成到 public/，勿手改单个文件
   icons: {
     icon: [
