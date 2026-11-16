@@ -31191,6 +31191,12 @@
           "ar": "هذه الفترة غير متاحة للحجز"
         },
         {
+          "key": "err.auth.email_already_bound",
+          "zh-CN": "这个邮箱已经绑定在当前账号上",
+          "en": "This email is already bound to your account.",
+          "ar": "هذا البريد الإلكتروني مرتبط بحسابك بالفعل."
+        },
+        {
           "key": "err.auth.login_ticket_invalid",
           "zh-CN": "登录验证已过期，请重新登录",
           "en": "Login verification expired. Please sign in again.",
@@ -32893,6 +32899,12 @@
           "zh-CN": "收货地址最多 {0} 条，删掉一条再新增",
           "en": "You can save up to {0} addresses. Remove one to add another",
           "ar": "يمكنك حفظ {0} عناوين كحد أقصى. احذف واحدًا لإضافة آخر"
+        },
+        {
+          "key": "err.user.deregister_blocked",
+          "zh-CN": "账号还有未处理的事项，暂时不能注销",
+          "en": "Your account still has items to resolve and cannot be deleted yet.",
+          "ar": "لا يزال حسابك يحتوي على عناصر تحتاج إلى معالجة ولا يمكن حذفه بعد."
         },
         {
           "key": "err.user.deregister_has_open_orders",
@@ -38040,6 +38052,34 @@
         "name": "STALE_LEDGER",
         "value": "STALE_LEDGER",
         "zh": "进过货，但很久没动了",
+        "module": "shop-app"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "OPEN_ORDERS",
+        "value": "OPEN_ORDERS",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PENDING_PAYOUT",
+        "value": "PENDING_PAYOUT",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PAID_PLAN_ACTIVE",
+        "value": "PAID_PLAN_ACTIVE",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "BUYER_OPEN_ORDERS",
+        "value": "BUYER_OPEN_ORDERS",
+        "zh": "",
         "module": "shop-app"
       },
       {
@@ -43868,6 +43908,13 @@
       },
       {
         "host": "MchStaffLog",
+        "name": "STAFF_PHONE_CHANGE",
+        "value": "STAFF_PHONE_CHANGE",
+        "zh": "The staff member changed their own login phone; this entity's row followed (D5).",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchStaffLog",
         "name": "ROLE_GRANT",
         "value": "ROLE_GRANT",
         "zh": "授予某店某角色",
@@ -45083,7 +45130,14 @@
           "REGISTRATION",
           "OWNER_FRONT",
           "OWNER_BACK",
-          "BANK_COVER"
+          "BANK_COVER",
+          "ENTITY_REGISTRATION",
+          "CORPORATE_REGISTRATION",
+          "ID_CARD_FRONT",
+          "ARC_FRONT",
+          "ARC_BACK",
+          "PASSPORT",
+          "BENEFICIARY_ID_CARD_FRONT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -45096,6 +45150,21 @@
         ],
         "zh": "",
         "module": "commerce"
+      },
+      {
+        "name": "EntityRecognitionType",
+        "values": [
+          "REGISTRATION",
+          "CORPORATE_REGISTRATION",
+          "ID_CARD_FRONT",
+          "ARC_FRONT",
+          "ARC_BACK",
+          "PASSPORT",
+          "BENEFICIARY_ID_CARD_FRONT",
+          "BANK_COVER"
+        ],
+        "zh": "App 的识别类型。",
+        "module": "shop-app"
       },
       {
         "name": "ErrorCode",
@@ -45138,6 +45207,7 @@
           "ZIP_TOO_LARGE",
           "SERVICE_AREA_POLYGON_INVALID",
           "LOGIN_TICKET_INVALID",
+          "EMAIL_ALREADY_BOUND",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
@@ -45287,6 +45357,7 @@
           "ENTITY_QUOTA_EXCEEDED",
           "WX_PHONE_UNAVAILABLE",
           "DEREGISTER_HAS_OPEN_ORDERS",
+          "DEREGISTER_BLOCKED",
           "PERSON_PHONE_TAKEN",
           "ADDRESS_LIMIT_EXCEEDED",
           "COMMUNITY_ALREADY_OPEN",
@@ -48023,6 +48094,15 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "VerifyBy",
+        "values": [
+          "PHONE",
+          "EMAIL"
+        ],
+        "zh": "How the current credential owner proves it is them: a code to the phone, or to the email.",
+        "module": "shop-core"
       },
       {
         "name": "WithdrawalStatus",

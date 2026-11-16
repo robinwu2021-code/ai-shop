@@ -1728,8 +1728,6 @@ CREATE TABLE IF NOT EXISTS mch_store
     entity_no VARCHAR(64) NOT NULL,
     announcement VARCHAR(255) DEFAULT NULL,
     open_hours VARCHAR(64) DEFAULT NULL,
-    contact_name VARCHAR(64) DEFAULT NULL,
-    contact_phone VARCHAR(32) DEFAULT NULL,
     address VARCHAR(255) DEFAULT NULL,
     featured TEXT DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
@@ -1789,6 +1787,8 @@ CREATE TABLE IF NOT EXISTS mch_store
     operational_order_no VARCHAR(64) NULL,
     operational_submitted_at BIGINT NULL,
     operational_decided_at BIGINT NULL,
+    contact_name VARCHAR(64) NULL,
+    contact_phone VARCHAR(32) NULL,
     CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
@@ -12627,22 +12627,6 @@ CREATE TABLE IF NOT EXISTS sys_store_industry
     CONSTRAINT uk_sys_store_industry UNIQUE (tenant_no, industry_code, sub_industry_code)
 );
 
-CREATE TABLE IF NOT EXISTS usr_account_change_log
-(
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_no VARCHAR(64) NOT NULL,
-    action VARCHAR(24) NOT NULL,
-    before_masked VARCHAR(191) NULL,
-    after_masked VARCHAR(191) NULL,
-    actor_kind VARCHAR(16) NOT NULL,
-    client_ip VARCHAR(64) NULL,
-    tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
-    deleted TINYINT NOT NULL DEFAULT 0
-);
-
 CREATE TABLE IF NOT EXISTS usr_login_ticket
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -13104,6 +13088,52 @@ CREATE TABLE IF NOT EXISTS mch_store_opening_request
     store_no VARCHAR(64) NULL,
     created_at BIGINT NOT NULL,
     PRIMARY KEY (tenant_no, actor_key, request_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_entity_creation_request
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    request_no VARCHAR(64)  NOT NULL,
+    intent_hash CHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NULL,
+    created_at BIGINT NOT NULL,
+    initial_profile_hash CHAR(64) NULL,
+    profile_request_no VARCHAR(64)  NULL,
+    PRIMARY KEY (tenant_no, user_no, request_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_entity_profile_projection
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    next_check_at BIGINT NOT NULL DEFAULT 0,
+    observed_actor VARCHAR(64) NOT NULL,
+    observed_request_no VARCHAR(64)  NOT NULL,
+    observation_generation BIGINT NOT NULL DEFAULT 1,
+    approved_revision BIGINT NOT NULL DEFAULT 0,
+    approved_ref VARCHAR(80) NULL,
+    facts_hash CHAR(64) NULL,
+    registration_no VARCHAR(8) NULL,
+    evidence_ref VARCHAR(128) NULL,
+    PRIMARY KEY(tenant_no,entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS usr_account_change_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_no VARCHAR(64) NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    before_masked VARCHAR(191) NULL,
+    after_masked VARCHAR(191) NULL,
+    actor_kind VARCHAR(16) NOT NULL,
+    client_ip VARCHAR(64) NULL,
+    tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product
@@ -20542,22 +20572,3 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
-
-CREATE TABLE IF NOT EXISTS mch_entity_creation_request (
- initial_profile_hash CHAR(64),
- profile_request_no VARCHAR(64),
- tenant_no VARCHAR(32) NOT NULL,
- user_no VARCHAR(64) NOT NULL,
- request_no VARCHAR(64) NOT NULL,
- intent_hash CHAR(64) NOT NULL,
- entity_no VARCHAR(64) NULL,
- created_at BIGINT NOT NULL,
- PRIMARY KEY (tenant_no, user_no, request_no)
-);
-
-CREATE TABLE IF NOT EXISTS mch_entity_profile_projection (
- tenant_no VARCHAR(32) NOT NULL, entity_no VARCHAR(64) NOT NULL, state VARCHAR(24) NOT NULL,
- next_check_at BIGINT NOT NULL DEFAULT 0, observed_actor VARCHAR(64) NOT NULL, observed_request_no VARCHAR(64) NOT NULL, observation_generation BIGINT NOT NULL DEFAULT 1, approved_revision BIGINT NOT NULL DEFAULT 0,
- approved_ref VARCHAR(80), facts_hash CHAR(64), registration_no VARCHAR(8), evidence_ref VARCHAR(128),
- PRIMARY KEY(tenant_no,entity_no)
-);

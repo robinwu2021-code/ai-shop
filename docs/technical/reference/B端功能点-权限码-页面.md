@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 485 个受控功能点**
-（另有 0 个登录即可、22 个「任一权限即可」）。
+统计：**50 个权限码 × 6 个角色 × 487 个受控功能点**
+（另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -27,7 +27,7 @@
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
+| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:read` | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:config` | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
@@ -84,8 +84,6 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
-| 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
 | 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
 | 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
 | 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
@@ -122,6 +120,8 @@
 | —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
 | —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
+| —（b-app 未接） | — | `/biz/store/settings/basic` | — | — |
+| —（b-app 未接） | — | `/biz/store/settings/contact` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity/relink-check` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/account-operations` | — | — |
@@ -453,6 +453,7 @@
 | 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
 | 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
 | 关掉这一路会影响的在售商品 | GET | `/biz/stores/:storeNo/fulfillment/:channel/impact` | `mFulfillmentImpact` | store-scope |
+| —（b-app 未接） | — | `/biz/store/settings/hours` | — | — |
 
 ### `biz:verify`　核销、批量核销、按码搜索
 
@@ -841,8 +842,7 @@
 | `customers` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `delivery` | `biz:ship` | `biz:store`、`biz:order:view`、`biz:ship` | 老板、店长、店员、配送员 | 店员（缺 biz:store）　配送员（缺 biz:store） |
 | `deposit` | `biz:finance` | `biz:finance` | 老板 | — |
-| `entities` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
-| `entity-detail` | `biz:store:admin` | `biz:store:admin`、`biz:store`、`biz:finance` | 老板 | — |
+| `entity-detail` | `biz:store:admin` | `biz:store`、`biz:finance` | 老板 | — |
 | `goods-edit` | `biz:goods` | `biz:store`、`biz:goods`、`biz:stock` | 老板、店长 | — |
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `goods-publish` | `biz:goods` | `biz:goods`、`biz:stock` | 老板、店长 | — |
@@ -1068,6 +1068,7 @@
 | `/biz/service-orders/counter-quotes/{}` | `undefined` | 老板 |
 | `/biz/service-orders/counter-quotes/{}/acceptances` | `undefined` | 老板 |
 | `/biz/service-orders/counter-quotes/{}/orders` | `undefined` | 老板 |
+| `/biz/service-orders/counter-quotes/{}/state` | `undefined` | 老板 |
 | `/biz/service-orders/manual-quotes` | `undefined` | 老板 |
 | `/biz/service-orders/{}/manual-admission` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
 | `/biz/service-orders/{}/manual-receipts` | `pay:cash:receive` | 老板 |
@@ -1075,6 +1076,9 @@
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/store-sales-catalog` | `biz:goods` | 老板、店长 |
 | `/biz/store-sales-catalog/versions` | `biz:goods` | 老板、店长 |
+| `/biz/store/settings/basic` | `biz:store:admin` | 老板 |
+| `/biz/store/settings/contact` | `biz:store:admin` | 老板 |
+| `/biz/store/settings/hours` | `biz:store` | 老板、店长 |
 | `/biz/store/{}/entity` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/entity/relink-check` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |
@@ -1205,6 +1209,21 @@
 - `/biz/business-types/{}/feature-matrix`　
 - `/biz/business-types/{}/plans`　
 - `/biz/dashboard/todo`　工作台待办
+- `/biz/entities`　我名下的证照
+- `/biz/entities/create-results/{}`　
+- `/biz/entities/{}/channel-requests`　
+- `/biz/entities/{}/commands/{}`　
+- `/biz/entities/{}/contact`　
+- `/biz/entities/{}/files`　
+- `/biz/entities/{}/files/{}/preview`　
+- `/biz/entities/{}/profile-draft`　
+- `/biz/entities/{}/profile-template`　
+- `/biz/entities/{}/recognitions`　
+- `/biz/entities/{}/review-submissions`　
+- `/biz/entities/{}/revision-discards`　
+- `/biz/entities/{}/revisions`　
+- `/biz/entity-recognitions`　
+- `/biz/entity/{}`　一张证照的详情与门店
 - `/biz/example`　
 - `/biz/example/after`　
 - `/biz/example/before`　
@@ -1214,7 +1233,10 @@
 - `/biz/feedback`　提交问题回报（回报号即工单号）
 - `/biz/feedback/mine`　我的回报（最近 50 条，带客服回复）
 - `/biz/merchant/store-creation-context`　
+- `/biz/merchant/store-openings`　
+- `/biz/merchant/store-openings/{}`　
 - `/biz/merchant/store-setup`　
+- `/biz/store/settings`　
 - `/biz/stores/{}/context`　
 - `/biz/stores/{}/end-access`　
 - `/biz/stores/{}/end-sessions`　
