@@ -33,6 +33,22 @@ public class MemoryTokenStore implements TokenStore {
     }
 
     @Override
+    public int revokeUserExcept(String userNo, String keepToken) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        int[] n = {0};
+        store.entrySet().removeIf(e -> {
+            boolean hit = !e.getKey().equals(keepToken) && userNo.equals(e.getValue().data().user().userNo());
+            if (hit) {
+                n[0]++;
+            }
+            return hit;
+        });
+        return n[0];
+    }
+
+    @Override
     public int revokeUser(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return 0;

@@ -1,0 +1,2330 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Merchant App payment API",
+    "version": "2026-11-16",
+    "description": "Merchant App payment endpoints served by shop-app BizPaymentController (@Profile api). Source of truth: Java code (BizPaymentController -> BizPaymentAppService (embedded BizPaymentAppServiceImpl -> PayBizFacade, or standalone RemoteBizPaymentAppService -> near-pay /internal/pay/v1/biz) and PaymentReadRouter).\n\nAuth: Authorization: Bearer <merchant btk_ token>.\n\nStore: the controller never takes a store from the path/body; it uses BizContext.requireStoreNo(), i.e. the store selected by the X-Store-No header (BizContextFilter; an unauthorized value silently falls back to the default store). /biz/payment/** is a registered store-member route (ShopStoreMemberRoutes): for new-model stores a missing X-Store-No is rejected by admission with HTTP 403 {code:70006,data:{nextAction:'SELECT_STORE'}}, a non-member/missing capability with 70006 + CONTACT_ADMIN. If no store can be resolved at all requireStoreNo() returns 10403. Treat X-Store-No as required.\n\nEnvelope: {code,msg,data}; code 0 = success. Business errors are returned as HTTP 200 with a non-zero code (except admission rejections above and 401). Codes used here: 10400 bad request, 10403 forbidden (also @PreAuthorize denial), 10404 not found / not this store, 70006 store admission, 70083 pay order not found, 70084 refund idempotency conflict, 70085 pay order state, 70086 refund exceeds refundable, 70093 checkout expired (reissue).\n\nAmounts are long minor units; timestamps are UTC epoch ms; dates are store-market yyyy-MM-dd. Null fields are serialized (no NON_NULL).\n\nNot covered here: /biz/payment/app-grant (third-party grants), /biz/payment/offline-records*, and the SSE /biz/payment/events (see biz-payment-events.openapi.json)."
+  },
+  "tags": [
+    {
+      "name": "payment",
+      "description": "Collect tab, payment links, static QR codes, refunds"
+    }
+  ],
+  "paths": {
+    "/biz/payment/collection": {
+      "post": {
+        "operationId": "payCollect",
+        "summary": "Create a one-off payment link (dynamic collect code)",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:collect",
+        "description": "Permission (@PreAuthorize): mch:pay:collect. Creates a BIZ_COLLECT pay order for the current store and issues a checkout token. Errors: 10400 (amount<=0, expireMinutes out of range, bad bizNo), 10404 (store not bound to pay). Production only (no X-Pay-Read-Environment).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CollectView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectReq"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/qr-code": {
+      "get": {
+        "operationId": "payQrCodes",
+        "summary": "List static store/table QR codes",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:qr",
+        "description": "Permission (@PreAuthorize): mch:pay:qr. All QR codes of the current store, including DISABLED ones.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QrView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "payCreateQrCode",
+        "summary": "Create a static QR code",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:qr",
+        "description": "Permission (@PreAuthorize): mch:pay:qr. Errors: 10400 on any validation failure listed in QrReq; 10404 store not bound.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QrView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QrReq"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/qr-code/{qrCode}/disabled": {
+      "put": {
+        "operationId": "payDisableQrCode",
+        "summary": "Disable a QR code (legacy)",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:qr",
+        "description": "Permission (@PreAuthorize): mch:pay:qr. LEGACY: used only by the Vue b-app; the merchant App does not call it. Sets status=DISABLED; 10404 if the code is not in the caller's store.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "path",
+            "name": "qrCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "QR code value"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Always null (void handler)",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/biz/payment/refund": {
+      "post": {
+        "operationId": "payRequestRefund",
+        "summary": "Request an original-route refund",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:refund",
+        "description": "Permission (@PreAuthorize): mch:pay:refund. Same refund pipeline as the open API. Errors: 10400 (payOrderNo blank, amountMinor null/<=0, reason>255), 70083 order not found / not visible, 70085 order has no successful payment attempt, 70084 outRefundNo reused with a different amount, 70086 amount exceeds refundable (arg = available). Production only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundReq"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "payRefunds",
+        "summary": "Recent refunds of the store",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:refund OR mch:pay:statement",
+        "description": "Permission (@PreAuthorize): mch:pay:refund OR mch:pay:statement. Latest 50 refunds of the current store ordered by id desc (no paging, no filter). Production only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RefundView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/statement": {
+      "get": {
+        "operationId": "payStatement",
+        "summary": "Daily statement (legacy)",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:statement",
+        "description": "Permission (@PreAuthorize): mch:pay:statement. LEGACY: used only by the Vue b-app; the merchant App uses /biz/payment/orders + /orders/summary. day = yyyy-MM-dd in store market, default today; unparsable -> 10400.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "query",
+            "name": "day",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Store-market date, default today"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DailyStatement"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/biz/payment/orders": {
+      "get": {
+        "operationId": "payOrders",
+        "summary": "List store payment orders",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. Only channel money (QR_CODE / COLLECT / POS / ORDER); excludes PARTNER-source orders and orders still CREATED/AWAITING_PAYMENT/CLOSED that never had a PAY attempt. Ordered by createdAt desc, cursor paging. Accepts X-Pay-Read-Environment (PaymentReadRouter). Errors: 10400 bad date / range > 93 days / to<from / unknown source or status / bad q / bad cursor.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Store-market date, default today"
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive, default = from; to-from <= 93 days"
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "QR_CODE",
+                  "COLLECT",
+                  "POS",
+                  "ORDER"
+                ]
+              }
+            },
+            "description": "Repeatable (source=A&source=B) or comma-separated; empty = all",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Exact pay_channel values; empty = all",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "SUCCEEDED",
+                  "PARTIALLY_REFUNDED",
+                  "REFUNDED",
+                  "FAILED",
+                  "PENDING"
+                ]
+              }
+            },
+            "description": "FAILED includes raw CLOSED; PENDING = CREATED/AWAITING_PAYMENT/AWAITING_CONFIRM/AUTHORIZED",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "in": "query",
+            "name": "amountMin",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Inclusive, on amountMinor"
+          },
+          {
+            "in": "query",
+            "name": "amountMax",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Inclusive"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9*-]{1,40}$"
+            },
+            "description": "Fragment of payOrderNo / outOrderNo / payerMasked / channel trade no (trimmed)"
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "nextCursor of the previous page"
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Clamped to 1..50"
+          },
+          {
+            "$ref": "#/components/parameters/XPayReadEnvironment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PaymentPage"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/orders/summary": {
+      "get": {
+        "operationId": "payOrdersSummary",
+        "summary": "Period summary",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:statement",
+        "description": "Permission (@PreAuthorize): mch:pay:statement. Clerks normally lack this permission. Accepts X-Pay-Read-Environment (PaymentReadRouter). 10400 on bad dates / range > 93 days.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Default today"
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Default = from"
+          },
+          {
+            "$ref": "#/components/parameters/XPayReadEnvironment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Summary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/orders/lookup": {
+      "get": {
+        "operationId": "payOrdersLookup",
+        "summary": "Find a payment the customer says they made",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. Two modes: tradeNoSuffix non-blank -> match channel trade no suffix ([A-Za-z0-9]{6,32}, today and yesterday only); otherwise amountMinor (required, >0) within the window (10m default / 1h / today). Errors: 10400. Accepts X-Pay-Read-Environment (PaymentReadRouter).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "query",
+            "name": "amountMinor",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "description": "Required when tradeNoSuffix is absent"
+          },
+          {
+            "in": "query",
+            "name": "within",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "10m",
+                "1h",
+                "today"
+              ],
+              "default": "10m"
+            },
+            "description": "Window for amount mode"
+          },
+          {
+            "in": "query",
+            "name": "tradeNoSuffix",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{6,32}$"
+            },
+            "description": "Takes precedence over amountMinor"
+          },
+          {
+            "$ref": "#/components/parameters/XPayReadEnvironment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Lookup"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/collect-status": {
+      "get": {
+        "operationId": "payCollectStatus",
+        "summary": "Whether the store can collect",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. Drives list vs. onboarding entry in the Collect tab. Accepts X-Pay-Read-Environment (PaymentReadRouter).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "$ref": "#/components/parameters/XPayReadEnvironment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CollectStatus"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/orders/{payOrderNo}": {
+      "get": {
+        "operationId": "payOrderDetail",
+        "summary": "Payment order detail",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. Any pay order of the current store (no attempt filter). Another store's order -> 10404. Accepts X-Pay-Read-Environment (PaymentReadRouter).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "path",
+            "name": "payOrderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pay order no"
+          },
+          {
+            "$ref": "#/components/parameters/XPayReadEnvironment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Detail"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/orders/{payOrderNo}/query": {
+      "post": {
+        "operationId": "payOrderRefresh",
+        "summary": "Query channel now and return refreshed detail",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. 'Query result now' for a pending order: verifies the order belongs to the store (10404 otherwise), asks the channel to reconcile, returns the detail afterwards. No request body. Production only; X-Pay-Read-Environment is NOT read here.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "path",
+            "name": "payOrderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pay order no"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Detail"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/links": {
+      "get": {
+        "operationId": "payLinks",
+        "summary": "Payment link records",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:order:view",
+        "description": "Permission (@PreAuthorize): mch:pay:order:view. BIZ_COLLECT pay orders of the store, createdAt desc, including unpaid/expired/voided. Unknown status or bad cursor -> 10400. Production only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PAID",
+                "EXPIRED",
+                "VOIDED"
+              ]
+            },
+            "description": "Single value; empty = all"
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "nextCursor of the previous page"
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Clamped to 1..50"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LinkPage"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/links/{payOrderNo}/reissue": {
+      "post": {
+        "operationId": "payLinkReissue",
+        "summary": "Re-share a link (new token, old token revoked)",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:collect",
+        "description": "Permission (@PreAuthorize): mch:pay:collect. Same payOrderNo; all previous tokens revoked; expireAt may be extended to now + original link duration (capped at max-expire-minutes). Only for unpaid, open, unexpired, non-voided links, else 70093 (HTTP 200 envelope here). Not this store's link -> 10404. No request body.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "path",
+            "name": "payOrderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pay order no of the link"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CollectView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/payment/links/{payOrderNo}/void": {
+      "post": {
+        "operationId": "payLinkVoid",
+        "summary": "Void a payment link",
+        "tags": [
+          "payment"
+        ],
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "x-permission": "mch:pay:collect",
+        "description": "Permission (@PreAuthorize): mch:pay:collect. Queries the channel first, then closes. If already paid it is NOT voided and the returned row has status=PAID (refund it instead); no error. Not this store's link -> 10404. Body optional.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XStoreNo"
+          },
+          {
+            "in": "path",
+            "name": "payOrderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pay order no of the link"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope; read data only when code == 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 = success; any other value is a business rejection (see ErrorCodes in info.description)"
+                    },
+                    "msg": {
+                      "type": "string",
+                      "description": "Localized message; never branch on it"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LinkRow"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidLinkReq"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Merchant session token (btk_)"
+      }
+    },
+    "parameters": {
+      "XStoreNo": {
+        "in": "header",
+        "name": "X-Store-No",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Current store. Read by BizContextFilter; all /biz/payment endpoints act on this store only. Missing -> HTTP 403 code 70006 nextAction=SELECT_STORE (new-model stores)."
+      },
+      "XPayReadEnvironment": {
+        "in": "header",
+        "name": "X-Pay-Read-Environment",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PRODUCTION",
+            "SANDBOX"
+          ]
+        },
+        "description": "PaymentReadRouter. Only on GET collect-status, orders, orders/summary, orders/lookup, orders/{payOrderNo}. Absent or PRODUCTION -> normal production read. Any other value -> 10400. SANDBOX -> requires sandbox read client configured (else 10403), strict re-resolution of current store/entity/permission (else 10403), and an enabled SANDBOX CHECKOUT payment_collection_source bound to this store/entity of a non-deleted TW-market entity (else 10403); reads come from near-pay via the dedicated sandbox caller and are audited as BIZ_PAY_VIEW. Never falls back to production; never merged with production data. Ignored by all write endpoints."
+      }
+    },
+    "schemas": {
+      "CollectReq": {
+        "type": "object",
+        "properties": {
+          "amountMinor": {
+            "type": "integer",
+            "description": "Amount in minor units. Must be > 0 (null is treated as 0 and rejected with 10400).",
+            "minimum": 1,
+            "format": "int64"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Optional. Blank/null -> store name is used as subject. No server-side length check in CheckoutServiceImpl.",
+            "nullable": true
+          },
+          "expireMinutes": {
+            "type": "integer",
+            "description": "Optional, default 15. Range 1..shop.pay.collect.max-expire-minutes (default 1440); outside -> 10400.",
+            "minimum": 1,
+            "maximum": 1440,
+            "format": "int32",
+            "nullable": true
+          },
+          "bizNo": {
+            "type": "string",
+            "description": "Optional business document number (F&B settlement, beauty work order...). Must match ^[A-Za-z0-9_.:-]{1,64}$ else 10400. Written to pay_order.biz_no.",
+            "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+            "nullable": true
+          }
+        },
+        "required": [
+          "amountMinor"
+        ]
+      },
+      "QrReq": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "STORE (default when null) or TABLE; anything else -> 10400",
+            "enum": [
+              "STORE",
+              "TABLE"
+            ],
+            "nullable": true
+          },
+          "tableRef": {
+            "type": "string",
+            "description": "Required (non-blank) when kind=TABLE; max 64 chars; ignored (stored null) for STORE",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "singleLimitMinor": {
+            "type": "integer",
+            "description": "Per-payment limit. null->0 which is rejected; must be >0 and <= shop.pay.qr.max-single-minor (default 500000)",
+            "minimum": 1,
+            "maximum": 500000,
+            "format": "int64"
+          },
+          "dailyLimitMinor": {
+            "type": "integer",
+            "description": "Daily limit. null->0; must be >= singleLimitMinor and <= shop.pay.qr.max-daily-minor (default 5000000)",
+            "maximum": 5000000,
+            "format": "int64"
+          }
+        },
+        "required": [
+          "singleLimitMinor",
+          "dailyLimitMinor"
+        ]
+      },
+      "RefundReq": {
+        "type": "object",
+        "properties": {
+          "payOrderNo": {
+            "type": "string",
+            "description": "Pay order to refund (required, non-blank)",
+            "minLength": 1
+          },
+          "amountMinor": {
+            "type": "integer",
+            "description": "> 0 and <= refundable (paid - refunded - reserved); over -> 70086 with the available amount as arg",
+            "minimum": 1,
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional, <= 255 chars (else 10400). Blank is stored as '-'",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "outRefundNo": {
+            "type": "string",
+            "description": "Optional idempotency key. Omitted -> server generates BZR... so each tap is a new refund. Same key + same amount returns the existing refund; same key + different amount -> 70084.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payOrderNo",
+          "amountMinor"
+        ]
+      },
+      "VoidLinkReq": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional. Stored on the close as '作废付款链接：<reason>' truncated to 120 chars",
+            "nullable": true
+          }
+        },
+        "required": []
+      },
+      "CollectView": {
+        "type": "object",
+        "properties": {
+          "payOrderNo": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "description": "Checkout token plaintext (base64url, 43 chars). Only returned here; the server stores only its SHA-256"
+          },
+          "expireAt": {
+            "type": "integer",
+            "description": "Token expiry, UTC epoch milliseconds (min(link expiry, pay order expireAt))",
+            "format": "int64"
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "description": "shop.pay.checkout.base-url + '/c/' + token. Use as-is for QR/share"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "description": "From the pay order; null only if the order lookup failed",
+            "format": "int64",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "storeName": {
+            "type": "string",
+            "description": "Store name snapshot on the pay order",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payOrderNo",
+          "token",
+          "expireAt",
+          "checkoutUrl",
+          "amountMinor",
+          "currency",
+          "subject",
+          "storeName"
+        ],
+        "description": "PayBizFacade.CollectView (a.k.a. PayCollectResult). All 8 fields are always serialized."
+      },
+      "LinkRow": {
+        "type": "object",
+        "properties": {
+          "payOrderNo": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "Derived: paid/partially refunded/refunded -> PAID; CLOSED with VOIDED checkout session -> VOIDED; unpaid and closed or past expireAt -> EXPIRED; else PENDING",
+            "enum": [
+              "PENDING",
+              "PAID",
+              "EXPIRED",
+              "VOIDED"
+            ]
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "expireAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "description": "pay_order.pay_channel",
+            "nullable": true
+          },
+          "operatorNo": {
+            "type": "string",
+            "description": "Merchant account that created the link (no name)",
+            "nullable": true
+          },
+          "voidedBy": {
+            "type": "string",
+            "description": "Only for VOIDED",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payOrderNo",
+          "amountMinor",
+          "currency",
+          "subject",
+          "status",
+          "createdAt",
+          "expireAt",
+          "paidAt",
+          "channel",
+          "operatorNo",
+          "voidedBy"
+        ],
+        "description": "MerchantCollectLinkQueryService.LinkRow. No checkoutUrl/token (only hashes are stored) - call reissue to share again."
+      },
+      "LinkPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkRow"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "Opaque '<epochMs>_<id>'; null = no more pages",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "QrView": {
+        "type": "object",
+        "properties": {
+          "qrCode": {
+            "type": "string",
+            "description": "Random base64url code value"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "STORE",
+              "TABLE"
+            ]
+          },
+          "tableRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "singleLimitMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dailyLimitMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "shop.pay.checkout.base-url + '/q/' + qrCode (embedded deployment)"
+          },
+          "storeCodeUrl": {
+            "type": "string",
+            "description": "Store stand link /h5/s/{storeCode}; only the standalone near-pay deployment fills it, always null in embedded deployment",
+            "nullable": true
+          }
+        },
+        "required": [
+          "qrCode",
+          "kind",
+          "tableRef",
+          "currency",
+          "singleLimitMinor",
+          "dailyLimitMinor",
+          "status",
+          "url",
+          "storeCodeUrl"
+        ]
+      },
+      "RefundStatus": {
+        "type": "string",
+        "description": "PayRefundStatus (every value in code). Non-terminal: REQUESTED, PENDING_REVIEW (platform review, only when shop.pay.refund.review=true and a rule hits), PENDING_SECOND_REVIEW, APPROVED, DISPATCHED, OFFLINE_PENDING_PROOF. Terminal: SUCCEEDED, FAILED, REJECTED. A new refund is created as PENDING_REVIEW or APPROVED, then dispatched synchronously when not under review, so the POST response may already show DISPATCHED/SUCCEEDED/FAILED. Treat unknown values as 'other'.",
+        "enum": [
+          "REQUESTED",
+          "PENDING_REVIEW",
+          "PENDING_SECOND_REVIEW",
+          "APPROVED",
+          "DISPATCHED",
+          "SUCCEEDED",
+          "FAILED",
+          "REJECTED",
+          "OFFLINE_PENDING_PROOF"
+        ]
+      },
+      "RefundView": {
+        "type": "object",
+        "properties": {
+          "payRefundNo": {
+            "type": "string"
+          },
+          "payOrderId": {
+            "type": "integer",
+            "description": "Internal numeric pay_order.id. payOrderNo is NOT included in this view - map back via the payOrderNo you sent, or use GET /biz/payment/orders/{payOrderNo} whose refunds[] are per order",
+            "format": "int64",
+            "nullable": true
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/RefundStatus"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "string",
+            "description": "Operator account no of the requester (for after-sale refunds: 'AFTER_SALE:<no>')",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "succeededAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payRefundNo",
+          "payOrderId",
+          "amountMinor",
+          "currency",
+          "status",
+          "reason",
+          "requestedBy",
+          "createdAt",
+          "succeededAt"
+        ],
+        "description": "PayBizFacade.RefundView"
+      },
+      "BizRef": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "pay_order.biz_type"
+          },
+          "no": {
+            "type": "string",
+            "description": "pay_order.biz_no"
+          }
+        },
+        "required": [
+          "kind",
+          "no"
+        ]
+      },
+      "PaymentRow": {
+        "type": "object",
+        "properties": {
+          "payOrderNo": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "QR_CODE",
+              "COLLECT",
+              "POS",
+              "ORDER"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paidMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "View status: raw FAILED/CLOSED -> FAILED; CREATED/AWAITING_*/AUTHORIZED/null -> PENDING",
+            "enum": [
+              "SUCCEEDED",
+              "PARTIALLY_REFUNDED",
+              "REFUNDED",
+              "FAILED",
+              "PENDING"
+            ]
+          },
+          "payerMasked": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardLast4": {
+            "type": "string",
+            "description": "Always null in this phase",
+            "nullable": true
+          },
+          "terminalLabel": {
+            "type": "string",
+            "description": "Terminal SN when source_type=TERMINAL",
+            "nullable": true
+          },
+          "bizRef": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BizRef"
+              }
+            ],
+            "nullable": true,
+            "description": "Only for source=ORDER with a biz_no"
+          },
+          "succeededAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payOrderNo",
+          "source",
+          "channel",
+          "method",
+          "currency",
+          "amountMinor",
+          "paidMinor",
+          "refundedMinor",
+          "status",
+          "payerMasked",
+          "cardLast4",
+          "terminalLabel",
+          "bizRef",
+          "succeededAt",
+          "createdAt"
+        ]
+      },
+      "PaymentPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRow"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "Opaque '<epochMs>_<id>'; null = last page",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "Count": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "count",
+          "amountMinor"
+        ]
+      },
+      "ChannelCount": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "pay_channel; the literal 'null' string if the order has no channel"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "channel",
+          "count",
+          "amountMinor"
+        ]
+      },
+      "Settlement": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Summary: always PENDING. Detail: SETTLED once a SETTLEMENT voucher exists, else PENDING",
+            "enum": [
+              "PENDING",
+              "SETTLED"
+            ]
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedDate": {
+            "type": "string",
+            "description": "yyyy-MM-dd; T1/T2/WEEKLY(next Monday), default T1",
+            "format": "date",
+            "nullable": true
+          },
+          "accountMasked": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "amountMinor",
+          "expectedDate",
+          "accountMasked"
+        ]
+      },
+      "Summary": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "collected": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "refunded": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "netMinor": {
+            "type": "integer",
+            "description": "collected - refunded",
+            "format": "int64"
+          },
+          "byChannel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelCount"
+            }
+          },
+          "feeMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "feeEstimated": {
+            "type": "boolean",
+            "description": "true when any order is not yet reconciled (fee estimated by shop.pay.fee.estimate-rate-bps)"
+          },
+          "expectedSettlement": {
+            "$ref": "#/components/schemas/Settlement"
+          }
+        },
+        "required": [
+          "currency",
+          "from",
+          "to",
+          "collected",
+          "refunded",
+          "netMinor",
+          "byChannel",
+          "feeMinor",
+          "feeEstimated",
+          "expectedSettlement"
+        ],
+        "description": "Range by succeededAt (refunds by refund succeededAt). Unlike list/lookup this includes paid orders regardless of attempt filter but excludes PARTNER source."
+      },
+      "Lookup": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRow"
+            },
+            "description": "Rows whose view status is not PENDING/FAILED"
+          },
+          "pendingNearby": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRow"
+            },
+            "description": "PENDING rows in the same window"
+          }
+        },
+        "required": [
+          "matches",
+          "pendingNearby"
+        ],
+        "description": "Max 50 candidate orders. FAILED rows appear in neither list."
+      },
+      "CollectStatus": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "true when the store has at least one ACTIVE pay merchant binding"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Distinct, sorted channels of ACTIVE bindings"
+          }
+        },
+        "required": [
+          "enabled",
+          "channels"
+        ]
+      },
+      "Amounts": {
+        "type": "object",
+        "properties": {
+          "paidMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundableMinor": {
+            "type": "integer",
+            "description": "max(0, paid - refunded - reservedRefund)",
+            "format": "int64"
+          },
+          "feeMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "feeEstimated": {
+            "type": "boolean"
+          },
+          "feeRateBps": {
+            "type": "integer",
+            "description": "null when paid = 0",
+            "format": "int64",
+            "nullable": true
+          },
+          "expectedNetMinor": {
+            "type": "integer",
+            "description": "paid - refunded - fee",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "paidMinor",
+          "refundedMinor",
+          "refundableMinor",
+          "feeMinor",
+          "feeEstimated",
+          "feeRateBps",
+          "expectedNetMinor"
+        ]
+      },
+      "Payer": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "payerMasked": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardBrand": {
+            "type": "string",
+            "description": "Always null in this phase",
+            "nullable": true
+          },
+          "cardLast4": {
+            "type": "string",
+            "description": "Always null in this phase",
+            "nullable": true
+          },
+          "issuer": {
+            "type": "string",
+            "description": "Always null in this phase",
+            "nullable": true
+          },
+          "authCode": {
+            "type": "string",
+            "description": "Always null in this phase",
+            "nullable": true
+          }
+        },
+        "required": [
+          "channel",
+          "method",
+          "payerMasked",
+          "cardBrand",
+          "cardLast4",
+          "issuer",
+          "authCode"
+        ]
+      },
+      "Refs": {
+        "type": "object",
+        "properties": {
+          "payOrderNo": {
+            "type": "string"
+          },
+          "outTradeNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "channelTradeNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "channelMerchantNo": {
+            "type": "string",
+            "description": "Sub-merchant id preferred",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payOrderNo",
+          "outTradeNo",
+          "channelTradeNo",
+          "channelMerchantNo"
+        ]
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "QR_CODE",
+              "COLLECT",
+              "POS",
+              "ORDER"
+            ]
+          },
+          "qrKind": {
+            "type": "string",
+            "description": "STORE/TABLE for QR_CODE",
+            "nullable": true
+          },
+          "tableRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminalSn": {
+            "type": "string",
+            "nullable": true
+          },
+          "operatorNo": {
+            "type": "string",
+            "description": "Cashier/creator account no; name resolved by the client",
+            "nullable": true
+          },
+          "bizRef": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BizRef"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "qrKind",
+          "tableRef",
+          "terminalSn",
+          "operatorNo",
+          "bizRef"
+        ]
+      },
+      "Failure": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "RefundItem": {
+        "type": "object",
+        "properties": {
+          "payRefundNo": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/RefundStatus"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "succeededAt": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payRefundNo",
+          "amountMinor",
+          "reason",
+          "requestedBy",
+          "status",
+          "createdAt",
+          "succeededAt"
+        ]
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "description": "FAILED/CLOSED carry the raw pay order status",
+            "enum": [
+              "CREATED",
+              "PAID",
+              "FAILED",
+              "CLOSED",
+              "REFUND_REQUESTED",
+              "REFUND_SUCCEEDED"
+            ]
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ref": {
+            "type": "string",
+            "description": "Trade no for PAID, failure code for FAILED/CLOSED, payRefundNo for refund events",
+            "nullable": true
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "amountMinor",
+          "ref"
+        ]
+      },
+      "Detail": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "$ref": "#/components/schemas/PaymentRow"
+          },
+          "amounts": {
+            "$ref": "#/components/schemas/Amounts"
+          },
+          "settlement": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Settlement"
+              }
+            ],
+            "nullable": true,
+            "description": "null until the order succeeded"
+          },
+          "payer": {
+            "$ref": "#/components/schemas/Payer"
+          },
+          "refs": {
+            "$ref": "#/components/schemas/Refs"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "failure": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Failure"
+              }
+            ],
+            "nullable": true
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundItem"
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "payerNote": {
+            "type": "string",
+            "description": "Customer note from the scan-to-pay page; standalone near-pay only, always null in embedded deployment",
+            "nullable": true
+          }
+        },
+        "required": [
+          "row",
+          "amounts",
+          "settlement",
+          "payer",
+          "refs",
+          "source",
+          "failure",
+          "refunds",
+          "timeline",
+          "payerNote"
+        ]
+      },
+      "StatementItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PAYMENT",
+              "REFUND"
+            ]
+          },
+          "no": {
+            "type": "string"
+          },
+          "payOrderNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "payMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "at": {
+            "type": "integer",
+            "description": "UTC epoch milliseconds",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "no",
+          "payOrderNo",
+          "amountMinor",
+          "payChannel",
+          "payMethod",
+          "status",
+          "at"
+        ]
+      },
+      "DailyStatement": {
+        "type": "object",
+        "properties": {
+          "bizDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidCount": {
+            "type": "integer"
+          },
+          "paidMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundCount": {
+            "type": "integer"
+          },
+          "refundMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementItem"
+            }
+          }
+        },
+        "required": [
+          "bizDate",
+          "currency",
+          "paidCount",
+          "paidMinor",
+          "refundCount",
+          "refundMinor",
+          "items"
+        ]
+      }
+    }
+  }
+}

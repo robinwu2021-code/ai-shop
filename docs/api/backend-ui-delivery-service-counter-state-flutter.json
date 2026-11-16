@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "Consumed by the separate ai-shop-bapp Flutter repository (service counter page), not this repository's legacy Vue b-app.",
+  "plan": "docs/technical/TDD-商户App柜台报价状态.md",
+  "contract": "docs/api/service-counter-state.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerCommit": "1a8d51d",
+  "consumerEvidence": "apps/merchant_app/lib/features/service_store/service_counter_pages.dart",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/service-orders/counter-quotes/{operationNo}/state"
+    }
+  ]
+}

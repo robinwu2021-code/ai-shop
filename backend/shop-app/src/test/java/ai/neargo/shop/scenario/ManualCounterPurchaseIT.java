@@ -672,6 +672,33 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
     }
 
     @Test
+    void counterStateFollowsQuoteAcceptanceAndOrder() {
+        var registration = registerGuest();
+        var quote =
+                prepare(
+                        counterRequest(
+                                "state",
+                                new CounterCustomerRef(
+                                        "GUEST", null, registration.guestNo(), registration.claimToken())));
+        var operation = quote.quote().operation();
+        var quoted = asMerchant(() -> manual.readCounterState(scope, operation));
+        assertThat(quoted.canAccept()).isTrue();
+        assertThat(quoted.confirmation()).isNull();
+        assertThat(quoted.result().phase()).isEqualTo("QUOTED");
+
+        var confirmation = accept(quote);
+        var confirmed = asMerchant(() -> manual.readCounterState(scope, operation));
+        assertThat(confirmed.canAccept()).isFalse();
+        assertThat(confirmed.confirmation().confirmationNo()).isEqualTo(confirmation.confirmationNo());
+        assertThat(confirmed.result().phase()).isEqualTo("CONFIRMED");
+
+        String orderNo = place(confirmation).orderNo();
+        var created = asMerchant(() -> manual.readCounterState(scope, operation));
+        assertThat(created.result().phase()).isEqualTo("CREATED");
+        assertThat(created.result().orderNo()).isEqualTo(orderNo);
+    }
+
+    @Test
     void identityIsNotPurchaseAcceptance() {
         var registration = registerGuest();
         var quote =

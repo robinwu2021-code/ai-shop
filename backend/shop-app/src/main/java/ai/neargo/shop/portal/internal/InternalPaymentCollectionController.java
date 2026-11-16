@@ -54,6 +54,6 @@ public class InternalPaymentCollectionController {
         var fact = json.readValue(raw, PaymentCollectionFact.class);
         var violations = validator.validate(fact);
         if (!violations.isEmpty()) throw new ConstraintViolationException(violations);
-        return service.receive(fact, raw);
+        return service.receive(environment, fact, raw);
     }
 }

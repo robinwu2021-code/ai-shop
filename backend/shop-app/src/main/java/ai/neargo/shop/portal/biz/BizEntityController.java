@@ -1,18 +1,30 @@
 package ai.neargo.shop.portal.biz;
 
-import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
 import ai.neargo.shop.merchant.dto.EntityVO;
+import ai.neargo.shop.merchant.service.EntityCreationService;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
+import ai.neargo.shop.merchantbridge.EntityCreationProfileInitializer;
 import ai.neargo.shop.merchantbridge.EntityReviewAssembler;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * 证照（多证照 · 线 B · B2）：<b>一个老板名下不止一张营业执照</b>时，
@@ -28,14 +40,62 @@ import java.util.List;
  */
 @Profile("api")
 @RestController
+@Validated
 public class BizEntityController {
 
     private final MerchantEntityService entityService;
     private final EntityReviewAssembler reviews;
+    private final EntityCreationService creations;
+    private final ObjectProvider<EntityCreationProfileInitializer> initializer;
 
-    public BizEntityController(MerchantEntityService entityService, EntityReviewAssembler reviews) {
+    public BizEntityController(MerchantEntityService entityService, EntityReviewAssembler reviews,
+                               EntityCreationService creations, ObjectProvider<EntityCreationProfileInitializer> initializer) {
         this.entityService = entityService;
         this.reviews = reviews;
+        this.creations = creations;
+        this.initializer = initializer;
+    }
+
+    public record InitialProfile(@NotBlank @Pattern(regexp="[0-9]{8}")String taxNo,
+        @NotBlank @Size(max=64)String contactName,@NotBlank @Pattern(regexp="09[0-9]{8}")String contactMobile,
+        @NotBlank @Email @Size(max=128)String contactEmail) {
+        public Map<String,String> fields(){return Map.of("taxNo",taxNo,"contactName",contactName,"contactMobile",contactMobile,"contactEmail",contactEmail);}
+        @Override public String toString(){return "InitialProfile[REDACTED]";}
+    }
+    public record CreateEntityReq(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo,
+                                  @NotBlank @Size(max=64) String name, @Size(max=32) String legalForm,
+                                  @Valid InitialProfile profileFields) {}
+
+    /** Creates a pending platform entity for the personal account without selecting or creating a store. */
+    @PostMapping("/biz/entities")
+    @PreAuthorize("@perm.merchantAccount()")
+    public EntityCreationService.Result create(@Valid @RequestBody CreateEntityReq req) {
+        var user = BizAuthController.personalUser();
+        var init=req.profileFields()==null?null:initializer.getIfAvailable();
+        if(req.profileFields()!=null&&init==null)throw BizException.of(ErrorCode.BAD_REQUEST);
+        var result=creations.create(user,req.requestNo(),req.name(),req.legalForm(),init==null?null:init.hash(req.profileFields().fields()));
+        if(init!=null){init.initialize(user.userNo(),result,req.profileFields().fields());
+            result=new EntityCreationService.Result(result.requestNo(),result.entity(),result.replayed(),"COMPLETE",result.profileRequestNo());}
+        return enrich(user.userNo(),result);
+    }
+
+    /** Recovers the original request after a lost response, using current owner authorization. */
+    @GetMapping("/biz/entities/create-results/{requestNo}")
+    @PreAuthorize("@perm.merchantAccount()")
+    public EntityCreationService.Result createResult(
+            @PathVariable @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo) {
+        var user = BizAuthController.personalUser();
+        var result=creations.find(user,requestNo);
+        if(!"NOT_REQUESTED".equals(result.profileInitialization())) {
+            var init=initializer.getIfAvailable();
+            if(init!=null)result=init.status(user.userNo(),result);
+        }
+        return enrich(user.userNo(),result);
+    }
+
+    private EntityCreationService.Result enrich(String user, EntityCreationService.Result result) {
+        return new EntityCreationService.Result(result.requestNo(),
+                reviews.enrich(user, List.of(result.entity())).getFirst(), result.replayed(),result.profileInitialization(),result.profileRequestNo());
     }
 
     /**
@@ -54,12 +114,13 @@ public class BizEntityController {
     }
 
     /**
-     * 我名下的证照列表（03 屏）。<b>只有老板能看</b> —— 列出的每一张他都能改资料、交执照。
+     * 个人账号名下的证照列表，不要求选店，包含尚无门店的主体；MCH员工身份不能读取。
      */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PreAuthorize("@perm.merchantAccount()")
     @GetMapping("/biz/entities")
     public List<EntityVO> myEntities() {
-        return reviews.enrich(SecurityUtils.currentUserNo(), entityService.myEntities(SecurityUtils.currentUserNo()));
+        var user = BizAuthController.personalUser();
+        return reviews.enrich(user.userNo(), entityService.myEntities(user.userNo()));
     }
 
     /**
@@ -67,10 +128,11 @@ public class BizEntityController {
      *
      * <p>不是我名下的证照 → 403（不是 404）：它确实存在，只是不属于他。
      */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PreAuthorize("@perm.merchantAccount()")
     @GetMapping("/biz/entity/{entityNo}")
     public EntityStoresVO detail(@PathVariable String entityNo) {
-        var detail = entityService.detail(SecurityUtils.currentUserNo(), entityNo);
+        var user = BizAuthController.personalUser();
+        var detail = entityService.detail(user.userNo(), entityNo);
         return new EntityStoresVO(reviews.enrich(SecurityUtils.currentUserNo(), List.of(detail.entity())).getFirst(), detail.stores());
     }
 }

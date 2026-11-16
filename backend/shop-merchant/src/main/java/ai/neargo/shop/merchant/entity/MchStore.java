@@ -176,6 +176,9 @@ public class MchStore extends BaseEntity {
         }
         return announcement;
     }
+    /** 门店日常联系人，与寄件联系人及主体证照资料独立。 */
+    private String contactName;
+    private String contactPhone;
     private String openHours;
     private String address;
 

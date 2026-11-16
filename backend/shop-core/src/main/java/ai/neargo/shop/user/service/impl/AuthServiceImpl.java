@@ -197,13 +197,6 @@ public class AuthServiceImpl implements AuthService {
         return email == null ? null : email.getIdentityValue();
     }
 
-    @Override
-    public EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
-        var result = otp.send(new SendCommand(OtpScenes.LOGIN, Channel.EMAIL, email, null, locale, Map.of(), null), otpContext(null));
-        return new EmailOtpService.Delivery(result.expiresInSeconds(), result.resendAfterSeconds());
-    }
-
-    /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
     /** 这个账号已验证的手机号。微信登录没授权手机号时为 null —— 那时他没有人档 */
     private String phoneOf(String userNo) {
         UsrIdentity id = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
@@ -366,6 +359,12 @@ public class AuthServiceImpl implements AuthService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         var account = findOrCreate(List.of(credential), command);
         requireUsable(account);
+        // Same person binding as login(): a side effect that never blocks entering.
+        try {
+            personService.bindOnLogin(account.getUserNo(), phoneOf(account.getUserNo()));
+        } catch (RuntimeException e) {
+            log.warn("[person] 进入身份时绑定人档失败 user={}", account.getUserNo(), e);
+        }
         return account;
     }
 

@@ -288,6 +288,22 @@ public class DbTokenStore implements TokenStore {
         row.ifPresent(r -> audit(LoginEvent.LOGOUT, r.userNo(), null, true));
     }
 
+    /** Revokes every session of the subject but {@code keepToken}; same propagation as {@link #revokeUser}. */
+    @Override
+    public int revokeUserExcept(String userNo, String keepToken) {
+        if (userNo == null || userNo.isBlank() || keepToken == null) {
+            return 0;
+        }
+        int n = sessions.revokeByUserExcept(userNo, TokenHash.of(keepToken), RevokeReason.DISABLED,
+                LocalDateTime.now(clock));
+        identityCache.evict(userNo);
+        pollRevocations();
+        if (n > 0) {
+            audit(LoginEvent.REVOKED, userNo, RevokeReason.DISABLED.name() + " x" + n, true);
+        }
+        return n;
+    }
+
     /**
      * 踢掉某个主体的全部会话。一条 UPDATE，**跨实例生效**。
      *

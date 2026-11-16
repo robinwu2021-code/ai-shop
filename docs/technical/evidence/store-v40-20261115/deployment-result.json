@@ -1,0 +1,10 @@
+{
+  "status": "DEPLOYED",
+  "sourceCommit": "03b86f393c1c15079e4cac5cd218c93a60359181",
+  "candidateSha256": "f60efb059f90e0690e8948b8509432f8709473e4974930e67fd4f90787cbd59f",
+  "migration": 674,
+  "apiAndOpsHealthy": true,
+  "preservedOtherResources": true,
+  "sameContainersAndBindInode": true,
+  "protectedFilesUnchanged": true
+}

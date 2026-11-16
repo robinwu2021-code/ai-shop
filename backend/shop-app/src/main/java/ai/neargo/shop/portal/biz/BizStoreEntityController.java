@@ -15,7 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-/** Read-only claim diagnostics; ownership mutation remains unavailable until its fences are implemented. */
+/** Store-to-entity relink: a read-only precheck and the claim that moves the store under another owned entity. */
 @RestController
 @Profile("api")
 @Validated

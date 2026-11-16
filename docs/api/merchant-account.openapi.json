@@ -1,0 +1,378 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Merchant App account centre",
+    "version": "1.0.0",
+    "description": "Signed-in person's own login credentials and account deletion. TDD-商户App统一登录与账号 endpoints 4–8. Staff (MCH) sessions may only read; writes return 10403."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "userNo",
+          "principalNo",
+          "hasPassword",
+          "phoneChangeAvailable",
+          "emailBindAvailable",
+          "deregisterAvailable",
+          "smsUnavailablePrefixes"
+        ],
+        "properties": {
+          "userNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "principalNo": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "phoneChangeAvailable": {
+            "type": "boolean"
+          },
+          "phoneChangeVerifyBy": {
+            "type": "string",
+            "enum": [
+              "PHONE",
+              "EMAIL"
+            ],
+            "nullable": true
+          },
+          "emailBindAvailable": {
+            "type": "boolean"
+          },
+          "deregisterAvailable": {
+            "type": "boolean"
+          },
+          "smsUnavailablePrefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/biz/auth/account": {
+      "get": {
+        "operationId": "merchantAccount",
+        "summary": "Own login credentials",
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Account"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/phone/change": {
+      "post": {
+        "operationId": "merchantChangePhone",
+        "summary": "Change or bind the login phone; current session kept, others revoked",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentCode",
+                  "newPhone",
+                  "newCode"
+                ],
+                "properties": {
+                  "currentCode": {
+                    "type": "string"
+                  },
+                  "newPhone": {
+                    "type": "string"
+                  },
+                  "newCode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "account": {
+                          "$ref": "#/components/schemas/Account"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/email/bind": {
+      "post": {
+        "operationId": "merchantBindEmail",
+        "summary": "Bind or replace the login email; replacing needs currentCode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "currentCode": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bound",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "account": {
+                          "$ref": "#/components/schemas/Account"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/deregister/precheck": {
+      "get": {
+        "operationId": "merchantDeregisterPrecheck",
+        "summary": "What blocks deleting the account and where the code goes",
+        "responses": {
+          "200": {
+            "description": "Precheck",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "allowed": {
+                          "type": "boolean"
+                        },
+                        "verifyBy": {
+                          "type": "string",
+                          "enum": [
+                            "PHONE",
+                            "EMAIL"
+                          ],
+                          "nullable": true
+                        },
+                        "verifyTarget": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifyTargetMasked": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "blockers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "OPEN_ORDERS",
+                                  "PENDING_PAYOUT",
+                                  "PAID_PLAN_ACTIVE",
+                                  "BUYER_OPEN_ORDERS"
+                                ]
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "storeNos": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "staffMemberships": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/deregister": {
+      "post": {
+        "operationId": "merchantDeregister",
+        "summary": "Delete the account; 70100 when blockers remain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "confirm"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

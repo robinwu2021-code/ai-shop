@@ -212,6 +212,8 @@ public enum ErrorCode {
     /** 商家画的配送范围多边形不合法（顶点太少/太多、坐标越界、退化成零面积）。ADR-034 */
     SERVICE_AREA_POLYGON_INVALID(10473, "err.service_area.polygon_invalid"),
     LOGIN_TICKET_INVALID(10474, "err.auth.login_ticket_invalid"),
+    /** The new login email is already this account's email (TDD-商户App统一登录与账号 endpoint 6). */
+    EMAIL_ALREADY_BOUND(10475, "err.auth.email_already_bound"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。
@@ -784,6 +786,11 @@ public enum ErrorCode {
      * 他需要知道是哪几单挡着，以及去哪儿看。
      */
     DEREGISTER_HAS_OPEN_ORDERS(70028, "err.user.deregister_has_open_orders"),
+    /**
+     * Merchant-side deregistration blockers are not cleared (open store orders, pending payouts,
+     * paid plans). Carries no data: the App re-reads {@code /biz/auth/deregister/precheck}.
+     */
+    DEREGISTER_BLOCKED(70100, "err.user.deregister_blocked"),
 
     /**
      * 这个手机号已经绑在**另一个**账号的人档上（{@code usr_person}）。

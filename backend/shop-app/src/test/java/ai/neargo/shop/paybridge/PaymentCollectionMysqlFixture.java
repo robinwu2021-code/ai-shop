@@ -260,7 +260,17 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                 "OT" + id,
                 "SANDBOX",
                 "CH" + id,
-                System.currentTimeMillis());
+                System.currentTimeMillis(),
+                null);
+    }
+
+    /** A result as near-pay sends it from 2026-11-16: with the store it resolved from the order. */
+    PaymentCollectionFact fact(long id, long paymentStoreId, String storeNo) {
+        var f = fact(id);
+        return new PaymentCollectionFact(f.schemaVersion(), f.stateVersion(), f.eventId(), f.eventType(),
+                f.payAppId(), f.sourceType(), f.sourceId(), f.payOrderNo(), f.outOrderNo(), f.bizType(), f.bizNo(),
+                paymentStoreId, f.market(), f.currency(), f.amountMinor(), f.paidMinor(), f.paymentNo(),
+                f.outTradeNo(), f.payChannel(), f.channelTradeNo(), f.succeededAt(), storeNo);
     }
 
     PaymentCollectionService.Accepted receive(long id) {

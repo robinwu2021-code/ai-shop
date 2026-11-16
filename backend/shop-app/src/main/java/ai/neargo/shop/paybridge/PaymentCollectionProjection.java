@@ -186,6 +186,8 @@ public final class PaymentCollectionProjection implements OutboxConsumer {
     public static String scope(LoginUser user, String entity, String store) {
         // Length framing prevents any identifier delimiter collision.
         return Stream.of(
+                        // Historical stream namespace, kept so issued cursors stay valid; the stream of a
+                        // user and store carries results of every accepted payment environment.
                         "SANDBOX",
                         user.tenantNo(),
                         user.subjectKind().name(),

@@ -62,6 +62,25 @@ public class RedisTokenStore implements TokenStore {
     }
 
     @Override
+    public int revokeUserExcept(String userNo, String keepToken) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        String idx = USER_INDEX_PREFIX + userNo;
+        Set<String> tokens = redis.opsForSet().members(idx);
+        if (tokens == null || tokens.isEmpty()) {
+            return 0;
+        }
+        var victims = tokens.stream().filter(t -> !t.equals(keepToken)).toList();
+        if (victims.isEmpty()) {
+            return 0;
+        }
+        redis.delete(victims.stream().map(t -> KEY_PREFIX + t).toList());
+        redis.opsForSet().remove(idx, victims.toArray());
+        return victims.size();
+    }
+
+    @Override
     public int revokeUser(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return 0;

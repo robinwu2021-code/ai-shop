@@ -31,6 +31,10 @@ class StatementBoundaryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unsupported JSON mutation of retained H2 seed data'):
             generator.replay(backfill, tables, order, seeds, renames, altered)
 
+    def test_standalone_mysql_bin_collation_uses_the_existing_fixture_projection(self):
+        self.assertEqual("name VARCHAR(64)  DEFAULT 'COLLATE utf8mb4_bin'",
+            generator._h2_type("name VARCHAR(64) COLLATE utf8mb4_bin DEFAULT 'COLLATE utf8mb4_bin'"))
+
     def test_inline_mysql_charset_is_removed_only_from_sql_code(self):
         self.assertEqual("name VARCHAR(64)  DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'",
                          generator._h2_type("name VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'"))

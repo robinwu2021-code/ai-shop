@@ -16,10 +16,21 @@ import org.springframework.http.HttpStatus;
 /** Bounded raw capture, with Tomcat's streaming multipart parser; nothing is persisted. */
 public final class PayBizRequestBody {
   private static final int MIB = 1024 * 1024;
+  private static final String CAPTURED_UPLOAD = PayBizRequestBody.class.getName() + ".upload";
 
   private PayBizRequestBody() {}
 
+  /** Capture once after authentication, before framework form access can consume the stream. */
+  static void captureUpload(HttpServletRequest request) throws IOException {
+    String path = request.getRequestURI().substring(request.getContextPath().length());
+    if ("POST".equals(request.getMethod())
+        && path.matches("/biz/pay/v2/onboardings/[A-Za-z0-9_-]{1,64}/files")) {
+      request.setAttribute(CAPTURED_UPLOAD, read(request, true));
+    }
+  }
+
   public static byte[] read(HttpServletRequest request, boolean upload) throws IOException {
+    if (upload && request.getAttribute(CAPTURED_UPLOAD) instanceof byte[] captured) return captured;
     int limit = upload ? 6 * MIB : MIB;
     if (request.getContentLengthLong() > limit)
       throw new PayBizException(HttpStatus.PAYLOAD_TOO_LARGE);

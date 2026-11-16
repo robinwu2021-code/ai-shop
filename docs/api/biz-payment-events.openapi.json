@@ -2,21 +2,42 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Merchant payment events",
-    "version": "1.0.0",
-    "description": "Existing sandbox payment SSE contract retained when merging the live 166 baseline. The standalone Flutter ai-shop-bapp consumes it; repository Vue b-app remains deferred. Runtime is conditional on shop.payment-collections.enabled."
+    "version": "1.1.0",
+    "description": "Sandbox payment-collection SSE consumed by the standalone Flutter ai-shop-bapp (repository Vue b-app does not use it).\n\nSSE contract of GET /biz/payment/events (BizPaymentEventsController + paybridge.PaymentCollectionStream).\n\nAvailability: the controller and stream beans exist only when shop.payment-collections.enabled=true (default false) under @Profile api. shop.payment-collections.environment may only be SANDBOX, so this stream carries SANDBOX collection facts only (pushed by the signed internal receiver), never production payments. When disabled no handler is registered for the path (Spring NoResourceFoundException, i.e. 404 semantics); clients must treat 404 or any non text/event-stream response as 'feature unavailable' and fall back to polling GET /biz/payment/orders/{payOrderNo}.\n\nRequest headers: Authorization: Bearer <merchant token> (required; read by the handler itself and re-checked against TokenStore on every poll), X-Store-No (store scope; the stream is scoped to SANDBOX + tenant + subject kind + user + entity + store), Last-Event-ID (optional resume cursor). Accept: text/event-stream. Response headers: Content-Type text/event-stream, Cache-Control: no-cache, no-transform, X-Accel-Buffering: no. Emitter has no timeout (SseEmitter(0)).\n\nFrames (in order): 1) event 'ready' with id = cursor at the start position; 2) 'payment.succeeded' per committed projection row, id = cursor of that row; 3) ':heartbeat' SSE comment every heartbeat-ms (default 15000) when idle (no event name, no id); 4) terminal 'resync_required' or 'access_revoked' (no id) after which the server completes the response; 5) 'diagnostic.ping' (no id) only when shop.payment-collections.diagnostic.enabled=true for one configured user/entity/store, every 5-60 s for a bounded duration; it is a transport probe, never a payment fact, and must not be shown or counted.\n\nid format: opaque base64url (no padding) AES-GCM token = 12-byte IV + ciphertext of 'scope\\nsequence\\nexpiry'; expiry = issue time + retention-ms (default 7 days). Clients must store the last received id verbatim and send it as Last-Event-ID; never parse it.\n\nResume: no Last-Event-ID -> starts at the current committed high-water mark (resume=live, no backlog). Valid Last-Event-ID -> replays rows after it (delivery=replay up to the tip at connect time, then live). Expired cursor, or one below the retained floor / above the current tip -> HTTP 200 stream containing only 'resync_required' then close (no ready). Cursor of another user/store scope -> HTTP 403. Undecodable/tampered cursor -> HTTP 400. On resync_required the client must drop its cursor, reload state via GET /biz/payment/orders, and reconnect without Last-Event-ID.\n\nretry: the server never sends an SSE 'retry:' field; reconnect backoff is the client's choice (browser EventSource default ~3 s). Reconnect after network errors and after server aborts (storage/authorization failure, send queue full - capacity send-queue-capacity default 64 - or write deadline write-timeout-ms default 5000) using the last id. Do not reconnect automatically after access_revoked.\n\npayment.succeeded carries NO amount or currency: only identifiers and paidAt. Amounts must be read from GET /biz/payment/orders/{payOrderNo} (with X-Pay-Read-Environment: SANDBOX for sandbox facts).\n\nErrors before the stream starts use real HTTP status with body {code:<http status>,msg:'payment protocol request rejected',data:null} (PaymentCollectionExceptionHandler), except store admission rejections (HTTP 403 code 70006) and unauthenticated requests (401) produced by filters."
   },
   "paths": {
     "/biz/payment/events": {
       "get": {
         "operationId": "merchantPaymentEvents",
-        "summary": "Stream authorized store payment events",
+        "summary": "Stream SANDBOX payment.succeeded events of the current store",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "description": "Requires merchant BizContext and mch:pay:order:view. Cursor binds identity/store/expiry. ready, payment.succeeded, resync_required, access_revoked events and comment heartbeat. No cursor starts at current committed high water mark.",
+        "x-permission": "mch:pay:order:view",
+        "x-conditional-on": "shop.payment-collections.enabled=true (environment SANDBOX only)",
+        "description": "Permission (@PreAuthorize + re-check in PaymentCollectionStream.open and on every poll): mch:pay:order:view on the X-Store-No store. See info.description for frame order, cursor and resume rules.",
         "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^Bearer .+"
+            },
+            "description": "Merchant bearer token; the raw token (after 'Bearer ') is bound to the connection and re-validated every poll (default 1000 ms)."
+          },
+          {
+            "in": "header",
+            "name": "X-Store-No",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Store whose collection facts are streamed; caller must have store access and mch:pay:order:view there."
+          },
           {
             "in": "header",
             "name": "Last-Event-ID",
@@ -24,28 +45,109 @@
             "schema": {
               "type": "string"
             },
-            "description": "Opaque server-issued cursor from a prior connection."
+            "description": "Opaque id of the last frame received (ready or payment.succeeded). Absent = start live at the current high-water mark."
           }
         ],
         "responses": {
           "200": {
-            "description": "Authorized event stream, without proxy buffering.",
+            "description": "text/event-stream. Either ready + (payment.succeeded | heartbeat comment | diagnostic.ping)* + optional terminal (resync_required | access_revoked), or, for an expired/out-of-range Last-Event-ID, a single resync_required frame and close.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-cache, no-transform"
+                  ]
+                }
+              },
+              "X-Accel-Buffering": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no"
+                  ]
+                }
+              }
+            },
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "SSE lines. Example:\nevent:ready\nid:<cursor>\ndata:{\"schemaVersion\":1,\"serverNow\":1794000000000,\"storeNo\":\"ST...\",\"resume\":\"live\"}\n\n:heartbeat\n\nevent:payment.succeeded\nid:<cursor>\ndata:{\"schemaVersion\":1,\"eventId\":\"...\",\"messageNo\":\"...\",\"payOrderNo\":\"...\",\"storeNo\":\"ST...\",\"paidAt\":1794000001000,\"delivery\":\"live\"}\n\n"
+                },
+                "x-sse-events": {
+                  "ready": {
+                    "id": "cursor",
+                    "data": {
+                      "$ref": "#/components/schemas/ReadyEvent"
+                    }
+                  },
+                  "payment.succeeded": {
+                    "id": "cursor",
+                    "data": {
+                      "$ref": "#/components/schemas/PaymentSucceededEvent"
+                    }
+                  },
+                  "resync_required": {
+                    "id": null,
+                    "data": {
+                      "$ref": "#/components/schemas/ResyncRequiredEvent"
+                    },
+                    "terminal": true
+                  },
+                  "access_revoked": {
+                    "id": null,
+                    "data": {
+                      "$ref": "#/components/schemas/AccessRevokedEvent"
+                    },
+                    "terminal": true
+                  },
+                  "diagnostic.ping": {
+                    "id": null,
+                    "data": {
+                      "$ref": "#/components/schemas/DiagnosticPingEvent"
+                    }
+                  },
+                  "(comment) heartbeat": {
+                    "id": null,
+                    "data": null
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid cursor"
+            "description": "Undecodable or tampered Last-Event-ID (or invalid request)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolError"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Missing or expired merchant session"
+            "description": "Missing/expired merchant session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Identity/store/permission denied"
+            "description": "No store access / missing mch:pay:order:view / Last-Event-ID belongs to another scope. Store admission rejections use the 70006 envelope with data.nextAction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "shop.payment-collections.enabled is false: no handler is registered (exact body not pinned by tests)."
           }
         }
       }
@@ -56,6 +158,194 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ReadyEvent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "serverNow": {
+            "type": "integer",
+            "description": "Server clock, UTC epoch ms",
+            "format": "int64"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "resume": {
+            "type": "string",
+            "description": "live = no Last-Event-ID; replay = resumed from Last-Event-ID",
+            "enum": [
+              "live",
+              "replay"
+            ]
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "serverNow",
+          "storeNo",
+          "resume"
+        ],
+        "description": "event: ready; id: cursor of the start position. Always the first frame of an accepted stream."
+      },
+      "PaymentSucceededEvent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "description": "Source fact event id (unique per scope); use for client-side dedupe",
+            "maxLength": 128
+          },
+          "messageNo": {
+            "type": "string",
+            "description": "notify_message.message_no of the TRADE staff message created in the same transaction",
+            "maxLength": 64
+          },
+          "payOrderNo": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "storeNo": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "paidAt": {
+            "type": "integer",
+            "description": "Payment succeededAt from the source fact, UTC epoch ms",
+            "format": "int64"
+          },
+          "delivery": {
+            "type": "string",
+            "description": "replay = sequence <= tip at connect time; live = after",
+            "enum": [
+              "replay",
+              "live"
+            ]
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "eventId",
+          "messageNo",
+          "payOrderNo",
+          "storeNo",
+          "paidAt",
+          "delivery"
+        ],
+        "description": "event: payment.succeeded; id: cursor of this row. No amountMinor/currency by design."
+      },
+      "ResyncRequiredEvent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          }
+        },
+        "required": [
+          "schemaVersion"
+        ],
+        "description": "event: resync_required; no id; server completes the stream right after."
+      },
+      "AccessRevokedEvent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          }
+        },
+        "required": [
+          "schemaVersion"
+        ],
+        "description": "event: access_revoked; no id. Sent when the bearer session is gone/changed, the user lost store access or mch:pay:order:view, or entity changed; stream completes."
+      },
+      "DiagnosticPingEvent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "diagnostic": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "runId": {
+            "type": "string",
+            "description": "UUID per diagnostic job run"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "1-based counter within the run",
+            "format": "int64"
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "UTC epoch ms",
+            "format": "int64"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "diagnostic",
+          "runId",
+          "sequence",
+          "sentAt",
+          "storeNo",
+          "entityNo"
+        ],
+        "description": "event: diagnostic.ping; no id. Only for the single configured diagnostic target; ignore in UI."
+      },
+      "ProtocolError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "Equals the HTTP status"
+          },
+          "msg": {
+            "type": "string",
+            "enum": [
+              "payment protocol request rejected"
+            ]
+          },
+          "data": {
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
       }
     }
   }

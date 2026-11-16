@@ -740,3 +740,110 @@ N2 host接线偏差：旧15路由的BizOnboardingForwarder及Order(0)认证链�
 N1 写入/恢复已实现：真实 USR 登录及选店、短事务冻结、PAY 持久预留/确认/取消、本地提交后单向恢复、员工撤权和最终投影验收通过；[N1 证据与范围](../handoff/nearpay-biz-onboarding-2026-11-09/n1-local-acceptance-2026-11-10/README.md)。N2 已实现独立 PAY 业务单/私有证明/原操作回执、host 精确权限转发、App 冷恢复及 OPS 核实关联；真实双 JVM 重启、上传响应丢失与 OPS 成功/拒绝响应丢失旅程通过；[N2 证据、发布开关和剩余项](../handoff/nearpay-biz-onboarding-2026-11-09/n2-local-acceptance-2026-11-10/README.md)。
 
 最终 LINKED 不代表实际账户已核验、启用或门店可收款；本次账户仍 UNVERIFIED/PENDING，门店绑定数零，host 没有新增影子 payment/qualification。新增开关默认关闭，App N2 依赖既有 BIZ 基础开关提供会话/成员；首批 UI 仅 NEWEBPAY。独立库存/商品/经营配置迁移及真实供应商收款仍按证据页剩余项推进。本地增量检查范围及已知 H2 限制如证据页，未宣称全量或生产验收。保留三仓现有未提交改动，无提交/推送，166 不部署。
+
+## V45 增量实施（2026-11-15，开发中）
+
+### §0 需求对账
+
+V45批准原型为本轮需求：账号级entityNo资料，两入口共用；七组资料及私有附件；明确选渠道提交、审核中只读、批准后修订；不改变门店关联或直接授予收款资格。跨项目执行索引见App仓库`docs/handoff/v45-entity-workspace-20261115/backend-implementation-checklist.md`。
+
+### §1 边界与审核责任
+
+`entityNo`归shop，不等于独立运营组织`operatingEntityId`或PAY merchantNo。PAY通过可信来源映射承接资料，当前账号owner权限在shop每次请求验证。平台资料审批复用PAY不可变资料修订；既有shop登记审核是旧流程，不再从ACTIVE推断新资料版本已批准。渠道内部材料复核不等于已送渠道，送件回执才推进渠道状态；不移除既有审批闸。
+
+### §2 实施顺序
+
+1. 账号级实体详情授权与真实合同；保留旧单数详情路径。
+2. PAY实体级安全草稿／文件／命令回执，shop提供受信账号门面；文件5MiB，与现有PAY约束一致。
+3. 提交快照、实际声明及所选渠道请求；复用来源协作及资料修订；平台批准后按已有渠道流程处理。
+4. Flutter使用真实API与服务端权限，不以本地mock成功替代真实结果。
+
+影响范围：独立实体资料与进件；旧门店设置、正式改绑和支付路由保持原有业务校验。新合同和迁移未发布前保持关闭；不改已应用迁移。
+
+### §5 增量验证
+
+`PlatformEntityCreationFlowTest.personalAccountCreatesAndRecoversWithoutSelectedStore`新增无店详情及跨账号拒绝；后续资料／附件／审核测试按实现补入。本节不宣称尚未执行的测试通过。
+
+
+### V45 本地验证补记（2026-11-15）
+
+账号实体与PAY资料修订分离；提交先登记可恢复意图，平台批准仅投影登记事实，不创建门店／套餐／支付配置。投影使用原命令回执、观察代次及排他实体锁；旧登记写入口同锁隔离。新增失败尝试不能阻断先前有效批准事实。文件5MiB、私密正文不记请求日志；指定补件白名单与原审批在同一事务提交。
+
+PAY V100 和 SHOP V674→V675 已在本机隔离 MySQL9 演练；PAY 13项／SHOP 8项定向测试通过。未部署166，功能开关默认关闭。渠道准备只建立草稿，不是供应商受理；Ops React 私密材料面板和渠道后续状态聚合仍待对接。完整执行范围及证据见 App `docs/handoff/v45-entity-workspace-20261115/backend-integration-acceptance.md`。
+
+### V46 deployment update (2026-11-15; supersedes the local-only status above)
+
+166 now runs SHOP V675 and PAY V102/V103. Existing assisted-profile V100/V101 remain unchanged; V100 in the previous unpublished local exercise was a provisional number. The operator snapshot/supplement UI and actual channel-state aggregation are deployed. Channel preparation creates drafts only; it does not grant collection eligibility or prove provider acceptance.
+
+Platform entity materials use one canonical PRODUCTION partition. SANDBOX material writes are rejected before side effects; sandbox payments and channel applications retain their existing isolation. Internal material endpoints authenticate first, then bind the trusted configured environment before SEC/Vault and transaction access. No request-controlled environment or incompatible-scope suspension is allowed.
+
+Oscar account restoration, real entity creation and recovery of its original receipt have been verified. Incremental testing found and fixed missing SEC context, Connector/J DATETIME conversion and misleading App dependency/file labels. Final material submission, operator approval and payment results are tracked in the App handoff oscar-closure-progress.md; incomplete stages remain explicitly incomplete.
+
+## V46 对接（2026-11-16，开发中）
+
+档位：1（新增端点与透传字段，无表、无权限码变更）· 依据：App 仓库 `docs/design/经营实体资料全量方案-2026-11-15.md` §6、`经营实体资料-ai-shop调整方案-2026-11-15.md` · 本节为该 TDD 的增量，不另开文档。
+
+### §0 需求对账
+
+| 验收 | 落点 | 测试 |
+|---|---|---|
+| 蓝新补充资料随草稿、提交、修订、追加渠道送 PAY，且不进日志 | `BizEntityProfileController.Command.channelMaterials` | `channelMaterialsForwardedAndBounded` |
+| 联系人独立保存，不进修订；「账号本人」姓名与手机以 owner 账号为准 | `POST /biz/entities/{e}/contact`；`MerchantEntityService.ownerContact` | `contactUsesTheOwnerAccountAndIsOwnerOnly` |
+| 放弃修订草稿 | `POST /biz/entities/{e}/revision-discards` | `revisionDiscardIsForwardedForTheOwner` |
+| 已上传证明的缩略图只给 owner，不缓存 | `GET /biz/entities/{e}/files/{fileId}/preview` | `previewIsOwnerOnlyAndNotCached` |
+
+### §1 边界
+
+ai-shop 仍只做 owner 校验、补 `sourceScope`／`actorRef` 并转发 PAY；私密资料不落 SHOP。联系人「账号本人」时，姓名取 owner 的 `mch_account.display_name`、手机取 `login_phone`（`+886 9…` 转 `09…`；非台湾手机保留客户端值），客户端传入的这两项不采用。缩略图路径用文件 id（引用 `file:entity-profile/<32hex>` 的十六进制部分），因为客户端网络层不允许路径中编码的冒号和斜杠。PAY 对应内部端点：`/contact`、`/revision-discards`、`/files/{fileId}/preview`（near-pay 按其方案实现；未上线前 App 以 `ENTITY_WORKSPACE_V46_SERVER` 关闭这三项）。
+
+### §2 方案
+
+| 契约 | 变更 |
+|---|---|
+| `Command` | 新增 `channelMaterials`：`{NEWEBPAY|LINEPAY|JKOPAY: {key≤64: value≤512}}`，≤3 渠道、每渠道 ≤20 项 |
+| `POST /biz/entities/{e}/contact` | `ContactCommand{requestNo, expectedContactVersion, schemaVersion, contactSource(ACCOUNT|REPRESENTATIVE|OTHER), contactName, contactMobile(09…), contactEmail, disputeEmail, contactSameAddress, contactCity, contactArea, contactAddress}` → PAY `POST …/contact` |
+| `POST /biz/entities/{e}/revision-discards` | `Command`（requestNo、expectedVersion、schemaVersion）→ PAY `POST …/revision-discards` |
+| `GET /biz/entities/{e}/files/{fileId}/preview` | `fileId` `[a-f0-9]{32}` → PAY `GET …/files/{fileId}/preview`；回 `image/jpeg` 或 204，`Cache-Control: no-store` |
+| 配置 | `shop.pay.entity-profiles.enabled` 写入 `application.yml`，默认 false |
+
+错误码沿用 `EntityProfileRemoteCalls`（400／403／404／409／依赖不可用），不新增 i18n 词条。
+
+### §5 实现 → 需求
+
+`mvn -pl shop-app test -Dtest='EntityProfileAccountFlowTest,PlatformEntityCreationFlowTest'`（本机，Maven 3.9.9／JDK 21）：
+
+```
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.EntityProfileAccountFlowTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.PlatformEntityCreationFlowTest
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+```
+
+新增 4 项：`channelMaterialsForwardedAndBounded`、`contactUsesTheOwnerAccountAndIsOwnerOnly`、`revisionDiscardIsForwardedForTheOwner`、`previewIsOwnerOnlyAndNotCached`。`BackendI18nParityTest` 通过。`scripts/check-app-backend-orphan.py` 通过。账号级实体资料 10 个路径登记进 `BizEndpointPermTest.FOUNDATION_READS`（`@perm.merchantAccount()`），`commerceDecisionsAreEnforced` 通过。
+
+pre-push 全量（MySQL 9.7 本机，4594 项／36 模块）：5 项失败均在分支基线 `409c8f41f` 上同样失败，与本节无关，留给对应负责人：
+- `ArchitectureTest.everyScheduledMethodMustBeLocked`：`EntityRegistrationProjectionCoordinator#run` 无分布式锁
+- `BizEndpointPermTest.everyBizEndpointHasADecision`：剩 `/biz/entities/create-results/{requestNo}`、`/biz/store/settings/contact` 未定权限
+- `BizEndpointPermTest.decisionsAreActuallyEnforced`：`BizEntityController` 的 `/biz/entities`、`/biz/entity/{entityNo}` 表里是 `STORE_ADMIN`，代码是 `merchantAccount`
+- `CommerceMerchantScopeFlowTest.legacyOwnerCannotReachNewMerchantThroughSameNumberStaffAccount[2]`、`CommerceStoreCreationFlowTest.nativeQuickStartAndOperatorApprovalCommitHostAndCommerceTogether`（基线连跑两次均失败）
+
+### §6 设计 → 实现
+
+```
+ .../neargo/shop/payclient/PayEntityProfileApi.java |  19 ++
+ .../portal/biz/BizEntityProfileController.java     |  99 +++++++-
+ .../shop-app/src/main/resources/application.yml    |   4 +
+ .../scenario/BizEntityProfileControllerAccess.java |  12 +
+ .../scenario/EntityProfileAccountFlowTest.java     | 178 +++++++++++++
+ .../merchant/service/MerchantEntityService.java    |   8 +
+ .../service/impl/MerchantEntityServiceImpl.java    |  10 +
+ ...backend-ui-delivery-entity-profile-flutter.json |  17 +-
+ docs/api/entity-profile-workspace.openapi.json     | 280 ++++++++++++++++++++-
+ ...265\204\346\226\231\346\217\220\344\272\244.md" |  37 +++
+ 10 files changed, 661 insertions(+), 3 deletions(-)
+```
+
+偏差说明：
+- 原计划为两个 409 原因新增 i18n 词条；`EntityProfileRemoteCalls` 只按 HTTP 状态映射，不读 PAY 正文，故沿用 `CONFLICT`，不新增词条。
+- 原计划的账号接口 `name`（S6）：本后端没有 `/biz/auth/account`，改为在 `contact` 端点内由 owner 的 `mch_account` 覆盖「账号本人」的姓名与手机（`MerchantEntityService.ownerContact`）。
+- 缩略图响应体用 `ByteArrayResource`：全局 `ApiResponseWrapper` 会把 `byte[]` 包成信封，`Resource` 不包。
+

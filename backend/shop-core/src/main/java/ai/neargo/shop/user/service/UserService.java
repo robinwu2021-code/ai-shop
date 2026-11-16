@@ -10,7 +10,7 @@ public interface UserService {
     /**
      * 当前登录人的 C 端档案，<b>没有就返回 null 而不是抛 401</b>。
      *
-     * <p>给 B 端用。员工走 {@code /biz/auth/staff-login}（手机号 + 验证码）登录，
+     * <p>给 B 端用。员工身份的会话（按手机号认出的员工行）
      * <b>可能根本没有 C 端账号</b> —— 对他而言「查不到 usr_account」是正常状态，
      * 不是会话失效。用 {@link #profile()} 会把这件正常的事报成 10401，
      * 表现为「店员登录进得去，刷新一次就被踢回入驻引导页」。
@@ -81,4 +81,11 @@ public interface UserService {
      * <p><b>有未走完的订单时拒绝</b>：注销后没人能再联系到他，而货可能在路上。
      */
     void deregister();
+
+    /**
+     * Deletes the given account without the caller-session lookup or the buyer open-order check:
+     * unbinds every credential and the person record, anonymizes the account and revokes its sessions
+     * in both pools. Callers run their own blockers first (the merchant App re-runs its precheck).
+     */
+    void deregisterAccount(String userNo);
 }

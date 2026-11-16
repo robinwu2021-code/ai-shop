@@ -96,6 +96,16 @@ public interface PersonService {
     void deregister(String userNo);
 
     /**
+     * The account owner changed their login phone (TDD-商户App统一登录与账号 D6).
+     *
+     * <p>The person follows the account: its phone becomes {@code newPhone}. When {@code newPhone}
+     * already has an unclaimed person (a lead a merchant recorded earlier), that lead is merged into
+     * the account's person. When it belongs to another live account the change is refused with
+     * {@code PERSON_PHONE_TAKEN}. An account without a person gets one bound to the new phone.
+     */
+    void changePhone(String userNo, String newPhone);
+
+    /**
      * 把一份人档并进另一份。<b>不可逆</b>，落 {@code usr_person_merge_log}。
      *
      * <p>只在两种情况下发生：换号撞上别人的线索档、运营在申诉里人工处置。

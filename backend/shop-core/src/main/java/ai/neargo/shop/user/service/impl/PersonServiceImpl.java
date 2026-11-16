@@ -319,6 +319,34 @@ public class PersonServiceImpl implements PersonService {
                 fromPersonNo, toPersonNo, reason, affectedMembers);
     }
 
+    @Override
+    @Transactional
+    public void changePhone(String userNo, String newPhone) {
+        String hash = crypto.hash(newPhone);
+        if (userNo == null || userNo.isBlank() || hash == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        UsrPerson mine = findByUser(userNo).orElse(null);
+        UsrPerson target = byHash(hash);
+        if (target != null && target.getUserNo() != null && !target.getUserNo().isBlank()
+                && !userNo.equals(target.getUserNo()) && !accountGone(target.getUserNo())) {
+            throw BizException.of(ErrorCode.PERSON_PHONE_TAKEN);
+        }
+        if (mine == null) {
+            bind(userNo, newPhone, true);
+            return;
+        }
+        if (target != null && !target.getPersonNo().equals(mine.getPersonNo())) {
+            // The lead's own phone hash is released by merge, so the account's person can take it.
+            merge(target.getPersonNo(), mine.getPersonNo(), "PHONE_CHANGE", 0, userNo);
+        }
+        mine.setPhoneHash(hash);
+        mine.setPhoneEnc(crypto.encrypt(newPhone));
+        mine.setPhoneTail(crypto.tail(newPhone));
+        personMapper.updateById(mine);
+        claimMembers(mine.getPersonNo());
+    }
+
     private UsrPerson byHash(String hash) {
         return personMapper.selectOne(Wrappers.<UsrPerson>lambdaQuery()
                 .eq(UsrPerson::getPhoneHash, hash).last("limit 1"));

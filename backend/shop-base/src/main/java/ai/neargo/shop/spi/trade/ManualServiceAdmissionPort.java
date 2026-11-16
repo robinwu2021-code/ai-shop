@@ -40,6 +40,11 @@ public interface ManualServiceAdmissionPort {
         throw new UnsupportedOperationException("counter purchase unavailable");
     }
 
+    /** Saved progress of one counter quote (accepted? placed?). */
+    default CounterQuoteState readCounterState(CheckoutScope scope, OperationRef operation) {
+        throw new UnsupportedOperationException("counter purchase unavailable");
+    }
+
     /** Explicit in-person purchase acceptance is separate from registration and receipt. */
     default CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
         throw new UnsupportedOperationException("counter purchase unavailable");
@@ -244,6 +249,17 @@ public interface ManualServiceAdmissionPort {
             return "AcceptCounterReq[REDACTED]";
         }
     }
+
+    /**
+     * Where a counter quote stands, so a reopened cashier page resumes instead of re-accepting.
+     *
+     * @param canAccept    no acceptance yet and the quote is still open
+     * @param confirmation the recorded acceptance, or null
+     * @param result       {@code phase} is QUOTED, CONFIRMED or CREATED; {@code orderNo} once placed
+     */
+    record CounterQuoteState(boolean canAccept, CounterConfirmation confirmation, CounterResult result) {}
+
+    record CounterResult(String phase, String orderNo) {}
 
     /** Immutable owner acceptance; current identity linkage never rewrites its historical party. */
     record CounterConfirmation(

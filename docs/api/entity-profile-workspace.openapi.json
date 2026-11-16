@@ -1,0 +1,1248 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "V45 Account Entity Material API",
+    "version": "0.1.0-development",
+    "description": "Account USR owner scope, no selected store required. Existing singular /biz/entity/{entityNo} remains compatible. New endpoints require shop.pay.entity-profiles.enabled and near-pay.entity-profiles.enabled; private live App adapter requires ENTITY_WORKSPACE_LIVE. Channel selection acceptance is not channel submission or collection eligibility. Schema currently TW company/business workspace; channel legal-form mappings remain independently validated."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/biz/entities/{entityNo}/profile-template": {
+      "get": {
+        "operationId": "getEntityprofile_template",
+        "summary": "Entity material template",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/profile-draft": {
+      "get": {
+        "operationId": "getEntityprofile_draft",
+        "summary": "Read scoped draft",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postEntityprofile_draft",
+        "summary": "Save draft",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/review-submissions": {
+      "post": {
+        "operationId": "postEntityreview_submissions",
+        "summary": "Freeze material and chosen channels for platform review",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/revisions": {
+      "post": {
+        "operationId": "postEntityrevisions",
+        "summary": "Start approved/rejected revision or requested supplementation",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/channel-requests": {
+      "post": {
+        "operationId": "postEntitychannel_requests",
+        "summary": "Add unrequested channels",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/commands/{requestNo}": {
+      "get": {
+        "operationId": "getEntitycommandsResult",
+        "summary": "Recover original command",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "requestNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/files": {
+      "post": {
+        "summary": "Upload private entity evidence, not a public image",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestNo",
+                  "purpose",
+                  "file"
+                ],
+                "properties": {
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "maxLength": 5242880
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FileReceipt"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities": {
+      "post": {
+        "summary": "Create entity without store or approval; optional safe profile initialization has independent recovery state",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestNo",
+                  "name"
+                ],
+                "properties": {
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "legalForm": {
+                    "type": "string"
+                  },
+                  "profileFields": {
+                    "$ref": "#/components/schemas/InitialProfile"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Creation"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/create-results/{requestNo}": {
+      "get": {
+        "summary": "Recover entity creation and actual PAY initialization outcome; PENDING/UNKNOWN is not completion",
+        "parameters": [
+          {
+            "name": "requestNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard shop success envelope; authorization and business errors use existing shop error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Creation"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/contact": {
+      "post": {
+        "summary": "Save the entity contact outside material revisions (V46); ACCOUNT name and mobile come from the owner account",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/revision-discards": {
+      "post": {
+        "summary": "Discard a revision draft (DRAFT, rejected or sync failed); refused while under review or unknown",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/files/{fileId}/preview": {
+      "get": {
+        "summary": "Owner-only thumbnail of an uploaded evidence file; no-store",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "description": "The 32 hex characters of file:entity-profile/<id>",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JPEG thumbnail",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No thumbnail (for example a PDF)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "EntityFields": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "legalForm": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "taxNo": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "incorporationDate": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "capitalAmount": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "registeredAddress": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "companyPhone": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "representativeKind": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "arcResidenceType": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "idIssueType": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "representativeName": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "identityNo": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "nationality": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "birthDate": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "issueDate": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "expiryDate": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "issuePlace": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "arcBackNo": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "corporateTaxNo": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "corporateName": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "corporateAddress": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "corporateCapital": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "contactName": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "contactMobile": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "contactEmail": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "contactAddress": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "disputeEmail": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "businessName": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "industry": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "businessDescription": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "businessAddress": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "website": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "bankCode": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "branchCode": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "accountName": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "bankAccount": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "beneficiaryRelation": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "beneficiaryCount": {
+            "type": "string",
+            "maxLength": 512
+          }
+        },
+        "patternProperties": {
+          "^beneficiary\\.[0-9]\\.(name|nationality|birthDate|identityNo|relationship)$": {
+            "type": "string",
+            "maxLength": 512
+          }
+        },
+        "additionalProperties": false,
+        "x-sensitive": "No plaintext persistence in device journal, analytics, logs or ordinary relational columns."
+      },
+      "Command": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "expectedVersion",
+          "schemaVersion"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "schemaVersion": {
+            "enum": [
+              "TW_ENTITY_1",
+              "TW_ENTITY_2"
+            ]
+          },
+          "fields": {
+            "$ref": "#/components/schemas/EntityFields"
+          },
+          "documents": {
+            "type": "object",
+            "maxProperties": 30,
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^file:entity-profile/[a-f0-9]{32}$"
+            }
+          },
+          "channels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "NEWEBPAY",
+                "LINEPAY",
+                "JKOPAY"
+              ]
+            }
+          },
+          "consentVersion": {
+            "type": "string"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "channelMaterials": {
+            "type": "object",
+            "maxProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "NEWEBPAY",
+                "LINEPAY",
+                "JKOPAY"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "maxProperties": 20,
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 512
+              }
+            },
+            "description": "Channel supplements (Newebpay: merchantName, mcType, merchantType, merchantNameEn, merchantAddressEn, managerNameEn, serviceEmail, methods); frozen with the submission"
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "required": [
+          "entityNo",
+          "version",
+          "schemaVersion",
+          "fields",
+          "documents",
+          "platformReview",
+          "allowedActions",
+          "missingFields"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "schemaVersion": {
+            "type": "string"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/EntityFields"
+          },
+          "documents": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "platformReview": {
+            "enum": [
+              "NONE",
+              "REVIEWING",
+              "APPROVED",
+              "REJECTED",
+              "SUPPLEMENT_REQUIRED",
+              "SUPERSEDED"
+            ]
+          },
+          "approvedVersion": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "merchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PAY platform merchant number, only disclosed after approval; never alias entityNo."
+          },
+          "channels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "EDIT",
+                "UPLOAD",
+                "SUBMIT",
+                "CREATE_REVISION",
+                "REQUEST_CHANNEL"
+              ]
+            }
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supplementFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supplementDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "channelOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelOption"
+            }
+          },
+          "consentVersion": {
+            "type": "string"
+          },
+          "consentText": {
+            "type": "string"
+          },
+          "submittedRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submittedProfileVersion": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "revisionState": {
+            "enum": [
+              "DRAFT",
+              "PLATFORM_REVIEWING",
+              "PLATFORM_REJECTED",
+              "PLATFORM_APPROVED",
+              "CHANNEL_SYNCING",
+              "SYNC_FAILED",
+              "EFFECTIVE",
+              "DISCARDED"
+            ],
+            "description": "Layer A (PAY V46); clients derive it from platformReview when absent"
+          },
+          "effectiveRevisionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactVersion": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "channelMaterials": {
+            "type": "object",
+            "maxProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "NEWEBPAY",
+                "LINEPAY",
+                "JKOPAY"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "maxProperties": 20,
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 512
+              }
+            },
+            "description": "Channel supplements (Newebpay: merchantName, mcType, merchantType, merchantNameEn, merchantAddressEn, managerNameEn, serviceEmail, methods); frozen with the submission"
+          },
+          "channelModifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "changeNo": {
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "PENDING_APPROVAL",
+                    "SENDING",
+                    "ACCEPTED",
+                    "CHANNEL_REVIEWING",
+                    "APPLIED",
+                    "FAILED",
+                    "UNKNOWN",
+                    "CANCELLED"
+                  ]
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InitialProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taxNo",
+          "contactName",
+          "contactMobile",
+          "contactEmail"
+        ],
+        "properties": {
+          "taxNo": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$"
+          },
+          "contactName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "contactMobile": {
+            "type": "string",
+            "pattern": "^09[0-9]{8}$"
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 128
+          }
+        }
+      },
+      "ChannelOption": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "canSelect": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": [
+              "API",
+              "MANUAL"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Creation": {
+        "type": "object",
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "entity": {
+            "type": "object"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "profileInitialization": {
+            "enum": [
+              "NOT_REQUESTED",
+              "PENDING",
+              "UNKNOWN",
+              "COMPLETE"
+            ]
+          },
+          "profileRequestNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "FileReceipt": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "contentType": {
+            "enum": [
+              "application/pdf",
+              "image/jpeg",
+              "image/png"
+            ]
+          },
+          "byteLength": {
+            "type": "integer",
+            "maximum": 5242880
+          }
+        }
+      },
+      "ContactCommand": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "expectedContactVersion",
+          "schemaVersion",
+          "contactSource"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedContactVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "schemaVersion": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "contactSource": {
+            "enum": [
+              "ACCOUNT",
+              "REPRESENTATIVE",
+              "OTHER"
+            ]
+          },
+          "contactName": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "contactMobile": {
+            "type": "string",
+            "pattern": "^09[0-9]{8}$"
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 128
+          },
+          "disputeEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 128
+          },
+          "contactSameAddress": {
+            "type": "boolean"
+          },
+          "contactCity": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "contactArea": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "contactAddress": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      }
+    }
+  },
+  "x-rollout-status": "DEPLOYED_166_INCREMENTAL_ACCEPTANCE_IN_PROGRESS",
+  "x-identity-map": {
+    "entityNo": "shop mch_entity",
+    "operatingEntityId": "independent organization, never alias",
+    "merchantNo": "PAY identity resolved by trusted source mapping",
+    "onboardingNo": "one channel application"
+  },
+  "x-audit-responsibility": {
+    "platform": "immutable entity material revision via existing PAY profile approval",
+    "internalChannelReview": "existing per-channel material review, no automatic bypass",
+    "providerReview": "actual channel receipt/result only"
+  },
+  "x-file-limit-bytes": 5242880,
+  "x-platform-profile-environment": "Canonical PRODUCTION storage partition only: global platform materials/revisions do not fork with payment sandbox. SANDBOX material operations are rejected before writes. Sandbox channels and payments remain on existing sandbox APIs."
+}

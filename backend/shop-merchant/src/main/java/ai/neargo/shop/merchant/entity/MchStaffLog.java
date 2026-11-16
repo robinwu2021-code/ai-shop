@@ -27,6 +27,8 @@ public class MchStaffLog extends BaseEntity {
     public static final String STAFF_ADD = "STAFF_ADD";
     public static final String STAFF_ENABLE = "STAFF_ENABLE";
     public static final String STAFF_DISABLE = "STAFF_DISABLE";
+    /** The staff member changed their own login phone; this entity's row followed (D5). */
+    public static final String STAFF_PHONE_CHANGE = "STAFF_PHONE_CHANGE";
     /** 授予某店某角色 */
     public static final String ROLE_GRANT = "ROLE_GRANT";
     /** 撤销某店某角色。撤到一个不剩 = 从这家店移除他 */

@@ -209,7 +209,7 @@ public final class PaymentCollectionStream implements AutoCloseable {
 
     /** Diagnostic frames share the real writer but have neither a payment cursor nor financial side effects. */
     public int diagnostic(PaymentCollectionDiagnosticProperties target, String runId, long sequence, long sentAt) {
-        if (!properties.isEnabled() || !"SANDBOX".equals(properties.getEnvironment()))
+        if (!properties.isEnabled() || !properties.acceptedEnvironments().contains("SANDBOX"))
             throw new IllegalStateException("SSE diagnostics require SANDBOX collections");
         int queued = 0;
         for (Connection c : connections) {

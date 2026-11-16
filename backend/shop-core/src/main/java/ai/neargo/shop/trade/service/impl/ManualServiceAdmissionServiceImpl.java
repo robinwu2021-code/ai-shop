@@ -187,6 +187,12 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     }
 
     @Override
+    public ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState readCounterState(
+            CheckoutScope scope, OperationRef operation) {
+        return checkout.readCounterState(scope, operation);
+    }
+
+    @Override
     public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
         return checkout.acceptCounter(scope, request);
     }

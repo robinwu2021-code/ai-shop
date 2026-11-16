@@ -41,6 +41,13 @@ class PayBizRequestBodyTest {
   }
 
   @Test
+  void smallMultipartPreservesCommandParametersAndFile() throws Exception {
+    byte[] body = multipart(1024);
+    var req = request("multipart/form-data; boundary=raw-boundary", body);
+    assertArrayEquals(body, PayBizRequestBody.read(req, true));
+  }
+
+  @Test
   void jsonAndUnknownLengthAreBounded() throws Exception {
     var req = request("application/json", new byte[1024 * 1024]);
     assertEquals(1024 * 1024, PayBizRequestBody.read(req, false).length);

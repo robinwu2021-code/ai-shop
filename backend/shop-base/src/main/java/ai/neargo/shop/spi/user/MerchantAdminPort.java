@@ -20,6 +20,10 @@ import java.util.List;
  * 分账接收方清单里，谁也说不清它算不算数。所以走审核那条路的，必须审过才建。
  */
 public interface MerchantAdminPort {
+    /** Enrolled entity registrations are maintained through immutable PAY profile revisions. */
+    default boolean managedRegistration(String tenantNo,String entityNo){return false;}
+
+    int MAX_ENTITIES_PER_ACCOUNT = 5;
 
     /**
      * 激活商家。<b>建商家 + 配可达范围 + 建分账主体，三件事在一个事务里</b>。
@@ -58,6 +62,9 @@ public interface MerchantAdminPort {
      */
     QuickStartResult quickStart(QuickStartCommand cmd);
 
+    /** Creates only a pending entity, owner membership and FREE plan; caller holds the personal account row lock. */
+    String createPendingEntity(String ownerUserNo, String name, String legalForm, String market);
+
     /**
      * 这个账号名下「待补证照」的占位主体（{@code PENDING_LICENSE}）。
      *
@@ -95,7 +102,13 @@ public interface MerchantAdminPort {
     record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                              String market, String industryText, String subIndustryText, String addressDetail,
                              Integer latE6, Integer lngE6, String coordSys, String industryCode,
-                             String subIndustryCode) {
+                             String subIndustryCode, String entityName) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail,
+                                 Integer latE6, Integer lngE6, String coordSys, String industryCode, String subIndustryCode) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                 addressDetail, latE6, lngE6, coordSys, industryCode, subIndustryCode, null);
+        }
         /** 子行业之前（双地图）的形状：没有行业码 */
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                                  String market, String industryText, String subIndustryText, String addressDetail,

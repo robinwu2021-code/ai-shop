@@ -2991,7 +2991,7 @@
       "get": {
         "operationId": "getOnboardingPaymentChannels",
         "summary": "读取可用收款进件通道",
-        "description": "含尚未开通通道的 NONE 占位；渠道取实际返回。AGGREGATED 不以独立进件作为建店前置。",
+        "description": "含尚未开通通道的 NONE 占位；渠道取实际返回。AGGREGATED 不以独立进件作为建店前置。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3210,7 +3210,7 @@
       "get": {
         "operationId": "getOnboardingPaymentApplications",
         "summary": "读取进件状态及缺失项",
-        "description": "仅主体默认行和当前授权店行；必须按 storeNo 区分默认与独立结算。",
+        "description": "仅主体默认行和当前授权店行；必须按 storeNo 区分默认与独立结算。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3361,7 +3361,7 @@
       "post": {
         "operationId": "submitOnboardingPaymentMaterials",
         "summary": "提交收款进件资料",
-        "description": "主体默认进件省略 storeNo；独立结算传所选店号，须存在对应行/按流程先创建。按 missing 补材料。ACTIVE 不接受重复提交；真实结果由通道决定。",
+        "description": "主体默认进件省略 storeNo；独立结算传所选店号，须存在对应行/按流程先创建。按 missing 补材料。ACTIVE 不接受重复提交；真实结果由通道决定。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3550,7 +3550,7 @@
       "post": {
         "operationId": "openOnboardingStorePayment",
         "summary": "创建分店独立收款进件占位（按需）",
-        "description": "仅需要分店独立结算时调用；路径与选店一致。不调用则可使用主体默认收款行。占位不等于提交渠道。",
+        "description": "仅需要分店独立结算时调用；路径与选店一致。不调用则可使用主体默认收款行。占位不等于提交渠道。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3709,7 +3709,7 @@
       "post": {
         "operationId": "refreshOnboardingPaymentStatus",
         "summary": "主动回查收款进件结果",
-        "description": "主体默认行不传 storeNo；独立行传所选店号。回查不等于重新提交开户资料。",
+        "description": "主体默认行不传 storeNo；独立行传所选店号。回查不等于重新提交开户资料。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -5838,6 +5838,237 @@
           }
         ]
       }
+    },
+    "/biz/merchant/store-openings": {
+      "post": {
+        "operationId": "openStoreWithReceipt",
+        "x-implementation-status": "deployed-166",
+        "x-permission": "merchantAccount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Receipt, entity/store creation and FREE initialization share one transaction. Failure rolls back; query original requestNo after an uncertain response, then retry the identical request if absent.",
+        "responses": {
+          "200": {
+            "description": "Standard API envelope; business errors include 10409 conflict and 10404 not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreOpeningReceipt"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreOpeningRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/store-openings/{requestNo}": {
+      "get": {
+        "operationId": "storeOpeningResult",
+        "x-implementation-status": "deployed-166",
+        "x-permission": "merchantAccount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Only the same tenant and authenticated account subject can query its receipt. NOT_FOUND means no committed receipt, not permission to invent a new request ID.",
+        "responses": {
+          "200": {
+            "description": "Standard API envelope; business errors include 10409 conflict and 10404 not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreOpeningReceipt"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "requestNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
+    "/biz/store/settings": {
+      "get": {
+        "operationId": "storeSettings",
+        "x-implementation-status": "deployed-166",
+        "x-permission": "merchantAccount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Current selected store. Opaque per-section content versions and explicit allowedActions; not a sequence number.",
+        "responses": {
+          "200": {
+            "description": "Standard API envelope; business errors include 10409 conflict and 10404 not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreSettingsView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store/settings/basic": {
+      "post": {
+        "operationId": "storeSettingsBasic",
+        "x-implementation-status": "deployed-166",
+        "x-permission": "biz:store:admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Compare BASIC version and update name/address/detail atomically under the existing store ownership lock. Conflict preserves the server values.",
+        "responses": {
+          "200": {
+            "description": "Standard API envelope; business errors include 10409 conflict and 10404 not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreSettingsView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSettingsBasic"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store/settings/hours": {
+      "post": {
+        "operationId": "storeSettingsHours",
+        "x-implementation-status": "deployed-166",
+        "x-permission": "biz:store",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Compare HOURS version and update only opening hours. Other sections do not conflict.",
+        "responses": {
+          "200": {
+            "description": "Standard API envelope; business errors include 10409 conflict and 10404 not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "const": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StoreSettingsView"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSettingsHours"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7615,6 +7846,15 @@
               null
             ],
             "description": "坐标系：AMAP 选点为 gcj02，GOOGLE 选点为 wgs84（取 /biz/geo/tips、/biz/geo/reverse 返回的 coordSys）。给了坐标就必填且只能是这两个之一，否则 10400；没给坐标时忽略、不落库。坐标原样存 mch_store.lat_e6/lng_e6，坐标系存 coord_sys，不做转换。"
+          },
+          "entityName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Optional operating entity name, independent of storeName. Omitted preserves legacy naming. Enabled when store-creation-context.entityNameSupported=true."
           }
         },
         "required": [
@@ -8446,6 +8686,15 @@
               "null"
             ],
             "description": "创建时持久化的子业态；旧店可为空。"
+          },
+          "entityName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Optional operating entity name, independent of storeName. Omitted preserves legacy naming. Enabled when store-creation-context.entityNameSupported=true."
           }
         },
         "required": [
@@ -9221,7 +9470,186 @@
           "payActivation",
           "features"
         ]
+      },
+      "StoreOpeningReceipt": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "entityNo",
+          "storeNo",
+          "status"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "status": {
+            "const": "COMPLETED"
+          }
+        }
+      },
+      "StoreOpeningRequest": {
+        "type": "object",
+        "required": [
+          "requestNo",
+          "fields"
+        ],
+        "properties": {
+          "requestNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceStoreNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "$ref": "#/components/schemas/QuickStartRequest"
+          }
+        },
+        "description": "entityNo omitted creates/resumes an account-owned entity; EXISTING requires sourceStoreNo from store-creation-context. Only the published FREE initialization is executed. Same requestNo must retain the same complete intent."
+      },
+      "StoreSettingsProfile": {
+        "type": "object",
+        "required": [
+          "name",
+          "address",
+          "addressDetail",
+          "openHours"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "addressDetail": {
+            "type": "string"
+          },
+          "openHours": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "bannerUrl": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreSettingsView": {
+        "type": "object",
+        "required": [
+          "profile",
+          "sectionVersions",
+          "allowedActions"
+        ],
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/StoreSettingsProfile"
+          },
+          "sectionVersions": {
+            "type": "object",
+            "required": [
+              "BASIC",
+              "HOURS"
+            ],
+            "properties": {
+              "BASIC": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "HOURS": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "EDIT_BASIC",
+                "EDIT_HOURS"
+              ]
+            }
+          }
+        }
+      },
+      "StoreSettingsBasic": {
+        "type": "object",
+        "required": [
+          "expectedVersion",
+          "name",
+          "address",
+          "addressDetail"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "addressDetail": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "StoreSettingsHours": {
+        "type": "object",
+        "required": [
+          "expectedVersion",
+          "openHours"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "openHours": {
+            "type": "string",
+            "maxLength": 512
+          }
+        }
       }
     }
+  },
+  "x-prospective-contracts": {
+    "appEventsV2": {
+      "status": "NOT_IMPLEMENTED",
+      "document": "app-events-v2.openapi.json"
+    },
+    "entityMapping": "经营实体映射与统一消息合同.md"
   }
 }

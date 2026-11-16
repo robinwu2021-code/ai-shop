@@ -59,6 +59,14 @@ public interface MerchantEntityService {
      */
     EntityStoresVO detail(String userNo, String entityNo);
 
+    /** The owner's own account on this entity: display name and login phone (either may be null). */
+    record OwnerContact(String name, String phone) {}
+
+    /**
+     * 实体 owner 本人的账号资料，供联系人「账号本人」使用；不是 owner 时 403（与 {@link #detail} 一致）。
+     */
+    OwnerContact ownerContact(String userNo, String entityNo);
+
     /**
      * 「这次操作作用在哪张证照上」的<b>唯一判定点</b>（线 B · B3）。
      *
