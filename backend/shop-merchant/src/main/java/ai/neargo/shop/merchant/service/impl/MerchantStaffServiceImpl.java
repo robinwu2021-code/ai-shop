@@ -489,6 +489,99 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
 
+    // ------------------------------------------------------------ account self-service
+
+    @Override
+    public List<String> ownedEntityNos(String userNo) {
+        if (userNo == null || userNo.isBlank()) return List.of();
+        return DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                        .eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)
+                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)))
+                .stream().map(MchAccount::getEntityNo).distinct().toList();
+    }
+
+    @Override
+    public List<String> ownedStoreNos(String userNo) {
+        List<String> entities = ownedEntityNos(userNo);
+        if (entities.isEmpty()) return List.of();
+        return DataScopeContext.executeWithoutScope(() -> storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .in(MchStore::getEntityNo, entities)))
+                .stream().map(MchStore::getStoreNo).distinct().toList();
+    }
+
+    @Override
+    public int activeStaffMemberships(String userNo, String phone) {
+        return (int) staffRowsOf(userNo, phone).stream()
+                .filter(a -> MchAccount.ACTIVE.equals(a.getStatus())).count();
+    }
+
+    @Override
+    @Transactional
+    public void followLoginPhone(String userNo, String oldPhone, String newPhone) {
+        List<MchAccount> owners = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)));
+        List<MchAccount> staff = oldPhone == null ? List.of() : DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                        .eq(MchAccount::getLoginPhone, oldPhone).eq(MchAccount::getIsOwner, false)
+                        .and(w -> w.isNull(MchAccount::getUserNo).or().eq(MchAccount::getUserNo, userNo))));
+        List<MchAccount> moving = new java.util.ArrayList<>(owners);
+        moving.addAll(staff);
+        for (MchAccount a : moving) {
+            boolean taken = DataScopeContext.executeWithoutScope(() -> staffMapper.selectCount(
+                    Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getEntityNo, a.getEntityNo())
+                            .eq(MchAccount::getLoginPhone, newPhone).eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                            .ne(MchAccount::getMchAccountNo, a.getMchAccountNo()))) > 0;
+            if (taken) throw BizException.of(ErrorCode.CONFLICT);
+        }
+        for (MchAccount a : moving) {
+            a.setLoginPhone(newPhone);
+            DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
+        }
+        for (MchAccount a : staff) {
+            log(a.getEntityNo(), a.getMchAccountNo(), MchStaffLog.STAFF_PHONE_CHANGE, null, null,
+                    "员工更换了登录手机");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void retireAccount(String userNo, String phone) {
+        List<String> stores = ownedStoreNos(userNo);
+        List<MchAccount> rows = new java.util.ArrayList<>(DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getUserNo, userNo))));
+        for (MchAccount a : staffRowsOf(userNo, phone)) {
+            if (rows.stream().noneMatch(r -> r.getMchAccountNo().equals(a.getMchAccountNo()))) rows.add(a);
+        }
+        for (MchAccount a : rows) {
+            if (!MchAccount.ACTIVE.equals(a.getStatus())) continue;
+            a.setStatus(MchAccount.DISABLED);
+            DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
+            kicked(a.getMchAccountNo());
+            if (!Boolean.TRUE.equals(a.getIsOwner())) {
+                log(a.getEntityNo(), a.getMchAccountNo(), MchStaffLog.STAFF_DISABLE, null, null, "员工注销了账号");
+            }
+        }
+        if (!stores.isEmpty()) {
+            DataScopeContext.executeWithoutScope(() -> storeMapper.update(null, Wrappers.<MchStore>lambdaUpdate()
+                    .in(MchStore::getStoreNo, stores).eq(MchStore::getStatus, MchStore.ACTIVE)
+                    .set(MchStore::getStatus, MchStore.READONLY)));
+        }
+    }
+
+    /** Non-owner rows that belong to this person, by account link or by login phone. */
+    private List<MchAccount> staffRowsOf(String userNo, String phone) {
+        boolean hasUser = userNo != null && !userNo.isBlank();
+        boolean hasPhone = phone != null && !phone.isBlank();
+        if (!hasUser && !hasPhone) return List.of();
+        return DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                .eq(MchAccount::getIsOwner, false)
+                .and(w -> {
+                    if (hasUser) w.eq(MchAccount::getUserNo, userNo);
+                    if (hasUser && hasPhone) w.or();
+                    if (hasPhone) w.eq(MchAccount::getLoginPhone, phone);
+                })));
+    }
+
     // ------------------------------------------------------------------ 内部
 
     private List<MchAccount> accounts(String merchantNo) {

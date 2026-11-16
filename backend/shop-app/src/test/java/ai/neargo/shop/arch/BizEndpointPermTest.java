@@ -66,6 +66,12 @@ class BizEndpointPermTest {
                     // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
                     // 而他一个 biz:* 都可能没有
                     "/biz/auth/password",
+                    // 本人登录凭证与注销：作用对象同样是调用者本人；员工会话只读，写操作在服务里回 10403
+                    "/biz/auth/account",
+                    "/biz/auth/phone/change",
+                    "/biz/auth/email/bind",
+                    "/biz/auth/deregister/precheck",
+                    "/biz/auth/deregister",
                     // near-pay BIZ: fresh host account authentication; all payment membership,
                     // action and store scope decisions belong to near-pay, never local biz:*.
                     "/biz/auth/session",

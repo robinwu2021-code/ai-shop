@@ -81,4 +81,11 @@ public interface UserService {
      * <p><b>有未走完的订单时拒绝</b>：注销后没人能再联系到他，而货可能在路上。
      */
     void deregister();
+
+    /**
+     * Deletes the given account without the caller-session lookup or the buyer open-order check:
+     * unbinds every credential and the person record, anonymizes the account and revokes its sessions
+     * in both pools. Callers run their own blockers first (the merchant App re-runs its precheck).
+     */
+    void deregisterAccount(String userNo);
 }

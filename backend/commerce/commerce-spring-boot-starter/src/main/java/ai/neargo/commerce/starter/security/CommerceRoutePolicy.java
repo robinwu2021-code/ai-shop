@@ -84,6 +84,12 @@ public final class CommerceRoutePolicy {
                     "GET /biz/merchant/apply",
                     "GET /biz/auth/password",
                     "POST /biz/auth/password",
+                    // 本人登录凭证与注销（TDD-商户App统一登录与账号 端点 4–8）：按登录人定位，与门店无关
+                    "GET /biz/auth/account",
+                    "POST /biz/auth/phone/change",
+                    "POST /biz/auth/email/bind",
+                    "GET /biz/auth/deregister/precheck",
+                    "POST /biz/auth/deregister",
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
                     "POST /biz/merchant/store-openings",

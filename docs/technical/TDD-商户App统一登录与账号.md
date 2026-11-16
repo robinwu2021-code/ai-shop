@@ -697,3 +697,40 @@ E4 的安全性：当前会话刚刚交出了「当前凭证验证码 + 新凭�
 B02事务失败补充：DB来源会话撤销仍与票据/新会话同事务；Memory/Ehcache/Redis来源仅在afterCommit按精确hash/principal撤销，回滚仅补偿撤销新会话。新增 `BizIdentityNativeMysqlTest#cacheSourceSurvivesCommitFailureAndSameTicketRetriesWithoutKickingSibling`：受控提交失败后原票据未消费、源会话与sibling保留、新会话撤回；重试同票据成功仅撤源会话；该用例已通过原生MySQL9验证。
 
 本批最终后端证据：原生MySQL9 `BizIdentityNativeMysqlTest` 7项、`HashedSwitchSessionTest` 2项通过（`/tmp/ai-shop-unified-timezone-recheck.log`，UTC JVM与既有DB时区）；凭证`EmailOtpAuthTest`18、Web `BizAuthEmailLoginTest`3、三语`BackendI18nParityTest`6及精确权限`BizEndpointPermTest`12项已通过，未重复累计。实际HTTP首次在JVM UTC/DB其他时区返回10474，故票据签发改为DB `TIMESTAMPADD(SECOND,ttl,CURRENT_TIMESTAMP)`，与清理/读取/消费同一时钟，无DDL变化。
+
+## 2026-11-16 B03 增量：账号中心（换手机、绑邮箱、注销）
+
+档位沿本文 2；本批实现端点 4–8（AC11–AC22）及 D3、D5、D6、D7、D8、D14（选 B）。D4（员工登录邮箱）、D9、D16（改密码前验证）不在本批。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V676__account_change_log.sql` | `usr_account_change_log`，只存脱敏值；H2 `schema-test.sql` 同步 |
+| 修改 | `backend/shop-auth-store/.../SessionDao.java`、`backend/shop-base-auth/.../TokenStore.java` 与 Db / Memory / Ehcache / Redis 四个实现 | 新增 `revokeUserExcept(userNo, keepToken)`；`RealmRoutingTokenStore` 沿用接口缺省（不猜池） |
+| 新增 | `backend/shop-core/.../user/service/AccountCredentialService.java` 及实现 | `credentials`（含 `verifyBy`）、`verifyCurrent`、`changePhone`、`bindEmail`、`logDeregister`；验证码一律发往服务器按账号算出的地址 |
+| 修改 | `backend/shop-core/.../user/service/PersonService.java` 及实现 | 新增 `changePhone`（D6）：人档随账号换号；新号的未认领线索档并入本人档；属于他人账号时 `PERSON_PHONE_TAKEN` |
+| 修改 | `backend/shop-core/.../user/service/UserService.java` 及实现 | 拆出 `deregisterAccount(userNo)`；小程序注销先过 `MerchantDeregisterPort.blocked`（D7） |
+| 新增 | `backend/shop-base/.../spi/merchant/MerchantDeregisterPort.java`；实现 `backend/shop-app/.../merchantbridge/port/MerchantDeregisterPortImpl.java` | 两个注销入口共用的商户侧规则 |
+| 修改 | `backend/shop-merchant/.../MerchantStaffService.java` 及实现、`MchStaffLog.java` | `ownedEntityNos`、`ownedStoreNos`、`activeStaffMemberships`、`followLoginPhone`（D5，新增日志动作 `STAFF_PHONE_CHANGE`）、`retireAccount`（D8 停用全部成员行并踢会话；D14-B 名下 ACTIVE 门店置 READONLY） |
+| 新增 | `backend/shop-merchant/.../MerchantAccountService.java`；实现 `backend/shop-app/.../merchantbridge/impl/MerchantAccountServiceImpl.java`；`backend/shop-app/.../merchantbridge/MerchantDeregisterChecks.java` | 组合层；凭证变更提交后两池 `revokeUserExcept`（单池部署两池是同一个存储，必须都保留当前令牌） |
+| 新增 | `backend/shop-app/.../portal/biz/BizAccountController.java` | 端点 4–8 |
+| 修改 | `CommerceRoutePolicy`（ACCOUNT 加 5 条）、`ShopCommerceEndContextAdapter`（走 `checkFoundationSession`）、`BizEndpointPermTest`（本人范围免码 5 条） | 路由登记 |
+| 新增 | `ErrorCode.EMAIL_ALREADY_BOUND(10475)`、`DEREGISTER_BLOCKED(70100)` 与三语文案 | |
+| 新增 | `docs/api/merchant-account.openapi.json`、`docs/api/backend-ui-delivery-merchant-account-flutter.json` | 外部 Flutter 消费方登记 |
+
+**偏差说明**
+
+- 注销前置检查的判据：`OPEN_ORDERS` = 名下门店 `OpenOrderPort#countOpenByStore` > 0；`PENDING_PAYOUT` = 名下主体在支付库 `stl_bill` 中 `PENDING` / `SPLITTING` 的账单；`PAID_PLAN_ACTIVE` = 名下门店存在 `state='ACTIVE'`、`cash_basis_minor>0`、`effective_end_at` 未到的方案期（未安装商城 schema 时视为无）；`BUYER_OPEN_ORDERS` 沿用 C 端口径。按 D14-B，门店本身不再是拦截项，`ACTIVE_STORES` 不出现。
+- 「新号已等于当前号」（10458）与「新邮箱已等于当前邮箱」（10475）提前到验码之前判：同一地址不可能同时有两条有效验证码，放在验码后永远到不了。
+- D6 人档合并只落 `usr_person_merge_log`，被并入的线索档上的会员关系不搬迁（与既有 `merge` 一致），记作后续项。
+
+| 验收范围 | 测试 | 验证状态 |
+|---|---|---|
+| AC11 | `BizAccountFlowTest#ownerReadsOwnCredentials` | 已通过本地 H2 验证 |
+| AC12–AC14、AC22 | `#phoneChangeKeepsCurrentSessionOnly`、`#wrongCurrentCodeChangesNothing` | 已通过本地 H2 验证 |
+| AC13 | `#phoneTakenOrUnchanged` | 已通过本地 H2 验证 |
+| AC15、D3 | `#emailBindAndReplace` | 已通过本地 H2 验证 |
+| AC17、AC18 | `#deregisterWithoutBlockers` | 已通过本地 H2 验证 |
+| AC19 | `#blockedDeregistration` | 已通过本地 H2 验证 |
+| 回归 | `DeregisterFlowTest`、`BizIdentityFlowTest`、`BizAuthEmailLoginTest`、`ArchitectureTest`、`BizEndpointPermTest`、`SchemaDriftTest`、`BackendI18nParityTest` | 已通过本地验证 |
+
+未覆盖：有门店的店主注销（门店置 READONLY）、D5 别家员工行随号迁移、AC20 员工会话写操作回 10403 尚无自动化用例，联调时在 166 上验证。

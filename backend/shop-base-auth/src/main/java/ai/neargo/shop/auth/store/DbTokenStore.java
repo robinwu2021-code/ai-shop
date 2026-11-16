@@ -297,6 +297,21 @@ public class DbTokenStore implements TokenStore {
      * 而那种索引正是最容易与真实状态漂移的东西。
      */
     @Override
+    public int revokeUserExcept(String userNo, String keepToken) {
+        if (userNo == null || userNo.isBlank() || keepToken == null) {
+            return 0;
+        }
+        int n = sessions.revokeByUserExcept(userNo, TokenHash.of(keepToken), RevokeReason.DISABLED,
+                LocalDateTime.now(clock));
+        identityCache.evict(userNo);
+        pollRevocations();
+        if (n > 0) {
+            audit(LoginEvent.REVOKED, userNo, RevokeReason.DISABLED.name() + " x" + n, true);
+        }
+        return n;
+    }
+
+    @Override
     public int revokeUser(String userNo) {
         int n = sessions.revokeByUser(userNo, RevokeReason.DISABLED, LocalDateTime.now(clock));
         identityCache.evict(userNo);

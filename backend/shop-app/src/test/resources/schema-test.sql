@@ -12627,6 +12627,22 @@ CREATE TABLE IF NOT EXISTS sys_store_industry
     CONSTRAINT uk_sys_store_industry UNIQUE (tenant_no, industry_code, sub_industry_code)
 );
 
+CREATE TABLE IF NOT EXISTS usr_account_change_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_no VARCHAR(64) NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    before_masked VARCHAR(191) NULL,
+    after_masked VARCHAR(191) NULL,
+    actor_kind VARCHAR(16) NOT NULL,
+    client_ip VARCHAR(64) NULL,
+    tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS usr_login_ticket
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,

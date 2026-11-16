@@ -113,6 +113,10 @@ public final class ShopCommerceEndContextAdapter
                 || path.startsWith("/biz/merchant/store-openings/")
                 || path.equals("/biz/auth/password")
                 || path.equals("/biz/auth/identities/mine")
+                || path.equals("/biz/auth/account")
+                || path.equals("/biz/auth/phone/change")
+                || path.equals("/biz/auth/email/bind")
+                || path.startsWith("/biz/auth/deregister")
                 || path.startsWith("/biz/merchant/store-claims/")) {
             checkFoundationSession(user, legacy, req, route, path, requested);
             if (route.foundation()) return;

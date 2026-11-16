@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "These handlers are consumed by the separate ai-shop-bapp Flutter repository (account centre: P05 phone change, P06 email bind, P14 deregistration), not this repository's legacy Vue b-app. Registers the external consumer without changing the historical orphan baseline.",
+  "plan": "docs/technical/TDD-商户App统一登录与账号.md",
+  "contract": "docs/api/merchant-account.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerCommit": "1a8d51d",
+  "consumerEvidence": "docs/implementation/App-API对齐清单-2026-11-16.md",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/auth/account"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/phone/change"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/email/bind"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/auth/deregister/precheck"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/deregister"
+    }
+  ]
+}

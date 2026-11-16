@@ -59,6 +59,14 @@ public interface TokenStore {
     int revokeUser(String userNo);
 
     /**
+     * Revokes every session of {@code userNo} in this pool except {@code keepToken}.
+     * Used after a credential change: the session that made the change stays valid.
+     */
+    default int revokeUserExcept(String userNo, String keepToken) {
+        throw new UnsupportedOperationException("Selective revocation requires a concrete session pool");
+    }
+
+    /**
      * 带池前缀的不透明 token。前缀不是装饰：拿 C 端 token 打 {@code /ops/**} 时，
      * 过滤器不用查库就能判定池不符，直接 401。
      *

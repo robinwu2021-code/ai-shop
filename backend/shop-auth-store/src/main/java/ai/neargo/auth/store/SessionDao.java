@@ -107,6 +107,14 @@ public class SessionDao {
                 .update();
     }
 
+    /** Revokes every live session of one subject except the session identified by {@code keepHash}. */
+    public int revokeByUserExcept(String userNo, String keepHash, RevokeReason reason, LocalDateTime at) {
+        return jdbc.sql("UPDATE " + table + " SET revoked_at = :at, revoke_reason = :r"
+                        + " WHERE user_no = :u AND revoked_at IS NULL AND token_hash <> :k")
+                .param("at", at).param("r", reason.name()).param("u", userNo).param("k", keepHash)
+                .update();
+    }
+
     /**
      * 上次轮询之后新撤销的会话。**撤销传播的主力**。
      *

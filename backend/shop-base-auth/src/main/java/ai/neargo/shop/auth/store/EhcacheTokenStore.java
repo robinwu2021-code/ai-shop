@@ -157,6 +157,38 @@ public class EhcacheTokenStore implements TokenStore, AutoCloseable {
     }
 
     @Override
+    public int revokeUserExcept(String userNo, String keepToken) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        String raw = userIndex.get(userNo);
+        if (raw == null || raw.isBlank()) {
+            return 0;
+        }
+        int killed = 0;
+        boolean kept = false;
+        for (String token : raw.split(SEP)) {
+            if (token.isBlank()) {
+                continue;
+            }
+            if (token.equals(keepToken)) {
+                kept = get(token).filter(d -> userNo.equals(d.user().userNo())).isPresent();
+                continue;
+            }
+            if (get(token).filter(d -> userNo.equals(d.user().userNo())).isPresent()) {
+                sessions.remove(token);
+                killed++;
+            }
+        }
+        if (kept) {
+            userIndex.put(userNo, keepToken);
+        } else {
+            userIndex.remove(userNo);
+        }
+        return killed;
+    }
+
+    @Override
     public int revokeUser(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return 0;
