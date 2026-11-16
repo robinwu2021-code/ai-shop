@@ -214,6 +214,7 @@ export const RULES = [
   // 复用 merchant:admission:*，不新增权限码
   ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],
   ["GET", /^\/ops\/payment-onboardings$/, "merchant:admission:read"],
+  ["POST", /^\/ops\/onboarding-documents\/recognize$/, "merchant:admission:update", "OR merchant:apply:onbehalf; independent PAY OPS document recognition"],
   ["POST", /^\/ops\/onboarding\/refresh$/, "merchant:admission:update"],
   // 店铺码印刷量登记：发码的与审店招的是同一拨 BD
   ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/print$/, "store:page:audit"],
