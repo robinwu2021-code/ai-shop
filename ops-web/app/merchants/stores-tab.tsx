@@ -215,27 +215,21 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
               一个抽屉、多个页签（规范：不叠抽屉）。经营数、覆盖、审核仍只在切到对应页签时才请求。
             */}
             <Tabs value={panel} onChange={(k) => setPanel(k as typeof panel)} tabs={[
-              { key: "summary", label: c.stSecProfile },
+              { key: "summary", label: c.stTabBasic },
               { key: "stats", label: c.stSecStats },
               { key: "orders", label: c.stTabOrders },
               { key: "review", label: review.title },
               { key: "reach", label: c.stSecReach },
             ]} />
 
+            {/* 基本信息：门店是谁、在哪、怎么营业。经营状态与收款放「经营状况」，订单单独一个页签 */}
             {panel === "summary" && <>
-              <DrawerSection first title={c.stSecProfile}>
+              <DrawerSection first title={c.stTabBasic}>
                 <FieldGrid>
-                  <Field className="mb-3" label={c.stColStatus}><StatusBadge map={statusMap} value={current.status} /></Field>
-                  <Field className="mb-3" label={c.stColMode}>
-                    {current.businessMode === "SELF_OPERATED" ? c.stModeSelf : c.stModeThird}
-                  </Field>
                   <Field className="mb-3" label={c.stColMerchant}>{current.merchantName}</Field>
-                  <Field className="mb-3" label={c.stColPayMerchant}>
-                    {current.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>}
-                  </Field>
+                  <Field className="mb-3" label={c.stFieldOpenHours}>{current.openHours}</Field>
                 </FieldGrid>
                 <Field label={c.stFieldAddress}>{current.address}</Field>
-                <Field label={c.stFieldOpenHours}>{current.openHours}</Field>
                 <Field label={c.stFieldAnnouncement}>
                   {current.announcement || <span className="text-muted-foreground">{c.stAnnouncementEmpty}</span>}
                 </Field>
@@ -250,12 +244,19 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
               {detailActions && (
                 <DrawerSection title={c.stSecActions}>{detailActions(current)}</DrawerSection>
               )}
+            </>}
+
+            {panel === "stats" && <>
+              <StoreBusiness
+                c={c} storeNo={current.storeNo} stats={stats}
+                status={<StatusBadge map={statusMap} value={current.status} />}
+                mode={current.businessMode === "SELF_OPERATED" ? c.stModeSelf : c.stModeThird}
+                payMerchant={current.payMerchantNo ?? <span className="text-muted-foreground">{c.stPayFallback}</span>}
+              />
               {current.status === "SUSPENDED" && !canBan && (
                 <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" className="mt-4" />
               )}
             </>}
-
-            {panel === "stats" && <StoreBusiness c={c} store={current} stats={stats} statusLabel={<StatusBadge map={statusMap} value={current.status} />} />}
 
             {panel === "orders" && <StoreOrders key={current.storeNo} c={c} storeNo={current.storeNo} />}
 
@@ -352,18 +353,21 @@ export function StoresTab({ c, detailActions }: { c: Copy; detailActions?: (stor
  * 经营状况页签：营业状态 + 今日 / 本月经营数 + 待处理积压。
  * 待处理四项摆在一起，运营看的是「这家店是不是没人管了」。
  */
-function StoreBusiness({ c, store, stats, statusLabel }: {
+function StoreBusiness({ c, storeNo, stats, status, mode, payMerchant }: {
   c: Copy;
-  store: StoreGovern;
+  storeNo: string;
   stats: { data?: StoreStats; isLoading: boolean; error: unknown; refetch: () => unknown };
-  statusLabel: ReactNode;
+  status: ReactNode;
+  mode: ReactNode;
+  payMerchant: ReactNode;
 }) {
   return (
     <>
       <DrawerSection first title={c.stSecStats}>
         <FieldGrid>
-          <Field className="mb-3" label={c.stColStatus}>{statusLabel}</Field>
-          <Field className="mb-3" label={c.stFieldOpenHours}>{store.openHours}</Field>
+          <Field className="mb-3" label={c.stColStatus}>{status}</Field>
+          <Field className="mb-3" label={c.stColMode}>{mode}</Field>
+          <Field className="mb-3" label={c.stColPayMerchant}>{payMerchant}</Field>
         </FieldGrid>
         {stats.isLoading && <Skeleton className="h-24 w-full" />}
         {stats.error ? <ErrorState error={stats.error} onRetry={() => void stats.refetch()} /> : null}
@@ -388,7 +392,7 @@ function StoreBusiness({ c, store, stats, statusLabel }: {
           </FieldGrid>
           {/* 门店商品投影（P-11.2.1e）：缺货待补要能直接点过去看是哪几件 */}
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(store.storeNo)}`} data-audit-skip="button-aschild">
+            <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(storeNo)}`} data-audit-skip="button-aschild">
               {c.stViewGoods}
             </Link>
           </Button>
