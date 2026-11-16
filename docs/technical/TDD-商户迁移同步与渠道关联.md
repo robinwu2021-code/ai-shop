@@ -96,7 +96,7 @@
 | N2 | ai-shop | `POST /ops/merchants/{entityNo}/qualification-creations` | 无新表（`qualNo` 由服务生成） | 复用 `merchant:category:grant` | 复用通用 `CONFLICT`（同类型 `VALID` 资质已存在），无新词条 | P1 |
 | N3 | near-pay | `POST P/merchant-creations` 与 `biz/pay/v2/merchant-creations` 行为变更 | 无；建前查代建回执 `operating_entity_no` 与来源关联 `external_entity_id`（均排除 `CLOSED` 商户） | 不变 | 复用 `STATE_CONFLICT`，说明「经营主体已有支付商户 PM…」 | P0 |
 | N4 | ai-shop | `GET /ops/migration-sources/merchants?registrationNo=`、`/{sourceId}`、`/{sourceId}/channel-accounts` | 视来源系统而定 | `merchant:read` | — | 待 Q1 |
-| N5 | near-pay | `GET P/source-association-repair-requests`、`GET .../{repairNo}`、`POST ...`、`POST .../{repairNo}/approve`、`/reject`、`/execute` | `pay_source_association_repair`（申请、范围、前后快照、审批、执行结果） | `pay:merchant:repair`（申请）、`pay:merchant:repair:approve`（审批，申请人不可自批） | 范围外对象、状态不允许、版本冲突 | P0 |
+| N5 | near-pay（迁移 V105） | `GET P/source-association-repair-requests`、`GET .../{repairNo}`、`POST ...`、`POST .../{repairNo}/approve`、`/reject`、`/execute` | `pay_source_association_repair`（申请、范围、前后快照、审批、执行结果） | `pay:merchant:repair`（申请）、`pay:merchant:repair:approve`（审批，申请人不可自批） | 范围外对象、状态不允许、版本冲突 | P0 |
 | N6 | near-pay | 运营代建 `POST P/merchant-creations` 加前置（App 侧 `biz/pay/v2/merchant-creations` 不变） | 无；查 `pay_store_projection`（同主体、未删除、非 `DELETED`/`DISABLED`） | 不变 | 复用 `STATE_CONFLICT`「经营主体尚未关联门店」 | P0 |
 
 配置项：无。脚本连接参数走环境变量 `NEARSHOP_BASE`、`NEARSHOP_TOKEN`，不入库不入 Git。
@@ -209,7 +209,7 @@ near-pay（feat/oscar-entity-merchant-repair）
   M pay-domain/.../platmch/PlatmchStore.java                                N3 主体→商户查询
   M pay-domain/.../platmch/creation/{MerchantCreationService,OpsMerchantCreationService}.java  N3
   M pay-domain/src/test/.../MerchantCreationMySqlTest.java                  AC7
-  A pay-domain/.../db/pay/V102__source_association_repair.sql               N5 表
+  A pay-domain/.../db/pay/V105__source_association_repair.sql               N5 表（原 V102，发布前改号）
   A pay-domain/.../platmch/repair/{SourceAssociationRepairStore,Service,Subject}.java  N5
   A pay-portal/.../api/ops/v2/OpsSourceAssociationRepairController.java     N5 端点
   M pay-domain/.../access/PayResourceCatalog.java                           N5 权限码
@@ -244,3 +244,4 @@ near-pay（feat/oscar-entity-merchant-repair）
 | 2026-11-16 | 方案确认（Q1–Q4 按建议）；N2、N3、N5 实现，相关测试全绿，已提交、未部署 |
 | 2026-11-16 | 用户纠正：经营主体创建必须先关联门店（范围：迁移流程 + 运营代建支付商户，不改 App 的 V46「主体可先于门店」）；新增 AC10、N6 |
 | 2026-11-16 | 用户明确顺序「账号 → 门店 → 选门店建主体」，实现方式记为 Q5 待定；先完成 WP6 `--apply` 并执行 Oscar 迁移 |
+| 2026-11-16 | near-pay N3/N5/N6 发布 166（迁移改号 V105，因 V102–V104 已被实体资料占用）；见 [发布记录](../handoff/oscar-channel-sync-2026-11-16/release-166-nearpay.json) |
