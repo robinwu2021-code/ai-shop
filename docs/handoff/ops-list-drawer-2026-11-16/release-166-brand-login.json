@@ -1,0 +1,50 @@
+{
+  "releaseId": "brand-login-20261116-b88ea3a41",
+  "status": "DEPLOYED_PUBLIC_VERIFIED",
+  "deployedAt": "2026-11-16T13:32+08:00",
+  "environment": "UME166",
+  "scope": "ops-web static export only; backend, database, near-pay and inventory untouched; no service restarted",
+  "sourceCommit": "b88ea3a41",
+  "sourceBranch": "main",
+  "change": "Console renamed to NearGo平台运营 with brand.json configuration; login page tidied (prototype ops-login v3)",
+  "build": {
+    "command": "NEXT_PUBLIC_API_BASE=/ops-shop NEXT_PUBLIC_BASE_PATH=/ops-shop NEXT_PUBLIC_USE_MOCK=0 npm run build -- --webpack",
+    "pages": 45,
+    "files": 352,
+    "tarballSha256Prefix": "781cb860d520b964",
+    "packaging": "COPYFILE_DISABLE=1, no AppleDouble files"
+  },
+  "compatibility": "No changes under backend/ or ops-web/lib/api between ff0635508 and b88ea3a41",
+  "server": {
+    "host": "app166 (192.168.3.166)",
+    "releaseDir": "/data/www/ai-shop-ops/releases/brand-login-20261116-b88ea3a41",
+    "currentSymlink": "/data/www/ai-shop-ops/current",
+    "previousRecord": "/data/www/ai-shop-ops/previous-20261116-1332.txt",
+    "previousRelease": "/data/www/ai-shop-ops/releases/list-drawer-20261116-1efcbe741",
+    "switch": "ln -s <release> current.new && mv -T current.new current"
+  },
+  "publicVerification": {
+    "domains": [
+      "https://nearshop.umeshop.ai",
+      "https://twpay.umeshop.ai"
+    ],
+    "byteIdentical": "12/12",
+    "checked": [
+      "/ops-shop/",
+      "/ops-shop/login/",
+      "/ops-shop/merchants/",
+      "/ops-shop/customers/",
+      "/ops-shop/stores/",
+      "/ops-shop/brand.json"
+    ],
+    "loginAssetsPerDomain": "23/23",
+    "protectedApi": {
+      "url": "/ops-shop/ops/auth/me",
+      "statusUnauthenticated": 401
+    },
+    "browser": "Public login page rendered with title NearGo平台运营 and new card (unauthenticated view)"
+  },
+  "authenticatedBrowserCheck": "NOT_DONE",
+  "brandOverride": "Edit /data/www/ai-shop-ops/current/ops-shop/brand.json for an immediate rename; the next release overwrites it with ops-web/public/brand.json from the repo",
+  "rollback": "ssh -F ~/work/env/ume/ssh.config ume-app166 'cd /data/www/ai-shop-ops && sudo ln -s /data/www/ai-shop-ops/releases/list-drawer-20261116-1efcbe741 current.new && sudo mv -T current.new current'"
+}

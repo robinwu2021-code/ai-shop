@@ -1,6 +1,7 @@
 # 运营端列表与抽屉规范收口 · 交接
 
 > 状态：已合入 `main` 并推送；**2026-11-16 12:47 已发布 UME166**（发布 `list-drawer-20261116-1efcbe741`，源码 `1efcbe741`），nearshop 与 twpay 两域 `/ops-shop/` 公网核对通过，登录后浏览器验收未做。发布记录见 [release-166.json](release-166.json)。
+> 追加：2026-11-16 13:32 发布 `brand-login-20261116-b88ea3a41`（源码 `b88ea3a41`）：运营端改名 NearGo平台运营（可经 `brand.json` 配置）、登录页整洁化，见 [release-166-brand-login.json](release-166-brand-login.json) 与 [TDD](../../technical/design/ops/TDD-ops-品牌名称与登录页.md)。
 > 范围：仅 `ops-web` 与文档，档位 0（未改接口、库表、权限码、i18n 词典；页面 `copy.ts` 词条有增删）。
 
 ## 一、接手结论

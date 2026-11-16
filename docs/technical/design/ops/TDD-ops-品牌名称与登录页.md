@@ -1,6 +1,6 @@
 # TDD · 运营端 · 品牌名称配置与登录页整洁化
 
-> 状态：**已实现**（2026-11-16）· 档位 1：新增配置文件 `brand.json`、增删 i18n 词条；不改接口、库表、权限码。
+> 状态：**已实现并发布 UME166**（2026-11-16，发布 `brand-login-20261116-b88ea3a41`，[发布记录](../../../handoff/ops-list-drawer-2026-11-16/release-166-brand-login.json)）· 档位 1：新增配置文件 `brand.json`、增删 i18n 词条；不改接口、库表、权限码。
 > 原型：[ops-login](../../../../prototypes/ops-login.html)（[发布版](https://claude.ai/artifact/Pyz6pDYjBksEhyJwr5XqJ9)，v3）
 
 ## §0 范围与结论
