@@ -34,7 +34,7 @@ public class BizStoreSettingsController {
     public record Hours(@NotBlank @Size(max=128) String expectedVersion,@jakarta.validation.constraints.NotNull @Size(max=512) String openHours) {}
     @PostMapping("/biz/store/settings/basic") @PreAuthorize("@perm.canBiz('"+BizPerms.STORE_ADMIN+"')")
     public View basic(@Valid @RequestBody Basic req) {
-        return view(service.basic(BizContext.requireMerchantNo(),BizContext.current().currentStoreNo(),req.expectedVersion(),req.name(),req.address(),req.addressDetail()));
+        return view(service.basic(BizContext.requireMerchantNo(),BizContext.requireStoreNo(),req.expectedVersion(),req.name(),req.address(),req.addressDetail()));
     }
     public record Contact(@NotBlank @Size(max=128) String expectedVersion,
                           @NotNull @Size(max=64) String contactName,
@@ -42,11 +42,11 @@ public class BizStoreSettingsController {
     /** 联系人保存只比较CONTACT版本，避免覆盖同时编辑的基本资料。 */
     @PostMapping("/biz/store/settings/contact") @PreAuthorize("@perm.canBiz('"+BizPerms.STORE_ADMIN+"')")
     public View contact(@Valid @RequestBody Contact req) {
-        return view(service.contact(BizContext.requireMerchantNo(),BizContext.current().currentStoreNo(),
+        return view(service.contact(BizContext.requireMerchantNo(),BizContext.requireStoreNo(),
             req.expectedVersion(),req.contactName(),req.contactPhone()));
     }
     @PostMapping("/biz/store/settings/hours") @PreAuthorize("@perm.canBiz('"+BizPerms.STORE+"')")
     public View hours(@Valid @RequestBody Hours req) {
-        return view(service.hours(BizContext.requireMerchantNo(),BizContext.current().currentStoreNo(),req.expectedVersion(),req.openHours()));
+        return view(service.hours(BizContext.requireMerchantNo(),BizContext.requireStoreNo(),req.expectedVersion(),req.openHours()));
     }
 }

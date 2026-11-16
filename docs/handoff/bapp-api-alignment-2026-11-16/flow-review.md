@@ -21,6 +21,8 @@
 
 ## 二、需要先修的缺陷（按影响排序）
 
+> 2026-11-16 已修：#1（路由放行，含 11 条路由的策略测试）、#3（写入要求已选门店，更新行数≠1 回 CONFLICT）、#6（统一登录进入时绑人档）；五节 A 批已做。其余待决定。
+
 | # | 问题 | 位置 | 后果 | 修法 | 风险 |
 |---|---|---|---|---|---|
 | 1 | V46 路由未放行（已核实） | `CommerceRoutePolicy.java:183-184` 只放行 profile-template/draft/commands 与 review-submissions/files/revisions/channel-requests | `POST /biz/entities/{no}/contact`、`/revision-discards`、`GET …/files/{id}/preview` 在 commerce 开启的部署落到 DENY，有 STORE_V1 门店的账号 403 | 补进 ACCOUNT 放行；补一条开启 commerce 的流程测试 | 低 |

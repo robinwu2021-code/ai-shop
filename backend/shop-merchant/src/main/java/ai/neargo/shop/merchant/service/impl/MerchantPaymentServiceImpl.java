@@ -505,8 +505,8 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 /*
                  * **一个都没有 = 这个环境根本没接通道**，不是他填错了什么。
                  *
-                 * 生产上目前正是这种状态：唯一的实现是 StubApplymentGateway，
-                 * 而 `shop.pay.stub` 默认关（「假装支付成功」是资金事故）。
+                 * 已有的实现是 Stub（`shop.pay.stub` 默认关）、微信与支付宝；台湾渠道（蓝新、LINE Pay）
+                 * 不走这里，走 near-pay 的 /biz/pay/v2 进件，所以台湾环境到这一步一律失败。
                  * 原先这里给 BAD_REQUEST —— 商家把整张进件表填完，
                  * 只得到一句「请求参数有误」，然后回去反复改那几个字段。
                  */

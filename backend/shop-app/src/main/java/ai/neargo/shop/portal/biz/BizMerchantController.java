@@ -284,19 +284,6 @@ public class BizMerchantController {
     }
 
     /**
-     * 提交入驻申请。
-     *
-     * <p>与 C 端的 {@code POST /mp/merchant/apply} <b>是同一件事的两个入口</b>，
-     * 都落到 {@link OpsService#createApply}，「一人一份进行中申请」的唯一键在库上，
-     * 两个入口谁先提交都拦得住。
-     *
-     * <p>保留 B 端这个入口而不是只留 C 端，是因为 <b>被驳回后重提发生在 B 端</b> ——
-     * 那时人已经装了 B 端 App，把他赶回 C 端去改一张执照是没道理的。
-     *
-     * @return 提交后的最新资料，前端直接替换本地状态；被驳回重提失败时状态仍是 REJECTED，
-     *         前端据此留在原页显示驳回原因，而不是跳去一个空的工作台
-     */
-    /**
      * <b>补勾《商家服务协议》</b>（三期）。
      *
      * <p>为什么需要一个单独的动作：运营代商家进件时<b>不能替他勾协议</b>，
@@ -318,6 +305,19 @@ public class BizMerchantController {
         return opsService.acceptAgreement(user.userNo(), entity);
     }
 
+    /**
+     * 提交入驻申请。
+     *
+     * <p>与 C 端的 {@code POST /mp/merchant/apply} <b>是同一件事的两个入口</b>，
+     * 都落到 {@link OpsService#createApply}，「一人一份进行中申请」的唯一键在库上，
+     * 两个入口谁先提交都拦得住。
+     *
+     * <p>保留 B 端这个入口而不是只留 C 端，是因为 <b>被驳回后重提发生在 B 端</b> ——
+     * 那时人已经装了 B 端 App，把他赶回 C 端去改一张执照是没道理的。
+     *
+     * @return 提交后的最新资料，前端直接替换本地状态；被驳回重提失败时状态仍是 REJECTED，
+     *         前端据此留在原页显示驳回原因，而不是跳去一个空的工作台
+     */
     @PostMapping("/biz/merchant/apply")
     public MerchantProfileVO apply(@RequestBody ApplyReq req, jakarta.servlet.http.HttpServletRequest request) {
         String applicant = BizAuthController.personalUser().userNo();
@@ -392,10 +392,11 @@ public class BizMerchantController {
         return openings.find(SecurityUtils.requireUser(),requestNo);
     }
 
-    /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
+    /** Which entity or store an account-level action targets; both optional. */
     public record Target(String entityNo, String storeNo) {}
 
     /**
+     * @param storeName       店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖
      * @param market          经营市场；省略 = 账号的经营地区（TDD-注册地区与三步建店）；传了就必须等于它
      * @param industryCode    平台经营行业；默认映射下必须等于 businessTypeCode（见 store-setup），或为 {@code OTHER}
      * @param subIndustryCode 子业态；同上，或为 {@code OTHER}
@@ -835,17 +836,6 @@ public class BizMerchantController {
     }
 
     /**
-     * 本店<b>能开的全部收款通道</b>，含还没开的。
-     *
-     * <p>与上面那条的区别是它只回答「已经开了的怎么样了」，
-     * 而商家问的第一个问题往往是<b>「我还能开什么」</b> ——
-     * 只给已开通的列表，页面就永远长不出「去开通支付宝」那个入口，
-     * 而后端明明支持多通道。
-     *
-     * <p>路径用<b>单数</b>：/biz 与 /mp 的资源段一律单数（复数是 /ops 的约定），
-     * 有守卫盯着。
-     */
-    /**
      * 我的欠款：余额与流水。
      *
      * <p><b>商家必须看得到。</b>货款被扣了一部分而他不知道为什么，
@@ -867,6 +857,17 @@ public class BizMerchantController {
                          List<ai.neargo.shop.merchant.service.DebtService.TxnVO> txns) {
     }
 
+    /**
+     * 本店<b>能开的全部收款通道</b>，含还没开的。
+     *
+     * <p>与 {@code GET /biz/merchant/payment} 的区别：那条只回答「已经开了的怎么样了」，
+     * 而商家问的第一个问题往往是<b>「我还能开什么」</b> ——
+     * 只给已开通的列表，页面就永远长不出「去开通支付宝」那个入口，
+     * 而后端明明支持多通道。
+     *
+     * <p>路径用<b>单数</b>：/biz 与 /mp 的资源段一律单数（复数是 /ops 的约定），
+     * 有守卫盯着。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/pay-channel")
     public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo, HttpServletRequest request) {

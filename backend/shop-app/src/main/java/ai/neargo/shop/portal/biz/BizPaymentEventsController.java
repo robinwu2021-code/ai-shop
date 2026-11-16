@@ -1,6 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.paybridge.PaymentCollectionStream;
 
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
+@Profile("api")
 @ConditionalOnProperty(name = "shop.payment-collections.enabled", havingValue = "true")
 public class BizPaymentEventsController {
     private final PaymentCollectionStream stream;
@@ -24,7 +27,7 @@ public class BizPaymentEventsController {
     }
 
     @GetMapping(value = "/biz/payment/events", produces = "text/event-stream")
-    @PreAuthorize("@perm.canBiz('mch:pay:order:view')")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
     public SseEmitter events(
             @RequestHeader("Authorization") String authorization,
             @RequestHeader(value = "Last-Event-ID", required = false) String lastId,

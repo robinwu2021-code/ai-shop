@@ -180,8 +180,9 @@ public final class CommerceRoutePolicy {
                 || path.matches("/biz/entities/create-results/" + ID)
                 || path.matches("/biz/entity/" + ID)))
             return new Route(Lane.ACCOUNT, null, null, null);
-        if ((method.equals("GET") && path.matches("/biz/entities/"+ID+"/(?:profile-template|profile-draft|commands/"+ID+")"))
-                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests)")))
+        // Every BizEntityProfileController route; a missing one falls through to DENY (403) for commerce stores.
+        if ((method.equals("GET") && path.matches("/biz/entities/"+ID+"/(?:profile-template|profile-draft|commands/"+ID+"|files/"+ID+"/preview)"))
+                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests|contact|revision-discards)")))
             return new Route(Lane.ACCOUNT, null, null, null);
         // Settings is a selected-store namespace, not a path containing a store ID.
         if (method.equals("GET") && path.equals("/biz/store/settings")

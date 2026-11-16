@@ -13,9 +13,9 @@ package ai.neargo.auth.store;
  * 二者此前挤在 {@code LoginUser.realm} 一个字段里，而 B 端把它们撑开了：
  *
  * <ul>
- *   <li>店员从 {@code /biz/auth/staff-login} 进来 —— 主体是
+ *   <li>员工身份的会话（选 STAFF 身份进入，或旧的 {@code /biz/auth/staff-login}）—— 主体是
  *       {@code mch_account.mch_account_no}（{@link #MCH}）</li>
- *   <li>老板、以及<b>还不是商家的人</b>从 {@code /biz/auth/login} 进来 ——
+ *   <li>店主、以及<b>还不是商家的人</b>（{@code /biz/auth/login} 或选 OWNER 身份进入）——
  *       主体是 {@code usr_account.user_no}（{@link #USR}）</li>
  * </ul>
  *

@@ -34,10 +34,8 @@ import javax.sql.DataSource;
  * 支付域的用这一个，两者管的是不同的连接。于是跨域事务想写也写不出来 ——
  * 而这正是拆分之后的真实语义。
  *
- * <p><b>URL 仍然指向主库</b>：这一步只解事务耦合，不切库。
- * 表还在 {@code ai_shop} 里，迁移还走平台那套 Flyway，所以
- * <b>不需要第二个 Flyway，也不需要新的库或账号</b> ——
- * 它是一次纯装配改动，配置文件都不用改。
+ * <p><b>URL 仍然指向主库</b>：这一步只解事务耦合，不切库，也不需要新的库或账号。
+ * 支付自己的新表走独立迁移目录 {@code db/pay}，历史记在 {@code pay_flyway_history}（见 {@link #payFlyway}）。
  *
  * <h2>与 {@code InventoryDataSourceConfig} 的三处异同</h2>
  * <ol>
@@ -49,8 +47,8 @@ import javax.sql.DataSource;
  *       不装的话，给运营配的「只看某商家」对结算单整片失效 ——
  *       <b>那是越权，而且不报错</b>。所以这里注入的是与平台<b>同一个</b>
  *       {@code MybatisPlusInterceptor} bean。</li>
- *   <li><b>不需要自己的 Flyway</b>：库是同一个。进销存那条「Flyway 凭证 bean
- *       不能是 Flyway 类型」的坑在这里不存在 —— 因为这里根本不建 Flyway。</li>
+ *  <li><b>有自己的迁移，但不暴露 Flyway bean</b>：库是同一个，历史表分开；
+ *       返回 {@link PayMigrated} 而不是 {@code Flyway}，避免关掉平台迁移（同进销存那条坑）。</li>
  * </ol>
  *
  * <h2>Mapper 的归属靠两头夹</h2>

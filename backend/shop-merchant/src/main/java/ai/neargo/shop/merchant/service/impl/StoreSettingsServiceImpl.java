@@ -36,6 +36,10 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
         for(String field:fields) value.append(field==null ? "-1:" : field.length()+":"+field);
         return StoreContentVersion.hash(value.toString());
     }
+    /** A settings write must hit exactly the selected store; anything else is reported, never a silent 200. */
+    private static void updated(int rows) {
+        if(rows!=1) throw BizException.of(ErrorCode.CONFLICT);
+    }
     private void requireVersion(String entity,String store,String section,String expected) {
         ownership.lockAndCheck("MAIN",entity,store);
         if(!Objects.equals(load(entity,store).sectionVersions().get(section),expected)) throw BizException.of(ErrorCode.CONFLICT);
@@ -43,25 +47,25 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
     @Override @Transactional
     public View basic(String entity,String store,String expected,String name,String address,String detail) {
         requireVersion(entity,store,"BASIC",expected);
-        DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
+        updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
             .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store)
-            .set(MchStore::getName,name.trim()).set(MchStore::getAddress,address.trim()).set(MchStore::getAddressDetail,detail.trim())));
+            .set(MchStore::getName,name.trim()).set(MchStore::getAddress,address.trim()).set(MchStore::getAddressDetail,detail.trim()))));
         mirror.changed(entity);
         return load(entity,store);
     }
     @Override @Transactional
     public View contact(String entity,String store,String expected,String name,String phone) {
         requireVersion(entity,store,"CONTACT",expected);
-        DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
+        updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
             .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store)
-            .set(MchStore::getContactName,name.trim()).set(MchStore::getContactPhone,phone.trim())));
+            .set(MchStore::getContactName,name.trim()).set(MchStore::getContactPhone,phone.trim()))));
         return load(entity,store);
     }
     @Override @Transactional
     public View hours(String entity,String store,String expected,String hours) {
         requireVersion(entity,store,"HOURS",expected);
-        DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
-            .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store).set(MchStore::getOpenHours,hours.trim())));
+        updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
+            .eq(MchStore::getEntityNo,entity).eq(MchStore::getStoreNo,store).set(MchStore::getOpenHours,hours.trim()))));
         return load(entity,store);
     }
 }
