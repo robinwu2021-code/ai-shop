@@ -40840,6 +40840,13 @@
       },
       {
         "host": "NotifyChannel",
+        "name": "PROV_MITAKE",
+        "value": "MITAKE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyChannel",
         "name": "PROV_SMTP",
         "value": "SMTP",
         "zh": "",

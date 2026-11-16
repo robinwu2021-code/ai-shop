@@ -8,6 +8,7 @@ import ai.neargo.shop.message.entity.MsgPushToken;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.mapper.MessageMappers;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,7 +21,7 @@ class OutboxNotificationOutcomeTest {
     void bestEffortFailureIsRecordedWithoutRetryingSuccessfulChannels() {
         var mapper = mock(MessageMappers.NotifyLogMapper.class);
         when(mapper.insert(any(SysNotifyLog.class))).thenReturn(1);
-        var writer = new NotifyLogWriter(mapper);
+        var writer = new NotifyLogWriter(mapper, new PlatformChannelCredentials(new MockEnvironment()));
         var consumer = new NotificationConsumer(null,null,null,null,null,null,null,null,null,null,null,null,null,writer,null) {
             @Override public void consume(SysOutbox event) {
                 writer.write("PUSH","TRADE_NOTIFY","device",null,null,"FAILED","rejected",null,null);

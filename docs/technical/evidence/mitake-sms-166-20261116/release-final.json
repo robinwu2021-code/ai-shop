@@ -1,0 +1,8 @@
+{
+  "releasePhase": "complete",
+  "deploymentLockReleased": true,
+  "apiHealth": "UP",
+  "opsHealth": "UP",
+  "candidateSha256": "3f26e599bb4536a2dc76cfe5a12c0b11de76d9e7d96bbb93d7119b5a8f700693",
+  "policyRollbackSnapshotSaved": true
+}

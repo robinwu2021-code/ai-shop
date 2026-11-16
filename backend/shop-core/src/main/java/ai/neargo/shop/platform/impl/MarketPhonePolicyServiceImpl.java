@@ -61,7 +61,8 @@ public class MarketPhonePolicyServiceImpl implements MarketPhonePolicyService {
         return policy;
     }
     @Override public void requireSmsEnabled(String phone) {
-        String canonical=phone!=null && phone.matches(Phones.CN_MOBILE)?"+86"+phone:phone;
+        String tw = Phones.taiwanMobile(phone);
+        String canonical=tw!=null ? "+886"+tw.substring(1) : phone!=null && phone.matches(Phones.CN_MOBILE)?"+86"+phone:phone;
         var market=prefixes.entrySet().stream().filter(e->canonical!=null && canonical.startsWith(e.getValue()))
                 .max(Comparator.comparingInt(e->e.getValue().length())).map(Map.Entry::getKey)
                 .orElseThrow(()->BizException.of(ErrorCode.SMS_VERIFICATION_DISABLED));

@@ -38,6 +38,7 @@ public class NotifyChannel extends BaseEntity {
 
     // ---- 供应商
     public static final String PROV_ALI = "ALI";
+    public static final String PROV_MITAKE = "MITAKE";
     public static final String PROV_SMTP = "SMTP";
     public static final String PROV_WECHAT = "WECHAT";
     public static final String PROV_GETUI = "GETUI";

@@ -86,6 +86,9 @@ public class NotifyChannelRegistry {
             boolean hasSecret = ch.getSecretCipher() != null && !ch.getSecretCipher().isBlank();
             return hasSecret ? NotifyChannel.STATUS_READY : NotifyChannel.STATUS_UNCONFIGURED;
         }
+        if (NotifyChannel.TYPE_SMS.equals(ch.getChannelType()) && !creds.smsProvider().equals(ch.getProvider())) {
+            return NotifyChannel.STATUS_DISABLED;
+        }
         if (channelService.isStub(ch.getChannelType(), ch.getProvider())) {
             return NotifyChannel.STATUS_STUB;
         }

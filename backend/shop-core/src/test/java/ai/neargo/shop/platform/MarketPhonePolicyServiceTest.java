@@ -53,4 +53,15 @@ class MarketPhonePolicyServiceTest {
     @Test void unknownRegionsAndUnmappedCallingPrefixesDoNotBecomeMainland() {
         var s=service("CN");assertThrows(BizException.class,()->s.policy("XX"));assertThrows(BizException.class,()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+999123456"));
     }
+    @Test void taiwanMobileVariantsStillRequireExplicitRegionalAdmission() {
+        var s = service("TW");
+        for (String phone : List.of("0912345678", "+886912345678", "886912345678", "+886 0912-345-678")) {
+            assertThrows(BizException.class, () -> s.requireSmsEnabled(phone));
+        }
+        s.save("TW", false, true, "ops");
+        for (String phone : List.of("0912345678", "+886912345678", "886912345678", "+886 0912-345-678")) {
+            assertDoesNotThrow(() -> s.requireSmsEnabled(phone));
+        }
+        assertThrows(BizException.class, () -> s.requireSmsEnabled("091234567"));
+    }
 }
