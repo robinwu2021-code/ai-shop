@@ -9,6 +9,7 @@ import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 import java.util.Map;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "shop.pay.entity-profiles.enabled", havingValue = "true")
 public class EntityRegistrationProjectionCoordinator {
+  private static final String LOCK = "entity-registration-projection";
+
   private final EntityRegistrationProjection projection;
   private final PayEntityProfileApi pay;
   private final StoreSyncProperties properties;
@@ -35,6 +38,8 @@ public class EntityRegistrationProjectionCoordinator {
   }
 
   @Scheduled(fixedDelayString = "${shop.pay.entity-profiles.projection-delay:30000}")
+  // One scan is at most 100 targets (pending() LIMIT 100), each one bounded PAY call.
+  @SchedulerLock(name = LOCK, lockAtLeastFor = "PT5S", lockAtMostFor = "PT10M")
   public void run() {
     for (var target : projection.pending()) {
       try {

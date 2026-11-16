@@ -68,7 +68,7 @@ public class BizEntityController {
 
     /** Creates a pending platform entity for the personal account without selecting or creating a store. */
     @PostMapping("/biz/entities")
-    @PreAuthorize("@managementAccess.authenticated()")
+    @PreAuthorize("@perm.merchantAccount()")
     public EntityCreationService.Result create(@Valid @RequestBody CreateEntityReq req) {
         var user = BizAuthController.personalUser();
         var init=req.profileFields()==null?null:initializer.getIfAvailable();
@@ -81,7 +81,7 @@ public class BizEntityController {
 
     /** Recovers the original request after a lost response, using current owner authorization. */
     @GetMapping("/biz/entities/create-results/{requestNo}")
-    @PreAuthorize("@managementAccess.authenticated()")
+    @PreAuthorize("@perm.merchantAccount()")
     public EntityCreationService.Result createResult(
             @PathVariable @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo) {
         var user = BizAuthController.personalUser();

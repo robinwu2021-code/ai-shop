@@ -376,12 +376,6 @@ class BizEndpointPermTest {
                     // 所以不能按 PUBLIC 放行
                     put("/biz/qualifications/recognize", BizPerms.STORE);
 
-                    // ---- 证照（多证照）：与建店同一档敏感度，只有老板拿得到这个码 ----
-                    // BizPerms.assignableCodes() 显式排除了 STORE_ADMIN，自定义角色勾不到它，
-                    // 于是「只有老板能管证照」是结构保证的，不用另立一个新权限码
-                    put("/biz/entities", BizPerms.STORE_ADMIN);
-                    put("/biz/entity/{entityNo}", BizPerms.STORE_ADMIN);
-
                     // ---- 履约：三种活面对三种对象 ----
                     put("/biz/pickup/arrived", BizPerms.RECEIVE);
                     put("/biz/pickup/picking", BizPerms.RECEIVE);
@@ -674,6 +668,8 @@ class BizEndpointPermTest {
                     put("/biz/store/create", BizPerms.STORE_ADMIN);
                     put("/biz/store/{storeNo}/rename", BizPerms.STORE_ADMIN);
                     put("/biz/store/settings/basic", BizPerms.STORE_ADMIN);
+                    // 联系人与基本资料同档：改的是对外展示的主体联系信息
+                    put("/biz/store/settings/contact", BizPerms.STORE_ADMIN);
                     put("/biz/store/settings/hours", BizPerms.STORE);
                     put("/biz/store/{storeNo}/status", BizPerms.STORE_ADMIN);
                     put("/biz/store/{storeNo}/default", BizPerms.STORE_ADMIN);
@@ -1038,6 +1034,11 @@ class BizEndpointPermTest {
             Map.entry("/biz/feedback", "@perm.merchantAccount()"),
             Map.entry("/biz/feedback/mine", "@perm.merchantAccount()"),
             Map.entry("/biz/business-types/{typeCode}/feature-matrix", "@perm.merchantAccount()"),
+            // 账号级证照（V46 起不再要求选店与 STORE_ADMIN：主体可以先于门店存在）。
+            // 归属在方法内按 personalUser() 再核：MCH 员工会话 10403，非本人名下 403
+            Map.entry("/biz/entities", "@perm.merchantAccount()"),
+            Map.entry("/biz/entities/create-results/{requestNo}", "@perm.merchantAccount()"),
+            Map.entry("/biz/entity/{entityNo}", "@perm.merchantAccount()"),
             // 账号级经营实体资料（BizEntityProfileController 类级 @perm.merchantAccount()，owner 在方法内再核）
             Map.entry("/biz/entities/{entity}/profile-template", "@perm.merchantAccount()"),
             Map.entry("/biz/entities/{entity}/profile-draft", "@perm.merchantAccount()"),
