@@ -39,6 +39,7 @@
     "health": "api and ops UP 145 s after start; no new ERROR lines; host reaches api.openai.com",
     "knownGap": "POST /biz/entities/{e}/recognitions (recognize an already-uploaded file) needs near-pay GET /internal/pay/v2/entity-profiles/{e}/files/{f}/content, which no near-pay branch implements yet; POST /biz/entity-recognitions (multipart, before the entity exists) and OPS POST /ops/onboarding-documents/recognize do not depend on it",
     "rollback": "jar: /home/ume/bapp-release-20261116/shop-app.jar.before-recognition, same in-place procedure; config: restore payment-sse.private.properties.before-recognition and ops-entity.properties.before-recognition from the same directory with cat > (keep inode), then restart both containers",
-    "notVerified": "authenticated recognition calls (unauthenticated probes return 401 for any path, so they only prove the services run)"
+    "notVerified": "OPS POST /ops/onboarding-documents/recognize with a logged-in operator; POST /biz/entities/{e}/recognitions still blocked on near-pay (knownGap)",
+    "verified": "2026-11-16 by the onboarding session: App simulator against https://twpay.umeshop.ai/shop-api with a test account, synthetic fictional registration form on the new-entity page; all 10 fields filled back, industry left blank, same as local; entity not created, no data added on 166. Evidence: ai-shop-bapp feat/core-flow-ui 4f96080 docs/api/经营实体证件识别接口.md §8"
   }
 }
