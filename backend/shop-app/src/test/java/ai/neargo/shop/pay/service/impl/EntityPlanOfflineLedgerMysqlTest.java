@@ -61,6 +61,10 @@ class EntityPlanOfflineLedgerMysqlTest {
           "CREATE TABLE mch_store(tenant_no varchar(32),store_no varchar(64),entity_no"
               + " varchar(64),status varchar(16),plan_suspended boolean,deleted int,version"
               + " bigint,updated_at datetime,name varchar(64) DEFAULT 'Local store',PRIMARY KEY(tenant_no,store_no))");
+      // The production plan restoration query also observes operating-admission state.
+      // Reuse the frozen migration rather than maintaining a second, incomplete table shape.
+      db.execute(Files.readString(Path.of(
+          "src/main/resources/db/migration/V672__store_operational_review.sql")));
       String ddl =
           Files.readString(Path.of("src/main/resources/db/migration/V150__merchant_plan.sql"));
       for (String table : List.of("sys_merchant_plan_def", "mch_entity_plan")) {
