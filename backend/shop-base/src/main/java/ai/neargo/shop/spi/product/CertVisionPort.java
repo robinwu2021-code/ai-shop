@@ -52,7 +52,16 @@ public interface CertVisionPort {
         REGISTRATION(List.of("name", "taxNo", "registeredAddress", "incorporationDate", "capitalAmount", "representativeName")),
         OWNER_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType", "expiryDate")),
         OWNER_BACK(List.of("identityAddress", "expiryDate")),
-        BANK_COVER(List.of("bankCode", "branchCode", "accountName", "bankAccount"));
+        BANK_COVER(List.of("bankCode", "branchCode", "accountName", "bankAccount")),
+        // App 经营实体资料（TW_ENTITY_2 字段键）；登记地址拆为县市/区/其余，故不与 OPS 的 REGISTRATION 共用
+        ENTITY_REGISTRATION(List.of("name", "taxNo", "legalForm", "registeredCity", "registeredArea", "registeredAddress",
+                "incorporationDate", "capitalAmount", "representativeName", "businessDescription")),
+        CORPORATE_REGISTRATION(List.of("corporateTaxNo", "corporateName", "corporateAddress", "corporateCapital", "representativeName")),
+        ID_CARD_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType")),
+        ARC_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "expiryDate")),
+        ARC_BACK(List.of("arcBackNo")),
+        PASSPORT(List.of("representativeName", "identityNo", "birthDate", "expiryDate")),
+        BENEFICIARY_ID_CARD_FRONT(List.of("name", "nationality", "birthDate", "identityNo"));
 
         private final List<String> fields;
         DocumentType(List<String> fields) { this.fields = fields; }

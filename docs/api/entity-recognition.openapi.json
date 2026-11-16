@@ -1,0 +1,182 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Entity document recognition (merchant App)",
+    "version": "1.0.0",
+    "description": "docs/technical/design/TDD-经营实体证件识别.md. Account-level, @perm.merchantAccount(); no X-Store-No. Cache-Control: no-store."
+  },
+  "paths": {
+    "/biz/entity-recognitions": {
+      "post": {
+        "summary": "Read the registration certificate before the entity exists; the file is not kept",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "docType",
+                  "requestNo"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PNG/JPEG/PDF"
+                  },
+                  "docType": {
+                    "type": "string",
+                    "enum": [
+                      "REGISTRATION"
+                    ]
+                  },
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recognition suggestion; nothing is saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRecognition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "10400 unsupported docType, bad fileRef or non-TW instance"
+          },
+          "404": {
+            "description": "10404 entity or file not owned by the caller"
+          }
+        }
+      }
+    },
+    "/biz/entities/{entityNo}/recognitions": {
+      "post": {
+        "summary": "Read a file already uploaded to the entity",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestNo",
+                  "fileRef",
+                  "docType"
+                ],
+                "properties": {
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "fileRef": {
+                    "type": "string",
+                    "pattern": "^file:entity-profile/[a-f0-9]{32}$"
+                  },
+                  "docType": {
+                    "type": "string",
+                    "enum": [
+                      "REGISTRATION",
+                      "CORPORATE_REGISTRATION",
+                      "ID_CARD_FRONT",
+                      "ARC_FRONT",
+                      "ARC_BACK",
+                      "PASSPORT",
+                      "BENEFICIARY_ID_CARD_FRONT",
+                      "BANK_COVER"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recognition suggestion; nothing is saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRecognition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "10400 unsupported docType, bad fileRef or non-TW instance"
+          },
+          "404": {
+            "description": "10404 entity or file not owned by the caller"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EntityRecognition": {
+        "type": "object",
+        "required": [
+          "docType",
+          "recognized",
+          "fields",
+          "lowConfidence"
+        ],
+        "properties": {
+          "docType": {
+            "type": "string",
+            "enum": [
+              "REGISTRATION",
+              "CORPORATE_REGISTRATION",
+              "ID_CARD_FRONT",
+              "ARC_FRONT",
+              "ARC_BACK",
+              "PASSPORT",
+              "BENEFICIARY_ID_CARD_FRONT",
+              "BANK_COVER"
+            ]
+          },
+          "recognized": {
+            "type": "boolean",
+            "description": "false = not configured or unreadable; App falls back to manual input"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "TW_ENTITY_2 field keys; empty when not recognized"
+          },
+          "lowConfidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Field keys the merchant must confirm"
+          }
+        }
+      }
+    }
+  }
+}

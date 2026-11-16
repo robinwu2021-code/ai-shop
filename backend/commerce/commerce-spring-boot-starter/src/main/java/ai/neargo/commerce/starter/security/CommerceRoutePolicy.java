@@ -95,6 +95,8 @@ public final class CommerceRoutePolicy {
                     "POST /biz/merchant/store-openings",
                     "POST /biz/entities",
                     "GET /biz/entities",
+                    // 新增经营实体前识别登记证明（TDD-经营实体证件识别）：实体还不存在，只能是账号级
+                    "POST /biz/entity-recognitions",
                     "GET /biz/merchant/store-setup",
                     "GET /biz/business-types",
                     // 账号本人的设置：按登录人定位，与门店无关；推送注册在登录后、选店前就会调
@@ -182,7 +184,7 @@ public final class CommerceRoutePolicy {
             return new Route(Lane.ACCOUNT, null, null, null);
         // Every BizEntityProfileController route; a missing one falls through to DENY (403) for commerce stores.
         if ((method.equals("GET") && path.matches("/biz/entities/"+ID+"/(?:profile-template|profile-draft|commands/"+ID+"|files/"+ID+"/preview)"))
-                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests|contact|revision-discards)")))
+                || (method.equals("POST") && path.matches("/biz/entities/"+ID+"/(?:profile-draft|review-submissions|files|revisions|channel-requests|contact|revision-discards|recognitions)")))
             return new Route(Lane.ACCOUNT, null, null, null);
         // Settings is a selected-store namespace, not a path containing a store ID.
         if (method.equals("GET") && path.equals("/biz/store/settings")

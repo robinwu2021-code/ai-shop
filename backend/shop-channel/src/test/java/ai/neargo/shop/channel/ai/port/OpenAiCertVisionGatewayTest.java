@@ -53,6 +53,14 @@ class OpenAiCertVisionGatewayTest {
         } finally { server.stop(0); }
     }
 
+    @Test void entityTypesUseOwnFields() throws Exception {
+        var result = OpenAiCertVisionGateway.documentResult(JSON.readTree("{\"documentType\":\"ENTITY_REGISTRATION\",\"confidence\":0.9,"
+                + "\"fields\":{\"registeredCity\":\"臺北市\",\"legalForm\":\"ENTERPRISE\",\"bankAccount\":\"1\"}}"), CertVisionPort.DocumentType.ENTITY_REGISTRATION);
+        assertThat(result.fields()).containsOnlyKeys("registeredCity", "legalForm");
+        assertThat(CertVisionPort.DocumentType.ARC_BACK.fields()).containsExactly("arcBackNo");
+        assertThat(CertVisionPort.DocumentType.REGISTRATION.fields()).doesNotContain("registeredCity");
+    }
+
     @Test void documentFieldsAreRestrictedToSelectedType() throws Exception {
         assertThat(OpenAiCertVisionGateway.documentResult(JSON.readTree("{\"documentType\":\"BANK_COVER\",\"confidence\":0.7,\"fields\":{\"bankAccount\":\"000123\",\"identityNo\":\"OTHER\"}}"), CertVisionPort.DocumentType.BANK_COVER).fields())
                 .containsExactly(Map.entry("bankAccount", "000123"));

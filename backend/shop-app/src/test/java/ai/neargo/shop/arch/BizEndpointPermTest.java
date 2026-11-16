@@ -1056,6 +1056,8 @@ class BizEndpointPermTest {
             Map.entry("/biz/entities/{entity}/channel-requests", "@perm.merchantAccount()"),
             Map.entry("/biz/entities/{entity}/contact", "@perm.merchantAccount()"),
             Map.entry("/biz/entities/{entity}/revision-discards", "@perm.merchantAccount()"),
+            Map.entry("/biz/entities/{entity}/recognitions", "@perm.merchantAccount()"),
+            Map.entry("/biz/entity-recognitions", "@perm.merchantAccount()"),
             Map.entry("/biz/entities/{entity}/files/{file}/preview", "@perm.merchantAccount()"),
             Map.entry("/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)"),
             Map.entry("/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)"),

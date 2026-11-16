@@ -73,8 +73,16 @@ public class OpenAiCertVisionGateway implements CertVisionPort {
                 identityNo=本人證件號；birthDate=出生日期；issueDate=發證日期；issuePlace=原文發證地；
                 idIssueType=原文初發/補發/換發；expiryDate=有效期限；identityAddress=本人住址，不能當企業地址；
                 bankCode=銀行代碼；branchCode=分行代碼；accountName=戶名；bankAccount=帳號。
+                ENTITY_REGISTRATION 另有：legalForm=公司登記為 ENTERPRISE、商業登記（獨資/合夥行號）為 INDIVIDUAL；
+                registeredCity=登記地址的縣市；registeredArea=鄉鎮市區；registeredAddress=去掉縣市與鄉鎮市區後的其餘地址；
+                businessDescription=所營事業項目原文。
+                CORPORATE_REGISTRATION 為法人股東的公司登記：corporateTaxNo=統一編號；corporateName=公司名稱；
+                corporateAddress=完整登記地址；corporateCapital=實收資本額，規則同 capitalAmount；representativeName=代表人。
+                ID_CARD_FRONT/BENEFICIARY_ID_CARD_FRONT 為台灣身分證正面，name=姓名，nationality 為「中華民國」；
+                ARC_FRONT 為居留證正面：representativeName=英文姓名，identityNo=統一證號；ARC_BACK：arcBackNo=背面序號；
+                PASSPORT：representativeName=護照英文姓名，identityNo=護照號碼。
                 文件與選定類型不符或不是相關證明時 documentType=UNKNOWN、所有欄位 null。
-                所選文件類型：%s。REGISTRATION=公司/商業登記；OWNER_FRONT=身分證正面；
+                所選文件類型：%s。REGISTRATION/ENTITY_REGISTRATION=公司/商業登記；OWNER_FRONT=身分證正面；
                 OWNER_BACK=身分證背面；BANK_COVER=銀行存摺或帳戶證明。
                 """.formatted(type.name());
         JsonNode result = request(bytes, contentType, prompt, schema);

@@ -17,7 +17,8 @@ class StoreOpeningRoutePolicyTest {
   for(String endpoint:new String[]{"GET /biz/entities/E1/profile-template","GET /biz/entities/E1/profile-draft",
     "GET /biz/entities/E1/commands/C1","GET /biz/entities/E1/files/F1/preview","POST /biz/entities/E1/profile-draft",
     "POST /biz/entities/E1/review-submissions","POST /biz/entities/E1/files","POST /biz/entities/E1/revisions",
-    "POST /biz/entities/E1/channel-requests","POST /biz/entities/E1/contact","POST /biz/entities/E1/revision-discards"}) {
+    "POST /biz/entities/E1/channel-requests","POST /biz/entities/E1/contact","POST /biz/entities/E1/revision-discards",
+    "POST /biz/entities/E1/recognitions","POST /biz/entity-recognitions"}) {
    var parts=endpoint.split(" ");
    assertEquals(CommerceRoutePolicy.Lane.ACCOUNT,p.match(parts[0],parts[1]).lane(),endpoint);
   }

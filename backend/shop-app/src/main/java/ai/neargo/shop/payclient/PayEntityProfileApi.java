@@ -69,6 +69,14 @@ public interface PayEntityProfileApi {
       @RequestParam("sourceScope") String scope,
       @RequestParam("actorRef") String actor);
 
+  /** Owner-only original bytes of an uploaded evidence file, for server-side recognition only. */
+  @GetExchange(ROOT + "/files/{file}/content")
+  ResponseEntity<byte[]> content(
+      @PathVariable("entity") String entity,
+      @PathVariable("file") String file,
+      @RequestParam("sourceScope") String scope,
+      @RequestParam("actorRef") String actor);
+
   record SummaryQuery(String sourceScope, List<String> entities) {}
 
   @PostExchange("/internal/pay/v2/entity-profiles/summaries")
