@@ -214,3 +214,7 @@
 4. 验收：正式门店真实收款一笔小额，3 秒内 App 播报；near-pay `pay_biz_notify` 该单 DELIVERED、ai-shop `payment_collection_receipt.environment=PRODUCTION` 且 `store_no` 正确。
 
 未验证：两端原生 MySQL 用例（本机无测试库）；near-pay 在 PRODUCTION 执行环境下读 `pay_order` / 门店映射的环境隔离行为，需在 166 联调确认。
+
+### 5.7 发布记录（2026-11-16 UME166）
+
+已发布：ai-shop 账号中心、柜台报价状态、主链路缺陷修复、正式环境收款通知接收（V676 已执行）；near-pay 收款通知按环境投递与门店号（类覆盖）。配置未改，收款播报仍只在 SANDBOX。未含证件识别。明细与回滚见 [release-166-20261116.json](./release-166-20261116.json)。
