@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13">
+  <title>运营端四类管理对象的关系</title>
+  <desc>注册账户作为负责人或员工关联商户与门店；商户以主体身份进件收款渠道，收款号绑定门店；门店授权接入销售渠道。处置沿归属关系向下传导。</desc>
   <rect width="860" height="400" fill="#ffffff"/>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>

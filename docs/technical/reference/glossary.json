@@ -30047,6 +30047,12 @@
           "ar": null
         },
         {
+          "key": "login.confirmPassword",
+          "zh-CN": "确认新密码",
+          "en": "Confirm new password",
+          "ar": null
+        },
+        {
           "key": "login.emailCode",
           "zh-CN": "邮箱验证码",
           "en": "Email verification code",
@@ -30119,6 +30125,18 @@
           "ar": null
         },
         {
+          "key": "login.mustChangeHint",
+          "zh-CN": "当前是初始密码，设置新密码后继续",
+          "en": "You're using an initial password. Set a new one to continue.",
+          "ar": null
+        },
+        {
+          "key": "login.mustChangeTitle",
+          "zh-CN": "设置新密码",
+          "en": "Set a new password",
+          "ar": null
+        },
+        {
           "key": "login.otherAccount",
           "zh-CN": "使用其他账号登录",
           "en": "Sign in with another account",
@@ -30131,9 +30149,15 @@
           "ar": null
         },
         {
+          "key": "login.passwordMismatch",
+          "zh-CN": "两次输入的密码不一致",
+          "en": "The passwords don't match",
+          "ar": null
+        },
+        {
           "key": "login.paymentSource",
-          "zh-CN": "登录后返回支付运营端。",
-          "en": "Sign in to return to payment operations.",
+          "zh-CN": "登录后进入 支付运营",
+          "en": "You'll continue to Payment Ops after signing in.",
           "ar": null
         },
         {
@@ -30182,6 +30206,12 @@
           "key": "login.sessionRetry",
           "zh-CN": "暂时无法核验共享登录状态。你的会话已保留，请检查网络后重试。",
           "en": "Unable to verify your shared session right now. Your session has been preserved. Check your connection and retry.",
+          "ar": null
+        },
+        {
+          "key": "login.setAndContinue",
+          "zh-CN": "设置并继续",
+          "en": "Set and continue",
           "ar": null
         },
         {
@@ -30347,6 +30377,12 @@
           "ar": null
         },
         {
+          "key": "nav.currentSystem",
+          "zh-CN": "当前",
+          "en": "Current",
+          "ar": null
+        },
+        {
           "key": "nav.expand",
           "zh-CN": "展开导航",
           "en": "Expand navigation",
@@ -30410,6 +30446,12 @@
           "key": "nav.searchPlaceholder",
           "zh-CN": "搜索功能，如「商家档案」",
           "en": "Search features, e.g. “Merchant profiles”",
+          "ar": null
+        },
+        {
+          "key": "nav.switchSystem",
+          "zh-CN": "切换系统",
+          "en": "Switch system",
           "ar": null
         },
         {

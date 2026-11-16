@@ -116,6 +116,15 @@ public class OpsPlatformController {
     public record ResetReq(@NotBlank String token, @NotBlank String newPassword) {
     }
 
+    /**
+     * 退出：服务端吊销当前令牌。免鉴权（SecurityConfig 放行）—— 令牌已过期的人点「退出」
+     * 也该得到成功，而不是一个 401 让前端以为没退掉。只吊销请求头里那一个令牌。
+     */
+    @PostMapping("/ops/auth/logout")
+    public void logout(jakarta.servlet.http.HttpServletRequest request) {
+        opsService.logout(ai.neargo.shop.auth.AbstractTokenAuthFilter.bearer(request));
+    }
+
     @GetMapping("/ops/auth/me")
     public StaffVO me() {
         return opsService.me();

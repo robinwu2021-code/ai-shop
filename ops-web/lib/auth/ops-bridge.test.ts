@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { clearOpsSessions, loginReturnHref, paymentOpsHref, readSharedToken, returnAfterLogin, safeReturnTo, shareOpsToken } from "./ops-bridge";
+import { clearOpsSessions, currentSharedToken, loginReturnHref, migrateLegacySession, paymentOpsHref, readSharedToken, returnAfterLogin, safeReturnTo, shareOpsToken } from "./ops-bridge";
 const origin = "https://ops.example.test";
 describe("same-origin operations bridge", () => {
   it("preserves payment and shop deep links including query/hash", () => {
@@ -35,21 +35,27 @@ describe("same-origin operations bridge", () => {
     for (const returnTo of [null, "https://evil.test/oms/"]) returnAfterLogin(returnTo, { origin, replace }, home);
     expect(home).toHaveBeenCalledTimes(2);
   });
-  it("shares only the token, then clears both sessions and blocks automatic relogin", () => {
-    const values = new Map<string, string>();
-    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) };
-    vi.stubGlobal("window", {}); vi.stubGlobal("sessionStorage", storage); vi.stubGlobal("localStorage", storage);
+  it("shares one cross-app key, clears it with every legacy copy, and migrates the old shop cache once", () => {
+    const local = new Map<string, string>(); const session = new Map<string, string>();
+    const mk = (m: Map<string, string>) => ({ getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => m.set(k, v), removeItem: (k: string) => m.delete(k) });
+    vi.stubGlobal("window", {}); vi.stubGlobal("localStorage", mk(local)); vi.stubGlobal("sessionStorage", mk(session));
     try {
-      shareOpsToken("real-token");
-      expect(JSON.parse(values.get("neargo-ops-session")!)).toEqual({ token: "real-token" });
-      values.set("nearpay-ops-session", "cached-payment"); values.set("shop-ops-auth", "cached-shop");
+      shareOpsToken("real-token", "ops_zhang");
+      expect(JSON.parse(local.get("neargo-ops-auth")!)).toMatchObject({ token: "real-token", username: "ops_zhang" });
+      expect(currentSharedToken()).toBe("real-token");
+      session.set("nearpay-ops-session", "cached-payment"); session.set("neargo-ops-session", "{}"); local.set("shop-ops-auth", "cached-shop");
       clearOpsSessions();
-      expect(values.has("neargo-ops-session")).toBe(false);
-      expect(values.has("nearpay-ops-session")).toBe(false);
-      expect(values.has("shop-ops-auth")).toBe(false);
-      expect(values.get("nearpay-ops-no-shared")).toBe("1");
-      shareOpsToken("next-login");
-      expect(values.has("nearpay-ops-no-shared")).toBe(false);
+      expect(local.has("neargo-ops-auth")).toBe(false);
+      expect(local.has("shop-ops-auth")).toBe(false);
+      expect(session.size).toBe(0);
+      // 上线后第一次加载：只有旧的商城缓存 → 搬到新键
+      local.set("shop-ops-auth", JSON.stringify({ state: { token: "legacy", username: "old" } }));
+      migrateLegacySession();
+      expect(currentSharedToken()).toBe("legacy");
+      // 新键已有值时不覆盖
+      local.set("shop-ops-auth", JSON.stringify({ state: { token: "stale" } }));
+      migrateLegacySession();
+      expect(currentSharedToken()).toBe("legacy");
     } finally { vi.unstubAllGlobals(); }
   });
 

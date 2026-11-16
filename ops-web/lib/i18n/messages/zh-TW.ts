@@ -54,6 +54,11 @@ export const zhTW: Messages = {
     backHome: "返回工作臺",
   },
   login: {
+    mustChangeTitle: "設定新密碼",
+    mustChangeHint: "目前是初始密碼，設定新密碼後繼續",
+    confirmPassword: "確認新密碼",
+    passwordMismatch: "兩次輸入的密碼不一致",
+    setAndContinue: "設定並繼續",
     hint: "請使用運營帳號登入",
     showPassword: "顯示密碼",
     hidePassword: "隱藏密碼",
@@ -68,7 +73,7 @@ export const zhTW: Messages = {
     sessionRetry: "暫時無法核驗共享登入狀態。你的會話已保留，請檢查網路後重試。",
     retrySession: "重新核驗",
     otherAccount: "使用其他賬號登入",
- paymentSource: "登入後返回支付運營端。", password: "密碼",
+ paymentSource: "登入後進入 支付運營", password: "密碼",
     username: "使用者名稱",
     submit: "登入",
     forgot: "忘記密碼？",
@@ -128,6 +133,8 @@ export const zhTW: Messages = {
   },
   nav: {
     paymentOps: "支付運營",
+    switchSystem: "切換系統",
+    currentSystem: "目前",
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "待建",
     notImplementedHint: "後端尚未實現，暫時點不動",

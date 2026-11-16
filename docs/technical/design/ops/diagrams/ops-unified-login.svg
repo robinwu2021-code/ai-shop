@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
+  <title>运营端统一登录流程</title>
+  <desc>支付运营或平台运营在没有有效会话时整页跳到统一登录页，登录后按白名单校验的 returnTo 回到原页面；退出、换人或 401 时服务端吊销令牌并让两端同时回到登录页。</desc>
+  <rect width="920" height="360" fill="#ffffff"/>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+  <!-- boxes -->
+  <rect x="20" y="40" width="190" height="70" rx="10" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="115" y="68" text-anchor="middle" font-weight="700">支付运营 /oms/…</text>
+  <text x="115" y="90" text-anchor="middle" fill="#475569" font-size="12">无有效会话</text>
+  <rect x="20" y="230" width="190" height="70" rx="10" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="115" y="258" text-anchor="middle" font-weight="700">平台运营 /ops-shop/…</text>
+  <text x="115" y="280" text-anchor="middle" fill="#475569" font-size="12">无有效会话</text>
+  <rect x="340" y="120" width="230" height="110" rx="12" fill="#0f172a" stroke="#0f172a"/>
+  <text x="455" y="150" text-anchor="middle" fill="#fff" font-weight="700">统一登录页</text>
+  <text x="455" y="172" text-anchor="middle" fill="#cbd5e1" font-size="12">/ops-shop/login/?returnTo=…</text>
+  <text x="455" y="194" text-anchor="middle" fill="#cbd5e1" font-size="12">密码 → 邮箱验证码 → 强制改密</text>
+  <text x="455" y="214" text-anchor="middle" fill="#cbd5e1" font-size="12">写入唯一会话 neargo-ops-auth</text>
+  <rect x="700" y="40" width="200" height="70" rx="10" fill="#ecfdf5" stroke="#10b981"/>
+  <text x="800" y="68" text-anchor="middle" font-weight="700">回到原页面</text>
+  <text x="800" y="90" text-anchor="middle" fill="#475569" font-size="12">/oms/… 或 /ops-shop/…</text>
+  <rect x="700" y="230" width="200" height="70" rx="10" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="800" y="258" text-anchor="middle" font-weight="700">退出 / 换人 / 401</text>
+  <text x="800" y="280" text-anchor="middle" fill="#475569" font-size="12">服务端吊销 + 两端同时失效</text>
+  <!-- arrows -->
+  <line x1="210" y1="75" x2="338" y2="150" stroke="#475569" marker-end="url(#a)"/>
+  <text x="222" y="104" fill="#334155" font-size="12">整页跳转，带 returnTo</text>
+  <line x1="210" y1="265" x2="338" y2="200" stroke="#475569" marker-end="url(#a)"/>
+  <text x="222" y="250" fill="#334155" font-size="12">整页跳转，带 returnTo</text>
+  <line x1="570" y1="150" x2="698" y2="80" stroke="#475569" marker-end="url(#a)"/>
+  <text x="586" y="104" fill="#334155" font-size="12">returnTo 白名单校验</text>
+  <line x1="800" y1="228" x2="800" y2="112" stroke="#b45309" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <line x1="698" y1="265" x2="572" y2="205" stroke="#b45309" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text x="590" y="262" fill="#92400e" font-size="12">回登录页</text>
+  <text x="20" y="340" fill="#64748b" font-size="12">同源（nearshop / twpay 各自同源）：令牌只存浏览器本地，永不出现在 URL；两端每次请求都回 ai-shop 核验身份。</text>
+</svg>

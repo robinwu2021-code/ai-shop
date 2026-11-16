@@ -323,6 +323,14 @@ public class OpsServiceImpl implements OpsService {
     }
 
     @Override
+    public void logout(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revoke(token.trim());
+    }
+
+    @Override
     public StaffVO me() {
         LoginUser user = SecurityUtils.requireUser();
         SysOpsStaff staff = requireStaff(user.userNo());

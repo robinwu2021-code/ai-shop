@@ -1866,6 +1866,9 @@ components:
         token:
           type: "string"
           description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ）"
+        mustChangePassword:
+          type: "boolean"
+          description: "仍是初始密码：统一登录页必须先让他改密，才放行到任一端（TDD-ops-统一登录与系统切换 §3.1）"
         challenge:
           type: "string"
           description: "第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。"

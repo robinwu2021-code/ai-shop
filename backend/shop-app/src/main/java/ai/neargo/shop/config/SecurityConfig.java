@@ -261,8 +261,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(reg -> reg
                         // 忘记密码的两条同样免鉴权：忘了密码自然登不进来。
                         // 安全性靠邮件里那个一次性令牌，以及「账号不存在也返回成功」
+                        // 退出也放行：过期令牌点退出要得到成功；接口只吊销请求头里那一个令牌
                         .requestMatchers("/ops/auth/login", "/ops/auth/login/verify", "/ops/auth/forgot",
-                                "/ops/auth/reset").permitAll()
+                                "/ops/auth/reset", "/ops/auth/logout").permitAll()
                         /*
                          * **异步与错误分派放行。** 不放的话，SSE（/ops/stream）每次到点
                          * 都会被当成匿名拒掉：令牌过滤器继承 OncePerRequestFilter、默认跳过

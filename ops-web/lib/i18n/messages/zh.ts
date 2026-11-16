@@ -52,6 +52,11 @@ export const zh = {
     backHome: "返回工作台",
   },
   login: {
+    mustChangeTitle: "设置新密码",
+    mustChangeHint: "当前是初始密码，设置新密码后继续",
+    confirmPassword: "确认新密码",
+    passwordMismatch: "两次输入的密码不一致",
+    setAndContinue: "设置并继续",
     hint: "请使用运营账号登录",
     showPassword: "显示密码",
     hidePassword: "隐藏密码",
@@ -66,7 +71,7 @@ export const zh = {
     sessionRetry: "暂时无法核验共享登录状态。你的会话已保留，请检查网络后重试。",
     retrySession: "重新核验",
     otherAccount: "使用其他账号登录",
- paymentSource: "登录后返回支付运营端。", password: "密码",
+ paymentSource: "登录后进入 支付运营", password: "密码",
     username: "用户名",
     submit: "登录",
     forgot: "忘记密码？",
@@ -126,6 +131,8 @@ export const zh = {
   },
   nav: {
     paymentOps: "支付运营",
+    switchSystem: "切换系统",
+    currentSystem: "当前",
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "待建",
     notImplementedHint: "后端尚未实现，暂时点不动",

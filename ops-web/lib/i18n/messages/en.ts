@@ -61,6 +61,11 @@ export const en: Messages = {
     backHome: "Back to dashboard",
   },
   login: {
+    mustChangeTitle: "Set a new password",
+    mustChangeHint: "You're using an initial password. Set a new one to continue.",
+    confirmPassword: "Confirm new password",
+    passwordMismatch: "The passwords don't match",
+    setAndContinue: "Set and continue",
     hint: "Sign in with your operations account",
     showPassword: "Show password",
     hidePassword: "Hide password",
@@ -75,7 +80,7 @@ export const en: Messages = {
     sessionRetry: "Unable to verify your shared session right now. Your session has been preserved. Check your connection and retry.",
     retrySession: "Retry verification",
     otherAccount: "Sign in with another account",
- paymentSource: "Sign in to return to payment operations.", password: "Password",
+ paymentSource: "You'll continue to Payment Ops after signing in.", password: "Password",
     username: "Username",
     submit: "Sign in",
     forgot: "Forgot password?",
@@ -135,6 +140,8 @@ export const en: Messages = {
   },
   nav: {
     paymentOps: "Payment operations",
+    switchSystem: "Switch system",
+    currentSystem: "Current",
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "Planned",
     notImplementedHint: "Not built yet — cannot be opened",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { platformLandingHref } from "@/lib/platform-nav";
 import { useAuth } from "@/lib/auth";
@@ -46,7 +46,10 @@ function LoginForm() {
   const [challenge, setChallenge] = useState("");
   const [challengeTo, setChallengeTo] = useState("");
   const [code, setCode] = useState("");
-  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "mustChange">("login");
+  /** 初始密码账号：登录后不放行，先在卡片里改密（TDD-ops-统一登录与系统切换 §3.1） */
+  const mustChangeRef = useRef(false);
+  const credentials = useRef({ username: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
   const [notice, setNotice] = useState("");
   const brand = useBrand();
@@ -67,7 +70,7 @@ function LoginForm() {
   }, [params]);
 
   useEffect(() => {
-    if (token) finishLogin();
+    if (token && !mustChangeRef.current) finishLogin();
     // The token was verified by the shared-session gate or returned by login.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -80,6 +83,7 @@ function LoginForm() {
       acceptLoginResult(result, (nextChallenge, sentTo) => {
         setChallenge(nextChallenge); setChallengeTo(sentTo); setCode(""); setPassword("");
       }, (r) => {
+        if (r.mustChangePassword) { mustChangeRef.current = true; setMode("mustChange"); }
         queryClient.clear();
         useServerMenu.getState().clear();
         login({
@@ -102,6 +106,7 @@ function LoginForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!challenge) credentials.current = { username, password };
     setBusy(true);
     setErr("");
     await doLogin(username, password);
@@ -120,11 +125,20 @@ function LoginForm() {
       <div className="flex w-full max-w-[380px] flex-col gap-5 sm:rounded-card sm:border sm:border-[var(--card-border)] sm:bg-card sm:p-7 sm:shadow-pop">
         <div className="flex items-center gap-3">
           <BrandMark />
-          <h1 className="min-w-0 truncate txt-title">{mode === "forgot" ? t("login.forgotTitle") : brand.name}</h1>
+          <h1 className="min-w-0 truncate txt-title">{mode === "forgot" ? t("login.forgotTitle") : mode === "mustChange" ? t("login.mustChangeTitle") : brand.name}</h1>
           {envLabel && <span className="ms-auto shrink-0 rounded-chip bg-warning-tint px-2.5 py-0.5 txt-label text-warning-ink">{envLabel}</span>}
         </div>
 
-        {mode === "forgot" ? (
+        {mode === "mustChange" ? (
+          <MustChangePanel oldPassword={credentials.current.password} onChanged={async (next) => {
+            // 改密成功后后端吊销该账号全部会话：用新密码重新登录一次（可能再要邮箱验证码）
+            mustChangeRef.current = false;
+            useAuth.getState().logout();
+            setMode("login");
+            setPassword(next);
+            await doLogin(credentials.current.username, next);
+          }} />
+        ) : mode === "forgot" ? (
           <ForgotPanel onBack={(done) => { setMode("login"); setNotice(done ?? ""); }} />
         ) : (
           <form className="flex flex-col gap-4" onSubmit={submit}>
@@ -188,7 +202,7 @@ function OtpInput({ value, onChange, label }: { value: string; onChange: (v: str
              inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
              onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-             className="absolute inset-0 z-10 w-full cursor-text opacity-0" />
+             className="focus-ring absolute inset-0 z-10 w-full cursor-text opacity-0" />
       <div aria-hidden className="grid grid-cols-6 gap-2">
         {Array.from({ length: 6 }, (_, i) => (
           <span key={i} className={cn(
@@ -266,5 +280,44 @@ function ForgotPanel({ onBack }: { onBack: (done?: string) => void }) {
       </>}
       <Button type="button" variant="ghost" className="-mt-2 w-full" onClick={() => onBack()}>{t("login.backToLogin")}</Button>
     </div>
+  );
+}
+
+/** 初始密码账号的强制改密：新密码 + 确认；提交时用旧密码调「改自己的密码」。 */
+function MustChangePanel({ oldPassword, onChanged }: { oldPassword: string; onChanged: (next: string) => Promise<void> }) {
+  const { t } = useI18n();
+  const [pwd, setPwd] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const mismatch = !!confirm && pwd !== confirm;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwd.length < 8 || pwd !== confirm) return;
+    setBusy(true); setErr("");
+    try {
+      await api.changeOwnPassword(oldPassword, pwd);
+      await onChanged(pwd);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally { setBusy(false); }
+  };
+  return (
+    <form className="flex flex-col gap-4" onSubmit={submit}>
+      <p className="-mt-2 txt-body text-muted-foreground">{t("login.mustChangeHint")}</p>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="must-new">{t("login.resetNew")}</Label>
+        <Input id="must-new" type="password" autoComplete="new-password" autoFocus value={pwd}
+               onChange={(e) => setPwd(e.target.value)} placeholder={t("login.resetNewHint")} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="must-confirm">{t("login.confirmPassword")}</Label>
+        <Input id="must-confirm" type="password" autoComplete="new-password" value={confirm} invalid={mismatch}
+               onChange={(e) => setConfirm(e.target.value)} />
+        {mismatch && <p className="txt-caption text-destructive">{t("login.passwordMismatch")}</p>}
+      </div>
+      {err && <div role="alert" className="rounded-field bg-destructive-tint px-3.5 py-2 txt-body text-destructive">{err}</div>}
+      <Button size="lg" className="w-full" type="submit" disabled={busy || pwd.length < 8 || pwd !== confirm}>{t("login.setAndContinue")}</Button>
+    </form>
   );
 }

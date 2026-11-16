@@ -27,6 +27,13 @@ public interface OpsService {
 
     StaffVO me();
 
+    /**
+     * 退出：吊销调用方带来的这个运营令牌（只动 OPERATOR 池）。
+     * 幂等 —— 令牌为空、已过期、已吊销都直接返回，前端据此放心地「先调接口再清本地」。
+     * 平台运营与支付运营共用这一个令牌，吊销后两端下一次请求都是 401（TDD-ops-统一登录与系统切换 §3.3）。
+     */
+    void logout(String token);
+
     List<StaffVO> staffList();
 
     /**

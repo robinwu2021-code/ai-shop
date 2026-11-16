@@ -21,6 +21,7 @@ export interface BackendStaff {
   merchantNo?: string;
   communityNo?: string;
   pickupNo?: string;
+  mustChangePassword?: boolean;
 }
 
 interface BackendLogin {
@@ -93,6 +94,7 @@ function mapLogin(raw: BackendLogin, username = ""): LoginResp {
     username: staff?.username ?? username,
     role: toOpsRole(staff?.roles?.[0]), token: raw?.token ?? "", perms: staff?.perms ?? [],
     merchantNo: staff?.merchantNo, communityNo: staff?.communityNo, pickupNo: staff?.pickupNo,
+    mustChangePassword: staff?.mustChangePassword === true,
   };
 }
 
@@ -168,3 +170,18 @@ export const dashboardHttp: DashboardApi = {
   getStoreRanking: (q = {}) =>
     client.get("/ops/dashboard/stores", { days: q.days ?? 30, limit: q.limit ?? 20 }),
 };
+
+/**
+ * 服务端吊销当前令牌（POST /ops/auth/logout）。平台运营与支付运营共用这一个令牌，
+ * 吊销后两端下一次请求都是 401。尽力而为：失败或超时不阻塞本地退出。
+ */
+export async function revokeOpsSession(token: string): Promise<void> {
+  if (!token) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ""}/ops/auth/logout`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: ctrl.signal,
+    });
+  } catch { /* 网络失败：本地照常退出，令牌到期自然失效 */ } finally { clearTimeout(timer); }
+}

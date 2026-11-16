@@ -70,7 +70,7 @@ export const useAuth = create<AuthState>()(
       token: "",
       perms: [],
       login: (v) => {
-        shareOpsToken(v.token);
+        shareOpsToken(v.token, v.username);
         set({ ...EMPTY_SCOPE, perms: [], ...v, tenantNo: MAIN_TENANT });
       },
       // 退出要清 perms：留着的话，下一个人在同一台机器上登录、

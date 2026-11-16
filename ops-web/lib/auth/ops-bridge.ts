@@ -1,5 +1,4 @@
 /** Same-origin operations navigation. Credentials are never carried in URLs. */
-export const SHARED_OPS_SESSION_KEY = "neargo-ops-session";
 export const SHOP_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "/ops-shop";
 export const PAYMENT_OPS_URL = process.env.NEXT_PUBLIC_NEARPAY_OPS_URL || "/oms/";
 
@@ -74,29 +73,73 @@ export function loginReturnHref(location: Pick<Location, "pathname" | "search" |
   return `/login/?${new URLSearchParams({ returnTo: `${location.pathname}${location.search}${location.hash}` })}`;
 }
 
-export function readSharedToken(storage: Pick<Storage, "getItem">): string | null {
+/**
+ * 两端唯一的会话来源（TDD-ops-统一登录与系统切换 §3.2）：localStorage 里一个键，跨标签页、两端共读。
+ * 只放令牌与用户名；角色与权限每次由各自后端现查，不信本地。
+ */
+export const SHARED_OPS_AUTH_KEY = "neargo-ops-auth";
+/** 旧键：上线后第一次加载迁移一次，然后删除 */
+const LEGACY_SESSION_KEYS = ["neargo-ops-session", "nearpay-ops-session", "nearpay-ops-no-shared"] as const;
+const SHOP_CACHE_KEY = "shop-ops-auth";
+
+export function readSharedToken(storage: Pick<Storage, "getItem">, key = SHARED_OPS_AUTH_KEY): string | null {
   try {
-    const session: unknown = JSON.parse(storage.getItem(SHARED_OPS_SESSION_KEY) || "null");
+    const session: unknown = JSON.parse(storage.getItem(key) || "null");
     if (!session || typeof session !== "object") return null;
     const token = (session as { token?: unknown }).token;
     return typeof token === "string" && token.trim() && !/[\r\n]/.test(token) ? token : null;
   } catch { return null; }
 }
 
-export function shareOpsToken(token: string): void {
+function removeLegacy(): void {
+  for (const key of LEGACY_SESSION_KEYS) {
+    try { sessionStorage.removeItem(key); } catch { /* disabled storage */ }
+  }
+}
+
+export function shareOpsToken(token: string, username = ""): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(SHARED_OPS_SESSION_KEY, JSON.stringify({ token }));
-    sessionStorage.removeItem("nearpay-ops-no-shared");
-  } catch { /* Storage may be disabled; local login remains available. */ }
+    localStorage.setItem(SHARED_OPS_AUTH_KEY, JSON.stringify({ token, username, issuedAt: Date.now() }));
+  } catch { /* Storage may be disabled; local login remains available in this page. */ }
+  removeLegacy();
+}
+
+/** 读两端共用的令牌（不可用的存储一律当没有）。 */
+export function currentSharedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return readSharedToken(localStorage); } catch { return null; }
+}
+
+/**
+ * 一次性迁移：新键为空、旧的商城缓存或旧的同标签页共享里有令牌 → 搬到新键。
+ * 只做一次就不会再触发：之后新键要么有值，要么是退出时被删的（退出同时删商城缓存）。
+ */
+export function migrateLegacySession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (!readSharedToken(localStorage)) {
+      let token: string | null = null;
+      let username = "";
+      try {
+        const cached = JSON.parse(localStorage.getItem(SHOP_CACHE_KEY) || "null") as { state?: { token?: unknown; username?: unknown } } | null;
+        if (typeof cached?.state?.token === "string" && cached.state.token) {
+          token = cached.state.token;
+          username = typeof cached.state.username === "string" ? cached.state.username : "";
+        }
+      } catch { /* malformed cache */ }
+      try { token = token ?? readSharedToken(sessionStorage, "neargo-ops-session"); } catch { /* disabled */ }
+      if (token) localStorage.setItem(SHARED_OPS_AUTH_KEY, JSON.stringify({ token, username, issuedAt: Date.now() }));
+    }
+  } catch { /* disabled storage */ }
+  removeLegacy();
 }
 
 export function clearOpsSessions(): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.removeItem(SHARED_OPS_SESSION_KEY);
-    sessionStorage.removeItem("nearpay-ops-session");
-    sessionStorage.setItem("nearpay-ops-no-shared", "1");
-    localStorage.removeItem("shop-ops-auth");
+    localStorage.removeItem(SHARED_OPS_AUTH_KEY);
+    localStorage.removeItem(SHOP_CACHE_KEY);
   } catch { /* Logout also clears the in-memory store. */ }
+  removeLegacy();
 }

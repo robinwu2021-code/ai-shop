@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseLocale, useLocaleStore } from "@/lib/stores/locale";
-import { receiveSharedSession } from "@/lib/auth/shared-session";
+import { onSharedSessionChange, receiveSharedSession } from "@/lib/auth/shared-session";
 import { useServerMenu } from "@/lib/stores/server-menu";
 import { loginReturnHref } from "@/lib/auth/ops-bridge";
 import { useAuth } from "@/lib/auth";
@@ -43,7 +43,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
     const clear = () => { queryClient.clear(); useServerMenu.getState().clear(); };
     window.addEventListener("shop-ops-session-cleared", clear);
-    return () => { active = false; window.removeEventListener("shop-ops-session-cleared", clear); };
+    // 另一个标签页或支付运营改了共用会话：退出就回登录页，换人就整页重载（TDD-ops-统一登录与系统切换 §3.2）
+    const onStorage = (e: StorageEvent) => onSharedSessionChange(e, () => queryClient.clear(),
+      () => {
+        const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+        if (!window.location.pathname.startsWith(`${base}/login`)) window.location.href = `${base}${loginReturnHref(window.location)}`;
+      },
+      () => window.location.reload());
+    window.addEventListener("storage", onStorage);
+    return () => {
+      active = false;
+      window.removeEventListener("shop-ops-session-cleared", clear);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [queryClient, attempt]);
 
   useEffect(() => {
