@@ -2,7 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  templateNotice: "模板改一次会同时作用在一批店铺页上，所以每一行都摆着「多少家店在用」—— 那是决定要不要动它的唯一依据。至少要启用 {n} 个板块：只剩店招的店铺页等于一张裸列表。",
   colTemplateName: "模板名称",
   colLayout: "商品区排布",
   colSections: "已启用板块",
@@ -35,7 +34,6 @@ const zh = {
   sectionRequired: "必选，不能停用",
   sectionCount: "已启用 {n} 个板块，至少 {min} 个。",
   secImpact: "影响范围",
-  impactHint: "改板块会立刻反映到这些店铺页。要停用模板，得先把这些店迁到别的模板。",
   btnSaveTemplate: "保存模板",
   toastTemplateSaved: "模板已保存",
   toastTemplateEnabled: "模板已启用",
@@ -47,7 +45,6 @@ const zh = {
   kindBanner: "店招图",
   kindNotice: "店铺公告",
   kindArea: "经营覆盖",
-  areaHint: "商家自己框的区 / 街道。通过之后他的货才会在这一片露出 —— 一家菜摊声称覆盖整个西湖区，得有履约能力佐证",
 
   toastPassed: "已通过，商家主页即时生效",
   toastRejected: "已驳回，原因已发给商家",
@@ -91,7 +88,6 @@ const zh = {
   printAction: "登记印量",
   printTitle: "登记印刷量",
   printQty: "本次印量",
-  printQtyHint: "有符号：印多了要冲减就填负数，补一行而不是改历史行。0 不接受。",
   printSize: "贴纸尺寸",
   printRemark: "备注",
   printSubmit: "登记",
@@ -103,17 +99,12 @@ const zh = {
   colRegister: "首次归因",
   colFirstOrder: "首单",
   colConversion: "扫码→首单转化",
-  acqNotice:
-    "口径：扫码人数按设备去重（匿名访客还没有账号）；「首次归因」是第一次把这个人算到本店名下，"
-    + "不等于平台新注册 —— 老用户第一次扫这家店的码也计入。转化率的分母是扫码人数，不是次数。",
   acqRange7: "近 7 天",
   acqRange30: "近 30 天",
   acqRange90: "近 90 天",
 
   readOnlyWhat: "店招与公告审核",
   readOnlyNote: "不能通过或驳回",
-  notice:
-    "店铺码是一期的主获客入口：BD 把它印成贴纸贴在店里，用户扫码进店即绑定 merchantNo 与 trafficSource=MERCHANT_OWNED（P-10.1.3 / P-9.1.5）。",
   searchAudit: "搜索审核单号 / 商家 / 内容",
   searchQrcode: "搜索商家编号 / 名称",
   exportSheet: "店铺码",
@@ -136,7 +127,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  templateNotice: "One template edit lands on a batch of storefronts at once, which is why every row shows how many stores use it — that is the only basis for deciding whether to touch it. At least {n} blocks must stay on: a storefront with nothing but its header is a bare list.",
   colTemplateName: "Template",
   colLayout: "Product layout",
   colSections: "Blocks on",
@@ -169,7 +159,6 @@ const en: typeof zh = {
   sectionRequired: "Required — cannot be turned off",
   sectionCount: "{n} blocks on, minimum {min}.",
   secImpact: "What this affects",
-  impactHint: "Block changes reach these storefronts immediately. To turn the template off, move those stores to another one first.",
   btnSaveTemplate: "Save template",
   toastTemplateSaved: "Template saved",
   toastTemplateEnabled: "Template turned on",
@@ -181,7 +170,6 @@ const en: typeof zh = {
   kindBanner: "Storefront banner",
   kindNotice: "Store notice",
   kindArea: "Service coverage",
-  areaHint: "A district or street the merchant claims. Only after approval do their goods appear there — a produce stall claiming all of West Lake needs the delivery capacity to back it",
 
   toastPassed: "Approved — the merchant's storefront updates immediately",
   toastRejected: "Rejected — the reason has been sent to the merchant",
@@ -225,8 +213,6 @@ const en: typeof zh = {
   printAction: "Record print run",
   printTitle: "Record a print run",
   printQty: "Quantity",
-  printQtyHint:
-    "Signed: to correct an over-print, enter a negative number — a new row, never an edit to history. Zero is rejected.",
   printSize: "Sticker size",
   printRemark: "Note",
   printSubmit: "Record",
@@ -238,19 +224,12 @@ const en: typeof zh = {
   colRegister: "First attribution",
   colFirstOrder: "First orders",
   colConversion: "Scan → first order",
-  acqNotice:
-    "How to read this: unique scanners are de-duplicated by device (anonymous visitors have no account yet); "
-    + "\"first attribution\" means the first time a person was credited to this store — it is not a platform sign-up, "
-    + "since an existing user scanning this store's code for the first time also counts. "
-    + "The conversion denominator is unique scanners, not raw scans.",
   acqRange7: "Last 7 days",
   acqRange30: "Last 30 days",
   acqRange90: "Last 90 days",
 
   readOnlyWhat: "storefront banner & notice review",
   readOnlyNote: "cannot approve or reject",
-  notice:
-    "Store codes are the main acquisition entry point in phase 1: BD prints them as stickers for the shop, and scanning binds merchantNo and trafficSource=MERCHANT_OWNED (P-10.1.3 / P-9.1.5).",
   searchAudit: "Search review no. / merchant / content",
   searchQrcode: "Search merchant no. / name",
   exportSheet: "Store codes",

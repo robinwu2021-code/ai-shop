@@ -27,13 +27,13 @@ import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect, TextFilter } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
-import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { PagedTable } from "@/components/ui/paged-table";
 import { IdCell } from "@/components/ui/misc";
 import type { MerchantsCopy as Copy } from "./copy";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * 三档状态**不能压成「营业 / 停业」两档**：
@@ -52,6 +52,7 @@ const MODE_OPTIONS = (c: Copy) => [
 
 export function StoresTab({ c }: { c: Copy }) {
   const qc = useQueryClient();
+  const i18n = useI18n();
   const allow = useCan();
   const statusMap = useStatusMap(c);
   const modeOptions = MODE_OPTIONS(c);
@@ -142,13 +143,12 @@ export function StoresTab({ c }: { c: Copy }) {
     },
     {
       header: c.stColActions,
-      cell: (s) => <Button size="sm" variant="outline" onClick={() => setCurrent(s)}>{c.stDetail}</Button>,
+      cell: (s) => <Button size="sm" variant="ghost" onClick={() => setCurrent(s)}>{c.stDetail}</Button>,
     },
   ];
 
   return (
     <>
-      <HelpNote className="mb-3">{c.stNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.stSearchPh}>
         {/*
@@ -194,6 +194,14 @@ export function StoresTab({ c }: { c: Copy }) {
         title={current?.name ?? ""}
         desc={current ? `${current.storeNo} · ${current.merchantName}` : undefined}
         width="w-[560px]"
+        footer={current?.status === "SUSPENDED" && canBan ? (
+          <>
+            <Button variant="outline" onClick={() => setCurrent(null)}>{i18n.t("common.cancel")}</Button>
+            <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>
+              {c.stBtnRestore}
+            </Button>
+          </>
+        ) : null}
       >
         {current && (
           <div>
@@ -247,7 +255,7 @@ export function StoresTab({ c }: { c: Copy }) {
               自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
             */}
             {/* 覆盖社区挂在**主体**上：同主体的门店看到同一份，所以标题不写「本店覆盖」 */}
-            <DrawerSection title={c.stSecReach} desc={c.stReachHint}>
+            <DrawerSection title={c.stSecReach}>
               <FieldGrid>
                 {/*
                   ⚠️ 这一栏此前读的是 mch_entity_community，而那张表线上是 **0 行**
@@ -322,7 +330,7 @@ export function StoresTab({ c }: { c: Copy }) {
               </FieldGrid>
             </DrawerSection>
 
-            <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
+            <DrawerSection title={c.stSecOrders}>
               <div className="flex gap-2">
                 {/*
                   用 asChild 让 Button 把样式套在 <Link> 上，而不是 <Link> 包一个 <button>：
@@ -348,15 +356,12 @@ export function StoresTab({ c }: { c: Copy }) {
               </div>
             </DrawerSection>
 
-            <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>
+            <DrawerSection title={c.stSecActions}>
               {current.status !== "SUSPENDED"
                 ? <p className="txt-caption text-muted-foreground">{c.stNoAction}</p>
                 : canBan
-                  ? (
-                    <Button loading={restore.isPending} onClick={() => restore.mutate(current.storeNo)}>
-                      {c.stBtnRestore}
-                    </Button>
-                  )
+                  // 「恢复营业」按钮在底栏（规范：动作一律进 footer），这里只留说明
+                  ? null
                   // 有动作但你做不了：置灰说明「有，只是现在不能用」，
                   // 直接藏起来会让人以为这家店解不开
                   : <ReadOnlyNotice what={c.stReadOnlyWhat} perm="merchant:merchant:ban" />}

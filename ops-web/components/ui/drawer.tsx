@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** 底栏插槽：让抽屉里的子组件把动作按钮放进**这个**抽屉的底栏（见 `DrawerFooter`）。 */
+const FooterSlot = React.createContext<{ el: HTMLElement | null; claim: () => () => void } | null>(null);
 
 // 右侧抽屉（详情/表单）。基于 radix dialog。
 export function Drawer({
@@ -21,6 +25,15 @@ export function Drawer({
   bodyClassName?: string;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
 }) {
+  const [footerEl, setFooterEl] = React.useState<HTMLDivElement | null>(null);
+  const [claims, setClaims] = React.useState(0);
+  const claim = React.useCallback(() => {
+    setClaims((n) => n + 1);
+    return () => setClaims((n) => n - 1);
+  }, []);
+  const slot = React.useMemo(() => ({ el: footerEl, claim }), [footerEl, claim]);
+  // 子组件占用底栏时，自带的 footer 让位 —— 同一条底栏上不出现两组互不相干的动作
+  const ownFooter = claims === 0 ? footer : null;
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -61,12 +74,33 @@ export function Drawer({
               <X className="size-4" />
             </Dialog.Close>
           </div>
-          <div className={cn("flex-1 overflow-y-auto p-5", bodyClassName)}>{children}</div>
-          {footer && <div className="flex justify-end gap-2 bg-muted/40 p-4">{footer}</div>}
+          <FooterSlot.Provider value={slot}>
+            <div className={cn("flex-1 overflow-y-auto p-5", bodyClassName)}>{children}</div>
+          </FooterSlot.Provider>
+          {/* 底栏常驻挂载（插槽要有落点），没有内容时隐藏 */}
+          <div ref={setFooterEl} className={cn("flex justify-end gap-2 bg-muted/40 p-4", !ownFooter && claims === 0 && "hidden")}>
+            {ownFooter}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+/**
+ * 把动作按钮放进**外层抽屉**的底栏。
+ *
+ * 给「抽屉里某一块自带表单」的场景用（如商家详情的支付服务页签）：
+ * 表单状态留在那一块里，按钮却要在底栏 —— 否则只能再弹一层抽屉叠上去，
+ * 或者把按钮放进会滚走的正文。占用期间外层 `footer` 让位，卸载即归还。
+ * 不在抽屉里时退化为原地渲染（单独挂载、单测时）。
+ */
+export function DrawerFooter({ children }: { children: React.ReactNode }) {
+  const slot = React.useContext(FooterSlot);
+  const claim = slot?.claim;
+  React.useEffect(() => claim?.(), [claim]);
+  if (!slot) return <div className="mt-4 flex justify-end gap-2">{children}</div>;
+  return slot.el ? createPortal(children, slot.el) : null;
 }
 
 /**

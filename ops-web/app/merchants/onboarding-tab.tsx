@@ -69,7 +69,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
     {header:c.obProfileStatus,cell:r=>statusLabel(r.profileStatus,sourceLabels(c))},
     {header:c.obColStatus,cell:r=>r.onboardings.length?<div className="space-y-1">{r.onboardings.slice(0,2).map(ch=><div key={ch.onboardingNo} className="txt-caption">{ch.payChannel} · {statusLabel(ch.status,channelLabels)}</div>)}{r.onboardings.length>2&&<div className="txt-caption">+{r.onboardings.length-2}</div>}</div>:c.obNoApplication},
     {header:c.obColBlocker,cell:r=>{const reason=r.reviewReason||r.onboardings.find(ch=>ch.reason)?.reason;return <div className="max-w-56 truncate txt-caption" title={reason??undefined}>{reason||"—"}</div>;}},
-    {header:c.obColActions,stickyEnd:true,cell:r=><Button size="sm" variant="outline" onClick={()=>setSelectedEntityNo(r.entityNo)}>{c.actionView}</Button>},
+    {header:c.obColActions,stickyEnd:true,cell:r=><Button size="sm" variant="ghost" onClick={()=>setSelectedEntityNo(r.entityNo)}>{c.actionView}</Button>},
   ];
   if (!canRead) return null;
   return <>
@@ -77,7 +77,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
       <Button variant="outline" disabled={list.isFetching} onClick={() => list.refetch()}>{c.obReload}</Button>
     </Toolbar>
     <DataTable columns={columns} rows={list.data?.records} loading={list.isPending} rowKey={(r) => r.entityNo} empty={c.obEmpty} error={list.error} onRetry={() => list.refetch()} />
-    <Drawer open={!!current} onOpenChange={open=>!open&&setSelectedEntityNo(null)} title={current?.entityName??c.obPaymentDetails} desc={c.obPaymentDetails}>
+    <Drawer open={!!current} onOpenChange={open=>!open&&setSelectedEntityNo(null)} title={current?.entityName??c.obPaymentDetails} desc={c.obPaymentDetails} width="w-[560px]">
       {current&&<>
         <DrawerSection title={c.obSourceStatus}><FieldGrid>
           <Field label={c.obColMerchant}>{current.entityNo}</Field><Field label={c.obSourceStatus}>{statusLabel(current.status,sourceLabels(c))}</Field>

@@ -86,6 +86,12 @@ function MerchantsInner() {
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
   const [detailTab, setDetailTab] = useState("overview");
+  /**
+   * 支付服务页签一旦打开过就**保持挂载**，切走只隐藏：那一页可能有填到一半的申请表，
+   * 切去看一眼「人员与授权」再回来，内容必须还在。换一家商家（重开抽屉）时归零。
+   */
+  const [payVisited, setPayVisited] = useState(false);
+  const openDetailTab = (key: string) => { setDetailTab(key); if (key === "payment") setPayVisited(true); };
   const [remark, setRemark] = useState("");
   /** 通过审核时要指定的覆盖社区（ADR-009）。不给的话商家对买家不可见 */
   const [communityNos, setCommunityNos] = useState<string[]>([]);
@@ -219,8 +225,8 @@ function MerchantsInner() {
           onUnarchive={async () => {
             await confirm(unarchiveConfirm(c.entity, m.name, () => archiveMut.mutateAsync({ merchantNo: m.merchantNo, restore: true })));
           }}
-          actions={
-            <Button size="sm" variant="outline" onClick={() => { setDetailTab("overview"); setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNos ?? []); }}>
+          view={
+            <Button size="sm" variant="ghost" onClick={() => { setDetailTab("overview"); setPayVisited(false); setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNos ?? []); }}>
               {c.actionView}
             </Button>
           }
@@ -305,8 +311,11 @@ function MerchantsInner() {
         onOpenChange={(o) => !o && setCurrent(null)}
         title={current?.name ?? ""}
         desc={current?.merchantNo}
+        // 详情里嵌履约 / 人员 / 支付三张表：按「列表与抽屉」规范取 720 档
+        width="w-[720px]"
         footer={
-          current && canAudit ? (
+          // 只在真有动作时出底栏：空底栏是一条什么都点不了的灰带
+          current && canAudit && current.status === "ACTIVE" && canVerify ? (
             <>
               {/*
                 受理 / 通过 / 驳回这三个动作属于申请单，不属于商家档案。
@@ -330,7 +339,7 @@ function MerchantsInner() {
       >
         {current && (
           <div>
-            <Tabs value={detailView} onChange={setDetailTab} tabs={[
+            <Tabs value={detailView} onChange={openDetailTab} tabs={[
               { key: "overview", label: tabs.find((view) => view.key === "list")?.label ?? c.entity },
               { key: "fulfillment", label: c.fieldFulfillment },
               { key: "staff", label: c.fieldStaff },
@@ -391,7 +400,11 @@ function MerchantsInner() {
             </div>}
             {detailView === "fulfillment" && <FulfillmentBlock merchantNo={current.merchantNo} />}
             {detailView === "staff" && <StaffBlock merchantNo={current.merchantNo} />}
-            {detailView === "payment" && <PayServiceBlock merchantNo={current.merchantNo} merchantName={current.name} c={c} />}
+            {canPay && (detailView === "payment" || payVisited) && (
+              <div hidden={detailView !== "payment"}>
+                <PayServiceBlock merchantNo={current.merchantNo} merchantName={current.name} c={c} active={detailView === "payment"} />
+              </div>
+            )}
           </div>
         )}
       </Drawer>

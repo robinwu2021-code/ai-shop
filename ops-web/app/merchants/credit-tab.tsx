@@ -19,7 +19,6 @@ import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
 import { MerchantBrief } from "./authorize-tab";
 import type { MerchantsCopy } from "./copy";
+import { useI18n } from "@/lib/i18n";
 
 const useTypeMap = (c: MerchantsCopy): StatusMap<ViolationType> => ({
   FAKE_GOODS: { label: c.vtFake, tone: "danger" },
@@ -96,14 +96,12 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
     },
     {
       header: c.colActions,
-      cell: (m) => <Button size="sm" variant="outline" onClick={() => setCurrent(m)}>{c.actionCredit}</Button>,
+      cell: (m) => <Button size="sm" variant="ghost" onClick={() => setCurrent(m)}>{c.actionCredit}</Button>,
     },
   ];
 
   return (
     <>
-      <HelpNote title={c.creditNoteTitle} className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
-      <HelpNote title={c.borneNoteTitle} className="mb-3">{c.borneNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <PagedTable
         query={list}
@@ -121,7 +119,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
         open={!!current}
         onOpenChange={(o) => !o && setCurrent(null)}
         title={current ? fill(c.creditTitle, { name: current.name }) : ""}
-        width="w-[520px]"
+        width="w-[560px]"
       >
         {current && (
           <div>
@@ -154,6 +152,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
 /** 违规处置与封禁：动作在这里，依据在信用档案那一页。 */
 export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
   const qc = useQueryClient();
+  const i18n = useI18n();
   const typeMap = useTypeMap(c);
   const actionMap = useActionMap(c);
   const [keyword, setKeyword] = useState("");
@@ -224,7 +223,6 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
 
   return (
     <>
-      <HelpNote className="mb-3">{c.banNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={setKeyword} searchPlaceholder={c.searchPlaceholder}>
         <FilterSelect aria-label={c.filterViolationType} value={type} onChange={setType}
@@ -269,8 +267,10 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
         open={!!target}
         onOpenChange={(o) => !o && setTarget(null)}
         title={target ? fill(c.recordTitle, { name: target.name }) : ""}
-        width="w-[520px]"
+        width="w-[560px]"
         footer={
+          <>
+          <Button variant="outline" onClick={() => setTarget(null)}>{i18n.t("common.cancel")}</Button>
           <Button
             loading={record.isPending}
             // 门店级处置没选门店就发出去，后端会拒 —— 前端先拦一道，
@@ -280,6 +280,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
           >
             {c.btnRecordViolation}
           </Button>
+          </>
         }
       >
         {target && (
@@ -294,7 +295,6 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
                   onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as ViolationType }))}>
                   {Object.entries(typeMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </Select>
-                <p className="txt-caption text-muted-foreground">{fill(c.typeHint, { n: MAX_MERCHANT_BREACH })}</p>
               </div>
               <div className="mb-3 space-y-1">
                 <Label htmlFor="vl-action" required>{c.colViolationAction}</Label>
@@ -324,16 +324,15 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
                       </option>
                     ))}
                   </Select>
-                  <p className="txt-caption text-muted-foreground">
-                    {stores.data && stores.data.records.length === 0 ? c.vlStoreEmpty : c.vlStoreHint}
-                  </p>
+                  {stores.data && stores.data.records.length === 0 && (
+                    <p className="txt-caption text-muted-foreground">{c.vlStoreEmpty}</p>
+                  )}
                 </div>
               )}
               <Field className="mb-0" label={c.colDetail}>
                 <Textarea value={form.detail} onChange={(v) => setForm((p) => ({ ...p, detail: v }))}
                   placeholder={c.detailPlaceholder} rows={3} />
               </Field>
-              <p className="mt-1 txt-caption text-muted-foreground">{c.detailHint}</p>
             </DrawerSection>
           </div>
         )}

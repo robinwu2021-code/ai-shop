@@ -32,13 +32,17 @@ export function toApplyForm(v: Record<string, unknown>): Omit<PayServiceApplyFor
   };
 }
 
-export function PayServiceBlock({ merchantNo, merchantName, c }: { merchantNo: string; merchantName?: string; c: MerchantsCopy }) {
+/**
+ * `active=false`：所在页签被切走、组件只是隐藏着 —— 填到一半的表单保留，但不占外层抽屉的底栏
+ * （否则别的页签底下会挂着这张表单的「保存」）。
+ */
+export function PayServiceBlock({ merchantNo, merchantName, c, active = true }: { merchantNo: string; merchantName?: string; c: MerchantsCopy; active?: boolean }) {
   const allow = useCan();
   if (!allow(PAY_APPLY_PERM)) return null;
-  return <PaymentDetails key={merchantNo} merchantNo={merchantNo} merchantName={merchantName} c={c} />;
+  return <PaymentDetails key={merchantNo} merchantNo={merchantNo} merchantName={merchantName} c={c} visible={active} />;
 }
 
-function PaymentDetails({ merchantNo, merchantName, c }: { merchantNo: string; merchantName?: string; c: MerchantsCopy }) {
+function PaymentDetails({ merchantNo, merchantName, c, visible }: { merchantNo: string; merchantName?: string; c: MerchantsCopy; visible: boolean }) {
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
   const submission = useRef<{ fingerprint: string; requestNo: string } | null>(null);
   const active = useRef(true);
@@ -74,9 +78,30 @@ function PaymentDetails({ merchantNo, merchantName, c }: { merchantNo: string; m
     { key: "registeredAddress", label: c.payServiceAddress, maxLength: 256 },
   ];
 
+  // 申请表单在商家详情抽屉里**原地展开**，按钮进那个抽屉的底栏 —— 此前是再叠一层抽屉
+  if (form) {
+    return (
+      <Field label={c.payServiceDrawer}>
+        <FormDrawer
+          inDrawer
+          inDrawerActive={visible}
+          open
+          onOpenChange={(o) => !o && setForm(null)}
+          titleNew={c.payServiceDrawer}
+          titleEdit={c.payServiceDrawer}
+          isEdit={false}
+          fields={fields}
+          value={form}
+          onChange={setForm}
+          onSubmit={submit}
+          submitting={apply.isPending}
+        />
+      </Field>
+    );
+  }
+
   return (
     <Field label={c.payServiceField}>
-      <p className="mb-2 txt-caption text-muted-foreground">{c.payServiceHelp}</p>
       <div className="mb-3 space-y-1 txt-caption" aria-live="polite">
         {status.isPending && <p>{c.payServiceLoading}</p>}
         {status.isError && <p role="alert">{c.payServiceLoadFailed}</p>}
@@ -86,7 +111,6 @@ function PaymentDetails({ merchantNo, merchantName, c }: { merchantNo: string; m
           {status.data.linkStatus && <p>{c.payServiceLinkStatus}：{status.data.linkStatus}</p>}
           {status.data.profileStatus && <p>{c.payServiceProfileStatus}：{status.data.profileStatus}</p>}
           {status.data.reviewReason && <p>{c.payServiceReviewReason}：{status.data.reviewReason}</p>}
-          <p className="text-muted-foreground">{c.payServiceCollectionHelp}</p>
           {status.data.merchantOpsUrl && <p><a className="focus-ring underline" href={status.data.merchantOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceMerchantOps}</a></p>}
           {status.data.onboardingOpsUrl && <p><a className="focus-ring underline" href={status.data.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceOnboardingOps}</a></p>}
           {!status.data.merchantOpsUrl && !status.data.onboardingOpsUrl && <p className="text-muted-foreground">{c.payServiceNoOpsLink}</p>}
@@ -96,18 +120,6 @@ function PaymentDetails({ merchantNo, merchantName, c }: { merchantNo: string; m
       <Button size="sm" variant="outline" onClick={() => setForm({ legalName: merchantName ?? "" })}>
         {c.payServiceApply}
       </Button>
-      <FormDrawer
-        open={!!form}
-        onOpenChange={(o) => !o && setForm(null)}
-        titleNew={c.payServiceDrawer}
-        titleEdit={c.payServiceDrawer}
-        isEdit={false}
-        fields={fields}
-        value={form ?? {}}
-        onChange={setForm}
-        onSubmit={submit}
-        submitting={apply.isPending}
-      />
     </Field>
   );
 }

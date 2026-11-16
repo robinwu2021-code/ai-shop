@@ -11,6 +11,7 @@
 // 线下购买单独核款；原手工授予仍用于赠送和协议处理。
 import { useEffect, useState, useCallback } from "react";
 import {FinancialLockContext} from "@/components/offline/financial-lock";
+import { useI18n } from "@/lib/i18n";
 import { EntityPlanPurchasesPanel } from "./plan-purchases";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -25,7 +26,6 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
-import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -108,13 +108,12 @@ export function PlansTab({ c }: { c: Copy }) {
     },
     {
       header: c.plColActions,
-      cell: (r) => <Button size="sm" variant="outline" onClick={() => setCurrent(r)}>{c.plDetail}</Button>,
+      cell: (r) => <Button size="sm" variant="ghost" onClick={() => setCurrent(r)}>{c.plDetail}</Button>,
     },
   ];
 
   return (
     <>
-      <HelpNote className="mb-3">{c.plNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.plSearchPh}>
         <FilterSelect
@@ -144,43 +143,46 @@ export function PlansTab({ c }: { c: Copy }) {
       <UpgradeSignalsBlock c={c} rows={signals.data} loading={signals.isLoading}
                            error={signals.error} onRetry={() => signals.refetch()} />
 
-      <Drawer
-        open={!!current}
-        onOpenChange={(o) => !o && !financialLocks.size && setCurrent(null)}
-        title={current?.merchantName ?? ""}
-        desc={current?.merchantNo}
-        width="w-[560px]"
-      >
-        <FinancialLockContext.Provider value={lockFinancial}>
-        {current && (
-          <PlanDrawer
-            c={c} row={current} defs={defs.data ?? []}
-            canGrant={canGrant}
-            onSaved={(r) => {
-              setCurrent(r);
-              qc.invalidateQueries({ queryKey: ["merchant-plans"] });
-              // 授予会恢复被降级压下的门店 —— 门店档案那张表跟着变
-              qc.invalidateQueries({ queryKey: ["stores-govern"] });
-              // 在用数变了，档位定义那一块的 subscriberCount 也要重取
-              qc.invalidateQueries({ queryKey: ["plan-defs"] });
-            }}
-          />
-        )}
-        </FinancialLockContext.Provider>
-      </Drawer>
+      {current && (
+        <PlanDrawer
+          c={c} row={current} defs={defs.data ?? []}
+          canGrant={canGrant}
+          // 有未完成的资金命令时不许关（useFinancialLock 登记进来的）
+          onClose={() => { if (!financialLocks.size) setCurrent(null); }}
+          lockFinancial={lockFinancial}
+          onSaved={(r) => {
+            setCurrent(r);
+            qc.invalidateQueries({ queryKey: ["merchant-plans"] });
+            // 授予会恢复被降级压下的门店 —— 门店档案那张表跟着变
+            qc.invalidateQueries({ queryKey: ["stores-govern"] });
+            // 在用数变了，档位定义那一块的 subscriberCount 也要重取
+            qc.invalidateQueries({ queryKey: ["plan-defs"] });
+          }}
+        />
+      )}
     </>
   );
 }
 
-/** 抽屉：订阅现状 + 授予/延长 + 额度覆盖。 */
-function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
+/**
+ * 抽屉：订阅现状（view）→ 授予/延长（grant）或 额度覆盖（quota）。
+ *
+ * 按「列表与抽屉」规范：一件事一个模式，动作按钮一律在底栏；保存成功回到 view。
+ * 此前两张表单同时摊在详情正文里、各带一颗按钮，正文一滚按钮就出视野，
+ * 而两段的「理由」输入框长得一样，容易填错段。
+ */
+function PlanDrawer({ c, row, defs, canGrant, onSaved, onClose, lockFinancial }: {
   c: Copy;
   row: MerchantPlanRow;
   defs: PlanDef[];
   canGrant: boolean;
   onSaved: (r: MerchantPlanRow) => void;
+  onClose: () => void;
+  lockFinancial: (id: string, locked: boolean) => void;
 }) {
+  const i18n = useI18n();
   const statusMap = useStatusMap(c);
+  const [mode, setMode] = useState<"view" | "grant" | "quota">("view");
   const [planCode, setPlanCode] = useState(row.planCode);
   const [months, setMonths] = useState("");
   const [reason, setReason] = useState("");
@@ -197,6 +199,7 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
     setStoreQuota(String(row.storeQuota));
     setStaffQuota(String(row.staffQuota));
     setQuotaReason("");
+    setMode("view");
   }, [row.merchantNo, row.planCode, row.storeQuota, row.staffQuota]);
 
   const grant = useMutation({
@@ -206,7 +209,7 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
       months: months.trim() ? Number(months) : undefined,
       reason,
     }),
-    onSuccess: (r) => { onSaved(r); notify.success(c.plToastGranted); },
+    onSuccess: (r) => { onSaved(r); setMode("view"); notify.success(c.plToastGranted); },
   });
 
   const override = useMutation({
@@ -217,80 +220,101 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
       staffQuota: staffQuota.trim() ? Number(staffQuota) : null,
       reason: quotaReason,
     }),
-    onSuccess: (r) => { onSaved(r); notify.success(c.plToastQuota); },
+    onSuccess: (r) => { onSaved(r); setMode("view"); notify.success(c.plToastQuota); },
   });
 
+  const footer = !canGrant ? null : mode === "view" ? (
+    <>
+      <Button variant="outline" onClick={() => setMode("quota")}>{c.plSecQuota}</Button>
+      <Button onClick={() => setMode("grant")}>{c.plSecGrant}</Button>
+    </>
+  ) : mode === "grant" ? (
+    <>
+      <Button variant="outline" onClick={() => setMode("view")}>{i18n.t("common.cancel")}</Button>
+      <Button loading={grant.isPending} disabled={!reason.trim() || !planCode} onClick={() => grant.mutate()}>
+        {c.plBtnGrant}
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button variant="outline" onClick={() => setMode("view")}>{i18n.t("common.cancel")}</Button>
+      <Button loading={override.isPending} disabled={!quotaReason.trim()} onClick={() => override.mutate()}>
+        {c.plBtnQuota}
+      </Button>
+    </>
+  );
+
   return (
-    <div>
-      <DrawerSection first title={c.plSecPlan}>
-        <FieldGrid>
-          <Field className="mb-3" label={c.plColPlan}>{row.planCode}</Field>
-          <Field className="mb-3" label={c.plColStatus}><StatusBadge map={statusMap} value={row.status} /></Field>
-          <Field className="mb-3" label={c.plColQuota}>{row.storeUsed}/{row.storeQuota}</Field>
-          <Field className="mb-3" label={c.plColStaff}>{row.staffUsed}/{row.staffQuota}</Field>
-          <Field className="mb-3" label={c.plColExpire}>{day(row.expireAt) ?? c.plExpireNone}</Field>
-          <Field className="mb-3" label={c.plFieldGrantedBy}>{row.grantedBy ?? "-"}</Field>
-          <Field className="mb-3" label={c.plFieldQuotaSource}>
-            {row.quotaSource === "OVERRIDE" ? c.plSourceOverride
-              : row.quotaSource === "CONFIG" ? c.plSourceConfig : c.plSourcePlan}
-          </Field>
-          <Field className="mb-3" label={c.plFieldTrialUsed}>{row.trialUsed ? "✓" : "-"}</Field>
-        </FieldGrid>
-        {/* 降级时间非空 = 已经压过店了。它是「这家为什么只剩一家店在营业」的答案 */}
-        {row.downgradedAt != null && (
-          <Field label={c.plDowngradedAt}>{day(row.downgradedAt)}</Field>
+    <Drawer
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={row.merchantName}
+      desc={mode === "view" ? row.merchantNo : `${row.merchantNo} · ${mode === "grant" ? c.plSecGrant : c.plSecQuota}`}
+      width="w-[560px]"
+      footer={footer}
+    >
+      <FinancialLockContext.Provider value={lockFinancial}>
+        <DrawerSection first title={c.plSecPlan}>
+          <FieldGrid>
+            <Field className="mb-3" label={c.plColPlan}>{row.planCode}</Field>
+            <Field className="mb-3" label={c.plColStatus}><StatusBadge map={statusMap} value={row.status} /></Field>
+            <Field className="mb-3" label={c.plColQuota}>{row.storeUsed}/{row.storeQuota}</Field>
+            <Field className="mb-3" label={c.plColStaff}>{row.staffUsed}/{row.staffQuota}</Field>
+            <Field className="mb-3" label={c.plColExpire}>{day(row.expireAt) ?? c.plExpireNone}</Field>
+            <Field className="mb-3" label={c.plFieldGrantedBy}>{row.grantedBy ?? "-"}</Field>
+            <Field className="mb-3" label={c.plFieldQuotaSource}>
+              {row.quotaSource === "OVERRIDE" ? c.plSourceOverride
+                : row.quotaSource === "CONFIG" ? c.plSourceConfig : c.plSourcePlan}
+            </Field>
+            <Field className="mb-3" label={c.plFieldTrialUsed}>{row.trialUsed ? "✓" : "-"}</Field>
+          </FieldGrid>
+          {/* 降级时间非空 = 已经压过店了。它是「这家为什么只剩一家店在营业」的答案 */}
+          {row.downgradedAt != null && (
+            <Field label={c.plDowngradedAt}>{day(row.downgradedAt)}</Field>
+          )}
+        </DrawerSection>
+
+        {mode === "view" && (
+          <>
+            <EntityPlanPurchasesPanel key={row.merchantNo} entityNo={row.merchantNo} />
+            {!canGrant && <ReadOnlyNotice what={c.plReadOnlyGrant} perm="merchant:merchant:ban" />}
+          </>
         )}
-      </DrawerSection>
 
-      <EntityPlanPurchasesPanel key={row.merchantNo} entityNo={row.merchantNo} />
+        {mode === "grant" && (
+          <DrawerSection title={c.plSecGrant}>
+            <div className="space-y-3">
+              <FilterSelect
+                aria-label={c.plGrantPlan} value={planCode} allLabel={c.plGrantPlan}
+                options={defs.filter((d) => d.enabled).map((d) => ({ value: d.planCode, label: c.plDefOption.replace("{name}", d.name).replace("{quota}", String(d.storeQuota)) }))}
+                onChange={setPlanCode}
+              />
+              <Input
+                type="number" min={1} placeholder={c.plGrantMonths}
+                value={months} onChange={(e) => setMonths(e.target.value)}
+              />
+              <Input placeholder={c.plGrantReasonPh} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </div>
+          </DrawerSection>
+        )}
 
-      <DrawerSection title={c.plSecGrant} desc={c.plGrantMonthsHint}>
-        {canGrant ? (
-          <div className="space-y-3">
-            <FilterSelect
-              aria-label={c.plGrantPlan} value={planCode} allLabel={c.plGrantPlan}
-              options={defs.filter((d) => d.enabled).map((d) => ({ value: d.planCode, label: c.plDefOption.replace("{name}", d.name).replace("{quota}", String(d.storeQuota)) }))}
-              onChange={setPlanCode}
-            />
-            <Input
-              type="number" min={1} placeholder={c.plGrantMonths}
-              value={months} onChange={(e) => setMonths(e.target.value)}
-            />
-            <Input placeholder={c.plGrantReasonPh} value={reason} onChange={(e) => setReason(e.target.value)} />
-            <Button
-              loading={grant.isPending}
-              disabled={!reason.trim() || !planCode}
-              onClick={() => grant.mutate()}
-            >
-              {c.plBtnGrant}
-            </Button>
-          </div>
-        ) : <ReadOnlyNotice what={c.plReadOnlyGrant} perm="merchant:merchant:ban" />}
-      </DrawerSection>
-
-      <DrawerSection title={c.plSecQuota} desc={c.plQuotaHint}>
-        {canGrant ? (
-          <div className="space-y-3">
-            <Input
-              type="number" min={0} placeholder={c.plQuotaStore}
-              value={storeQuota} onChange={(e) => setStoreQuota(e.target.value)}
-            />
-            <Input
-              type="number" min={0} placeholder={c.plQuotaStaff}
-              value={staffQuota} onChange={(e) => setStaffQuota(e.target.value)}
-            />
-            <Input placeholder={c.plGrantReasonPh} value={quotaReason} onChange={(e) => setQuotaReason(e.target.value)} />
-            <Button
-              variant="outline" loading={override.isPending}
-              disabled={!quotaReason.trim()}
-              onClick={() => override.mutate()}
-            >
-              {c.plBtnQuota}
-            </Button>
-          </div>
-        ) : <ReadOnlyNotice what={c.plReadOnlyGrant} perm="merchant:merchant:ban" />}
-      </DrawerSection>
-    </div>
+        {mode === "quota" && (
+          <DrawerSection title={c.plSecQuota}>
+            <div className="space-y-3">
+              <Input
+                type="number" min={0} placeholder={c.plQuotaStore}
+                value={storeQuota} onChange={(e) => setStoreQuota(e.target.value)}
+              />
+              <Input
+                type="number" min={0} placeholder={c.plQuotaStaff}
+                value={staffQuota} onChange={(e) => setStaffQuota(e.target.value)}
+              />
+              <Input placeholder={c.plGrantReasonPh} value={quotaReason} onChange={(e) => setQuotaReason(e.target.value)} />
+            </div>
+          </DrawerSection>
+        )}
+      </FinancialLockContext.Provider>
+    </Drawer>
   );
 }
 
@@ -320,43 +344,39 @@ function PlanDefsBlock({ c, defs, loading, error, onRetry, canEdit }: {
     {
       header: c.plColActions,
       cell: (d) => (canEdit
-        ? <Button size="sm" variant="outline" onClick={() => setEditing(d)}>{c.plDefEdit}</Button>
-        : <span className="text-muted-foreground">-</span>),
+        ? <Button size="sm" variant="ghost" onClick={() => setEditing(d)}>{c.plDefEdit}</Button>
+        : null),
     },
   ];
 
   return (
     <section className="mt-6">
-      <SectionHeader title={c.plSecDefs} desc={c.plDefsHint} />
+      <SectionHeader title={c.plSecDefs} />
       <DataTable columns={columns} rows={defs} loading={loading} error={error} onRetry={onRetry}
                  rowKey={(d) => d.planCode} empty={c.plDefsEmpty} />
       {!canEdit && <ReadOnlyNotice what={c.plReadOnlyDef} perm="system:param:update" />}
 
-      <Drawer
-        open={!!editing}
-        onOpenChange={(o) => !o && setEditing(null)}
-        title={editing ? `${editing.name}（${editing.planCode}）` : ""}
-        desc={c.plDefsHint}
-      >
-        {editing && (
-          <PlanDefForm
-            c={c} def={editing}
-            onSaved={() => {
-              setEditing(null);
-              qc.invalidateQueries({ queryKey: ["plan-defs"] });
-              // 已订阅的额度**不会**跟着变，所以这里刻意不刷 merchant-plans ——
-              // 刷了看不出变化，反而会让人以为是没生效
-              notify.success(c.plToastDefSaved);
-            }}
-          />
-        )}
-      </Drawer>
+      {editing && (
+        <PlanDefDrawer
+          c={c} def={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            qc.invalidateQueries({ queryKey: ["plan-defs"] });
+            // 已订阅的额度**不会**跟着变，所以这里刻意不刷 merchant-plans ——
+            // 刷了看不出变化，反而会让人以为是没生效
+            notify.success(c.plToastDefSaved);
+          }}
+        />
+      )}
     </section>
   );
 }
 
-function PlanDefForm({ c, def, onSaved }: { c: Copy; def: PlanDef; onSaved: () => void }) {
+/** 档位定义的编辑抽屉。抽屉由它自己渲染，保存按钮才能放进底栏而表单状态不必上提。 */
+function PlanDefDrawer({ c, def, onSaved, onClose }: { c: Copy; def: PlanDef; onSaved: () => void; onClose: () => void }) {
   const { confirm, dialog } = useConfirm();
+  const i18n = useI18n();
   const [storeQuota, setStoreQuota] = useState(String(def.storeQuota));
   const [staffQuota, setStaffQuota] = useState(String(def.staffQuota));
   const [crossStoreStats, setCross] = useState(def.crossStoreStats);
@@ -385,6 +405,19 @@ function PlanDefForm({ c, def, onSaved }: { c: Copy; def: PlanDef; onSaved: () =
   });
 
   return (
+    <Drawer
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`${def.name}（${def.planCode}）`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>{i18n.t("common.cancel")}</Button>
+          <Button loading={save.isPending} disabled={Number(storeQuota) < 1} onClick={askThenSave}>
+            {c.plBtnDefSave}
+          </Button>
+        </>
+      }
+    >
     <DrawerSection first title={c.plSecDefs}>
       <div className="space-y-3">
         <Field label={c.plDefColStore}>
@@ -405,12 +438,10 @@ function PlanDefForm({ c, def, onSaved }: { c: Copy; def: PlanDef; onSaved: () =
           <input className="focus-ring" type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           {c.plDefColEnabled}
         </label>
-        <Button loading={save.isPending} disabled={Number(storeQuota) < 1} onClick={askThenSave}>
-          {c.plBtnDefSave}
-        </Button>
       </div>
       {dialog}
     </DrawerSection>
+    </Drawer>
   );
 }
 
@@ -426,7 +457,7 @@ function UpgradeSignalsBlock({ c, rows, loading, error, onRetry }: {
   ];
   return (
     <section className="mt-6">
-      <SectionHeader title={c.plSecSignals} desc={c.plSignalsHint} />
+      <SectionHeader title={c.plSecSignals} />
       <DataTable columns={columns} rows={rows} loading={loading} error={error} onRetry={onRetry}
                  rowKey={(r) => r.ownerUserNo} empty={c.plSignalsEmpty} />
     </section>

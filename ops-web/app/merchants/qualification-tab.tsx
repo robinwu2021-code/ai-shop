@@ -27,10 +27,10 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { Input } from "@/components/ui/input";
-import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { MerchantsCopy } from "./copy";
+import { RowActions } from "@/components/ui/dropdown-menu";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "muted"> = {
   VALID: "success",
@@ -89,10 +89,10 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
       key: "qualType", label: c.qualFieldType, type: "select", required: true,
       options: Object.entries(qualTypeLabel(c)).map(([value, label]) => ({ value, label })),
     },
-    { key: "qualName", label: c.qualFieldName, required: true, help: c.qualFieldNameHelp },
-    { key: "qualNumber", label: c.qualFieldNumber, help: c.qualFieldNumberHelp },
+    { key: "qualName", label: c.qualFieldName, required: true },
+    { key: "qualNumber", label: c.qualFieldNumber },
     { key: "imageUrl", label: c.qualFieldImage },
-    { key: "expireAt", label: c.qualFieldExpire, type: "date", help: c.qualFieldExpireHelp },
+    { key: "expireAt", label: c.qualFieldExpire, type: "date" },
   ];
 
   /** 分 → 表单。到期日从毫秒转 YYYY-MM-DD；null 保持空串 = 长期有效 */
@@ -139,31 +139,30 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
     },
     {
       header: c.qualColActions,
-      cell: (q) => (
-        <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={!canEdit} onClick={() => openForm(q)}>
-          {c.qualEdit}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!canEdit || q.status === "REVOKED"}
-          onClick={async () => {
-            if (await confirm({ title: c.qualRevoke, desc: c.qualRevokeConfirm, danger: true })) {
-              revoke.mutate(q.qualNo);
-            }
-          }}
-        >
-          {c.qualRevoke}
-        </Button>
+      cell: (q) => (canEdit ? (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={() => openForm(q)}>
+            {c.qualEdit}
+          </Button>
+          {/* 吊销是危险动作：收进「更多」并走确认；已吊销的不再给 */}
+          <RowActions actions={[
+            q.status !== "REVOKED" && {
+              label: c.qualRevoke,
+              danger: true,
+              onSelect: async () => {
+                if (await confirm({ title: c.qualRevoke, desc: c.qualRevokeConfirm, danger: true })) {
+                  revoke.mutate(q.qualNo);
+                }
+              },
+            },
+          ]} />
         </div>
-      ),
+      ) : null),
     },
   ];
 
   return (
     <div className="space-y-4">
-      <HelpNote>{c.qualHint}</HelpNote>
 
       <Toolbar>
         <Input
@@ -177,7 +176,7 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
         </Button>
         {/* 补录挂在「查过某个商家之后」—— 没有主体号就没有挂靠对象 */}
         {queried && canEdit && (
-          <Button variant="outline" onClick={() => openForm()}>{c.qualAdd}</Button>
+          <Button className="ms-auto" onClick={() => openForm()}>{c.qualAdd}</Button>
         )}
       </Toolbar>
 

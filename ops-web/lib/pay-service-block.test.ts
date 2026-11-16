@@ -28,8 +28,8 @@ describe("支付资料登记与回查",()=>{
   expect(toApplyForm({legalName:" Test company ",registrationNo:" TESTONLY ",representativeName:" ",contactPhone:""})).toEqual({legalName:"Test company",registrationNo:"TESTONLY",representativeName:undefined,contactPhone:undefined,registeredAddress:undefined});
   expect(PAY_APPLY_PERM).toBe("merchant:merchant:pay-apply");
  });
- it("reads actual profile approval while explaining the remaining collection steps",async()=>{
-  await mount();expect(calls.status).toHaveBeenCalledWith("M1");expect(host.textContent).toContain("APPROVED");expect(host.textContent).toContain(MERCHANTS_COPY.zh.payServiceCollectionHelp);
+ it("reads actual profile approval and links to the payment operations console",async()=>{
+  await mount();expect(calls.status).toHaveBeenCalledWith("M1");expect(host.textContent).toContain("APPROVED");
   const link=host.querySelector("a")!;expect(link.href).toBe(approved.merchantOpsUrl);expect(link.rel).toBe("noopener noreferrer");
  });
  it("makes no payment read or submission without permission",async()=>{
@@ -50,9 +50,24 @@ describe("支付资料登记与回查",()=>{
   expect(calls.apply).toHaveBeenCalledTimes(2);expect(calls.apply.mock.calls[0]).toEqual(calls.apply.mock.calls[1]);expect(calls.apply.mock.calls[0][1].requestNo).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
   await input("contactPhone","09 record only");await click("common.save");expect(calls.apply).toHaveBeenCalledTimes(3);expect(calls.apply.mock.calls[2][1].requestNo).not.toBe(calls.apply.mock.calls[0][1].requestNo);
  });
- it("does not close the next entity's form or announce the previous entity's late success",async()=>{
+ it("does not close the next entity's inline form or announce the previous entity's late success",async()=>{
   let resolve!:(v:unknown)=>void;calls.apply.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));await mount("M1");await open();await click("common.save");await mount("M2");await open();
-  await act(async()=>resolve({merchantRef:"PM-old",status:"ACCEPTED",storeLinks:[],applicationRef:null}));await settle();expect(document.querySelector('[role="dialog"]')).not.toBeNull();expect(calls.success).not.toHaveBeenCalled();
+  await act(async()=>resolve({merchantRef:"PM-old",status:"ACCEPTED",storeLinks:[],applicationRef:null}));await settle();expect(document.getElementById("registrationNo-label")).not.toBeNull();expect(calls.success).not.toHaveBeenCalled();
   await click("common.save");expect(calls.apply.mock.calls[1][0]).toBe("M2");expect(calls.apply.mock.calls[1][1].requestNo).not.toBe(calls.apply.mock.calls[0][1].requestNo);
+ });
+ it("renders the form inside the merchant drawer instead of stacking a second dialog",async()=>{
+  await mount();await open();expect(document.querySelectorAll('[role="dialog"]').length).toBe(0);
+  expect(host.textContent).not.toContain(MERCHANTS_COPY.zh.payServiceApply);
+  await click("common.cancel");expect(document.getElementById("registrationNo-label")).toBeNull();expect(host.textContent).toContain(MERCHANTS_COPY.zh.payServiceApply);
+ });
+ it("keeps typed details while its tab is hidden and only gives back the footer actions",async()=>{
+  const render=(active:boolean)=>act(async()=>root.render(h(QueryClientProvider,{client:q},h(PayServiceBlock,{merchantNo:"M1",merchantName:"Entity M1",c:MERCHANTS_COPY.zh,active}))));
+  await render(true);await settle();await open();
+  await render(false);await settle();
+  expect([...document.querySelectorAll("button")].some(b=>b.textContent==="common.save")).toBe(false);
+  await render(true);await settle();
+  const el=document.getElementById("registrationNo-label")!.parentElement!.parentElement!.querySelector("input")!;
+  expect(el.value).toBe("TESTONLY");
+  await click("common.save");expect(calls.apply.mock.calls[0][1].registrationNo).toBe("TESTONLY");
  });
 });

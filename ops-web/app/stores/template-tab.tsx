@@ -14,7 +14,6 @@ import { MIN_ENABLED_SECTIONS } from "@/lib/constants";
 import type { SectionKey, StoreTemplate, TemplateSection } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
-import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { RowActions } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/lib/i18n";
 import type { StoresCopy } from "./copy";
 
 type Layout = StoreTemplate["layout"];
@@ -47,6 +48,7 @@ const BLANK_SECTIONS: TemplateSection[] = [
 export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean }) {
   const qc = useQueryClient();
   const { confirm, dialog } = useConfirm();
+  const i18n = useI18n();
   const [editing, setEditing] = useState<Form | null>(null);
 
   const sectionLabel: Record<SectionKey, string> = {
@@ -103,30 +105,32 @@ export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean })
       cell: (t) => {
         // 停不掉的模板不给「停用」按钮：mock 层也会拒，摆一个必然报错的按钮是在骗人点一次
         const lockedOff = t.isDefault || t.usedByCount > 0;
+        if (!canEdit) return null;
         return (
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={!canEdit}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost"
               onClick={() => setEditing({ ...t, sections: t.sections.map((s) => ({ ...s })) })}>
               {c.actionEditTemplate}
             </Button>
-            {t.enabled ? (
-              <Button size="sm" variant="ghost" disabled={!canEdit || lockedOff}
-                onClick={async () => {
+            <RowActions actions={[
+              // 停不掉的模板（默认 / 有店在用）不给「停用」：mock 层也会拒，摆一个必然报错的动作是在骗人点一次
+              t.enabled && !lockedOff && {
+                label: c.actionDisable,
+                danger: true,
+                onSelect: async () => {
                   const ok = await confirm({
                     title: c.confirmDisableTitle,
                     desc: fill(c.confirmDisableDesc, { name: t.name }),
                     danger: true,
                   });
                   if (ok) toggle.mutate({ templateNo: t.templateNo, enabled: false });
-                }}>
-                {c.actionDisable}
-              </Button>
-            ) : (
-              <Button size="sm" variant="ghost" disabled={!canEdit}
-                onClick={() => toggle.mutate({ templateNo: t.templateNo, enabled: true })}>
-                {c.actionEnable}
-              </Button>
-            )}
+                },
+              },
+              !t.enabled && {
+                label: c.actionEnable,
+                onSelect: () => toggle.mutate({ templateNo: t.templateNo, enabled: true }),
+              },
+            ]} />
           </div>
         );
       },
@@ -137,7 +141,6 @@ export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean })
 
   return (
     <>
-      <HelpNote className="mb-3">{fill(c.templateNotice, { n: MIN_ENABLED_SECTIONS })}</HelpNote>
       <Toolbar
         onAdd={() => setEditing({
           name: "", layout: "GRID", enabled: true, isDefault: false,
@@ -157,8 +160,13 @@ export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean })
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
         title={editing?.templateNo ? fill(c.editTemplateTitle, { name: editing.name }) : c.newTemplateTitle}
-        width="w-[520px]"
-        footer={canEdit ? <Button loading={save.isPending} onClick={() => save.mutate()}>{c.btnSaveTemplate}</Button> : null}
+        width="w-[560px]"
+        footer={canEdit ? (
+          <>
+            <Button variant="outline" onClick={() => setEditing(null)}>{i18n.t("common.cancel")}</Button>
+            <Button loading={save.isPending} onClick={() => save.mutate()}>{c.btnSaveTemplate}</Button>
+          </>
+        ) : null}
       >
         {editing && (
           <div>
@@ -206,7 +214,6 @@ export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean })
                 <Field className="mb-0" label={c.colUsedBy}>
                   {fill(c.usedByStores, { n: list.data?.find((t) => t.templateNo === editing.templateNo)?.usedByCount ?? 0 })}
                 </Field>
-                <p className="mt-1 txt-caption text-muted-foreground">{c.impactHint}</p>
               </DrawerSection>
             )}
           </div>

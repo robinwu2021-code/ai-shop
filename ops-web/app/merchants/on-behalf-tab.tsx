@@ -27,7 +27,7 @@ export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
     </Dialog.Root>
-    {done && <Notice tone="info">{c.obDone}：{done.applyNo}<p className="mt-1 txt-caption">{c.obDoneHint}</p></Notice>}
+    {done && <Notice tone="info">{c.obDone}：{done.applyNo}</Notice>}
   </div>;
 }
 
@@ -97,7 +97,6 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
                   {policy?.recordOnly===false && phone.trim().length>=11 && !phoneOk && <Notice tone="danger">{c.soPhoneBad}</Notice>}
                 </div>
               </div>
-              <p className="txt-caption text-muted-foreground">{phoneOwner ? c.obPhoneHint : c.obRecordPhoneHint}</p>
             </section>
             <section className="space-y-3 border-t pt-4">
               <h3 className="txt-body font-semibold">{c.applySectionStore}</h3>

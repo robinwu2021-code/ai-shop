@@ -16,7 +16,6 @@ import { usePaging } from "@/lib/use-paging";
 import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { Toolbar } from "@/components/ui/toolbar";
-import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { PagedTable } from "@/components/ui/paged-table";
 import type { MerchantsCopy } from "./copy";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * 两个 tab 共用：只有过审商家才谈得上授权与认证标。
@@ -45,6 +45,7 @@ function useApprovedMerchants(keyword: string, page: number, size: number) {
 
 export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean }) {
   const qc = useQueryClient();
+  const i18n = useI18n();
   const [keyword, setKeyword] = useState("");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
@@ -98,15 +99,14 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
     },
     {
       header: c.colActions,
-      cell: (m) => (
-        <Button size="sm" variant="outline" disabled={!canGrant} onClick={() => open(m)}>{c.actionGrant}</Button>
-      ),
+      cell: (m) => (canGrant
+        ? <Button size="sm" variant="ghost" onClick={() => open(m)}>{c.actionGrant}</Button>
+        : null),
     },
   ];
 
   return (
     <>
-      <HelpNote className="mb-3">{c.categoryNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <PagedTable
         query={list}
@@ -124,8 +124,13 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
         open={!!current}
         onOpenChange={(o) => !o && setCurrent(null)}
         title={current ? fill(c.grantTitle, { name: current.name }) : ""}
-        width="w-[520px]"
-        footer={canGrant ? <Button loading={save.isPending} onClick={() => save.mutate()}>{c.btnSaveAuth}</Button> : null}
+        width="w-[560px]"
+        footer={canGrant ? (
+          <>
+            <Button variant="outline" onClick={() => setCurrent(null)}>{i18n.t("common.cancel")}</Button>
+            <Button loading={save.isPending} onClick={() => save.mutate()}>{c.btnSaveAuth}</Button>
+          </>
+        ) : null}
       >
         {current && (
           <div>
@@ -133,7 +138,6 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
               <p className="txt-body">
                 {current.qualifications?.length ? current.qualifications.join("、") : c.noQualification}
               </p>
-              <p className="mt-1 txt-caption text-muted-foreground">{c.qualificationHint}</p>
             </DrawerSection>
 
             <DrawerSection title={c.secAuthCodes}>
@@ -154,7 +158,6 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
                   }}>
                     {c.grantByQual}
                   </Button>
-                  <p className="mt-1 txt-caption text-muted-foreground">{c.grantByQualHint}</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -199,7 +202,6 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
                   {fill(c.authRevokeWarn, { s: willRevoke.map(nameOf).join("、") })}
                 </Notice>
               )}
-              <p className="mt-3 txt-caption text-muted-foreground">{c.authCodesHint}</p>
             </DrawerSection>
 
             <DrawerSection title={c.secAuthReason}>
@@ -251,8 +253,9 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
       cell: (m) => {
         // 达上限的不给「授予」按钮：mock 层也会拒，但摆一个必然报错的按钮是在骗人点一次
         const blocked = !m.verified && m.breachCount >= MAX_MERCHANT_BREACH;
+        if (!canGrant) return null;
         return (
-          <Button size="sm" variant="outline" disabled={!canGrant || blocked}
+          <Button size="sm" variant="ghost" disabled={blocked}
             onClick={async () => {
               const ok = await confirm({
                 title: m.verified ? c.confirmRevokeTitle : c.confirmGrantTitle,
@@ -270,7 +273,6 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
 
   return (
     <>
-      <HelpNote className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <PagedTable
         query={list}

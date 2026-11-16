@@ -21,7 +21,6 @@ import { NUDGEABLE } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { HelpNote } from "@/components/ui/help-note";
 import { CheckboxField } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -99,7 +98,7 @@ export function ChainTab({ c }: { c: MerchantsCopy }) {
           return <Dash />;
         }
         return (
-          <Button size="sm" variant="outline" onClick={() => void confirm({
+          <Button size="sm" variant="ghost" onClick={() => void confirm({
             title: fill(c.chainNudgeTitle, { name: r.merchantName ?? r.entityNo }),
             desc: c.chainNudgeDesc,
             confirmText: c.chainNudgeConfirm,
@@ -118,7 +117,6 @@ export function ChainTab({ c }: { c: MerchantsCopy }) {
   return (
     <>
       {dialog}
-      <HelpNote title={c.chainHelpTitle}>{c.chainHelp}</HelpNote>
 
       <StatRow>
         <StatCard label={c.chainTotal} value={q.isPending ? null : rows.length} loading={q.isPending} />

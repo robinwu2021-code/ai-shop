@@ -7,7 +7,7 @@
 // 放在 components/ 根而不是 components/ui/：ui/ 是 B0 定稿的通用原语，这里是业务约定层。
 import * as React from "react";
 import { Archive, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RowActions } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { fmtTime } from "@/lib/utils";
 import { useI18n, translate } from "@/lib/i18n";
@@ -62,12 +62,12 @@ export function ArchivedAt({ at }: { at?: string | null }) {
  * 让"已归档行还能编辑/下发指令"这类错误在调用点就不可能写出来（`actions` 只在未归档时渲染）。
  */
 export function ArchiveActions({
-  archived, onArchive, onUnarchive, canWrite = true, canArchive = true, archiveHint, actions,
+  archived, onArchive, onUnarchive, canWrite = true, canArchive = true, archiveHint, actions, view,
 }: {
   archived: boolean;
   onArchive: () => void;
   onUnarchive: () => void;
-  /** 无写权限时不出动作按钮（页面另有「仅可查看」提示，不做静默隐藏） */
+  /** 无写权限时不出写动作（页面另有「仅可查看」提示）；`view` 仍然显示 */
   canWrite?: boolean;
   /**
    * 该行是否**允许归档**（区别于 canWrite 的"整体有无写权限"）。
@@ -77,28 +77,36 @@ export function ArchiveActions({
   canArchive?: boolean;
   /** canArchive=false 时的悬浮说明（如「内置角色不可归档」） */
   archiveHint?: string;
-  /** 未归档时才显示的其它动作（编辑、指令…） */
+  /** 未归档且有写权限时才显示的其它行内动作（编辑、指令…）。与 `view` 合计 ≤ 2 个 */
   actions?: React.ReactNode;
+  /**
+   * 查看入口（「详情」）。**归档与否、有无写权限都显示** ——
+   * 此前查看按钮塞在 `actions` 里，只读角色与已归档行一律看不到详情。
+   */
+  view?: React.ReactNode;
 }) {
   const { t } = useI18n();
-  if (!canWrite) return <span className="text-muted-foreground">-</span>;
-  if (archived) {
-    return (
-      <Button size="sm" variant="outline" onClick={onUnarchive}>
-        <RotateCcw className="size-4" /> {t(UNARCHIVE_LABEL_KEY)}
-      </Button>
-    );
+  // 归档 / 恢复不放行内：归档是危险动作，按「列表与抽屉」规范收进「更多」并沉底；
+  // 恢复跟着进同一个菜单，免得同一列在两种行上长得不一样。
+  const menu = canWrite ? (
+    <RowActions actions={[
+      archived
+        ? { label: t(UNARCHIVE_LABEL_KEY), icon: <RotateCcw className="size-4" />, onSelect: onUnarchive }
+        : {
+          label: t(ARCHIVE_LABEL_KEY), icon: <Archive className="size-4" />, onSelect: onArchive,
+          danger: true, disabled: !canArchive, hint: canArchive ? undefined : archiveHint,
+        },
+    ]} />
+  ) : null;
+  if (!view && !menu && (archived || !canWrite || !actions)) {
+    return <span className="text-muted-foreground">-</span>;
   }
   return (
-    // flex-nowrap：操作列一换行整行就变两倍高。**行内动作 ≤2 个**，
-    // 更多请收进 RowActions（见 components/README.md 用法约定）。
+    // flex-nowrap：操作列一换行整行就变两倍高。
     <div className="flex flex-nowrap items-center gap-2">
-      {actions}
-      <Button
-        disabled={!canArchive}
-        title={canArchive ? undefined : archiveHint} size="sm" variant="outline" onClick={onArchive}>
-        <Archive className="size-4" /> {t(ARCHIVE_LABEL_KEY)}
-      </Button>
+      {view}
+      {!archived && canWrite && actions}
+      {menu}
     </div>
   );
 }

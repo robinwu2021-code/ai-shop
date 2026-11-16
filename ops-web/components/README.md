@@ -51,8 +51,8 @@
 | `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式。入参具名导出为 `DataTableProps` |
 | `PagedTable` | `ui/paged-table.tsx` | **分页列表就用它**：`DataTable` + `Pagination` 绑同一份 `query`。rows / loading / error / onRetry / total 由 `query` 接出，`onSize` 是**必填** —— 漏了编译不过，不必再靠正则去追 |
 | `SectionHeader` | `ui/section-header.tsx` | 页内小节标题（标题 + 右侧概要 + 说明行）。收编前 13 处 `<h3>` 长出五种写法，其中两处写的 `txt-h3` **是个不存在的类** |
-| `FormDrawer` | `ui/form-drawer.tsx` | 配置化编辑抽屉（`FieldDef[]` → 表单 + 校验 + 分区 + 联动） |
-| `Drawer` / `DrawerSection` / `FieldGrid` / `Field` | `ui/drawer.tsx` | 右侧抽屉 + 分段 + 两列栅格 + **详情行**（`Field` 全站唯一一份，见下） |
+| `FormDrawer` | `ui/form-drawer.tsx` | 配置化编辑抽屉（`FieldDef[]` → 表单 + 校验 + 分区 + 联动）。传 `inDrawer` 时在**已打开的抽屉里**原地展开、按钮进外层底栏，不叠第二层 |
+| `Drawer` / `DrawerSection` / `FieldGrid` / `Field` / `DrawerFooter` | `ui/drawer.tsx` | 右侧抽屉 + 分段 + 两列栅格 + **详情行**（`Field` 全站唯一一份，见下）。`DrawerFooter` 让抽屉里的子块把按钮放进外层底栏，占用期间外层 `footer` 让位 |
 | `ConfigCard` | `ui/config-card.tsx` | 配置卡片：标题 + 说明 + 内容 + 保存按钮 + 「上次修改」页脚。**配置页一律用它**，别再手拼页脚 |
 | `Toolbar` | `ui/toolbar.tsx` | 搜索 + 筛选槽 + 导出/新增；选中时切批量操作条 |
 | `TabHeader` | `ui/tab-header.tsx` | 页内 tab 条（含分期屏蔽） |
@@ -178,6 +178,9 @@ TabHeader（页头，单 tab 也走它，传 desc）
     └ 不分页的配置表用 DataTable，自己接 error/onRetry
   Drawer / ConfigCard（详情或配置）
 ```
+
+「表格 + 操作列 + 右侧抽屉」（详情 / 编辑 / 新增 / 专项动作）的拼法、抽屉宽度四档、底栏与提交约定，
+见 [规范-运营端-列表与抽屉](../../docs/technical/design/规范-运营端-列表与抽屉.md)。
 
 **分页列表一律走 `PagedTable`。** 它从 `query` 里接出 rows / loading / error /
 onRetry / total 五项，`onSize` 是必填 —— 这几项此前靠各页手拼，一次盘点里

@@ -29,7 +29,6 @@ import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { useCan } from "@/lib/use-can";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -85,12 +84,12 @@ export function AdmissionTab({ c }: { c: Copy }) {
   });
 
   const policyFields: FieldDef[] = [
-    { key: "deposit", label: c.adPolicyDeposit, type: "number", required: true, help: c.adPolicyDepositHelp },
-    { key: "single", label: c.adPolicySingle, type: "number", required: true, help: c.adPolicySingleHelp },
-    { key: "daily", label: c.adPolicyDaily, type: "number", required: true, help: c.adPolicyDailyHelp },
-    { key: "banQualified", label: c.adPolicyBanQualified, type: "switch", help: c.adPolicyBanQualifiedHelp },
-    { key: "enabled", label: c.adPolicyEnabled, type: "switch", help: c.adPolicyEnabledHelp },
-    { key: "remark", label: c.adPolicyRemark, type: "textarea", help: c.adPolicyRemarkHelp },
+    { key: "deposit", label: c.adPolicyDeposit, type: "number", required: true },
+    { key: "single", label: c.adPolicySingle, type: "number", required: true },
+    { key: "daily", label: c.adPolicyDaily, type: "number", required: true },
+    { key: "banQualified", label: c.adPolicyBanQualified, type: "switch" },
+    { key: "enabled", label: c.adPolicyEnabled, type: "switch" },
+    { key: "remark", label: c.adPolicyRemark, type: "textarea" },
   ];
 
   const openPolicy = (p: AdmissionPolicy) => setPolicyForm({
@@ -253,11 +252,11 @@ export function AdmissionTab({ c }: { c: Copy }) {
     { header: c.adColRemark, cell: (p) => p.remark ?? "—" },
     {
       header: c.adColAction,
-      cell: (p) => (
-        <Button size="sm" variant="outline" disabled={!canEditPolicy} onClick={() => openPolicy(p)}>
+      cell: (p) => (canEditPolicy ? (
+        <Button size="sm" variant="ghost" onClick={() => openPolicy(p)}>
           {c.adPolicyEdit}
         </Button>
-      ),
+      ) : null),
     },
   ];
 
@@ -286,13 +285,13 @@ export function AdmissionTab({ c }: { c: Copy }) {
       cell: (s) => (
         <div className="flex gap-2">
           <Button
-            size="sm" variant="outline" disabled={s.businessMode === "SELF_OPERATED" || setMode.isPending}
+            size="sm" variant="ghost" disabled={s.businessMode === "SELF_OPERATED" || setMode.isPending}
             onClick={() => setMode.mutate({ storeNo: s.storeNo, businessMode: "SELF_OPERATED" })}
           >
             {c.adSwitchSelfOperated}
           </Button>
           <Button
-            size="sm" variant="outline"
+            size="sm" variant="ghost"
             // 没有收款号就切不了第三方：钱没处去。前端先禁掉，后端还有一道（70012）
             disabled={s.businessMode === "THIRD_PARTY" || !s.payMerchantNo || setMode.isPending}
             title={!s.payMerchantNo ? c.adNoPayAccountHint : undefined}
@@ -307,11 +306,9 @@ export function AdmissionTab({ c }: { c: Copy }) {
 
   return (
     <div className="space-y-4">
-      <HelpNote>{c.adNotice}</HelpNote>
 
       <div>
         <div className="mb-2 txt-strong">{c.adPolicyTitle}</div>
-        <p className="txt-caption text-muted-foreground mb-2">{c.adPolicyHint}</p>
         {!canEditPolicy && (
           <ReadOnlyNotice what={c.adPolicyReadOnly} perm="merchant:admission:update" className="mb-2" />
         )}
@@ -390,7 +387,6 @@ export function AdmissionTab({ c }: { c: Copy }) {
       {queried && (
         <div>
           <div className="mb-2 txt-strong">{c.adTxnTitle}</div>
-          <p className="txt-caption text-muted-foreground mb-2">{c.adTxnHint}</p>
           <DataTable columns={txnColumns} rows={txns.data ?? []} rowKey={(t) => t.txnNo} empty={c.adTxnEmpty}
                      loading={txns.isLoading} error={txns.error} onRetry={() => txns.refetch()} />
         </div>
@@ -399,7 +395,6 @@ export function AdmissionTab({ c }: { c: Copy }) {
       {queried && (
         <div>
           <div className="mb-2 txt-strong">{c.fundsModeTitle}</div>
-          <p className="txt-caption text-muted-foreground mb-2">{c.fundsModeHint}</p>
           <FilterSelect
             value={profile.data?.fundsMode ?? "AGGREGATED"}
             onChange={(v) => setFunds.mutate(v as "AGGREGATED" | "DIRECT")}
@@ -414,7 +409,6 @@ export function AdmissionTab({ c }: { c: Copy }) {
       {queried && (
         <div>
           <div className="mb-2 txt-strong">{c.adQuotaTitle}</div>
-          <p className="txt-caption text-muted-foreground mb-2">{c.adQuotaHint}</p>
           <DataTable
             columns={quotaColumns}
             rows={quotas.data}
@@ -453,7 +447,6 @@ export function AdmissionTab({ c }: { c: Copy }) {
       {queried && (
         <div>
           <div className="mb-2 txt-strong">{c.adModeTitle}</div>
-          <p className="txt-caption text-muted-foreground mb-2">{c.adModeHint}</p>
           <DataTable columns={modeColumns} rows={modes.data ?? []} rowKey={(s) => s.storeNo} empty={c.adModeEmpty}
                      loading={modes.isLoading} error={modes.error} onRetry={() => modes.refetch()} />
         </div>

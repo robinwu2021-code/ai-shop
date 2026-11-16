@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useCopy, fill } from "@/lib/use-copy";
+import { useI18n } from "@/lib/i18n";
 import { STORES_COPY } from "./copy";
 import { buildPrintSheetHtml } from "@/lib/store-print-sheet";
 import { usePaging } from "@/lib/use-paging";
@@ -23,7 +24,8 @@ import { TemplateTab } from "./template-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, Field } from "@/components/ui/drawer";
+import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
+import { RowActions } from "@/components/ui/dropdown-menu";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
@@ -55,6 +57,7 @@ export default function StoresPage() {
 
 function StoresInner() {
   const c = useCopy(STORES_COPY);
+  const { t } = useI18n();
   const tabs = useNavTabs("/stores", TAB_KEYS);
   const kindOptions = KIND_OPTIONS(c);
   const qc = useQueryClient();
@@ -233,7 +236,7 @@ function StoresInner() {
     {
       header: c.colActions,
       cell: (a) => (
-        <Button size="sm" variant="outline" onClick={() => { setCurrent(a); setReason(a.reason ?? ""); }}>
+        <Button size="sm" variant="ghost" onClick={() => { setCurrent(a); setReason(a.reason ?? ""); }}>
           {a.status === "PENDING" && canAudit ? c.actionAudit : c.actionView}
         </Button>
       ),
@@ -269,22 +272,22 @@ function StoresInner() {
       header: c.colActions,
       cell: (r) =>
         canExport ? (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {r.code == null ? (
               // 没码就先发码 —— 登记印量、导出印刷页在这一行上都还无从谈起
-              <Button size="sm" variant="outline" disabled={issue.isPending}
+              <Button size="sm" variant="ghost" disabled={issue.isPending}
                       onClick={() => issue.mutate(r)}>
                 {c.issueAction}
               </Button>
             ) : (
               <>
-                <Button size="sm" variant="outline" onClick={() => { setPrintFor(r); setPrintQty(""); setPrintSize(r.size ?? ""); setPrintRemark(""); }}>
+                <Button size="sm" variant="ghost" onClick={() => { setPrintFor(r); setPrintQty(""); setPrintSize(r.size ?? ""); setPrintRemark(""); }}>
                   {c.printAction}
                 </Button>
-                {/* 换码单独一颗且要走确认：它让已印物料全部失效 */}
-                <Button size="sm" variant="outline" onClick={() => { setReissueFor(r); setReissueReason(""); }}>
-                  {c.reissueAction}
-                </Button>
+                {/* 换码让已印物料全部失效：危险动作收进「更多」，点了进抽屉写原因 */}
+                <RowActions actions={[
+                  { label: c.reissueAction, danger: true, onSelect: () => { setReissueFor(r); setReissueReason(""); } },
+                ]} />
               </>
             )}
           </div>
@@ -324,14 +327,7 @@ function StoresInner() {
         <ReadOnlyNotice what={c.readOnlyWhat} perm="store:page:audit" note={c.readOnlyNote} className="mb-3" />
       )}
 
-      {tab === "qrcode" && (
-        <Notice className="mb-3">
-          {c.notice}
-        </Notice>
-      )}
 
-      {/* 口径常驻：这几个数很容易被读成别的意思（尤其「首次归因」不是新注册） */}
-      {tab === "effect" && <Notice className="mb-3">{c.acqNotice}</Notice>}
 
       {tab === "template" && (
         <>
@@ -457,25 +453,27 @@ function StoresInner() {
           current?.status === "PENDING" && canAudit ? (
             <>
               <Button
-                variant="outline"
+                variant="destructive"
+                disabled={decide.isPending}
                 onClick={() => decide.mutate({ auditNo: current.auditNo, pass: false, reason })}
               >
                 {c.btnReject}
               </Button>
-              <Button onClick={() => decide.mutate({ auditNo: current.auditNo, pass: true })}>{c.btnPass}</Button>
+              <Button variant="outline" onClick={() => setCurrent(null)}>{t("common.cancel")}</Button>
+              <Button loading={decide.isPending} onClick={() => decide.mutate({ auditNo: current.auditNo, pass: true })}>{c.btnPass}</Button>
             </>
           ) : null
         }
       >
         {current && (
-          <div>
-            <Field label={c.fieldPending}>
+          <>
+          <DrawerSection first title={c.fieldPending}>
+            <Field label={kindLabel(current.kind, c)}>
               {current.kind === "SERVICE_AREA" ? (
                 /* 覆盖项审的是「这家店能不能做这一片」，所以给的是地名 + 判据提示，
                    而不是像公告那样把原文摆出来 —— 原文是 DISTRICT:330106，看不出任何东西 */
                 <div className="space-y-2">
                   <p className="font-medium">{current.display ?? current.content}</p>
-                  <p className="txt-caption text-muted-foreground">{c.areaHint}</p>
                 </div>
               ) : current.kind === "BANNER" ? (
                 // 图片走 CDN，本地 mock 里是假的 URL：显示地址本身而不是加载失败的破图
@@ -492,18 +490,20 @@ function StoresInner() {
               )}
             </Field>
             <Field label={c.colSubmittedAt}>{fmtTime(current.submittedAt)}</Field>
-            <Field label={c.fieldRejectReason}>
-              {current.status === "PENDING" && canAudit ? (
-                <Textarea
-                  value={reason}
-                  onChange={setReason}
-                  placeholder={c.rejectPlaceholder}
-                />
-              ) : (
-                current.reason || "-"
-              )}
-            </Field>
-          </div>
+          </DrawerSection>
+          {/* 只读的与要填的分段：驳回原因只有待审且有权限时才是输入框 */}
+          <DrawerSection title={c.fieldRejectReason}>
+            {current.status === "PENDING" && canAudit ? (
+              <Textarea
+                value={reason}
+                onChange={setReason}
+                placeholder={c.rejectPlaceholder}
+              />
+            ) : (
+              <p className="txt-body">{current.reason || "-"}</p>
+            )}
+          </DrawerSection>
+          </>
         )}
       </Drawer>
 
@@ -514,6 +514,8 @@ function StoresInner() {
         title={printFor ? `${printFor.merchantName} · ${c.printTitle}` : ""}
         desc={printFor?.code ?? undefined}
         footer={
+          <>
+          <Button variant="outline" onClick={() => setPrintFor(null)}>{t("common.cancel")}</Button>
           <Button
             // 空与 0 都不提交：0 既不是印了也不是冲减，后端也会拒
             disabled={!printQty.trim() || Number(printQty) === 0 || Number.isNaN(Number(printQty)) || recordPrint.isPending}
@@ -521,13 +523,13 @@ function StoresInner() {
           >
             {c.printSubmit}
           </Button>
+          </>
         }
       >
         {printFor && (
           <div className="space-y-3">
             <Field label={c.printQty}>
               <Input value={printQty} onChange={(e) => setPrintQty(e.target.value)} placeholder="200" />
-              <p className="mt-1 txt-caption text-muted-foreground">{c.printQtyHint}</p>
             </Field>
             <Field label={c.printSize}>
               <Input value={printSize} onChange={(e) => setPrintSize(e.target.value)} placeholder="10x10cm" />
@@ -549,6 +551,8 @@ function StoresInner() {
         title={reissueFor ? fill(c.reissueTitle, { store: reissueFor.storeName ?? reissueFor.storeNo }) : ""}
         desc={reissueFor?.code ?? undefined}
         footer={
+          <>
+          <Button variant="outline" onClick={() => setReissueFor(null)}>{t("common.cancel")}</Button>
           <Button
             variant="destructive"
             disabled={!reissueReason.trim() || reissue.isPending}
@@ -556,6 +560,7 @@ function StoresInner() {
           >
             {c.reissueConfirm}
           </Button>
+          </>
         }
       >
         {reissueFor && (

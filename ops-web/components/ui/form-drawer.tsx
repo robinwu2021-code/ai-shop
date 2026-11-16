@@ -9,7 +9,7 @@
 // - 分区：相邻同名 section 合成一段，段首渲染小标题（样式对齐 secondary-nav 的分组小标题）
 // - 联动：disabledWhen(values) 为 true 时禁用该字段并清空其值（不提交隐藏字段的脏数据）
 import * as React from "react";
-import { Drawer } from "./drawer";
+import { Drawer, DrawerFooter } from "./drawer";
 import { Input, Select } from "./input";
 import { Switch } from "./switch";
 import { Textarea } from "./textarea";
@@ -155,7 +155,7 @@ function FieldRow({
 }
 
 export function FormDrawer({
-  open, onOpenChange, titleNew, titleEdit, isEdit, fields, value, onChange, onSubmit, submitting, width,
+  open, onOpenChange, titleNew, titleEdit, isEdit, fields, value, onChange, onSubmit, submitting, width, inDrawer, inDrawerActive = true,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -168,6 +168,13 @@ export function FormDrawer({
   onSubmit: () => void;
   submitting?: boolean;
   width?: string;
+  /**
+   * 已经在一个打开的抽屉里：字段原地渲染，取消/保存进外层抽屉的底栏（`DrawerFooter`），
+   * **不再叠第二层抽屉**。此时由调用方按 `open` 决定挂不挂载，标题不显示。
+   */
+  inDrawer?: boolean;
+  /** 仅 `inDrawer`：所在页签被切走（组件隐藏但保持挂载）时传 false —— 表单内容保留，按钮让出底栏 */
+  inDrawerActive?: boolean;
 }) {
   const { t } = useI18n();
   const [touched, setTouched] = React.useState<Record<string, boolean>>({});
@@ -204,25 +211,20 @@ export function FormDrawer({
     onSubmit();
   };
 
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      title={isEdit ? titleEdit : titleNew}
-      width={width}
-      footer={
-        <>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          {/*
-            保存按钮**不因校验错误而禁用**：新建时字段全空必然有错，若禁用则用户
-            看到灰按钮却不知道为什么，且 submit() 里的校验分支永远执行不到。
-            改为「可点 → 点击后标记 submitted → 红字暴露全部错误 → 不提交」。
-            仅 submitting 时禁用（防重复提交）。
-          */}
-          <Button disabled={submitting} onClick={submit} aria-invalid={hasError || undefined}>{t("common.save")}</Button>
-        </>
-      }
-    >
+  const actions = (
+    <>
+      <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+      {/*
+        保存按钮**不因校验错误而禁用**：新建时字段全空必然有错，若禁用则用户
+        看到灰按钮却不知道为什么，且 submit() 里的校验分支永远执行不到。
+        改为「可点 → 点击后标记 submitted → 红字暴露全部错误 → 不提交」。
+        仅 submitting 时禁用（防重复提交）。
+      */}
+      <Button disabled={submitting} onClick={submit} aria-invalid={hasError || undefined}>{t("common.save")}</Button>
+    </>
+  );
+  const formBody = (
+    <>
       {segments.map((seg, si) => (
         <div key={seg.section ?? `seg${si}`} className={cn(seg.section && si > 0 && "mt-1")}>
           {seg.section && (
@@ -243,6 +245,21 @@ export function FormDrawer({
           ))}
         </div>
       ))}
+    </>
+  );
+
+  if (inDrawer) {
+    return open ? <>{formBody}{inDrawerActive && <DrawerFooter>{actions}</DrawerFooter>}</> : null;
+  }
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? titleEdit : titleNew}
+      width={width}
+      footer={actions}
+    >
+      {formBody}
     </Drawer>
   );
 }

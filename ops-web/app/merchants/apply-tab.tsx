@@ -26,13 +26,13 @@ import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Notice } from "@/components/ui/notice";
-import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckboxField } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { MerchantsCopy } from "./copy";
+import { useI18n } from "@/lib/i18n";
 
 const STATUS_MAP: StatusMap<ApplyStatus> = {
   PENDING: { label: "待审核", tone: "warning" },
@@ -58,6 +58,7 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
 
 export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=false, action }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean; onBehalfOnly?:boolean; action?:React.ReactNode }) {
   const qc = useQueryClient();
+  const i18n = useI18n();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
@@ -134,14 +135,14 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
       stickyEnd: true,
       cell: (a) => (
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => open(a)}>
+            {c.actionView}
+          </Button>
           {canAudit && a.status === "PENDING" && (
-            <Button size="sm" variant="outline" onClick={() => accept.mutate(a.applyNo)}>
+            <Button size="sm" variant="ghost" disabled={accept.isPending} onClick={() => accept.mutate(a.applyNo)}>
               {c.applyActionAccept}
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={() => open(a)}>
-            {c.actionView}
-          </Button>
         </div>
       ),
     },
@@ -187,7 +188,33 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
         onSize={(v) => { setSize(v); setPage(1); }}
       />
 
-      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}>
+      <Drawer
+        open={!!current}
+        onOpenChange={(o) => !o && setCurrent(null)}
+        title={current?.name ?? ""}
+        desc={current?.applyNo}
+        width="w-[560px]"
+        footer={canAudit && current && !decided ? (
+          <>
+            <Button
+              variant="destructive"
+              // 驳回必须写理由 —— 不写就等于让对方猜着改，而重来的人有一部分不会回来
+              disabled={!reason.trim() || audit.isPending}
+              onClick={() => audit.mutate({ approved: false })}
+            >
+              {c.applyActionReject}
+            </Button>
+            <Button variant="outline" onClick={() => setCurrent(null)}>{i18n.t("common.cancel")}</Button>
+            <Button
+              disabled={!scopeReady}
+              loading={audit.isPending}
+              onClick={() => audit.mutate({ approved: true })}
+            >
+              {c.applyActionApprove}
+            </Button>
+          </>
+        ) : null}
+      >
         {current && (
           <>
             <DrawerSection title={c.applySectionInfo} first>
@@ -226,7 +253,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge tone="info">{c.applySourceOps}</Badge>
                   <Badge tone={current.agreedAt ? "success" : "warning"}>{current.agreedAt ? c.applyAgreed : c.applyNotAgreed}</Badge>
-                  <HelpNote inline>{c.applyOnBehalf}</HelpNote>
                 </div>
               )}
               {current.desc && <p className="mt-2 txt-body text-muted-foreground">{current.desc}</p>}
@@ -293,7 +319,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
             */}
             {!!current.licenses?.length && (
               <DrawerSection title={c.applySectionRawFiles}>
-                <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline">
@@ -310,7 +335,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
                   服务范围放在审核动作**上面**：它是通过的前置条件，不是附属选项。
                   放下面的话运营会先点通过再发现被拦，而拦截原因在视线之外。
                 */}
-                <HelpNote>{c.applyScopeNotice}</HelpNote>
 
                 <Label>{c.applyScopeLabel}</Label>
                 <FilterSelect
@@ -378,22 +402,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
                   />
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    disabled={!scopeReady || audit.isPending}
-                    onClick={() => audit.mutate({ approved: true })}
-                  >
-                    {c.applyActionApprove}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    // 驳回必须写理由 —— 不写就等于让对方猜着改，而重来的人有一部分不会回来
-                    disabled={!reason.trim() || audit.isPending}
-                    onClick={() => audit.mutate({ approved: false })}
-                  >
-                    {c.applyActionReject}
-                  </Button>
-                </div>
               </DrawerSection>
             )}
           </>
