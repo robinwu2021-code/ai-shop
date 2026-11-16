@@ -1,6 +1,8 @@
 # TDD-支付服务-I4进件与收款商户
 
-状态：已实现
+状态：已实现，**已被 near-pay 取代**（2026-11-16 标注）
+
+> 进件与收款商户现由独立 near-pay 承担（[TDD-B端进件接入near-pay](./TDD-B端进件接入near-pay.md)）；near-pay 在 V25/V26 改了 `pay_onboarding.inflight_key`、`pay_merchant.status` 与 `pay_merchant_binding.active_key` 的语义。本文描述的宿主内嵌实现（`OnboardingServiceImpl`、`PayOnboardingPollJob`、`PayMerchantMirror*` 双写与回填）在 166 上双写与读切均为默认关闭，属待下线代码，见 [主链路评审](../handoff/bapp-api-alignment-2026-11-16/flow-review.md) 五节 C 批。不要据本文修改 near-pay 的表。
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I4 · [数据库现状对比与执行方案](./支付服务-数据库现状对比与执行方案.md) §3.2、§4.5（B1–B4、S5 比对、S6 读切）、§4.6、§5（Q2 / Q3 / Q4 / Q6）· [数据库表结构说明 v4](./TDD-支付服务-数据库表结构说明.md) §6.2、§8.1、§8.2 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §2.4 · [ADR-043](./ADR/ADR-043-进件与收款商户归支付域.md) · [代码 Review](./支付服务-代码Review-2026-10-24.md) R01 / R02 / R04 / R06 / R23 / R24 / R26
 创建：2026-10-26 · 最后更新：2026-10-26
 

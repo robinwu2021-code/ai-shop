@@ -2991,7 +2991,7 @@
       "get": {
         "operationId": "getOnboardingPaymentChannels",
         "summary": "读取可用收款进件通道",
-        "description": "含尚未开通通道的 NONE 占位；渠道取实际返回。AGGREGATED 不以独立进件作为建店前置。",
+        "description": "含尚未开通通道的 NONE 占位；渠道取实际返回。AGGREGATED 不以独立进件作为建店前置。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3210,7 +3210,7 @@
       "get": {
         "operationId": "getOnboardingPaymentApplications",
         "summary": "读取进件状态及缺失项",
-        "description": "仅主体默认行和当前授权店行；必须按 storeNo 区分默认与独立结算。",
+        "description": "仅主体默认行和当前授权店行；必须按 storeNo 区分默认与独立结算。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3361,7 +3361,7 @@
       "post": {
         "operationId": "submitOnboardingPaymentMaterials",
         "summary": "提交收款进件资料",
-        "description": "主体默认进件省略 storeNo；独立结算传所选店号，须存在对应行/按流程先创建。按 missing 补材料。ACTIVE 不接受重复提交；真实结果由通道决定。",
+        "description": "主体默认进件省略 storeNo；独立结算传所选店号，须存在对应行/按流程先创建。按 missing 补材料。ACTIVE 不接受重复提交；真实结果由通道决定。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3550,7 +3550,7 @@
       "post": {
         "operationId": "openOnboardingStorePayment",
         "summary": "创建分店独立收款进件占位（按需）",
-        "description": "仅需要分店独立结算时调用；路径与选店一致。不调用则可使用主体默认收款行。占位不等于提交渠道。",
+        "description": "仅需要分店独立结算时调用；路径与选店一致。不调用则可使用主体默认收款行。占位不等于提交渠道。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],
@@ -3709,7 +3709,7 @@
       "post": {
         "operationId": "refreshOnboardingPaymentStatus",
         "summary": "主动回查收款进件结果",
-        "description": "主体默认行不传 storeNo；独立行传所选店号。回查不等于重新提交开户资料。",
+        "description": "主体默认行不传 storeNo；独立行传所选店号。回查不等于重新提交开户资料。\n\nLegacy first-generation onboarding: only WeChat / Alipay (and the dev stub) gateways exist; Taiwan channels (NewebPay, LINE Pay) are onboarded through near-pay /biz/pay/v2/* and /biz/merchant/pay-service, so in Taiwan this returns PAY_CHANNEL_UNAVAILABLE.",
         "tags": [
           "store"
         ],

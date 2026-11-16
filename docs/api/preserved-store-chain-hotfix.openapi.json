@@ -210,10 +210,12 @@
             "type": "string"
           },
           "storeNo": {
-            "type": "string"
+            "type": "string",
+            "description": "Anchor store: first ACTIVE store of the entity with a non-blank market."
           },
           "market": {
-            "type": "string"
+            "type": "string",
+            "description": "Anchor store market."
           },
           "storeQuota": {
             "type": "integer"
@@ -222,7 +224,8 @@
             "type": "integer"
           },
           "canCreate": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "storeUsed < storeQuota of the entity plan."
           }
         },
         "required": [
@@ -239,23 +242,37 @@
         "type": "object",
         "properties": {
           "canQuickStart": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "USR session only: owned entities below the per-account limit and no PENDING_LICENSE owned entity that already has stores."
           },
           "canResumeQuickStart": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "USR session only: an owned PENDING_LICENSE entity with stores exists (resume the earlier quick start)."
           },
           "sources": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/StoreCreationSource"
-            }
+            },
+            "description": "Owned (canManage) ACTIVE or PENDING_LICENSE entities that have an ACTIVE store with a market; that store is the anchor."
+          },
+          "entityNameSupported": {
+            "type": "boolean",
+            "description": "Capability flag: quick-start accepts the optional entityName (1-100 chars). Always true from this server; older servers omit it, in which case the App keeps the store-name default."
+          },
+          "storeOpeningSupported": {
+            "type": "boolean",
+            "description": "Capability flag: the versioned store-opening API with same-request receipt recovery is available. Always true from this server; when absent the App uses the old protocol."
           }
         },
         "required": [
           "canQuickStart",
           "canResumeQuickStart",
-          "sources"
-        ]
+          "sources",
+          "entityNameSupported",
+          "storeOpeningSupported"
+        ],
+        "description": "StoreCreationAccessService.Access. When commerce.store-creation.enabled=false or the session is not a MERCHANT USR/MCH session: canQuickStart=false, canResumeQuickStart=false, sources=[] (the two capability flags stay true)."
       },
       "GrantOption": {
         "type": "object",

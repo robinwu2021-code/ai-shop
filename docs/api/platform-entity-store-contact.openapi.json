@@ -6,94 +6,9 @@
   },
   "paths": {
     "/biz/entities": {
-      "post": {
-        "operationId": "createPlatformEntity",
-        "security": [
-          {
-            "merchantBearer": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "integer"
-                    },
-                    "msg": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object",
-                      "required": [
-                        "requestNo",
-                        "entity",
-                        "replayed"
-                      ],
-                      "properties": {
-                        "requestNo": {
-                          "type": "string"
-                        },
-                        "entity": {
-                          "$ref": "#/components/schemas/EntityVO"
-                        },
-                        "replayed": {
-                          "type": "boolean"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "data"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "requestNo",
-                  "name"
-                ],
-                "properties": {
-                  "requestNo": {
-                    "type": "string",
-                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64
-                  },
-                  "legalForm": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 32,
-                    "description": "Canonical sys_legal_form or existing recognized alias; ENTERPRISE / INDIVIDUAL / NATURAL_PERSON. No market accepted."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "description": "Personal MERCHANT/USR account, no selected-store/entity headers required. Creates only MchEntity PENDING_LICENSE, verified=false, review=NONE, active owner and FREE plan; no stores, approval, source/channel or payment binding. Market inherited from locked normal account; hard owner quota retained. Same request and original body replays; altered body conflicts permanently."
-      },
       "get": {
         "operationId": "listOwnedPlatformEntities",
-        "description": "Personal MERCHANT/USR account only; no selected-store/entity headers required. Lists current active owner memberships, including entities with zero stores. MCH credentials are forbidden. Each result is enriched with current review state.",
+        "description": "Personal MERCHANT/USR account only; no selected-store/entity headers required. Lists current active owner memberships, including entities with zero stores. MCH credentials are forbidden. Each result is enriched with current review state. POST /biz/entities and GET /biz/entities/create-results/{requestNo} are documented in entity-profile-workspace.openapi.json.",
         "security": [
           {
             "merchantBearer": []
@@ -129,71 +44,6 @@
             }
           }
         }
-      }
-    },
-    "/biz/entities/create-results/{requestNo}": {
-      "get": {
-        "operationId": "platformEntityCreationResult",
-        "security": [
-          {
-            "merchantBearer": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Existing envelope: code=0 success; business codes 10400/10403/10404/10409 reject invalid input/ownership/unknown request/changed intent.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "integer"
-                    },
-                    "msg": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object",
-                      "required": [
-                        "requestNo",
-                        "entity",
-                        "replayed"
-                      ],
-                      "properties": {
-                        "requestNo": {
-                          "type": "string"
-                        },
-                        "entity": {
-                          "$ref": "#/components/schemas/EntityVO"
-                        },
-                        "replayed": {
-                          "type": "boolean"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "data"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "requestNo",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{1,64}$"
-            }
-          }
-        ],
-        "description": "Current active owner required; returns current entity with replayed=true. Unknown key is NOT_FOUND; a revoked owner is FORBIDDEN. Receipt never restores permission."
       }
     },
     "/biz/store/settings": {
@@ -402,9 +252,19 @@
           "name",
           "status",
           "verified",
+          "legalForm",
           "storeCount",
+          "isPrimary",
           "canManage",
-          "review"
+          "review",
+          "applyNo",
+          "rejectReason",
+          "taxNo",
+          "owner",
+          "platformReview",
+          "draftVersion",
+          "approvedProfileVersion",
+          "payMerchantNo"
         ],
         "properties": {
           "entityNo": {
@@ -414,7 +274,8 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "ACTIVE / PENDING_LICENSE / SUSPENDED / BANNED."
           },
           "verified": {
             "type": "boolean"
@@ -435,7 +296,11 @@
             "type": "boolean"
           },
           "review": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Without a pay profile summary: APPROVED (not PENDING_LICENSE) or NONE / REVIEWING / REJECTED from the latest apply; replaced by platformReview when a pay profile summary exists."
           },
           "applyNo": {
             "type": [
@@ -444,15 +309,55 @@
             ]
           },
           "rejectReason": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reject reason when review=REJECTED, else \"\"."
           },
           "taxNo": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Business licence number; \"\" when unknown."
           },
           "owner": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Latest apply contactName; \"\" when no apply."
+          },
+          "platformReview": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pay entity-profile summary platformReview; null when no summary."
+          },
+          "draftVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "approvedProfileVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
-        }
+        },
+        "description": "merchant.dto.EntityVO after EntityReviewAssembler.enrich."
       }
     }
   }
