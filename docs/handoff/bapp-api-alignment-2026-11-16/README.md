@@ -199,3 +199,18 @@
 - 两个原生 MySQL 用例（`CommerceStoreCreationFlowTest` 原生场景、`BizLoginStoreNativeMysqlTest`）及新加的 `ManualCounterPurchaseIT#counterStateFollowsQuoteAcceptanceAndOrder`：本机缺测试库凭据，未运行。
 - 完整 `pre-push`：本机缺 `rg`，未跑完；本分支以 `--no-verify` 推送。
 - 有门店店主的注销（门店置只读）、别家员工行随号迁移、员工会话写操作回 10403：无自动化用例，需在联调中验证。
+
+### 5.6 正式环境收款播报（D1，2026-11-16 增）
+
+代码：ai-shop `feat/bapp-account-funds`（`86caa03f4` 起）；near-pay `feat/production-collection-sse`（`2ee61377`）。设计见 `TDD-沙箱收款消息与SSE.md` 同日增量。
+
+上线顺序（每一步都可单独停在这里，行为与现状一致）：
+
+1. 发 ai-shop（能收带 / 不带 `storeNo` 的快照）。
+2. 发 near-pay（快照开始带 `storeNo`；仍只投递 SANDBOX）。
+3. 生成一把新的正式环境签名密钥（≥32 字符，与沙箱密钥不同），两端同时加配置：
+   - ai-shop：`shop.payment-collections.environments=SANDBOX,PRODUCTION`，`shop.payment-collections.secrets.PRODUCTION=<新密钥>`
+   - near-pay：`near-pay.merchant-collections.environments=SANDBOX,PRODUCTION`，`near-pay.merchant-collections.secrets.PRODUCTION=<同一把新密钥>`
+4. 验收：正式门店真实收款一笔小额，3 秒内 App 播报；near-pay `pay_biz_notify` 该单 DELIVERED、ai-shop `payment_collection_receipt.environment=PRODUCTION` 且 `store_no` 正确。
+
+未验证：两端原生 MySQL 用例（本机无测试库）；near-pay 在 PRODUCTION 执行环境下读 `pay_order` / 门店映射的环境隔离行为，需在 166 联调确认。

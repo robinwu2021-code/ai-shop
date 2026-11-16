@@ -179,7 +179,7 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 
 | 端 | 改动 |
 |---|---|
-| near-pay | ① 配置 `near-pay.merchant-collections.environments`（缺省 `[SANDBOX]`）与按环境的 `secrets.{ENV}`（各 ≥32 字符）；旧 `environment` + `secret` 仍表示 SANDBOX。② 记录器对配置内任一环境生效；投递任务逐个环境运行，签名串与 `X-Payment-Environment` 用订单的实际环境，密钥取该环境的。③ 快照新增 `storeNo`：由 `PayMerchantBindingService#storeById(order.storeId)` 解析；解析不到时**不阻塞收款结算**，跳过通知并告警。 |
+| near-pay | ① 配置 `near-pay.merchant-collections.environments`（缺省 `[SANDBOX]`）与按环境的 `secrets.{ENV}`（各 ≥32 字符）；旧 `environment` + `secret` 仍表示 SANDBOX。② 记录器对配置内任一环境生效；投递任务逐个环境运行，签名串与 `X-Payment-Environment` 用订单的实际环境，密钥取该环境的。③ 快照新增 `storeNo`：由 `PayMerchantBindingService#storeById(order.storeId)` 解析；解析不到时**不阻塞收款结算**，照旧发不带 `storeNo` 的快照并告警（ai-shop 按显式绑定处理，与现状一致）。③b 重放兼容：已按旧快照记录的事件，重放时与旧快照比对，不因新增字段报冲突。 |
 | ai-shop | ① 配置 `shop.payment-collections.environments`（缺省 `[SANDBOX]`，允许 `SANDBOX`、`PRODUCTION`）与按环境的 `secrets.{ENV}`；旧 `environment` + `secret` 兼容。② 验签按请求头环境取密钥，不在配置内即 401。③ 回执与来源绑定的 SQL 按实际环境，不再写死 `SANDBOX`。④ 门店归属：先查显式来源绑定（命中则必须与快照 `storeNo` 一致；配置项 `source-bindings` 仍只允许 SANDBOX，正式环境不靠逐店配置）；无绑定时信任已验签快照的 `storeNo`，要求门店存在、未删除、所属主体市场与快照一致，否则 403。⑤ 推送范围不变：该门店所属主体的在职店主与员工中、对该店有 `PAY_ORDER_VIEW` 的会话。⑥ 推送流的 scope 前缀沿用历史常量（原值 `SANDBOX`），已有游标不失效；诊断任务仍只允许 SANDBOX。 |
 
 **兼容与上线顺序**：快照新增字段在 ai-shop 端为可选。先发 ai-shop（能收带或不带 `storeNo` 的快照），再发 near-pay；最后在两端配置里加入 `PRODUCTION` 及其密钥。任一端未配置 PRODUCTION 时行为与现状一致。
@@ -195,4 +195,6 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 | AC3 | 无显式绑定、快照带有效 `storeNo` 时 APPLIED，并推给该店有权限的会话；`storeNo` 不存在或市场不符时 403 |
 | AC4 | 有显式绑定且与快照 `storeNo` 不一致时 403 |
 | AC5 | 不带 `storeNo` 且无绑定时 403（旧快照行为不变） |
-| AC6 | near-pay：PRODUCTION 订单在配置含 PRODUCTION 时生成通知、按 PRODUCTION 签名投递；未配置时不生成；门店号解析不到时收款结算照常成功、不生成通知 |
+| AC6 | near-pay：PRODUCTION 订单在配置含 PRODUCTION 时生成通知、按 PRODUCTION 密钥与环境头投递，未配置时不生成；能解析门店时快照带 `storeNo`，解析不到时发旧快照；旧快照事件重放不冲突 |
+
+**实现记录（2026-11-16）**：ai-shop `86caa03f4`（`feat/bapp-account-funds`）；near-pay 分支 `feat/production-collection-sse`。测试：ai-shop `PaymentCollectionEnvironmentTest`（AC1/AC2，已通过）、`PaymentCollectionProductionMysqlTest`（AC3–AC5，需原生 MySQL，未运行）；near-pay `MerchantCollectionConfigurationTest`（已通过）、`MerchantCollectionNativeMysqlTest#resolvedStoreIsSignedAndLegacySnapshotsStillReplay`（需原生 MySQL，未运行）。ADR 待写。
