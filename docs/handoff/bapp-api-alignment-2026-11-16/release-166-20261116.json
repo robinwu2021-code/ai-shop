@@ -3,12 +3,15 @@
   "date": "2026-11-16",
   "aiShop": {
     "source": "main at addb51ed9 + feat/bapp-account-funds (account centre, counter quote state, review fixes, production payment-result routing); rebased build 6bd222dc8, content-equal to origin/feat/bapp-account-funds 378a49de7 which main merged in f1666b934",
-    "notIncluded": "entity document recognition (feat/onboarding-doc-recognition 8f453589a / main f1666b934) — awaiting user decision",
+    "notIncluded": "none — entity document recognition released later the same day (see recognitionRelease)",
     "jarBefore": "3f697b8647f005d8ea527624f4eedbe49ab141b748c7f415c9f66a3dc603cf80",
     "jarAfter": "7f7acf3e65ae8abb2f805919468d042e0b387362c1d2b0a4c5a6a2b1e63811c0",
     "jarDiffAgainstRunning": "23 added, 0 removed, 149 changed entries; every change traced to this release or to line-number/whitespace-only recompiles",
     "migration": "V676 usr_account_change_log applied via migrate-helper; ai_shop_ume@192.168.3.166 given CREATE temporarily (user-authorized root grant) and revoked immediately after; an earlier attempt without the grant left a failed history row, removed with Flyway repair before the successful apply",
-    "containers": ["ai-shop-api (18082)", "ai-shop-ops (18081)"],
+    "containers": [
+      "ai-shop-api (18082)",
+      "ai-shop-ops (18081)"
+    ],
     "health": "both UP after restart"
   },
   "nearPay": {
@@ -24,5 +27,18 @@
     "aiShop": "/home/ume/bapp-release-20261116/shop-app.jar.before — stop both containers, overwrite in place (keep inode), start; V676 table is additive and can stay",
     "nearPay": "/home/ume/bapp-release-20261116/pay-before-collection-sse.jar — same in-place procedure"
   },
-  "notVerified": "authenticated calls to the new endpoints (no test-account login performed by this session); production payment push (not enabled yet)"
+  "notVerified": "authenticated calls to the new endpoints (no test-account login performed by this session); production payment push (not enabled yet)",
+  "recognitionRelease": {
+    "approvedBy": "user, 2026-11-16 (发布识别)",
+    "source": "main 50c32a2ed (= f1666b934 + release record); adds feat/onboarding-doc-recognition 8f453589a, c7070392f, e5d0702b7",
+    "jarBefore": "7f7acf3e65ae8abb2f805919468d042e0b387362c1d2b0a4c5a6a2b1e63811c0",
+    "jarAfter": "5d52a47558299d3d625c41d33dae90d90e1aa5e503e2f158c512389e80987216",
+    "jarDiffAgainstRunning": "11 added, 0 removed, 9 changed class entries (all nested snapshot jars compared): BizEntityRecognitionController, OpsOnboardingDocumentController, CertDocumentReader, OpenAiCertVisionGateway added; PayEntityProfileApi, BizCertController, CommerceRoutePolicy, CertVisionPort, CertVisionGateway changed; build-info",
+    "migration": "none",
+    "configuration": "appended shop.ai.vision.provider=openai, openai.enabled=true, openai.model=gpt-4.1-mini, openai.timeout-seconds=60, openai.api-key (copied server-side from /data0/app/ai-shop/ai-shop.env, never printed) to the two files already on SPRING_CONFIG_ADDITIONAL_LOCATION: /data0/app/ai-shop/payment-sse.private.properties (api) and /home/ume/v46-entity-closure-20261115/ops-entity.properties (ops; tightened from 0644 root to 0600 uid 65534 since it now holds a secret). Inodes kept, containers not recreated. shop.pay.entity-profiles.enabled was already true on api, ops and near-pay. Goods vision stays off (SHOP_AI_VISION_ENABLED=false).",
+    "health": "api and ops UP 145 s after start; no new ERROR lines; host reaches api.openai.com",
+    "knownGap": "POST /biz/entities/{e}/recognitions (recognize an already-uploaded file) needs near-pay GET /internal/pay/v2/entity-profiles/{e}/files/{f}/content, which no near-pay branch implements yet; POST /biz/entity-recognitions (multipart, before the entity exists) and OPS POST /ops/onboarding-documents/recognize do not depend on it",
+    "rollback": "jar: /home/ume/bapp-release-20261116/shop-app.jar.before-recognition, same in-place procedure; config: restore payment-sse.private.properties.before-recognition and ops-entity.properties.before-recognition from the same directory with cat > (keep inode), then restart both containers",
+    "notVerified": "authenticated recognition calls (unauthenticated probes return 401 for any path, so they only prove the services run)"
+  }
 }
