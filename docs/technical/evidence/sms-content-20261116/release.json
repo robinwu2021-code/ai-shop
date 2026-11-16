@@ -1,0 +1,29 @@
+{
+  "status": "DEPLOYED_VERIFIED",
+  "environment": "Taiwan166",
+  "releaseId": "sms-content-20261116",
+  "migration": "V678",
+  "codeCommit": "f4da6995d",
+  "backendJarSha256": "65bca4fd7c36749c5ae0c2ff7f07e4d866854a29257ee87796ff4b4e8570a3d1",
+  "opsPrevious": "unified-login-20261116-b12ca8cc7",
+  "opsCurrent": "sms-content-20261116",
+  "preserved": [
+    "other runtime classes and resources",
+    "all prior migrations",
+    "environment variables",
+    "mounts",
+    "payment and inventory services"
+  ],
+  "migrationIssue": {
+    "initialError": "runtime user ALTER denied",
+    "automaticRollbackCompleted": true,
+    "repairedOnlyOwnFailedV678Row": true,
+    "temporaryTableAlterRevoked": true,
+    "successHistoryUnmodified": true
+  },
+  "finalHealth": "api UP / ops UP",
+  "rollbackBackupsRetained": true,
+  "normalOtpFlowVerified": true,
+  "appUiPreserved": true,
+  "finalPhoneDeliveryNotClaimed": true
+}

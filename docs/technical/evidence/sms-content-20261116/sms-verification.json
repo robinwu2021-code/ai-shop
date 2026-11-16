@@ -1,0 +1,23 @@
+{
+  "targetMasked": "+88****4233",
+  "codeSource": "sys_notify_log.content",
+  "appUiPreserved": true,
+  "smsSendAccepted": true,
+  "receipt": {
+    "status": "SENT",
+    "notifyNo": "NL261116ZPGRADF592",
+    "provider": "MITAKE",
+    "createdAt": "2026-11-16 11:24:49.000000",
+    "providerMsgId": "0551769990"
+  },
+  "contentSaved": true,
+  "contentContainsOtp": true,
+  "otpVerified": true,
+  "identityCount": 0,
+  "normalLogin": true,
+  "newOwnerCreated": true,
+  "accountReadback": true,
+  "storesReadback": true,
+  "verificationSessionLoggedOut": true,
+  "status": "PASS"
+}
