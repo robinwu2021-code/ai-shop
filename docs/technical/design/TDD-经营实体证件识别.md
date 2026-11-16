@@ -1,6 +1,6 @@
 # 经营实体证件识别（App 对接）
 
-状态：已实现。near-pay 原文件读取接口已在 near-pay `feat/entity-material-recognition` 实现（2026-11-16，未部署）；部署前已上传文件识别在联调环境仍回依赖不可用。档位1。依据：App 合同 `ai-shop-bapp-entity/docs/api/经营实体证件识别接口.md`（经营实体资料全量方案 §14）及 [进件材料OpenAI识别](TDD-进件材料OpenAI识别.md)。
+状态：已实现。near-pay 原文件读取接口已在 near-pay `feat/entity-material-recognition` 实现并于 2026-11-16 部署到 UME166。档位1。依据：App 合同 `ai-shop-bapp-entity/docs/api/经营实体证件识别接口.md`（经营实体资料全量方案 §14）及 [进件材料OpenAI识别](TDD-进件材料OpenAI识别.md)。
 
 ## §0 需求与验收
 
