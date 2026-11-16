@@ -1,10 +1,12 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.common.BizDetailedException;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
+import java.util.LinkedHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -18,6 +20,13 @@ public final class EntityProfileRemoteCalls {
     try {
       return ServiceCalls.call(ServiceName.PAY, action);
     } catch (ServiceCallException failure) {
+      if (failure.statusCode() == 400 && failure.remoteErrorField() != null) {
+        // PAY names the rejected key and why (never the value) so the App can point at the field.
+        var details = new LinkedHashMap<String, Object>();
+        details.put("field", failure.remoteErrorField());
+        if (failure.remoteErrorReason() != null) details.put("reason", failure.remoteErrorReason());
+        throw new BizDetailedException(ErrorCode.BAD_REQUEST, details);
+      }
       throw BizException.of(
           switch (failure.statusCode()) {
             case 400 -> ErrorCode.BAD_REQUEST;
