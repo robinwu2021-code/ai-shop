@@ -49,5 +49,14 @@
     "opsWeb": "static live export, same 13 routes as v46-entity-closure-20261115; /data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-material-recognition-20261116; old _next assets retained; /oms/ 200. Also ships the onboarding material-form recognition from codex/openai-onboarding-20261116",
     "rollback": "PAY: /home/ume/entity-material-recognition-20261116/pay-before-entity-content.jar written back in place, restart nearpay-prod; web: point the oms symlink back to v46-entity-closure-20261115",
     "notVerified": "logged-in review drawer preview/recognition and App POST /biz/entities/{e}/recognitions on a real uploaded file"
+  },
+  "entityTw2Release": {
+    "approvedBy": "user, 2026-11-16 (Deploy to 166)",
+    "pay": "near-pay feat/entity-material-recognition 34978e67: class overlay of EntityProfilePolicy/Service/Store(+$1) and InternalEntityProfileController(+inner) on a993735022cc… -> 0f7da83e5a32ddd44c88fad1d668a6015556816ec8024fc3e36b82b8cec0214b; readiness OK",
+    "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-tw2-20261116 (v2 field labels)",
+    "aiShop": "main f5ce0afa4 (feat/entity-validation-details). Running jar had meanwhile become 65bca4fd7c36… from another session's sms-content release (Mitake SMS, V677/V678, not on main), so instead of a full jar this is a class overlay on top of it: EntityProfileRemoteCalls, svc-client ServiceCallException/ServiceClients, shop-base BizDetailedException (new), shop-base-auth GlobalExceptionHandler; method-level diff showed only these changes. Result 6d261deb9db8c16a2a6ddc0db1d3643d7a255aa3522390417ed44cef517d8b2d, inode kept, both containers UP after 140 s, no new ERROR lines",
+    "rollback": "/home/ume/entity-tw2-20261116/{pay-before-tw2.jar,shop-before-tw2.jar} written back in place; oms symlink back to entity-material-recognition-20261116",
+    "note": "the next full ai-shop jar built from main must also contain the sms-content changes, or it will drop them",
+    "notVerified": "logged-in App save with TW_ENTITY_2 fields and the {field, reason} envelope on 166"
   }
 }
