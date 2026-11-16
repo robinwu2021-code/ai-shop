@@ -37,9 +37,26 @@
     "migration": "none",
     "configuration": "appended shop.ai.vision.provider=openai, openai.enabled=true, openai.model=gpt-4.1-mini, openai.timeout-seconds=60, openai.api-key (copied server-side from /data0/app/ai-shop/ai-shop.env, never printed) to the two files already on SPRING_CONFIG_ADDITIONAL_LOCATION: /data0/app/ai-shop/payment-sse.private.properties (api) and /home/ume/v46-entity-closure-20261115/ops-entity.properties (ops; tightened from 0644 root to 0600 uid 65534 since it now holds a secret). Inodes kept, containers not recreated. shop.pay.entity-profiles.enabled was already true on api, ops and near-pay. Goods vision stays off (SHOP_AI_VISION_ENABLED=false).",
     "health": "api and ops UP 145 s after start; no new ERROR lines; host reaches api.openai.com",
-    "knownGap": "POST /biz/entities/{e}/recognitions (recognize an already-uploaded file) needs near-pay GET /internal/pay/v2/entity-profiles/{e}/files/{f}/content, which no near-pay branch implements yet; POST /biz/entity-recognitions (multipart, before the entity exists) and OPS POST /ops/onboarding-documents/recognize do not depend on it",
+    "knownGap": "resolved by nearPayEvidenceRelease (near-pay content endpoint deployed); uploaded-file recognition not yet exercised end to end",
     "rollback": "jar: /home/ume/bapp-release-20261116/shop-app.jar.before-recognition, same in-place procedure; config: restore payment-sse.private.properties.before-recognition and ops-entity.properties.before-recognition from the same directory with cat > (keep inode), then restart both containers",
     "notVerified": "OPS POST /ops/onboarding-documents/recognize with a logged-in operator; POST /biz/entities/{e}/recognitions still blocked on near-pay (knownGap)",
     "verified": "2026-11-16 by the onboarding session: App simulator against https://twpay.umeshop.ai/shop-api with a test account, synthetic fictional registration form on the new-entity page; all 10 fields filled back, industry left blank, same as local; entity not created, no data added on 166. Evidence: ai-shop-bapp feat/core-flow-ui 4f96080 docs/api/经营实体证件识别接口.md §8"
+  },
+  "nearPayEvidenceRelease": {
+    "approvedBy": "user, 2026-11-16 (Deploy to 166)",
+    "source": "near-pay feat/entity-material-recognition d23175a4 (oscar-onboarding-fixes 9193a64a + openai-onboarding 5a2616c9 + content endpoint and review drawer)",
+    "pay": "class overlay of InternalEntityProfileController only on running 468becad91da8ca67f27e0378fc34c5b6a494400d628e257764f68d2dc2afde5 (which already carried another session's orders-read overlay) -> a993735022cc1dde772436aa650d5c94072dde41d4d024bff344c68c590c0aaf; readiness OK; new route 401 without token, unknown path 404",
+    "opsWeb": "static live export, same 13 routes as v46-entity-closure-20261115; /data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-material-recognition-20261116; old _next assets retained; /oms/ 200. Also ships the onboarding material-form recognition from codex/openai-onboarding-20261116",
+    "rollback": "PAY: /home/ume/entity-material-recognition-20261116/pay-before-entity-content.jar written back in place, restart nearpay-prod; web: point the oms symlink back to v46-entity-closure-20261115",
+    "notVerified": "logged-in review drawer preview/recognition and App POST /biz/entities/{e}/recognitions on a real uploaded file"
+  },
+  "entityTw2Release": {
+    "approvedBy": "user, 2026-11-16 (Deploy to 166)",
+    "pay": "near-pay feat/entity-material-recognition 34978e67: class overlay of EntityProfilePolicy/Service/Store(+$1) and InternalEntityProfileController(+inner) on a993735022cc… -> 0f7da83e5a32ddd44c88fad1d668a6015556816ec8024fc3e36b82b8cec0214b; readiness OK",
+    "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-tw2-20261116 (v2 field labels)",
+    "aiShop": "main f5ce0afa4 (feat/entity-validation-details). Running jar had meanwhile become 65bca4fd7c36… from another session's sms-content release (Mitake SMS, V677/V678, not on main), so instead of a full jar this is a class overlay on top of it: EntityProfileRemoteCalls, svc-client ServiceCallException/ServiceClients, shop-base BizDetailedException (new), shop-base-auth GlobalExceptionHandler; method-level diff showed only these changes. Result 6d261deb9db8c16a2a6ddc0db1d3643d7a255aa3522390417ed44cef517d8b2d, inode kept, both containers UP after 140 s, no new ERROR lines",
+    "rollback": "/home/ume/entity-tw2-20261116/{pay-before-tw2.jar,shop-before-tw2.jar} written back in place; oms symlink back to entity-material-recognition-20261116",
+    "note": "the next full ai-shop jar built from main must also contain the sms-content changes, or it will drop them",
+    "notVerified": "logged-in App save with TW_ENTITY_2 fields and the {field, reason} envelope on 166"
   }
 }

@@ -13,6 +13,8 @@ public class ServiceCallException extends RuntimeException {
     private final int statusCode;
     private final String remoteErrorCode;
     private final String requestDigest;
+    private final String remoteErrorField;
+    private final String remoteErrorReason;
 
     public ServiceCallException(CallOutcome outcome, String service, int statusCode, String message) {
         this(outcome, service, statusCode, message, null);
@@ -32,12 +34,28 @@ public class ServiceCallException extends RuntimeException {
             Throwable cause,
             String remoteErrorCode,
             String requestDigest) {
+        this(outcome, service, statusCode, message, cause, remoteErrorCode, requestDigest, null, null);
+    }
+
+    /** Adds the rejected field key and reason of a peer's 400; validated shapes only, never values. */
+    public ServiceCallException(
+            CallOutcome outcome,
+            String service,
+            int statusCode,
+            String message,
+            Throwable cause,
+            String remoteErrorCode,
+            String requestDigest,
+            String remoteErrorField,
+            String remoteErrorReason) {
         super(message, cause);
         this.outcome = outcome;
         this.service = service;
         this.statusCode = statusCode;
         this.remoteErrorCode = remoteErrorCode;
         this.requestDigest = requestDigest;
+        this.remoteErrorField = remoteErrorField;
+        this.remoteErrorReason = remoteErrorReason;
     }
 
     public CallOutcome outcome() {
@@ -70,5 +88,15 @@ public class ServiceCallException extends RuntimeException {
     /** Opaque request association value; callers must validate it before using the error code. */
     public String requestDigest() {
         return requestDigest;
+    }
+
+    /** Field key the peer rejected (e.g. {@code registeredCity}), or null. Never a value. */
+    public String remoteErrorField() {
+        return remoteErrorField;
+    }
+
+    /** Peer's reason for the rejected field (e.g. {@code UNSUPPORTED_FIELD}), or null. */
+    public String remoteErrorReason() {
+        return remoteErrorReason;
     }
 }

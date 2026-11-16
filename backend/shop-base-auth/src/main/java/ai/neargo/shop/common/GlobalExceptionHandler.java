@@ -53,6 +53,14 @@ public class GlobalExceptionHandler {
                 e.details());
     }
 
+    /** Same as {@link #onBiz} but keeps the safe details (field key, reason) in {@code data}. */
+    @ExceptionHandler(BizDetailedException.class)
+    public ApiResult<Map<String, Object>> onBizDetailed(BizDetailedException e) {
+        onBiz(e);
+        return new ApiResult<>(e.errorCode().code(), Messages.get(e.errorCode().msgKey(), e.args()),
+                e.details());
+    }
+
     @ExceptionHandler(BizException.class)
     public ApiResult<Void> onBiz(BizException e) {
         /*
