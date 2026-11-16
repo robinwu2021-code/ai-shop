@@ -170,3 +170,29 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 **自动化限制：** 两次管理式长驻集成夹具均未完整通过。后台后连接中断，随后系统记录 ADB 测试清理 force-stop；未找到原生崩溃证据，原 VM 断连根因尚未完全确定。不能把 `physical-live-closeout.log` 标为全套 PASS。前台证据来自真实夹具；后台业务场景由常规 APK、只读原生计数、活动日志及真实消息/订单独立验证。后续仍需完善该机型的长后台自动化运行方式。
 
 详见 `physical-final-result.json`、`physical-normal-speech-*.json`、`physical-*-db-proof.json`、`physical-background-lifecycle.log` 及实际截图。私有调试 URL、认证码和服务凭据不入库。本轮未增加产品代码、未调整后台安全限制；QoS1、JetStream、消费 ACK 与系统后台推送仍不在范围内。
+
+## 2026-11-16 增量：正式环境收款播报（P0 D1）
+
+档位沿本文 2（跨端：near-pay + ai-shop；动配置项与内部合同；改信任模型，需 ADR，见末尾）。用户决定：near-pay 收到渠道回调后按订单自己找到门店，签名后带门店号通知 ai-shop；ai-shop 按门店号推给这家店已登录的终端。
+
+### 方案
+
+| 端 | 改动 |
+|---|---|
+| near-pay | ① 配置 `near-pay.merchant-collections.environments`（缺省 `[SANDBOX]`）与按环境的 `secrets.{ENV}`（各 ≥32 字符）；旧 `environment` + `secret` 仍表示 SANDBOX。② 记录器对配置内任一环境生效；投递任务逐个环境运行，签名串与 `X-Payment-Environment` 用订单的实际环境，密钥取该环境的。③ 快照新增 `storeNo`：由 `PayMerchantBindingService#storeById(order.storeId)` 解析；解析不到时**不阻塞收款结算**，跳过通知并告警。 |
+| ai-shop | ① 配置 `shop.payment-collections.environments`（缺省 `[SANDBOX]`，允许 `SANDBOX`、`PRODUCTION`）与按环境的 `secrets.{ENV}`；旧 `environment` + `secret` 兼容。② 验签按请求头环境取密钥，不在配置内即 401。③ 回执与来源绑定的 SQL 按实际环境，不再写死 `SANDBOX`。④ 门店归属：先查显式来源绑定（命中则必须与快照 `storeNo` 一致；配置项 `source-bindings` 仍只允许 SANDBOX，正式环境不靠逐店配置）；无绑定时信任已验签快照的 `storeNo`，要求门店存在、未删除、所属主体市场与快照一致，否则 403。⑤ 推送范围不变：该门店所属主体的在职店主与员工中、对该店有 `PAY_ORDER_VIEW` 的会话。⑥ 推送流的 scope 前缀沿用历史常量（原值 `SANDBOX`），已有游标不失效；诊断任务仍只允许 SANDBOX。 |
+
+**兼容与上线顺序**：快照新增字段在 ai-shop 端为可选。先发 ai-shop（能收带或不带 `storeNo` 的快照），再发 near-pay；最后在两端配置里加入 `PRODUCTION` 及其密钥。任一端未配置 PRODUCTION 时行为与现状一致。
+
+**防住什么**：沙箱密钥泄露不能伪造正式收款通知（按环境分钥）；未在配置内的环境一律拒收；门店号由 near-pay 从订单解析且整包签名，App 与请求方都碰不到；显式绑定仍可覆盖，且与快照冲突时拒收。
+
+**需要的 ADR**：「正式环境收款通知以 near-pay 签名的门店号为门店归属依据」——记录信任边界从「每店显式绑定」改为「已验签的 near-pay 解析结果 + 可选显式绑定」。
+
+| 验收 | 内容 |
+|---|---|
+| AC1 | PRODUCTION 未配置时，PRODUCTION 签名的通知 401；配置后用 PRODUCTION 密钥签的通知被接收 |
+| AC2 | 用 SANDBOX 密钥签 PRODUCTION 环境头的通知 401 |
+| AC3 | 无显式绑定、快照带有效 `storeNo` 时 APPLIED，并推给该店有权限的会话；`storeNo` 不存在或市场不符时 403 |
+| AC4 | 有显式绑定且与快照 `storeNo` 不一致时 403 |
+| AC5 | 不带 `storeNo` 且无绑定时 403（旧快照行为不变） |
+| AC6 | near-pay：PRODUCTION 订单在配置含 PRODUCTION 时生成通知、按 PRODUCTION 签名投递；未配置时不生成；门店号解析不到时收款结算照常成功、不生成通知 |

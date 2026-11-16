@@ -31,7 +31,7 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
     }
 
     @Override
-    public Accepted receive(PaymentCollectionFact fact, String raw) {
+    public Accepted receive(String environment, PaymentCollectionFact fact, String raw) {
         String hash = PaymentCollectionSecurity.hash(raw);
         return transaction.execute(
                 status -> {
@@ -39,8 +39,9 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                     jdbc.update(
                             "INSERT INTO payment_collection_receipt"
                                 + " (environment,event_id,pay_order_no,payload_sha256,receipt_no,payload,created_at)"
-                                + " VALUES ('SANDBOX',?,?,?,?,?,?) ON DUPLICATE KEY UPDATE"
+                                + " VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE"
                                 + " receipt_no=receipt_no",
+                            environment,
                             fact.eventId(),
                             fact.payOrderNo(),
                             hash,
@@ -50,7 +51,8 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                     var rows =
                             jdbc.queryForList(
                                     "SELECT * FROM payment_collection_receipt WHERE"
-                                            + " environment='SANDBOX' AND event_id=? FOR UPDATE",
+                                            + " environment=? AND event_id=? FOR UPDATE",
+                                    environment,
                                     fact.eventId());
                     if (rows.size() != 1
                             || !Objects.equals(rows.getFirst().get("payload_sha256"), hash))
@@ -67,25 +69,7 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                         throw new ResponseStatusException(
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                                 "not a normal merchant collection");
-                    var bindings =
-                            jdbc.queryForList(
-                                    "SELECT s.store_no,s.entity_no,e.market FROM"
-                                        + " payment_collection_source b JOIN mch_store s ON"
-                                        + " s.store_no=b.store_no AND s.entity_no=b.entity_no AND"
-                                        + " s.deleted=0 JOIN mch_entity e ON"
-                                        + " e.entity_no=s.entity_no AND e.deleted=0 WHERE"
-                                        + " b.environment='SANDBOX' AND b.pay_app_id=? AND"
-                                        + " b.source_type=? AND b.source_id=? AND"
-                                        + " b.payment_store_id=? AND b.enabled=1",
-                                    fact.payAppId(),
-                                    fact.sourceType(),
-                                    fact.sourceId(),
-                                    fact.storeId());
-                    if (bindings.size() != 1
-                            || !Objects.equals(bindings.getFirst().get("market"), fact.market()))
-                        throw new ResponseStatusException(
-                                HttpStatus.FORBIDDEN, "untrusted source/store mapping");
-                    var binding = bindings.getFirst();
+                    var binding = store(environment, fact);
                     jdbc.update(
                             "UPDATE payment_collection_receipt SET store_no=?,entity_no=? WHERE"
                                     + " receipt_no=?",
@@ -95,5 +79,41 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                     events.publish(new PaymentCollectionWork(receipt));
                     return new Accepted(fact.eventId(), hash, "APPLIED", receipt);
                 });
+    }
+
+    /**
+     * Which store a verified result belongs to. An explicit source binding wins and must agree with the
+     * store near-pay resolved; without one, the store number in the signed snapshot is trusted when the
+     * store exists and its entity's market matches (TDD-沙箱收款消息与SSE, 2026-11-16 增量).
+     */
+    private java.util.Map<String, Object> store(String environment, PaymentCollectionFact fact) {
+        var bindings =
+                jdbc.queryForList(
+                        "SELECT s.store_no,s.entity_no,e.market FROM"
+                                + " payment_collection_source b JOIN mch_store s ON"
+                                + " s.store_no=b.store_no AND s.entity_no=b.entity_no AND"
+                                + " s.deleted=0 JOIN mch_entity e ON"
+                                + " e.entity_no=s.entity_no AND e.deleted=0 WHERE"
+                                + " b.environment=? AND b.pay_app_id=? AND"
+                                + " b.source_type=? AND b.source_id=? AND"
+                                + " b.payment_store_id=? AND b.enabled=1",
+                        environment,
+                        fact.payAppId(),
+                        fact.sourceType(),
+                        fact.sourceId(),
+                        fact.storeId());
+        if (bindings.isEmpty() && fact.storeNo() != null)
+            bindings =
+                    jdbc.queryForList(
+                            "SELECT s.store_no,s.entity_no,e.market FROM mch_store s JOIN mch_entity e"
+                                    + " ON e.entity_no=s.entity_no AND e.deleted=0"
+                                    + " WHERE s.store_no=? AND s.deleted=0",
+                            fact.storeNo());
+        if (bindings.size() != 1
+                || !Objects.equals(bindings.getFirst().get("market"), fact.market())
+                || fact.storeNo() != null
+                        && !fact.storeNo().equals(bindings.getFirst().get("store_no")))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "untrusted source/store mapping");
+        return bindings.getFirst();
     }
 }

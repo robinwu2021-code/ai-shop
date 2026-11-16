@@ -30,4 +30,6 @@ public record PaymentCollectionFact(
         @NotBlank @Size(max = 128) String outTradeNo,
         @NotBlank @Size(max = 32) String payChannel,
         @NotBlank @Size(max = 128) String channelTradeNo,
-        @Positive long succeededAt) {}
+        @Positive long succeededAt,
+        /** The store near-pay resolved from the paid order; absent in senders before 2026-11-16. */
+        @Size(max = 64) @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String storeNo) {}

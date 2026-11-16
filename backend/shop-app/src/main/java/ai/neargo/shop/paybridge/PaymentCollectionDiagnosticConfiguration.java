@@ -15,7 +15,7 @@ public class PaymentCollectionDiagnosticConfiguration {
     @Bean
     PaymentCollectionDiagnosticJob paymentCollectionDiagnosticJob(PaymentCollectionStream stream,
             PaymentCollectionProperties collections, PaymentCollectionDiagnosticProperties diagnostics) {
-        if (!collections.isEnabled() || !"SANDBOX".equals(collections.getEnvironment()))
+        if (!collections.isEnabled() || !collections.acceptedEnvironments().contains("SANDBOX"))
             throw new IllegalStateException("SSE diagnostics require enabled SANDBOX collections");
         return new PaymentCollectionDiagnosticJob(stream, diagnostics, Clock.systemUTC());
     }
