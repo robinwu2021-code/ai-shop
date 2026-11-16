@@ -186,7 +186,7 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 
 **防住什么**：沙箱密钥泄露不能伪造正式收款通知（按环境分钥）；未在配置内的环境一律拒收；门店号由 near-pay 从订单解析且整包签名，App 与请求方都碰不到；显式绑定仍可覆盖，且与快照冲突时拒收。
 
-**需要的 ADR**：「正式环境收款通知以 near-pay 签名的门店号为门店归属依据」——记录信任边界从「每店显式绑定」改为「已验签的 near-pay 解析结果 + 可选显式绑定」。
+**ADR**：[ADR-059 正式环境收款通知以 near-pay 签名的门店号定归属](./ADR/ADR-059-正式环境收款通知以near-pay签名的门店号定归属.md)——信任边界从「每店显式绑定」改为「已验签的 near-pay 解析结果 + 可选显式绑定」。
 
 | 验收 | 内容 |
 |---|---|
@@ -197,4 +197,4 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 | AC5 | 不带 `storeNo` 且无绑定时 403（旧快照行为不变） |
 | AC6 | near-pay：PRODUCTION 订单在配置含 PRODUCTION 时生成通知、按 PRODUCTION 密钥与环境头投递，未配置时不生成；能解析门店时快照带 `storeNo`，解析不到时发旧快照；旧快照事件重放不冲突 |
 
-**实现记录（2026-11-16）**：ai-shop `86caa03f4`（`feat/bapp-account-funds`）；near-pay 分支 `feat/production-collection-sse`。测试：ai-shop `PaymentCollectionEnvironmentTest`（AC1/AC2，已通过）、`PaymentCollectionProductionMysqlTest`（AC3–AC5，需原生 MySQL，未运行）；near-pay `MerchantCollectionConfigurationTest`（已通过）、`MerchantCollectionNativeMysqlTest#resolvedStoreIsSignedAndLegacySnapshotsStillReplay`（需原生 MySQL，未运行）。ADR 待写。
+**实现记录（2026-11-16）**：ai-shop `86caa03f4`（`feat/bapp-account-funds`）；near-pay 分支 `feat/production-collection-sse`。测试：ai-shop `PaymentCollectionEnvironmentTest`（AC1/AC2，已通过）、`PaymentCollectionProductionMysqlTest`（AC3–AC5，需原生 MySQL，未运行）；near-pay `MerchantCollectionConfigurationTest`（已通过）、`MerchantCollectionNativeMysqlTest#resolvedStoreIsSignedAndLegacySnapshotsStillReplay`（需原生 MySQL，未运行）。ADR 见 ADR-059。
