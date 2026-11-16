@@ -23,6 +23,7 @@ public interface ManualServiceAdmissionService {
 
     /** Read the immutable original displayed quote under current merchant scope. */
     CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation);
+    ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterQuoteState readCounterState(CheckoutScope scope, OperationRef operation);
 
     /** Explicit current cashier acceptance is required independently from member identity. */
     CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request);

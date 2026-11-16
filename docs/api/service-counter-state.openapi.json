@@ -1,0 +1,85 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Service counter quote state",
+    "version": "1.0.0",
+    "description": "TDD-商户App柜台报价状态"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/biz/service-orders/counter-quotes/{operationNo}/state": {
+      "get": {
+        "operationId": "counterQuoteState",
+        "summary": "Saved progress of a counter quote",
+        "parameters": [
+          {
+            "name": "operationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "State",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "canAccept": {
+                          "type": "boolean"
+                        },
+                        "confirmation": {
+                          "type": "object",
+                          "nullable": true
+                        },
+                        "result": {
+                          "type": "object",
+                          "properties": {
+                            "phase": {
+                              "type": "string",
+                              "enum": [
+                                "QUOTED",
+                                "CONFIRMED",
+                                "CREATED"
+                              ]
+                            },
+                            "orderNo": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

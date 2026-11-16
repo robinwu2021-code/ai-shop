@@ -33,6 +33,11 @@ public class ManualServiceAdmissionPortImpl implements ManualServiceAdmissionPor
     }
 
     @Override
+    public CounterQuoteState readCounterState(CheckoutScope scope, OperationRef operation) {
+        return service.readCounterState(scope, operation);
+    }
+
+    @Override
     public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
         return service.acceptCounter(scope, request);
     }
