@@ -1,0 +1,46 @@
+{
+  "releaseId": "list-drawer-20261116-1efcbe741",
+  "status": "DEPLOYED_PUBLIC_VERIFIED",
+  "deployedAt": "2026-11-16T12:47+08:00",
+  "environment": "UME166",
+  "scope": "ops-web static export only; backend, database, near-pay and inventory untouched; no service restarted",
+  "sourceCommit": "1efcbe741",
+  "sourceBranch": "main",
+  "build": {
+    "command": "NEXT_PUBLIC_API_BASE=/ops-shop NEXT_PUBLIC_BASE_PATH=/ops-shop NEXT_PUBLIC_USE_MOCK=0 npm run build -- --webpack",
+    "pages": 45,
+    "files": 351,
+    "tarballSha256Prefix": "04fb946b79d332ba"
+  },
+  "compatibility": "No changes under backend/ or ops-web/lib/api (except mocks) between running backend source db59b46c5 and 1efcbe741",
+  "server": {
+    "host": "app166 (192.168.3.166)",
+    "releaseDir": "/data/www/ai-shop-ops/releases/list-drawer-20261116-1efcbe741",
+    "currentSymlink": "/data/www/ai-shop-ops/current",
+    "previousRecord": "/data/www/ai-shop-ops/previous-20261116-1247.txt",
+    "previousRelease": "/data/www/ai-shop-ops/releases/zh-tw-customers-20261114-8d4fc752f",
+    "switch": "ln -s <release> current.new && mv -T current.new current",
+    "note": "457 macOS AppleDouble (._*) files removed from the new release dir after extraction"
+  },
+  "publicVerification": {
+    "domains": [
+      "https://nearshop.umeshop.ai",
+      "https://twpay.umeshop.ai"
+    ],
+    "pagesByteIdentical": 10,
+    "pagesChecked": [
+      "/ops-shop/",
+      "/ops-shop/merchants/",
+      "/ops-shop/customers/",
+      "/ops-shop/stores/",
+      "/ops-shop/orders/"
+    ],
+    "assetsByteIdenticalPerDomain": "27/27",
+    "protectedApi": {
+      "url": "/ops-shop/ops/auth/me",
+      "statusUnauthenticated": 401
+    }
+  },
+  "authenticatedBrowserCheck": "NOT_DONE",
+  "rollback": "ssh -F ~/work/env/ume/ssh.config ume-app166 'cd /data/www/ai-shop-ops && sudo ln -s /data/www/ai-shop-ops/releases/zh-tw-customers-20261114-8d4fc752f current.new && sudo mv -T current.new current'"
+}
