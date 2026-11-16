@@ -11,6 +11,8 @@
 //   · 本文件报 `端上有后端没有：DELIVERY` + `后端有端上没有：MERCHANT_DELIVERY`
 // 而那个 bug 的真实后果是确认订单页把 i18n 键原样打给用户。
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 // @ts-expect-error —— 脚本是 .mjs，没有类型声明；这里只用它的返回值
 import { audit, FIELDS, DISMISSED, surface, uncovered, ratchet, RATCHET_FILE } from "../../../scripts/check-enum-fields.mjs";
 
@@ -39,6 +41,25 @@ describe("枚举对账 · 按字段", () => {
     }[];
     skipped: { key: string; why: string }[];
   };
+
+  it("岗位示例注释与旧预约动作注释不能截断真实受控域", () => {
+    const root = join(import.meta.dirname, "../../..");
+    const positions = readFileSync(join(root,
+      "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/AssignPersonnelReq.java"), "utf8")
+      .match(/POSITIONS\s*=\s*Set\.of\(([\s\S]*?)\);/)?.[1];
+    expect(positions, "must inspect the actual accepted position whitelist").toBeDefined();
+    const positionValues = [...positions!.matchAll(/"([A-Z_]+)"/g)].map(m => m[1]);
+    const migration = readFileSync(join(root,
+      "backend/shop-app/src/main/resources/db/migration/V621__resource_actual_occupation.sql"), "utf8");
+    const actionCheck = migration.match(/ADD CONSTRAINT ck_resource_command_action CHECK ([^;]+);/)?.[1];
+    expect(actionCheck, "must inspect both command-kind constraints").toBeDefined();
+    const actions = [...actionCheck!.matchAll(/action IN \(([^)]+)\)/g)]
+      .flatMap(match => [...match[1]!.matchAll(/'([A-Z_]+)'/g)].map(value => value[1]));
+    expect(actions).toHaveLength(14);
+    const backendDomain = (field: string) => FIELDS.find((entry: any) => entry.field === field)?.backend.literal;
+    expect([...backendDomain("mch_personnel_position.position_code")].sort()).toEqual(positionValues.sort());
+    expect([...backendDomain("mch_resource_command.action")].sort()).toEqual(actions.sort());
+  });
 
   it("取值域提取本身不能坏掉（提不出来要报 fatal，不能静默通过）", () => {
     // 如果 DDL 或 Java 常量的解析写挂了，两侧都会变成空集合、比对「通过」——

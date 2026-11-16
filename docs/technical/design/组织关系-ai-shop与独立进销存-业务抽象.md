@@ -86,53 +86,11 @@ L0 外部      租户 · 支付渠道 · 顾客
 - 点线：授权；
 - 浅灰线：事实引用。
 
-```mermaid
-flowchart BT
-  ACC([账户·人])
-  CUS([顾客])
-  ENT[经营主体]
-  CH[支付渠道]
-  MER[收款商户]
-  STO[门店]
-  SPA[管理空间]
-  GRP[组·kind=连锁]
-  SCO{{范围}}
-  ISS[发行方]
-  INS[工具·储值/券]
-  REL[投放·活动]
-  RED[核销]
-  CLR[清分]
-  BIL[结算单]
-  MER ==>|从属| ENT
-  STO ==>|从属| ENT
-  GRP ==>|从属| SPA
-  INS ==>|从属| ISS
-  REL ==>|从属| INS
-  STO -->|成员·同kind至多一| GRP
-  CUS -->|会员关系| SCO
-  GRP -.->|指定 结算主体| ENT
-  ISS -.->|指定 结算主体·版本| ENT
-  ISS -.->|指定 收款| MER
-  STO -.->|指定 按渠道| MER
-  ISS -->|适用| SCO
-  SCO -->|解析| STO
-  SCO -->|解析| GRP
-  SCO -->|解析| ENT
-  ACC -.->|授权| ENT
-  ACC -.->|授权| STO
-  ACC -.->|授权| GRP
-  SPA -.->|所有人| ACC
-  MER --> CH
-  RED -->|引用版本| INS
-  RED -->|发生于| STO
-  RED --> CUS
-  CLR -->|源于| RED
-  CLR -->|付方/收方| ENT
-  BIL -->|汇总| CLR
-  linkStyle 0,1,2,3,4 stroke-width:3px
-  linkStyle 15,16,17,18 stroke-dasharray:2 3
-  linkStyle 19,20,21,22,23,24,25 stroke:#B4B2A9
-```
+图源保存在 `scripts/doc-design-diagrams.json`，运行 `node scripts/gen-doc-design-diagrams.mjs` 可重新生成；设计草稿保留原有历史语义。
+
+![组织依赖与结算事实关系](../diagrams/org-dependencies.svg)
+
+箭头由依赖方指向被依赖方；保留从属、成员、指定、授权与事实引用五种线型，以及范围解析、核销清分和结算汇总关系。
 
 **读图要点**：
 - 所有带钱的线最终都汇到「经营主体」：收款商户从属主体，组和发行方指定主体，清分的付方和收方都是主体（I1）。

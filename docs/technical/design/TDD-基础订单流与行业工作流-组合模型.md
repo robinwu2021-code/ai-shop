@@ -18,24 +18,13 @@
 **基础订单流全行业只有一条，永不分叉；行业差异全部表达为「旁边跑着的另一条轨」。**
 两条轨只在有限的几个**同步点**接触，其余时间互不知晓。
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 静默失效的风险同样存在。
-> 保留是取舍：分层嵌套 + 交叉引用（谁在谁里面、哪条线跨了层）用表格表达会散成几张互相看不见的表。
-> 改动它时请手工确认渲染。
+> 图已固化为离线可读的 SVG，保留分层嵌套与跨层箭头；修改设计时同步更新图源并重新生成。
 
-```mermaid
-flowchart LR
-  subgraph BASE["基础订单流（唯一，基座）"]
-    direction LR
-    P["下单 place"] --> Y["支付 markPaid"] --> F["履约 fulfill/verify"] --> C["完成"] --> S["结算"]
-    Y -.-> R["售后/取消"]
-  end
-  subgraph WF["行业工作流（0..1 条，行业包）"]
-    direction LR
-    W1["行业对象<br/>台账/预约单/工单"] --> W2["行业状态机<br/>OPEN/SERVING/…"] --> W3["行业动作<br/>加菜/划菜/换人/爽约"]
-  end
-  WF -- "同步点：Core*Api（同步，工→基）" --> BASE
-  BASE -- "同步点：事件（异步，基→工）" --> WF
-```
+图源保存在 `scripts/doc-design-diagrams.json`，运行 `node scripts/gen-doc-design-diagrams.mjs` 可重新生成；设计草稿保留原有历史语义。
+
+![基础订单与行业工作流双轨](../diagrams/base-workflow-tracks.svg)
+
+基础订单只有一条流程；行业工作流通过Core API同步调用基座，基座通过异步事件回流行业，实线与虚线保留方向及含义。
 
 ---
 
@@ -79,25 +68,11 @@ flowchart LR
 
 双轨图与同步点：
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 写错一个字符整张图静默不渲染、不报错，
-> 这条风险对时序图同样成立。保留是取舍：泳道 × 序号 × 跨轨箭头换成表格会掉信息（谁调谁、第几步、
-> 哪条是异步），而这里的结构信息值这个风险。改动它时请手工确认渲染。
+> 图已固化为 SVG，完整保留泳道、序号、跨轨箭头与同步/异步线型；修改设计时同步更新图源并重新生成。
 
-```mermaid
-sequenceDiagram
-  participant W as 台账轨（餐饮工作流）
-  participant B as 订单轨（基础订单流）
-  W->>W: 开台 OPEN（占桌台资源）
-  W->>B: ① 下达 → place（先付 WAIT_PAY / 后付 WAIT_OFFLINE_PAY）
-  B-->>W: ② onPaid（先付）→ 入厨 + 厨房票
-  Note over W: 后付：下达即入厨，不等支付
-  W->>W: 加菜 = 再走 ①（新订单，永不改旧单）
-  W->>B: ③ 退菜(钱已收) → refundLine ／ (钱未收) → cancel+place
-  W->>W: 发起结账 SETTLING（此后不许加菜）
-  W->>B: ④ 逐笔 ord_payment → settle 足额 → 逐单 markPaid(MIXED)
-  B-->>W: ⑤ onPaid ×N → 结台 CLOSED、释放桌台、小票
-  B-->>W: ⑥ onCancelled（超时）→ 撤制作行、打撤单条
-```
+![餐饮台账与订单同步时序](../diagrams/food-order-workflow-sequence.svg)
+
+按两条泳道保留开台、下达、支付、加退菜、结账和超时撤单的先后顺序；实线表示调用，虚线表示回调，后付入厨不等支付。
 
 **同步点仅六个。** 台账的 OPEN/SETTLING、制作行的全部状态，基础流一概不知道。
 
@@ -112,27 +87,11 @@ sequenceDiagram
 
 服务业工作流比餐饮多一段**前置轨**（预约），且开单时机是延迟的：
 
-> **这张保留为图，不是因为它不受影响** —— mermaid 写错一个字符整张图静默不渲染、不报错，
-> 这条风险对时序图同样成立。保留是取舍：泳道 × 序号 × 跨轨箭头换成表格会掉信息（谁调谁、第几步、
-> 哪条是异步），而这里的结构信息值这个风险。改动它时请手工确认渲染。
+> 图已固化为 SVG，完整保留泳道、序号、跨轨箭头与同步/异步线型；修改设计时同步更新图源并重新生成。
 
-```mermaid
-sequenceDiagram
-  participant W as 预约/工单轨（服务业工作流）
-  participant B as 订单轨（基础订单流）
-  W->>W: 建预约 PENDING（占位 tryBook，可无订单、可无会员）
-  alt 线上付（W2 例外：付钱=真意向，此时即开单）
-    W->>B: ① place(WAIT_PAY)
-    B-->>W: ② onPaid → 预约 CONFIRMED
-  end
-  W->>W: 到店 CHECKED_IN → 开工单 CREATED
-  W->>B: ③ 此时才 place（到店付 / 资产付）—— 避免幽灵订单
-  W->>W: 服务 SERVING（换人=改工单行+留痕，不碰订单）
-  W->>B: ④ 完成 → verify + deductAsset(基座资产流水) + markPaid(TIMES_CARD)
-  W->>B: ⑤ 多工单合并：逐笔 ord_payment → settle
-  B-->>W: ⑥ onRefunded → 提成倒扣 + 资产冲正顺序（O7）
-  W->>B: ⑦ 爽约 → 按规则 cancel / 扣次（规则在门店配置，不在代码）
-```
+![美业预约工单与订单同步时序](../diagrams/beauty-order-workflow-sequence.svg)
+
+按预约工单与订单泳道保留线上付条件分支、到店开单、服务、核销扣次、合并结账、退款和爽约处理；不把工作流状态并入基础订单。
 
 ## 组合检验
 - 「预约单可以没有订单」：占位由预约单持有，**计数真源仍在基座 slot** —— 工作流只记"谁占的"；

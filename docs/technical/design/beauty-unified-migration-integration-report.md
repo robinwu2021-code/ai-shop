@@ -1,5 +1,7 @@
 # Beauty/unified source migration mapping implementation
 
+> 状态：源码迁移映射报告 · 已完成本文所列文件映射与字节核对；不代表数据库已应用迁移。
+
 Applied source mapping: HOST beauty V532–546 → V592–606; inventory beauty V14 original_stock_disposition → V16 and V15 execution_stock_retention → V17. The exact file mapping and SQL hashes/Flyway CRC32 checksums are in [beauty-unified-migration-map.json](./schema/beauty-unified-migration-map.json). This manifest describes integration source, not applied database history.
 
 All 521 unified native migration files in HOST/inventory match f0bb429ac byte-for-byte. All 17 renamed beauty migrations match their original 3615e19db SQL bytes. Numeric versions are unique per native location. Five source contracts/renderers and native descriptors have been updated; four runtime schema verifiers inspect the corresponding new version/script/resource and strict descriptor version. The H2 policy retains its native-owner omission semantics, guard classes, absent tables and retained-statement hashes; source/descriptor SHA256 pins have been refreshed. Historical .superpowers ledgers, gates and frozen migration manifests are unchanged.

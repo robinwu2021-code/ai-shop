@@ -25,7 +25,7 @@ import type { CurrencyCode, ServiceScope } from "./core";
 import type { PickupFeeMode } from "./fulfillment";
 import type { Goods } from "./product";
 import type { Review } from "./review";
-import type { Store, StoreRole, StoreStatus } from "./store";
+import type { BusinessMode, Store, StoreRole, StoreStatus } from "./store";
 import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
@@ -647,7 +647,41 @@ export type MerchantStatus =
 /** 商家分层。为「流量起来后引入大商家」预留，一期只用 SMALL（ADR-004 §7） */
 export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
 /** 登录后的商家会话 */
+/** 正式认证接口选择的身份，与门店授权角色分别保存。 */
+export interface MerchantSessionIdentity {
+  /** 身份业务编号 */
+  identityNo: string;
+  /** 身份类别，取服务端当前协议值 */
+  type: string;
+  /** 所属商家编号 */
+  merchantNo: string;
+  /** 所属商家展示名 */
+  merchantName: string;
+  /** 该身份能访问的经营实体数 */
+  entityCount: number;
+  /** 身份角色展示码 */
+  role: string;
+  /** 授予该身份的角色码集合 */
+  roleCodes: string[];
+  /** 该身份能访问的门店数 */
+  storeCount: number;
+}
+
 export interface MerchantProfile {
+  /** 经营行业代码；旧档案未填写时为空 */
+  industry?: string | null;
+  /** 商家介绍；旧档案未填写时为空 */
+  description?: string | null;
+  /** 当前会话选中的门店，没有可进入门店时为空 */
+  currentStoreNo?: string | null;
+  /** 登录账号标识，支持手机或邮箱 */
+  account?: string | null;
+  /** 会话主体类别（USR个人账号 / MCH商家身份） */
+  subjectKind?: string | null;
+  /** 当前选中的登录身份；账号尚未进入商家身份时为空 */
+  currentIdentity?: MerchantSessionIdentity | null;
+  /** 账号用户编号，用于跨身份保留个人设置 */
+  userNo?: string | null;
   /** 商家单号 */
   merchantNo: string;
   /** 店铺名 */
@@ -1063,6 +1097,24 @@ export interface PaymentApplyment {
  * 老板不认识「主体」「实体」这两个词。
  */
 export interface Entity {
+  /** 当前渠道/平台审核状态，按服务端状态码返回 */
+  review?: string | null;
+  /** 当前进件申请编号；未申请时为空 */
+  applyNo?: string | null;
+  /** 审核驳回原因 */
+  rejectReason?: string | null;
+  /** 税号或统一编号 */
+  taxNo?: string | null;
+  /** 证照持有人展示名 */
+  owner?: string | null;
+  /** 平台资料审核状态，与支付进件状态分开 */
+  platformReview?: string | null;
+  /** 当前草稿资料版本，尚无草稿时为空 */
+  draftVersion?: number | null;
+  /** 已审核通过的资料版本 */
+  approvedProfileVersion?: number | null;
+  /** 已绑定的支付商户编号，尚未进件时为空 */
+  payMerchantNo?: string | null;
   /** 商家主体号 */
   entityNo: string;
   /**
@@ -1192,6 +1244,14 @@ export interface PermOption {
  * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
  */
 export interface SettleBill {
+  /** 自营/第三方经营模式，决定是否展示进项票流程 */
+  businessMode?: BusinessMode;
+  /** 进项票审核状态；第三方为NO_INVOICE */
+  invoiceStatus?: string;
+  /** 网银等实际付款凭证编号；未付款时为空 */
+  paymentRef?: string | null;
+  /** 本单积分活动费用，最小货币单位；不并入履约费 */
+  pointsFeeMinor?: number;
   /** Human-facing settlement batch number; absent for historical unmapped batches. */
   batchDocumentNo?: string | null;
   /** Human-facing document number; null or absent for historical unmapped records. */
@@ -1315,6 +1375,22 @@ export type SettleBatchStatus =
  * 我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
  */
 export interface MySettleBatch {
+  /** 结算批次所属经营主体 */
+  entityNo?: string;
+  /** 结算周期起点，Unix毫秒 */
+  periodFrom?: number;
+  /** 冻结截止时刻，Unix毫秒；无冻结时为空 */
+  freezeExpireAt?: number | null;
+  /** 本批结算基数，最小货币单位 */
+  grossMinor?: number;
+  /** 对账范围标识，服务端冻结值 */
+  reconScope?: string | null;
+  /** 挂起时刻，Unix毫秒；未挂起时为空 */
+  blockedAt?: number | null;
+  /** 最近一次人工处置人员编号 */
+  decidedBy?: string | null;
+  /** 最近一次人工处置备注 */
+  decideRemark?: string | null;
   /** Human-facing document number; null or absent for historical unmapped records. */
   documentNo?: string | null;
   /** 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 */

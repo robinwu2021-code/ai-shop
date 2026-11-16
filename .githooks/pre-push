@@ -86,6 +86,11 @@ gate_run() {
   "$runner" "$GATE_WT/$script" "$@"
 }
 
+# Keep clean-snapshot workspace resolution covered by the same push gate.
+if ! gate_run node scripts/tests/pre-push-dependencies.test.mjs; then
+  exit 1
+fi
+
 # 界面清单闸门：清单是三端 UI 的唯一索引（docs/technical/design/ui-catalog.json），
 # 由 pages.json 与 nav.ts 生成。改了路由/标题/导航而没重跑生成器，这一条就红。
 # 纯 python、不需要依赖，所以在 worktree 里能直接跑（那里没有 node_modules）。
@@ -251,7 +256,7 @@ fi
 # 而这道闸本身只有几百毫秒 —— 为一道闸让每次推送多等半分钟不划算。
 # 主仓没装依赖时跳过并说明，**不静默放行**：说不清自己有没有跑，比没跑更糟。
 if [ -d "$ROOT/node_modules" ]; then
-  ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
+  gate_run bash scripts/link-head-dependencies.sh "$ROOT" "$GATE_WT"
   if ! gate_run node scripts/check-generated-docs.mjs --check; then
     exit 1
   fi

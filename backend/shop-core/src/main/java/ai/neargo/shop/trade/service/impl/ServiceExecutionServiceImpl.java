@@ -5,6 +5,8 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
 import ai.neargo.shop.spi.product.StockDispositionContract;
@@ -71,6 +73,7 @@ import java.util.function.Supplier;
 /** Canonical Core roots serialize permanent units without rewriting purchase or source observation versions. */
 @Service
 public final class ServiceExecutionServiceImpl implements ServiceExecutionService {
+    private static final Logger log = LoggerFactory.getLogger(ServiceExecutionServiceImpl.class);
     private final CheckoutMappers.OperationMapper operations;
     private final ManualAdmissionMapper admissions;
     private final ServiceExecutionMapper executions;
@@ -748,7 +751,8 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
             StockDispositionPort.Disposition proof) {
         if (proof == null || proof.outcome() == StockDispositionPort.Outcome.PENDING
                 || proof.outcome() == StockDispositionPort.Outcome.UNKNOWN) {
-            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "SOURCE_UNKNOWN");
+            log.warn("SOURCE_UNKNOWN");
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
         }
         require(proof != null && proof.outcome() == StockDispositionPort.Outcome.APPLIED
                 && original.equals(proof.original()) && operation.equals(proof.operationNo())
@@ -789,7 +793,8 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
 
     private void available() {
         if (schema.installation() != ServiceExecutionSchemaVerifier.Installation.INSTALLED) {
-            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
+            log.warn("EXECUTION_SCHEMA_UNAVAILABLE");
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
         }
     }
 

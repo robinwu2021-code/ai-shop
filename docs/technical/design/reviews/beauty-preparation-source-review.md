@@ -1,5 +1,7 @@
 # C04b3 independent specification and quality review
 
+> 状态：历史源码评审 · REQUEST CHANGES；后续处理见fix1/fix2报告，本文保留原始问题证据。
+
 BASE `c621c0ec9`; reviewed the frozen `/private/tmp/beauty-c04b3-review.diff` (tracked + untracked) in source passes, the entire execution-preparation design including overriding §8, author report and manifest. Author assertions were not treated as evidence. Also scoped-reviewed `/private/tmp/beauty-c04b3-compile-fix-r1.diff`: replacing package-private validation helpers with existing public reference validation plus equivalent local revision guards introduces no additional finding. The subsequently reported `Mapper` import is a compilation-only correction.
 
 **SPEC verdict: REQUEST CHANGES. QUALITY verdict: REQUEST CHANGES.** Two Important product issues and one Important required-source-fixture gap remain. No Critical finding. No additional Minor finding worth blocking this slice.

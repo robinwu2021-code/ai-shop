@@ -1,5 +1,7 @@
 # C04c-c1 独立 SPEC / QUALITY source review
 
+> 状态：历史源码评审 · NEEDS_FIXES；四项问题的后续结论见fix1报告，本文保留原始发现。
+
 审查日期：2026-10-29。工作区：`/Users/robin/.codex/worktrees/beauty-unified-integration/ai-shop-codex`。BASE：`87311602bc7e1ce53eeace63a16ea29397164d03`。作者冻结：62 paths，manifest source seal `b706a4a0412f73d72474afdb1557fcb446630162dc99862b2db2c2c1ae7c6a99`。
 
 **SPEC: NEEDS_FIXES。QUALITY: NEEDS_FIXES。Critical 0 / Important 4 / Minor 0。** 以下均为源码可确定的问题；未执行运行测试，不把 deferred runtime 本身作为拒收原因。用户最新范围为美业 embedded 及其必要共享依赖；不要求零售、餐饮或 standalone 扩展验证。

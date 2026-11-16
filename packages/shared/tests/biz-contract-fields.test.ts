@@ -522,7 +522,8 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 而预览顶层没有轨迹这回事（轨迹只在订单详情、快递履约时查），
      * 与已在基线里的 `OrderPreview.expressNo` 完全同类。不是新账。
      */
-    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 31 };
+    // 2026-11-16：B端47个漏接字段已逐项对齐，后续不再允许新增缺口。
+    const BASELINE: Record<string, number> = { "b-app": 0, "c-app": 31 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`

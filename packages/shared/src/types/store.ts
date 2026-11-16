@@ -185,6 +185,10 @@ export interface DeliveryRule {
  * 这里是**店主自己能改的门面内容**。混在一起的话，改公告要走审核就荒谬了。
  */
 export interface StoreProfile {
+  /** 门店联系人；历史门店未设置时为空 */
+  contactName?: string | null;
+  /** 门店联系电话；与登录账号手机号分开 */
+  contactPhone?: string | null;
   /** 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） */
   announcement: string;
   /**
