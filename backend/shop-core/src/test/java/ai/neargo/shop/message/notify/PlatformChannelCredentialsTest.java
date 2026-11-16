@@ -18,6 +18,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DisplayName("平台统一凭证真源")
 class PlatformChannelCredentialsTest {
+    @Test void mitakeHealthUsesPrivateFilePresenceWithoutExposingItsPath() {
+        var creds = new PlatformChannelCredentials(new MockEnvironment()
+                .withProperty("shop.sms.provider", "mitake")
+                .withProperty("shop.sms.mitake.config-file", "/private/sms-credentials.json"));
+        assertThat(creds.smsProvider()).isEqualTo(NotifyChannel.PROV_MITAKE);
+        assertThat(creds.credentials(NotifyChannel.TYPE_SMS, creds.smsProvider())).singleElement()
+                .satisfies(c -> { assertThat(c.present()).isTrue(); assertThat(c.envVar()).isEqualTo("SHOP_SMS_MITAKE_CONFIG_FILE"); });
+        assertThat(creds.credentials(NotifyChannel.TYPE_SMS, creds.smsProvider()).toString()).doesNotContain("/private/");
+        assertThat(new PlatformChannelCredentials(new MockEnvironment()).smsProvider()).isEqualTo(NotifyChannel.PROV_ALI);
+    }
 
     @Test
     @DisplayName("★★★ 缺配 → 未就绪 + 走桩缺省；配齐 → 就绪 + 真发")

@@ -30,7 +30,7 @@ class PushRouterTest {
         final List<Row> rows = new ArrayList<>();
 
         CapturingWriter() {
-            super(null);
+            super(null, null);
         }
 
         // PushRouter 走带 provider 的 10 参重载 —— 捕获它，顺带断言 provider 归对了家

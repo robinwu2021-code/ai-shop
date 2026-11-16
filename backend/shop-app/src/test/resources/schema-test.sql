@@ -20524,6 +20524,15 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_ORDER__TAB_PAYMENT_EXCEPTIONS','OPS_ORDER','支付异常','支付记录','/orders?tab=payment-exceptions','pay:order:view','pay:order:view','IMPLEMENTED',1,NULL,'MENU',509,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_ORDER__TAB_PAYMENT_EXCEPTIONS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_ORDER__TAB_PAYMENT_EXCEPTIONS' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT source.role_code,'OPS_ORDER__TAB_PAYMENT_EXCEPTIONS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source WHERE source.point_code='OPS_FINANCE__PAY_EXCEPTIONS' AND source.end_code='OPS' AND NOT EXISTS(SELECT 1 FROM sys_role_point target WHERE target.role_code=source.role_code AND target.point_code='OPS_ORDER__TAB_PAYMENT_EXCEPTIONS' AND target.end_code='OPS');
+INSERT IGNORE INTO notify_channel (channel_no, channel_type, provider, scope, owner_no,
+                            cred_ref, enabled, created_at, updated_at)
+SELECT 'NCH-SMS-MITAKE', 'SMS', 'MITAKE', 'PLATFORM', '',
+       'shop.sms.mitake', 1, NOW(), NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_channel
+    WHERE channel_type = 'SMS' AND provider = 'MITAKE'
+      AND scope = 'PLATFORM' AND owner_no = ''
+);
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

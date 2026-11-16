@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -47,6 +48,7 @@ import java.util.regex.Pattern;
  */
 @Component("smsGateway")
 @ConditionalOnProperty(name = "shop.sms.stub", havingValue = "false")
+@ConditionalOnExpression("'${shop.sms.provider:ali}' == 'ali'")
 public class AliSmsGateway implements SmsPort {
 
     private static final Logger log = LoggerFactory.getLogger(AliSmsGateway.class);

@@ -40,7 +40,7 @@ class NotifyLoggingPortTest {
         final List<Row> rows = new ArrayList<>();
 
         CapturingWriter() {
-            super(null);   // 不会用到 mapper：write 被整个覆盖
+            super(null, null);   // 不会用到 mapper：write 被整个覆盖
         }
 
         @Override
