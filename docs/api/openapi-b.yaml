@@ -15662,6 +15662,26 @@ components:
         - "minor"
       additionalProperties: false
       description: "金额：币种 + 最小单位整数字符串"
+    PayStoreMethodReq:
+      type: "object"
+      properties:
+        requestNo:
+          type: "string"
+          description: "本次保存的幂等号，重试沿用"
+        expectedVersion:
+          type: "number"
+          description: "读取时拿到的 version"
+        enabledProductCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "要开启的产品码（至少一个，只能在可开范围内）"
+      required:
+        - "requestNo"
+        - "expectedVersion"
+        - "enabledProductCodes"
+      additionalProperties: false
+      description: "保存门店付款方式（TDD-门店付款方式-App设置）"
     PayServiceStatus:
       type: "object"
       properties:
@@ -31295,6 +31315,67 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/payment/store-method":
+    get:
+      operationId: "mPayStoreMethods"
+      summary: "本店付款方式"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayStoreMethods"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    put:
+      operationId: "mPaySaveStoreMethods"
+      summary: "保存本店付款方式"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayStoreMethods"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/PayStoreMethodReq"
   "/biz/payout-account":
     get:
       operationId: "mPayoutAccounts"

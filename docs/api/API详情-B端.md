@@ -7820,6 +7820,36 @@ App 外收款合计　🔒
 | `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
 
 
+#### GET `/biz/payment/store-method`
+
+本店付款方式　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayStoreMethods`](#paystoremethods)
+
+
+#### PUT `/biz/payment/store-method`
+
+保存本店付款方式　🔒
+
+**入参**
+
+请求体：[`PayStoreMethodReq`](#paystoremethodreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 本次保存的幂等号，重试沿用 |
+| `expectedVersion` | `number` | 是 | 读取时拿到的 version |
+| `enabledProductCodes` | `string`\[\] | 是 | 要开启的产品码（至少一个，只能在可开范围内） |
+
+**出参**（`data`）
+
+类型：[`PayStoreMethods`](#paystoremethods)
+
+
 ### payout-account
 
 #### GET `/biz/payout-account`
@@ -15973,6 +16003,16 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 - `PAYMENT`
 - `REFUND`
+
+### PayStoreMethodReq
+
+保存门店付款方式（TDD-门店付款方式-App设置）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 本次保存的幂等号，重试沿用 |
+| `expectedVersion` | `number` | 是 | 读取时拿到的 version |
+| `enabledProductCodes` | `string`\[\] | 是 | 要开启的产品码（至少一个，只能在可开范围内） |
 
 ### PaymentApplyStatus
 

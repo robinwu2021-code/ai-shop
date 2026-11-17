@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1220 个接口**：后端已实现 967（79%）· 前端在调 1047
+**合计 1222 个接口**：后端已实现 969（79%）· 前端在调 1049
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **478** 个接口 ｜ 后端已实现 **372**（78%）｜ 前端在调 **476**
+共 **480** 个接口 ｜ 后端已实现 **374**（78%）｜ 前端在调 **478**
 
 ### activities（4）
 
@@ -801,7 +801,7 @@
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
 
-### payment（13）
+### payment（15）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -818,6 +818,8 @@
 | GET | `/biz/payment/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/payment/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
 | GET | `/biz/payment/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/store-method` | 本店付款方式 | — | `PayStoreMethods` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/payment/store-method` | 保存本店付款方式 | `PayStoreMethodReq` | `PayStoreMethods` | 🔒 | ✅ | ✅ |
 
 ### payout-account（2）
 

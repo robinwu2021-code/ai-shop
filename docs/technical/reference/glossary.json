@@ -49956,6 +49956,18 @@
         "zh": "流水行：收款 / 退款"
       },
       {
+        "name": "PayStoreMethodExclusion",
+        "client": "b-app",
+        "values": [
+          "STORE",
+          "MERCHANT",
+          "CATALOG",
+          "STORE_STATE",
+          "ENTRY"
+        ],
+        "zh": "门店付款方式的不可开原因：null 开启。"
+      },
+      {
         "name": "PaymentApplyStatus",
         "client": "shared",
         "values": [
@@ -55014,6 +55026,14 @@
       "type": "String",
       "value": "\"mch:pay:qr\"",
       "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_STORE_METHOD",
+      "type": "String",
+      "value": "\"mch:pay:store-method\"",
+      "zh": "按门店开关付款方式（TDD-门店付款方式-App设置 Q2）：只授予主体属主（OWNER 的 *），不进店长、店员模板 —— 关掉一种付款方式会直接影响顾客能不能付钱。",
       "module": "shop-base-auth"
     },
     {
