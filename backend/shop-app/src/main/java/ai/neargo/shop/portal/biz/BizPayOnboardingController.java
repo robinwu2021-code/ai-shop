@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
 import ai.neargo.shop.payclient.PayBizOnboardingRelay;
+import ai.neargo.shop.payclient.PayBizSourceDelegation;
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Original user credentials and bytes only; authorization remains with near-pay. */
+/** Original bytes; for the owner's own payment merchant ai-shop decides access and names the merchant. */
 @RestController
 @Validated
 @Profile("api")
@@ -22,14 +24,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/biz/pay/v2")
 public class BizPayOnboardingController {
   private final BizOnboardingForwarder forwarder;
+  private final ObjectProvider<PayBizSourceDelegation> delegation;
 
-  public BizPayOnboardingController(BizOnboardingForwarder forwarder) {
+  public BizPayOnboardingController(
+      BizOnboardingForwarder forwarder, ObjectProvider<PayBizSourceDelegation> delegation) {
     this.forwarder = forwarder;
+    this.delegation = delegation;
   }
 
   @GetMapping("/memberships")
   public ResponseEntity<byte[]> memberships(HttpServletRequest request) throws IOException {
-    return relay(request);
+    return PayBizOnboardingRelay.memberships(forwarder, request, delegation.getIfAvailable());
   }
 
   @GetMapping("/capability-progress")
@@ -103,6 +108,6 @@ public class BizPayOnboardingController {
   }
 
   private ResponseEntity<byte[]> relay(HttpServletRequest request) throws IOException {
-    return PayBizOnboardingRelay.forward(forwarder, request);
+    return PayBizOnboardingRelay.forward(forwarder, request, delegation.getIfAvailable());
   }
 }

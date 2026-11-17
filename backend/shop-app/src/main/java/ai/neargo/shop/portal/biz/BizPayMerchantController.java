@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
 import ai.neargo.shop.payclient.PayBizOnboardingRelay;
+import ai.neargo.shop.payclient.PayBizSourceDelegation;
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Account creation and merchant profile forwarding; independent PAY owns authorization. */
+/** Account creation forwarding; merchant profiles of the owner's own payment merchant are authorized by ai-shop. */
 @RestController
 @Validated
 @Profile("api")
@@ -21,15 +23,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/biz/pay/v2")
 public class BizPayMerchantController {
   private final BizOnboardingForwarder forwarder;
-  public BizPayMerchantController(BizOnboardingForwarder forwarder) { this.forwarder = forwarder; }
+  private final ObjectProvider<PayBizSourceDelegation> delegation;
+  public BizPayMerchantController(
+      BizOnboardingForwarder forwarder, ObjectProvider<PayBizSourceDelegation> delegation) {
+    this.forwarder = forwarder;
+    this.delegation = delegation;
+  }
   @GetMapping({"/merchant-profile-revisions", "/merchant-profile-revisions/by-request/{requestNo}"})
   public ResponseEntity<byte[]> merchantProfiles(HttpServletRequest request) throws IOException {
-    return PayBizOnboardingRelay.forward(forwarder, request);
+    return PayBizOnboardingRelay.forward(forwarder, request, delegation.getIfAvailable());
   }
 
   @PostMapping("/merchant-profile-revisions")
   public ResponseEntity<byte[]> submitMerchantProfile(HttpServletRequest request) throws IOException {
-    return PayBizOnboardingRelay.forward(forwarder, request);
+    return PayBizOnboardingRelay.forward(forwarder, request, delegation.getIfAvailable());
   }
 
   @PostMapping("/merchant-creations")

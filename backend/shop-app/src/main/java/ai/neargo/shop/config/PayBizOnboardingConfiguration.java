@@ -6,6 +6,11 @@ import ai.neargo.shop.auth.RequestMetaFilter;
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
 import ai.neargo.shop.payclient.PayBizAuthenticationFilter;
 import ai.neargo.shop.payclient.PayBizSessionVerifier;
+import ai.neargo.shop.payclient.PayBizSourceDelegation;
+import ai.neargo.shop.payclient.PaySourceLinkApi;
+import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
+import ai.neargo.shop.merchant.service.MerchantEntityService;
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -35,6 +40,15 @@ public class PayBizOnboardingConfiguration {
     if (!TokenStoreSelection.usesDb(env, Realm.MERCHANT))
       throw new IllegalStateException("near-pay BIZ requires merchant DB sessions");
     return new PayBizSessionVerifier(authJdbcClient);
+  }
+
+  /** 店主名下支付商户由 ai-shop 授权；来源调用方凭据与店铺同步共用（shop.nearpay.store-sync.caller / credential）。 */
+  @Bean
+  PayBizSourceDelegation payBizSourceDelegation(
+      ObjectProvider<MerchantEntityService> entities,
+      ObjectProvider<PaySourceLinkApi> links,
+      ObjectProvider<StoreSyncProperties> sync) {
+    return PayBizSourceDelegation.of(entities, links, sync);
   }
 
   @Bean

@@ -6,7 +6,7 @@ import java.net.http.*;
 import java.time.Duration;
 import java.util.*;
 
-/** Exact N2 transport. User credentials/bytes only; no host claim state or service identity. */
+/** Exact N2 transport. User credentials/bytes; the host adds its source-caller credential after its own check. */
 public final class PayChannelAccountClaimForwarder {
     public static final String BASE="/biz/pay/v2/channel-account-claims";
     private final String origin;
@@ -24,6 +24,10 @@ public final class PayChannelAccountClaimForwarder {
         @Override public String toString(){return "ChannelAccountClaimResponse[status="+status+"]";}
     }
     public Response forward(String method,String target,Map<String,String> headers,byte[] body) throws IOException,InterruptedException {
+        return forward(method,target,headers,body,Map.of());
+    }
+    /** {@code source}: the host's own source-caller credential, added only after the host checked the merchant. */
+    public Response forward(String method,String target,Map<String,String> headers,byte[] body,Map<String,String> source) throws IOException,InterruptedException {
         if(!allowed(method,target)) throw new IllegalArgumentException("unsupported channel account claim route");
         boolean upload="POST".equals(method)&&URI.create(target).getPath().endsWith("/files");
         if(body==null||body.length>(upload?6*1024*1024:1024*1024)) throw new IllegalArgumentException("BIZ request exceeds limit");
@@ -31,6 +35,7 @@ public final class PayChannelAccountClaimForwarder {
                 .method(method,HttpRequest.BodyPublishers.ofByteArray(body));
         Set<String> input=Set.of("authorization","x-merchant-no","x-store-no","x-request-id","x-trace-id","accept","accept-language","content-type");
         headers.forEach((name,value)->{if(name!=null&&value!=null&&input.contains(name.toLowerCase(Locale.ROOT)))request.header(name,value);});
+        source.forEach((name,value)->{if(ai.neargo.shop.pay.client.BizOnboardingForwarder.SOURCE_HEADERS.contains(name.toLowerCase(Locale.ROOT))&&value!=null)request.setHeader(name,value);});
         var response=http.send(request.build(),HttpResponse.BodyHandlers.ofByteArray());
         var out=new LinkedHashMap<String,List<String>>();
         Set<String> output=Set.of("content-type","content-disposition","cache-control","pragma","x-content-type-options","content-security-policy","x-frame-options","x-request-id");

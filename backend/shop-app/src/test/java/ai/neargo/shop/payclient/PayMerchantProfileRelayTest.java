@@ -15,7 +15,7 @@ class PayMerchantProfileRelayTest {
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         server.createContext("/biz/pay/v2/merchant-profile-revisions",e->{seen.set(e.getRequestBody().readAllBytes());authorization.set(e.getRequestHeaders().getFirst("Authorization"));merchant.set(e.getRequestHeaders().getFirst("X-Merchant-No"));byte[] out="{\"code\":0,\"data\":{\"reviewStatus\":\"SUBMITTED\"}}".getBytes(StandardCharsets.UTF_8);e.getResponseHeaders().set("Content-Type","application/json");e.sendResponseHeaders(200,out.length);e.getResponseBody().write(out);e.close();});server.start();
         try {
-            var controller=new BizPayMerchantController(new BizOnboardingForwarder(URI.create("http://127.0.0.1:"+server.getAddress().getPort())));
+            var controller=new BizPayMerchantController(new BizOnboardingForwarder(URI.create("http://127.0.0.1:"+server.getAddress().getPort())),new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(PayBizSourceDelegation.class));
             var request=new MockHttpServletRequest("POST","/biz/pay/v2/merchant-profile-revisions");request.addHeader("Authorization","Bearer btk_fixture");request.addHeader("X-Merchant-No","PM-real");request.setContentType("application/json");request.setContent(body);
             assertEquals(200,controller.submitMerchantProfile(request).getStatusCode().value());assertArrayEquals(body,seen.get());assertEquals("Bearer btk_fixture",authorization.get());assertEquals("PM-real",merchant.get());
         }finally{server.stop(0);}

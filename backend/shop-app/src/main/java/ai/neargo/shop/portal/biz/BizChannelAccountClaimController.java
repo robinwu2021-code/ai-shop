@@ -27,9 +27,10 @@ public class BizChannelAccountClaimController {
     private final FoundationPaymentAccess access;
     private final ObjectProvider<PaySourceLinkApi> sources;
     private final StoreSyncProperties sync;
+    private final ObjectProvider<PayBizSourceDelegation> delegation;
     public BizChannelAccountClaimController(PayChannelAccountClaimForwarder forwarder,FoundationPaymentAccess access,
-            ObjectProvider<PaySourceLinkApi> sources,StoreSyncProperties sync) {
-        this.forwarder=forwarder;this.access=access;this.sources=sources;this.sync=sync;
+            ObjectProvider<PaySourceLinkApi> sources,StoreSyncProperties sync,ObjectProvider<PayBizSourceDelegation> delegation) {
+        this.forwarder=forwarder;this.access=access;this.sources=sources;this.sync=sync;this.delegation=delegation;
     }
     @GetMapping({"","/by-request/{requestNo}","/{claimNo}","/{claimNo}/files","/{claimNo}/files/{fileNo}","/{claimNo}/commands/{requestNo}"})
     @PreAuthorize("@perm.canBiz('biz:finance')")
@@ -58,10 +59,15 @@ public class BizChannelAccountClaimController {
         if(mapping.merchantRef()==null||mapping.merchantRef().isBlank())throw new PayBizException(HttpStatus.SERVICE_UNAVAILABLE);
         if(!mapping.merchantRef().equals(merchants.getFirst()))throw new PayBizException(HttpStatus.FORBIDDEN);
         byte[] bytes=PayBizRequestBody.read(request,"POST".equals(request.getMethod())&&path.endsWith("/files"));
-        var headers=new LinkedHashMap<String,String>();
-        for(String name:Collections.list(request.getHeaderNames()))headers.put(name,request.getHeader(name));
+        var original=new LinkedHashMap<String,String>();
+        for(String name:Collections.list(request.getHeaderNames()))original.put(name,request.getHeader(name));
+        // 商户已由 ai-shop 校验（财务权限 + 来源映射）：带来源调用方凭据，near-pay 不再查自己的成员表
+        var delegated=delegation.getIfAvailable();
+        boolean trusted=delegated!=null&&delegated.enabled();
+        var headers=trusted?PayBizSourceDelegation.headers(original,mapping.merchantRef()):PayBizSourceDelegation.withoutInternal(original);
+        java.util.Map<String,String> source=trusted?delegated.source():java.util.Map.of();
         try {
-            var result=forwarder.forward(request.getMethod(),target,headers,bytes);
+            var result=forwarder.forward(request.getMethod(),target,headers,bytes,source);
             var responseHeaders=new HttpHeaders();result.headers().forEach(responseHeaders::put);
             return ResponseEntity.status(result.status()).headers(responseHeaders).body(result.body());
         } catch(HttpTimeoutException timeout){throw new PayBizException(HttpStatus.GATEWAY_TIMEOUT);}
