@@ -1,5 +1,6 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
@@ -34,6 +35,13 @@ public interface BizPaymentAppService {
 
     /** 本店带某个业务单号的付款链接与储值扣款原始行（TDD-业务单收款汇总） */
     ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo);
+
+    /** 门店付款方式（TDD-门店付款方式-App设置）：门店能用的方式及开关、不可开原因 */
+    StoreMethods storeMethods(String storeNo);
+
+    /** 保存开启集合（全开 = 跟随商户）；expectedVersion 取读到的 version */
+    StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
+                                                                             List<String> enabledProductCodes);
 
     List<QrView> qrCodes(String storeNo);
 

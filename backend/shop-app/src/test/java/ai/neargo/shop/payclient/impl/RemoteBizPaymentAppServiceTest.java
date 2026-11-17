@@ -65,4 +65,23 @@ class RemoteBizPaymentAppServiceTest {
         verify(api).requestRefund("S-1", new RefundReq("MCH-A", "PYO-1", 100L, null, null));
         org.mockito.Mockito.verifyNoInteractions(audit);
     }
+
+    @Test
+    @DisplayName("★★★ 门店付款方式读写带当前商家账号与当前门店；保存成功才留痕，版本冲突还原成同一个错误码（TDD-门店付款方式-App设置）")
+    void storeMethodsCarryOperatorAndStore() {
+        var view = new PayBizInternalApi.StoreMethods("S-1", "OVERRIDE", 3, List.of(
+                new PayBizInternalApi.StoreMethodItem("LINEPAY_ONLINE", "LINEPAY", "LINE_PAY", false, true, true, null)));
+        when(api.storeMethods("S-1", "MCH-A")).thenReturn(PortResult.ok(view));
+        var req = new PayBizInternalApi.StoreMethodsReq("MCH-A", "R1", 3L, List.of("LINEPAY_ONLINE"));
+        when(api.saveStoreMethods("S-1", req)).thenReturn(PortResult.ok(view));
+
+        assertThat(remote.storeMethods("S-1")).isEqualTo(view);
+        assertThat(remote.saveStoreMethods("S-1", "R1", 3L, List.of("LINEPAY_ONLINE"))).isEqualTo(view);
+        verify(api).saveStoreMethods("S-1", req);
+        verify(audit).record("BIZ_PAY_STORE_METHOD", "S-1", "门店付款方式：LINEPAY_ONLINE", true);
+
+        when(api.saveStoreMethods(eq("S-2"), any())).thenReturn(PortResult.rejected("CONFLICT", List.of()));
+        assertThatThrownBy(() -> remote.saveStoreMethods("S-2", "R2", 1L, List.of("LINEPAY_ONLINE")))
+                .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+    }
 }
