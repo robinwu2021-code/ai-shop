@@ -108,11 +108,20 @@
     "nearPay": "nearpay-prod payment-sse.private.properties: merchant-collections.environment=PRODUCTION, + environments=PRODUCTION, secrets.PRODUCTION; delivery-targets[SANDBOX][0] renamed to [PRODUCTION][0] (same 18082 URL; targets may not overlap); restarted 05:12 UTC, settings 401 after 42 s. Oscar session notified and recorded it in near-pay deploy/sandbox-unify/README",
     "key": "generated on the server, shared by both sides, root-only at /home/ume/prod-delivery-20261117/production.key; never printed",
     "rollback": "write /home/ume/prod-delivery-20261117/{ai-shop,nearpay}-payment-sse.before back in place and restart the matching container",
-    "notVerified": "no CHECKOUT_QR order has succeeded since the switch; pending: ume-breakfast NT$1 sandbox card order at ccore (awaiting the test card), orders 99/100 LINEPAY_TEST at LINE login"
+    "notVerified": "resolved 08:05 UTC, see collectionStoreFix20261117"
   },
   "entityCleanup20261117": {
     "approvedBy": "user, 2026-11-17 (Approve it / Clean it up)",
     "nearPay": "PM2026111713380001-R1 approved and executed as neara (APA3E3A87DA10B4674); not sent to NewebPay",
     "aiShop": "after the ID_CARD projection check: mch_account 2076, mch_entity M261117Q484GXZQ06 and mch_qualification 11 set deleted=1; projection BLOCKED"
+  },
+  "collectionStoreFix20261117": {
+    "approvedBy": "user, 2026-11-17 (Code fix and deploy; Merge and push)",
+    "incident": "after the 05:12 PRODUCTION switch, MerchantCollectionResultRecorder ran inside settlement and called the payment-store source API (not integrated on 166); the exception rolled back settlement, so paid PRODUCTION orders stayed AWAITING_PAYMENT (05:12-07:59 UTC)",
+    "nearPay": "1edc910e (fix/collection-store-lookup-20261117), merged into release/166-live-20261117 as 60dbdbc9; overlay of MerchantCollectionResultRecorder.class into pay-domain of b43d1194 -> pay-svc.jar 61a6fb2e, restarted ~08:00 UTC, ready in 39 s; Oscar session agreed",
+    "aiShop": "payment_collection_source + PRODUCTION/1/CHECKOUT/1 bindings: payment store 2070 -> ST2611132NS49C2EPQ (ume早餐店), 2074 -> ST261117JC0WT5KSDV (LINE Pay 沙箱測試), entity M261113Y3QW5XKEFW",
+    "verified": "PYO261117144731387 (NewebPay sandbox card NT$1) SUCCEEDED 08:02, delivered 08:05:06 (7th attempt, 200) -> receipt PCR261117CFS1VKAEX8 projected to the store stream; App announcement not observed by this session",
+    "rollback": "/home/ume/collection-store-fix-20261117/pay-svc.jar.before written back in place + restart; delete the two PRODUCTION rows",
+    "notTested": "the native MySQL regression test needs PAYMENT_SSE_JDBC_URL credentials and was skipped locally"
   }
 }

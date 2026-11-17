@@ -43,7 +43,9 @@
 - 回退：把 `*.before` 原地写回（ai-shop 是单文件挂载，必须保留 inode），重启对应容器。
 - 顺序按 ADR-059：先 ai-shop-api（05:10），后 nearpay-prod（05:12）。两边健康、启动日志无签名或投递错误。
 
-**未验证**：还没有一笔 CHECKOUT_QR 订单付款成功，所以「near-pay 推送 → ai-shop 收据 → SSE → App 播报」还没跑通。待验证订单：
+**更新（08:05 UTC）**：已跑通。切换后暴露一个故障：PRODUCTION 结果记录器在结算事务里调用 166 上不存在的门店来源接口，异常回滚了结算，05:12–07:59 的已付订单都卡在待付款。near-pay 1edc910e 改为查不到门店时发原始快照（已部署 61a6fb2e、合入发布线 60dbdbc9），ai-shop 补了门店 2070、2074 的 PRODUCTION 来源绑定。PYO261117144731387 已成功并投递，ai-shop 回执 PCR261117CFS1VKAEX8。App 播报未由本会话确认。详见发布记录 `collectionStoreFix20261117`。
+
+原记录：还没有一笔 CHECKOUT_QR 订单付款成功，所以「near-pay 推送 → ai-shop 收据 → SSE → App 播报」还没跑通。待验证订单：
 
 | 订单 | 门店 | 渠道 | 状态 |
 |---|---|---|---|
@@ -69,7 +71,7 @@
 
 ## 五、H5 改动（未部署，交给 Oscar 会话）
 
-near-pay 本地分支 `feat/h5-all-methods-20261117`（nearpay-emr 工作树，59f130e0 + 5dc84dd3，**未推送**）：
+near-pay 分支 `feat/h5-all-methods-20261117`（5dc84dd3，已推送；Oscar 以 830a6131 并入，07:15 UTC 随 method-options 发布上线）：
 
 - 显示服务端授权的全部方式，Apple Pay 只在设备可用时显示；设备只决定顺序（LINE 内或 Android：LINE Pay 首位；Apple Pay 可用：Apple Pay 首位）。
 - LINE 内只在 LINE Pay 是唯一方式时隐藏选择框。
