@@ -102,3 +102,24 @@ H2 全仓生成器在已有品牌营销 `JSON_LENGTH(recipients_json)` CHECK 处
 - 最后只重跑受影响 HTTP 5 与 `ArchitectureTest#commonMustNotDependOnDomains`，`/tmp/captcha-release-final.log` 为 `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`、BUILD SUCCESS。其余已有效结果按 MEMORY 复用，不因文档/提交重复回归。统一分支没有遗留本功能失败；完整架构原有的其余项已在首轮通过，1项原有跳过保持。
 
 部署/推送由主代理执行，本代理仅负责移植、验证和已授权本地提交。
+
+## 2026-11-17 增量：密码登录不出滑块、发码按阈值、多套图片
+
+档位：契约变更（`/biz/auth/login`、`/biz/auth/identities` 不再要求 `X-Captcha-Token`；发码场景默认 ADAPTIVE）。依据：App 侧经「AI-shop 组件库规范整理」会话转达的用户要求，App 已在 ai-shop-bapp `feat/core-flow-ui` 1741cc7 改为登录不开滑块、发码只在 10452 时开。
+
+| 验收 | 实现 | 验证 |
+|---|---|---|
+| 密码登录与登录身份查询不再要求滑块 | 删除 `BizAuthController.login`、`BizIdentityController.list` 中的 `captcha.require(LOGIN)`，两个控制器不再依赖 `BizCaptchaService` | `BizCaptchaHttpTest#passwordLoginAndIdentityDiscoveryNeverAskForTheSlider` |
+| 撞库仍有防护 | 沿用 `AuthServiceImpl` 的 `PWD_TRY_RULE`：同一账号（手机号或邮箱）15 分钟 10 次失败即 10429，成功即清零 | 既有用例 |
+| 所有短信／邮件发码场景只在超阈值后出滑块 | `OtpScenePolicies` 默认 `CaptchaMode.ADAPTIVE`（原来除 LOGIN、ORDER_PICKUP_CONFIRM 外默认 ALWAYS）；仍可按场景配置覆盖 | `OtpScenePolicyTest#everySendSceneDefaultsToAdaptiveSliderPastTheThreshold` |
+| 滑块图片至少 10 套 | 12 张 320×180 背景，加 8 种缺口形状（tianai 内置 2 种和自绘 6 种），每次随机组合；全部从 jar 类路径读取，去掉 tianai 默认注册的 URL、文件提供者 | `TianaiSliderEngineTest`（资源齐全、尺寸 320×180、80 次至少 8 种背景、4 种形状） |
+
+**阈值（当前默认，可用环境变量覆盖）**：同一收件人（手机号或邮箱）每小时 3 次、每天 5 次（`SHOP_OTP_ADAPTIVE_ACCOUNT_HOURLY`／`_DAILY`）；全平台每小时 500 次、每天 3000 次（`SHOP_OTP_ADAPTIVE_PLATFORM_HOURLY`／`_DAILY`）；取货确认场景另为每小时 1 次、每天 3 次。达到任一阈值之后，下一次发码返回 10452 `captchaRequired`。
+
+**注意**：
+- `InMemoryOtpFrequency` 和密码失败计数都在进程内存里，每个实例各算一份。166 上 api、ops 两个容器各自计数，跨实例时实际阈值可能翻倍；重启也会清零。
+- `BizCaptchaService.Action.LOGIN` 和 `/biz/auth/captcha/challenge` 的 LOGIN 场景都保留：旧版 App 仍可能先申请 LOGIN 滑块，删掉会让它们收到 400。只是服务端不再要求它。
+- 背景图由 `scripts/captcha/GenerateSliderImages.java` 按固定种子生成（风景、城市、几何等画面），可重现，没有使用第三方图片。如需换成实拍照片，按同样的文件名和尺寸替换 `captcha/slider/backgrounds/` 即可，要使用有授权的素材。
+- 本次未部署；`SHOP_AUTH_CAPTCHA_ENABLED` 仍保持关闭，先等本增量上线。
+
+验证：`mvn -o -pl shop-app -am -Dtest=TianaiSliderEngineTest,OtpScenePolicyTest,BizCaptchaServiceTest,BizCaptchaHttpTest,ArchitectureTest test`：2/2、4/4、8/8、8/8、23/23（1 跳过，为既有）。扩大回归（*Otp*、*Auth*、*Login*、*Identity*、BizAccountFlowTest、MerchantFlowReviewFixesTest）共 292 项，9 项失败全部在 `SkuIdentityImportFlowTest`，在基线 6cecca6ed 上同样 9/9 失败，与本次无关。

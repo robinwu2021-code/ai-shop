@@ -1,7 +1,6 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.auth.store.SubjectKind;
-import ai.neargo.shop.auth.captcha.BizCaptchaService;
 import ai.neargo.shop.auth.ClientMeta;
 import ai.neargo.shop.common.otp.OtpEntries;
 import ai.neargo.shop.common.otp.OtpScenes;
@@ -41,7 +40,6 @@ import java.util.List;
 public class BizAuthController {
 
     private final AuthService authService;
-    private final BizCaptchaService captcha;
     private final OtpSendService otp;
 
     private final LoginAuditor auditor;
@@ -54,8 +52,7 @@ public class BizAuthController {
                              LoginAuditor auditor, CommunityService communityService,
                              BizMerchantController merchantController,
                              MerchantStaffService merchantStaffService,
-                             TokenStore tokenStore, BizCaptchaService captcha, OtpSendService otp) {
-        this.captcha = captcha;
+                             TokenStore tokenStore, OtpSendService otp) {
         this.otp = otp;
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;
@@ -74,8 +71,8 @@ public class BizAuthController {
      */
     @PostMapping("/biz/auth/login")
     public MerchantLoginResp login(@RequestBody @Valid LoginReq req, HttpServletRequest http) {
-        if (AuthService.GRANT_PASSWORD.equals(req.grantType()))
-            captcha.require(BizCaptchaService.Action.LOGIN, req.principal(), http.getHeader("X-Captcha-Token"));
+        // Password login never shows the slider: brute force is held by the per-account try limit
+        // (10 failures / 15 min in AuthServiceImpl). The slider guards code sends only.
         AuthService.LoginResult result;
         try {
             result = authService.login(new AuthService.LoginCommand(

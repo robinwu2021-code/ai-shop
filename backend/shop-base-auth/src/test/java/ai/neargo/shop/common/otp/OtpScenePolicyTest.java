@@ -48,4 +48,22 @@ class OtpScenePolicyTest {
         assertThat(OtpKeys.captchaScope("proof", "OTP_SEND", "a", OtpScenes.PASSWORD_RESET, "order1"))
                 .isNotEqualTo(OtpKeys.captchaScope("proof", "OTP_SEND", "a", OtpScenes.PASSWORD_RESET, "order2"));
     }
+    @Test void everySendSceneDefaultsToAdaptiveSliderPastTheThreshold() {
+        var policies = new OtpScenePolicies(new OtpSettings(), true);
+        for (String scene : OtpScenes.ALL) {
+            var settings = new OtpSettings();
+            var enabled = new OtpSettings.Scene(); enabled.setEnabled(true); enabled.setEntries(Set.of("ANY"));
+            settings.getScenes().put(scene, enabled);
+            var configured = new OtpScenePolicies(settings, true);
+            var channel = OtpScenes.EMAIL_CHANGE.equals(scene) ? Channel.EMAIL : Channel.SMS;
+            var rule = configured.require(scene, channel, "ANY", OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene) ? "order1" : null);
+            assertThat(configured.mode(rule, "ANY")).as(scene).isEqualTo(OtpScenePolicy.CaptchaMode.ADAPTIVE);
+        }
+        var defaults = new OtpSettings();
+        assertThat(defaults.getAccountHourly()).isEqualTo(3);
+        assertThat(defaults.getAccountDaily()).isEqualTo(5);
+        assertThat(defaults.getPlatformHourly()).isEqualTo(500);
+        assertThat(defaults.getPlatformDaily()).isEqualTo(3000);
+        assertThat(policies).isNotNull();
+    }
 }
