@@ -169,7 +169,7 @@ PUT  /internal/pay/v1/biz/stores/{storeNo}/collection-methods   StoreMethodsReq{
 | AC6 | ai-shop `BizEndpointPermTest`（`/biz/payment/store-method` → `mch:pay:store-method`，注解实际生效）；`MerchantRoleFlowTest#assignable…`（该码不在可授予清单，只有属主 `*` 拥有）；门店取 `BizContext.requireStoreNo()` | 通过 |
 | AC7 | near-pay `#aStaleVersionFromTheAppIsRejectedNotOverwritten`（版本冲突原样抛出）；冲突判定在 `CollectionPolicyService#saveStore` 既有乐观锁 | 通过 |
 
-端到端（App → ai-shop → near-pay → 收银台）在 UME166 线上验证时补记（§2 第 7 步）。
+端到端（App → ai-shop → near-pay → 收银台）在 UME166 线上验证时补记（§2 第 7 步）：2026-11-17 已发布，待用连 166 的 App 测试包在测试门店上登录后开关一种方式确认（登录需商户属主本人操作）。
 
 ## §6 对账二 · 设计 → 实现
 
@@ -183,6 +183,7 @@ PUT  /internal/pay/v1/biz/stores/{storeNo}/collection-methods   StoreMethodsReq{
 | 2026-11-17 | 用户「按建议确认」Q1–Q5，开始实现 |
 | 2026-11-17 | 实现中发现 App 为 Flutter、支付功能经业务服务，记录偏差 §3.1，暂停待确认 |
 | 2026-11-17 | 交接后补跑 ai-shop 测试（RemoteBizPaymentAppServiceTest 3、BizEndpointPermTest 12、ArchitectureTest 23）全部通过；按修正路线改写 §2 并加实施计划、§8 并行事项，待用户确认 |
+| 2026-11-17 | 发布 UME166（用户确认「合并并发布」）：ai-shop 合进 `release/166-live-20261117`（`a122d1e99`），near-pay 快进到 `bd8ed03da`。两边线上 jar 都是覆盖包，所以只把本功能改动的类覆盖进线上 jar：near-pay 9 个类（`PayBizFacade`、`PayBizInternalApi` 及三个新 record、`StoreCollectionMethodService` 及两个内部类、`InternalPayBizEndpoint`），jar `61a6fb2e` → `055f6dcd`；ai-shop 10 个类（`BizPaymentController` 及 `StoreMethodReq`、`BizPaymentAppService` 及两个实现、`BizPerms`、`PayBizInternalApi` 及三个 record），jar `d66b300b` → `402e64c8`。无库表变更（迁移仍 V678）。备份 `pay-svc.jar.before-np-store-methods-20261117-bd8ed03da`、`shop-app.jar.before-as-store-methods-20261117-a122d1e99`；两个 ai-shop 容器与 near-pay 均健康，新路由未带凭据返回 401（非 404），启动日志只有既有的 SHIP_TRACK_KEY 一条 ERROR |
 
 ## §8 本会话并行事项（交接 store-payment-methods-2026-11-17 §五，不计入本 TDD 验收）
 
