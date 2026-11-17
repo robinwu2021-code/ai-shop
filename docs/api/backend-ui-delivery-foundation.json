@@ -59,6 +59,11 @@
     {
       "app": "b-app",
       "method": "GET",
+      "path": "/biz/pay/v2/merchant-channels"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
       "path": "/biz/pay/v2/memberships"
     },
     {
