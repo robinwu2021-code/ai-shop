@@ -15682,6 +15682,49 @@ components:
         - "enabledProductCodes"
       additionalProperties: false
       description: "保存门店付款方式（TDD-门店付款方式-App设置）"
+    PayMethodChoice:
+      type: "object"
+      properties:
+        paymentMethodCode:
+          type: "string"
+          description: "统一支付方式码"
+        test:
+          type: "boolean"
+          description: "此选择是否作用于测试渠道"
+      required:
+        - "paymentMethodCode"
+        - "test"
+      additionalProperties: false
+    PayStoreMethodPreferencesReq:
+      type: "object"
+      properties:
+        requestNo:
+          type: "string"
+          description: "保存请求的幂等编号"
+        expectedVersion:
+          type: "number"
+          description: "最近读取的门店设置版本"
+        eligibilityRevision:
+          type: "string"
+          description: "最近读取的商户及门店渠道资格版本"
+        mode:
+          type: "string"
+          enum:
+            - "INHERIT"
+            - "OVERRIDE"
+          description: "继承商户配置或在门店自定义"
+        enabledMethods:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PayMethodChoice"
+          description: "自定义模式下启用的方式，继承模式传空"
+      required:
+        - "requestNo"
+        - "expectedVersion"
+        - "eligibilityRevision"
+        - "mode"
+        - "enabledMethods"
+      additionalProperties: false
     PayServiceStatus:
       type: "object"
       properties:
@@ -16155,6 +16198,75 @@ components:
         - "amountMinor"
       additionalProperties: false
       description: "区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额"
+    PayStoreMethodPreferences:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "当前门店编号"
+        mode:
+          type: "string"
+          enum:
+            - "INHERIT"
+            - "OVERRIDE"
+          description: "继承商户配置或在门店自定义"
+        version:
+          type: "number"
+          description: "门店设置版本"
+        eligibilityRevision:
+          type: "string"
+          description: "商户及门店渠道资格版本"
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PayStoreMethodPreference"
+          description: "正式与测试分别列出的支付方式"
+      required:
+        - "storeNo"
+        - "mode"
+        - "version"
+        - "eligibilityRevision"
+        - "items"
+      additionalProperties: false
+    PayStoreMethodPreference:
+      type: "object"
+      properties:
+        choice:
+          "$ref": "#/components/schemas/PayMethodChoice"
+          description: "方式与测试环境组合"
+        configuredEnabled:
+          type: "boolean"
+          description: "已保存的门店意愿"
+        effectiveEnabled:
+          type: "boolean"
+          description: "当前商户与门店渠道配置下是否可用"
+        editable:
+          type: "boolean"
+          description: "当前是否允许由门店开启"
+        blockedReason:
+          type:
+            - "string"
+            - "null"
+          description: "暂不可启用的原因，可启用时为空"
+        productCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "受门店产品授权范围约束的产品码"
+        channelCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "方式对应的候选渠道码"
+      required:
+        - "choice"
+        - "configuredEnabled"
+        - "effectiveEnabled"
+        - "editable"
+        - "blockedReason"
+        - "productCodes"
+        - "channelCodes"
+      additionalProperties: false
     MallStorefront:
       type: "object"
       properties:
@@ -31376,6 +31488,67 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/PayStoreMethodReq"
+  "/biz/payment/store-method-preference":
+    get:
+      operationId: "mPayStoreMethodPreferences"
+      summary: "本店付款方式设置"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayStoreMethodPreferences"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    put:
+      operationId: "mPaySaveStoreMethodPreferences"
+      summary: "保存本店付款方式设置"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayStoreMethodPreferences"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/PayStoreMethodPreferencesReq"
   "/biz/payout-account":
     get:
       operationId: "mPayoutAccounts"

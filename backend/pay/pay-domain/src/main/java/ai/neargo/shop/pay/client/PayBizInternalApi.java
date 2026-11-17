@@ -55,6 +55,14 @@ public interface PayBizInternalApi {
     record StoreMethodsReq(String operatorNo, String requestNo, Long expectedVersion, List<String> enabledProductCodes) {
     }
 
+    record MethodChoice(String paymentMethodCode, boolean test) {}
+    record MethodPreference(MethodChoice choice, boolean configuredEnabled, boolean effectiveEnabled,
+                            boolean editable, String blockedReason, List<String> productCodes, List<String> channelCodes) {}
+    record MethodPreferences(String storeNo, String mode, long version, String eligibilityRevision,
+                             List<MethodPreference> items) {}
+    record MethodPreferencesReq(String operatorNo, String requestNo, long expectedVersion,
+                                String eligibilityRevision, String mode, List<MethodChoice> enabledMethods) {}
+
     record QrReq(String operatorNo, String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
     }
 
@@ -83,6 +91,12 @@ public interface PayBizInternalApi {
 
     @PutExchange(PREFIX + "/collection-methods")
     PortResult<StoreMethods> saveStoreMethods(@PathVariable("storeNo") String storeNo, @RequestBody StoreMethodsReq req);
+
+    @GetExchange(PREFIX + "/method-preferences")
+    PortResult<MethodPreferences> methodPreferences(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    @PutExchange(PREFIX + "/method-preferences")
+    PortResult<MethodPreferences> saveMethodPreferences(@PathVariable("storeNo") String storeNo, @RequestBody MethodPreferencesReq req);
 
     @GetExchange(PREFIX + "/qr-codes")
     PortResult<List<QrView>> qrCodes(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);

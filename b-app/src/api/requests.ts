@@ -1264,3 +1264,23 @@ export interface PayStoreMethodReq {
   /** 要开启的产品码（至少一个，只能在可开范围内） */
   enabledProductCodes: string[];
 }
+
+export interface PayMethodChoice {
+  /** 统一支付方式码 */
+  paymentMethodCode: string;
+  /** 此选择是否作用于测试渠道 */
+  test: boolean;
+}
+
+export interface PayStoreMethodPreferencesReq {
+  /** 保存请求的幂等编号 */
+  requestNo: string;
+  /** 最近读取的门店设置版本 */
+  expectedVersion: number;
+  /** 最近读取的商户及门店渠道资格版本 */
+  eligibilityRevision: string;
+  /** 继承商户配置或在门店自定义 */
+  mode: "INHERIT" | "OVERRIDE";
+  /** 自定义模式下启用的方式，继承模式传空 */
+  enabledMethods: PayMethodChoice[];
+}

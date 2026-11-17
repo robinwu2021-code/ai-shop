@@ -84,4 +84,17 @@ class RemoteBizPaymentAppServiceTest {
         assertThatThrownBy(() -> remote.saveStoreMethods("S-2", "R2", 1L, List.of("LINEPAY_ONLINE")))
                 .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
     }
+
+    @Test
+    void methodPreferencesRelayBoundOperatorAndBothVersions() {
+        var view = new PayBizInternalApi.MethodPreferences("S-1", "OVERRIDE", 4, "upstream", List.of());
+        var choices = List.of(new PayBizInternalApi.MethodChoice("LINE_PAY", false));
+        var command = new PayBizInternalApi.MethodPreferencesReq("MCH-A", "R3", 3, "upstream", "OVERRIDE", choices);
+        when(api.methodPreferences("S-1", "MCH-A")).thenReturn(PortResult.ok(view));
+        when(api.saveMethodPreferences("S-1", command)).thenReturn(PortResult.ok(view));
+
+        assertThat(remote.methodPreferences("S-1")).isEqualTo(view);
+        assertThat(remote.saveMethodPreferences("S-1", "R3", 3, "upstream", "OVERRIDE", choices)).isEqualTo(view);
+        verify(api).saveMethodPreferences("S-1", command);
+    }
 }

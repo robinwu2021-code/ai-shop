@@ -1,5 +1,6 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
@@ -42,6 +43,11 @@ public interface BizPaymentAppService {
     /** 保存开启集合（全开 = 跟随商户）；expectedVersion 取读到的 version */
     StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
                                                                              List<String> enabledProductCodes);
+
+    PayBizInternalApi.MethodPreferences methodPreferences(String storeNo);
+
+    PayBizInternalApi.MethodPreferences saveMethodPreferences(String storeNo, String requestNo, long expectedVersion,
+            String eligibilityRevision, String mode, List<PayBizInternalApi.MethodChoice> choices);
 
     List<QrView> qrCodes(String storeNo);
 

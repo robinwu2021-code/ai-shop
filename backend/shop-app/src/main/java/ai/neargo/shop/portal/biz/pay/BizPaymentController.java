@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
+import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
@@ -69,6 +70,12 @@ public class BizPaymentController {
                                  @NotNull @Size(min = 1, max = 64) List<@NotBlank String> enabledProductCodes) {
     }
 
+    public record MethodChoiceReq(@NotBlank @Size(max = 32) String paymentMethodCode, @NotNull Boolean test) {}
+
+    public record MethodPreferencesReq(@NotBlank @Size(max = 48) String requestNo, @NotNull @Min(0) Long expectedVersion,
+            @NotBlank @Size(min = 64, max = 64) String eligibilityRevision, @NotBlank @Size(max = 16) String mode,
+            @NotNull @Size(max = 64) List<@NotNull @Valid MethodChoiceReq> enabledMethods) {}
+
     public record QrReq(String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
     }
 
@@ -118,6 +125,21 @@ public class BizPaymentController {
     @PutMapping("/biz/payment/store-method")
     public StoreMethods saveStoreMethods(@Valid @RequestBody StoreMethodReq req) {
         return app.saveStoreMethods(BizContext.requireStoreNo(), req.requestNo(), req.expectedVersion(), req.enabledProductCodes());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @GetMapping("/biz/payment/store-method-preference")
+    public PayBizInternalApi.MethodPreferences methodPreferences() {
+        return app.methodPreferences(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @PutMapping("/biz/payment/store-method-preference")
+    public PayBizInternalApi.MethodPreferences saveMethodPreferences(@Valid @RequestBody MethodPreferencesReq req) {
+        var choices = req.enabledMethods().stream()
+                .map(choice -> new PayBizInternalApi.MethodChoice(choice.paymentMethodCode(), choice.test())).toList();
+        return app.saveMethodPreferences(BizContext.requireStoreNo(), req.requestNo(), req.expectedVersion(),
+                req.eligibilityRevision(), req.mode(), choices);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_QR + "')")

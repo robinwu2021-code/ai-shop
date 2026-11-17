@@ -7850,6 +7850,54 @@ App 外收款合计　🔒
 类型：[`PayStoreMethods`](#paystoremethods)
 
 
+#### GET `/biz/payment/store-method-preference`
+
+本店付款方式设置　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayStoreMethodPreferences`](#paystoremethodpreferences)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
+
+
+#### PUT `/biz/payment/store-method-preference`
+
+保存本店付款方式设置　🔒
+
+**入参**
+
+请求体：[`PayStoreMethodPreferencesReq`](#paystoremethodpreferencesreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 保存请求的幂等编号 |
+| `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
+| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
+
+**出参**（`data`）
+
+类型：[`PayStoreMethodPreferences`](#paystoremethodpreferences)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
+
+
 ### payout-account
 
 #### GET `/biz/payout-account`
@@ -15927,6 +15975,13 @@ Processing state of the order points refund projection.
 - `ACTIVE`
 - `REVOKED`
 
+### PayMethodChoice
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentMethodCode` | `string` | 是 | 统一支付方式码 |
+| `test` | `boolean` | 是 | 此选择是否作用于测试渠道 |
+
 ### PayQrCode
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16003,6 +16058,38 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 - `PAYMENT`
 - `REFUND`
+
+### PayStoreMethodPreference
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `choice` | [`PayMethodChoice`](#paymethodchoice) | 是 | 方式与测试环境组合 |
+| `configuredEnabled` | `boolean` | 是 | 已保存的门店意愿 |
+| `effectiveEnabled` | `boolean` | 是 | 当前商户与门店渠道配置下是否可用 |
+| `editable` | `boolean` | 是 | 当前是否允许由门店开启 |
+| `blockedReason` | `string,null` | 是 | 暂不可启用的原因，可启用时为空 |
+| `productCodes` | `string`\[\] | 是 | 受门店产品授权范围约束的产品码 |
+| `channelCodes` | `string`\[\] | 是 | 方式对应的候选渠道码 |
+
+### PayStoreMethodPreferences
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
+
+### PayStoreMethodPreferencesReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 保存请求的幂等编号 |
+| `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
+| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
 
 ### PayStoreMethodReq
 

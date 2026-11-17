@@ -2,6 +2,7 @@ package ai.neargo.shop.payclient.impl;
 
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
@@ -82,6 +83,17 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
     @Override
     public StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
                                                                                     List<String> enabledProductCodes) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+    }
+
+    @Override
+    public PayBizInternalApi.MethodPreferences methodPreferences(String storeNo) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+    }
+
+    @Override
+    public PayBizInternalApi.MethodPreferences saveMethodPreferences(String storeNo, String requestNo, long expectedVersion,
+            String eligibilityRevision, String mode, List<PayBizInternalApi.MethodChoice> choices) {
         throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
     }
 

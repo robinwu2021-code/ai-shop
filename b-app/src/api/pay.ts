@@ -1,5 +1,5 @@
 // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）。金额一律最小单位；币种由服务端给。
-import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayStoreMethodReq } from "./requests";
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayMethodChoice, PayStoreMethodReq } from "./requests";
 
 /** near-pay 来源主体的资料审核结果；不代表门店可收款。 */
 export interface PayServiceStatus {
@@ -246,6 +246,36 @@ export interface PayStoreMethods {
   /** 乐观锁版本，保存时原样带回 */
   version: number;
   items: PayStoreMethodItem[];
+}
+
+export interface PayStoreMethodPreference {
+  /** 方式与测试环境组合 */
+  choice: PayMethodChoice;
+  /** 已保存的门店意愿 */
+  configuredEnabled: boolean;
+  /** 当前商户与门店渠道配置下是否可用 */
+  effectiveEnabled: boolean;
+  /** 当前是否允许由门店开启 */
+  editable: boolean;
+  /** 暂不可启用的原因，可启用时为空 */
+  blockedReason: string | null;
+  /** 受门店产品授权范围约束的产品码 */
+  productCodes: string[];
+  /** 方式对应的候选渠道码 */
+  channelCodes: string[];
+}
+
+export interface PayStoreMethodPreferences {
+  /** 当前门店编号 */
+  storeNo: string;
+  /** 继承商户配置或在门店自定义 */
+  mode: "INHERIT" | "OVERRIDE";
+  /** 门店设置版本 */
+  version: number;
+  /** 商户及门店渠道资格版本 */
+  eligibilityRevision: string;
+  /** 正式与测试分别列出的支付方式 */
+  items: PayStoreMethodPreference[];
 }
 
 export interface PayApi {
