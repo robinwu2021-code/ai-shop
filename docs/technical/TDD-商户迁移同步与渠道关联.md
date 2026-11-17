@@ -226,6 +226,20 @@ query exact identity
 
 M1、M2（来源读取）随批量迁移排期；本户不依赖。
 
+## §9 渠道账户转移（N7，2026-11-17，草稿 → 用户已定 D4、D5）
+
+背景：李昱達原有生产渠道账户 `PM-UME-NEWEBPAY-TRL00001898`、`PM-UME-LINEPAY-1626862643` 挂在手工测试支付商户 `UME-M-88600253990002308` 下，需转到新支付商户 `PM2026111707510001`。同渠道商户号全局唯一（`uk_pay_merchant_2` 不含删除标记），不能重建；渠道账户更新接口不能改归属；归属修复（N5）会因目标主体已有商户冲突。
+
+现状（2026-11-17 只读）：两账户共 55 笔 PRODUCTION 订单（成功 5、待支付 50，11-05～11-16），10 条账务；订单与结算按单快照 `platform_merchant_no`；凭据、产品、渠道资格按账户 `pay_merchant_id` 关联；两账户各绑定测试门店投影 `900000041`（UME-S）。
+
+决定：
+- D4 有未完结订单仍允许转移；历史与残单按快照仍归原商户，转移只影响此后新单。
+- D5 执行时自动结束该账户在「不属于目标商户的门店」上的有效绑定，留痕。
+
+契约（near-pay，照 N5 模式）：`GET/POST P/channel-account-transfers`、`GET .../{transferNo}`、`POST .../{transferNo}/approve|reject|execute`；表 `pay_channel_account_transfer`（V106）；审批受控类型、申请人不得自批；执行单事务比对前快照（账户版本、原商户、目标商户状态与市场），改账户的 `platform_merchant_id/no`，结束不属目标商户门店的绑定，写前后快照与审计；不动订单、结算、凭据、产品。之后用现有 `POST P/stores/{storeNo}/bindings` 绑定 ume 早餐店。
+
+实现（near-pay `release/166-channel-transfer-20261117`）：`merchant/account/transfer/*`、`OpsChannelAccountTransferController`、`V106__channel_account_transfer.sql`（隔离表，含执行分区列）；权限 `pay:channel-account:view`（查看）、`pay:channel-account:transfer`（申请）、`pay:channel-account:transfer:approve`（审批与执行）。执行同时改账户 `entity_name_snapshot`（仅展示用）；目标商户门店上的绑定保留并改记目标商户（否则收款入口与终端校验判不一致）；未完结订单按 CREATED/AWAITING_PAYMENT/AUTHORIZED/AWAITING_CONFIRM 计数入审计快照、不参与漂移比对。POS 终端与设备绑定不处理（本次两账户均为 0）。测试：`ChannelAccountTransferServiceTest` 7/7、`ChannelAccountTransferMySqlTest` 7/7、`OpsChannelAccountTransferControllerTest` 4/4，N5 三类与 `PayApplicationBootTest` 8/8 不受影响。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 |
