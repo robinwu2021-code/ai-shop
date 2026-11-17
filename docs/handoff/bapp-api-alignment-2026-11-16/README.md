@@ -1,6 +1,7 @@
 # 商户 App 与后端接口对齐 · 交接
 
 日期：2026-11-16。范围：商户 App（ai-shop-bapp）正式版发出的请求与 ai-shop 后端的对齐结果、`feat/entity-v46` 分支的落地状态、后续开发计划。
+后续进展：2026-11-17 UME166 发布、支付结果投递切 PRODUCTION 与联调现状见 [session-handoff-20261117.md](session-handoff-20261117.md)。
 本文只记录事实和计划，不替代各功能的 TDD：动契约的条目仍按 `.claude/skills/ai-shop-dev-standards` 分档，计划写进对应 TDD §2。
 
 ---
