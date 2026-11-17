@@ -1,0 +1,10 @@
+{
+  "releaseId": "store-basics-20261117",
+  "environment": "UME166",
+  "approvedBy": "user, 2026-11-17（方案 A；确认发布 ×2）",
+  "aiShop": {"source": "feat/ops-store-basics-20261117 c7e486616（基于 release/166-live-20261117 d1918f778）", "scope": "shop-merchant 新增 OpsStoreBasicsController(+BasicsReq)：PUT /ops/stores/{storeNo}/basics", "jarBefore": "64259e9334e8551d…", "jarAfter": "456def270dfc3c167d14340e3193ce834f8906b739ff29cca612c119f1d1ad78", "cutover": "mv 新 inode，仅重启 ai-shop-ops；ai-shop-api 未重启", "backup": "/home/ume/store-basics-20261117/shop-app.jar.before"},
+  "nearPay": {"source": "feat/store-code-release-20261117 ac99f615 + b0e93842（基于 release/166-live-20261117 d62e4280）", "scope": ["StoreCodeService：占用门店码的 QR 已停用时释放后分配", "QrCodeServiceImpl：停码改显式条件更新（修复生产 MP_OPTLOCK_VERSION_ORIGINAL 500）"], "jarChain": "ee19c192… → 62d44f7d… → 4fc9a9dec815f976bb03426b91699cb47379228e32b4a6663487be068e5317aa", "backup": ["/home/ume/store-basics-20261117/pay-before.jar", "/home/ume/store-basics-20261117/pay-before2.jar"]},
+  "operations": ["停用测试门店旧码 5ywJXpkNRoJkCf_yfTa-lA（DISABLED）", "ST2611132NS49C2EPQ 改名 ume早餐店、slug ume-breakfast", "门店码 ume-breakfast → 新码 nAjNe7H2GpWc1mEQu1hESw"],
+  "verification": "https://twpay.umeshop.ai/h5/s/ume-breakfast 显示台湾版 H5「付款给商家 / ume早餐店 / 安全收银台」；/checkout/v1/store-codes/ume-breakfast 返回收款方 李昱達、支付方式 APPLE_PAY、LINE_PAY",
+  "followUp": "near-pay 收银台预热配置 shop.pay.checkout.warmup.codes 仍指向已停用旧码 5ywJXp…，需改为新码（配置变更待用户确认）；store-codes=ume-breakfast 已恢复可预热"
+}
