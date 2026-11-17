@@ -104,6 +104,17 @@ PUT  /biz/pay/v2/stores/{storeNo}/collection-methods
 - **Q4 测试渠道**：建议 App 同样可开关测试渠道（带「測試」标签）；还是测试渠道只由运营端控制、App 不显示？
 - **Q5 未同步到 near-pay 的门店**：现在这类门店会跳过门店策略、直接放行（`require-projection=false`）。本功能上线后，是否对已完成同步的环境打开 `require-projection`？（不在本 TDD 实施范围，建议另行确认。）
 
+## §3.1 实现中发现的偏差（2026-11-17，待确认后改 §2）
+
+1. **商户 App 是 Flutter 工程 `ai-shop-bapp/apps/merchant_app`**，不是 uni-app `b-app`。原 §2「b-app `pages/store-payment-methods/index`」与 Q1 的入口描述作废，页面应落在 Flutter App（该仓库现有 `feat/core-flow-ui`、`feat/entity-ocr` 两个会话在改）。
+2. **App 不直连 near-pay 商户端接口。** 现有支付功能（收款码、代客收款、第三方授权）走 ai-shop 业务接口 `/biz/payment/...`：`@PreAuthorize("@perm.canBiz(BizPerms.X)")` 校验 App 用户 → `BizPaymentAppService` → `PayBizFacade` → 支付服务内部端点（`InternalPayBizEndpoint`）。`b-app/src/api/endpoints.ts` 注释写明「经业务服务；原直连支付的 /biz/pay 过渡后删」。原 §2 的「near-pay `/biz/pay/v2/stores/{storeNo}/collection-methods` + ai-shop 转发白名单」不符合这条路线。
+3. **修正方案（待确认）：**
+   - ai-shop：`GET|PUT /biz/payment/store-method?storeNo=`（`/biz` 单数约定），新增业务权限码 `BizPerms.PAY_STORE_METHOD`（只授予商户管理员角色，Q2），经 `PayBizFacade` 调支付服务；
+   - 支付服务：在内部端点上新增门店付款方式读写，复用已写好的 `StoreCollectionMethodService`（视图与 INHERIT/OVERRIDE 换算、ENTRY 排除，单测已过）；
+   - Flutter App：「店铺设置」新增「付款方式」页；
+   - 撤回已写的 near-pay 商户端控制器与 ai-shop 转发白名单两处提交（尚未推送）。
+4. 需先查清：`PayBizFacade` 在 UME166 上是进程内调用还是经 HTTP 调 near-pay（决定改 ai-shop 内置 pay 模块还是 near-pay 的内部端点）。
+
 ## §4 风险
 
 | 风险 | 缓解 |
@@ -134,3 +145,4 @@ PUT  /biz/pay/v2/stores/{storeNo}/collection-methods
 |---|---|
 | 2026-11-17 | 草稿 |
 | 2026-11-17 | 用户「按建议确认」Q1–Q5，开始实现 |
+| 2026-11-17 | 实现中发现 App 为 Flutter、支付功能经业务服务，记录偏差 §3.1，暂停待确认 |
