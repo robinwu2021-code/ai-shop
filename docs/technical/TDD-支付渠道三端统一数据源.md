@@ -13,7 +13,7 @@
 - **AC2** Given 某渠道有未结束的进件且该渠道还没有账户，When 打开主体详情，Then 「申請中」列出它的阶段与待办，可点进进度/补件。
 - **AC3** Given 某渠道既无正式账户也无进件，When 打开主体详情，Then 能在线申请的放「可新增」（有申请入口），不能在线申请的放「暫未開放」（提示由平台开通）。
 - **AC4** Given 同一商户，When 运营端打开商户详情「渠道」，Then 看到与 AC1–AC3 同一份数据（同一端点数据）。
-- **AC5** Given 同一门店，When App「付款方式」页加载，Then 每项标出「收银台显示」与否，且与 H5 收银台实际显示的付款方式一致（同一计算 `RouteSelectionPolicy.available(H5)`）。
+- **AC5** Given 同一门店，When App「付款方式」页加载，Then 每项标出「收银台显示」与否，且与 H5 收银台实际显示的付款方式一致（同一计算、同一缓存）。
 - **AC6** 旧数据（ai-shop 本地进件表）不再出现在主体详情。
 
 不做：App 关闭账户/商户级付款方式；改门店绑定；删除 ai-shop `/biz/merchant/payment` 接口。
@@ -24,7 +24,7 @@
 |---|---|
 | AC1–AC3 | near-pay `MerchantChannelViewService#view`（账户 + 产品 + 进件合并，渠道目录 + 在线进件网关）；`GET /biz/pay/v2/merchant-channels`（商户端，店主委托）；ai-shop `BizPayOnboardingController` + 转发白名单；Flutter `entity_channel_rows.dart` 改按视图分组 |
 | AC4 | near-pay `GET /pay-ops/v2/merchants/{merchantNo}/channels`（同一服务）；ops-web 商户详情「渠道」页签 |
-| AC5 | `StoreCollectionMethodService.Item#checkout`：产品 ∈ `RouteSelectionPolicy.available(storeId, market, currency, null, H5)`；App 付款方式页显示 |
+| AC5 | `StoreCollectionMethodService.Item#checkout`：问收银台本身 `CheckoutService#displayMethods`（与扫码首页同一计算、同一份 5 分钟缓存、启动预热），按付款方式 + 正式/测试匹配；门店 ID 用来源门店 ID（投影 `externalStoreId`）；App 付款方式页对开着但收银台不显示的项标「收銀台目前不顯示」 |
 | AC6 | Flutter 主体详情不再调用 `/biz/merchant/payment` |
 
 ## §1 合并规则
@@ -44,3 +44,9 @@
 | 4 | Flutter 主体详情四组 + 門店付款方式「收银台显示」 | 分组单测 + 页面测试 |
 | 5 | ops-web 商户详情「渠道」页签 | 页面单测 |
 | 6 | 166 发布；李昱達三端核对 | 线上证据 |
+
+## §3 发布与核对（2026-11-17，UME166）
+
+- near-pay `b198eda6c` + `d1ecb836b` + `a21e4a150`（overlay，`pay-svc.jar` 31ab99a90188）；运营端静态页 `np-channel-view-20261117-b198eda6c`；ai-shop `341a03065`（`shop-app.jar` 692766fc1575）；Flutter `f8ec65b`（nearboss 包）。
+- 李昱達 PM2026111707510001：运营端「渠道总览」、App 主体详情「已開通」均为 4 行（藍新 Apple Pay、LINE Pay、LINE Pay 測試、藍新 Sandbox 信用卡）；ume早餐店 H5 收银台 `APPLE_PAY / LINE_PAY / CARD(測試)` 与 App 门店「付款方式」4 项一致。
+- 首版 AC5 直接重算路由选择、且误用投影主键当门店 ID：门店页全标「不显示」、冷启动超 5 秒；已改为问收银台本身（`d1ecb836b`、`a21e4a150`）。
