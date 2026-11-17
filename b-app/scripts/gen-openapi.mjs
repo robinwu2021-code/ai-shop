@@ -347,6 +347,8 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mPayRecordOffline: "OfflineRecord",
   mPayOfflineRecords: "OfflineRecordPage",
   mPayOfflineSummary: "OfflineRecordSummary",
+  mPayStoreMethods: "PayStoreMethods",
+  mPaySaveStoreMethods: "PayStoreMethods",
   // 平台商城（./mall.ts）
   mMallStorefront: "MallStorefront",
   mMallOfflineQuote: "MallQuote",
@@ -688,6 +690,7 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
   mPayRecordOffline: "OfflineRecordCreateReq",
+  mPaySaveStoreMethods: "PayStoreMethodReq",
   mPayOfflineRecords: "OfflineRecordListQuery",
   mPayOfflineSummary: "OfflineRecordSummaryQuery",
   mSubmitFeedback: "SubmitFeedbackReq",

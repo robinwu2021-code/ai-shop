@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 487 个受控功能点**
+统计：**50 个权限码 × 6 个角色 × 488 个受控功能点**
 （另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -1174,6 +1174,8 @@
 | 记一笔 App 外收款 | `/biz/payment/offline-records` | `mPayRecordOffline` | `undefined` |
 | App 外收款记录 | `/biz/payment/offline-records` | `mPayOfflineRecords` | `undefined` |
 | App 外收款合计 | `/biz/payment/offline-records/summary` | `mPayOfflineSummary` | `undefined` |
+| 本店付款方式 | `/biz/payment/store-method` | `mPayStoreMethods` | `undefined` |
+| 保存本店付款方式 | `/biz/payment/store-method` | `mPaySaveStoreMethods` | `undefined` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |
 | 门店可引用的取货点候选 | `/biz/pickup-points/candidates` | `mPickupCandidates` | `biz:store` |
 | 主体属主签署当前门店积分协议 | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | `biz:finance` |

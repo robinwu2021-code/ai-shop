@@ -1,5 +1,5 @@
 // 商家端支付的本机假数据（mock 模式看界面用）。规则照真实后端：退款不能超过已付减已退、码值随机、撤销即 REVOKED
-import type { OfflineRecord, PayApi, PayAppGrant, PayQrCode, PayRefundItem, PayStatementItem } from "../pay";
+import type { OfflineRecord, PayApi, PayAppGrant, PayQrCode, PayRefundItem, PayStatementItem, PayStoreMethods } from "../pay";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const rnd = (n: number) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"[
@@ -101,4 +101,22 @@ export const payMock: PayApi = {
     return { from: today(), to: today(), currency: live[0]?.currency ?? "TWD", count: live.length,
       amountMinor: live.reduce((a, r) => a + r.amountMinor, 0) };
   },
+  async mPayStoreMethods() {
+    return structuredClone(storeMethods);
+  },
+  async mPaySaveStoreMethods(body) {
+    const editable = storeMethods.items.filter((i) => i.editable).map((i) => i.productCode);
+    storeMethods = { ...storeMethods, version: storeMethods.version + 1,
+      mode: editable.every((c) => body.enabledProductCodes.includes(c)) ? "INHERIT" : "OVERRIDE",
+      items: storeMethods.items.map((i) => i.editable
+        ? { ...i, enabled: body.enabledProductCodes.includes(i.productCode), excludedBy: body.enabledProductCodes.includes(i.productCode) ? null : "STORE" }
+        : i) };
+    return structuredClone(storeMethods);
+  },
 };
+
+let storeMethods: PayStoreMethods = { storeNo: "ST_MOCK", mode: "INHERIT", version: 0, items: [
+  { productCode: "LINEPAY_ONLINE", channelCode: "LINEPAY", method: "LINE_PAY", test: false, enabled: true, editable: true, excludedBy: null },
+  { productCode: "NEWEBPAY_CARD_ONETIME", channelCode: "NEWEBPAY", method: "CARD", test: false, enabled: true, editable: true, excludedBy: null },
+  { productCode: "LINEPAY_TEST_ONLINE", channelCode: "LINEPAY_TEST", method: "LINE_PAY", test: true, enabled: false, editable: false, excludedBy: "MERCHANT" },
+] };

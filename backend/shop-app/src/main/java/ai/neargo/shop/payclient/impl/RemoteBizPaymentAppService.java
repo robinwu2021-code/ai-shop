@@ -97,6 +97,22 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
     }
 
     @Override
+    public PayBizInternalApi.StoreMethods storeMethods(String storeNo) {
+        PayBizInternalApi.StoreMethods result = unwrap(() -> pay.storeMethods(storeNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "门店付款方式");
+        return result;
+    }
+
+    @Override
+    public PayBizInternalApi.StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
+                                                           List<String> enabledProductCodes) {
+        PayBizInternalApi.StoreMethods result = unwrap(() -> pay.saveStoreMethods(storeNo,
+                new PayBizInternalApi.StoreMethodsReq(operator(), requestNo, expectedVersion, enabledProductCodes)));
+        auditLogPort.record("BIZ_PAY_STORE_METHOD", storeNo, "门店付款方式：" + String.join(",", enabledProductCodes), true);
+        return result;
+    }
+
+    @Override
     public List<QrView> qrCodes(String storeNo) {
         List<QrView> result = unwrap(() -> pay.qrCodes(storeNo, operator()));
         auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款码");

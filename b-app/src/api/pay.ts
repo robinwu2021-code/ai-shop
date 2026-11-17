@@ -1,5 +1,5 @@
 // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）。金额一律最小单位；币种由服务端给。
-import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayStoreMethodReq } from "./requests";
 
 /** near-pay 来源主体的资料审核结果；不代表门店可收款。 */
 export interface PayServiceStatus {
@@ -215,6 +215,39 @@ export interface OfflineRecordSummary {
   amountMinor: number;
 }
 
+/** 门店付款方式的不可开原因：null 开启；STORE 门店关（可重开）；其余为商户层 / 平台目录 / 门店状态 / 收款入口未包含，不可开 */
+export type PayStoreMethodExclusion = "STORE" | "MERCHANT" | "CATALOG" | "STORE_STATE" | "ENTRY";
+
+/** 门店付款方式模式：INHERIT 跟随商户；OVERRIDE 门店自定 */
+export type PayStoreMethodMode = "INHERIT" | "OVERRIDE";
+
+/** 门店付款方式一项（TDD-门店付款方式-App设置） */
+export interface PayStoreMethodItem {
+  /** 支付产品码 */
+  productCode: string;
+  /** 渠道码 */
+  channelCode: string;
+  /** 付款方式（LINE_PAY / CARD / APPLE_PAY …），端上据此显示名称 */
+  method: string;
+  /** 测试渠道（显示「測試」标签） */
+  test: boolean;
+  /** 当前在收银台开启 */
+  enabled: boolean;
+  /** 商户可在门店层开关 */
+  editable: boolean;
+  /** 未开启的原因 */
+  excludedBy: PayStoreMethodExclusion | null;
+}
+
+/** 门店付款方式（当前门店） */
+export interface PayStoreMethods {
+  storeNo: string;
+  mode: PayStoreMethodMode;
+  /** 乐观锁版本，保存时原样带回 */
+  version: number;
+  items: PayStoreMethodItem[];
+}
+
 export interface PayApi {
   /** 当前所选门店所属主体的支付服务资料审核状态，仅属主可查 */
   mPayServiceStatus(): Promise<PayServiceStatus>;
@@ -233,4 +266,8 @@ export interface PayApi {
   mPayRecordOffline(body: OfflineRecordCreateReq, key: string): Promise<OfflineRecord>;
   mPayOfflineRecords(query?: OfflineRecordListQuery): Promise<OfflineRecordPage>;
   mPayOfflineSummary(query?: OfflineRecordSummaryQuery): Promise<OfflineRecordSummary>;
+  /** 当前门店的付款方式（仅主体属主） */
+  mPayStoreMethods(): Promise<PayStoreMethods>;
+  /** 保存当前门店开启的付款方式；全开即回到跟随商户 */
+  mPaySaveStoreMethods(body: PayStoreMethodReq): Promise<PayStoreMethods>;
 }

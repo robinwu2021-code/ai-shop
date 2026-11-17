@@ -43,6 +43,17 @@ public interface PayBizInternalApi {
     record CollectReq(String operatorNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
     }
 
+    /** 门店付款方式（TDD-门店付款方式-App设置；与 near-pay 同形）。excludedBy：null 开启 / STORE 门店关（可开）/ MERCHANT、CATALOG、STORE_STATE、ENTRY 不可开 */
+    record StoreMethodItem(String productCode, String channelCode, String method, boolean test, boolean enabled, boolean editable,
+                           String excludedBy) {
+    }
+
+    record StoreMethods(String storeNo, String mode, long version, List<StoreMethodItem> items) {
+    }
+
+    record StoreMethodsReq(String operatorNo, String requestNo, Long expectedVersion, List<String> enabledProductCodes) {
+    }
+
     record QrReq(String operatorNo, String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
     }
 
@@ -65,6 +76,12 @@ public interface PayBizInternalApi {
 
     @PostExchange(PREFIX + "/collections")
     PortResult<CollectView> collect(@PathVariable("storeNo") String storeNo, @RequestBody CollectReq req);
+
+    @GetExchange(PREFIX + "/collection-methods")
+    PortResult<StoreMethods> storeMethods(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    @PutExchange(PREFIX + "/collection-methods")
+    PortResult<StoreMethods> saveStoreMethods(@PathVariable("storeNo") String storeNo, @RequestBody StoreMethodsReq req);
 
     @GetExchange(PREFIX + "/qr-codes")
     PortResult<List<QrView>> qrCodes(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);

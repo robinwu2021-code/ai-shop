@@ -725,6 +725,8 @@ class BizEndpointPermTest {
                     put("/biz/payment/links/{payOrderNo}/reissue", BizPerms.PAY_COLLECT);
                     put("/biz/payment/links/{payOrderNo}/void", BizPerms.PAY_COLLECT);
                     // App 外收款记录（TDD-商户App外部记账）：表按路径一行，同一路径的 GET 列表读 PAY_ORDER_VIEW、POST 记一笔读 PAY_OFFLINE_RECORD
+                    // 门店付款方式（TDD-门店付款方式-App设置）：GET 与 PUT 同一码，只给主体属主
+                    put("/biz/payment/store-method", BizPerms.PAY_STORE_METHOD);
                     put("/biz/payment/offline-records", BizPerms.PAY_OFFLINE_RECORD);
                     put("/biz/payment/offline-records/summary", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/offline-records/{recordNo}/correct", BizPerms.PAY_OFFLINE_MANAGE);

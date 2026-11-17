@@ -174,6 +174,11 @@ public final class BizPerms {
     public static final String PAY_APP_GRANT = "mch:pay:app-grant";
     public static final String PAY_QR = "mch:pay:qr";
     /**
+     * 按门店开关付款方式（TDD-门店付款方式-App设置 Q2）：只授予主体属主（OWNER 的 *），不进店长、店员模板 ——
+     * 关掉一种付款方式会直接影响顾客能不能付钱。
+     */
+    public static final String PAY_STORE_METHOD = "mch:pay:store-method";
+    /**
      * 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）。只读、不含汇总与手续费：
      * 店员要能对着顾客手机查「这笔付了没」，所以店长、店员默认都有；汇总仍是 {@link #PAY_STATEMENT}，退款仍是 {@link #PAY_REFUND}。
      */
