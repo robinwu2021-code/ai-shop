@@ -84,5 +84,12 @@
     "rollback": "/home/ume/entity-natural-person-20261117/{pay-before-natural-person.jar,shop-before-natural-person.jar} written back in place; oms symlink back to entity-v46-20261116",
     "openDecision": "natural persons are projected with biz_qualification=UNREGISTERED per the plan; EXEMPT would be the accurate value once anything gates trading on it",
     "notVerified": "App natural-person flow on 166 (ENTITY_NATURAL_PERSON) not yet exercised"
+  },
+  "captchaRulesRelease": {
+    "approvedBy": "user, 2026-11-17 (Deploy to 166)",
+    "source": "ai-shop feat/captcha-rules b2982e589 (on release/166-live-20261117)",
+    "aiShop": "overlay on 456def27 (other session's store-basics release) of TianaiSliderEngine, BizAuthController(+inner), BizIdentityController(+inner), shop-base-auth OtpScenePolicies, plus 24 new classpath images under captcha/slider/ -> 9d750af95e6a00af0a4375283e9b26dc190582299ade35daa5f1dd675bd21eda; in place, both containers UP after 140 s, no new errors; live challenge returns 320x180 background and 110 px piece. The stale TianaiSliderEngine$FreshBackground class stays in the jar, unreferenced",
+    "config": "none changed; SHOP_AUTH_CAPTCHA_ENABLED still off on 166",
+    "rollback": "/home/ume/captcha-rules-20261117/shop-before-captcha.jar written back in place, restart both containers"
   }
 }
