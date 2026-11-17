@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import ai.neargo.shop.merchant.service.EntityRegistrationProjection;
 import ai.neargo.shop.merchant.service.EntityRegistrationProjection.Target;
 import ai.neargo.shop.merchantbridge.EntityRegistrationProjectionCoordinator;
+import ai.neargo.shop.merchantbridge.EntityRegistrationProjectionTimer;
 import ai.neargo.shop.payclient.PayEntityProfileApi;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
@@ -27,7 +28,8 @@ import org.springframework.web.client.ResourceAccessException;
 @SpringBootTest(
     properties = {
       "shop.pay.entity-profiles.enabled=true",
-      "shop.pay.entity-profiles.projection-delay=3600000"
+      "shop.pay.entity-profiles.projection-delay=3600000",
+      "shop.pay.entity-profiles.projection-in-process=true"
     })
 class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
   @MockitoBean PayEntityProfileApi pay;
@@ -315,6 +317,51 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
                 String.class,
                 no))
         .isEqualTo("BLOCKED");
+  }
+
+  @Autowired EntityRegistrationProjectionTimer inProcess;
+  @Autowired org.springframework.core.env.Environment environment;
+
+  /** UME166 runs api/ops only: the opt-in timer must project without the worker profile. */
+  @Test
+  void inProcessTimerProjectsApprovedTargetWithoutWorkerUnderTheSharedLock() throws Exception {
+    assertThat(environment.acceptsProfiles(org.springframework.core.env.Profiles.of("worker")))
+        .isFalse();
+    String token = login();
+    String no =
+        create(token, "in-process", "NearGo")
+            .path("data")
+            .path("entity")
+            .path("entityNo")
+            .asString();
+    String tenant =
+        jdbc.queryForObject("SELECT tenant_no FROM mch_entity WHERE entity_no=?", String.class, no);
+    jdbc.update("UPDATE mch_entity SET market='TW' WHERE entity_no=?", no);
+    registration.observe(tenant, no, "TEST-U", "submit-ip1");
+    when(pay.approvedRegistration(eq(no), anyString()))
+        .thenReturn(registrationFacts(no, 1, "In-process NearGo"));
+    when(pay.result(eq(no), eq("submit-ip1"), anyString(), anyString()))
+        .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM-R1"));
+    jdbc.update(
+        "UPDATE mch_entity_profile_projection SET next_check_at=0 WHERE entity_no=?", no);
+
+    inProcess.tick();
+
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT status FROM mch_entity WHERE entity_no=?", String.class, no))
+        .isEqualTo("ACTIVE");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                String.class,
+                no))
+        .isEqualTo("APPLIED");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shedlock WHERE name='entity-registration-projection'",
+                Integer.class))
+        .isEqualTo(1);
   }
 
   Map<String, Object> registrationFacts(String entity, int version, String name) {

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "shop.pay.entity-profiles.enabled", havingValue = "true")
 public class EntityRegistrationProjectionCoordinator {
-  private static final String LOCK = "entity-registration-projection";
+  static final String LOCK = "entity-registration-projection";
 
   private final EntityRegistrationProjection projection;
   private final PayEntityProfileApi pay;
