@@ -617,6 +617,20 @@ public class OpsServiceImpl implements OpsService {
         return doCreateApply(cmd, submittedBy, owner -> Optional.empty());
     }
 
+    @Override
+    @Transactional
+    public String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy, String entityNo) {
+        if (entityNo == null || entityNo.isBlank()) return createApplyOnBehalf(cmd, submittedBy);
+        if (submittedBy == null || submittedBy.isBlank() || cmd.storeProfile() != null) {
+            // 指定已有主体时沿用它的门店；同时带门店草稿会让「用哪家店」含糊
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        ownershipWrites.lockEntityExclusiveAndCheck("MAIN", entityNo);
+        if (merchantAdminPort.managedRegistration("MAIN", entityNo)) throw BizException.of(ErrorCode.CONFLICT);
+        // 只认店主本人名下、仍为待补证照、有营业中默认店的主体（与商户自助补证同一校验）
+        return doCreateApply(cmd, submittedBy, owner -> merchantAdminPort.merchantApplicationEntity(owner, entityNo));
+    }
+
     /**
      * 自填与代填共用的那一份。**两条路只在末尾分叉**（submitted_by / agreed_at），
      * 前面的几道闸一字不差 —— 抄一份出来的话，日后加一道闸只会加在其中一条上。

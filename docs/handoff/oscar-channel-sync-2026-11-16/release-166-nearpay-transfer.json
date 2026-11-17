@@ -1,0 +1,17 @@
+{
+  "releaseId": "channel-transfer-20261117",
+  "environment": "UME166",
+  "approvedBy": "user, 2026-11-17（同意发布）",
+  "nearPay": {
+    "source": "release/166-channel-transfer-20261117 = fc874b14（上次发布源）+ 8b2acf02（N7 渠道账户转移）",
+    "method": "在运行 jar 上只覆盖 18 个条目（pay-domain 14、pay-portal 4）；清单为干净构建 fc874b14 与 8b2acf02 的差异，且在运行 jar 中与基线一致",
+    "jarBefore": "3d0c4d87acc7479d388664ba9b6e7d3bb66d22cd6e20d04bc868d2f65266af21",
+    "jarAfter": "3d87cf9cd7c4b412f7117c638013d3236b0755d31037d0d693face20817fc4ec",
+    "fileAttributes": "停容器后原地覆盖，inode 与 ACL 不变",
+    "migration": "V106 pay_channel_account_transfer 经 migrate-helper（validate、apply，DB_TARGET=106）在容器内执行成功；执行前临时 GRANT CREATE、执行后立即 REVOKE，权限复原为 SELECT/INSERT/UPDATE/DELETE；新表 0 行",
+    "health": "迁移后重启，36.9s 就绪，database at V106 matches bundled pay migrations",
+    "publicProbe": "两域 /oms-api/pay-ops/v2/channel-account-transfers 无令牌 401、带令牌 200",
+    "backup": "/home/ume/channel-transfer-20261117/pay-before-channel-transfer.jar",
+    "note": "生产 near-pay.approval.single-operator=true；N5/N7 的申请人不得自批不受该开关影响"
+  }
+}

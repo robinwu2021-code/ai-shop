@@ -1,0 +1,15 @@
+{
+  "releaseId": "ops-onbehalf-entity-20261116",
+  "environment": "UME166",
+  "approvedBy": "user, 2026-11-16（同意发布）",
+  "source": "ai-shop 3b131ad53（apply-on-behalf 可选 entityNo）",
+  "scope": "shop-core 13 个条目：OpsService(+内部类)、OpsServiceImpl(+$1..$5)、OpsMerchantApplyController(+OnBehalfReq/ApplyOnBehalfVO)",
+  "method": "条目清单为干净构建 56a2beca0 与 3b131ad53 的 shop-core 差异；这些条目在运行 jar 中与基线一致；仅覆盖嵌套 shop-core jar（STORED），其余条目逐字节一致；运行 jar 另有 3 处既有覆盖（SysNotifyLog、NotifyLogWriter、NotifyLoggingSmsPort）原样保留",
+  "jarBefore": "6d261deb9db8c16a2a6ddc0db1d3643d7a255aa3522390417ed44cef517d8b2d（entity-tw2-20261116 候选）",
+  "jarAfter": "d56da3ff2976b54664305de989cdfb9cf994effa2af2cf4207ceef0e73463795",
+  "cutover": "新文件 root:root 644 经 mv 替换（新 inode）；仅重启 ai-shop-ops，65s 就绪；ai-shop-api 未重启，继续持有旧 jar（兼容，新方法仅运营端使用）",
+  "database": "无迁移",
+  "verification": "两域 /ops-shop/ops/auth/me 无令牌 401、带令牌 200；apply-on-behalf/context 200；启动错误仅既有 shop.ship.track-key 未配置",
+  "backup": "/home/ume/ops-onbehalf-entity-20261116/shop-app.jar.before",
+  "rollback": "cp 备份为 shop-app.jar.new，chown root:root、chmod 644，mv 覆盖 shop-app.jar，docker restart ai-shop-ops"
+}

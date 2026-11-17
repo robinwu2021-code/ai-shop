@@ -5,6 +5,8 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -61,6 +63,21 @@ public class OpsQualificationController {
         return vo;
     }
 
+    /**
+     * 只新建：同类型已有有效资质返回冲突，不覆盖（迁移脚本「先查、零条才建」用这个，不用上面的登记或更新）。
+     */
+    @PostMapping("/ops/merchants/{merchantNo}/qualification-creations")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
+    public QualificationVO create(@PathVariable String merchantNo, @RequestBody @Valid CreateReq req) {
+        QualificationVO vo = governService.createQualification(merchantNo,
+                new MerchantGovernService.SaveQualificationCommand(null, req.qualType(),
+                        req.qualName(), req.qualNumber(), req.imageUrl(), req.expireAt()),
+                SecurityUtils.currentUserNo());
+        auditLogPort.record("QUALIFICATION_CREATE", merchantNo,
+                vo.qualName() + "｜有效期至 " + (vo.expireAt() == null ? "长期" : vo.expireAt()));
+        return vo;
+    }
+
     /** 撤销。不物理删——「当初有没有这张证」是要能查的。 */
     @PostMapping("/ops/qualifications/{qualNo}/revoke")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_CATEGORY_GRANT + "')")
@@ -68,6 +85,10 @@ public class OpsQualificationController {
         QualificationVO vo = governService.revokeQualification(qualNo, SecurityUtils.currentUserNo());
         auditLogPort.record("QUALIFICATION_REVOKE", qualNo, vo.qualName());
         return vo;
+    }
+
+    public record CreateReq(@NotBlank String qualType, @NotBlank String qualName,
+                            String qualNumber, String imageUrl, Long expireAt) {
     }
 
     public record SaveReq(String qualNo, String qualType, String qualName,

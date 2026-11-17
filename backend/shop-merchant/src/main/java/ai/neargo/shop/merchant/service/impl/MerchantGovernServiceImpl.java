@@ -1139,6 +1139,24 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     @Transactional
+    public QualificationVO createQualification(String merchantNo, SaveQualificationCommand cmd,
+                                               String operatorNo) {
+        if (cmd.qualNo() != null && !cmd.qualNo().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        Long valid = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectCount(
+                Wrappers.<MchQualification>lambdaQuery()
+                        .eq(MchQualification::getEntityNo, merchantNo)
+                        .eq(MchQualification::getQualType, cmd.qualType())
+                        .eq(MchQualification::getStatus, MchQualification.VALID)));
+        if (valid != null && valid > 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return saveQualification(merchantNo, cmd, operatorNo);
+    }
+
+    @Override
+    @Transactional
     public QualificationVO revokeQualification(String qualNo, String operatorNo) {
         MchQualification q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(
                 Wrappers.<MchQualification>lambdaQuery()

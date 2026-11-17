@@ -60,3 +60,5 @@ POST /ops/stores/nearpay-sync
 PUT /ops/x/commerce/product-profiles/{profileNo}
 GET /ops/x/commerce/support/health
 GET /ops/x/commerce/support/operations/{operationNo}
+# 商户迁移同步脚本专用（TDD-商户迁移同步与渠道关联 N2）：只由 deploy/ume/oscar-sync 调用，运营页面仍用登记或更新接口
+POST /ops/merchants/{merchantNo}/qualification-creations
