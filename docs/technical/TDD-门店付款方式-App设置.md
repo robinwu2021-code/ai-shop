@@ -161,13 +161,15 @@ PUT  /internal/pay/v1/biz/stores/{storeNo}/collection-methods   StoreMethodsReq{
 
 | AC | 测试 | 结果 |
 |---|---|---|
-| AC1 | （实现后填） | |
-| AC2 | | |
-| AC3 | | |
-| AC4 | | |
-| AC5 | | |
-| AC6 | | |
-| AC7 | | |
+| AC1 | near-pay `StoreCollectionMethodServiceTest#viewListsOnlyBoundActiveOpenProductsWithTheirExclusionLayer`（只列 ACTIVE 绑定 / 账户 / OPEN 产品，STORE / MERCHANT / CATALOG / ENTRY 各层）；`PayBizInternalApiRoundTripTest`（真实 HTTP 往返）；ai-shop `RemoteBizPaymentAppServiceTest#storeMethodsCarryOperatorAndStore` | 通过（2026-11-17） |
+| AC2 | near-pay `#enablingASubsetOverridesWithExactlyThatSet` | 通过 |
+| AC3 | near-pay `#enablingEverythingSwitchableGoesBackToInherit` | 通过 |
+| AC4 | near-pay `#rejectsEnablingANonSwitchableMethodOrDisablingEverything`（越权开启） | 通过 |
+| AC5 | 同上（全部关闭被拒） | 通过 |
+| AC6 | ai-shop `BizEndpointPermTest`（`/biz/payment/store-method` → `mch:pay:store-method`，注解实际生效）；`MerchantRoleFlowTest#assignable…`（该码不在可授予清单，只有属主 `*` 拥有）；门店取 `BizContext.requireStoreNo()` | 通过 |
+| AC7 | near-pay `#aStaleVersionFromTheAppIsRejectedNotOverwritten`（版本冲突原样抛出）；冲突判定在 `CollectionPolicyService#saveStore` 既有乐观锁 | 通过 |
+
+端到端（App → ai-shop → near-pay → 收银台）在 UME166 线上验证时补记（§2 第 7 步）。
 
 ## §6 对账二 · 设计 → 实现
 
