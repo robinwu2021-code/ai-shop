@@ -49968,6 +49968,15 @@
         "zh": "门店付款方式的不可开原因：null 开启。"
       },
       {
+        "name": "PayStoreMethodMode",
+        "client": "b-app",
+        "values": [
+          "INHERIT",
+          "OVERRIDE"
+        ],
+        "zh": "门店付款方式模式：INHERIT 跟随商户。"
+      },
+      {
         "name": "PaymentApplyStatus",
         "client": "shared",
         "values": [

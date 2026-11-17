@@ -218,6 +218,9 @@ export interface OfflineRecordSummary {
 /** 门店付款方式的不可开原因：null 开启；STORE 门店关（可重开）；其余为商户层 / 平台目录 / 门店状态 / 收款入口未包含，不可开 */
 export type PayStoreMethodExclusion = "STORE" | "MERCHANT" | "CATALOG" | "STORE_STATE" | "ENTRY";
 
+/** 门店付款方式模式：INHERIT 跟随商户；OVERRIDE 门店自定 */
+export type PayStoreMethodMode = "INHERIT" | "OVERRIDE";
+
 /** 门店付款方式一项（TDD-门店付款方式-App设置） */
 export interface PayStoreMethodItem {
   /** 支付产品码 */
@@ -239,8 +242,7 @@ export interface PayStoreMethodItem {
 /** 门店付款方式（当前门店） */
 export interface PayStoreMethods {
   storeNo: string;
-  /** INHERIT 跟随商户；OVERRIDE 门店自定 */
-  mode: "INHERIT" | "OVERRIDE";
+  mode: PayStoreMethodMode;
   /** 乐观锁版本，保存时原样带回 */
   version: number;
   items: PayStoreMethodItem[];
