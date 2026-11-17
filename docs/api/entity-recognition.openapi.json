@@ -8,7 +8,7 @@
   "paths": {
     "/biz/entity-recognitions": {
       "post": {
-        "summary": "Read the registration certificate before the entity exists; the file is not kept",
+        "summary": "Read a document before the entity exists (company registration, or a natural person's ID card front/back); the file is not kept",
         "requestBody": {
           "required": true,
           "content": {
@@ -29,7 +29,9 @@
                   "docType": {
                     "type": "string",
                     "enum": [
-                      "REGISTRATION"
+                      "REGISTRATION",
+                      "ID_CARD_FRONT",
+                      "ID_CARD_BACK"
                     ]
                   },
                   "requestNo": {
@@ -100,6 +102,7 @@
                       "REGISTRATION",
                       "CORPORATE_REGISTRATION",
                       "ID_CARD_FRONT",
+                      "ID_CARD_BACK",
                       "ARC_FRONT",
                       "ARC_BACK",
                       "PASSPORT",
@@ -150,6 +153,7 @@
               "REGISTRATION",
               "CORPORATE_REGISTRATION",
               "ID_CARD_FRONT",
+              "ID_CARD_BACK",
               "ARC_FRONT",
               "ARC_BACK",
               "PASSPORT",

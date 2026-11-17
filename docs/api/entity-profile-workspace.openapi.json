@@ -431,7 +431,13 @@
                     "maxLength": 64
                   },
                   "legalForm": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "ENTERPRISE",
+                      "INDIVIDUAL",
+                      "NATURAL_PERSON"
+                    ],
+                    "description": "ENTERPRISE company, INDIVIDUAL registered sole trader (has a tax number), NATURAL_PERSON the applicant themselves (name at most 20 characters, no tax number)"
                   },
                   "profileFields": {
                     "$ref": "#/components/schemas/InitialProfile"
@@ -1066,7 +1072,6 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "taxNo",
           "contactName",
           "contactMobile",
           "contactEmail"
@@ -1074,7 +1079,8 @@
         "properties": {
           "taxNo": {
             "type": "string",
-            "pattern": "^[0-9]{8}$"
+            "pattern": "^[0-9]{8}$",
+            "description": "8-digit tax number; required unless legalForm is NATURAL_PERSON, for whom it must be absent (10400 otherwise)"
           },
           "contactName": {
             "type": "string",

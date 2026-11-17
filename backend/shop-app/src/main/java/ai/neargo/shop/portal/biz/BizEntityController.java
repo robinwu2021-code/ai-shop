@@ -56,10 +56,16 @@ public class BizEntityController {
         this.initializer = initializer;
     }
 
-    public record InitialProfile(@NotBlank @Pattern(regexp="[0-9]{8}")String taxNo,
+    /** taxNo is required except for a natural person, who has none (checked in {@link #create}). */
+    public record InitialProfile(@Pattern(regexp="[0-9]{8}")String taxNo,
         @NotBlank @Size(max=64)String contactName,@NotBlank @Pattern(regexp="09[0-9]{8}")String contactMobile,
         @NotBlank @Email @Size(max=128)String contactEmail) {
-        public Map<String,String> fields(){return Map.of("taxNo",taxNo,"contactName",contactName,"contactMobile",contactMobile,"contactEmail",contactEmail);}
+        public Map<String,String> fields(){
+            var f=new java.util.LinkedHashMap<String,String>();
+            if(taxNo!=null)f.put("taxNo",taxNo);
+            f.put("contactName",contactName);f.put("contactMobile",contactMobile);f.put("contactEmail",contactEmail);
+            return Map.copyOf(f);
+        }
         @Override public String toString(){return "InitialProfile[REDACTED]";}
     }
     public record CreateEntityReq(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String requestNo,
@@ -70,6 +76,12 @@ public class BizEntityController {
     @PostMapping("/biz/entities")
     @PreAuthorize("@perm.merchantAccount()")
     public EntityCreationService.Result create(@Valid @RequestBody CreateEntityReq req) {
+        boolean person="NATURAL_PERSON".equals(req.legalForm());
+        // A natural person applies under their own name (NewebPay individual member, at most 20 characters)
+        // and has no tax number; everyone else still needs the 8-digit number with the initial profile.
+        if(person&&req.name().trim().length()>20)throw BizException.of(ErrorCode.BAD_REQUEST);
+        if(req.profileFields()!=null&&(person?req.profileFields().taxNo()!=null:req.profileFields().taxNo()==null))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         var user = BizAuthController.personalUser();
         var init=req.profileFields()==null?null:initializer.getIfAvailable();
         if(req.profileFields()!=null&&init==null)throw BizException.of(ErrorCode.BAD_REQUEST);

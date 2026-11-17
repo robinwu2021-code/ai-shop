@@ -113,6 +113,31 @@ class BizEntityRecognitionControllerTest {
     assertThat(BizEntityRecognitionController.normalize(Map.of("legalForm", "公司", "idIssueType", "其他"))).isEmpty();
   }
 
+  @Test
+  void naturalPersonIdCardsAreReadBeforeTheEntityExists() throws Exception {
+    when(vision.recognizeDocument(any(), eq("image/jpeg"), eq(DocumentType.ID_CARD_BACK)))
+        .thenReturn(new CertVisionPort.Document(DocumentType.ID_CARD_BACK,
+            Map.of("registeredCity", "臺北市", "registeredArea", "大安區", "registeredAddress", "測試路1號"), 0.9));
+    var back = controller.beforeCreate(image(), EntityRecognitionType.ID_CARD_BACK, "R1", new MockHttpServletResponse());
+    assertThat(back.fields()).containsOnlyKeys("registeredCity", "registeredArea", "registeredAddress");
+    when(vision.recognizeDocument(any(), eq("image/jpeg"), eq(DocumentType.ID_CARD_FRONT)))
+        .thenReturn(new CertVisionPort.Document(DocumentType.ID_CARD_FRONT,
+            Map.of("identityNo", "A123456789", "issuePlace", "臺北市"), 0.9));
+    var front = controller.beforeCreate(image(), EntityRecognitionType.ID_CARD_FRONT, "R2", new MockHttpServletResponse());
+    assertThat(front.fields()).containsEntry("issuePlace", "北市");
+    verifyNoInteractions(pay, entities);
+  }
+
+  @Test
+  void issuePlaceBecomesTheNewebPayCodeOrIsDropped() {
+    assertThat(BizEntityRecognitionController.normalize(Map.of("issuePlace", "台中市"))).containsEntry("issuePlace", "中市");
+    assertThat(BizEntityRecognitionController.normalize(Map.of("issuePlace", "（新北市）"))).containsEntry("issuePlace", "新北市");
+    assertThat(BizEntityRecognitionController.normalize(Map.of("issuePlace", "金門縣"))).containsEntry("issuePlace", "金門");
+    assertThat(BizEntityRecognitionController.normalize(Map.of("issuePlace", "雲縣"))).as("unconfirmed code").isEmpty();
+    assertThat(BizEntityRecognitionController.normalize(Map.of("legalForm", "NATURAL_PERSON")))
+        .containsEntry("legalForm", "NATURAL_PERSON");
+  }
+
   private static MockMultipartFile image() throws Exception {
     var out = new ByteArrayOutputStream();
     ImageIO.write(new BufferedImage(20, 20, BufferedImage.TYPE_INT_RGB), "png", out);

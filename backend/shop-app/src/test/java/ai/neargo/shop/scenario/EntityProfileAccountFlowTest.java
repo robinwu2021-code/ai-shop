@@ -649,5 +649,69 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
     assertThat(denied.path("code").asInt()).as(denied.toString()).isEqualTo(10403);
     verifyNoInteractions(pay);
   }
-}
 
+  private tools.jackson.databind.JsonNode createAs(String token, Map<String, Object> body) throws Exception {
+    return json.readTree(
+        mvc()
+            .perform(
+                post("/biz/entities")
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(body)))
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+  }
+
+  @Test
+  void naturalPersonIsCreatedWithoutTaxNumberAndProjectedOnTheirMaskedIdCard() throws Exception {
+    String token = login();
+    var tooLong =
+        createAs(token, Map.of("requestNo", "np-long", "name", "林".repeat(21), "legalForm", "NATURAL_PERSON"));
+    assertThat(tooLong.path("code").asInt()).as(tooLong.toString()).isEqualTo(10400);
+    var withTax =
+        createAs(
+            token,
+            Map.of(
+                "requestNo", "np-tax", "name", "林小美", "legalForm", "NATURAL_PERSON",
+                "profileFields",
+                Map.of("taxNo", "12345678", "contactName", "林小美", "contactMobile", "0912345678",
+                    "contactEmail", "lin@example.test")));
+    assertThat(withTax.path("code").asInt()).as("a natural person has no tax number").isEqualTo(10400);
+    var created =
+        createAs(token, Map.of("requestNo", "np-1", "name", "林小美", "legalForm", "NATURAL_PERSON"));
+    assertThat(created.path("code").asInt()).as(created.toString()).isZero();
+    String no = created.path("data").path("entity").path("entityNo").asString();
+    String tenant =
+        jdbc.queryForObject("SELECT tenant_no FROM mch_entity WHERE entity_no=?", String.class, no);
+    jdbc.update("UPDATE mch_entity SET market='TW' WHERE entity_no=?", no);
+    registration.observe(tenant, no, "TEST-U", "submit-p1");
+    var facts = new java.util.HashMap<String, Object>();
+    facts.putAll(
+        Map.of(
+            "available", true, "entityNo", no, "market", "TW", "revision", 1, "revisionRef", "PM9-R1",
+            "name", "林小美", "legalForm", "NATURAL_PERSON",
+            "evidenceRef", "file:entity-profile/" + "b".repeat(32),
+            "identityMasked", "A12****789", "identityHash", "c".repeat(64)));
+    when(pay.approvedRegistration(eq(no), anyString())).thenReturn(facts);
+    when(pay.result(eq(no), eq("submit-p1"), anyString(), anyString()))
+        .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM9-R1"));
+    var target = new Target(tenant, no, "TEST-U", "submit-p1", 1);
+    projector.project(target);
+    projector.project(target);
+    assertThat(jdbc.queryForMap("SELECT status,legal_form,biz_qualification FROM mch_entity WHERE entity_no=?", no))
+        .containsEntry("status", "ACTIVE")
+        .containsEntry("legal_form", "NATURAL_PERSON")
+        .containsEntry("biz_qualification", "UNREGISTERED");
+    assertThat(jdbc.queryForList(
+            "SELECT qual_type,qual_number FROM mch_qualification WHERE entity_no=?", no))
+        .singleElement()
+        .satisfies(r -> assertThat(r).containsEntry("qual_type", "ID_CARD").containsEntry("qual_number", "A12****789"));
+    assertThat(jdbc.queryForObject(
+            "SELECT registration_no FROM mch_entity_profile_projection WHERE entity_no=?", String.class, no))
+        .isNull();
+    assertThat(jdbc.queryForList("SELECT * FROM mch_qualification WHERE entity_no=?", no).toString())
+        .as("the full ID number is never stored by the host")
+        .doesNotContain("A123456789");
+  }
+}

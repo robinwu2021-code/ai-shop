@@ -58,6 +58,8 @@ public interface CertVisionPort {
                 "incorporationDate", "capitalAmount", "representativeName", "businessDescription")),
         CORPORATE_REGISTRATION(List.of("corporateTaxNo", "corporateName", "corporateAddress", "corporateCapital", "representativeName")),
         ID_CARD_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "issuePlace", "idIssueType")),
+        // 身分证背面只取户籍地址，拆成县市/区/其余（自然人主体的户籍地址沿用 registered* 键）
+        ID_CARD_BACK(List.of("registeredCity", "registeredArea", "registeredAddress")),
         ARC_FRONT(List.of("representativeName", "identityNo", "birthDate", "issueDate", "expiryDate")),
         ARC_BACK(List.of("arcBackNo")),
         PASSPORT(List.of("representativeName", "identityNo", "birthDate", "expiryDate")),

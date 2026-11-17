@@ -53,3 +53,21 @@ docType 与端口类型：
 - ArchitectureTest 22/23：`domainsMustNotTouchWebRuntime` 失败于 `OpsPlatformController.logout(HttpServletRequest)`，来自对接分支已有提交 55e1b472a，非本次引入。
 - 闸门：生成物 26/26 最新（含合并两分支后积压的 13 份重生成）；app-backend-orphan、app-contract、backend-ui-delivery、v2-docs、ops-orphan 通过。sql-portability（19 文件）与 shared-guards（728 断言 15 红，基线 12）在合并提交上已失败，非本次引入；本次补 README 索引后少 1 红。
 - 未做：真实 OpenAI 调用（沿用 OPS 识别已验证的适配器，本次只加类型与提示词）；near-pay `files/{file}/content` 未实现前，已上传文件识别在联调环境会回依赖不可用错误，App 转手动。合成图片仅验证协议与归一，不代表真实证件准确性。
+
+## 2026-11-17 增量：个人（自然人）主体
+
+档位：契约变更（`POST /biz/entities` 的 `taxNo` 条件化；识别新增 `ID_CARD_BACK`、账号级识别接受身分证；`issuePlace` 改为蓝新代码），无迁移、无新配置。依据：App 仓库 `docs/design/经营实体个人分支开发方案-2026-11-17.md` §3–§4（A1、A3–A6）；用户确认先收口、再做本项，§7 按默认做法。near-pay 侧见其 TDD-支付服务-I4「个人（自然人）主体」。
+
+| 验收 | 实现 | 验证 |
+|---|---|---|
+| 自然人建立不要统编，名称 ≤20；带统编或超长 10400；其他类型仍要 8 位统编 | `BizEntityController.create` 按 `legalForm` 校验；`InitialProfile.taxNo` 改为可空 | `EntityProfileAccountFlowTest#naturalPersonIsCreatedWithoutTaxNumber…` |
+| 自然人核准投影不再 NPE，主体 ACTIVE；资格记 `ID_CARD`，号码只存遮罩值 | `EntityRegistrationProjectionImpl` 自然人分支：`registrationNo` 必须为空、`identityMasked`／`identityHash` 必须有；`biz_qualification='UNREGISTERED'`；投影 `registration_no` 留空（8 位统编列），换人由遮罩值不一致识别 | 同上（库中无完整字号） |
+| 公司投影的事实哈希不变 | `Approved` 新增两字段 `@JsonInclude(NON_NULL)`；旧构造器保留 | 既有投影用例全部通过 |
+| 审核展示：自然人显示遮罩字号 | `EntityReviewAssembler` 同时读 `BUSINESS_LICENSE` 与 `ID_CARD` | — |
+| 识别：`ID_CARD_BACK` 只回户籍地址（`registered*`）；建立前接受 `REGISTRATION`、`ID_CARD_FRONT`、`ID_CARD_BACK` | 端口类型 + 提示词 + `BEFORE_CREATE` 集合 | `BizEntityRecognitionControllerTest#naturalPersonIdCardsAreReadBeforeTheEntityExists` |
+| `issuePlace` 输出蓝新代码，简称、全称、台／臺都认；表外（含雲縣）丢弃 | `ISSUE_PLACE` 映射 | `#issuePlaceBecomesTheNewebPayCodeOrIsDropped` |
+| 识别归一化接受 `legalForm=NATURAL_PERSON` | 规则放开 | 同上 |
+
+待定（需用户决定）：`biz_qualification` 按方案写 `UNREGISTERED`。该列的定义是「应登记未登记、不得提供交易能力」，目前没有代码读取它所以不拦交易；若之后按它控交易，自然人应改为 `EXEMPT`（需同时定 `exempt_type`）。完整字号哈希由 near-pay 提供，宿主目前只校验格式、不落库（需要查重时再加列）。
+
+验证：`mvn -o -pl shop-app -am -Dtest=BizEntityRecognitionControllerTest,EntityProfileAccountFlowTest,PlatformEntityCreationFlowTest,OpenAiCertVisionGatewayTest,BizEndpointPermTest,ArchitectureTest test`：7/7、13/13、2/2、5/5、12/12、23/23。

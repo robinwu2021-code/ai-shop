@@ -91,7 +91,9 @@ public class EntityRegistrationProjectionCoordinator {
             (String) facts.get("name"),
             (String) facts.get("legalForm"),
             (String) facts.get("registrationNo"),
-            (String) facts.get("evidenceRef")),
+            (String) facts.get("evidenceRef"),
+            (String) facts.get("identityMasked"),
+            (String) facts.get("identityHash")),
         intended);
   }
 }
