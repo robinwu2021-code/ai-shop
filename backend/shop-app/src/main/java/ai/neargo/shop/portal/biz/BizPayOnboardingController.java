@@ -37,12 +37,6 @@ public class BizPayOnboardingController {
     return PayBizOnboardingRelay.memberships(forwarder, request, delegation.getIfAvailable());
   }
 
-  /** 商户渠道视图：与运营端、H5 同一数据源（TDD-支付渠道三端统一数据源）。 */
-  @GetMapping("/merchant-channels")
-  public ResponseEntity<byte[]> merchantChannels(HttpServletRequest request) throws IOException {
-    return relay(request);
-  }
-
   @GetMapping("/capability-progress")
   public ResponseEntity<byte[]> capabilityProgress(HttpServletRequest request) throws IOException {
     return relay(request);
