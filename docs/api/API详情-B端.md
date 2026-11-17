@@ -7863,7 +7863,7 @@ App 外收款合计　🔒
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 当前门店编号 |
-| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
 | `version` | `number` | 是 | 门店设置版本 |
 | `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
 | `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
@@ -7882,7 +7882,7 @@ App 外收款合计　🔒
 | `requestNo` | `string` | 是 | 保存请求的幂等编号 |
 | `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
 | `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
-| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
 | `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
 
 **出参**（`data`）
@@ -7892,7 +7892,7 @@ App 外收款合计　🔒
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 当前门店编号 |
-| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
 | `version` | `number` | 是 | 门店设置版本 |
 | `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
 | `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
@@ -16059,6 +16059,15 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 - `PAYMENT`
 - `REFUND`
 
+### PayStoreMethodMode
+
+门店付款方式模式：INHERIT 跟随商户；OVERRIDE 门店自定
+
+枚举取值：
+
+- `INHERIT`
+- `OVERRIDE`
+
 ### PayStoreMethodPreference
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16076,7 +16085,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 当前门店编号 |
-| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
 | `version` | `number` | 是 | 门店设置版本 |
 | `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
 | `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
@@ -16088,7 +16097,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 | `requestNo` | `string` | 是 | 保存请求的幂等编号 |
 | `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
 | `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
-| `mode` | `INHERIT` \| `OVERRIDE` | 是 | 继承商户配置或在门店自定义 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
 | `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
 
 ### PayStoreMethodReq

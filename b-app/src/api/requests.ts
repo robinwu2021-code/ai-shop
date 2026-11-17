@@ -1,4 +1,5 @@
 import type {CurrencyCode} from "@shared/types";
+import type { PayStoreMethodMode } from "./pay";
 // B 端请求类型（wire contract）—— **入参的唯一真源**。
 //
 // 为什么需要这一层（与 C 端 `api/requests.ts` 同一个理由）：
@@ -1280,7 +1281,7 @@ export interface PayStoreMethodPreferencesReq {
   /** 最近读取的商户及门店渠道资格版本 */
   eligibilityRevision: string;
   /** 继承商户配置或在门店自定义 */
-  mode: "INHERIT" | "OVERRIDE";
+  mode: PayStoreMethodMode;
   /** 自定义模式下启用的方式，继承模式传空 */
   enabledMethods: PayMethodChoice[];
 }

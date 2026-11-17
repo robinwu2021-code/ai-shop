@@ -1,5 +1,5 @@
 // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）。金额一律最小单位；币种由服务端给。
-import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayMethodChoice, PayStoreMethodReq } from "./requests";
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayMethodChoice, PayStoreMethodPreferencesReq, PayStoreMethodReq } from "./requests";
 
 /** near-pay 来源主体的资料审核结果；不代表门店可收款。 */
 export interface PayServiceStatus {
@@ -269,7 +269,7 @@ export interface PayStoreMethodPreferences {
   /** 当前门店编号 */
   storeNo: string;
   /** 继承商户配置或在门店自定义 */
-  mode: "INHERIT" | "OVERRIDE";
+  mode: PayStoreMethodMode;
   /** 门店设置版本 */
   version: number;
   /** 商户及门店渠道资格版本 */
@@ -300,4 +300,6 @@ export interface PayApi {
   mPayStoreMethods(): Promise<PayStoreMethods>;
   /** 保存当前门店开启的付款方式；全开即回到跟随商户 */
   mPaySaveStoreMethods(body: PayStoreMethodReq): Promise<PayStoreMethods>;
+  mPayStoreMethodPreferences(): Promise<PayStoreMethodPreferences>;
+  mPaySaveStoreMethodPreferences(body: PayStoreMethodPreferencesReq): Promise<PayStoreMethodPreferences>;
 }

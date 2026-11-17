@@ -1,5 +1,5 @@
 // 商家端支付的本机假数据（mock 模式看界面用）。规则照真实后端：退款不能超过已付减已退、码值随机、撤销即 REVOKED
-import type { OfflineRecord, PayApi, PayAppGrant, PayQrCode, PayRefundItem, PayStatementItem, PayStoreMethods } from "../pay";
+import type { OfflineRecord, PayApi, PayAppGrant, PayQrCode, PayRefundItem, PayStatementItem, PayStoreMethodPreferences, PayStoreMethods } from "../pay";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const rnd = (n: number) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"[
@@ -113,7 +113,34 @@ export const payMock: PayApi = {
         : i) };
     return structuredClone(storeMethods);
   },
+  async mPayStoreMethodPreferences() {
+    return methodPreferences();
+  },
+  async mPaySaveStoreMethodPreferences(body) {
+    if (body.eligibilityRevision !== "mock-eligibility" || body.expectedVersion !== storeMethods.version) {
+      throw new Error("付款方式设置已变化，请刷新");
+    }
+    const enabledProductCodes = storeMethods.items
+      .filter(i => i.editable && (body.mode === "INHERIT"
+        || body.enabledMethods.some(choice => choice.paymentMethodCode === i.method && choice.test === i.test)))
+      .map(i => i.productCode);
+    if (enabledProductCodes.length === 0) throw new Error("门店至少保留一种付款方式");
+    await payMock.mPaySaveStoreMethods({ requestNo: body.requestNo, expectedVersion: body.expectedVersion, enabledProductCodes });
+    storeMethods.mode = body.mode;
+    return methodPreferences();
+  },
 };
+
+function methodPreferences(): PayStoreMethodPreferences {
+  return {
+    storeNo: storeMethods.storeNo, mode: storeMethods.mode, version: storeMethods.version, eligibilityRevision: "mock-eligibility",
+    items: storeMethods.items.map(i => ({
+      choice: { paymentMethodCode: i.method, test: i.test },
+      configuredEnabled: i.enabled, effectiveEnabled: i.enabled, editable: i.editable,
+      blockedReason: i.editable ? null : i.excludedBy, productCodes: [i.productCode], channelCodes: [i.channelCode],
+    })),
+  };
+}
 
 let storeMethods: PayStoreMethods = { storeNo: "ST_MOCK", mode: "INHERIT", version: 0, items: [
   { productCode: "LINEPAY_ONLINE", channelCode: "LINEPAY", method: "LINE_PAY", test: false, enabled: true, editable: true, excludedBy: null },
