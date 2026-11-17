@@ -40,6 +40,18 @@
     {
       "api": "POST /pay-ops/v2/stores/ST2611132NS49C2EPQ/bindings ×2",
       "result": "SB3AE65267D7994580（NEWEBPAY）、SBA7AC537FFDA74B32（LINEPAY）ACTIVE；门店 payMerchantNos 两账户，无同步问题"
+    },
+    {
+      "api": "支付审批 APE89B7E1A17C54853 + 来源核验",
+      "result": "PM2026111707510001 资料 R1 APPROVED、来源关联 SL96B723279D5F4F42 VERIFIED"
+    },
+    {
+      "api": "POST /pay-ops/v2/collection-entries + enable",
+      "result": "CE3A941F09E7E94974（H5，LINEPAY_ONLINE、NEWEBPAY_APPLEPAY_WEB）ACTIVE、就绪"
+    },
+    {
+      "api": "POST /pay-ops/v2/stores/ST2611132NS49C2EPQ/qr-codes（near-pay 5d1b962d 新增）",
+      "result": "静态码 nAjNe7H2GpWc1mEQu1hESw，https://twpay.umeshop.ai/q/nAjNe7H2GpWc1mEQu1hESw"
     }
   ],
   "readBack": {
@@ -47,8 +59,26 @@
     "otherEntitiesOfOwner": "M261115WNCEZQZWHF、M261116S7XAVV9MXN 仍为 PENDING_LICENSE，未动"
   },
   "pending": [
-    "支付侧资料修订 R1 审核",
-    "来源关联核验（verify）",
+    "蓝新 Apple Pay 人工验收或开通信用卡产品",
     "不支持渠道：橘子支付、富邦微信、ezPay"
-  ]
+  ],
+  "paymentTest": {
+    "date": "2026-11-17",
+    "amount": "TWD 1.00（不付款）",
+    "checkoutView": "收款方 李昱達 / ume 早餐店，支付方式 APPLE_PAY、LINE_PAY",
+    "linepay": {
+      "payOrderNo": "PYO261117091527321",
+      "outTradeNo": "PRace2da3f09104ba0bdd63fa30303b56e",
+      "account": "PM-UME-LINEPAY-1626862643",
+      "merchant": "PM2026111707510001",
+      "channelCall": "PRODUCTION /v3/payments/request HTTP 200 RESPONDED（883ms），LINE Pay 交易号 19 位（末 6 位 911810），PAYMENT_CHECK OK",
+      "order": "AWAITING_PAYMENT，到期自然关闭",
+      "entry": "收银台返回跳转 https://twpay.umeshop.ai/linepay/go/{outTradeNo}",
+      "result": "通过（渠道受理并返回交易号与支付入口）"
+    },
+    "newebpay": "未测：账户仅开 NEWEBPAY_APPLEPAY_WEB，需 iPhone Safari 人工扫码；信用卡产品未开通",
+    "notVerified": [
+      "未直接取到 LINE 原始 paymentUrl（报文脱敏）；/linepay/go 直接 GET 为 404、redirect 接口需 H5 上下文"
+    ]
+  }
 }
