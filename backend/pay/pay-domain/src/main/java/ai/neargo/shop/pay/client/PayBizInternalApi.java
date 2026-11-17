@@ -44,8 +44,9 @@ public interface PayBizInternalApi {
     }
 
     /** 门店付款方式（TDD-门店付款方式-App设置；与 near-pay 同形）。excludedBy：null 开启 / STORE 门店关（可开）/ MERCHANT、CATALOG、STORE_STATE、ENTRY 不可开 */
+    /** @param checkout H5 收银台此刻是否显示（near-pay 与收银台同一计算）；null = 无法判断 */
     record StoreMethodItem(String productCode, String channelCode, String method, boolean test, boolean enabled, boolean editable,
-                           String excludedBy) {
+                           String excludedBy, Boolean checkout) {
     }
 
     record StoreMethods(String storeNo, String mode, long version, List<StoreMethodItem> items) {

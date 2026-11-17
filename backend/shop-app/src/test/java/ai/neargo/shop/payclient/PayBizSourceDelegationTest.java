@@ -70,6 +70,13 @@ class PayBizSourceDelegationTest {
   }
 
   @Test
+  void merchantChannelsAreRelayedForTheOwnersMerchant() throws Exception {
+    PayBizOnboardingRelay.forward(forwarder, req("U1", "/biz/pay/v2/merchant-channels", "PM1"), delegation);
+    assertEquals("PM1", seen.get().getFirst("X-Merchant-No"));
+    assertEquals("AI_SHOP_UME", seen.get().getFirst("X-Internal-Caller"));
+  }
+
+  @Test
   void singleOwnedMerchantIsUsedWhenTheAppNamesNone() throws Exception {
     PayBizOnboardingRelay.forward(forwarder, req("U1", "/biz/pay/v2/capability-progress", null), delegation);
     assertEquals("PM1", seen.get().getFirst("X-Merchant-No"));

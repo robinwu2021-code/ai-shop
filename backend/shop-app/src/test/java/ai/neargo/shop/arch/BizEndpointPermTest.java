@@ -89,6 +89,7 @@ class BizEndpointPermTest {
                     "/biz/pay/v2/merchant-profile-revisions/by-request/{requestNo}",
                     "/biz/pay/v2/memberships",
                     "/biz/pay/v2/capability-progress",
+                    "/biz/pay/v2/merchant-channels",
                     "/biz/pay/v2/onboardings",
                     "/biz/pay/v2/onboardings/{no}",
                     "/biz/pay/v2/onboardings/{no}/draft",

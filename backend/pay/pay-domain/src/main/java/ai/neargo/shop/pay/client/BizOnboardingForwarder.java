@@ -118,7 +118,7 @@ public final class BizOnboardingForwarder {
     if (uri.isAbsolute() || uri.getAuthority() != null) return false;
     String p = uri.getPath(), base = "/biz/pay/v2";
     if (method.equals("GET")
-        && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings")
+        && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings", base + "/merchant-channels")
             .contains(p)) return true;
     if (method.equals("POST") && p.equals(base + "/merchant-profile-revisions")) return true;
     if (method.equals("GET") && (p.equals(base + "/merchant-profile-revisions") || p.matches(base + "/merchant-profile-revisions/by-request/[A-Za-z0-9_-]{1,64}"))) return true;

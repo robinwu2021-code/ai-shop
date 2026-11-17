@@ -70,7 +70,7 @@ class RemoteBizPaymentAppServiceTest {
     @DisplayName("★★★ 门店付款方式读写带当前商家账号与当前门店；保存成功才留痕，版本冲突还原成同一个错误码（TDD-门店付款方式-App设置）")
     void storeMethodsCarryOperatorAndStore() {
         var view = new PayBizInternalApi.StoreMethods("S-1", "OVERRIDE", 3, List.of(
-                new PayBizInternalApi.StoreMethodItem("LINEPAY_ONLINE", "LINEPAY", "LINE_PAY", false, true, true, null)));
+                new PayBizInternalApi.StoreMethodItem("LINEPAY_ONLINE", "LINEPAY", "LINE_PAY", false, true, true, null, true)));
         when(api.storeMethods("S-1", "MCH-A")).thenReturn(PortResult.ok(view));
         var req = new PayBizInternalApi.StoreMethodsReq("MCH-A", "R1", 3L, List.of("LINEPAY_ONLINE"));
         when(api.saveStoreMethods("S-1", req)).thenReturn(PortResult.ok(view));
