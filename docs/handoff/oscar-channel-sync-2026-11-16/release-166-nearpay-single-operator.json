@@ -1,0 +1,12 @@
+{
+  "releaseId": "approval-single-op-20261117",
+  "environment": "UME166",
+  "approvedBy": "user, 2026-11-17（确认发布，允许 neara 自批）",
+  "source": "release/166-channel-transfer-20261117 b42b7efa",
+  "scope": "pay-domain 2 个类：ChannelAccountTransferService、SourceAssociationRepairService（自批校验服从 single-operator 开关）",
+  "jarBefore": "3d87cf9cd7c4b412f7117c638013d3236b0755d31037d0d693face20817fc4ec",
+  "jarAfter": "7349b3fa3409c04d58219351ee30b9c28d220db354b005a4ce09be297640e575",
+  "database": "无迁移",
+  "health": "35.8s 就绪，database at V106 matches bundled pay migrations",
+  "backup": "/home/ume/approval-single-op-20261117/pay-before.jar"
+}

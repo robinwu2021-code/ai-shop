@@ -238,7 +238,11 @@ M1、M2（来源读取）随批量迁移排期；本户不依赖。
 
 契约（near-pay，照 N5 模式）：`GET/POST P/channel-account-transfers`、`GET .../{transferNo}`、`POST .../{transferNo}/approve|reject|execute`；表 `pay_channel_account_transfer`（V106）；审批受控类型、申请人不得自批；执行单事务比对前快照（账户版本、原商户、目标商户状态与市场），改账户的 `platform_merchant_id/no`，结束不属目标商户门店的绑定，写前后快照与审计；不动订单、结算、凭据、产品。之后用现有 `POST P/stores/{storeNo}/bindings` 绑定 ume 早餐店。
 
-实现（near-pay `release/166-channel-transfer-20261117`）：`merchant/account/transfer/*`、`OpsChannelAccountTransferController`、`V106__channel_account_transfer.sql`（隔离表，含执行分区列）；权限 `pay:channel-account:view`（查看）、`pay:channel-account:transfer`（申请）、`pay:channel-account:transfer:approve`（审批与执行）。执行同时改账户 `entity_name_snapshot`（仅展示用）；目标商户门店上的绑定保留并改记目标商户（否则收款入口与终端校验判不一致）；未完结订单按 CREATED/AWAITING_PAYMENT/AUTHORIZED/AWAITING_CONFIRM 计数入审计快照、不参与漂移比对。POS 终端与设备绑定不处理（本次两账户均为 0）。测试：`ChannelAccountTransferServiceTest` 7/7、`ChannelAccountTransferMySqlTest` 7/7、`OpsChannelAccountTransferControllerTest` 4/4，N5 三类与 `PayApplicationBootTest` 8/8 不受影响。
+实现（near-pay `release/166-channel-transfer-20261117`）：`merchant/account/transfer/*`、`OpsChannelAccountTransferController`、`V106__channel_account_transfer.sql`（隔离表，含执行分区列）；权限 `pay:channel-account:view`（查看）、`pay:channel-account:transfer`（申请）、`pay:channel-account:transfer:approve`（审批与执行）。执行同时改账户 `entity_name_snapshot`（仅展示用）；目标商户门店上的绑定保留并改记目标商户（否则收款入口与终端校验判不一致）；未完结订单按 CREATED/AWAITING_PAYMENT/AUTHORIZED/AWAITING_CONFIRM 计数入审计快照、不参与漂移比对。POS 终端与设备绑定不处理（本次两账户均为 0）。
+
+2026-11-17 变更：N5、N7 的自批校验改为 `ApprovalSeparation.conflict`（near-pay `b42b7efa`），单人审批开关打开时允许同一人提交并审批；用户决定，已发布 166（jar `7349b3fa…`）。
+
+执行（2026-11-17，运营 neara）：`CT14CDF69BE48C4605`（蓝新 TRL00001898）、`CTBB0D57C478D14E4C`（LINE Pay 1626862643）审批并执行；两账户归属 `PM2026111707510001`，测试门店 `900000041` 两条绑定置 `INACTIVE`；ume 早餐店绑定 `SB3AE65267D7994580`（NEWEBPAY）、`SBA7AC537FFDA74B32`（LINEPAY）；55 笔订单快照仍为 `UME-M-88600253990002308`。测试：`ChannelAccountTransferServiceTest` 7/7、`ChannelAccountTransferMySqlTest` 7/7、`OpsChannelAccountTransferControllerTest` 4/4，N5 三类与 `PayApplicationBootTest` 8/8 不受影响。
 
 ## §5 对账三 · 实现 → 需求（测试）
 
