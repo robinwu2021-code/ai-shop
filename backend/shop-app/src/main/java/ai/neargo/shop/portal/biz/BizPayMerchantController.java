@@ -11,7 +11,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Account creation and merchant profile forwarding; independent PAY owns authorization. */
@@ -40,12 +39,6 @@ public class BizPayMerchantController {
 
   @GetMapping({"/merchant-creations/context", "/merchant-creations/by-request/{requestNo}"})
   public ResponseEntity<byte[]> merchantCreation(HttpServletRequest request) throws IOException {
-    return PayBizOnboardingRelay.forward(forwarder, request);
-  }
-
-  /** 门店付款方式（TDD-门店付款方式-App设置）：商户管理员按门店开关；读写与鉴权都在 near-pay。 */
-  @RequestMapping(value = "/stores/{storeNo}/collection-methods", method = {RequestMethod.GET, RequestMethod.PUT})
-  public ResponseEntity<byte[]> storeCollectionMethods(HttpServletRequest request) throws IOException {
     return PayBizOnboardingRelay.forward(forwarder, request);
   }
 
