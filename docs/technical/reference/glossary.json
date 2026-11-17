@@ -52064,6 +52064,14 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "BizOnboardingForwarder",
+      "name": "SOURCE_HEADERS",
+      "type": "Set<String>",
+      "value": "Set.of(\"x-internal-caller\", \"x-internal-credential\")",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "PayInternalPaths",
       "name": "ORDINARY_REFUND_REQUEST",
       "type": "String",
