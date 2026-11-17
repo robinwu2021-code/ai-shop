@@ -1,6 +1,6 @@
 # TDD-门店付款方式-App设置
 
-状态：草稿
+状态：已确认（2026-11-17，用户「按建议确认」Q1–Q5）
 档位：2（跨端：near-pay 商户端接口 + ai-shop 转发 + 商户 App 页面；不改库表）
 关联需求：用户 2026-11-17 口述「运营端可以控制商户的渠道，App 可以控制门店的渠道」；`docs/requirements/运营端-账户商户门店渠道-功能矩阵.md`、`支付域-功能矩阵.md` 中无门店付款方式开关条款，本 TDD 的 AC 即需求，确认后回写功能矩阵
 关联设计：near-pay `CollectionPolicyService`（BM02 F02/F03 收款产品策略）；near-pay `TDD-沙箱渠道并行与取消环境分区.md` §8（同一方式正式与测试分开展示）
@@ -61,8 +61,8 @@ PUT  /biz/pay/v2/stores/{storeNo}/collection-methods
 
 - `method`：付款方式码（LINE_PAY / CARD / APPLE_PAY …），App 按它显示名称；`test` = 渠道 `test_channel=1`。
 - 列表范围 = 门店当前 ACTIVE 绑定的渠道账户（账户 ACTIVE）下状态为 OPEN 的产品；其余目录产品不出现（门店用不上）。
-- `editable` = 该项只被门店层排除或当前开启（即商户层允许）；被商户层或目录排除的项 `editable=false`，`excludedBy` 取 `preview` 的层级（CATALOG / MERCHANT / STORE_STATE）。
-- 「商户层允许的全集」= 列表中 `excludedBy` 不是 CATALOG / MERCHANT / STORE_STATE 的项。
+- `editable` = 该项只被门店层排除或当前开启（即商户层允许）；被商户层或目录排除的项 `editable=false`，`excludedBy` 取 `preview` 的层级（CATALOG / MERCHANT / STORE_STATE）；门店 ACTIVE 的 H5 收款入口未包含该产品时 `excludedBy=ENTRY`、`editable=false`（Q3）。
+- 「商户层允许的全集」= 列表中 `excludedBy` 不是 CATALOG / MERCHANT / STORE_STATE / ENTRY 的项。
 - PUT 语义：`enabledProductCodes` = 商户层允许的全集 → 存 `INHERIT`（`productCodes=[]`）；否则存 `OVERRIDE`（集合即开启项）；`reason` 固定「商户 App 设置门店付款方式」；actor `BIZ:{subjectRef}`。
 - 鉴权：读写都要 `store.bind`（商户管理员）且门店当前归属本商户（同 `BizChannelAccountController`）；否则 403 / 404。
 
@@ -88,7 +88,15 @@ PUT  /biz/pay/v2/stores/{storeNo}/collection-methods
 3. b-app：页面 + i18n + pages.json → `vue-tsc` → 生成界面清单。
 4. 本机联调（ai-shop + near-pay 本机实例）→ UME166 发布（near-pay 覆盖包、ai-shop 覆盖包、b-app 发版）。
 
-## §3 待决（请确认）
+## §3 决定（2026-11-17，用户「按建议确认」）
+
+- **Q1** 入口放在「店铺设置」新增「付款方式」；台湾版隐藏旧「收款设置」（`pages/payment/index`，微信/支付宝进件）入口。
+- **Q2** 只有商户管理员（`store.bind`）可读写；店长看不到入口。
+- **Q3** App 只改门店收款策略；运营端建 H5 收款入口默认包含商户允许的全部产品；门店已有 ACTIVE 的 H5 收款入口但未包含某产品时，该项在 App 显示为不可开，原因「平台未开通到收银台」（`excludedBy=ENTRY`）。
+- **Q4** App 同样可开关测试渠道（带「測試」标签）；计入「至少保留一种」，但只剩测试方式时页面给警示。
+- **Q5** 未同步门店跳过门店策略的问题不在本 TDD 范围，另行确认何时开启 `require-projection`。
+
+原待决记录：
 
 - **Q1 页面入口**：建议放在「店铺设置」里新增「付款方式」；旧的「收款设置」（`pages/payment/index`，微信/支付宝进件）台湾不用，是否同时从台湾版入口隐藏？
 - **Q2 谁能改**：建议只有商户管理员（`store.bind`）可读写；门店店长只读还是不可见？
@@ -125,3 +133,4 @@ PUT  /biz/pay/v2/stores/{storeNo}/collection-methods
 | 日期 | 事件 |
 |---|---|
 | 2026-11-17 | 草稿 |
+| 2026-11-17 | 用户「按建议确认」Q1–Q5，开始实现 |
