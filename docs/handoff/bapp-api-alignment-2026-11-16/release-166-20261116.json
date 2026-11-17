@@ -69,5 +69,20 @@
     "rollback": "/home/ume/entity-v46-20261116/pay-before-v46.jar written back in place; V104 table can stay; oms symlink back to entity-tw2-20261116",
     "notVerified": "actual review submission, operator review and discard on 166 (not exercised)",
     "verified": "2026-11-16 by the onboarding session, App with ENTITY_WORKSPACE_V46_SERVER on, V40 test entity: contact saved and read back; channelMaterials stored, NEWEBPAY complete after 8 items; thumbnails served; all four sections complete and submit enabled (not submitted, per user). Evidence: ai-shop-bapp feat/core-flow-ui docs/api/经营实体证件识别接口.md §9"
+  },
+  "consolidation20261117": {
+    "nearPay": "origin/release/166-live-20261117 d62e4280 rebuilds the live jar d6a489c9 class for class (except an orphan OpsMerchantDtos$ProfileRevisionDto$2 left by an older overlay)",
+    "aiShop": "origin/release/166-live-20261117 d1918f778 = main + the Oscar session's local feat/onboarding-doc-recognition commits; a superset of live, every extra class traced"
+  },
+  "naturalPersonRelease": {
+    "approvedBy": "user, 2026-11-17 (Deploy to 166)",
+    "source": "near-pay feat/entity-natural-person efa8eaae; ai-shop feat/entity-natural-person (on release/166-live-20261117)",
+    "pay": "overlay of EntityProfilePolicy, EntityProfileService, EntityChannelPreparation, EntityProfileConfiguration on d6a489c9 -> ee19c192c96fff4e5f181379f6e20aff5b86cb57b61ed41b4bae0ba1130b7d81; readiness OK",
+    "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-natural-person-20261117",
+    "aiShop": "overlay of 15 classes (BizEntityController, BizEntityRecognitionController, EntityRegistrationProjection(Impl)/Coordinator, EntityReviewAssembler, CertVisionPort types, OpenAiCertVisionGateway) on d56da3ff -> 64259e9334e8551de3355deaa358d34dfcba3d11747b9e11c4d48f1bf619b477; in place (inode kept); api and ops restarted and UP; api now also runs the Oscar ops classes that were on disk since 2026-11-16",
+    "migration": "none",
+    "rollback": "/home/ume/entity-natural-person-20261117/{pay-before-natural-person.jar,shop-before-natural-person.jar} written back in place; oms symlink back to entity-v46-20261116",
+    "openDecision": "natural persons are projected with biz_qualification=UNREGISTERED per the plan; EXEMPT would be the accurate value once anything gates trading on it",
+    "notVerified": "App natural-person flow on 166 (ENTITY_NATURAL_PERSON) not yet exercised"
   }
 }
