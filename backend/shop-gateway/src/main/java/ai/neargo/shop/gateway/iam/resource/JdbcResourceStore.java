@@ -147,6 +147,87 @@ public class JdbcResourceStore implements ResourceStore {
         return inserted;
     }
 
+    private static final String ADMIN_COLUMNS = "id, end_code, method, pattern, source, location, target_path,"
+            + " access, rule_text, handler, status, stale, app_version, updated_by, updated_at";
+
+    private static AdminRow adminRow(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new AdminRow(rs.getLong("id"), rs.getString("end_code"), rs.getString("method"),
+                rs.getString("pattern"), rs.getString("source"), rs.getString("location"),
+                rs.getString("target_path"), rs.getString("access"), rs.getString("rule_text"),
+                rs.getString("handler"), rs.getString("status"), rs.getInt("stale") == 1,
+                rs.getString("app_version"), rs.getString("updated_by"),
+                rs.getObject("updated_at", java.time.LocalDateTime.class));
+    }
+
+    /** 拼筛选条件；参数按顺序放进 args。 */
+    private static String where(AdminQuery query, List<Object> args) {
+        StringBuilder sql = new StringBuilder(" WHERE 1 = 1");
+        if (hasText(query.endCode())) {
+            sql.append(" AND end_code = ?");
+            args.add(query.endCode());
+        }
+        if (hasText(query.source())) {
+            sql.append(" AND source = ?");
+            args.add(query.source());
+        }
+        if (hasText(query.status())) {
+            sql.append(" AND status = ?");
+            args.add(query.status());
+        }
+        if (hasText(query.keyword())) {
+            sql.append(" AND (pattern LIKE ? OR rule_text LIKE ?)");
+            String like = "%" + query.keyword().trim() + "%";
+            args.add(like);
+            args.add(like);
+        }
+        return sql.toString();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    @Override
+    public List<AdminRow> page(AdminQuery query, long page, long size) {
+        List<Object> args = new java.util.ArrayList<>();
+        String where = where(query, args);
+        args.add(size);
+        args.add((page - 1) * size);
+        return jdbc.sql("SELECT " + ADMIN_COLUMNS + " FROM sys_api_resource" + where
+                        + " ORDER BY pattern, method, id LIMIT ? OFFSET ?")
+                .params(args).query((rs, n) -> adminRow(rs)).list();
+    }
+
+    @Override
+    public long count(AdminQuery query) {
+        List<Object> args = new java.util.ArrayList<>();
+        String where = where(query, args);
+        return jdbc.sql("SELECT COUNT(*) FROM sys_api_resource" + where).params(args).query(Long.class).single();
+    }
+
+    @Override
+    public AdminCounts counts() {
+        return jdbc.sql("SELECT COUNT(*) AS total,"
+                        + " COALESCE(SUM(CASE WHEN status = 'DISABLED' THEN 1 ELSE 0 END), 0) AS disabled,"
+                        + " COALESCE(SUM(CASE WHEN stale = 1 THEN 1 ELSE 0 END), 0) AS stale_rows,"
+                        + " COALESCE(SUM(CASE WHEN source = 'MANUAL' THEN 1 ELSE 0 END), 0) AS manual"
+                        + " FROM sys_api_resource")
+                .query((rs, n) -> new AdminCounts(rs.getLong("total"), rs.getLong("disabled"),
+                        rs.getLong("stale_rows"), rs.getLong("manual"))).single();
+    }
+
+    @Override
+    public java.util.Optional<AdminRow> find(long id) {
+        return jdbc.sql("SELECT " + ADMIN_COLUMNS + " FROM sys_api_resource WHERE id = ?").param(id)
+                .query((rs, n) -> adminRow(rs)).optional();
+    }
+
+    @Override
+    public void setStatus(long id, String status, String operator) {
+        jdbc.sql("UPDATE sys_api_resource SET status = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .params(status, operator, id).update();
+    }
+
     @Override
     public Set<String> disabledKeys(String endCode) {
         return new HashSet<>(jdbc.sql("SELECT method, pattern FROM sys_api_resource"

@@ -20563,6 +20563,21 @@ WHERE NOT EXISTS (
     WHERE channel_type = 'SMS' AND provider = 'MITAKE'
       AND scope = 'PLATFORM' AND owner_no = ''
 );
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS_IAM', '接口资源', '系统维护', '/system?tab=apiResource', 'system:param:read', 'system:param:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', NULL, 260, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'TECH_OPS', 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS_IAM', 'system:api-resource:update', '页面内操作', NULL, 'system:api-resource:update', 'system:api-resource:update', 'IMPLEMENTED', 1, NULL, 'ACTION', NULL, 923, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__SYSTEM_API_RESOURCE_UPDATE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_API_RESOURCE_UPDATE');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -573,6 +573,14 @@ public final class Perms {
      */
     public static final String SYSTEM_APP_VERSION_UPDATE = "system:app-version:update";
 
+    /**
+     * 在「接口资源」页停用或恢复一条链接（TDD-网关层与统一权限 §2.23）。看列表用 {@link #SYSTEM_PARAM_READ}。
+     *
+     * <p>不配给任何角色，只有超管的通配能到：停用一条链接会让所有人都访问不了它。
+     * 要给人时，{@code ROLE_PERMS} 加人 + V680 回填 {@code sys_role_point} 两步一起做。
+     */
+    public static final String SYSTEM_API_RESOURCE_UPDATE = "system:api-resource:update";
+
     /** 存储空间统计与待回收清单，只读。 */
     /**
      * 测试号固定验证码白名单 —— <b>只读</b>（TDD-测试号固定验证码）。
