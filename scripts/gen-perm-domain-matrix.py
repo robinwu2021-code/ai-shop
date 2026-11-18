@@ -126,10 +126,13 @@ def endpoints_by_code(ops_lit, biz_lit):
                     continue
                 for name in re.findall(r"Perms\.([A-Z_0-9]+)", lines[j]):
                     codes.add(lit.get(name, name))
-                for raw in re.findall(r"@perm\.can\w*\('([^']+)'", lines[j]):
-                    # `@perm.can('" + Perms.X + "')` 会把拼接片段也捞出来 —— 那不是码
-                    if "Perms." not in raw and "+" not in raw:
-                        codes.add(raw)
+                # 一次调用里的**每个**实参都要取：`canAnyBiz('a','b')` 只取第一个的话，
+                # 靠后的码名下就少算了这个端点（2026-11-18 把十个 `or` 改成 canAnyBiz 时发现）
+                for call in re.findall(r"@perm\.can\w*\(([^)]*)\)", lines[j]):
+                    for raw in re.findall(r"'([^']+)'", call):
+                        # `@perm.can('" + Perms.X + "')` 会把拼接片段也捞出来 —— 那不是码
+                        if "Perms." not in raw and "+" not in raw:
+                            codes.add(raw)
             if codes:
                 for c in codes:
                     by_code[c].append(f"{m.group(1).upper()} {path}")
