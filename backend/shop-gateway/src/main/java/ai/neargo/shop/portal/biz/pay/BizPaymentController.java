@@ -124,7 +124,7 @@ public class BizPaymentController {
                 req.outRefundNo());
     }
 
-    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_REFUND + "') or @perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.PAY_REFUND + "','" + BizPerms.PAY_STATEMENT + "')")
     @GetMapping("/biz/payment/refund")
     public List<RefundView> refunds() {
         return app.refunds(BizContext.requireStoreNo());

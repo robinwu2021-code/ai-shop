@@ -599,6 +599,28 @@ Tests run: 16, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.
 
 **清点时发现的一处现有问题（没有改）：** 有 10 个入口把两个以上的 `@perm.canBiz(...)` 用 `or` 连起来，本意是「任一即可」。但 `canBiz` 在缺权限时是抛异常而不是返回 false，`or` 轮不到第二个 —— 实际效果是**只认第一个权限码**。例如 `GET /biz/pay/refund` 写的是「退款或对账任一」，只有对账权限的人会被拒。涉及储值相关 8 个、支付退款查询 2 个。正确写法是已有的 `canAnyBiz`。网关按「任一即可」提前判，比方法注解宽，所以不会多拦；这 10 个入口的实际行为仍由方法注解决定，与今天相同。要不要改成 `canAnyBiz` 是放宽权限的改动，需单独确认。
 
+**后续（2026-11-18，用户确认「改成任一即可」；分支 `fix/biz-or-perms-any-of`，叠在 D3 之上）：** 这 10 个入口的注解已改成 `@perm.canAnyBiz(...)`；两个 `a and (b or c)` 的改成 `@perm.canBiz('a') and @perm.canAnyBiz('b','c')`。这是**放宽权限**的行为变化：只持有其中靠后的权限码的人，此前被拒，现在放行。一个都没有的人仍然得到 70006。
+
+| 入口 | 任一即可的权限码 |
+|---|---|
+| `GET /biz/pay/refund`、`GET /biz/payment/refund` | 发起原路退款、看本店收款流水 |
+| `GET /biz/stored-value/context` | 查看储值方案、管理储值方案、查看顾客储值余额、办理储值 |
+| `GET /biz/stored-value/plans`、`GET /biz/stored-value/plans/{planNo}` | 查看储值方案、管理储值方案、办理储值 |
+| `GET /biz/stored-value/plan-recharges/{rechargeNo}`、`GET /biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}` | 查看储值办理进度、办理储值 |
+| `GET /biz/stores/{storeNo}/stored-value/issuers` | 查看顾客储值余额、办理储值、管理储值方案、查看储值方案 |
+| `GET …/stored-value/customer-candidates`、`POST …/stored-value/customer-selections` | 必须有「顾客」，另加办理储值、查看顾客储值余额任一 |
+
+```
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.BizAnyOfPermConventionTest
+# gateway 包 + arch 包 + B 端角色、储值、支付相关测试
+shop-app classes 102 run 392 fail 4 err 0 skip 3
+# 端点快照与 D2b 相比正好 10 行不同（就是这 10 个入口的表达式）；认证链与探测 0 行不同
+```
+
+4 条失败都与本次无关：2 条自 M0 起就有；另外 2 条（`StoredValueConsumptionHttpFlowTest`、`StoredValueRechargeSourceFlowTest` 各 1 条）在登录取验证码那一步就失败，在没有这次改动的 D3 分支上同样失败，它们验证的入口也不在这 10 个之内。
+
+新增 `BizAnyOfPermConventionTest` 两条：一条扫全部入口，再出现 `canBiz … or` 就红；一条用「只有第二个权限」的门店上下文求值，新写法放行、旧写法在第一个上抛 70006。**没有做的**：用真实的受限账号从 HTTP 打这 10 个入口（现有的预置角色里没有恰好「只有第二个权限」的，要建自定义角色）。
+
 **D3 相对计划的偏差：**
 
 | 计划 | 实际 | 原因 |
@@ -630,3 +652,4 @@ Tests run: 16, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.
 | 2026-11-18 | D2 后端部分完成（本地，未推送）：录入的微服务链接入索引、网关判权后转发、清单种子；开关默认关，快照不变。「接口资源」页未做；偏差见 §5 |
 | 2026-11-18 | D2b 完成（本地，未推送）：运营端「接口资源」页与三个后端接口，新增权限码 `system:api-resource:update`、迁移 `V680`；偏差见 §5 |
 | 2026-11-18 | D3 完成（本地，未推送）：B 端资源索引、按当前门店的提前判权（默认关）、行入库；清点出 10 个 `or` 写法只认第一个权限码的入口，未改；偏差见 §5 |
+| 2026-11-18 | 用户确认后，10 个 `or` 写法的入口改成 `canAnyBiz`（放宽权限，本地，未推送）；加了防再犯的测试 |

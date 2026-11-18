@@ -37,7 +37,7 @@ public class BizStoredValuePlanController {
         this.plans = plans; this.scopes = scopes; this.markets=markets; this.merchants=merchants;
     }
 
-    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_PLAN_READ+"') or @perm.canBiz('"+BizPerms.SV_PLAN_MANAGE+"') or @perm.canBiz('"+BizPerms.SV_ACCOUNT_READ+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
+    @PreAuthorize("@perm.canAnyBiz('"+BizPerms.SV_PLAN_READ+"','"+BizPerms.SV_PLAN_MANAGE+"','"+BizPerms.SV_ACCOUNT_READ+"','"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/context")
     public MarketPort.MarketBrief context(@RequestParam String storeNo) {
         var s=scopes.resolve(new RedemptionScope("STORES",List.of(storeNo)));
@@ -48,7 +48,7 @@ public class BizStoredValuePlanController {
                 .orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
     }
 
-    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_PLAN_READ+"') or @perm.canBiz('"+BizPerms.SV_PLAN_MANAGE+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
+    @PreAuthorize("@perm.canAnyBiz('"+BizPerms.SV_PLAN_READ+"','"+BizPerms.SV_PLAN_MANAGE+"','"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/plans")
     public CursorPage<View> list(@RequestParam String storeNo, @RequestParam(required=false) String status,
             @RequestParam(required=false) String cursor, @RequestParam(defaultValue="20") int size) {
@@ -70,7 +70,7 @@ public class BizStoredValuePlanController {
         return plans.create(s, c, key);
     }
 
-    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_PLAN_READ+"') or @perm.canBiz('"+BizPerms.SV_PLAN_MANAGE+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
+    @PreAuthorize("@perm.canAnyBiz('"+BizPerms.SV_PLAN_READ+"','"+BizPerms.SV_PLAN_MANAGE+"','"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/plans/{planNo}")
     public View get(@PathVariable String planNo, @RequestParam String storeNo) {
         String permission=readPermission(storeNo);var result=plans.get(scope(storeNo,permission),storeNo,planNo);

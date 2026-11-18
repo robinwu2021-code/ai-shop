@@ -28,7 +28,7 @@ public class BizStoredValueIssuerOperationsController {
  private final BizStoredValuePlanController plans;private final BizStoredValuePlanRechargeController recharge;private final BizStoredValueMerchantQueryController records;
  public BizStoredValueIssuerOperationsController(StoredValueIssuerAppService issuers,EntitlementScopeResolver scopes,CustomerIdentityPort customers,BizStoredValuePlanController plans,BizStoredValuePlanRechargeController recharge,BizStoredValueMerchantQueryController records){this.issuers=issuers;this.scopes=scopes;this.customers=customers;this.plans=plans;this.recharge=recharge;this.records=records;}
  @GetMapping("/biz/stores/{storeNo}/stored-value/issuers")
- @PreAuthorize("@perm.canBiz('pay:sv:account:read') or @perm.canBiz('pay:sv:recharge:create') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:plan:read')")
+ @PreAuthorize("@perm.canAnyBiz('pay:sv:account:read','pay:sv:recharge:create','pay:sv:plan:manage','pay:sv:plan:read')")
  public StoreOptions issuers(@PathVariable String storeNo){
   var s=scopes.resolve(new RedemptionScope("STORES",List.of(storeNo)));
   var actor=BizContext.current().withStore(storeNo);
@@ -58,7 +58,7 @@ public class BizStoredValueIssuerOperationsController {
  @PreAuthorize("@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')")
  public StoredValueRechargeProgress confirm(@PathVariable String storeNo,@RequestBody StoreRechargeRequest request,@RequestHeader("Idempotency-Key")String key){require(storeNo,BizPerms.SV_RECHARGE_CREATE);require(storeNo,BizPerms.SV_RECHARGE_RECEIVE);return "BRAND".equals(request.scopeType())?brand.confirm(storeNo,request,key):recharge.confirmOffline(original(storeNo,request),key);}
  @GetMapping("/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}")
- @PreAuthorize("@perm.canBiz('pay:sv:recharge:read') or @perm.canBiz('pay:sv:recharge:create')")
+ @PreAuthorize("@perm.canAnyBiz('pay:sv:recharge:read','pay:sv:recharge:create')")
  public StoredValueRechargeProgress query(@PathVariable String storeNo,@PathVariable String rechargeNo){var r=recharge.query(rechargeNo);if(!storeNo.equals(r.storeNo()))throw BizException.of(ErrorCode.NOT_FOUND);return r;}
  @PostMapping("/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve")
  @PreAuthorize("@perm.canBiz('pay:sv:recharge:create')")

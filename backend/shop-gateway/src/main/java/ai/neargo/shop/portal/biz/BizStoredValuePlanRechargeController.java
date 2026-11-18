@@ -74,7 +74,7 @@ public class BizStoredValuePlanRechargeController {
         return StoredValueRechargeProgress.from(direct.create(ctx,entity,
                 new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo(),prior.found()?null:governanceBinding.resolve(ctx.tenantNo(),entity,c.storeNo(),c.versionNo()))));
     }
-    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_READ+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
+    @PreAuthorize("@perm.canAnyBiz('"+BizPerms.SV_RECHARGE_READ+"','"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/plan-recharges/{rechargeNo}")
     public StoredValueRechargeProgress query(@PathVariable String rechargeNo){
         return StoredValueRechargeProgress.from(original(context("read-plan-recharge"),rechargeNo,BizContext.current().can(BizPerms.SV_RECHARGE_READ)?BizPerms.SV_RECHARGE_READ:BizPerms.SV_RECHARGE_CREATE));
