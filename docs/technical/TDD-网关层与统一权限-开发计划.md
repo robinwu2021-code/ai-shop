@@ -62,11 +62,24 @@
 | # | 任务 | 产出 | 验证 |
 |---|---|---|---|
 | 0.1 | 记录基线：在最新 main 上跑架构测试、三端的端点权限测试、认证相关测试，存下通过数 | 本文 §5 的基线一栏 | — |
-| 0.2 | 端点快照测试：启动测试上下文，从 Spring MVC 取全部处理方法，把「方法、地址、处理类、`@PreAuthorize` 原文」排序后写成一份 JSON；测试断言与仓库里的快照文件相同 | `shop-app` 测试 `EndpointSnapshotTest` + 快照文件 | 改一个注解，测试变红 |
-| 0.3 | 认证链快照测试：对每条 `SecurityFilterChain`，记录匹配前缀与过滤器类名的顺序；另对每端各取几条代表地址，记录未登录、错端令牌时的状态码 | `SecurityChainSnapshotTest` + 快照文件 | 调换两个过滤器的顺序，测试变红 |
+| 0.2 | 端点快照测试：启动测试上下文，从 Spring MVC 取全部处理方法，把「方法、地址、处理类与方法、`@PreAuthorize` 原文」排序后落盘；给了基线目录就逐行比对 | `shop-app` 测试 `EndpointSnapshotTest`、`GatewaySnapshot` | 改掉基线里一行，测试变红 |
+| 0.3 | 认证链快照测试：对每条 `SecurityFilterChain`，记录匹配条件与过滤器类名的顺序；另对三端、支付运营面、机器入口各取一个地址，记录不带令牌与带各端令牌时的状态 | `SecurityChainSnapshotTest` | 同上 |
 | 0.4 | 列出写死路径的脚本、清单与测试的完整名单（§1 第 4、5 项），逐个标注改法 | 本文 §2.2 任务 1.6、1.7 的清单 | — |
 
-出口：两份快照入库，基线数字记下。
+出口：三份快照文件能稳定生成，基线数字记下。
+
+**相对初稿的偏差：快照不入库，基线取自合并基点。** 初稿写的是把快照文件提交进仓库、测试断言与它相同。实现时改了：端点每天都在增减，入库的快照会让每个加端点的人都来改它，而它要回答的只是「这一个重构分支有没有改变行为」。现在的用法是：
+
+```bash
+# 在重构分支的合并基点上跑一遍，把产物留下
+mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest' -Dsurefire.failIfNoSpecifiedTests=false
+cp -r shop-app/target/gateway-snapshot /tmp/gateway-baseline
+# 在重构分支上带着基线再跑一遍
+mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest' -Dsurefire.failIfNoSpecifiedTests=false \
+    -Dgateway.snapshot.baseline=/tmp/gateway-baseline
+```
+
+不带基线参数时，这两个测试只落盘并做几条自检（取到了端点、三端的令牌过滤器都在、B 端与运营端不带令牌被拒），不会因为别人加了端点而变红。
 
 ### 2.2 M1 建模块与搬迁（纯搬，行为不变）
 
@@ -83,6 +96,18 @@
 | 1.9 | 留在 `shop-app` 的：启动类、`config`、`portal/internal`、`sessionjob`、迁移脚本、全部测试 | — | — |
 
 出口：端点快照与认证链快照和 M0 逐字相同；pre-push 全绿；本机启动后三端各登录一次、各打一个需要权限的接口。
+
+**任务 1.6、1.7 的完整名单**（M0 任务 0.4 的产出，2026-11-18 在 main 上清点）：
+
+| 类别 | 数量 | 名单 | 改法 |
+|---|---|---|---|
+| 发布清单 | 9 | `scripts/release/` 下 `brand-p1` 至 `brand-p6`、`points-bc`、`points-ops` 的 `.json`，以及 `scripts/lib/persistence-owners.json` | 把 `shop-app/src/main/java/` 换成 `shop-gateway/src/main/java/`，只换命中要搬的包的那些行（共 97 行） |
+| 校验与生成脚本 | 8 | `scripts/verify-manual-service-admission.mjs`、`verify-manual-counter-source.mjs`、`verify-personnel-operator.mjs`、`gen-beauty-api-design.py`、`release/points-jobs.mjs`、`release/points-bc.mjs`、`release/points-jobs.test.mjs`、`tests/test-document-number-rollout.py`、`tests/legacy-coupon-inventory.test.mjs` | 同上；改完各跑一遍自带的检查 |
+| 前端共享测试 | 2 | `packages/shared/tests/entity-alignment.test.ts`、`stock-shared-source-label.test.ts` | 同上；跑 `packages/shared` 的 vitest |
+| 读 Java 源码路径的后端测试 | 24 | `shop-app` 的 `arch/` 下 19 个（`ArchitectureTest`、`BizEndpointPermTest`、`OpsEndpointPermTest`、`ControllerProfileTest`、`FunctionPointPermAlignmentTest`、`BizResourceAuthorization`、`BackendI18nParityTest`、`BizKeyConventionTest`、`ClientIpSingleSourceTest`、`CrossDomainWriteConventionTest`、`LoginAuditWiringTest`、`OrphanModuleTest`、`OutboxWiringTest`、`PayAuditTrailTest`、`PayCallerConstructionTest`、`PayHasNoControllerTest`、`ScheduledJobConventionTest`、`SessionTablesAreSelfContainedTest`、`TableHasProducerTest`）；`shop-app` 其他目录 4 个（`PermSeedParityE2eTest`、`InvMirrorEventCoverageTest`、`ExecutionBeanNamesTest`、`PricingConfigServiceTest`）；商城插件 1 个（`CommerceArchitectureTest`） | 逐个读：扫的目录里有要搬的包，就把 `shop-gateway` 的源码目录加进扫描面；只读某个固定文件的，改路径 |
+| 只读资源路径的测试 | 约 50 | 迁移脚本、种子等 | 不用改：资源不搬 |
+
+读 Java 源码路径的那 24 个是重点：它们多数是「扫一遍源码找违规」的守卫，路径不改不会报错，只会少扫一块。每改一个，都用「在 `shop-gateway` 里放一个违规样例看能不能抓到」确认。
 
 风险最大的是任务 1.8 的第二、三条：现状很可能已有违规（比如某个 B 端入口引用了运营端的类）。处理方式是按仓库已有的棘轮做法记基线，不在这个里程碑里修。
 
@@ -196,11 +221,40 @@
 
 | 里程碑 | 对应方案的验收标准 | 测试 | 跑过 |
 |---|---|---|---|
-| M0 | — | `EndpointSnapshotTest`、`SecurityChainSnapshotTest`；基线数字 | — |
+| M0 | — | `EndpointSnapshotTest`、`SecurityChainSnapshotTest`；基线数字 | ✅ 2026-11-18，见下 |
 | M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新三条；pre-push 全套 | — |
 | M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | — |
 | M3 | AC10、AC26 | 属性默认值测试；`strict` 校验；停一端 Redis 的链路测试 | — |
 | M4 | AC21、AC22、AC23、AC25、AC15 | 对账测试；403 先于参数错误；零查库；停用开关；三端现有的端点权限测试原样通过 | — |
+
+**M0 的真实输出**（2026-11-18，分支 `feat/gateway-m0-snapshots`，基于当天的 main；扫描面是默认构建下 `test` 配置装配的全部端点，不含餐饮、美业、商城内嵌这些构建配置下才有的行业入口）：
+
+```
+# 基线：架构、端点权限、认证相关测试
+Tests run: 23, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.BizEndpointPermTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.ControllerProfileTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.DeploymentProfileTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.FunctionPointPermAlignmentTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.InternalEndpointTokenTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.MpEndpointAuthTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.OpsEndpointPermTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.RealmIsolationTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+```
+
+| 快照文件 | 行数 | 内容 |
+|---|---|---|
+| `endpoints.txt` | 1578 | `/biz` 612、`/ops` 550、`/internal` 192、`/mp` 174、`/pay-ops` 10，其余为公共、回调与支付入口；其中 1101 行带权限表达式 |
+| `security-chains.txt` | 133 | 9 条链各自的匹配条件与过滤器顺序 |
+| `security-probes.txt` | 20 | 五个前缀各一个地址 × 不带令牌与三端令牌。三端只认自己的令牌，别的端的令牌一律 401 |
+
+| 验证 | 结果 |
+|---|---|
+| 拿第一次的产物当基线再跑一遍 | 通过：三份文件逐行相同，说明输出是稳定的 |
+| 把基线里退款复核的权限码改掉 | `EndpointSnapshotTest` 失败，报出 `+ POST /ops/payments/refunds/{payRefundNo}/review … @perm.can('pay:refund:review')` |
+| 把基线里 B 端链上两个过滤器调换顺序 | `SecurityChainSnapshotTest` 失败，报出「顺序不同，自第 9 行起」 |
 
 ## §6 对账二 · 计划 → 实现
 
@@ -212,3 +266,4 @@
 |---|---|
 | 2026-11-18 | 草稿：核对三点，拆出第一批五个里程碑 |
 | 2026-11-18 | 计划确认，待开工；从 M0 开始 |
+| 2026-11-18 | M0 完成：三个测试类、基线、写死路径的名单；快照改为不入库（§2.1 偏差） |
