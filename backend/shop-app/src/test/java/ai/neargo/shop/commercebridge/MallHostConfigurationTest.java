@@ -8,6 +8,7 @@ import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.starter.http.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.config.MallOperatorSessions;
+import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -36,6 +37,7 @@ class MallHostConfigurationTest {
                         MallOperatorSessions.class,
                         () -> new MallOperatorSessions(mock(AccountSessionVerifier.class)))
                 .withBean(BizIdentityResolver.class, () -> mock(BizIdentityResolver.class))
+                .withBean(StoreOperationalReviewService.class, () -> mock(StoreOperationalReviewService.class))
                 .withBean(
                         ShopCommerceStoreAdapter.class, () -> mock(ShopCommerceStoreAdapter.class))
                 .run(
