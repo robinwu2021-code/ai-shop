@@ -2399,6 +2399,7 @@ CREATE TABLE IF NOT EXISTS sys_function_point
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     ui_kind VARCHAR(16) NOT NULL DEFAULT 'MENU',
     gated_by VARCHAR(64) NULL,
+    module_code VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_point UNIQUE (point_code)
 );

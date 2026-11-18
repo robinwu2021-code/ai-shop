@@ -54,6 +54,13 @@ public class SysFunctionPoint extends BaseEntity {
      * 「现在开着没开着」是部署状态，由 {@code menu()} 现算。
      */
     private String gatedBy;
+    /**
+     * 提供这个功能点的模块（retail / pay / inventory …）；没有权限码的点为空。
+     *
+     * <p>与 {@link #gatedBy} 一样是源码事实，由网关启动时按权限码回填。模块在这套部署里没装时，
+     * {@code menu()} 把这一点降为「现在用不了」。
+     */
+    private String moduleCode;
 
     /** 后端通了但前端页面还没做完 */
     private Boolean uiReady;

@@ -1,5 +1,10 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.gateway.core.function.FunctionRegistry;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.merchant.dto.RoleVO;
@@ -44,6 +49,11 @@ public class BizStaffController {
 
     private final MerchantStaffService staffService;
     private final MerchantRoleService roleService;
+
+    /** 功能点登记表；字段注入是为了不动构造器。取不到时（切片测试）不过滤。 */
+    @Autowired
+    private ObjectProvider<FunctionRegistry> registry =
+            new StaticListableBeanFactory().getBeanProvider(FunctionRegistry.class);
 
     public BizStaffController(MerchantStaffService staffService, MerchantRoleService roleService) {
         this.staffService = staffService;
@@ -144,7 +154,10 @@ public class BizStaffController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @GetMapping("/biz/role-perms")
     public List<PermOption> rolePerms() {
+        // 模块没装的权限码不给勾：勾了也没有入口可用（TDD-网关层与统一权限 §2.6）
+        FunctionRegistry functions = registry.getIfAvailable();
         return BizPerms.assignableCodes().stream()
+                .filter(c -> functions == null || functions.registered(Realm.MERCHANT, c))
                 .sorted()
                 .map(c -> new PermOption(c, BizPerms.LABELS.get(c)))
                 .toList();

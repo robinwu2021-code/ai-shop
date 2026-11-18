@@ -237,8 +237,8 @@ class MerchantRoleFlowTest {
                 "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage",
                 "biz:pricing:config:read","biz:pricing:config:update","biz:pricing:config:publish",
                 "biz:pricing:tax:read","biz:report:export",
-                "biz:print:read","biz:print:submit","biz:print:reprint","biz:print:extra",
-                "biz:print:device","biz:print:config","biz:print:resolve","biz:print:simulate","biz:print:export",
+                // 打印的 9 个码不在这里：测试配置没开打印模块（shop.print.enabled），模块没装的权限码不下发
+                // （TDD-网关层与统一权限 §2.6）—— 勾了也没有入口可用
                 // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有属主有，老板给收银员建角色时勾这几项
                 "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr",
                 // App 外收款记录（TDD-商户App外部记账）：记一笔 / 更正与作废
