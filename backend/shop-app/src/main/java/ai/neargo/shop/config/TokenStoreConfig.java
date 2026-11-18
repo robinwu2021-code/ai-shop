@@ -42,7 +42,7 @@ import java.time.Duration;
 public class TokenStoreConfig {
 
     /** 30 天：与 C 端「一次登录长期有效」的体感一致；运营端由前端主动登出控制。 */
-    private static final Duration TTL = Duration.ofDays(30);
+    static final Duration TTL = Duration.ofDays(30);
 
     /**
      * 「三端共用的那一个存储」的限定符。

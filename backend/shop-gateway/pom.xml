@@ -48,5 +48,7 @@
         <!-- 桥接里的任务查询直接用到任务存储；打印产物下载直接用到 pdfbox -->
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>job-store</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId></dependency>
+        <!-- 三端专属资源的健康明细 -->
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-health</artifactId></dependency>
     </dependencies>
 </project>

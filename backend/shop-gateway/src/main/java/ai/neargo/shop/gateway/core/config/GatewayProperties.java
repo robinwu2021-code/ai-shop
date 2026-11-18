@@ -6,6 +6,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("shop.gateway")
 public class GatewayProperties {
 
+    /**
+     * {@code strict}：用同一种存储的两端，Redis 或数据源指向同一处就启动失败。
+     * {@code relaxed}（默认）：允许共用，本机开发与现有部署用它。
+     */
+    private String isolation = "relaxed";
+
     private GatewayEndProperties mp = new GatewayEndProperties();
     private GatewayEndProperties biz = new GatewayEndProperties();
     private GatewayEndProperties ops = new GatewayEndProperties();
@@ -18,6 +24,14 @@ public class GatewayProperties {
             case "ops" -> ops;
             default -> null;
         };
+    }
+
+    public String getIsolation() {
+        return isolation;
+    }
+
+    public void setIsolation(String isolation) {
+        this.isolation = isolation;
     }
 
     public GatewayEndProperties getMp() {
