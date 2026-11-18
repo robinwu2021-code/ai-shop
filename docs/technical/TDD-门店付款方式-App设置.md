@@ -197,7 +197,7 @@ Flutter App「门店管理 › 付款方式」页改为以「付款方式」（�
 
 - **AC8** Given 门店处于「跟随商户」，When App 读取，Then 每项返回 `effectiveEnabled`（门店此刻实际可用），商户后来新开通的方式自动出现。
 - **AC9** Given App 带 `expectedVersion` 与 `eligibilityRevision` 保存，When 任一已过期，Then 返回业务码 `10409`，不覆盖；同一 `requestNo` 重试返回同一结果。
-- **AC10** Given `mode=INHERIT`，When 保存，Then `enabledMethods` 必须为空，门店回到跟随商户；`OVERRIDE` 只能选 `editable` 的方式且至少一种。
+- **AC10** Given `mode=INHERIT`，When 保存，Then `enabledMethods` 必须为空，门店回到跟随商户（商户名下暂无可开方式时也可以）；`OVERRIDE` 只能选 `editable` 的方式且至少一种。
 
 ### 契约
 
@@ -253,7 +253,7 @@ PUT  /biz/payment/store-method-preference
 | PUT 资格摘要过期 / 版本过期 | 均 `10409` |
 | PUT 摘要非 64 位 / 缺 `test` | `10400`（ai-shop 校验） |
 | PUT 模式拼错 / OVERRIDE 选不可开方式 | `10400`（near-pay 校验） |
-| PUT INHERIT（该店无可开方式） | `10400`：near-pay 在无可开方式时连「回到跟随商户」也按「至少保留一种」拒绝；该店本就是 INHERIT，不影响使用，记为 near-pay 待改 |
+| PUT INHERIT（该店无可开方式） | `10400`：near-pay 在无可开方式时连「回到跟随商户」也按「至少保留一种」拒绝。**已修**：near-pay `develop/s1` `f7a0c87eb`，「至少保留一种」只约束 OVERRIDE，`StoreCollectionMethodServiceTest#inheritIsAllowedWhenTheMerchantHasNoEligibleMethodButOverrideStillNeedsOne` 修复前红、修复后绿；已合并 develop/s1，尚未部署 UME166 |
 | 非本店店主读 / 写 | HTTP 403，`70006` |
 | 未登录 | `10401` |
 | 失败写入后复读 | 未变 |
