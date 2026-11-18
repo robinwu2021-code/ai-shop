@@ -50,6 +50,13 @@ public class HttpProxyInvoker extends AbstractServiceInvoker {
     private final ObjectMapper json;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
 
+    private GatewaySigning signing;
+
+    public HttpProxyInvoker(ServiceLocator locator, String internalToken, ObjectMapper json, GatewaySigning signing) {
+        this(locator, internalToken, json);
+        this.signing = signing;
+    }
+
     public HttpProxyInvoker(ServiceLocator locator, String internalToken, ObjectMapper json) {
         this.locator = locator;
         this.internalToken = internalToken;
@@ -72,7 +79,8 @@ public class HttpProxyInvoker extends AbstractServiceInvoker {
             response.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
             return;
         }
-        HttpRequest.Builder outbound = HttpRequest.newBuilder(URI.create(base + targetPath(resource, request)))
+        String target = targetPath(resource, request);
+        HttpRequest.Builder outbound = HttpRequest.newBuilder(URI.create(base + target))
                 .timeout(READ_TIMEOUT)
                 .method(request.getMethod(), body.length == 0
                         ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body));
@@ -83,8 +91,13 @@ public class HttpProxyInvoker extends AbstractServiceInvoker {
         if (internalToken != null && !internalToken.isBlank()) {
             outbound.header("X-Internal-Token", internalToken);
         }
+        // 配了签名密钥就带上签名上下文：下游验签之后，操作人与功能点才可以当授权依据
+        if (signing != null) {
+            signing.headers(request.getMethod(), target, body).forEach(outbound::header);
+        }
         LoginUser user = SecurityUtils.currentUser().orElse(null);
         if (user != null) {
+            // 下面两个明文头只供留痕；没有签名时下游不能拿它们当授权依据
             outbound.header("X-Gateway-Operator", user.userNo());
             outbound.header("X-Gateway-Realm", user.realm().name());
         }

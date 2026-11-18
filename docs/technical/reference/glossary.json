@@ -46576,6 +46576,20 @@
         "module": "shop-base"
       },
       {
+        "name": "Outcome",
+        "values": [
+          "OK",
+          "MISSING",
+          "MALFORMED",
+          "BAD_SIGNATURE",
+          "EXPIRED",
+          "REQUEST_MISMATCH",
+          "BODY_MISMATCH"
+        ],
+        "zh": "验证结论。",
+        "module": "svc-client"
+      },
+      {
         "name": "OverlapMode",
         "values": [
           "DISJOINT",
@@ -57179,6 +57193,30 @@
       "value": "\"_USER\"",
       "zh": "entityNo 与 storeNo 的哨兵值：这份资产属于一个 C 端用户， 不属于任何经营主体，也不属于任何门店。",
       "module": "shop-store-mybatis"
+    },
+    {
+      "host": "SignedContextCodec",
+      "name": "HEADER_CONTEXT",
+      "type": "String",
+      "value": "\"X-Gateway-Context\"",
+      "zh": "",
+      "module": "svc-client"
+    },
+    {
+      "host": "SignedContextCodec",
+      "name": "HEADER_SIGNATURE",
+      "type": "String",
+      "value": "\"X-Gateway-Signature\"",
+      "zh": "",
+      "module": "svc-client"
+    },
+    {
+      "host": "SignedContextVerifier",
+      "name": "DEFAULT_WINDOW",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
+      "zh": "默认时间窗：前后各 5 分钟，容得下机器之间的时钟偏差，又不至于让截获的请求长期可重放。",
+      "module": "svc-client"
     }
   ],
   "dependencies": {

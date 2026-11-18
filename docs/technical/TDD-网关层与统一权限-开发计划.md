@@ -725,6 +725,61 @@ shop-app classes 76 run 288 fail 4 err 0 skip 12
 
 没有验证的：真实 MySQL 上执行 `V681`；运营端与 B 端界面上的实际显示（接口契约没变，只是值不同）。
 
+**S「签名与守卫」的任务级计划与真实输出**（2026-11-18，分支 `feat/gateway-s-signed-context`，叠在 F 第二步之上；设计见方案 §2.7）：
+
+| # | 任务 | 结果 |
+|---|---|---|
+| S.1 | 签名上下文的结构与编解码，出站入站共用 | `svc-client`：`ai.neargo.svc.context.{SignedContext, SignedContextCodec}`。两个请求头 `X-Gateway-Context`（上下文）与 `X-Gateway-Signature`（HMAC-SHA256） |
+| S.2 | 出站签名 | `SignedContextInterceptor`（`svc-client`）；网关的 `GatewaySigning` 给两处用：转发库里录入的微服务链接、发往支付的内部调用 |
+| S.3 | 微服务侧的守卫 | `ai.neargo.svc.guard.{SignedContextVerifier, SignedContextGuardFilter, SignedContextHolder}`：验签名、时间窗、方法与地址、请求体摘要；三档 `off` / `observe` / `enforce`；只依赖 Servlet |
+| S.4 | 支付内部入口只比对 | `InternalGuard` 里加一步比对，只记日志，**没有拒绝这一档** |
+
+签进上下文的内容：操作人、端、经营主体、当前门店、网关判过的功能点、请求号、时间戳、方法、下游地址（含查询串）、请求体摘要。方法、地址、请求体都在签名里，所以拿一次调用的签名去调另一个接口、或者改请求体，都验不过。
+
+配置（都没有默认密钥；不配就不签、不比对，行为与今天相同）：
+
+| 配置项 | 含义 |
+|---|---|
+| `shop.gateway.signing.key` | 签名密钥。网关与验签的一方配同一把 |
+| `shop.pay.guard.internal.signed-context` | 支付内部入口是否比对，默认 `observe`；配成别的值就是不比对。**没有拒绝档** |
+
+```
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.SignedContextTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsProxyTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.api.guard.internal.InternalGuardSignedContextTest
+# gateway 包 + arch 包 + 支付守卫与服务客户端相关测试
+classes 76 run 268 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，与本次无关
+# 三份快照与上一个分支相比 0 行不同
+```
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| 编了再解，每一项原样回来（含中文与特殊字符） | `SignedContextTest.roundTrip` | 通过 |
+| 没带、签名被改、伪造操作人、过期重放、换地址、换请求体，各有各的结论 | `…verifierTellsEachFailureApart` | 通过 |
+| 守卫：拦截档对不上回 401 且入口没被调到；只比对档放行；对得上时入口拿得到上下文，请求体还能再读 | `…guardFilterModes` | 通过 |
+| AC6、AC13：转发出去的请求带签名上下文，下游用同一把密钥验得过，拿得到操作人与网关判过的功能点；换一把密钥验不过 | `OpsProxyTest.forwardedRequestCarriesAVerifiableContext` | 通过 |
+| 支付内部入口：没带、签名是错的、签名是对的，都放行；把开关写成 `enforce` 也不拒 | `InternalGuardSignedContextTest.neverRejects` | 通过 |
+| 出站拦截器签出来的头，支付这边验得过；没配密钥什么头都不加 | `…outboundSignatureVerifiesOnThePaySide` | 通过 |
+| pre-push 闸门脚本 | — | 与上一个分支相同 |
+
+**S 相对方案的偏差：**
+
+| 方案 | 实际 | 原因 |
+|---|---|---|
+| 在建客户端的地方统一加拦截器，所有出站调用都签 | 只有两条路签：转发的微服务链接、发往支付的内部调用 | 用的是现成的「按服务挂拦截器」（`InternalServiceInterceptor`）。餐饮已有自己的范围凭证（ADR-049），库存、商城、美业按各自排期迁移，一次全挂上风险与收益不成比例 |
+| 签进「已判定的下游功能点」（经登记表的下游映射） | 签的是网关这一侧的功能点码 | 还没有任何功能点登记了下游映射（F 期只留了模型）。下游现在拿到的是 ai-shop 的码 |
+| 支付守卫验签，门店与操作人以签名里的为准；调用方策略与签名里的动作取交集（AC16） | 只比对、记日志 | 这是改变支付放行结论的一步，按约定要单独确认。支付这一处拿不到请求体，比对的是签名、时间窗、方法与地址，不含请求体摘要 |
+| 守卫模块只依赖 Servlet 与 spring-web | 过滤器只依赖 Servlet | 少一层依赖，库存这类不带 Spring 容器的构建也能用 |
+| 密钥按服务各一把 | 一把 `shop.gateway.signing.key` | 现在验签的只有支付（比对）与将来接入的服务；按服务分钥等有第二个真的在拒绝的验签方时再做 |
+
+D2 记下的缺口「带给下游的操作人身份没有签名」到这里补上了一半：配了密钥之后转发的请求带可验证的上下文；但 `X-Gateway-Operator`、`X-Gateway-Realm` 两个明文头还在（留痕用），下游要以验过签的上下文为准。
+
+**上线要做的：** 要启用就给网关与支付配同一把 `shop.gateway.signing.key`（走现有的密钥管理，不写进仓库）。启用后先看支付日志里「签名上下文对不上」的条数；为零并稳定一段时间后，再议是否加拒绝档 —— 那一步需另行确认。
+
+新写的类 7 个（`svc-client` 6 个、网关 1 个）、2 个测试类；没有迁移、端点、权限码的变化；新增 2 个配置项。
+
+没有验证的：两个真实进程之间的签名与比对（网关到独立部署的支付）；机器之间时钟偏差超过 5 分钟时的表现；没有登录人的调用（定时任务、消息消费）发往支付时，签出来的上下文操作人为空，支付侧比对结果是「通过」但没有身份 —— 打开拒绝之前要先定这类调用怎么算。
+
 **D3 相对计划的偏差：**
 
 | 计划 | 实际 | 原因 |
@@ -759,3 +814,4 @@ shop-app classes 76 run 288 fail 4 err 0 skip 12
 | 2026-11-18 | 用户确认后，10 个 `or` 写法的入口改成 `canAnyBiz`（放宽权限，本地，未推送）；加了防再犯的测试 |
 | 2026-11-18 | F 第一步完成（本地，未推送）：功能点登记表与对齐测试；入库、菜单取数、码的物理搬迁未做；偏差见 §5 |
 | 2026-11-18 | F 第二步完成（本地，未推送）：功能点表加模块归属（V681）、启动回填、菜单与 B 端可勾选项按模块装没装降级；偏差见 §5 |
+| 2026-11-18 | S 完成（本地，未推送）：签名上下文、出站签名（转发与支付）、微服务侧守卫、支付内部入口只比对；不配密钥时行为不变；偏差见 §5 |

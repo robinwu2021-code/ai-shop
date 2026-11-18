@@ -1,5 +1,8 @@
 package ai.neargo.shop.gateway.core.security;
 
+import ai.neargo.shop.gateway.core.proxy.GatewaySigning;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.gateway.core.end.Access;
@@ -43,6 +46,11 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
     private final ObjectProvider<ResourceStatusCache> statuses;
     private final ObjectProvider<ServiceLocator> locator;
     private final String internalToken;
+
+    /** 出站签名；字段注入是为了不动构造器。没有时转发不带签名上下文。 */
+    @Autowired
+    private ObjectProvider<GatewaySigning> signing =
+            new StaticListableBeanFactory().getBeanProvider(GatewaySigning.class);
 
     public SpringSecurityAdapter(@Qualifier("corsSource") CorsConfigurationSource cors,
                                  ObjectProvider<ResourceIndexes> indexes,
@@ -116,7 +124,7 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
             invokers.add(new LocalServiceInvoker());
             ServiceLocator services = locator.getIfAvailable();
             if (spec.proxies() && services != null) {
-                invokers.add(new HttpProxyInvoker(services, internalToken, mapper));
+                invokers.add(new HttpProxyInvoker(services, internalToken, mapper, signing.getIfAvailable()));
             }
             http.addFilterAfter(new GatewayPrecheckFilter(index, List.of(spec.pathPrefix()), spec.decider(),
                     spec.precheck(), new GatewayErrorWriter(mapper), spec.name(), statuses.getIfAvailable(),

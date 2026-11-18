@@ -36,13 +36,14 @@ import org.springframework.web.context.WebApplicationContext;
  *
  * <p>下游是测试里起的一个桩服务，记下它收到的每个请求。提前判权是关的：微服务链接不看档位，一律在网关判完。
  */
-@SpringBootTest(properties = "shop.gateway.ops.proxy=true")
+@SpringBootTest(properties = {"shop.gateway.ops.proxy=true", "shop.gateway.signing.key=proxy-test-signing-key"})
 @ActiveProfiles("test")
 @DisplayName("网关 · 运营端转发微服务链接")
 class OpsProxyTest {
 
     private static final Pattern CODE = Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)");
     private static final List<String> RECEIVED = new CopyOnWriteArrayList<>();
+    private static final List<String[]> SIGNED = new CopyOnWriteArrayList<>();
     private static final HttpServer STUB = startStub();
 
     @Autowired
@@ -72,6 +73,9 @@ class OpsProxyTest {
                         + " token=" + exchange.getRequestHeaders().getFirst("X-Internal-Token")
                         + " operator=" + exchange.getRequestHeaders().getFirst("X-Gateway-Operator")
                         + " auth=" + exchange.getRequestHeaders().getFirst("Authorization"));
+                SIGNED.add(new String[] {exchange.getRequestHeaders().getFirst("X-Gateway-Context"),
+                        exchange.getRequestHeaders().getFirst("X-Gateway-Signature"), exchange.getRequestMethod(),
+                        exchange.getRequestURI().toString()});
                 boolean broken = exchange.getRequestURI().getPath().endsWith("/broken");
                 byte[] body = "{\"taskId\":\"T1\",\"state\":\"OPEN\"}".getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -94,6 +98,7 @@ class OpsProxyTest {
     @BeforeEach
     void seedLinks() {
         RECEIVED.clear();
+        SIGNED.clear();
         int inserted = seeds.seed("""
                 { "service": "GWSTUB", "end": "ops", "endpoints": [
                   { "method": "GET",  "path": "/ops/x/gwstub/tasks/{taskId}",
@@ -192,6 +197,33 @@ class OpsProxyTest {
                 .header("Authorization", "Bearer " + operator())).andReturn().getResponse().getStatus())
                 .isEqualTo(404);
         assertThat(RECEIVED).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 转发带签名上下文：下游用同一把密钥验得过，拿得到操作人与网关判过的功能点；换一把密钥验不过")
+    void forwardedRequestCarriesAVerifiableContext() throws Exception {
+        String token = tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.operator("PROXY-SIGNED", "proxy", List.of("SUPER_ADMIN"), List.of("*"))));
+        var response = mvc().perform(MockMvcRequestBuilders.post("/ops/x/gwstub/tasks/T-7/approve")
+                .header("Authorization", "Bearer " + token)
+                .contentType("application/json").content("{\"note\":\"ok\"}")).andReturn().getResponse();
+        assertThat(code(response.getContentAsString())).as(response.getContentAsString()).isZero();
+
+        assertThat(SIGNED).hasSize(1);
+        String[] sent = SIGNED.get(0);
+        byte[] body = "{\"note\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
+        var verified = new ai.neargo.svc.guard.SignedContextVerifier("proxy-test-signing-key")
+                .verify(sent[0], sent[1], sent[2], sent[3], body, System.currentTimeMillis());
+        assertThat(verified.outcome()).isEqualTo(ai.neargo.svc.guard.SignedContextVerifier.Outcome.OK);
+        var context = verified.context().orElseThrow();
+        assertThat(context.operator()).isEqualTo("PROXY-SIGNED");
+        assertThat(context.realm()).isEqualTo("OPERATOR");
+        assertThat(context.points()).containsExactly("gwstub:task:approve");
+        assertThat(context.path()).isEqualTo("/internal/gwstub/v1/tasks/T-7/approve");
+
+        assertThat(new ai.neargo.svc.guard.SignedContextVerifier("another-key")
+                .verify(sent[0], sent[1], sent[2], sent[3], body, System.currentTimeMillis()).outcome())
+                .isEqualTo(ai.neargo.svc.guard.SignedContextVerifier.Outcome.BAD_SIGNATURE);
     }
 
     private String operator() {
