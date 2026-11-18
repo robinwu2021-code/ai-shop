@@ -235,7 +235,7 @@ PUT  /biz/payment/store-method-preference
 
 ### 上线状态
 
-**2026-11-18 17:55（UTC+8）已发布 UME166**（用户「部署到服务器上」）。
+**2026-11-18 16:55（UTC+8，容器启动 08:55Z）已发布 UME166**（用户「部署到服务器上」）。
 
 - 方式：overlay，只覆盖本功能的类（同 `deploy/ume/mitake/build_overlay.py` 的做法），脚本与校验证明见 `deploy/ume/store-method-preference/`。基线为线上 `shop-app.jar` `351b61d3616f`（`8ae9a4a9b` 线），替换 `pay-domain` 库中的 `PayBizInternalApi`（+4 个新 record），以及 `BizPaymentAppService`、两个实现、`BizPaymentController`（+2 个新请求 record）。其余条目逐字节保留；无迁移，库仍 V678。
 - 发布前用 `javap` 比对：被替换类的成员只有新增，`RemoteBizPaymentAppService` 中仅私有 lambda 编号顺延。
