@@ -224,7 +224,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | M0 | — | `EndpointSnapshotTest`、`SecurityChainSnapshotTest`；基线数字 | ✅ 2026-11-18，见下 |
 | M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新增与扩展的规则；pre-push 的闸门脚本 | ✅ 2026-11-18，见下 |
 | M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | ✅ 2026-11-18，见下 |
-| M3 | AC10、AC26 | 属性默认值测试；`strict` 校验；停一端 Redis 的链路测试 | — |
+| M3 | AC10、AC26 | `strict` 校验；键前缀；一端 Redis 不通的链路测试；两份快照 | ✅ 2026-11-18，见下 |
 | M4 | AC21、AC22、AC23、AC25、AC15 | 对账测试；403 先于参数错误；零查库；停用开关；三端现有的端点权限测试原样通过 | — |
 
 **M0 的真实输出**（2026-11-18，分支 `feat/gateway-m0-snapshots`，基于当天的 main；扫描面是默认构建下 `test` 配置装配的全部端点，不含餐饮、美业、商城内嵌这些构建配置下才有的行业入口）：
@@ -337,6 +337,40 @@ Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.O
 
 仍然没有做：本机启动后三端真实登录的冒烟。
 
+**M3 的真实输出**（2026-11-18，分支 `feat/gateway-m3-end-isolation`，叠在 M2 之上）：
+
+```
+# arch、gateway、config、auth 四个包 + 受影响的安全相关测试，带着 M0 的快照当基线
+classes 93 run 336 fail 5 err 0 skip 9        # 5 条失败与 M0 起完全相同，与本次无关
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.GatewayEndIsolationTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.GatewayEndDedicatedRedisTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+```
+
+| 验证 | 结果 |
+|---|---|
+| 默认配置（三端都没配自己的 Redis 与数据源）下的两份快照与探测 | 与 M0 基线逐行相同 |
+| `strict` 且两端的 Redis 指向同一处 | 启动失败，报错点名是哪两端、指向哪 |
+| `strict` 且三端各有自己的 Redis；`relaxed` 下共用 | 都能起；什么都没配时不建任何连接 |
+| 一端自己的 Redis 的键前缀 | 默认 `gw:<端名>:`；不走专属时仍是原来的 `shop:session:` |
+| 运营端的会话放在它自己的 Redis 上、而那个 Redis 连不上 | 运营端用专属存储、另两端仍是共用的；C 端带令牌的请求照常 200；运营端带令牌的请求连接失败 |
+| 23 个 pre-push 闸门脚本 | 与 M2 相同 |
+
+**M3 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 任务 3.1：每端加 `session` 配置块 | 没有加 | 「哪一端的会话用哪种存储」已有两个现成的键：`shop.auth.token-store-by-realm.<端>` 与全局的 `shop.auth.token-store`。再加一块等于同一件事两处配。新增的只有每端的 `redis` 与 `datasource` |
+| 任务 3.2：`GatewayEndRuntime`、`GatewayEndRedis`、`IamDataSources` 三个类 | 合成一个 `GatewayEndRuntimes` | 三者都只是「按端建连接并在关闭时释放」，分开只是多两层转发。权限表用的数据源到 I1 才需要，届时从这里取 |
+| 任务 3.4：`TokenStoreConfig` 搬进网关并改成每端各选一种 | 没有搬。会话装配留在 `shop-app`，改为向 `GatewayEndRuntimes` 要某一端自己的 Redis 或数据源，要不到就用共用的 | 现状已经是按端选存储；这几个配置类之间靠包内可见性互相引用，测试也在同一个包里。新增一个 `GatewayEndTokenStoreConfig`，只在「没有端落库、但有端配了自己的 Redis」时装配 |
+| 任务 3.6：健康检查每端一项 | 做了，但整体状态始终是 UP，各端状况在明细里 | 把整个实例报成 DOWN 会让负载均衡把另外两端的流量也摘走，正好违背隔离的目的 |
+| 任务 3.7：运营端 Redis 不可用时 `/ops` 回 503 | 隔离成立（另两端不受影响），但运营端此时是未处理的连接异常，不是 503 | 把存储不可用映射成 503 要改 `shop-base-auth` 里的令牌过滤器，属于新增对外行为，没有放进「默认行为不变」的这个里程碑。记为待办 |
+
+新写的类 7 个：`SessionStoreKinds`、`GatewayIsolationCheck`、`GatewayEndRuntimes`、`GatewayEndHealthIndicator`（网关模块）；`GatewayEndTokenStores`、`GatewayEndTokenStoreConfig`（`shop-app`）；另有 2 个测试类。原地改了 `RedisTokenStore`（键前缀成为构造参数，默认值不变）、`DbSessionConfig`、`TokenStoreSelection`。
+
+没有验证的：每端独立**数据源**这条路只有编译和「没配时落回主库」被测到；真的指向另一个库需要一套带会话表的库，本次没有搭。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -350,3 +384,4 @@ Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.O
 | 2026-11-18 | M0 完成：三个测试类、基线、写死路径的名单；快照改为不入库（§2.1 偏差） |
 | 2026-11-18 | M1 完成（本地，未推送）：675 个文件搬进 `shop-gateway`，快照与基线逐行相同；偏差见 §5 |
 | 2026-11-18 | M2 完成（本地，未推送）：端基类、安全框架适配、四个端子类；`SecurityConfig` 拆分；快照与基线逐行相同；偏差见 §5 |
+| 2026-11-18 | M3 完成（本地，未推送）：每端自己的 Redis 与数据源、`strict` 校验、健康明细；默认配置下快照不变；偏差见 §5 |

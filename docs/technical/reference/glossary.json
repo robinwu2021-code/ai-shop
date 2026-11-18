@@ -56300,6 +56300,14 @@
       "module": "shop-base-auth"
     },
     {
+      "host": "RedisTokenStore",
+      "name": "DEFAULT_KEY_PREFIX",
+      "type": "String",
+      "value": "\"shop:session:\"",
+      "zh": "默认键前缀。",
+      "module": "shop-base-auth"
+    },
+    {
       "host": "MediaDeliveryConfig",
       "name": "SERVER",
       "type": "String",
@@ -56738,6 +56746,38 @@
       "value": "java.util.Set.of(SOURCE_SHARE, SOURCE_SCAN, SOURCE_LIST, SOURCE_SEARCH, SOURCE_GOODS)",
       "zh": "",
       "module": "shop-core"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "GLOBAL",
+      "type": "String",
+      "value": "\"shop.auth.token-store\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "BY_REALM",
+      "type": "String",
+      "value": "\"shop.auth.token-store-by-realm.\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "DB",
+      "type": "String",
+      "value": "\"db\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "REDIS",
+      "type": "String",
+      "value": "\"redis\"",
+      "zh": "",
+      "module": "shop-gateway"
     },
     {
       "host": "InvMirrorEvent",
