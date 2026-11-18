@@ -8,7 +8,6 @@ import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests.PayerIdentity;
-import java.util.Objects;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
@@ -26,17 +25,7 @@ public class OrdinaryPaymentInitiationServiceImpl implements OrdinaryPaymentInit
 
     @Override
     public SettlePort.PayInitResult initiate(SettlePort.PaymentOpen request, PayerIdentity payer) {
-        if (request == null || payer == null
-                || !Objects.equals(request.userNo(), payer.userNo())
-                || !Objects.equals(request.orderNo(), payer.orderNo())
-                || !Objects.equals(PayOrdinaryPaymentRequests.hash(request), payer.requestHash())) {
-            throw new IllegalArgumentException("PAY_PAYER_CONTEXT_CONFLICT");
-        }
-        if ("WECHAT".equals(request.payChannel())
-                && (payer.openId() == null || payer.openId().isBlank()
-                    || payer.appId() == null || payer.appId().isBlank())) {
-            throw new IllegalArgumentException("PAY_PAYER_IDENTITY_REQUIRED");
-        }
+        PayOrdinaryPaymentRequests.requirePayer(request, payer);
         String outTradeNo = ledger.open(request);
         var frozen = ledger.paymentRequest(outTradeNo).orElseThrow(
                 () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));

@@ -5,6 +5,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
+import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
+import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests.PayerIdentity;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.pay.service.PaymentOperationService;
 import ai.neargo.shop.pay.service.PaymentOperationService.NotSentReason;
@@ -65,22 +67,37 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
 
     @Override
     public PaymentOperationView initiate(String operationNo) {
+        return initiate(operationNo, null);
+    }
+
+    private PaymentOperationView initiate(String operationNo, PayerIdentity legacyPayer) {
         outside();
-        var result = dispatchOriginal(operationNo);
+        var result = dispatchOriginal(operationNo, legacyPayer);
         // The ticket belongs to the canonical root, while the caller keeps its own durable
         // identity.
         return operationNo.equals(result.operationNo()) ? result : operations.find(operationNo);
     }
 
-    private PaymentOperationView dispatchOriginal(String operationNo) {
+    private PaymentOperationView dispatchOriginal(String operationNo, PayerIdentity legacyPayer) {
         var opened = operations.open(operationNo);
+        if (legacyPayer != null && legacyPayer.appId() != null && opened.outTradeNo() != null) {
+            ledger.freezePayer(opened.outTradeNo(), legacyPayer.userNo(), legacyPayer.openId(), legacyPayer.appId());
+        }
         if (!"OPENED".equals(opened.phase())) {
             return query(operationNo);
         }
         var request = ledger.paymentRequest(opened.outTradeNo()).orElseThrow();
         boolean supported = gateways.supports(request.payChannel());
-        String payer = supported && "WECHAT".equals(request.payChannel())
-                ? identities.wxPayerOpenIdMp(request.userNo()).orElse(null) : null;
+        boolean wechat = "WECHAT".equals(request.payChannel());
+        String payer = null;
+        String appId = null;
+        if (legacyPayer != null) {
+            payer = legacyPayer.openId();
+            appId = legacyPayer.appId();
+        } else if (supported && wechat) {
+            payer = identities.wxPayerOpenIdMp(request.userNo()).orElse(null);
+            appId = wechatAppId;
+        }
         var ticket = operations.claimSend(operationNo);
         if (ticket.isEmpty()) {
             return query(operationNo);
@@ -120,10 +137,7 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
             // A verified channel rejection is not the NOT_SENT proof required to close this ticket.
             return operations.recordUnknown(ticket.get(), "PAYMENT_REJECTION_REQUIRES_RECONCILIATION");
         }
-        ledger.recordPayer(
-                ticket.get().outTradeNo(),
-                payer,
-                "WECHAT".equals(request.payChannel()) ? wechatAppId : null);
+        ledger.recordPayer(ticket.get().outTradeNo(), payer, appId);
         var payable =
                 operations.recordPayable(
                         ticket.get(), result.params(), Instant.now().plusSeconds(300));
@@ -136,7 +150,9 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
                             0L,
                             System.currentTimeMillis(),
                             request.currency()));
-            return project(operations.observeReceipt(operationNo));
+            var settled = operations.observeReceipt(operationNo);
+            // The legacy trade caller projects its own inline payment success.
+            return legacyPayer == null ? project(settled) : settled;
         }
         return payable;
     }
@@ -213,10 +229,11 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
     }
 
     @Override
-    public SettlePort.PayInitResult initiateLegacy(SettlePort.PaymentOpen payment) {
+    public SettlePort.PayInitResult initiateLegacy(SettlePort.PaymentOpen payment, PayerIdentity payer) {
         outside();
+        PayOrdinaryPaymentRequests.requirePayer(payment, payer);
         var prepared = operations.prepareLegacy(payment);
-        var result = initiate(prepared.operationNo());
+        var result = initiate(prepared.operationNo(), payer);
         boolean ready =
                 "SUCCEEDED".equals(result.phase())
                         || "PAYABLE".equals(result.phase()) && !result.payParams().isEmpty();

@@ -15,7 +15,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.SettlePort;
-import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
+import ai.neargo.shop.paybridge.service.PaymentDispatchService;
 import ai.neargo.shop.payclient.OrdinaryPaymentPayerResolver;
 import org.springframework.stereotype.Component;
 
@@ -53,7 +53,7 @@ public class SettlePortImpl implements SettlePort {
     private final SettleService settleService;
     private final PaymentLedgerService paymentLedger;
     private final SettleGenerationOrchestrator orchestrator;
-    private final OrdinaryPaymentInitiationService ordinaryPayments;
+    private final PaymentDispatchService paymentDispatch;
     private final OrdinaryPaymentPayerResolver payerResolver;
     /** 退款时的结算侧编排（按额回退分账，口径 A） */
     private final ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund;
@@ -61,7 +61,7 @@ public class SettlePortImpl implements SettlePort {
 
     public SettlePortImpl(SettleService settleService, PaymentLedgerService paymentLedger,
                           SettleGenerationOrchestrator orchestrator,
-                          OrdinaryPaymentInitiationService ordinaryPayments,
+                          PaymentDispatchService paymentDispatch,
                           OrdinaryPaymentPayerResolver payerResolver,
                           ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund,
                           ai.neargo.shop.pay.settle.refund.CashRefundSplitService cashRefundSplit) {
@@ -70,7 +70,7 @@ public class SettlePortImpl implements SettlePort {
         this.settleService = settleService;
         this.paymentLedger = paymentLedger;
         this.orchestrator = orchestrator;
-        this.ordinaryPayments = ordinaryPayments;
+        this.paymentDispatch = paymentDispatch;
         this.payerResolver = payerResolver;
     }
 
@@ -145,7 +145,7 @@ public class SettlePortImpl implements SettlePort {
 
     @Override
     public PayInitResult initPayment(PaymentOpen cmd) {
-        return ordinaryPayments.initiate(cmd, payerResolver.resolve(cmd));
+        return paymentDispatch.initiateLegacy(cmd, payerResolver.resolve(cmd));
     }
 
     @Override
