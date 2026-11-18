@@ -60,7 +60,7 @@ public class RefundExecutionStore {
     }
 
     public static OrdRefundExecution requireFunded(OrdRefundExecution row) {
-        if (row != null && "REFUND_EXECUTION_CONFLICT".equals(row.getErrorCode())) {
+        if (row != null && "SOURCE_MODE_CONFLICT".equals(row.getResourceErrorCode())) {
             throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
         }
         return row;
@@ -108,7 +108,9 @@ public class RefundExecutionStore {
     public OrdRefundExecution claim(String no) {
         OrdRefundExecution row = lockSource(no);
         if (row != null && "REFUND_EXECUTION_CONFLICT".equals(row.getErrorCode())) {
-            return row;
+            // A cash-fact conflict can be reconciled by reading the original refund only.
+            // It must never claim a new dispatch.
+            return "SOURCE_MODE_CONFLICT".equals(row.getResourceErrorCode()) ? row : null;
         }
         if (row == null || OrdRefundExecution.SUCCEEDED.equals(row.getStatus())
                 || OrdRefundExecution.FAILED.equals(row.getStatus()) && !pendingReversal(row)

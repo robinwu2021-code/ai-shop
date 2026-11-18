@@ -56,7 +56,7 @@ class RegistrationMarketFlowTest {
     }
 
     private static String probePhone() {
-        return "1270" + String.format("%07d", ThreadLocalRandom.current().nextInt(10_000_000));
+        return "1670" + String.format("%07d", ThreadLocalRandom.current().nextInt(10_000_000));
     }
 
     /** 登录并返回 token；marketCode 为 null 时请求体里不带这个字段（旧端的样子）。 */
