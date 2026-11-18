@@ -454,6 +454,64 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 
 没有做的：运营端「接口资源」页与它的后端入口（属于 D2）；停用目前只能直接改库。
 
+**D2（后端部分）的任务级计划与真实输出**（2026-11-18，分支 `feat/gateway-d2-proxy`，叠在 M4b 之上）：
+
+进入条件写的是「M4 在 166 上已 `enforce`」，这一条**没有满足** —— 用户要求继续做，所以转发整体挂在一个默认关的开关后面（`shop.gateway.<端>.proxy`，默认 `false`），关着时与 M4b 行为逐行相同。
+
+| # | 任务 | 结果 |
+|---|---|---|
+| D2.1 | 资源模型带上内部地址；索引合并时本进程的入口优先于录入的链接 | `ApiResource.targetPath`、`ResourceIndex` |
+| D2.2 | 从库里读录入的微服务链接（来源 `MANUAL`），60 秒重建索引，可立即失效 | `StoredResourceProvider`、`ResourceStore.loadManual`、`ResourceIndexes` |
+| D2.3 | 调用抽象：本进程放行、微服务转发，同一个基类 | `ServiceInvoker`、`AbstractServiceInvoker`、`LocalServiceInvoker`、`HttpProxyInvoker` |
+| D2.4 | 过滤器走完整的五步：定位 → 停用 404 → 认证 → 判定 → 调用 | 改 `GatewayPrecheckFilter`、`SpringSecurityAdapter` |
+| D2.5 | 清单文件作种子：`classpath:gateway/manifest/*.json`，启动时只插入还不存在的行 | `ManifestSeedLoader`、`ResourceStore.seedManual` |
+| D2.6 | 用桩服务验证 | `OpsProxyTest` 5 条 |
+
+```
+# 两份快照 + 架构测试 + gateway 包全部测试，带着 M0 的快照当基线；转发默认是关
+Tests run: 27, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsProxyTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsResourceStoreTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsPrecheckEnforceTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsPrecheckObserveTest
+```
+
+这一次只跑了上面这组（12 个类 56 条），没有重跑 M4b 那组 94 个类的大集合。
+
+| 验证（下游是测试里起的桩服务，记下它收到的每个请求） | 结果 |
+|---|---|
+| 两份快照与探测（转发、提前判权都默认关） | 与 M0 基线逐行相同 |
+| 没登录访问录入的链接 | 401，桩服务收到 0 个请求 |
+| 登录了但没有功能点 | 「没有操作权限」，桩服务收到 0 个请求（AC13：在网关拦，不到微服务） |
+| 判权通过 | 转到内部地址，路径变量与查询串原样带过去；带进程凭据与操作人，**不带终端令牌**；结果放进统一包体 |
+| 同一个前缀下没录入的地址 | 到不了下游（白名单） |
+| 清单里的三类坏条目：写操作没带功能点、对外地址不在本端前缀下、声明「公开」 | 都没入库 |
+| 下游回 500 | 终端拿到 502 与统一的内部错误，看不到下游原始响应 |
+| 种子重复写 | 已有的行不动，库里改过的状态保留 |
+| 在库里停用一条录入的链接 | 404，桩服务收到 0 个请求 |
+| pre-push 闸门脚本 | 与 M4b 相同（仍红的两道 `sql-portability`、`shared-guards` 自 M0 起就红，与本次无关） |
+
+**微服务链接的判权不看 `precheck` 档位**：本进程的入口后面还有方法注解兜底，所以可以先观察；转发出去的链接后面没有任何兜底，录入了就一律在网关认证、判完才转。
+
+转发的边界（第一版，有意收窄）：只转 JSON 或无请求体；请求体上限 1 MB；连接 3 秒、读 5 秒；下游地址读 `shop.services.targets.<服务>`，没配就回内部错误；超时回 504，其余下游错误回 502。
+
+**D2 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 进入条件：M4 在 166 上已 `enforce` | 没满足就做了 | 用户要求继续；转发默认关，合并不改变行为。166 上打开前仍应先走完 M4 的观察与拦截 |
+| 新写 `GatewayInvokeFilter` | 没有新过滤器，五步都在 `GatewayPrecheckFilter` 里 | 定位、判定、调用是同一条流程的前后几步，拆成两个过滤器要把定位结果在两处之间传。类名与它现在做的事不完全相符，改名留到 D3 一起做 |
+| 种子脚本 | 启动时读类路径下的清单文件 | 少一个要单独跑的步骤；清单与代码一起评审、一起发布 |
+| 运营端「接口资源」页及其后端；改 `nav.ts`、重跑界面清单 | **没做** | 要新增端点、权限码、菜单与三语词条，是单独的一档工作。录入与停用目前只能靠清单文件或直接改库 |
+| 带给下游的操作人身份 | 明文的两个头（`X-Gateway-Operator`、`X-Gateway-Realm`），没有签名 | 签名属于 S 期。在那之前下游只能把这两个头当审计信息，不能当授权依据；下游的入口仍靠进程凭据与「只在内网可达」保护 |
+| 仓库里的清单文件 | 一份都没有 | 工单/工作流、appops 还没有接口可录；支付、库存现有的调用走各自的桥接，不改 |
+
+新写的类 6 个：`ServiceInvoker`、`AbstractServiceInvoker`、`LocalServiceInvoker`、`HttpProxyInvoker`（调用），`StoredResourceProvider`（链接来源），`ManifestSeedLoader`（种子）；1 个测试类。没有新迁移、没有新端点、没有新权限码。
+
+没有验证的：对着真实的微服务转发（只有桩）；多实例下改库后其它实例最长 60 秒才生效；大响应体与流式响应（第一版不支持）。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -470,3 +528,4 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 2026-11-18 | M3 完成（本地，未推送）：每端自己的 Redis 与数据源、`strict` 校验、健康明细；默认配置下快照不变；偏差见 §5 |
 | 2026-11-18 | M4a 完成（本地，未推送）：运营端资源索引与提前判权，三档开关默认关；入库（M4b）未做；偏差见 §5 |
 | 2026-11-18 | M4b 完成（本地，未推送）：两张接口资源表（V679）、启动同步、停用开关；偏差见 §5。第一批五个里程碑全部完成 |
+| 2026-11-18 | D2 后端部分完成（本地，未推送）：录入的微服务链接入索引、网关判权后转发、清单种子；开关默认关，快照不变。「接口资源」页未做；偏差见 §5 |
