@@ -44259,6 +44259,15 @@
     ],
     "javaEnums": [
       {
+        "name": "Access",
+        "values": [
+          "PUBLIC",
+          "LOGIN"
+        ],
+        "zh": "一个地址的放行方式。",
+        "module": "shop-gateway"
+      },
+      {
         "name": "AccessMode",
         "values": [
           "MERCHANT_OWN",
@@ -47627,6 +47636,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "State",
+        "values": [
+          "ON",
+          "CLOSED",
+          "ABSENT"
+        ],
+        "zh": "一端的装配状态。",
+        "module": "shop-gateway"
       },
       {
         "name": "State",

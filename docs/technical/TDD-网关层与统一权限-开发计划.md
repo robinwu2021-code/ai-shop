@@ -223,7 +223,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 |---|---|---|---|
 | M0 | — | `EndpointSnapshotTest`、`SecurityChainSnapshotTest`；基线数字 | ✅ 2026-11-18，见下 |
 | M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新增与扩展的规则；pre-push 的闸门脚本 | ✅ 2026-11-18，见下 |
-| M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | — |
+| M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | ✅ 2026-11-18，见下 |
 | M3 | AC10、AC26 | 属性默认值测试；`strict` 校验；停一端 Redis 的链路测试 | — |
 | M4 | AC21、AC22、AC23、AC25、AC15 | 对账测试；403 先于参数错误；零查库；停用开关；三端现有的端点权限测试原样通过 | — |
 
@@ -293,6 +293,50 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 
 没有做的两项，留到合并前：本机启动后三端各登录一次的冒烟（快照里的探测已覆盖「各端只认自己的令牌」，但没有走真实登录）；餐饮、美业插件模块里改过的 3 个测试文件只在带对应构建配置时才编译，本次默认构建没有编到它们。
 
+**M2 的真实输出**（2026-11-18，分支 `feat/gateway-m2-end-base`，叠在 M1 之上）：
+
+```
+# arch 包 + gateway 包 + 受影响的安全相关测试，带着 M0 的快照当基线
+classes 71 run 243 fail 5 err 0 skip 5        # 5 条失败与 M0、M1 上完全相同，与本次无关
+Tests run: 27, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.GatewayEndClosedTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.GatewayEndSwitchTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 2 -- in ai.neargo.shop.commercebridge.CommerceAccessSecurityFlowTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.payclient.PayBizOnboardingHttpTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.config.ClientVersionGateFilterTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.ClientVersionGateFlowTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.OpsStreamTest
+```
+
+| 验证 | 结果 |
+|---|---|
+| 端点快照、认证链快照（9 条链的顺序与每条链的过滤器顺序）、探测结果 | 与 M0 基线逐行相同 |
+| 只开运营端：`shop.gateway.mp.enabled=false`、`shop.gateway.biz.enabled=false`，入口仍被装配 | C 端、B 端前缀下不带令牌、带本端有效令牌、打登录入口都是 404；运营端照常 401（方案 AC2） |
+| 端开关的四种组合 | 没配跟部署面；入口在而开关关是「封住」；入口不在是「不装」；显式打开是「装」 |
+| 23 个 pre-push 闸门脚本 | 与基线相比只少红一道（生成文档，文档分支上已修）；其余退出码相同 |
+| 临时放三个违规样例（公共件里的基类引用 B 端的端子类、带一个非 `final` 的公开方法、子类之下再有子类） | `ArchitectureTest` 恰好 2 条失败，报出两条具体违规；样例已删 |
+
+**快照在 M2 抓到的一处真实差异：** 第一次跑时，支付接入的四条链（渠道回调、开放接口、终端、收银台）少了 `CorsFilter`。原因是 Spring Security 在造每个 `HttpSecurity` 时，按「容器里有没有 `UrlBasedCorsConfigurationSource` 类型的 bean」决定是否默认加 CORS；原来那个 bean 的工厂方法返回类型写的是接口，能不能被认出来取决于它是否恰好先被创建。拆分前它和所有链在同一个配置类里、排在最前，拆分后创建顺序变了。已把返回类型改成具体类型，不再依赖创建顺序，四条链的过滤器与基线一致。
+
+顺带看到一件拆分前就存在、这次没有动的事：渠道回调那条链的注释写的是「不开 CORS」，但它实际一直带着 `CorsFilter`（就是上面这个机制默认加的）。要不要真的去掉，留给支付侧决定。
+
+**M2 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 任务 2.3：`GatewayChainBuilder` 单独一个类 | 并进 `SpringSecurityAdapter` | 它只有适配器一个使用者，单独成类只是多一层转发 |
+| 任务 2.4：三个端子类 | 四个：另有 `PayOpsGatewayEnd` | 支付运营面是一条独立的链（前缀 `/pay-ops`、顺序 8、多一个支付守卫过滤器），与运营端共用开关。公共地址那条链没有令牌认证，不走端基类，单独是 `PublicGatewayChain` |
+| 任务 2.5：`SecurityConfig` 改名为 `PayPortalSecurityConfig` | 照做；另加一个装配入口 `GatewaySecurityConfiguration` | 四个切片测试原来只列 `SecurityConfig.class` 就能拿到全部链，现在列这两个。端子类不带 `@Configuration`，只经装配入口引入，于是「只在 Web 应用里装」这一个条件对它们全部生效 |
+| 任务 2.6：在 `application.yml` 的 `api`、`ops` 配置段里设开关 | 没有改 `application.yml`。开关是三态：没配时跟着部署面走；入口在而开关关时装一条只回 404 的链 | 切片测试只设部署面、不加载 `application.yml`，在它们那里开关键一个都没有。另外，入口还在时只撤掉认证链会让请求绕过认证，所以「关」必须是「封住」 |
+| 任务 2.7：端子类只覆盖基类声明的方法 | 没有做成规则 | 每个端子类带一个登记认证链的 `@Bean` 方法，不是覆盖。另两条（流程方法 `final`、子类之下不再有子类）与「公共件不引用各端」已是规则 |
+| 名单里没有的 | `config/ClientVersionGateFilter` 搬进 `shop-gateway`（包名不变）；`ArchitectureTest` 的顶层包名单登记了 `gateway` | 前者被 B 端的端子类直接创建；后者是现有规则「新开顶层包必须登记」要求的 |
+
+新写的类 18 个（计划估 10 个）：配置属性 2、端开关与条件 3、端基类与描述 3、安全框架适配 3、CORS 与公共地址链 2（搬）、端子类 4、装配入口 1。
+
+仍然没有做：本机启动后三端真实登录的冒烟。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -305,3 +349,4 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 2026-11-18 | 计划确认，待开工；从 M0 开始 |
 | 2026-11-18 | M0 完成：三个测试类、基线、写死路径的名单；快照改为不入库（§2.1 偏差） |
 | 2026-11-18 | M1 完成（本地，未推送）：675 个文件搬进 `shop-gateway`，快照与基线逐行相同；偏差见 §5 |
+| 2026-11-18 | M2 完成（本地，未推送）：端基类、安全框架适配、四个端子类；`SecurityConfig` 拆分；快照与基线逐行相同；偏差见 §5 |
