@@ -37873,279 +37873,6 @@
         "module": "print"
       },
       {
-        "host": "InvManagedAppService",
-        "name": "DONE",
-        "value": "DONE",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvManagedAppService",
-        "name": "BLOCKED",
-        "value": "BLOCKED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvManagedAppService",
-        "name": "NEEDS_CONFIRM",
-        "value": "NEEDS_CONFIRM",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "PREFIX",
-        "value": "INV_MIRROR_",
-        "zh": "域前缀。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESERVE",
-        "value": "INV_MIRROR_RESERVE",
-        "zh": "平台锁库 → 进销存建预留。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "COMMIT",
-        "value": "INV_MIRROR_COMMIT",
-        "zh": "平台确认 → 进销存把预留转成出库。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ALLOCATE",
-        "value": "INV_MIRROR_ALLOCATE",
-        "zh": "Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ISSUE",
-        "value": "INV_MIRROR_ISSUE",
-        "zh": "Fulfillment handoff: only the referenced sub-order lines are issued.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RELEASE_ALLOCATED",
-        "value": "INV_MIRROR_RELEASE_ALLOCATED",
-        "zh": "Refund before handoff releases a paid allocation.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RELEASE",
-        "value": "INV_MIRROR_RELEASE",
-        "zh": "平台释放 → 进销存撤销预留。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESTORE",
-        "value": "INV_MIRROR_RESTORE",
-        "zh": "售后退回 → 进销存回补库存。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESTORE_ORIGINAL",
-        "value": "INV_MIRROR_RESTORE_ORIGINAL",
-        "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RETURN_RECEIPT",
-        "value": "INV_MIRROR_RETURN_RECEIPT",
-        "zh": "V2 physical return acceptance with quality routing; independent of cash refund callbacks.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ADJUST",
-        "value": "INV_MIRROR_ADJUST",
-        "zh": "商家在商品页手改库存 → 进销存跟着改。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Channel",
-        "name": "PLATFORM_TO_INVENTORY",
-        "value": "PLATFORM_TO_INVENTORY",
-        "zh": "平台 → 进销存（sys_outbox）：建品投影、上架变更走这条",
-        "module": "shop-app"
-      },
-      {
-        "host": "Channel",
-        "name": "INVENTORY_TO_PLATFORM",
-        "value": "INVENTORY_TO_PLATFORM",
-        "zh": "进销存 → 平台（inv_outbox）：库存镜像回写走这条",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "OK",
-        "value": "OK",
-        "zh": "没有积压",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "BACKLOG",
-        "value": "BACKLOG",
-        "zh": "有积压，但都还新鲜 —— 投递任务每 5 秒一轮，这是正常的处理中",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "DISPATCHER_STALLED",
-        "value": "DISPATCHER_STALLED",
-        "zh": "老积压且一次都没被碰过：**投递任务没在跑**。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "CONSUMER_FAILING",
-        "value": "CONSUMER_FAILING",
-        "zh": "反复投递反复失败：**消费者在抛异常**。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_GOODS",
-        "value": "NO_GOODS",
-        "zh": "一个品都没建",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "IN_AUDIT",
-        "value": "IN_AUDIT",
-        "zh": "建了品但全卡在审核 —— **这一层的账要算在平台头上**，不是商家",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NOT_ON_SALE",
-        "value": "NOT_ON_SALE",
-        "zh": "审完了也没上架：商家自己没点，或者被驳回后没改",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_ACCOUNT",
-        "value": "NO_ACCOUNT",
-        "zh": "上架了但进销存里没有账 —— 多半是投影链路断了，见「链路健康」",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_INBOUND",
-        "value": "NO_INBOUND",
-        "zh": "建了账但一次没进过货：进销存对他来说还只是个空壳",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "STALE_LEDGER",
-        "value": "STALE_LEDGER",
-        "zh": "进过货，但很久没动了",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "OPEN_ORDERS",
-        "value": "OPEN_ORDERS",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "PENDING_PAYOUT",
-        "value": "PENDING_PAYOUT",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "PAID_PLAN_ACTIVE",
-        "value": "PAID_PLAN_ACTIVE",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "BUYER_OPEN_ORDERS",
-        "value": "BUYER_OPEN_ORDERS",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "PaymentCollectionWork",
-        "name": "TYPE",
-        "value": "MERCHANT_COLLECTION_RECEIVED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "WxShippingUploadRequested",
-        "name": "TYPE",
-        "value": "WX_SHIPPING_UPLOAD_REQUESTED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "BIZ_APP",
-        "value": "END_BIZ_APP",
-        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "APP_POS",
-        "value": "END_APP_POS",
-        "zh": "感应收款 / POS 端。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "RETAIL",
-        "value": "END_RETAIL",
-        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "FNB",
-        "value": "END_FNB",
-        "zh": "餐饮作业：点餐单、菜单、桌台、出品看板、报表。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "SERVICE",
-        "value": "END_SERVICE",
-        "zh": "服务业作业：预约、服务项目、排班、报表。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "MARKETING",
-        "value": "END_MARKETING",
-        "zh": "会员与营销。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "CHAIN",
-        "value": "END_CHAIN",
-        "zh": "连锁：跨店管理、考勤工资。",
-        "module": "shop-app"
-      },
-      {
         "host": "BizKey",
         "name": "OPERATING_ENTITY",
         "value": "OE",
@@ -43445,6 +43172,279 @@
         "module": "shop-core"
       },
       {
+        "host": "InvManagedAppService",
+        "name": "DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "BLOCKED",
+        "value": "BLOCKED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "NEEDS_CONFIRM",
+        "value": "NEEDS_CONFIRM",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "PREFIX",
+        "value": "INV_MIRROR_",
+        "zh": "域前缀。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESERVE",
+        "value": "INV_MIRROR_RESERVE",
+        "zh": "平台锁库 → 进销存建预留。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "COMMIT",
+        "value": "INV_MIRROR_COMMIT",
+        "zh": "平台确认 → 进销存把预留转成出库。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ALLOCATE",
+        "value": "INV_MIRROR_ALLOCATE",
+        "zh": "Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ISSUE",
+        "value": "INV_MIRROR_ISSUE",
+        "zh": "Fulfillment handoff: only the referenced sub-order lines are issued.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE_ALLOCATED",
+        "value": "INV_MIRROR_RELEASE_ALLOCATED",
+        "zh": "Refund before handoff releases a paid allocation.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE",
+        "value": "INV_MIRROR_RELEASE",
+        "zh": "平台释放 → 进销存撤销预留。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE",
+        "value": "INV_MIRROR_RESTORE",
+        "zh": "售后退回 → 进销存回补库存。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE_ORIGINAL",
+        "value": "INV_MIRROR_RESTORE_ORIGINAL",
+        "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RETURN_RECEIPT",
+        "value": "INV_MIRROR_RETURN_RECEIPT",
+        "zh": "V2 physical return acceptance with quality routing; independent of cash refund callbacks.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ADJUST",
+        "value": "INV_MIRROR_ADJUST",
+        "zh": "商家在商品页手改库存 → 进销存跟着改。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Channel",
+        "name": "PLATFORM_TO_INVENTORY",
+        "value": "PLATFORM_TO_INVENTORY",
+        "zh": "平台 → 进销存（sys_outbox）：建品投影、上架变更走这条",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Channel",
+        "name": "INVENTORY_TO_PLATFORM",
+        "value": "INVENTORY_TO_PLATFORM",
+        "zh": "进销存 → 平台（inv_outbox）：库存镜像回写走这条",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "OK",
+        "value": "OK",
+        "zh": "没有积压",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "BACKLOG",
+        "value": "BACKLOG",
+        "zh": "有积压，但都还新鲜 —— 投递任务每 5 秒一轮，这是正常的处理中",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "DISPATCHER_STALLED",
+        "value": "DISPATCHER_STALLED",
+        "zh": "老积压且一次都没被碰过：**投递任务没在跑**。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "CONSUMER_FAILING",
+        "value": "CONSUMER_FAILING",
+        "zh": "反复投递反复失败：**消费者在抛异常**。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_GOODS",
+        "value": "NO_GOODS",
+        "zh": "一个品都没建",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "IN_AUDIT",
+        "value": "IN_AUDIT",
+        "zh": "建了品但全卡在审核 —— **这一层的账要算在平台头上**，不是商家",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NOT_ON_SALE",
+        "value": "NOT_ON_SALE",
+        "zh": "审完了也没上架：商家自己没点，或者被驳回后没改",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_ACCOUNT",
+        "value": "NO_ACCOUNT",
+        "zh": "上架了但进销存里没有账 —— 多半是投影链路断了，见「链路健康」",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_INBOUND",
+        "value": "NO_INBOUND",
+        "zh": "建了账但一次没进过货：进销存对他来说还只是个空壳",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "STALE_LEDGER",
+        "value": "STALE_LEDGER",
+        "zh": "进过货，但很久没动了",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "OPEN_ORDERS",
+        "value": "OPEN_ORDERS",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PENDING_PAYOUT",
+        "value": "PENDING_PAYOUT",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PAID_PLAN_ACTIVE",
+        "value": "PAID_PLAN_ACTIVE",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "BUYER_OPEN_ORDERS",
+        "value": "BUYER_OPEN_ORDERS",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "PaymentCollectionWork",
+        "name": "TYPE",
+        "value": "MERCHANT_COLLECTION_RECEIVED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "WxShippingUploadRequested",
+        "name": "TYPE",
+        "value": "WX_SHIPPING_UPLOAD_REQUESTED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "BIZ_APP",
+        "value": "END_BIZ_APP",
+        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "APP_POS",
+        "value": "END_APP_POS",
+        "zh": "感应收款 / POS 端。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "RETAIL",
+        "value": "END_RETAIL",
+        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "FNB",
+        "value": "END_FNB",
+        "zh": "餐饮作业：点餐单、菜单、桌台、出品看板、报表。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "SERVICE",
+        "value": "END_SERVICE",
+        "zh": "服务业作业：预约、服务项目、排班、报表。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "MARKETING",
+        "value": "END_MARKETING",
+        "zh": "会员与营销。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "CHAIN",
+        "value": "END_CHAIN",
+        "zh": "连锁：跨店管理、考勤工资。",
+        "module": "shop-gateway"
+      },
+      {
         "host": "ShopInventorySystem",
         "name": "CODE",
         "value": "SHOP",
@@ -44310,16 +44310,6 @@
       {
         "name": "Action",
         "values": [
-          "LOGIN",
-          "OTP_SEND",
-          "EMAIL_OTP_SEND"
-        ],
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "name": "Action",
-        "values": [
           "EARN",
           "HOLD",
           "RELEASE",
@@ -44366,6 +44356,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Action",
+        "values": [
+          "LOGIN",
+          "OTP_SEND",
+          "EMAIL_OTP_SEND"
+        ],
+        "zh": "",
+        "module": "shop-gateway"
       },
       {
         "name": "Action",
@@ -45171,7 +45171,7 @@
           "BANK_COVER"
         ],
         "zh": "App 的识别类型。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "ErrorCode",
@@ -45721,7 +45721,7 @@
           "CHAIN"
         ],
         "zh": "功能分组，端上按组折叠。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "GuardDecision",
@@ -45751,7 +45751,7 @@
           "COORDINATED"
         ],
         "zh": "商城硬件是否接进销存。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "Holder",
@@ -45848,16 +45848,6 @@
           "INSTALLED",
           "CORRUPT"
         ],
-        "zh": "ABSENT is legal only when neither a V606 marker nor any new owner table exists.",
-        "module": "shop-app"
-      },
-      {
-        "name": "Installation",
-        "values": [
-          "ABSENT",
-          "INSTALLED",
-          "CORRUPT"
-        ],
         "zh": "ABSENT is legal only when neither a V605 marker nor any new owner table exists.",
         "module": "shop-core"
       },
@@ -45870,6 +45860,16 @@
         ],
         "zh": "ABSENT is legal only when neither a V604 marker nor any new owner table exists.",
         "module": "shop-core"
+      },
+      {
+        "name": "Installation",
+        "values": [
+          "ABSENT",
+          "INSTALLED",
+          "CORRUPT"
+        ],
+        "zh": "ABSENT is legal only when neither a V606 marker nor any new owner table exists.",
+        "module": "shop-gateway"
       },
       {
         "name": "Installation",
@@ -46424,7 +46424,7 @@
           "ACK"
         ],
         "zh": "",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "OrderBy",
@@ -46624,7 +46624,7 @@
           "UNKNOWN"
         ],
         "zh": "收款开通状态。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "PayErrorCode",
@@ -47891,7 +47891,7 @@
           "HR"
         ],
         "zh": "商户 App 的功能注册表（TDD-B端门店功能矩阵与方案准入 §2）。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "StoreStatus",
@@ -47999,7 +47999,7 @@
           "OPS"
         ],
         "zh": "",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "TraceStatus",
@@ -54049,70 +54049,6 @@
       "module": "shop-app"
     },
     {
-      "host": "InvMirrorEvent",
-      "name": "ALL",
-      "type": "Set<String>",
-      "value": "Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED, RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST)",
-      "zh": "全部镜像事件。",
-      "module": "shop-app"
-    },
-    {
-      "host": "SettleBatchJob",
-      "name": "NAME",
-      "type": "String",
-      "value": "\"settle-batch\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PayChannelAccountClaimForwarder",
-      "name": "BASE",
-      "type": "String",
-      "value": "\"/biz/pay/v2/channel-account-claims\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PayServiceApplyRequests",
-      "name": "PERM",
-      "type": "String",
-      "value": "\"merchant:merchant:pay-apply\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PaymentReadRouter",
-      "name": "HEADER",
-      "type": "String",
-      "value": "\"X-Pay-Read-Environment\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "BizFoundationController",
-      "name": "OTHER",
-      "type": "String",
-      "value": "StoreVO.OTHER",
-      "zh": "行业与子业态的「其他」都用这个码。",
-      "module": "shop-app"
-    },
-    {
-      "host": "ReportDailyRollupJob",
-      "name": "WATERMARK_KEY",
-      "type": "String",
-      "value": "\"daily-store\"",
-      "zh": "水位的键。",
-      "module": "shop-app"
-    },
-    {
-      "host": "ReportDailyRollupJob",
-      "name": "GOODS_WATERMARK_KEY",
-      "type": "String",
-      "value": "\"daily-goods\"",
-      "zh": "商品日汇总的水位。",
-      "module": "shop-app"
-    },
-    {
       "host": "ApiResult",
       "name": "OK",
       "type": "int",
@@ -56783,6 +56719,70 @@
       "value": "java.util.Set.of(SOURCE_SHARE, SOURCE_SCAN, SOURCE_LIST, SOURCE_SEARCH, SOURCE_GOODS)",
       "zh": "",
       "module": "shop-core"
+    },
+    {
+      "host": "InvMirrorEvent",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED, RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST)",
+      "zh": "全部镜像事件。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SettleBatchJob",
+      "name": "NAME",
+      "type": "String",
+      "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayChannelAccountClaimForwarder",
+      "name": "BASE",
+      "type": "String",
+      "value": "\"/biz/pay/v2/channel-account-claims\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayServiceApplyRequests",
+      "name": "PERM",
+      "type": "String",
+      "value": "\"merchant:merchant:pay-apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PaymentReadRouter",
+      "name": "HEADER",
+      "type": "String",
+      "value": "\"X-Pay-Read-Environment\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "BizFoundationController",
+      "name": "OTHER",
+      "type": "String",
+      "value": "StoreVO.OTHER",
+      "zh": "行业与子业态的「其他」都用这个码。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-store\"",
+      "zh": "水位的键。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "GOODS_WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-goods\"",
+      "zh": "商品日汇总的水位。",
+      "module": "shop-gateway"
     },
     {
       "host": "StoreSlugs",

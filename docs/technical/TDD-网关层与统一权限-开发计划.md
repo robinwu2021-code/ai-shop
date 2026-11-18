@@ -222,7 +222,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | 里程碑 | 对应方案的验收标准 | 测试 | 跑过 |
 |---|---|---|---|
 | M0 | — | `EndpointSnapshotTest`、`SecurityChainSnapshotTest`；基线数字 | ✅ 2026-11-18，见下 |
-| M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新三条；pre-push 全套 | — |
+| M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新增与扩展的规则；pre-push 的闸门脚本 | ✅ 2026-11-18，见下 |
 | M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | — |
 | M3 | AC10、AC26 | 属性默认值测试；`strict` 校验；停一端 Redis 的链路测试 | — |
 | M4 | AC21、AC22、AC23、AC25、AC15 | 对账测试；403 先于参数错误；零查库；停用开关；三端现有的端点权限测试原样通过 | — |
@@ -256,6 +256,43 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 把基线里退款复核的权限码改掉 | `EndpointSnapshotTest` 失败，报出 `+ POST /ops/payments/refunds/{payRefundNo}/review … @perm.can('pay:refund:review')` |
 | 把基线里 B 端链上两个过滤器调换顺序 | `SecurityChainSnapshotTest` 失败，报出「顺序不同，自第 9 行起」 |
 
+**M1 的真实输出**（2026-11-18，分支 `feat/gateway-m1-module-move`，叠在 M0 之上）：
+
+```
+# 整个 arch 包 + 6 个受搬迁影响的测试类，M0（搬迁前）与 M1（搬迁后）逐类比对
+M0: classes 62 run 199 fail 5 err 0 skip 2
+M1: classes 62 run 201 fail 5 err 0 skip 2
+唯一差异：
+< Tests run: 23, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+> Tests run: 25, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+# 带着 M0 的快照当基线跑：
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+```
+
+| 验证 | 结果 |
+|---|---|
+| 端点快照、认证链快照、探测结果 | 与 M0 基线逐行相同 |
+| `git mv` 的提交 | 675 个文件，0 行增删 |
+| 23 个 pre-push 闸门脚本，搬迁前后逐个对比 | 退出码全部相同 |
+| 临时放两个违规样例（B 端入口引用运营端的类；桥接类引用 C 端入口并用全限定名写注解） | `ArchitectureTest` 恰好 3 条失败：`noFullyQualifiedReferences`、`portalEndsMustNotDependOnEachOther`、`bridgesMustNotDependOnPortals`；样例已删 |
+
+搬迁前就红、与本次无关的（M0 与 M1 上完全相同）：`MediaRefCoverageTest` 1 条、`OrphanModuleTest` 1 条、`MallHostConfigurationTest` 1 条、`MallUntrackedHardwareTest` 2 条；闸门里的 SQL 方言（19 个存量文件）与运营端前端的 2 条守卫测试。
+
+**M1 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 任务 1.2：先切断 `commercebridge` → `config` 的反向引用 | 编译时冒出两处，各搬一个类解决，没有改内容：`config/MallOperatorSessions`（一行的记录类）随商城桥接搬进 `shop-gateway`；`paybridge/PaymentCollectionExceptionHandler` 留在 `shop-app` | 后者同时引用一个 B 端入口和一个机器入口，只有 `shop-app` 两边都看得见。架构规则里把它列为桥接包的唯一例外 |
+| 任务 1.4：`portal` 下其余子包逐个决定搬或留 | 除 `internal` 外全部搬走，多了一个计划里没列的 `portal/service` | 它们都只被三端出口使用 |
+| 任务 1.5：挑出实际需要的依赖 | 从 28 个减到 16 个；另直接声明 `job-store` 与 `pdfbox` | Flyway、actuator、调度锁存储、密钥、通知与外部通道只有启动装配需要，留在 `shop-app`；`shop-app` 自己的依赖声明没动，运行时类路径不变 |
+| 任务 1.7：24 个读源码路径的测试逐个改 | 多数不用改：它们本来就遍历 `backend/` 下所有模块。实际改了 5 个路径（`ArchitectureTest` 的全限定名规则、`BackendI18nParityTest`、`InvMirrorEventCoverageTest`、`PayHasNoControllerTest`、`PayDeploymentModePairingTest`），外加两处由路径改写脚本带过的（`BizResourceAuthorization` 38 处、`PayAuditTrailTest` 1 处） | — |
+| 名单里没有的 | 7 处写死的**模块清单**加上了 `shop-gateway`：`PaymentLedgerCoverageTest` 的扫描模块；餐饮、美业独立服务「不得带上宿主模块」的 4 处清单；`StandalonePayFixture`；`scripts/verify-beauty-bm04-wire.mjs` | 这类清单不含路径，按路径找找不到。第一处不改会少扫 `shop-gateway`，其余不改会让独立服务悄悄带上宿主代码而不报错 |
+| 任务 1.8：三条新规则，现状可能已有违规要记基线 | 两条新规则（三端出口互不引用；桥接包不引用出口），现状零违规，没有基线。「`shop-gateway` 不依赖 `shop-app`」不写规则 | 那是模块依赖方向，反过来 Maven 直接报循环依赖 |
+| 历史任务记录 `.superpowers/sdd/**` | 其中被脚本读取的 `.json` 清单改了路径；叙述性的 `.md` 报告没有动 | 报告记录的是当时的状态 |
+
+没有做的两项，留到合并前：本机启动后三端各登录一次的冒烟（快照里的探测已覆盖「各端只认自己的令牌」，但没有走真实登录）；餐饮、美业插件模块里改过的 3 个测试文件只在带对应构建配置时才编译，本次默认构建没有编到它们。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -267,3 +304,4 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 2026-11-18 | 草稿：核对三点，拆出第一批五个里程碑 |
 | 2026-11-18 | 计划确认，待开工；从 M0 开始 |
 | 2026-11-18 | M0 完成：三个测试类、基线、写死路径的名单；快照改为不入库（§2.1 偏差） |
+| 2026-11-18 | M1 完成（本地，未推送）：675 个文件搬进 `shop-gateway`，快照与基线逐行相同；偏差见 §5 |

@@ -1774,6 +1774,8 @@ backend/svc-client/                           现有模块，加两个包（S �
 | 桥接是独立模块 | 架构测试：桥接包不引用 `gateway` 与 `portal` | 桥接反过来依赖出口，以后想拆出去时拆不动 |
 | 网关不依赖 `shop-app` | 不变，仍是模块依赖方向：`shop-app` → `shop-gateway` | — |
 
+> **2026-11-18 M1 已按本节搬迁**（675 个文件）。与下面的结构有两处出入：`config/MallOperatorSessions` 随商城桥接一起搬进了 `shop-gateway`；`paybridge/PaymentCollectionExceptionHandler` 留在 `shop-app`。原因见[开发计划](TDD-网关层与统一权限-开发计划.md) §5。
+
 **两件要说清楚的事：**
 
 1. **微服务一侧的代码进不了网关模块。** 守卫运行在微服务进程里，而网关模块依赖业务各层和 Spring Security；库存服务的构建规则禁止这两样。所以共用约定和守卫（约 13 个类）放进现有的 `svc-client`：它只依赖 spring-web，库存已经在用它。这样不新增模块，只是要给 `svc-client` 加一个编译期的 Servlet 依赖。这部分属于 S 期，第一批用不到。
