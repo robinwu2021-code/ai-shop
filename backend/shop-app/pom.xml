@@ -16,6 +16,8 @@
     <description>启动模块：portal(三端 Controller) + config + 装配。单体形态依赖全部 svc。</description>
 
     <dependencies>
+        <!-- 网关层：三端出口与桥接（ADR-060）。搬出去的类包名不变，仍由本模块的启动类扫到 -->
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-gateway</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>cloud.tianai.captcha</groupId><artifactId>tianai-captcha</artifactId></dependency>
         <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId></dependency>
 <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-domain</artifactId><version>${project.version}</version></dependency>

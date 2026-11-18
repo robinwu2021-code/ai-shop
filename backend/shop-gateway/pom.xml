@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-gateway</artifactId>
+    <packaging>jar</packaging>
+    <description>网关层：三端出口（portal.mp / portal.biz / portal.ops）与连接外部服务的桥接包</description>
+
+    <!--
+      由 shop-app 拆出（TDD-网关层与统一权限-开发计划 M1；ADR-060）。
+
+      **这一步只搬文件**：包名不变、import 一行没改，组件扫描与 Mapper 扫描的根都是
+      ai.neargo.shop，所以搬过来的类照旧被 shop-app 的启动类扫到，不需要自动装配登记。
+
+      **依赖方向**：shop-app → shop-gateway → 业务各层。本模块不得依赖 shop-app
+      （ArchitectureTest 守着）。启动类、config、机器入口 portal.internal、迁移脚本与
+      全部测试留在 shop-app。
+
+      **依赖清单**取自拆分当时 shop-app 的全部 compile 依赖。按部署形态切换的构建配置
+      （餐饮 / 美业 / 商城内嵌）不在这里：它们只增减行业插件模块，仍由 shop-app 管。
+    -->
+
+    <dependencies>
+        <dependency><groupId>cloud.tianai.captcha</groupId><artifactId>tianai-captcha</artifactId></dependency>
+        <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-domain</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-channel</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>job-core</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>secret-core</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-base</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-store-mybatis</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-base-auth</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-core</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-merchant</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-domain</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-portal</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-guard</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-inventory</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.inventory</groupId><artifactId>inventory-client</artifactId></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-report</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>elec-api</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-channel</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>logistics-domain</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>logistics-channel</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-channel</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-notify</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-flyway</artifactId></dependency>
+        <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
+        <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-mysql</artifactId></dependency>
+        <dependency><groupId>net.javacrumbs.shedlock</groupId><artifactId>shedlock-provider-jdbc-template</artifactId></dependency>
+    </dependencies>
+</project>
