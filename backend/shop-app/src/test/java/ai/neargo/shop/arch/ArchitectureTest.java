@@ -332,6 +332,56 @@ class ArchitectureTest {
                 .check(classes);
     }
 
+    /**
+     * 网关公共件不认识任何一端（TDD-网关层与统一权限 §2.20；开发计划 M2 任务 2.7）。
+     * 公共件一旦引用了某一端，就会长出对那一端的特判，三端共用一份流程的前提就没了。
+     */
+    @Test
+    @DisplayName("网关公共 gateway.core 不引用 gateway.mp / biz / ops")
+    void gatewayCoreMustNotDependOnEnds() {
+        noClasses().that().resideInAPackage("ai.neargo.shop.gateway.core..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "ai.neargo.shop.gateway.mp..", "ai.neargo.shop.gateway.biz..", "ai.neargo.shop.gateway.ops..")
+                .because("差别写在端子类里，由端子类交给公共件；公共件不反过来认识端")
+                .check(classes);
+    }
+
+    /**
+     * 网关基类里固定流程的方法不许被子类改写，继承不超过「基类 → 子类」一层
+     * （TDD-网关层与统一权限 §2.21 的两条约束）。
+     */
+    @Test
+    @DisplayName("网关基类：对外的非抽象方法都是 final；子类不再被继承")
+    void gatewayBaseClassesKeepTheFlowFixed() {
+        List<String> offenders = new ArrayList<>();
+        for (var type : classes) {
+            if (!type.getPackageName().startsWith("ai.neargo.shop.gateway")) {
+                continue;
+            }
+            boolean base = type.getSimpleName().startsWith("Abstract")
+                    && type.getModifiers().contains(com.tngtech.archunit.core.domain.JavaModifier.ABSTRACT);
+            if (base) {
+                for (var method : type.getMethods()) {
+                    var modifiers = method.getModifiers();
+                    if (modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.PUBLIC)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.ABSTRACT)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.STATIC)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.FINAL)) {
+                        offenders.add(type.getSimpleName() + "#" + method.getName() + " 不是 final");
+                    }
+                }
+            }
+            var parent = type.getRawSuperclass();
+            if (parent.isPresent() && parent.get().getPackageName().startsWith("ai.neargo.shop.gateway")
+                    && !parent.get().getSimpleName().startsWith("Abstract")) {
+                offenders.add(type.getSimpleName() + " 继承了非基类 " + parent.get().getSimpleName());
+            }
+        }
+        assertThat(offenders)
+                .as("流程写在基类、差别写在子类：基类的流程方法要 final，子类之下不再有子类")
+                .isEmpty();
+    }
+
     @Test
     @DisplayName("common 不得依赖任何业务域")
     void commonMustNotDependOnDomains() {
@@ -793,6 +843,9 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // gateway：网关层新写的代码（端基类、安全框架适配、三端的端子类；ADR-060）。
+                // 不是业务域：没有自己的业务表，只管「请求怎么进来、谁能进」。搬来的出口仍在 portal 包。
+                "gateway",
                 // Shared document identities and reservations, independent of business eligibility.
                 "numbering",
                 // App-level adapters compose existing merchant and member domains through their contracts.
