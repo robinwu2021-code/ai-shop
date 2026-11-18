@@ -233,10 +233,33 @@ PUT  /biz/payment/store-method-preference
 
 2026-11-18 在 `origin/codex/ai-shop-codex` `bbf80e6de` 上运行。near-pay 侧测试属 `0d350d5bf` 的交付，本节未重跑。
 
-### 上线状态（2026-11-18 只读核实）
+### 上线状态
 
-- near-pay：166 `pay-svc.jar`（构建 `2026-11-18T04:18:24Z`）已含内部接口 `method-preferences`。
-- ai-shop：166 `shop-app.jar`（SHA-256 前 12 位 `351b61d3616f`，11-18 04:15）的 `BizPaymentController` **不含**新路由，App 在 166 上仍降级到旧接口。发布被 5 条与支付无关的全量门禁失败挡住（商城配置 3、媒体引用 1、Mitake 短信 1），见交接 `implementation-plan.md`。
+**2026-11-18 17:55（UTC+8）已发布 UME166**（用户「部署到服务器上」）。
+
+- 方式：overlay，只覆盖本功能的类（同 `deploy/ume/mitake/build_overlay.py` 的做法），脚本与校验证明见 `deploy/ume/store-method-preference/`。基线为线上 `shop-app.jar` `351b61d3616f`（`8ae9a4a9b` 线），替换 `pay-domain` 库中的 `PayBizInternalApi`（+4 个新 record），以及 `BizPaymentAppService`、两个实现、`BizPaymentController`（+2 个新请求 record）。其余条目逐字节保留；无迁移，库仍 V678。
+- 发布前用 `javap` 比对：被替换类的成员只有新增，`RemoteBizPaymentAppService` 中仅私有 lambda 编号顺延。
+- 只带 `412ca7b90` 的转发层；`8ae9a4a9b` 之后的支付派发、退款恢复、权限配置等修复**未带上**，仍待相关模块修复后整体发布。
+- 制品：`d0ade3d80fc0`（完整 SHA-256 见 proof）；备份 `shop-app.jar.before-as-store-method-preference-20261118-a11849178`。`ai-shop-api`、`ai-shop-ops` 重启后 UP，启动日志只有既有的 `SHIP_TRACK_KEY` 一条 ERROR，无类加载错误。
+- near-pay：166 `pay-svc.jar`（构建 `2026-11-18T04:18:24Z`）已含 `method-preferences`，本次未动。
+
+回退：`cp shop-app.jar.before-as-store-method-preference-20261118-a11849178 shop-app.jar`，重启两个容器。
+
+**线上验证**（TEST ONLY 店主 `fiat-closure-11120656@test.umeshop.ai`，门店 `ST2611120GBMQH23X2`，near-pay 商户 `PM4183D38BDC47421E`；测试身份 id 4、5 验后已停用）：
+
+| 用例 | 结果 |
+|---|---|
+| GET 新接口 | 200，`INHERIT`、version 0、64 位 `eligibilityRevision`，与旧接口读到同一份策略；该商户无收款账户，`items` 为空 |
+| PUT 资格摘要过期 / 版本过期 | 均 `10409` |
+| PUT 摘要非 64 位 / 缺 `test` | `10400`（ai-shop 校验） |
+| PUT 模式拼错 / OVERRIDE 选不可开方式 | `10400`（near-pay 校验） |
+| PUT INHERIT（该店无可开方式） | `10400`：near-pay 在无可开方式时连「回到跟随商户」也按「至少保留一种」拒绝；该店本就是 INHERIT，不影响使用，记为 near-pay 待改 |
+| 非本店店主读 / 写 | HTTP 403，`70006` |
+| 未登录 | `10401` |
+| 失败写入后复读 | 未变 |
+| 同控制器旧接口回归 | `store-method`、`qr-code`、`links` 200；`statement` 10500，源于 near-pay「Payment-store source API has not been integrated」，与本次无关；同时段 App（Oscar，ume早餐店）的订单、汇总、收款状态等支付请求均 200 |
+
+**未覆盖**：成功写入（OVERRIDE 保存、回到 INHERIT、幂等重放）需要名下有收款账户的门店，测试账号里没有；留给 App 会话用 Oscar 在 ume早餐店 走模拟器验收。
 
 ## §8 本会话并行事项（交接 store-payment-methods-2026-11-17 §五，不计入本 TDD 验收）
 

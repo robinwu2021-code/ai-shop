@@ -1,0 +1,33 @@
+{
+  "baselineSha256": "351b61d3616fb6853e86a45164a9c8dc049edbc250d80f79329b7df5ef1581e9",
+  "libraries": {
+    "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar": {
+      "ai/neargo/shop/pay/client/PayBizInternalApi.class": "793f797e2ebb95f2435ef1d42e9d6d28fde0272dbd5fa87b146f42be3fff5ad4",
+      "ai/neargo/shop/pay/client/PayBizInternalApi$MethodChoice.class": "66e879610af11f671ad36d356eb93eb3789ceb7a366bb2c180619fe682e32919",
+      "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreference.class": "39aea08741712233e16d60f82cacb9d6d0a20453526e08e91a3525086f690057",
+      "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreferences.class": "b458990d01d6b7f5a4283086beb1aef9a92d21007ae8cfadcdb409929a8c80da",
+      "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreferencesReq.class": "a7c5cb3769dc14477d6eb509a504dc275241b3790675220d33098b5b18ba67f0"
+    }
+  },
+  "appClasses": {
+    "ai/neargo/shop/payclient/BizPaymentAppService.class": "ee5ca60f9b7b864fddbd23aa6986074ab9e36449d5ec911b73b25d35acf83fb4",
+    "ai/neargo/shop/payclient/impl/BizPaymentAppServiceImpl.class": "1127e6d18ea82003ce770e322a324c57bba6a47238516fbd82d0943b78b0dc0d",
+    "ai/neargo/shop/payclient/impl/RemoteBizPaymentAppService.class": "f9d6d1f9a256ab4c880a0958bda1267832857a09cbbf1c78400e2f605ad50298",
+    "ai/neargo/shop/portal/biz/pay/BizPaymentController.class": "5c4ab4b5c358b827883a9c7f1a5c9f85c51cb08cdd5db00a0589c26835d1fad5",
+    "ai/neargo/shop/portal/biz/pay/BizPaymentController$MethodChoiceReq.class": "49038ca87f2e1db50f97bec3bc0fde84fc6ccaa15adb02272fade6c1bd8d96e2",
+    "ai/neargo/shop/portal/biz/pay/BizPaymentController$MethodPreferencesReq.class": "05df67ac460583ee0a12604f638a938c51951b3188a66cba2f04cea32c52d4d1"
+  },
+  "addedEntries": [
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/pay/BizPaymentController$MethodChoiceReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/pay/BizPaymentController$MethodPreferencesReq.class"
+  ],
+  "replacedEntries": [
+    "BOOT-INF/classes/ai/neargo/shop/payclient/BizPaymentAppService.class",
+    "BOOT-INF/classes/ai/neargo/shop/payclient/impl/BizPaymentAppServiceImpl.class",
+    "BOOT-INF/classes/ai/neargo/shop/payclient/impl/RemoteBizPaymentAppService.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/pay/BizPaymentController.class",
+    "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar"
+  ],
+  "unrelatedEntriesPreserved": true,
+  "candidateSha256": "d0ade3d80fc08c47d78ad51cb0d2317617fae546d4b7c731fc29d0c21b990c0a"
+}
