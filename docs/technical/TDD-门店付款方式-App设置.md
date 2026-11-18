@@ -253,11 +253,20 @@ PUT  /biz/payment/store-method-preference
 | PUT 资格摘要过期 / 版本过期 | 均 `10409` |
 | PUT 摘要非 64 位 / 缺 `test` | `10400`（ai-shop 校验） |
 | PUT 模式拼错 / OVERRIDE 选不可开方式 | `10400`（near-pay 校验） |
-| PUT INHERIT（该店无可开方式） | `10400`：near-pay 在无可开方式时连「回到跟随商户」也按「至少保留一种」拒绝。**已修**：near-pay `develop/s1` `f7a0c87eb`，「至少保留一种」只约束 OVERRIDE，`StoreCollectionMethodServiceTest#inheritIsAllowedWhenTheMerchantHasNoEligibleMethodButOverrideStillNeedsOne` 修复前红、修复后绿；已合并 develop/s1，尚未部署 UME166 |
+| PUT INHERIT（该店无可开方式） | `10400`：near-pay 在无可开方式时连「回到跟随商户」也按「至少保留一种」拒绝。**已修**：near-pay `develop/s1` `f7a0c87eb`，「至少保留一种」只约束 OVERRIDE，`StoreCollectionMethodServiceTest#inheritIsAllowedWhenTheMerchantHasNoEligibleMethodButOverrideStillNeedsOne` 修复前红、修复后绿；已合并 develop/s1，**已部署 UME166**（见下） |
 | 非本店店主读 / 写 | HTTP 403，`70006` |
 | 未登录 | `10401` |
 | 失败写入后复读 | 未变 |
 | 同控制器旧接口回归 | `store-method`、`qr-code`、`links` 200；`statement` 10500，源于 near-pay「Payment-store source API has not been integrated」，与本次无关；同时段 App（Oscar，ume早餐店）的订单、汇总、收款状态等支付请求均 200 |
+
+**near-pay 修复发布（2026-11-18 17:35，UTC+8）**：
+
+- 方式：overlay，只替换 `pay-domain` 库中的 `StoreCollectionMethodService.class`（`f7a0c87eb`），脚本与校验证明见 `deploy/ume/store-method-preference/build_nearpay_overlay.py`、`nearpay-overlay-20261118.proof.json`。
+- 发布前用 `javap -c` 比对：与线上版本只差新增的 `iload; ifne`（INHERIT 跳过「至少保留一种」）及其后偏移；4 个内部 record 与线上逐字节相同。
+- 制品：`pay-svc.jar` `7524f333e762` → `5043920a23f9`；备份 `pay-svc.jar.before-store-method-inherit-20261118-f7a0c87eb`。`nearpay-prod` 重启 37 秒启动，无 ERROR。near-pay 未开放 actuator，以启动日志与内部接口返回 401 判断就绪。
+- 线上复验（同一 TEST ONLY 门店，测试身份 id 4 验后停用）：INHERIT 保存成功（修复前 10400）；同一 `requestNo` 重放返回同一结果；OVERRIDE 空列表仍 10400；过期版本 10409；新旧接口复读一致（`INHERIT`，version 1）。该门店原无策略行，首次保存新建行（version 0），之后更新为 1。
+
+回退：`cp pay-svc.jar.before-store-method-inherit-20261118-f7a0c87eb pay-svc.jar`，重启 `nearpay-prod`。
 
 **未覆盖**：成功写入（OVERRIDE 保存、回到 INHERIT、幂等重放）需要名下有收款账户的门店，测试账号里没有；留给 App 会话用 Oscar 在 ume早餐店 走模拟器验收。
 
