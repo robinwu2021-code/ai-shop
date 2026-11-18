@@ -183,6 +183,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "system:testphone:update": "system:testphone:update",
   // App 版本策略的写码（TDD-商户App问题回报与版本 P5）：一个角色都不配，超管通配
   "system:app-version:update": "system:app-version:update",
+  // 接口资源的停用与恢复（TDD-网关层与统一权限 §2.23）：一个角色都不配，超管通配
+  "system:api-resource:update": "system:api-resource:update",
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",
   // 定时任务：看与管两个码。读的人多得多 —— 一个任务出事时，

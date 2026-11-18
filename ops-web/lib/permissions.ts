@@ -276,6 +276,8 @@ export const CRITICAL_PERMS = [
   "system:testphone:update",
   // 抬高 App 最低支持版 = 低于它的全部商户 App 立刻停写（TDD-商户App问题回报与版本 P5）
   "system:app-version:update",
+  // 停用一条接口 = 所有人都访问不了它（TDD-网关层与统一权限 §2.23）
+  "system:api-resource:update",
   "merchant:merchant:ban",
   "finance:settle:execute",
   "risk:blacklist:update",

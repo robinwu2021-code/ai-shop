@@ -61,6 +61,36 @@ export const systemMock: SystemApi = {
     return wait({ ...next });
   },
 
+  // ── 网关接口资源 ── 与后端同一组护栏（状态只有两种、不可停用的行拒绝）
+  listApiResources: async (q) => {
+    const kw = q?.keyword?.trim().toLowerCase();
+    const all = db.apiResources.filter((r) =>
+      (!q?.endCode || r.endCode === q.endCode) && (!q?.source || r.source === q.source)
+      && (!q?.status || r.status === q.status)
+      && (!kw || r.pattern.toLowerCase().includes(kw) || (r.ruleText ?? "").toLowerCase().includes(kw)));
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    return wait({ records: all.slice((page - 1) * size, page * size).map((r) => ({ ...r })), total: all.length, page, size });
+  },
+
+  getApiResourceSummary: async () => wait({
+    total: db.apiResources.length,
+    disabled: db.apiResources.filter((r) => r.status === "DISABLED").length,
+    stale: db.apiResources.filter((r) => r.stale).length,
+    manual: db.apiResources.filter((r) => r.source === "MANUAL").length,
+    precheck: "enforce",
+    proxy: false,
+  }),
+
+  setApiResourceStatus: async (id, status) => {
+    const row = db.apiResources.find((r) => r.id === id);
+    if (!row) notFound("接口", "Endpoint", String(id));
+    if (status !== "ENABLED" && status !== "DISABLED") fail("状态只能是启用或停用", "Status must be enabled or disabled");
+    if (status === "DISABLED" && row.locked) fail("这条接口不能停用", "This endpoint cannot be disabled");
+    if (row.status !== status) Object.assign(row, { status, updatedBy: "admin", updatedAt: new Date().toISOString() });
+    return wait({ ...row });
+  },
+
   // ── App 版本策略 ── 与后端同一组护栏（版本前缀、min ≤ latest、两家商店、zh-Hant 必填、revision）
   listAppVersions: async () => wait(db.appVersions.map((r) => ({ ...r, notes: { ...r.notes } }))),
 

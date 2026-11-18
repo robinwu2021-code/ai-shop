@@ -126,6 +126,7 @@ export const NAV: NavSection[] = [
       { href: "/jobs", label: "运行监控", perm: "system:job:read", group: "系统维护", matrix: "P-17.1", ready: true, gated: "shop.job.enabled" },
       { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "系统维护", matrix: "P-18.5", ready: true, gated: "shop.inventory.enabled" },
       { href: "/printing", label: "打印运营", perm: "ops:print:read", group: "系统维护", matrix: "P-17.1", ready: true, gated: "shop.print.enabled" },
+      { href: "/system?tab=apiResource", label: "接口资源", perm: "system:param:read", group: "系统维护", matrix: "P-17.1", ready: true },
     ],
   },
 

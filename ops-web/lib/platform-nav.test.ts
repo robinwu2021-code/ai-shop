@@ -7,7 +7,7 @@ describe('platform primary navigation', () => {
   it('projects five roots and preserves the unified admission aliases', () => {
     expect(platformNav().map(s => s.key)).toEqual(['iam', 'commerce', 'customers', 'paymentMerchant', 'orders']);
     expect(NAV).toHaveLength(13);
-    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(153);
+    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(154);
     const admissions=NAV.flatMap(s=>s.children??[]).find(l=>l.href==='/merchants')!;
     expect(admissions.legacyHrefs).toEqual(expect.arrayContaining(['/merchants?tab=on-behalf','/merchants?tab=self-operated']));
     expect(admissions.anyPerms).toEqual(expect.arrayContaining(['merchant:apply:audit','merchant:apply:onbehalf','merchant:selfop:create']));

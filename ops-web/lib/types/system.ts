@@ -441,3 +441,85 @@ export interface SaveMarketPhonePolicy {
   /** 本次策略变更的审计原因 */
   reason: string;
 }
+
+/**
+ * 网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。
+ *
+ * 一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定，
+ * 页面只读；能改的只有停用与恢复。
+ */
+export interface ApiResource {
+  /** 行号，改状态时用 */
+  id: number;
+  /** 端：ops 运营端主链 / pay-ops 支付运营面 */
+  endCode: string;
+  /** HTTP 方法；`*` 表示不限 */
+  method: string;
+  /** 地址模式，如 `/ops/payments/refunds/{payRefundNo}/review` */
+  pattern: string;
+  /** 来源：SCAN 启动扫描到的本进程入口 / MANUAL 录入的微服务链接 */
+  source: ApiResourceSource;
+  /** 位置：LOCAL 或目标服务名 */
+  location: string;
+  /** 微服务链接的内部地址；本进程入口为 null */
+  targetPath: string | null;
+  /** 权限要求的类别 */
+  access: ApiResourceAccess;
+  /** 权限码的与或式，给人读；access=POINT 时有值 */
+  ruleText: string | null;
+  /** 本进程入口的类与方法，排查用 */
+  handler: string | null;
+  /** 启用 / 停用 */
+  status: ApiResourceStatus;
+  /** true = 最近一次启动扫描里已经没有这条链接 */
+  stale: boolean;
+  /** true = 这一行不能停用（不带权限码的入口，或本页自己的接口） */
+  locked: boolean;
+  /** 最近一次写入这一行的应用版本 */
+  appVersion: string | null;
+  /** 最近一次人工修改的人；没人改过为 null */
+  updatedBy: string | null;
+  /** 最后更新时间（ISO 字符串） */
+  updatedAt: string | null;
+}
+
+/** 接口资源的来源 */
+export type ApiResourceSource = "SCAN" | "MANUAL";
+
+/** 权限要求的类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 留给入口方法判 */
+export type ApiResourceAccess = "PUBLIC" | "LOGIN" | "POINT" | "DEFER";
+
+/** 接口资源的状态 */
+export type ApiResourceStatus = "ENABLED" | "DISABLED";
+
+/** 接口资源列表的筛选 */
+export interface ApiResourceQuery {
+  /** 端；不传 = 全部 */
+  endCode?: string;
+  /** 关键字：匹配地址或权限码 */
+  keyword?: string;
+  /** 来源；不传 = 全部 */
+  source?: string;
+  /** 状态；不传 = 全部 */
+  status?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数 */
+  size?: number;
+}
+
+/** 接口资源的汇总（`GET /ops/api-resources/summary`） */
+export interface ApiResourceSummary {
+  /** 总条数 */
+  total: number;
+  /** 已停用的条数 */
+  disabled: number;
+  /** 已过期的条数 */
+  stale: number;
+  /** 录入的微服务链接条数 */
+  manual: number;
+  /** 当前部署的提前判权档位：off / observe / enforce */
+  precheck: string;
+  /** 当前部署是否打开了微服务链接转发 */
+  proxy: boolean;
+}

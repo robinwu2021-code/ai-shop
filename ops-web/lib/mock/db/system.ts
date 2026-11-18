@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity, AppVersionPolicy } from "@/lib/types";
+import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity, AppVersionPolicy, ApiResource } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -102,6 +102,26 @@ export const appVersions: AppVersionPolicy[] = [
     updatedBy: "admin", updatedAt: Date.parse("2026-11-08T09:00:00Z"), revision: 1 },
   { appCode: "MERCHANT", platform: "IOS", latest: "", minSupported: "", notes: {}, storeUrl: null,
     updatedBy: null, updatedAt: null, revision: 0 },
+];
+
+/** 网关接口资源（mock）：本进程入口、支付运营面、一条录入的微服务链接、一条过期、一条不可停用 */
+const res = (id: number, method: string, pattern: string, over: Partial<ApiResource> = {}): ApiResource => ({
+  id, endCode: "ops", method, pattern, source: "SCAN", location: "LOCAL", targetPath: null, access: "POINT",
+  ruleText: null, handler: null, status: "ENABLED", stale: false, locked: false, appVersion: "1.0.0",
+  updatedBy: null, updatedAt: "2026-11-18T09:00:00", ...over,
+});
+export const apiResources: ApiResource[] = [
+  res(1, "POST", "/ops/auth/login", { access: "LOGIN", locked: true, handler: "OpsAuthController#login" }),
+  res(2, "GET", "/ops/api-resources", { ruleText: "system:param:read", locked: true }),
+  res(3, "GET", "/ops/app-versions", { ruleText: "system:param:read", handler: "OpsAppVersionController#list" }),
+  res(4, "PUT", "/ops/app-versions/{appCode}/{platform}", { ruleText: "system:app-version:update" }),
+  res(5, "POST", "/ops/payments/refunds/{payRefundNo}/review", { ruleText: "pay:refund:review" }),
+  res(6, "GET", "/ops/legacy/report", { ruleText: "finance:report:read", stale: true }),
+  res(7, "POST", "/pay-ops/v2/refunds/{refundNo}/approve", { endCode: "pay-ops", ruleText: "pay:refund:review" }),
+  res(8, "POST", "/ops/x/workflow/tasks/{taskId}/approve", {
+    source: "MANUAL", location: "WORKFLOW", targetPath: "/internal/workflow/v1/ops/tasks/{taskId}/approve",
+    ruleText: "workflow:task:approve", appVersion: null,
+  }),
 ];
 
 export const marketPhonePolicies: import("@/lib/types").MarketPhonePolicy[] = [

@@ -661,6 +661,9 @@ export const RULES = [
   // 看用 param:read；改用单独的 app-version:update —— 抬高最低支持版让全部旧包停写，不随 param:update 发给技术运维
   ["GET", /^\/ops\/app-versions$/, "system:param:read"],
   ["PUT", /^\/ops\/app-versions\//, "system:app-version:update"],
+  // 接口资源：看用 param:read；停用与恢复用单独的 api-resource:update，只有超管（TDD-网关层与统一权限 §2.23）
+  ["GET", /^\/ops\/api-resources/, "system:param:read"],
+  ["POST", /^\/ops\/api-resources\//, "system:api-resource:update"],
 
   // ── 会员与人档（P-13）──────────────────────────────────────────────────
   ["GET", /^\/ops\/members/, "member:member:read"],

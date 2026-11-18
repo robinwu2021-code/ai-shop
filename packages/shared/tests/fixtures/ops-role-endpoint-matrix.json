@@ -761,6 +761,9 @@
     "POST /ops/after-sales/{afterSaleNo}/recover",
     "GET /ops/after-sales/fast-refund-rule",
     "POST /ops/after-sales/fast-refund-rule",
+    "GET /ops/api-resources",
+    "POST /ops/api-resources/{id}/status",
+    "GET /ops/api-resources/summary",
     "GET /ops/app-versions",
     "PUT /ops/app-versions/{appCode}/{platform}",
     "GET /ops/appearance",
@@ -1482,6 +1485,8 @@
     "POST /ops/tickets/{ticketNo}/reply"
   ],
   "TECH_OPS": [
+    "GET /ops/api-resources",
+    "GET /ops/api-resources/summary",
     "GET /ops/app-versions",
     "GET /ops/appearance",
     "POST /ops/appearance",

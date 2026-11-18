@@ -1,6 +1,6 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
-  MarketPhonePolicy, SaveMarketPhonePolicy, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
+  MarketPhonePolicy, SaveMarketPhonePolicy, ApiResource, ApiResourceQuery, ApiResourceStatus, ApiResourceSummary, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
@@ -17,6 +17,17 @@ export interface SystemApi {
    * revision 对不上（别人先改了）→ 10409。要 `system:app-version:update`。
    */
   saveAppVersion(appCode: string, platform: string, v: SaveAppVersionPolicy): Promise<AppVersionPolicy>;
+
+  // ── 网关接口资源（TDD-网关层与统一权限 §2.23）—— 真后端 `/ops/api-resources/**`
+  /** 分页列表；筛选项都可以不传 */
+  listApiResources(q?: ApiResourceQuery): Promise<Page<ApiResource>>;
+  /** 各类条数，以及当前部署的提前判权档位与转发开关 */
+  getApiResourceSummary(): Promise<ApiResourceSummary>;
+  /**
+   * 停用或恢复一条链接，返回改后的那一行。要 `system:api-resource:update`。
+   * 不带权限码的入口与本页自己的接口停不掉 → 10400。
+   */
+  setApiResourceStatus(id: number, status: ApiResourceStatus): Promise<ApiResource>;
 
   // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
   //

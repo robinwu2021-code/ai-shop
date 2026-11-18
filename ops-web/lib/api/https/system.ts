@@ -10,6 +10,9 @@ export const systemHttp: SystemApi = {
   saveAppVersion: (appCode, platform, v) => client.put(`/ops/app-versions/${appCode}/${platform}`, v),
 
   // ── 测试号固定验证码白名单 ──
+  listApiResources: (q) => client.get("/ops/api-resources", q),
+  getApiResourceSummary: () => client.get("/ops/api-resources/summary"),
+  setApiResourceStatus: (id, status) => client.post(`/ops/api-resources/${id}/status`, { status }),
   listTestPhones: () => client.get("/ops/test-phones"),
   saveTestPhone: (v) => client.post("/ops/test-phones", v),
   setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),
