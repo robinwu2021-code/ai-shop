@@ -25,38 +25,28 @@
       （ArchitectureTest 守着）。启动类、config、机器入口 portal.internal、迁移脚本与
       全部测试留在 shop-app。
 
-      **依赖清单**取自拆分当时 shop-app 的全部 compile 依赖。按部署形态切换的构建配置
-      （餐饮 / 美业 / 商城内嵌）不在这里：它们只增减行业插件模块，仍由 shop-app 管。
+      **依赖清单**：从拆分当时 shop-app 的 28 个 compile 依赖里，留下搬过来的代码编译用得到的。
+      Flyway、actuator、调度锁的存储、密钥、通知与外部通道等只有启动装配才需要，留在 shop-app。
+      按部署形态切换的构建配置（餐饮 / 美业 / 商城内嵌）也不在这里：它们只增减行业插件模块。
     -->
 
     <dependencies>
         <dependency><groupId>cloud.tianai.captcha</groupId><artifactId>tianai-captcha</artifactId></dependency>
         <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-domain</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-channel</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>job-core</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>secret-core</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-base</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-store-mybatis</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-base-auth</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-core</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-merchant</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-domain</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-portal</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-guard</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-inventory</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.inventory</groupId><artifactId>inventory-client</artifactId></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-report</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>elec-api</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-channel</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>logistics-domain</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>logistics-channel</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>ai.neargo.shop</groupId><artifactId>pay-channel</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-notify</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
-        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-flyway</artifactId></dependency>
-        <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
-        <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-mysql</artifactId></dependency>
-        <dependency><groupId>net.javacrumbs.shedlock</groupId><artifactId>shedlock-provider-jdbc-template</artifactId></dependency>
+        <!-- 桥接里的任务查询直接用到任务存储；打印产物下载直接用到 pdfbox -->
+        <dependency><groupId>ai.neargo.shop</groupId><artifactId>job-store</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId></dependency>
     </dependencies>
 </project>
