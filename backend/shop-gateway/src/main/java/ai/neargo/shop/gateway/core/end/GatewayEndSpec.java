@@ -2,6 +2,7 @@ package ai.neargo.shop.gateway.core.end;
 
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.gateway.core.security.AccessDecider;
 import jakarta.servlet.Filter;
 import java.util.List;
 
@@ -17,12 +18,21 @@ import java.util.List;
  * @param authenticator  令牌认证过滤器；{@code closed} 时为 null
  * @param contextFilters 认证之后依次执行的端专属过滤器
  * @param closed         端被配置关闭而入口仍在：只装一条回 404 的链
+ * @param decider        提前判权的判定器；没有则不做提前判权
+ * @param precheck       提前判权的档位：off / observe / enforce
  */
 public record GatewayEndSpec(String name, Realm realm, String pathPrefix, List<String> publicPaths,
                              Access localDefault, AbstractTokenAuthFilter authenticator,
-                             List<Filter> contextFilters, boolean closed) {
+                             List<Filter> contextFilters, boolean closed,
+                             AccessDecider decider, String precheck) {
 
     public static GatewayEndSpec closed(String name, Realm realm, String pathPrefix) {
-        return new GatewayEndSpec(name, realm, pathPrefix, List.of(), Access.LOGIN, null, List.of(), true);
+        return new GatewayEndSpec(name, realm, pathPrefix, List.of(), Access.LOGIN, null, List.of(), true,
+                null, "off");
+    }
+
+    /** 这一端有判定器，且档位不是关。 */
+    public boolean prechecks() {
+        return decider != null && ("observe".equalsIgnoreCase(precheck) || "enforce".equalsIgnoreCase(precheck));
     }
 }

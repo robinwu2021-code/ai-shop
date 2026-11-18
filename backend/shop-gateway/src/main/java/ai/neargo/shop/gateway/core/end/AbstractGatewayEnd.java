@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.gateway.core.config.GatewayEndProperties;
 import ai.neargo.shop.gateway.core.config.GatewayEndSwitch;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
+import ai.neargo.shop.gateway.core.security.AccessDecider;
 import jakarta.servlet.Filter;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
@@ -36,7 +37,7 @@ public abstract class AbstractGatewayEnd {
             return GatewayEndSpec.closed(name(), realm(), pathPrefix());
         }
         return new GatewayEndSpec(name(), realm(), pathPrefix(), publicPaths(), localDefault(),
-                authenticator(), List.copyOf(contextFilters()), false);
+                authenticator(), List.copyOf(contextFilters()), false, accessDecider(), precheck());
     }
 
     /** 配置里写了就用配置的，没写用本端的默认清单。 */
@@ -45,6 +46,13 @@ public abstract class AbstractGatewayEnd {
         GatewayEndProperties mine = all == null ? null : all.end(name());
         List<String> configured = mine == null ? null : mine.getPublicPaths();
         return configured == null ? List.copyOf(defaultPublicPaths()) : List.copyOf(configured);
+    }
+
+    /** 提前判权的档位取自开关所在的那一块配置，所以支付运营面跟着运营端走。 */
+    private String precheck() {
+        GatewayProperties all = properties.getIfAvailable();
+        GatewayEndProperties mine = all == null ? null : all.end(switchName());
+        return mine == null ? "off" : mine.getPrecheck();
     }
 
     // ---- 每一端必须回答的 ----
@@ -80,6 +88,11 @@ public abstract class AbstractGatewayEnd {
     /** 认证之后依次执行的端专属过滤器。同样每次新建、不做成 bean。 */
     protected List<Filter> contextFilters() {
         return List.of();
+    }
+
+    /** 提前判权的判定器。默认没有：该端不做提前判权，判权只靠方法上的注解。 */
+    protected AccessDecider accessDecider() {
+        return null;
     }
 
     protected Access localDefault() {

@@ -23,6 +23,20 @@ public class GatewayEndProperties {
     /** 本端自己的数据源。不配地址 = 没有，会话表与权限表落回主库。 */
     private Datasource datasource = new Datasource();
 
+    /**
+     * 提前判权的档位：{@code off}（默认）不做；{@code observe} 只记日志、照常放行；{@code enforce} 拦截。
+     * 目前只有运营端实现了判定。
+     */
+    private String precheck = "off";
+
+    public String getPrecheck() {
+        return precheck;
+    }
+
+    public void setPrecheck(String precheck) {
+        this.precheck = precheck;
+    }
+
     public Redis getRedis() {
         return redis;
     }

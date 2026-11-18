@@ -5,7 +5,11 @@ import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.end.GatewayEndSpec;
 import jakarta.servlet.DispatcherType;
+import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
 import jakarta.servlet.Filter;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -27,8 +31,15 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
 
     private final CorsConfigurationSource cors;
 
-    public SpringSecurityAdapter(@Qualifier("corsSource") CorsConfigurationSource cors) {
+    private final ObjectProvider<ResourceIndexes> indexes;
+    private final ObjectProvider<ObjectMapper> json;
+
+    public SpringSecurityAdapter(@Qualifier("corsSource") CorsConfigurationSource cors,
+                                 ObjectProvider<ResourceIndexes> indexes,
+                                 ObjectProvider<ObjectMapper> json) {
         this.cors = cors;
+        this.indexes = indexes;
+        this.json = json;
     }
 
     @Override
@@ -80,6 +91,13 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
         for (Filter filter : spec.contextFilters()) {
             http.addFilterAfter(filter, previous);
             previous = filter.getClass();
+        }
+        // 提前判权排在最后一个端专属过滤器之后：它要用登录人，B 端还要用门店上下文。档位是关时不加这个过滤器
+        ResourceIndexes index = indexes.getIfAvailable();
+        ObjectMapper mapper = json.getIfAvailable();
+        if (spec.prechecks() && index != null && mapper != null) {
+            http.addFilterAfter(new GatewayPrecheckFilter(index, List.of(spec.pathPrefix()), spec.decider(),
+                    "enforce".equalsIgnoreCase(spec.precheck()), new GatewayErrorWriter(mapper)), previous);
         }
         // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
         http.exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()));

@@ -3,7 +3,9 @@ package ai.neargo.shop.gateway.ops;
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import ai.neargo.shop.auth.LiveIdentityResolver;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
+import ai.neargo.shop.auth.PermChecker;
 import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.gateway.core.security.AccessDecider;
 import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.gateway.core.config.ConditionalOnGatewayEnd;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
@@ -29,15 +31,17 @@ public class PayOpsGatewayEnd extends AbstractGatewayEnd {
 
     private final TokenStore tokenStore;
     private final ObjectProvider<LiveIdentityResolver> identityResolver;
+    private final ObjectProvider<PermChecker> perm;
     private final GuardFilters portalFilters;
 
     public PayOpsGatewayEnd(Environment environment, ObjectProvider<GatewayProperties> properties,
                             TokenStore tokenStore, ObjectProvider<LiveIdentityResolver> identityResolver,
-                            GuardFilters portalFilters) {
+                            GuardFilters portalFilters, ObjectProvider<PermChecker> perm) {
         super(environment, properties);
         this.tokenStore = tokenStore;
         this.identityResolver = identityResolver;
         this.portalFilters = portalFilters;
+        this.perm = perm;
     }
 
     @Bean
@@ -70,6 +74,13 @@ public class PayOpsGatewayEnd extends AbstractGatewayEnd {
     @Override
     protected String[] legacyProfiles() {
         return new String[] {"ops"};
+    }
+
+    /** 权限检查器取不到（只装了认证链的切片测试）时不做提前判权。 */
+    @Override
+    protected AccessDecider accessDecider() {
+        PermChecker checker = perm.getIfAvailable();
+        return checker == null ? null : new OpsAccessDecider(checker);
     }
 
     @Override
