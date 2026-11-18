@@ -504,13 +504,57 @@ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.Op
 | 进入条件：M4 在 166 上已 `enforce` | 没满足就做了 | 用户要求继续；转发默认关，合并不改变行为。166 上打开前仍应先走完 M4 的观察与拦截 |
 | 新写 `GatewayInvokeFilter` | 没有新过滤器，五步都在 `GatewayPrecheckFilter` 里 | 定位、判定、调用是同一条流程的前后几步，拆成两个过滤器要把定位结果在两处之间传。类名与它现在做的事不完全相符，改名留到 D3 一起做 |
 | 种子脚本 | 启动时读类路径下的清单文件 | 少一个要单独跑的步骤；清单与代码一起评审、一起发布 |
-| 运营端「接口资源」页及其后端；改 `nav.ts`、重跑界面清单 | **没做** | 要新增端点、权限码、菜单与三语词条，是单独的一档工作。录入与停用目前只能靠清单文件或直接改库 |
+| 运营端「接口资源」页及其后端；改 `nav.ts`、重跑界面清单 | **没做** | 要新增端点、权限码、菜单与三语词条，是单独的一档工作。**已在 D2b 补上**（见下）；录入微服务链接仍只能靠清单文件 |
 | 带给下游的操作人身份 | 明文的两个头（`X-Gateway-Operator`、`X-Gateway-Realm`），没有签名 | 签名属于 S 期。在那之前下游只能把这两个头当审计信息，不能当授权依据；下游的入口仍靠进程凭据与「只在内网可达」保护 |
 | 仓库里的清单文件 | 一份都没有 | 工单/工作流、appops 还没有接口可录；支付、库存现有的调用走各自的桥接，不改 |
 
 新写的类 6 个：`ServiceInvoker`、`AbstractServiceInvoker`、`LocalServiceInvoker`、`HttpProxyInvoker`（调用），`StoredResourceProvider`（链接来源），`ManifestSeedLoader`（种子）；1 个测试类。没有新迁移、没有新端点、没有新权限码。
 
 没有验证的：对着真实的微服务转发（只有桩）；多实例下改库后其它实例最长 60 秒才生效；大响应体与流式响应（第一版不支持）。
+
+**D2b「接口资源」页的任务级计划与真实输出**（2026-11-18，分支 `feat/gateway-d2b-resource-page`，叠在 D2 之上；设计见方案 §2.23）：
+
+| # | 任务 | 结果 |
+|---|---|---|
+| D2b.1 | 后端三个接口：列表、汇总、改状态 | `OpsApiResourceController`（`gateway.iam.resource.api`）、`ApiResourceAdmin`；`ResourceStore` 加分页、计数、按行号查、改状态 |
+| D2b.2 | 权限码与菜单 | 新增 `system:api-resource:update`（只有超管）；看沿用 `system:param:read`；`V680` 写菜单功能点与操作功能点 |
+| D2b.3 | 运营端页面 | `/system?tab=apiResource`：`api-resource-tab.tsx`、类型、契约、真实接口与 mock 两套实现、简繁英词条 |
+| D2b.4 | 登记 | `nav.ts`、功能点码冻结表（手工追加一行）、端点权限映射、界面清单与其余生成文档 |
+
+```
+# 后端：gateway 包 + arch 包 + App 版本流程测试；不带基线，快照人工比对
+classes 68 run 231 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，与本次无关
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsApiResourceFlowTest
+# 快照与 M0 基线：endpoints 多 3 行（就是这三个新接口），security-chains、security-probes 0 行不同
+
+# 运营端：全部测试
+Test Files  140 passed (140)
+     Tests  1273 passed (1273)
+# tsc --noEmit、eslint 无输出
+```
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| AC26 技术运维能看列表与汇总 | `OpsApiResourceFlowTest.tech_ops_reads_list_and_summary` | 通过 |
+| AC27 技术运维改不了；超管能改并留高危审计 | `…only_super_admin_changes_status` | 通过（技术运维得到「没有操作权限」，库里状态不变） |
+| AC28 停用后 404、恢复后照常，不等快照过期 | `…disabling_takes_effect_immediately` | 通过 |
+| AC29 不带权限码的入口与本页接口停不掉 | `…locked_rows_cannot_be_disabled` | 通过 |
+| 页面实际可用（mock 数据，浏览器） | 人工走了一遍 | 列表 8 行、汇总说明、三个筛选、停用确认弹窗、停用后状态与「恢复」按钮、汇总里已停用数从 0 变 1 |
+| pre-push 闸门脚本 | — | 与 D2 相同（仍红的 `sql-portability`、`shared-guards` 自 M0 起就红） |
+
+**D2b 相对方案的偏差：**
+
+| 方案 | 实际 | 原因 |
+|---|---|---|
+| 不能停用的是「不用登录的地址」 | 改为「本进程里不带权限码的入口」整类不能停 | 启动扫描只知道一个入口有没有权限注解，分不出其中哪条是登录；按原写法一条都锁不住。代价是「当前用户」「菜单」这类只需登录的入口也停不了 |
+| 菜单位置紧跟「应用版本」 | 放在「系统维护」组的最后 | 该组的排序号由 `V668` 按顺序写死，插在中间要改动后面所有行的排序号 |
+| 功能点码用生成器追加 | 手工追加一行 | 生成器的 `--emit-point-codes` 会重写整张冻结表（`TDD-平台自营商家入口` 记过） |
+
+新写的类 2 个（`OpsApiResourceController`、`ApiResourceAdmin`）、1 个测试类、1 份迁移（只写功能点与授权，不建表）、1 个页面文件。
+
+**上线要做的：** `V680` 是数据迁移，不建表；迁移号在合并前若被占用，与 `V679` 一起顺延。
+
+没有验证的：页面对着真实后端（只在 mock 数据下看过，真实接口由后端测试覆盖）；繁体与英文界面只有测试核对了词条齐全，没有逐屏看；多实例下的生效延迟。本机验证时发现主工作区缺 `opencc-js` 依赖（`package.json` 里有、`node_modules` 里没有），运营端测试是在工作树里临时补了这个包才跑的，主工作区没动。
 
 ## §6 对账二 · 计划 → 实现
 
@@ -529,3 +573,4 @@ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.Op
 | 2026-11-18 | M4a 完成（本地，未推送）：运营端资源索引与提前判权，三档开关默认关；入库（M4b）未做；偏差见 §5 |
 | 2026-11-18 | M4b 完成（本地，未推送）：两张接口资源表（V679）、启动同步、停用开关；偏差见 §5。第一批五个里程碑全部完成 |
 | 2026-11-18 | D2 后端部分完成（本地，未推送）：录入的微服务链接入索引、网关判权后转发、清单种子；开关默认关，快照不变。「接口资源」页未做；偏差见 §5 |
+| 2026-11-18 | D2b 完成（本地，未推送）：运营端「接口资源」页与三个后端接口，新增权限码 `system:api-resource:update`、迁移 `V680`；偏差见 §5 |

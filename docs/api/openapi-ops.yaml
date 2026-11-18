@@ -13158,6 +13158,161 @@ components:
         - "smsVerificationEnabled"
         - "reason"
       additionalProperties: false
+    ApiResource:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "行号，改状态时用"
+        endCode:
+          type: "string"
+          description: "端：ops 运营端主链 / pay-ops 支付运营面"
+        method:
+          type: "string"
+          description: "HTTP 方法；`*` 表示不限"
+        pattern:
+          type: "string"
+          description: "地址模式，如 `/ops/payments/refunds/{payRefundNo}/review`"
+        source:
+          "$ref": "#/components/schemas/ApiResourceSource"
+          description: "来源：SCAN 启动扫描到的本进程入口 / MANUAL 录入的微服务链接"
+        location:
+          type: "string"
+          description: "位置：LOCAL 或目标服务名"
+        targetPath:
+          type:
+            - "string"
+            - "null"
+          description: "微服务链接的内部地址；本进程入口为 null"
+        access:
+          "$ref": "#/components/schemas/ApiResourceAccess"
+          description: "权限要求的类别"
+        ruleText:
+          type:
+            - "string"
+            - "null"
+          description: "权限码的与或式，给人读；access=POINT 时有值"
+        handler:
+          type:
+            - "string"
+            - "null"
+          description: "本进程入口的类与方法，排查用"
+        status:
+          "$ref": "#/components/schemas/ApiResourceStatus"
+          description: "启用 / 停用"
+        stale:
+          type: "boolean"
+          description: "true = 最近一次启动扫描里已经没有这条链接"
+        locked:
+          type: "boolean"
+          description: "true = 这一行不能停用（不带权限码的入口，或本页自己的接口）"
+        appVersion:
+          type:
+            - "string"
+            - "null"
+          description: "最近一次写入这一行的应用版本"
+        updatedBy:
+          type:
+            - "string"
+            - "null"
+          description: "最近一次人工修改的人；没人改过为 null"
+        updatedAt:
+          type:
+            - "string"
+            - "null"
+          description: "最后更新时间（ISO 字符串）"
+      required:
+        - "id"
+        - "endCode"
+        - "method"
+        - "pattern"
+        - "source"
+        - "location"
+        - "targetPath"
+        - "access"
+        - "ruleText"
+        - "handler"
+        - "status"
+        - "stale"
+        - "locked"
+        - "appVersion"
+        - "updatedBy"
+        - "updatedAt"
+      additionalProperties: false
+      description: "网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。\n\n一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定， 页面只读；能改的只有停用与恢复。"
+    ApiResourceSource:
+      type: "string"
+      enum:
+        - "SCAN"
+        - "MANUAL"
+      description: "接口资源的来源"
+    ApiResourceAccess:
+      type: "string"
+      enum:
+        - "PUBLIC"
+        - "LOGIN"
+        - "POINT"
+        - "DEFER"
+      description: "权限要求的类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 留给入口方法判"
+    ApiResourceStatus:
+      type: "string"
+      enum:
+        - "ENABLED"
+        - "DISABLED"
+      description: "接口资源的状态"
+    ApiResourceQuery:
+      type: "object"
+      properties:
+        endCode:
+          type: "string"
+          description: "端；不传 = 全部"
+        keyword:
+          type: "string"
+          description: "关键字：匹配地址或权限码"
+        source:
+          type: "string"
+          description: "来源；不传 = 全部"
+        status:
+          type: "string"
+          description: "状态；不传 = 全部"
+        page:
+          type: "number"
+          description: "页码，从 1 起"
+        size:
+          type: "number"
+          description: "每页条数"
+      additionalProperties: false
+      description: "接口资源列表的筛选"
+    ApiResourceSummary:
+      type: "object"
+      properties:
+        total:
+          type: "number"
+          description: "总条数"
+        disabled:
+          type: "number"
+          description: "已停用的条数"
+        stale:
+          type: "number"
+          description: "已过期的条数"
+        manual:
+          type: "number"
+          description: "录入的微服务链接条数"
+        precheck:
+          type: "string"
+          description: "当前部署的提前判权档位：off / observe / enforce"
+        proxy:
+          type: "boolean"
+          description: "当前部署是否打开了微服务链接转发"
+      required:
+        - "total"
+        - "disabled"
+        - "stale"
+        - "manual"
+        - "precheck"
+        - "proxy"
+      additionalProperties: false
+      description: "接口资源的汇总（`GET /ops/api-resources/summary`）"
     JobStatus:
       type: "string"
       enum:
@@ -37070,6 +37225,112 @@ paths:
           schema:
             type: "string"
         - name: "platform"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/api-resources":
+    get:
+      operationId: "listApiResources"
+      summary: "分页列表"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          "$ref": "#/components/schemas/ApiResource"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/api-resources/summary":
+    get:
+      operationId: "getApiResourceSummary"
+      summary: "各类条数，以及当前部署的提前判权档位与转发开关 */"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ApiResourceSummary"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/api-resources/{id}/status":
+    post:
+      operationId: "setApiResourceStatus"
+      summary: "停用或恢复一条链接，返回改后的那一行"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ApiResource"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
           in: "path"
           required: true
           schema:

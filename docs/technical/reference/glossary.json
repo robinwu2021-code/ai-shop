@@ -48301,6 +48301,35 @@
         "zh": "售后类型。"
       },
       {
+        "name": "ApiResourceAccess",
+        "client": "ops-web",
+        "values": [
+          "PUBLIC",
+          "LOGIN",
+          "POINT",
+          "DEFER"
+        ],
+        "zh": "权限要求的类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 留给入口方法判"
+      },
+      {
+        "name": "ApiResourceSource",
+        "client": "ops-web",
+        "values": [
+          "SCAN",
+          "MANUAL"
+        ],
+        "zh": "接口资源的来源"
+      },
+      {
+        "name": "ApiResourceStatus",
+        "client": "ops-web",
+        "values": [
+          "ENABLED",
+          "DISABLED"
+        ],
+        "zh": "接口资源的状态"
+      },
+      {
         "name": "AppPlatform",
         "client": "shared",
         "values": [
@@ -56184,6 +56213,14 @@
     },
     {
       "host": "Perms",
+      "name": "SYSTEM_API_RESOURCE_UPDATE",
+      "type": "String",
+      "value": "\"system:api-resource:update\"",
+      "zh": "在「接口资源」页停用或恢复一条链接（TDD-网关层与统一权限 §2.23）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SYSTEM_TESTPHONE_READ",
       "type": "String",
       "value": "\"system:testphone:read\"",
@@ -56796,6 +56833,14 @@
       "type": "String",
       "value": "\"redis\"",
       "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ApiResourceAdmin",
+      "name": "SELF_PREFIX",
+      "type": "String",
+      "value": "\"/ops/api-resources\"",
+      "zh": "本页自己的接口都在这个前缀下。",
       "module": "shop-gateway"
     },
     {
