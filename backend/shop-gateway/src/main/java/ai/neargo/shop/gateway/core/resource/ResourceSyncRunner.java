@@ -30,9 +30,12 @@ public class ResourceSyncRunner {
     private final ObjectProvider<ResourceStore> store;
     private final ObjectProvider<BuildProperties> build;
     private final Environment environment;
+    private final ObjectProvider<ai.neargo.shop.gateway.core.integration.ManifestSeedLoader> seeds;
 
     public ResourceSyncRunner(ResourceIndexes indexes, ObjectProvider<ResourceStore> store,
-                              ObjectProvider<BuildProperties> build, Environment environment) {
+                              ObjectProvider<BuildProperties> build, Environment environment,
+                              ObjectProvider<ai.neargo.shop.gateway.core.integration.ManifestSeedLoader> seeds) {
+        this.seeds = seeds;
         this.indexes = indexes;
         this.store = store;
         this.build = build;
@@ -46,11 +49,15 @@ public class ResourceSyncRunner {
                 || !environment.getProperty("shop.gateway.ops.resource-sync", Boolean.class, true)) {
             return;
         }
+        // 先写微服务清单的种子（只插入还不存在的行），再同步本进程入口
+        seeds.ifAvailable(ai.neargo.shop.gateway.core.integration.ManifestSeedLoader::seedAll);
         BuildProperties info = build.getIfAvailable();
         String version = info == null ? null : info.getVersion();
         OPS_CHAINS.forEach((end, prefix) -> {
             try {
-                List<ApiResource> scanned = indexes.of(List.of(prefix)).all();
+                // 只同步本进程入口；录入的微服务链接本来就在库里
+                List<ApiResource> scanned = indexes.of(List.of(prefix)).all().stream()
+                        .filter(resource -> !resource.remote()).toList();
                 if (scanned.isEmpty()) {
                     return;
                 }

@@ -5,7 +5,13 @@ import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.end.GatewayEndSpec;
 import jakarta.servlet.DispatcherType;
+import ai.neargo.shop.gateway.core.proxy.HttpProxyInvoker;
+import ai.neargo.shop.gateway.core.proxy.LocalServiceInvoker;
+import ai.neargo.shop.gateway.core.proxy.ServiceInvoker;
 import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
+import ai.neargo.shop.svc.ServiceLocator;
+import java.util.ArrayList;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.gateway.core.resource.ResourceStatusCache;
 import jakarta.servlet.Filter;
 import java.util.List;
@@ -35,15 +41,21 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
     private final ObjectProvider<ResourceIndexes> indexes;
     private final ObjectProvider<ObjectMapper> json;
     private final ObjectProvider<ResourceStatusCache> statuses;
+    private final ObjectProvider<ServiceLocator> locator;
+    private final String internalToken;
 
     public SpringSecurityAdapter(@Qualifier("corsSource") CorsConfigurationSource cors,
                                  ObjectProvider<ResourceIndexes> indexes,
                                  ObjectProvider<ObjectMapper> json,
-                                 ObjectProvider<ResourceStatusCache> statuses) {
+                                 ObjectProvider<ResourceStatusCache> statuses,
+                                 ObjectProvider<ServiceLocator> locator,
+                                 @Value("${shop.services.internal-token:}") String internalToken) {
         this.cors = cors;
         this.indexes = indexes;
         this.json = json;
         this.statuses = statuses;
+        this.locator = locator;
+        this.internalToken = internalToken;
     }
 
     @Override
@@ -96,13 +108,19 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
             http.addFilterAfter(filter, previous);
             previous = filter.getClass();
         }
-        // 提前判权排在最后一个端专属过滤器之后：它要用登录人，B 端还要用门店上下文。档位是关时不加这个过滤器
+        // 定位、提前判权与分发排在最后一个端专属过滤器之后：它要用登录人。提前判权是关、转发也没开时不加这个过滤器
         ResourceIndexes index = indexes.getIfAvailable();
         ObjectMapper mapper = json.getIfAvailable();
-        if (spec.prechecks() && index != null && mapper != null) {
+        if ((spec.prechecks() || spec.proxies()) && index != null && mapper != null) {
+            List<ServiceInvoker> invokers = new ArrayList<>();
+            invokers.add(new LocalServiceInvoker());
+            ServiceLocator services = locator.getIfAvailable();
+            if (spec.proxies() && services != null) {
+                invokers.add(new HttpProxyInvoker(services, internalToken, mapper));
+            }
             http.addFilterAfter(new GatewayPrecheckFilter(index, List.of(spec.pathPrefix()), spec.decider(),
-                    "enforce".equalsIgnoreCase(spec.precheck()), new GatewayErrorWriter(mapper),
-                    spec.name(), statuses.getIfAvailable()), previous);
+                    spec.precheck(), new GatewayErrorWriter(mapper), spec.name(), statuses.getIfAvailable(),
+                    invokers), previous);
         }
         // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
         http.exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()));

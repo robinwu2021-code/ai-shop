@@ -29,6 +29,20 @@ public class GatewayEndProperties {
      */
     private String precheck = "off";
 
+    /**
+     * 是否转发库里录入的微服务链接。默认关：关着时这一端的认证链上不多任何东西。
+     * 打开后，微服务链接不管提前判权是哪一档都在网关判权 —— 它们没有方法注解可以兜底。
+     */
+    private boolean proxy = false;
+
+    public boolean isProxy() {
+        return proxy;
+    }
+
+    public void setProxy(boolean proxy) {
+        this.proxy = proxy;
+    }
+
     public String getPrecheck() {
         return precheck;
     }

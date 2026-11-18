@@ -37,7 +37,7 @@ public abstract class AbstractGatewayEnd {
             return GatewayEndSpec.closed(name(), realm(), pathPrefix());
         }
         return new GatewayEndSpec(name(), realm(), pathPrefix(), publicPaths(), localDefault(),
-                authenticator(), List.copyOf(contextFilters()), false, accessDecider(), precheck());
+                authenticator(), List.copyOf(contextFilters()), false, accessDecider(), precheck(), proxy());
     }
 
     /** 配置里写了就用配置的，没写用本端的默认清单。 */
@@ -53,6 +53,12 @@ public abstract class AbstractGatewayEnd {
         GatewayProperties all = properties.getIfAvailable();
         GatewayEndProperties mine = all == null ? null : all.end(switchName());
         return mine == null ? "off" : mine.getPrecheck();
+    }
+
+    private boolean proxy() {
+        GatewayProperties all = properties.getIfAvailable();
+        GatewayEndProperties mine = all == null ? null : all.end(switchName());
+        return mine != null && mine.isProxy();
     }
 
     // ---- 每一端必须回答的 ----

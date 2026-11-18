@@ -19,6 +19,12 @@ public interface ResourceStore {
      */
     SyncResult syncScanned(String endCode, List<ApiResource> scanned, String appVersion);
 
+    /** 这一端录入的微服务链接（source=MANUAL，且没有停用）。它们的权限以库为准。 */
+    List<ApiResource> loadManual(String endCode);
+
+    /** 把清单里的微服务链接作为种子写入：只在这一行还不存在时插入，已有的行（可能被人调整过）一律不动。返回新插入的条数。 */
+    int seedManual(String endCode, List<ApiResource> seeds);
+
     /** 这一端被停用的链接，键是「方法 + 空格 + 地址模式」。 */
     Set<String> disabledKeys(String endCode);
 }

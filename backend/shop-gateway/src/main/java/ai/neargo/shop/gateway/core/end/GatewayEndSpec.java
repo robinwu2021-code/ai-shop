@@ -20,19 +20,25 @@ import java.util.List;
  * @param closed         端被配置关闭而入口仍在：只装一条回 404 的链
  * @param decider        提前判权的判定器；没有则不做提前判权
  * @param precheck       提前判权的档位：off / observe / enforce
+ * @param proxy          是否转发库里录入的微服务链接
  */
 public record GatewayEndSpec(String name, Realm realm, String pathPrefix, List<String> publicPaths,
                              Access localDefault, AbstractTokenAuthFilter authenticator,
                              List<Filter> contextFilters, boolean closed,
-                             AccessDecider decider, String precheck) {
+                             AccessDecider decider, String precheck, boolean proxy) {
 
     public static GatewayEndSpec closed(String name, Realm realm, String pathPrefix) {
         return new GatewayEndSpec(name, realm, pathPrefix, List.of(), Access.LOGIN, null, List.of(), true,
-                null, "off");
+                null, "off", false);
     }
 
     /** 这一端有判定器，且档位不是关。 */
     public boolean prechecks() {
         return decider != null && ("observe".equalsIgnoreCase(precheck) || "enforce".equalsIgnoreCase(precheck));
+    }
+
+    /** 这一端有判定器，且打开了微服务链接的转发。 */
+    public boolean proxies() {
+        return decider != null && proxy;
     }
 }

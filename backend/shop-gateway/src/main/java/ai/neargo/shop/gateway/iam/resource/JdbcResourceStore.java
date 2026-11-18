@@ -2,7 +2,9 @@ package ai.neargo.shop.gateway.iam.resource;
 
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.gateway.core.end.GatewayEndRuntimes;
+import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
+import ai.neargo.shop.gateway.core.resource.PermRule;
 import ai.neargo.shop.gateway.core.resource.ResourceStore;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,6 +100,51 @@ public class JdbcResourceStore implements ResourceStore {
             jdbc.sql("INSERT INTO sys_api_resource_point (resource_id, perm_code) VALUES (?, ?)")
                     .params(resourceId, code).update();
         }
+    }
+
+    @Override
+    public List<ApiResource> loadManual(String endCode) {
+        Map<Long, List<String>> codes = new HashMap<>();
+        jdbc.sql("SELECT p.resource_id, p.perm_code FROM sys_api_resource_point p JOIN sys_api_resource r"
+                        + " ON r.id = p.resource_id WHERE r.end_code = ? AND r.source = 'MANUAL' ORDER BY p.id")
+                .param(endCode)
+                .query((rs, n) -> codes.computeIfAbsent(rs.getLong(1), k -> new java.util.ArrayList<>())
+                        .add(rs.getString(2))).list();
+        return jdbc.sql("SELECT id, method, pattern, location, target_path, access FROM sys_api_resource"
+                        + " WHERE end_code = ? AND source = 'MANUAL' AND stale = 0")
+                .param(endCode)
+                .query((rs, n) -> {
+                    Access access = Access.valueOf(rs.getString("access"));
+                    List<String> required = codes.getOrDefault(rs.getLong("id"), List.of());
+                    // 录入的链接：列出的权限码全部都要有。要「任一即可」就录成多条功能点对应的一个码
+                    PermRule rule = access == Access.POINT
+                            ? PermRule.all(required.stream().map(PermRule::code).toList()) : null;
+                    return new ApiResource(rs.getString("method"), rs.getString("pattern"), rs.getString("location"),
+                            access, rule, null, rs.getString("target_path"));
+                }).list();
+    }
+
+    @Override
+    @Transactional
+    public int seedManual(String endCode, List<ApiResource> seeds) {
+        int inserted = 0;
+        for (ApiResource seed : seeds) {
+            Integer present = jdbc.sql("SELECT COUNT(*) FROM sys_api_resource WHERE end_code = ? AND method = ?"
+                    + " AND pattern = ?").params(endCode, seed.method(), seed.pattern()).query(Integer.class).single();
+            if (present != null && present > 0) {
+                continue;
+            }
+            jdbc.sql("INSERT INTO sys_api_resource (end_code, method, pattern, source, location, target_path, access,"
+                            + " rule_text) VALUES (?, ?, ?, 'MANUAL', ?, ?, ?, ?)")
+                    .params(endCode, seed.method(), seed.pattern(), seed.location(), seed.targetPath(),
+                            seed.access().name(), seed.rule() == null ? null : seed.rule().toString())
+                    .update();
+            long id = jdbc.sql("SELECT id FROM sys_api_resource WHERE end_code = ? AND method = ? AND pattern = ?")
+                    .params(endCode, seed.method(), seed.pattern()).query(Long.class).single();
+            writePoints(id, seed);
+            inserted++;
+        }
+        return inserted;
     }
 
     @Override

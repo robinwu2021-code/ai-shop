@@ -31,7 +31,9 @@ public final class ResourceIndex {
         Map<String, ApiResource> merged = new java.util.LinkedHashMap<>();
         for (ApiResource resource : resources) {
             merged.merge(resource.method() + " " + resource.pattern(), resource, (first, second) ->
-                    first.access() == second.access() && java.util.Objects.equals(first.rule(), second.rule())
+                    // 同一个地址既有本进程入口又录了微服务链接：以本进程入口为准，录入的那条不生效
+                    first.remote() != second.remote() ? (first.remote() ? second : first)
+                    : first.access() == second.access() && java.util.Objects.equals(first.rule(), second.rule())
                             ? first
                             : new ApiResource(first.method(), first.pattern(), first.location(),
                                     ai.neargo.shop.gateway.core.end.Access.DEFER, null,
