@@ -225,7 +225,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新增与扩展的规则；pre-push 的闸门脚本 | ✅ 2026-11-18，见下 |
 | M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | ✅ 2026-11-18，见下 |
 | M3 | AC10、AC26 | `strict` 校验；键前缀；一端 Redis 不通的链路测试；两份快照 | ✅ 2026-11-18，见下 |
-| M4 | AC21、AC22、AC23、AC25、AC15 | 索引覆盖；403 先于参数错误；三档开关；三端现有的端点权限测试原样通过 | ◐ 2026-11-18 完成不入库的那一半（M4a），见下 |
+| M4 | AC21、AC22、AC23、AC25、AC15 | 索引覆盖；403 先于参数错误；三档开关；三端现有的端点权限测试原样通过 | ✅ 2026-11-18，分 M4a、M4b 两个分支，见下 |
 
 **M0 的真实输出**（2026-11-18，分支 `feat/gateway-m0-snapshots`，基于当天的 main；扫描面是默认构建下 `test` 配置装配的全部端点，不含餐饮、美业、商城内嵌这些构建配置下才有的行业入口）：
 
@@ -415,6 +415,45 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 
 上线顺序不变：合并时默认关；166 上先开观察，核对日志无出入后再开拦截。M4a 不需要建表。
 
+**M4b 的真实输出**（2026-11-18，分支 `feat/gateway-m4b-resource-store`，叠在 M4a 之上）：
+
+```
+# arch、gateway、config、infra 四个包 + 受影响的安全相关测试，带着 M0 的快照当基线
+classes 94 run 327 fail 5 err 0 skip 8        # 5 条失败与 M0 起完全相同，与本次无关
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsResourceStoreTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsPrecheckEnforceTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+```
+
+| 验证 | 结果 |
+|---|---|
+| 两份快照与探测（提前判权默认关） | 与 M0 基线逐行相同 |
+| 启动后库里的行 | 与索引条数一致；退款复核那一行是「需功能点、`pay:refund:review`、本进程」，权限码拆成了行；支付运营面单独一组 |
+| 内容不变再同步一遍 | 一行不写 |
+| 少一条链接后同步，再恢复 | 标 1 条过期、行还在；恢复时更新 1 条 |
+| 把库里某一行的权限要求改成「公开」 | 判权不认，仍是「没有操作权限」（方案 AC25 后半） |
+| 把某一行停用 | 带令牌、不带令牌都是 404；改回启用后恢复（AC25 前半） |
+| 表结构相关的测试（表结构漂移、每张表要有写入方等） | 通过；测试用的表结构文件由生成器重放迁移得到 |
+| pre-push 闸门脚本 | 与 M4a 相同；新迁移没有进 SQL 方言那道闸的违规名单 |
+
+**M4b 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 任务 4.1：迁移放独立目录 `db/gateway/ops`，用独立的迁移历史表 | 放在主迁移目录，`V679__gateway_api_resource.sql` | 运营端现有的角色、功能点表都在主迁移里；测试用的表结构、表清单、表结构漂移检查全都从主迁移目录生成。另起一条迁移历史会绕过这些检查，而且 166 上要多一套建表流程。等 I1 运营端权限库独立时，这两张表与角色、功能点表一起搬。**这与 ADR-061 第 5 条「迁移按端分目录」不一致**，ADR 里补了一句说明 |
+| 任务 4.6：两个实体与 Mapper | 一个 `JdbcResourceStore`，手写 SQL | 两张表的读写就五句，不值得再建一套实体与 Mapper |
+| 任务 4.7：停用开关的快照 | 照做（60 秒，本实例可立即失效）。只在提前判权开到观察或拦截时生效 | 档位是关时认证链上没有网关的过滤器，没有地方拦 |
+| 停用后回什么 | 404，且观察档也生效 | 停用是运营明确做的动作，不属于「先观察」的范围；对外的说法是「没有这个接口」 |
+| 任务 4.14：`OpsEndpointPermTest` 改为对索引断言 | 仍没改 | 入库后有了更直接的对账（库里的行 = 索引 = Spring MVC 登记的端点），原测试继续按源码把关，两者互补 |
+| 端码 | 运营端主链是 `ops`，支付运营面是 `pay-ops`，各一组 | 它们是两条独立的认证链 |
+
+新写的类 4 个：`ResourceStore`、`ResourceStatusCache`、`ResourceSyncRunner`（公共件），`JdbcResourceStore`（权限包）；1 个测试类；1 份迁移。
+
+**上线要做的：** `V679` 建两张表，166 的应用库账号没有建表权限，需要 root 先执行。迁移号取号时 main 上最大是 V678；合并前若被别人占用要顺延。
+
+没有做的：运营端「接口资源」页与它的后端入口（属于 D2）；停用目前只能直接改库。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -430,3 +469,4 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 2026-11-18 | M2 完成（本地，未推送）：端基类、安全框架适配、四个端子类；`SecurityConfig` 拆分；快照与基线逐行相同；偏差见 §5 |
 | 2026-11-18 | M3 完成（本地，未推送）：每端自己的 Redis 与数据源、`strict` 校验、健康明细；默认配置下快照不变；偏差见 §5 |
 | 2026-11-18 | M4a 完成（本地，未推送）：运营端资源索引与提前判权，三档开关默认关；入库（M4b）未做；偏差见 §5 |
+| 2026-11-18 | M4b 完成（本地，未推送）：两张接口资源表（V679）、启动同步、停用开关；偏差见 §5。第一批五个里程碑全部完成 |
