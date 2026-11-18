@@ -56836,6 +56836,22 @@
       "module": "shop-gateway"
     },
     {
+      "host": "PermRuleParser",
+      "name": "OPS_METHODS",
+      "type": "Set<String>",
+      "value": "Set.of(\"can\")",
+      "zh": "运营端的写法。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PermRuleParser",
+      "name": "BIZ_METHODS",
+      "type": "Set<String>",
+      "value": "Set.of(\"canBiz\", \"canAnyBiz\")",
+      "zh": "B 端的写法：按当前门店判的 canBiz，以及任一即可的 canAnyBiz。",
+      "module": "shop-gateway"
+    },
+    {
       "host": "ApiResourceAdmin",
       "name": "SELF_PREFIX",
       "type": "String",

@@ -126,7 +126,8 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.arSearch}>
         <FilterSelect aria-label={c.arColEnd} value={endCode} onChange={(v) => { setEndCode(v); setPage(1); }}
-          options={[{ value: "ops", label: c.arEndOps }, { value: "pay-ops", label: c.arEndPayOps }]} allLabel={c.arEndAll} />
+          options={[{ value: "ops", label: c.arEndOps }, { value: "pay-ops", label: c.arEndPayOps },
+            { value: "biz", label: c.arEndBiz }]} allLabel={c.arEndAll} />
         <FilterSelect aria-label={c.arColLocation} value={source} onChange={(v) => { setSource(v); setPage(1); }}
           options={[{ value: "SCAN", label: c.arLocal }, { value: "MANUAL", label: c.arRemote }]} allLabel={c.arSourceAll} />
         <FilterSelect aria-label={c.arColStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
