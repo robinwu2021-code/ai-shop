@@ -225,7 +225,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | M1 | AC9、AC7 的一部分 | 两份快照；`ArchitectureTest` 新增与扩展的规则；pre-push 的闸门脚本 | ✅ 2026-11-18，见下 |
 | M2 | AC2、AC33 的一部分 | 两份快照；只开一端的上下文测试；架构测试的基类规则 | ✅ 2026-11-18，见下 |
 | M3 | AC10、AC26 | `strict` 校验；键前缀；一端 Redis 不通的链路测试；两份快照 | ✅ 2026-11-18，见下 |
-| M4 | AC21、AC22、AC23、AC25、AC15 | 对账测试；403 先于参数错误；零查库；停用开关；三端现有的端点权限测试原样通过 | — |
+| M4 | AC21、AC22、AC23、AC25、AC15 | 索引覆盖；403 先于参数错误；三档开关；三端现有的端点权限测试原样通过 | ◐ 2026-11-18 完成不入库的那一半（M4a），见下 |
 
 **M0 的真实输出**（2026-11-18，分支 `feat/gateway-m0-snapshots`，基于当天的 main；扫描面是默认构建下 `test` 配置装配的全部端点，不含餐饮、美业、商城内嵌这些构建配置下才有的行业入口）：
 
@@ -371,6 +371,50 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 
 没有验证的：每端独立**数据源**这条路只有编译和「没配时落回主库」被测到；真的指向另一个库需要一套带会话表的库，本次没有搭。
 
+**M4a 的真实输出**（2026-11-18，分支 `feat/gateway-m4-ops-precheck`，叠在 M3 之上）。M4 拆成了两半：**M4a 是索引与提前判权，不碰数据库；M4b 是入库与停用开关，还没做。**
+
+```
+# arch、gateway、config 三个包 + 受影响的安全相关测试，带着 M0 的快照当基线；提前判权默认是关
+classes 87 run 289 fail 5 err 0 skip 9        # 5 条失败与 M0 起完全相同，与本次无关
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.PermRuleParserTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsPrecheckEnforceTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.OpsPrecheckObserveTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.EndpointSnapshotTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SecurityChainSnapshotTest
+```
+
+| 验证 | 结果 |
+|---|---|
+| 档位是关（默认）时的两份快照与探测 | 与 M0 基线逐行相同：关着时认证链上不多任何过滤器 |
+| 索引覆盖（方案 AC21） | `/ops` 与 `/pay-ops` 下，索引的键与 Spring MVC 登记的端点完全一致；多数带权限式；提前判不了的不超过 5 条 |
+| 表达式解析 | 单码、与、或、与或混合（含括号与优先级）都认得；方法参数、别的 bean、别的方法、取反、语法错误一律返回「认不得」 |
+| 拦截档：没权限且请求体不合法（方案 AC22） | 得到「没有操作权限」而不是参数错误 |
+| 观察档：同样的请求 | 先看到的仍是参数错误，与不开时相同；只多一条日志 |
+| 拦截档下的公开入口与未登录请求 | 登录入口照常进到入口方法；未登录仍是 401 |
+| 23 个 pre-push 闸门脚本 | 与 M3 相同 |
+
+**实现时才知道的两件事：**
+
+- **同一个「方法 + 地址」可以登记多个处理方法**（靠请求参数或请求头再区分，运营端的 `GET /ops/promotion/activities` 就是）。提前判权只看方法与地址，分不清会落到哪一个：权限要求相同就并成一行，不同就标成「留给方法判」，不猜。
+- **过滤器里借不了 Spring MVC 的异常处理来输出响应**：过滤器在处理方法匹配之前，全局异常处理定位不到。改为直接按同一个错误码、同一句文案输出，状态码同样不变，端上分不出是提前判权拒的还是方法注解拒的。
+
+**M4 相对计划的偏差：**
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 一个里程碑 | 拆成 M4a（索引与提前判权）和 M4b（入库） | 判权读的本来就是本实例扫出来的索引，库里那份是副本（方案 §2.13）。两半互不依赖，而入库要动迁移、测试用的表结构文件和 166 上的建表，单独一个 PR 更好评审 |
+| 任务 4.1、4.6、4.7：两张表、同步、停用开关 | 没做，归 M4b | 同上 |
+| 任务 4.9：`GatewayAuthorizationManager` 接在 `authorizeHttpRequests` 上 | 换成一个过滤器 `GatewayPrecheckFilter`，排在令牌认证与端专属过滤器之后 | 档位是关时不加这个过滤器，认证链与今天逐个相同；接在判权规则上则关着时也会改变链的装配。没登录的请求它不处理，仍由认证链回 401 |
+| 任务 4.8：`GatewayRouteFilter` 单独一个 | 并进提前判权的过滤器 | 定位的结果目前只有判权一个使用者；透传（D2）出现时再拆 |
+| 任务 4.10：`PermChecker` 记录通过的权限码 | 没做 | 它只给出站签名用，S 期才需要 |
+| 任务 4.11：观察档在两处结论不一致时告警 | 观察档记「会拒绝」的日志 | 方法注解拒绝时状态码也是 200，过滤器里看不出入口方法最后拒没拒。核对办法是把这条日志与全局异常处理的「判权拒绝」日志按请求对一遍 |
+| 任务 4.13：缓存预热后不查库（AC23） | 没有单独的测试 | M4a 的索引建在内存里、不读库；判权用的权限码仍走现有的快照。AC23 留给 M4b |
+| 任务 4.14：`OpsEndpointPermTest` 改为对索引断言 | 没改 | 它今天扫源码也覆盖得到 `shop-gateway`（M1 已确认）。改写放到 M4b，与入库后的对账一起 |
+
+新写的类 14 个：资源模型与索引 7（`ApiResource`、`PermRule`、`PermRuleParser`、`ResourceProvider`、`LocalScanResourceProvider`、`ResourceIndex`、`ResourceIndexes`），判定与过滤器 6（`AccessDecider`、`AbstractAccessDecider`、`Decision`、`GatewayExchange`、`GatewayPrecheckFilter`、`GatewayErrorWriter`），运营端判定 1（`OpsAccessDecider`）；另有 3 个测试类。
+
+上线顺序不变：合并时默认关；166 上先开观察，核对日志无出入后再开拦截。M4a 不需要建表。
+
 ## §6 对账二 · 计划 → 实现
 
 每个里程碑合并后，把 `git show --stat` 贴在这里，与 §2 的任务表逐行比。
@@ -385,3 +429,4 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.Secur
 | 2026-11-18 | M1 完成（本地，未推送）：675 个文件搬进 `shop-gateway`，快照与基线逐行相同；偏差见 §5 |
 | 2026-11-18 | M2 完成（本地，未推送）：端基类、安全框架适配、四个端子类；`SecurityConfig` 拆分；快照与基线逐行相同；偏差见 §5 |
 | 2026-11-18 | M3 完成（本地，未推送）：每端自己的 Redis 与数据源、`strict` 校验、健康明细；默认配置下快照不变；偏差见 §5 |
+| 2026-11-18 | M4a 完成（本地，未推送）：运营端资源索引与提前判权，三档开关默认关；入库（M4b）未做；偏差见 §5 |

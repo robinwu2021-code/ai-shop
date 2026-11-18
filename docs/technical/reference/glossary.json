@@ -43172,6 +43172,13 @@
         "module": "shop-core"
       },
       {
+        "host": "ApiResource",
+        "name": "LOCAL",
+        "value": "LOCAL",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
         "host": "InvManagedAppService",
         "name": "DONE",
         "value": "DONE",
@@ -44262,7 +44269,9 @@
         "name": "Access",
         "values": [
           "PUBLIC",
-          "LOGIN"
+          "LOGIN",
+          "POINT",
+          "DEFER"
         ],
         "zh": "一个地址的放行方式。",
         "module": "shop-gateway"
@@ -46128,6 +46137,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "CODE",
+          "ALL",
+          "ANY"
+        ],
+        "zh": "节点种类。",
+        "module": "shop-gateway"
       },
       {
         "name": "Kind",
