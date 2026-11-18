@@ -60,7 +60,7 @@ class PayDeploymentModePairingTest {
     @Test
     @DisplayName("★★★ embedded 的实现必须配一个 standalone 的 —— 生产跑的是后者")
     void embeddedImplNeedsStandalonePeer() throws IOException {
-        Path root = Path.of("..", "shop-app", "src", "main", "java",
+        Path root = Path.of("..", "shop-gateway", "src", "main", "java",
                 "ai", "neargo", "shop", "payclient").toRealPath();
 
         Map<String, Set<String>> byInterface = new LinkedHashMap<>();

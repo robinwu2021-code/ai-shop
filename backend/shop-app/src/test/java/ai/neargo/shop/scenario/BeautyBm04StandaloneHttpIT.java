@@ -20,7 +20,7 @@ class BeautyBm04StandaloneHttpIT {
         assertThat(fixture.host.path("classpath").asString())
                 .doesNotContain("beauty-core", "beauty-server");
         assertThat(server.path("classpath").asString())
-                .doesNotContain("shop-app", "shop-core", "shop-merchant");
+                .doesNotContain("shop-app", "shop-gateway", "shop-core", "shop-merchant");
         assertThat(server.path("checkoutBean").asString()).contains("RemoteCheckoutPort");
         assertThat(server.path("workOrderBean").asString()).contains("WorkOrderServiceImpl");
         fixture.authorization();

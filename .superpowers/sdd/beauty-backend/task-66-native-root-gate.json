@@ -174,7 +174,7 @@
       "sha256": "31cdf2e4d2fb86a577a7d963fb5bba92a63440edabb56b7f774d24190efcb7ba"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/DualWriteStockPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/DualWriteStockPort.java",
       "bytes": 14717,
       "sha256": "0b86727dc3627015bf64cace2db97c4bf9694b5a17bb166fb25cb96c8083a654"
     },
@@ -199,7 +199,7 @@
       "sha256": "45f04c9ed15a99e150a20e4e36175b5032663fc112a07f2c57f7cce6b6b64677"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
       "bytes": 9558,
       "sha256": "c08e80f9d6bf21a83dd783af5ab19b7c84e73ff0f8cdccce5c4ed2f544896120"
     },
@@ -209,7 +209,7 @@
       "sha256": "c5bf85459edda40d351e552d3bfdb4f168328ef99953ed4254d42ae67f6d3d04"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java",
       "bytes": 12089,
       "sha256": "8069a775fd0d55b2f4f0b6c12dc17088b4e8ce93545a9e2e56aa7a616d432bca"
     },
@@ -259,7 +259,7 @@
       "sha256": "1fb41e11c41a766c4f0d3340a46187bb8ed500a34fa49c7c7a6796ba750abf60"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
       "bytes": 8079,
       "sha256": "0eef6dbdaf21e3b0cdb088a10668a6bfa5f9549aff741fc340bc9be2e7909a04"
     },

@@ -32,7 +32,7 @@ public final class StandalonePayFixture implements AutoCloseable {
             throw new IllegalStateException("Run scripts/verify-entitlement-two-process.mjs to prepare isolated pay runtime");
         }
         String classpath = Files.readString(runtime);
-        assertThat(classpath).doesNotContain("shop-core", "shop-app", "shop-merchant");
+        assertThat(classpath).doesNotContain("shop-core", "shop-app", "shop-gateway", "shop-merchant");
         fixture = Files.createTempDirectory("entitlement-two-process-");
         int corePort = port(), payPort = port();
         while (payPort == corePort) payPort = port();

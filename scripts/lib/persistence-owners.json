@@ -73,24 +73,24 @@
     "modelSymbol": "OutboxEnvelope"
   },
   "prd_stock_sync_operation": {
-    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
-    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "owner": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "querySource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+    "modelSource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
     "modelSymbol": "Stored"
   },
   "prd_stock_alignment_batch": {
-    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
-    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "owner": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "querySource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "modelSource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
     "modelSymbol": "Batch"
   },
   "prd_stock_alignment_line": {
-    "owner": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
-    "querySource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "owner": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "querySource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+    "modelSource": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
     "modelSymbol": "StoredLine"
   },
   "ord_refund_coupon_scope": {

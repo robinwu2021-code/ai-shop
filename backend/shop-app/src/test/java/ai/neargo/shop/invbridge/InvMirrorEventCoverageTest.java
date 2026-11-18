@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InvMirrorEventCoverageTest {
 
     private static final Path CONSUMER =
-            Path.of("src/main/java/ai/neargo/shop/invbridge/InventoryMirrorConsumer.java");
+            Path.of("../shop-gateway/src/main/java/ai/neargo/shop/invbridge/InventoryMirrorConsumer.java");
 
     @Test
     @DisplayName("★★★ ALL 里每个镜像事件都要有一个 case —— 漏一个：预留扣了没跟记，两本账分叉且零报错")

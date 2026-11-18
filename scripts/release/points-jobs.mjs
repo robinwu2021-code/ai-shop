@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const allowed = new Set([
  '.githooks/pre-push', 'scripts/release/points-jobs.mjs', 'scripts/release/points-jobs.test.mjs',
- 'backend/shop-app/src/main/java/ai/neargo/shop/payclient/PointsJobHandlers.java',
- 'backend/shop-app/src/main/java/ai/neargo/shop/payclient/PointsScopedJobHandler.java',
+ 'backend/shop-gateway/src/main/java/ai/neargo/shop/payclient/PointsJobHandlers.java',
+ 'backend/shop-gateway/src/main/java/ai/neargo/shop/payclient/PointsScopedJobHandler.java',
  'backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsMultiTypeJobTest.java',
  'backend/shop-app/src/test/java/ai/neargo/shop/scenario/OrderPointsRecoveryJobLeaseTest.java',
  'backend/shop-core/src/main/java/ai/neargo/shop/trade/job/OrderPointsRecoveryJob.java',

@@ -17,7 +17,7 @@
       "baselineSha256": "92d0cce6d20c04faa38220a8a7659d26a95fc3f386575aa3774bc9266f602476"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
       "baselineSha256": "0eef6dbdaf21e3b0cdb088a10668a6bfa5f9549aff741fc340bc9be2e7909a04"
     },
     {

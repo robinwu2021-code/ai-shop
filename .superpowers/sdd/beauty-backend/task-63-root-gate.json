@@ -2,13 +2,13 @@
   "status": "DESIGN_ACCEPTED_I1_R1_NOT_IMPLEMENTED",
   "sourcePins": [
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java",
       "bytes": 9091,
       "sha256": "9560c4f69b8ddc05d73148eb19e642df2b52c5ed68a113c6da3adb240b96d993",
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/DualWriteStockPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/DualWriteStockPort.java",
       "bytes": 14540,
       "sha256": "a564af89a7e096af83c3419d050c80f62ede3deb150df0cb9cb7e59670d27535",
       "matches": true
@@ -26,13 +26,13 @@
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/InventoryLifecycleCommand.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/InventoryLifecycleCommand.java",
       "bytes": 583,
       "sha256": "145c343bc2104c422fa380d5466572f7f5e32c635e7aa1b822b49e2168e5cf7d",
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/InventoryMirrorConsumer.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/InventoryMirrorConsumer.java",
       "bytes": 11705,
       "sha256": "3cfacc8e52d8192918db938de808f922a7bdb459f7aa66c2d7424e92369d6c3f",
       "matches": true
@@ -140,19 +140,19 @@
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/FundInvariantReconciler.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/FundInvariantReconciler.java",
       "bytes": 3645,
       "sha256": "cd23132e38e316bcc3804e4ed3e4c5a9123bf539ae48fe43127ffb7b7ed679b9",
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconciler.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconciler.java",
       "bytes": 6698,
       "sha256": "9465a8800a22a13ab7e10e41d307746af34acf20bff30c26a52e1410141ef73d",
       "matches": true
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconcileJob.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconcileJob.java",
       "bytes": 4795,
       "sha256": "3ac9968e2bd507235e98e44c12ad496925fa145fe335a0266b6856e497af04c9",
       "matches": true

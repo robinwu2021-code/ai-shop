@@ -108,7 +108,7 @@ class PayHasNoControllerTest {
                 .as("支付领域 / 通道里出现了 Web 映射：\n  %s\n"
                         + "  面向人与第三方的支付接口放 pay-portal（ai.neargo.shop.pay.api.<入口>，ADR-044）；\n"
                         + "  域间内部口放 pay-svc 的 /internal/**；\n"
-                        + "  仍属主应用跨域组合的，放 shop-app/portal/{ops,biz,mp}/pay/。\n"
+                        + "  仍属主应用跨域组合的，放 shop-gateway 的 portal/{ops,biz,mp}/pay/。\n"
                         + "  → 见 TDD-支付域-双形态部署与装配 §L1、ADR-044。", offenders)
                 .isEmpty();
     }
@@ -264,7 +264,7 @@ class PayHasNoControllerTest {
     @Test
     @DisplayName("★★ 支付相关的 controller 确实在主应用侧 —— 否则上一条会变成恒真")
     void payControllersLiveInTheMainApp() throws IOException {
-        Path portal = BACKEND.resolve("shop-app/src/main/java/ai/neargo/shop/portal");
+        Path portal = BACKEND.resolve("shop-gateway/src/main/java/ai/neargo/shop/portal");
         List<String> found = new ArrayList<>();
         try (Stream<Path> files = Files.walk(portal)) {
             for (Path f : files.filter(p -> p.toString().endsWith("Controller.java")).toList()) {

@@ -51,7 +51,7 @@
       "current_sha256": "34090df42a7f2a67f8d9edad2779dc8fa6aadd9cbe722230674dc7e05c2c2cd3"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
       "status": "modified",
       "base_git_blob": "6d71701a2c5b7672a12a5da5827e4eb756d914ad",
       "current_git_blob": "a1209244c530ac885aea379672e34d3521869700",
