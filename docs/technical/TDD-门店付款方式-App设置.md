@@ -185,6 +185,59 @@ PUT  /internal/pay/v1/biz/stores/{storeNo}/collection-methods   StoreMethodsReq{
 | 2026-11-17 | 交接后补跑 ai-shop 测试（RemoteBizPaymentAppServiceTest 3、BizEndpointPermTest 12、ArchitectureTest 23）全部通过；按修正路线改写 §2 并加实施计划、§8 并行事项，待用户确认 |
 | 2026-11-17 | 发布 UME166（用户确认「合并并发布」）：ai-shop 合进 `release/166-live-20261117`（`a122d1e99`），near-pay 快进到 `bd8ed03da`。两边线上 jar 都是覆盖包，所以只把本功能改动的类覆盖进线上 jar：near-pay 9 个类（`PayBizFacade`、`PayBizInternalApi` 及三个新 record、`StoreCollectionMethodService` 及两个内部类、`InternalPayBizEndpoint`），jar `61a6fb2e` → `055f6dcd`；ai-shop 10 个类（`BizPaymentController` 及 `StoreMethodReq`、`BizPaymentAppService` 及两个实现、`BizPerms`、`PayBizInternalApi` 及三个 record），jar `d66b300b` → `402e64c8`。无库表变更（迁移仍 V678）。备份 `pay-svc.jar.before-np-store-methods-20261117-bd8ed03da`、`shop-app.jar.before-as-store-methods-20261117-a122d1e99`；两个 ai-shop 容器与 near-pay 均健康，新路由未带凭据返回 401（非 404），启动日志只有既有的 SHIP_TRACK_KEY 一条 ERROR |
 
+## §9 付款方式偏好接口 `store-method-preference`（2026-11-18 增补）
+
+### 来由
+
+Flutter App「门店管理 › 付款方式」页改为以「付款方式」（如 LINE Pay、信用卡，正式 / 测试分开）为开关单位，优先请求 `GET|PUT /biz/payment/store-method-preference`，读不到时降级到 §2 的旧接口。App 需求：`ai-shop-bapp/docs/api/门店付款方式偏好接口-后端需求-2026-11-18.md`；实施与联调记录：`docs/handoff/app-channel-unification-2026-11-18/implementation-plan.md`。
+
+实现：ai-shop `412ca7b90`、`f50a9d285`（`codex/ai-shop-codex`）；near-pay `develop/s1` `0d350d5bf`（内部接口 `GET|PUT /internal/pay/v1/biz/stores/{storeNo}/method-preferences`）。
+
+### 验收（沿用 AC1–AC7，新增 AC8–AC10）
+
+- **AC8** Given 门店处于「跟随商户」，When App 读取，Then 每项返回 `effectiveEnabled`（门店此刻实际可用），商户后来新开通的方式自动出现。
+- **AC9** Given App 带 `expectedVersion` 与 `eligibilityRevision` 保存，When 任一已过期，Then 返回业务码 `10409`，不覆盖；同一 `requestNo` 重试返回同一结果。
+- **AC10** Given `mode=INHERIT`，When 保存，Then `enabledMethods` 必须为空，门店回到跟随商户；`OVERRIDE` 只能选 `editable` 的方式且至少一种。
+
+### 契约
+
+```
+GET  /biz/payment/store-method-preference
+PUT  /biz/payment/store-method-preference
+     { requestNo, expectedVersion, eligibilityRevision, mode: INHERIT|OVERRIDE,
+       enabledMethods: [ { paymentMethodCode, test } ] }
+→ { storeNo, mode, version, eligibilityRevision,
+    items: [ { choice: { paymentMethodCode, test }, configuredEnabled, effectiveEnabled,
+               editable, blockedReason, productCodes, channelCodes } ] }
+```
+
+- 门店取 `BizContext.requireStoreNo()`；权限沿用 `mch:pay:store-method`（只随属主），不新增权限码、不迁移。
+- ai-shop 只做格式校验（`BizPaymentController.MethodPreferencesReq`）：`requestNo` ≤48、`expectedVersion` ≥0、`eligibilityRevision` 恰 64 位、`mode` ≤16、`enabledMethods` ≤64 且每项 `paymentMethodCode` ≤32、`test` 必填。模式取值、INHERIT 须空、只能选 editable、至少一种由 near-pay `StoreCollectionMethodService#saveMethods` 判定。
+- 冲突：near-pay 的版本冲突与资格摘要过期都是 `CONFLICT`，经 `RemoteBizPaymentAppService#unwrap` 还原为 `10409`；格式或越权选择为 `10400`。
+- `eligibilityRevision`：near-pay 对「商户 id、商户 version、商户收款策略 version、每个方式当前可开产品」取 SHA-256。商户资料或策略变更、账户产品开关、门店绑定、平台目录变化，只要改变某方式的可开产品，它就会变。
+- `blockedReason`：取该方式所属产品的 `excludedBy`（同 §2）；均无时，商户已授权但门店不可用为 `BINDING`，否则 `MERCHANT`。端上类型为字符串，未知值按「暂不可用」显示。
+- INHERIT 下 `configuredEnabled` = 该方式当前有可开产品（不是全 `false`）；App 在 INHERIT 下读 `effectiveEnabled`。
+- 偏好落在 near-pay，ai-shop 不落库。内嵌形态读写均抛 `PAY_CHANNEL_UNAVAILABLE`。
+- 审计：读记 `BIZ_PAY_VIEW`，写记 `BIZ_PAY_STORE_METHOD`，说明文字均为「门店付款方式」（**不含模式与所选方式**，比 §2 旧接口少；明细在 near-pay 策略审计里，actor `BIZ:{operatorNo}`）。
+
+**库表 / 配置 / i18n**：无。
+
+### 对账
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC6 | `BizEndpointPermTest`（新路径 → `mch:pay:store-method`，GET / PUT） | 通过（12/12） |
+| AC8 | `RemoteBizPaymentAppServiceTest#methodPreferencesRelayBoundOperatorAndBothVersions`（带当前商家账号与门店、两个版本原样转发）；语义在 near-pay `StoreCollectionMethodServiceTest` | ai-shop 通过（4/4） |
+| AC9 | `StoreMethodPreferenceContractTest#staleVersionOrRevisionBecomesConflict`（`CONFLICT` → 10409，不留保存痕迹） | 通过 |
+| AC10 | `StoreMethodPreferenceContractTest`：INHERIT + 空数组通过；幂等号超长、资格摘要非 64 位、方式码为空、缺 `test`、列表缺失被拒；OVERRIDE + 空数组在 ai-shop 格式合法，由 near-pay 拒绝 | 通过（5/5，含内嵌形态） |
+
+2026-11-18 在 `origin/codex/ai-shop-codex` `bbf80e6de` 上运行。near-pay 侧测试属 `0d350d5bf` 的交付，本节未重跑。
+
+### 上线状态（2026-11-18 只读核实）
+
+- near-pay：166 `pay-svc.jar`（构建 `2026-11-18T04:18:24Z`）已含内部接口 `method-preferences`。
+- ai-shop：166 `shop-app.jar`（SHA-256 前 12 位 `351b61d3616f`，11-18 04:15）的 `BizPaymentController` **不含**新路由，App 在 166 上仍降级到旧接口。发布被 5 条与支付无关的全量门禁失败挡住（商城配置 3、媒体引用 1、Mitake 短信 1），见交接 `implementation-plan.md`。
+
 ## §8 本会话并行事项（交接 store-payment-methods-2026-11-17 §五，不计入本 TDD 验收）
 
 | # | 事项 | 方案 | 所在 | 时机 |
