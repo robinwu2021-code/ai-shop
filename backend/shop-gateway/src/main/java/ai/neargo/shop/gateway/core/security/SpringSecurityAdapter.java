@@ -6,6 +6,7 @@ import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.end.GatewayEndSpec;
 import jakarta.servlet.DispatcherType;
 import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
+import ai.neargo.shop.gateway.core.resource.ResourceStatusCache;
 import jakarta.servlet.Filter;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
@@ -33,13 +34,16 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
 
     private final ObjectProvider<ResourceIndexes> indexes;
     private final ObjectProvider<ObjectMapper> json;
+    private final ObjectProvider<ResourceStatusCache> statuses;
 
     public SpringSecurityAdapter(@Qualifier("corsSource") CorsConfigurationSource cors,
                                  ObjectProvider<ResourceIndexes> indexes,
-                                 ObjectProvider<ObjectMapper> json) {
+                                 ObjectProvider<ObjectMapper> json,
+                                 ObjectProvider<ResourceStatusCache> statuses) {
         this.cors = cors;
         this.indexes = indexes;
         this.json = json;
+        this.statuses = statuses;
     }
 
     @Override
@@ -97,7 +101,8 @@ public class SpringSecurityAdapter implements GatewaySecurityAdapter<HttpSecurit
         ObjectMapper mapper = json.getIfAvailable();
         if (spec.prechecks() && index != null && mapper != null) {
             http.addFilterAfter(new GatewayPrecheckFilter(index, List.of(spec.pathPrefix()), spec.decider(),
-                    "enforce".equalsIgnoreCase(spec.precheck()), new GatewayErrorWriter(mapper)), previous);
+                    "enforce".equalsIgnoreCase(spec.precheck()), new GatewayErrorWriter(mapper),
+                    spec.name(), statuses.getIfAvailable()), previous);
         }
         // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
         http.exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()));

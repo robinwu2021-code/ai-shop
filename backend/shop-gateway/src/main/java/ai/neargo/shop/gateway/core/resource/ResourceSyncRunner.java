@@ -1,0 +1,67 @@
+package ai.neargo.shop.gateway.core.resource;
+
+import ai.neargo.shop.gateway.core.config.GatewayEndSwitch;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+/**
+ * 应用就绪后，把运营端扫出来的链接同步进接口资源表（TDD-网关层与统一权限 §2.13；开发计划 M4b）。
+ *
+ * <p>等到应用就绪才做：那时 Spring MVC 的处理方法已全部登记。
+ * 同步失败只告警、不影响启动 —— 判权读的是进程内的索引，库里这份是给人看的副本。
+ * 一条链接都没扫到时不同步：那多半是非 Web 进程，照着空清单同步会把整张表标成过期。
+ */
+@Component
+public class ResourceSyncRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(ResourceSyncRunner.class);
+    /** 运营端的两条链：端名 → 地址前缀。 */
+    private static final Map<String, String> OPS_CHAINS = Map.of("ops", "/ops", "pay-ops", "/pay-ops");
+
+    private final ResourceIndexes indexes;
+    private final ObjectProvider<ResourceStore> store;
+    private final ObjectProvider<BuildProperties> build;
+    private final Environment environment;
+
+    public ResourceSyncRunner(ResourceIndexes indexes, ObjectProvider<ResourceStore> store,
+                              ObjectProvider<BuildProperties> build, Environment environment) {
+        this.indexes = indexes;
+        this.store = store;
+        this.build = build;
+        this.environment = environment;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void syncOnReady() {
+        ResourceStore target = store.getIfAvailable();
+        if (target == null || GatewayEndSwitch.resolve(environment, "ops", "ops") != GatewayEndSwitch.State.ON
+                || !environment.getProperty("shop.gateway.ops.resource-sync", Boolean.class, true)) {
+            return;
+        }
+        BuildProperties info = build.getIfAvailable();
+        String version = info == null ? null : info.getVersion();
+        OPS_CHAINS.forEach((end, prefix) -> {
+            try {
+                List<ApiResource> scanned = indexes.of(List.of(prefix)).all();
+                if (scanned.isEmpty()) {
+                    return;
+                }
+                ResourceStore.SyncResult result = target.syncScanned(end, scanned, version);
+                if (!result.unchanged()) {
+                    log.info("接口资源已同步 end={} 共 {} 条：新增 {}，更新 {}，标为过期 {}",
+                            end, scanned.size(), result.inserted(), result.updated(), result.markedStale());
+                }
+            } catch (RuntimeException e) {
+                log.warn("接口资源同步失败（不影响判权）end={} 异常={}", end, e.toString());
+            }
+        });
+    }
+}

@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
 import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
+import ai.neargo.shop.gateway.core.resource.ResourceStatusCache;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,14 +39,19 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
     private final AccessDecider decider;
     private final boolean enforce;
     private final GatewayErrorWriter errors;
+    private final String endCode;
+    private final ResourceStatusCache statuses;
 
     public GatewayPrecheckFilter(ResourceIndexes indexes, List<String> pathPrefixes, AccessDecider decider,
-                                 boolean enforce, GatewayErrorWriter errors) {
+                                 boolean enforce, GatewayErrorWriter errors,
+                                 String endCode, ResourceStatusCache statuses) {
         this.indexes = indexes;
         this.pathPrefixes = pathPrefixes;
         this.decider = decider;
         this.enforce = enforce;
         this.errors = errors;
+        this.endCode = endCode;
+        this.statuses = statuses;
     }
 
     @Override
@@ -54,6 +60,12 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         Optional<ApiResource> resource = indexes.of(pathPrefixes).locate(request.getMethod(), path);
         resource.ifPresent(hit -> GatewayExchange.resource(request, hit));
+        // 被停用的链接：观察与拦截两档都生效，回 404 —— 停用是运营明确做的动作，不属于「先观察」的范围
+        if (resource.isPresent() && statuses != null && statuses.isDisabled(endCode, resource.get())) {
+            log.warn("链接已停用 {} {}", request.getMethod(), resource.get().pattern());
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
         LoginUser user = SecurityUtils.currentUser().orElse(null);
         if (user == null || resource.isEmpty()) {
             chain.doFilter(request, response);

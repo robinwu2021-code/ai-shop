@@ -13137,6 +13137,35 @@ CREATE TABLE IF NOT EXISTS usr_account_change_log
     deleted TINYINT NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS sys_api_resource
+(
+    id          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    end_code    VARCHAR(16)  NOT NULL,
+    method      VARCHAR(8)   NOT NULL,
+    pattern     VARCHAR(255) NOT NULL,
+    source      VARCHAR(16)  NOT NULL DEFAULT 'SCAN',
+    location    VARCHAR(64)  NOT NULL DEFAULT 'LOCAL',
+    target_path VARCHAR(255) NULL,
+    access      VARCHAR(16)  NOT NULL,
+    rule_text   VARCHAR(1000) NULL,
+    handler     VARCHAR(500) NULL,
+    status      VARCHAR(16)  NOT NULL DEFAULT 'ENABLED',
+    stale       TINYINT      NOT NULL DEFAULT 0,
+    app_version VARCHAR(64)  NULL,
+    updated_by  VARCHAR(64)  NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_api_resource UNIQUE (end_code, method, pattern)
+);
+
+CREATE TABLE IF NOT EXISTS sys_api_resource_point
+(
+    id          BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    resource_id BIGINT      NOT NULL,
+    perm_code   VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_api_resource_point UNIQUE (resource_id, perm_code)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
