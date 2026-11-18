@@ -268,7 +268,21 @@ PUT  /biz/payment/store-method-preference
 
 回退：`cp pay-svc.jar.before-store-method-inherit-20261118-f7a0c87eb pay-svc.jar`，重启 `nearpay-prod`。
 
-**未覆盖**：成功写入（OVERRIDE 保存、回到 INHERIT、幂等重放）需要名下有收款账户的门店，测试账号里没有；留给 App 会话用 Oscar 在 ume早餐店 走模拟器验收。
+**App 端到端验收（2026-11-18，App 会话，Robin 本人在模拟器登录 Oscar；ume早餐店 `ST2611132NS49C2EPQ`，`tw.neargo.ai/shop-api`，App 提交 `a7f2a38`）**：
+
+| 步骤 | 结果 |
+|---|---|
+| a 读取 | 走新接口、未降级；`INHERIT` v1，4 项 `effectiveEnabled` 均为 true（LINE_PAY 测试、CARD 测试、LINE_PAY、APPLE_PAY），页面一致，测试方式带「測試」 |
+| b 关「LINE Pay 測試」保存 | `requestNo` `8782db4d-…c802ca`，`expectedVersion` 1 → `OVERRIDE` v2，LINE_PAY(test) configured/effective 均 false；重新读取一致 |
+| c 幂等重放、d 旧版本/旧摘要 | App 界面造不出，已在服务端用 TEST ONLY 门店验过（见上） |
+| e/f 恢复跟随商户 | `requestNo` `9b9331c1-…5798e5f4`，`expectedVersion` 2 → `INHERIT` v3，4 项恢复生效；门店停在 INHERIT，与验收前一致 |
+| H5 收银台跟随变化 | **未验成**：旧域名 `twpay.umeshop.ai/s/ume-breakfast` 需输入金额并「確認付款」才列方式，会真实建单，未获批准；新域名 `tpay.neargo.ai/s/ume-breakfast` 显示「收款碼暫不可用」（`70082`，与本功能无关，OVERRIDE 期间与恢复后均如此） |
+
+AC1–AC3、AC6–AC10 至此在 UME166 端到端闭合；AC2「收银台不再出现」的线上观察待 H5 新域名可用后补。
+
+**70082 原因（只读排查）**：`tpay.neargo.ai` 与 `twpay.umeshop.ai` 解析到同一入口、落到同一 near-pay；near-pay `CheckoutServiceImpl#verifyCodeHost` 用门店 H5 收款入口的单值 `allowedDomain` 与请求 Host 精确比对，不等即 `PAY_FORBIDDEN`（70082）。立牌链接 `storeCodeUrl` 也由同一个 `allowedDomain` 拼出（`#storeCodeUrl`），ai-shop 原样转发。ume早餐店 入口仍配旧域名，故新域名被拒、立牌仍是旧域名。待定：改该入口的允许域名（旧立牌随之失效），或让 near-pay 接受「主域名 + 旧域名别名」（需改代码并发布）。
+
+
 
 ## §8 本会话并行事项（交接 store-payment-methods-2026-11-17 §五，不计入本 TDD 验收）
 
