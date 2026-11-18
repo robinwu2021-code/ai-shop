@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.gateway.core.security.GatewayCorsConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -42,7 +43,7 @@ class CorsAllowsProductionTest {
     @Test
     @DisplayName("★★★ CORS 白名单必须含生产来源 —— 只有 localhost 的话，浏览器一上线就全是 403")
     void corsWhitelistIncludesProductionOrigin() {
-        var src = (UrlBasedCorsConfigurationSource) new SecurityConfig().corsSource();
+        var src = (UrlBasedCorsConfigurationSource) new GatewayCorsConfiguration().corsSource();
         CorsConfiguration cfg = src.getCorsConfigurations().get("/**");
 
         assertThat(cfg)
@@ -69,7 +70,7 @@ class CorsAllowsProductionTest {
                         + "  生产必然是 https，而浏览器发的每个 POST 都带 Origin（同源也带），\n"
                         + "  少了它线上不会报错，只会全线 403 + 「Invalid CORS request」，\n"
                         + "  而请求在到达业务逻辑之前就被拦掉，日志里连一条失败记录都没有。\n"
-                        + "  换域名请改 SecurityConfig 的 PROD_ORIGINS，或配 shop.cors.extra-origins。")
+                        + "  换域名请改 GatewayCorsConfiguration 的 PROD_ORIGINS，或配 shop.cors.extra-origins。")
                 .isNotEmpty();
     }
 }
