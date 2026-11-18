@@ -435,16 +435,24 @@ public class PermConfigServiceImpl implements PermConfigService {
                 Wrappers.<SysFunctionPoint>lambdaQuery()
                         .eq(SysFunctionPoint::getFunctionCode, me.getFunctionCode())
                         .eq(SysFunctionPoint::getPointType, me.getPointType())
-                        .orderByAsc(SysFunctionPoint::getSort));
+                        .orderByAsc(SysFunctionPoint::getSort, SysFunctionPoint::getId));
         SysFunctionPoint self = siblings.stream()
                 .filter(x -> pointCode.equals(x.getPointCode())).findFirst().orElseThrow();
-        if (!swapAdjacent(siblings, self, direction,
-                SysFunctionPoint::getSort, SysFunctionPoint::setSort)) {
+        int i = siblings.indexOf(self);
+        int j = i + (direction == MoveDirection.UP ? -1 : 1);
+        if (j < 0 || j >= siblings.size()) {
             return;
         }
-        int j = siblings.indexOf(self) + (direction == MoveDirection.UP ? -1 : 1);
-        pointMapper.updateById(self);
-        pointMapper.updateById(siblings.get(j));
+        if (siblings.stream().map(SysFunctionPoint::getSort).distinct().count() < siblings.size()) {
+            // 入驻合并保留了多个同排序值的授权点。按现有稳定顺序换位后重编号，
+            // 单独交换两行的排序值无法保证只与相邻项换位。
+            java.util.Collections.swap(siblings, i, j);
+            savePointOrder(siblings);
+        } else {
+            swapAdjacent(siblings, self, direction, SysFunctionPoint::getSort, SysFunctionPoint::setSort);
+            pointMapper.updateById(self);
+            pointMapper.updateById(siblings.get(j));
+        }
         afterReorder("PERM_POINT_MOVE", pointCode, self.getName(), direction);
     }
 
@@ -488,12 +496,16 @@ public class PermConfigServiceImpl implements PermConfigService {
         requireSameSet(pointCodes, all.stream().map(SysFunctionPoint::getPointCode).toList());
         Map<String, SysFunctionPoint> byCode = all.stream()
                 .collect(Collectors.toMap(SysFunctionPoint::getPointCode, x -> x));
-        for (int i = 0; i < pointCodes.size(); i++) {
-            SysFunctionPoint p = byCode.get(pointCodes.get(i));
-            p.setSort((i + 1) * 10);
-            pointMapper.updateById(p);
-        }
+        savePointOrder(pointCodes.stream().map(byCode::get).toList());
         afterReorderList("PERM_POINT_REORDER", functionCode, pointCodes.size());
+    }
+
+    private void savePointOrder(List<SysFunctionPoint> points) {
+        for (int i = 0; i < points.size(); i++) {
+            SysFunctionPoint point = points.get(i);
+            point.setSort((i + 1) * 10);
+            pointMapper.updateById(point);
+        }
     }
 
     /** 与 {@link #afterReorder} 同一条规矩：清缓存，但不踢会话（顺序变了，权限没变）。 */

@@ -57,6 +57,12 @@ class OrphanModuleTest {
     private static final List<String> ALLOWED = List.of(
             "node_modules", "target", ".git", "android-shell", "dist", "native-plugins", "ops-navigation");
 
+    // 独立执行的发布、本地运行冒烟工具和固定种子素材生成器。
+    private static final Set<Path> STANDALONE_TOOLS = Set.of(
+            Path.of("deploy/ume/mitake/RuntimeSmoke.java"),
+            Path.of("scripts/captcha/GenerateSliderImages.java"),
+            Path.of("scripts/local-platform-runtime/LocalMysqlHistoricalSmoke.java"));
+
     @Test
     @DisplayName("★★ Maven 之外不得有 Java 源码目录 —— 不参与构建的代码不会有任何东西提醒你它已经过时")
     void noJavaOutsideTheMavenBuild() throws IOException {
@@ -70,6 +76,7 @@ class OrphanModuleTest {
             try (var files = Files.walk(top)) {
                 files.filter(f -> f.toString().endsWith(".java"))
                         .filter(f -> ALLOWED.stream().noneMatch(a -> f.toString().contains("/" + a + "/")))
+                        .filter(f -> !STANDALONE_TOOLS.contains(REPO.relativize(f)))
                         .filter(f -> registered.stream().noneMatch(module ->
                                 f.startsWith(module.resolve("src/main/java"))
                                         || f.startsWith(module.resolve("src/test/java"))))
