@@ -30,7 +30,7 @@ ADR-044 / ADR-045 / ADR-046 / ADR-049
 
 本文经十二轮口述逐步成形，前面的章节保留了推导过程，其中有几节被后面的取代。**定稿以本节为准**，不可逆的部分另见 [ADR-060](ADR/ADR-060-网关层独立模块与鉴权不进路由网关.md)、[ADR-061](ADR/ADR-061-三端认证与权限各自一套及权限库独立.md)。
 
-**定下来的十二件事：**
+**定下来的十三件事：**
 
 | # | 决定 | 详见 |
 |---|---|---|
@@ -46,6 +46,7 @@ ADR-044 / ADR-045 / ADR-046 / ADR-049
 | 10 | 工单 / 工作流、appops 以后按「配置 + 清单」接入，不改网关代码 | §2.17 |
 | 11 | 三处接缝留接口、不预写第二个实现：安全框架适配、判定来源、调用方式 | §2.14、§2.21 |
 | 12 | 166 上 nginx 直连 near-pay 的运营端支付链接现在不动 | §2.12 |
+| 13 | 网关代理五类对象：零售、餐饮、服务业、支付、库存；每类在 `shop.gateway.integrations` 下一块同构的配置，现有键作默认值 | §2.22 |
 
 **被取代的章节：**
 
@@ -114,6 +115,7 @@ P 与 D1 是第一批。每一期开工前按仓库规范补该期的任务拆�
 | R24 | 以上所有代码在网关模块实现，给出代码清单 | 落地 |
 | R25 | 模块偏多，改为一个项目目录、分多个包 | 结构 |
 | R26 | 尽量抽象，用基类继承：三端的入口、安全、微服务与本地服务的调用；在简洁的流程上扩展能力 | 结构 |
+| R27 | 网关要代理零售、餐饮、服务业，以及支付、库存；补充详细的配置方案 | 配置 |
 | R19 | 给出网关层类图：集成 Spring Security 或其他权限框架、令牌管理、上下文、多方案调用微服务、透传接口 | 落地 |
 
 R11 已确认（2026-11-18）：认证和权限每端一套、互不影响，令牌及其依赖的 Redis 等都要分开，见 §2.15。
@@ -1978,6 +1980,170 @@ public abstract class AbstractRemoteService<API> {
 
 新写的类总数从约 110 降到约 100；`gateway.mp` / `.biz` / `.ops` 三个包里，每端新写的装配代码从 5 个类降到 2 个（端子类、判定子类）。类图一、三里的类名已按本节更新。
 
+### 2.22 网关代理的五类对象与详细配置方案
+
+2026-11-18 补充：网关要代理零售、餐饮、服务业，以及支付、库存。本节给出这五类各自怎么接、配置怎么写。数字与配置键取自当天 main 上的代码与端点快照。
+
+#### 五类对象的现状
+
+| 对象 | 归层 | 今天的部署形态 | 三端入口前缀（端点数） | 今天的开关与形态键 |
+|---|---|---|---|---|
+| 零售 | 基础业务层 | 只有同进程 | `/mp/**`、`/biz/**`、`/ops/**` 里不带 `/x/` 的部分；商城销售在 `/biz/x/commerce`（68）、`/ops/x/commerce`（3） | 核心没有开关；商城：`commerce.enabled`、`shop.commerce.enabled`、`shop.commerce.deployment` |
+| 餐饮 | 业务层 | 同进程或独立服务 | `/biz/x/food`（241）、`/mp/x/food`（24）、`/ops/x/food`（3） | `shop.food.enabled`、`shop.food.deployment` |
+| 服务业（美业） | 业务层 | 同进程或独立服务 | `/biz/x/beauty`（13）、`/mp/x/beauty`（6） | `shop.beauty.enabled`、`shop.beauty.deployment` |
+| 支付 | 外部依赖 | 同进程或独立服务（含独立的 near-pay） | `/biz/payment`（24）、`/biz/pay`（10）、`/ops/payments`（28）、`/ops/pay`（13）、`/pay-ops/v1`（10） | `shop.pay.deployment`；独立时另有 `shop.pay.internal-caller` 及其凭据 |
+| 库存 | 外部依赖 | 同进程过渡，目标是独立服务 | `/biz/inventory`（44）、`/ops/inventory`（13） | `shop.inventory.enabled`；独立时 `shop.inventory.service.base-url`、`.app-key`、`.app-secret` |
+
+支付另有四个不经三端出口的入口（开放接口、终端、收银台、渠道回调），由支付接入层自己的守卫把关，不在本节范围。
+
+五类对象有一个共同点：**终端看到的地址不随部署形态变化**。餐饮同进程时 `/biz/x/food/**` 落到本进程的实现，独立部署时落到远程适配，前缀不变。本节的配置就是把这件事对五类对象写成同一种格式。
+
+#### 统一的配置结构
+
+每个被代理的对象在 `shop.gateway.integrations` 下占一块，字段相同：
+
+| 字段 | 含义 | 取值 |
+|---|---|---|
+| `enabled` | 这套部署里有没有它 | `true` / `false` |
+| `mode` | 落在哪 | `embedded`（同进程）/ `standalone`（独立服务）。沿用现有两个取值，不新造词 |
+| `service` | 独立部署时的服务名，对应 `shop.services.targets.<名>` | `FOOD`、`BEAUTY`、`COMMERCE`、`PAY`、`INVENTORY` |
+| `ends` | 它在每一端被分配的地址前缀；没列的端不开放 | 端名 → 前缀列表 |
+| `entry` | 入口形态 | `local`（本进程里的入口类）/ `proxy`（透传路由）。今天五类全是 `local` |
+| `resources` | 链接与权限从哪来 | `scan`（启动扫描本进程入口）/ `seed`（清单文件生成种子）/ `pull`（以后：拉清单接口） |
+| `point-namespaces` | 允许它声明的功能点码前缀；空表示不校验 | 码前缀列表 |
+| `read-timeout` | 调独立服务的读超时 | 时长；连接超时全局 3 秒 |
+
+服务地址与凭据不放在这一块里，放在 `shop.services` 下，按服务一份：
+
+| 键 | 含义 |
+|---|---|
+| `shop.services.targets.<名>` | 服务地址。现有的键，沿用 |
+| `shop.services.internal-token` | 进程凭据，所有内部调用共用。现有的键，沿用 |
+| `shop.services.credentials.<名>` | 该服务专用的签名密钥。S 期（签名与守卫）才启用 |
+
+#### 完整配置
+
+```yaml
+shop:
+  services:
+    internal-token: ${SHOP_INTERNAL_TOKEN}
+    targets:
+      FOOD: ${SHOP_SVC_FOOD_URL:}
+      BEAUTY: ${SHOP_SVC_BEAUTY_URL:}
+      COMMERCE: ${SHOP_SVC_COMMERCE_URL:}
+      PAY: ${SHOP_SVC_PAY_URL:}
+      INVENTORY: ${SHOP_SVC_INVENTORY_URL:}
+
+  gateway:
+    integrations:
+      retail:                                   # 零售：基础业务层，永远同进程
+        enabled: true
+        mode: embedded
+        ends:
+          mp: [/mp]
+          biz: [/biz]
+          ops: [/ops]
+        entry: local
+        resources: scan
+
+      commerce:                                 # 商城销售：属于零售，单独一块是因为它有自己的开关与形态
+        enabled: ${shop.commerce.enabled:false}
+        mode: ${shop.commerce.deployment:embedded}
+        service: COMMERCE
+        ends:
+          biz: [/biz/x/commerce]
+          ops: [/ops/x/commerce]
+        entry: local
+        resources: scan
+
+      food:                                     # 餐饮
+        enabled: ${shop.food.enabled:false}
+        mode: ${shop.food.deployment:embedded}
+        service: FOOD
+        ends:
+          mp: [/mp/x/food]
+          biz: [/biz/x/food]
+          ops: [/ops/x/food]
+        entry: local
+        resources: scan
+        read-timeout: PT5S
+
+      beauty:                                   # 服务业
+        enabled: ${shop.beauty.enabled:false}
+        mode: ${shop.beauty.deployment:embedded}
+        service: BEAUTY
+        ends:
+          mp: [/mp/x/beauty]
+          biz: [/biz/x/beauty]
+        entry: local
+        resources: scan
+        read-timeout: PT5S
+
+      pay:                                      # 支付
+        enabled: true
+        mode: ${shop.pay.deployment:embedded}
+        service: PAY
+        ends:
+          biz: [/biz/payment, /biz/pay]
+          ops: [/ops/payments, /ops/pay, /pay-ops]
+        entry: local
+        resources: scan
+        point-namespaces: ["mch:pay:", "pay:"]
+        read-timeout: PT5S
+
+      inventory:                                # 库存
+        enabled: ${shop.inventory.enabled:false}
+        mode: embedded                          # 库存迁出后改为 standalone
+        service: INVENTORY
+        ends:
+          biz: [/biz/inventory]
+          ops: [/ops/inventory]
+        entry: local
+        resources: scan
+        read-timeout: PT5S
+```
+
+| 规则 | 防住什么 |
+|---|---|
+| 现有的开关与形态键是新键的默认值来源（上面的 `${...}`），现有部署一个环境变量都不用改 | 切换当天所有环境一起改配置 |
+| 同一个前缀只能分给一个对象；一个对象的前缀必须落在该端的前缀之下 | 两个对象抢同一段地址；餐饮的地址跑到运营端前缀外面 |
+| `enabled: false` 的对象，它的前缀下一律 404，它的功能点在权限库里标为不可用 | 模块没装，菜单和权限还在 |
+| `mode: standalone` 而 `shop.services.targets.<名>` 为空，启动失败并指明是哪个对象 | 带着空地址上线，第一个请求才报错 |
+| 一个对象没开放某一端（比如美业没有运营端），该端下不为它建任何路由 | 在不该有它的端上露出入口 |
+| 零售的 `enabled` 与 `mode` 不可改 | 把基础业务层关掉或远程化 |
+
+#### 逐个说明
+
+| 对象 | 独立部署时怎么调 | 今天的凭据 | 接入后的变化 |
+|---|---|---|---|
+| 零售 | 不适用 | 不适用 | 无。它的入口由启动扫描进资源表，按端提前判权（M4 起） |
+| 商城销售 | 契约接口 + 远程适配（`commerce-channel`） | 进程凭据 + JWT 形式的上下文 | S 期换成统一的签名上下文 |
+| 餐饮 | 契约接口 + 远程适配（`food-channel`）；`food-web` 里的 268 个入口不变 | 进程凭据 + HMAC 范围头 | 已基本是目标形态；S 期把范围头换成通用的签名上下文 |
+| 服务业 | 契约接口 + 远程适配（`beauty-channel`） | 只有进程凭据 | S 期补上签名上下文 |
+| 支付 | 契约接口（`PayBizInternalApi`、`PayOpsInternalApi`）+ 桥接 | 进程凭据 + 调用方码与凭据（`shop.pay.internal-caller`） | 登记「功能点 → 支付动作」（§2.11）；验签开关默认只比对 |
+| 库存 | `inventory-client` + 桥接 | 应用键与密钥 + 操作人头 | 服务名登记为 `INVENTORY`；地址与凭据的键归到 `shop.services` 下，旧键作默认值 |
+
+五类对象今天的入口都是本进程里的入口类（`entry: local`），所以 `resources` 都是 `scan`：启动时扫出来写进资源表。**`proxy` 与 `seed` 是给以后新接入的微服务用的**（工单、appops，见 §2.17、§2.18）；这五类不需要为了统一而把已有的入口类改成透传。
+
+#### 三种典型组合
+
+| 组合 | 配置差别 | 说明 |
+|---|---|---|
+| 全部同进程 | 五块都是 `mode: embedded`；`shop.services.targets` 全空 | 本机开发与测试的默认形态 |
+| 支付独立 | `pay.mode: standalone`；配 `targets.PAY` 与支付的调用方凭据 | 仓库的部署配置里有独立的支付服务（8083 端口） |
+| 行业独立 | `food.mode: standalone` 或 `beauty.mode: standalone`；配对应的 `targets` | 行业的入口仍在网关进程里（`food-web`、`beauty-web`），业务实现在独立服务 |
+
+三种组合下终端的地址、权限码、角色授权都相同，变的只有这几行配置。
+
+#### 什么时候生效
+
+| 期 | 这份配置起什么作用 |
+|---|---|
+| M2–M4 | 还不读 `shop.gateway.integrations`。五类对象仍按各自现有的键开关与切换形态 |
+| D2 | `IntegrationRegistry` 开始读这一块：做上表的启动校验；`enabled: false` 的对象封前缀、功能点标为不可用 |
+| S | `shop.services.credentials.<名>` 启用，出站带签名上下文 |
+| 之后 | 新接入的微服务用 `entry: proxy` 与 `resources: seed` 或 `pull` |
+
 ---
 
 ## §3 选型：是否集成 Spring Cloud Gateway
@@ -2166,3 +2332,4 @@ P1、P2 互不依赖，可以并行。P3 之后每一期都是一次数据搬迁
 | 2026-11-18 | 第十二版：一条固定流程加四组基类（§2.21）；端、判定、调用、链接来源各一组；类图四 |
 | 2026-11-18 | **定稿**：状态改为已确认；加「定稿口径」；§8 十五条收口；开 ADR-060、ADR-061 |
 | 2026-11-18 | 核对定稿时留下的三点；`shop-base-auth` 的类改为不搬；出[开发计划](TDD-网关层与统一权限-开发计划.md) |
+| 2026-11-18 | 补充：五类被代理对象与详细配置方案（§2.22） |
