@@ -46849,6 +46849,15 @@
         "module": "commerce"
       },
       {
+        "name": "PointType",
+        "values": [
+          "MENU",
+          "ACTION"
+        ],
+        "zh": "功能点的种类：菜单，或页面内的一个动作。",
+        "module": "shop-gateway"
+      },
+      {
         "name": "PortalFace",
         "values": [
           "INTERNAL",
@@ -56832,6 +56841,78 @@
       "name": "REDIS",
       "type": "String",
       "value": "\"redis\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "RETAIL",
+      "type": "String",
+      "value": "\"retail\"",
+      "zh": "商家端的基础模块：零售。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PLATFORM",
+      "type": "String",
+      "value": "\"platform\"",
+      "zh": "运营端的基础模块：平台。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PAY",
+      "type": "String",
+      "value": "\"pay\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "INVENTORY",
+      "type": "String",
+      "value": "\"inventory\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "SERVICE",
+      "type": "String",
+      "value": "\"service\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PRINT",
+      "type": "String",
+      "value": "\"print\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "COMMERCE",
+      "type": "String",
+      "value": "\"commerce\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "ELEC",
+      "type": "String",
+      "value": "\"elec\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "JOB",
+      "type": "String",
+      "value": "\"job\"",
       "zh": "",
       "module": "shop-gateway"
     },
