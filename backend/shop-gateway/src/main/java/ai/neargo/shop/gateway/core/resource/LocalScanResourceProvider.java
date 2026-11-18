@@ -46,14 +46,16 @@ public class LocalScanResourceProvider implements ResourceProvider {
                     continue;
                 }
                 for (String verb : verbs.isEmpty() ? List.of("*") : verbs) {
-                    out.add(resource(verb, pattern, handler));
+                    out.add(resource(verb, pattern, handler,
+                            pattern.startsWith("/biz/") ? PermRuleParser.BIZ_METHODS : PermRuleParser.OPS_METHODS));
                 }
             }
         });
         return out;
     }
 
-    private static ApiResource resource(String verb, String pattern, HandlerMethod handler) {
+    private static ApiResource resource(String verb, String pattern, HandlerMethod handler,
+                                        java.util.Set<String> methods) {
         String where = handler.getBeanType().getName() + "#" + handler.getMethod().getName();
         PreAuthorize annotation = AnnotatedElementUtils.findMergedAnnotation(handler.getMethod(), PreAuthorize.class);
         if (annotation == null) {
@@ -62,7 +64,7 @@ public class LocalScanResourceProvider implements ResourceProvider {
         if (annotation == null) {
             return new ApiResource(verb, pattern, ApiResource.LOCAL, Access.LOGIN, null, where);
         }
-        Optional<PermRule> rule = PermRuleParser.parse(annotation.value());
+        Optional<PermRule> rule = PermRuleParser.parse(annotation.value(), methods);
         return rule.map(r -> new ApiResource(verb, pattern, ApiResource.LOCAL, Access.POINT, r, where))
                 .orElseGet(() -> new ApiResource(verb, pattern, ApiResource.LOCAL, Access.DEFER, null, where));
     }

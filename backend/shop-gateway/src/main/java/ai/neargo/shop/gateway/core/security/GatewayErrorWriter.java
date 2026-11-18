@@ -1,6 +1,7 @@
 package ai.neargo.shop.gateway.core.security;
 
 import ai.neargo.shop.common.ApiResult;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Messages;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,7 +25,13 @@ public class GatewayErrorWriter {
     }
 
     public void forbidden(HttpServletResponse response) throws IOException {
-        ApiResult<Void> body = ApiResult.error(ErrorCode.FORBIDDEN.code(), Messages.get(ErrorCode.FORBIDDEN.msgKey()));
+        write(response, BizException.of(ErrorCode.FORBIDDEN));
+    }
+
+    /** 与 {@code GlobalExceptionHandler#onBiz} 同样的包体：错误码 + 带参数的文案，不改 HTTP 状态码。 */
+    public void write(HttpServletResponse response, BizException error) throws IOException {
+        ApiResult<Void> body = ApiResult.error(error.errorCode().code(),
+                Messages.get(error.errorCode().msgKey(), error.args()));
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write(json.writeValueAsString(body));

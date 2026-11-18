@@ -360,10 +360,10 @@ class BizRoleForbiddenFlowTest {
 
     // ---------------------------------------------------------------- 装配
 
-    private record Staff(String token) {
+    record Staff(String token) {
     }
 
-    private void forbidden(Staff s, org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req)
+    void forbidden(Staff s, org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req)
             throws Exception {
         String body = mvc().perform(req.header("Authorization", "Bearer " + s.token()))
                 .andReturn().getResponse().getContentAsString();
@@ -384,7 +384,7 @@ class BizRoleForbiddenFlowTest {
     }
 
     /** 建一个员工，授予若干门店角色，返回他自己的登录态 */
-    private Staff staffWithRoles(String ownerPhone, String shopName, String staffPhone,
+    Staff staffWithRoles(String ownerPhone, String shopName, String staffPhone,
                                  String... roles) throws Exception {
         return staffFor(merchant(ownerPhone, shopName), staffPhone, roles);
     }

@@ -10,6 +10,7 @@ import ai.neargo.shop.config.ClientVersionGateFilter;
 import ai.neargo.shop.gateway.core.config.ConditionalOnGatewayEnd;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
 import ai.neargo.shop.gateway.core.end.AbstractGatewayEnd;
+import ai.neargo.shop.gateway.core.security.AccessDecider;
 import ai.neargo.shop.gateway.core.security.SpringSecurityAdapter;
 import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.core.GuardFilters;
@@ -102,6 +103,12 @@ public class BizGatewayEnd extends AbstractGatewayEnd {
                 "/biz/auth/otp/send", "/biz/auth/email-otp/send",
                 "/biz/auth/identities", "/biz/auth/identities/enter",
                 "/biz/auth/captcha/challenge", "/biz/auth/captcha/verify");
+    }
+
+    /** 按当前门店的角色提前判权；档位由 {@code shop.gateway.biz.precheck} 定，默认关。 */
+    @Override
+    protected AccessDecider accessDecider() {
+        return new BizAccessDecider();
     }
 
     @Override
