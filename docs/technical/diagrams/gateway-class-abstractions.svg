@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="12.5">
+  <title>网关层类图四：一条固定流程，四组基类</title>
+  <desc>网关的请求流程固定为五步：定位、认证、上下文、判定、调用。每一步背后是一组可继承的类。定位由链接来源接口的若干实现提供数据；认证由令牌认证过滤器基类及三端子类完成；端基类描述一端的全部差别并选用认证器、端专属过滤器与判定器，三端各有一个子类；判定由判定基类固定流程，三端子类只回答有没有某个权限码；调用由调用器基类固定流程，本地入口与微服务转发是它的两个子类。安全框架适配器按端基类产出的描述装出过滤器链。</desc>
+  <defs>
+    <marker id="tri" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#ffffff" stroke="#475569"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#475569" stroke-width="1.4"/></marker>
+  </defs>
+  <rect width="1200" height="800" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">网关层类图四：一条固定流程，四组基类</text>
+  <text x="24" y="50" fill="#64748b" font-size="12">蓝 = 网关层新增；白 = 现有类；灰 = 框架自带；虚线框 = 预留、未实现。空心三角 = 继承或实现（虚线为实现接口）；箭头 = 使用</text>
+  <path d="M230,105.5 L242.5,105.5 L242.5,105.5 L255,105.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M455,105.5 L467.5,105.5 L467.5,105.5 L480,105.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M680,105.5 L692.5,105.5 L692.5,105.5 L705,105.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M905,105.5 L917.5,105.5 L917.5,105.5 L930,105.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M30,315.5 L14,315.5 L14,222.5 L30,222.5" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M30,385.5 L14,385.5 L14,222.5 L30,222.5" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M30,455.5 L14,455.5 L14,222.5 L30,222.5" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M355.0,330 L355.0,307.5 L355.0,307.5 L355.0,285" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M580.0,390 L580.0,367.5 L580.0,367.5 L580.0,345" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M805.0,290 L805.0,272.5 L805.0,272.5 L805.0,255" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M805.0,430 L805.0,407.5 L805.0,407.5 L805.0,385" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M1050.0,290 L1050.0,272.5 L1050.0,272.5 L1050.0,255" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M1170,455.5 L1186,455.5 L1186,337.5 L1170,337.5" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M1170,525.5 L1186,525.5 L1186,337.5 L1170,337.5" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M1170,595.5 L1186,595.5 L1186,337.5 L1170,337.5" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M130.0,131 L130.0,160.5 L130.0,160.5 L130.0,190" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <path d="M355.0,131 L355.0,160.5 L355.0,160.5 L355.0,190" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <path d="M580.0,131 L580.0,160.5 L580.0,160.5 L580.0,190" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <path d="M805.0,131 L805.0,160.5 L805.0,160.5 L805.0,190" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <path d="M1050.0,131 L1050.0,160.5 L1050.0,160.5 L1050.0,190" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <path d="M480,275.2 L467.5,275.2 L467.5,247.0 L455,247.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M680,306.2 L692,306.2 L692,318.5 L705,318.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M255,695.5 L242.5,695.5 L242.5,692.5 L230,692.5" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M455,695.5 L467.5,695.5 L467.5,700.0 L480,700.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <text x="460" y="688" font-size="11" fill="#475569">读</text>
+  <path d="M580.0,471 L580.0,565.5 L580.0,565.5 L580.0,660" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <text x="586" y="570" font-size="11" fill="#475569">产出</text>
+  <path d="M905,585.5 L917,585.5 L917,328.0 L930,328.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <rect x="30" y="80" width="200" height="51" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="130.0" y="99" text-anchor="middle" font-weight="600" fill="#475569">① 定位</text>
+  <line x1="30" y1="108" x2="230" y2="108" stroke="#94a3b8"/>
+  <text x="38" y="123" font-size="11" fill="#475569">GatewayRouteFilter 查索引</text>
+  <rect x="255" y="80" width="200" height="51" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="355.0" y="99" text-anchor="middle" font-weight="600" fill="#475569">② 认证</text>
+  <line x1="255" y1="108" x2="455" y2="108" stroke="#94a3b8"/>
+  <text x="263" y="123" font-size="11" fill="#475569">令牌 → 登录人</text>
+  <rect x="480" y="80" width="200" height="51" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="580.0" y="99" text-anchor="middle" font-weight="600" fill="#475569">③ 上下文</text>
+  <line x1="480" y1="108" x2="680" y2="108" stroke="#94a3b8"/>
+  <text x="488" y="123" font-size="11" fill="#475569">端专属过滤器</text>
+  <rect x="705" y="80" width="200" height="51" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="805.0" y="99" text-anchor="middle" font-weight="600" fill="#475569">④ 判定</text>
+  <line x1="705" y1="108" x2="905" y2="108" stroke="#94a3b8"/>
+  <text x="713" y="123" font-size="11" fill="#475569">放行方式 + 权限式</text>
+  <rect x="930" y="80" width="240" height="51" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="1050.0" y="99" text-anchor="middle" font-weight="600" fill="#475569">⑤ 调用</text>
+  <line x1="930" y1="108" x2="1170" y2="108" stroke="#94a3b8"/>
+  <text x="938" y="123" font-size="11" fill="#475569">本地入口或微服务</text>
+  <rect x="30" y="190" width="200" height="65" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="130.0" y="205" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«interface»</text>
+  <text x="130.0" y="223" text-anchor="middle" font-weight="600" fill="#1e3a8a">ResourceProvider</text>
+  <line x1="30" y1="232" x2="230" y2="232" stroke="#3b82f6"/>
+  <text x="38" y="247" font-size="11" fill="#1e3a8a">+ load(end): 链接清单</text>
+  <rect x="30" y="290" width="200" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="130.0" y="309" text-anchor="middle" font-weight="600" fill="#1e3a8a">LocalScanResourceProvider</text>
+  <line x1="30" y1="318" x2="230" y2="318" stroke="#3b82f6"/>
+  <text x="38" y="333" font-size="11" fill="#1e3a8a">扫本进程入口与注解</text>
+  <rect x="30" y="360" width="200" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="130.0" y="379" text-anchor="middle" font-weight="600" fill="#1e3a8a">StoredResourceProvider</text>
+  <line x1="30" y1="388" x2="230" y2="388" stroke="#3b82f6"/>
+  <text x="38" y="403" font-size="11" fill="#1e3a8a">读库里录入的微服务链接</text>
+  <rect x="30" y="430" width="200" height="51" rx="5" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="5 4"/>
+  <text x="130.0" y="449" text-anchor="middle" font-weight="600" fill="#64748b">ManifestResourceProvider</text>
+  <line x1="30" y1="458" x2="230" y2="458" stroke="#94a3b8"/>
+  <text x="38" y="473" font-size="11" fill="#64748b">以后：拉微服务清单接口</text>
+  <rect x="255" y="190" width="200" height="95" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="355.0" y="205" text-anchor="middle" font-size="10.5" fill="#1e293b">«abstract»</text>
+  <text x="355.0" y="223" text-anchor="middle" font-weight="600" fill="#1e293b">AbstractTokenAuthFilter</text>
+  <line x1="255" y1="232" x2="455" y2="232" stroke="#64748b"/>
+  <text x="263" y="247" font-size="11" fill="#1e293b">流程固定：取令牌 → 查会话</text>
+  <text x="263" y="262" font-size="11" fill="#1e293b"># authenticate(user)</text>
+  <text x="263" y="277" font-size="11" fill="#1e293b"># clientCode(req)</text>
+  <rect x="255" y="330" width="200" height="81" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="355.0" y="349" text-anchor="middle" font-weight="600" fill="#1e293b">三端子类</text>
+  <line x1="255" y1="358" x2="455" y2="358" stroke="#64748b"/>
+  <text x="263" y="373" font-size="11" fill="#1e293b">ConsumerTokenAuthFilter</text>
+  <text x="263" y="388" font-size="11" fill="#1e293b">MerchantTokenAuthFilter</text>
+  <text x="263" y="403" font-size="11" fill="#1e293b">OperatorTokenAuthFilter</text>
+  <rect x="480" y="190" width="200" height="155" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="580.0" y="205" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«abstract»</text>
+  <text x="580.0" y="223" text-anchor="middle" font-weight="600" fill="#1e3a8a">AbstractGatewayEnd</text>
+  <line x1="480" y1="232" x2="680" y2="232" stroke="#3b82f6"/>
+  <text x="488" y="247" font-size="11" fill="#1e3a8a">+ spec()　流程固定</text>
+  <text x="488" y="262" font-size="11" fill="#1e3a8a">+ runtime()　库、Redis、令牌</text>
+  <text x="488" y="277" font-size="11" fill="#1e3a8a"># realm() / pathPrefix()</text>
+  <text x="488" y="292" font-size="11" fill="#1e3a8a"># authenticator()</text>
+  <text x="488" y="307" font-size="11" fill="#1e3a8a"># contextFilters()</text>
+  <text x="488" y="322" font-size="11" fill="#1e3a8a"># accessDecider()</text>
+  <text x="488" y="337" font-size="11" fill="#1e3a8a"># localDefault()</text>
+  <rect x="480" y="390" width="200" height="81" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="580.0" y="409" text-anchor="middle" font-weight="600" fill="#1e3a8a">三端子类</text>
+  <line x1="480" y1="418" x2="680" y2="418" stroke="#3b82f6"/>
+  <text x="488" y="433" font-size="11" fill="#1e3a8a">MpGatewayEnd</text>
+  <text x="488" y="448" font-size="11" fill="#1e3a8a">BizGatewayEnd</text>
+  <text x="488" y="463" font-size="11" fill="#1e3a8a">OpsGatewayEnd</text>
+  <rect x="705" y="190" width="200" height="65" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="205" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«interface»</text>
+  <text x="805.0" y="223" text-anchor="middle" font-weight="600" fill="#1e3a8a">AccessDecider</text>
+  <line x1="705" y1="232" x2="905" y2="232" stroke="#3b82f6"/>
+  <text x="713" y="247" font-size="11" fill="#1e3a8a">+ decide(user, resource)</text>
+  <rect x="705" y="290" width="200" height="95" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="305" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«abstract»</text>
+  <text x="805.0" y="323" text-anchor="middle" font-weight="600" fill="#1e3a8a">AbstractAccessDecider</text>
+  <line x1="705" y1="332" x2="905" y2="332" stroke="#3b82f6"/>
+  <text x="713" y="347" font-size="11" fill="#1e3a8a">+ decide()　流程固定</text>
+  <text x="713" y="362" font-size="11" fill="#1e3a8a"># has(code)</text>
+  <text x="713" y="377" font-size="11" fill="#1e3a8a"># extra(user, resource)</text>
+  <rect x="705" y="430" width="200" height="81" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="449" text-anchor="middle" font-weight="600" fill="#1e3a8a">三端子类</text>
+  <line x1="705" y1="458" x2="905" y2="458" stroke="#3b82f6"/>
+  <text x="713" y="473" font-size="11" fill="#1e3a8a">OpsAccessDecider</text>
+  <text x="713" y="488" font-size="11" fill="#1e3a8a">BizAccessDecider</text>
+  <text x="713" y="503" font-size="11" fill="#1e3a8a">MpAccessDecider</text>
+  <rect x="930" y="190" width="240" height="65" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1050.0" y="205" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«interface»</text>
+  <text x="1050.0" y="223" text-anchor="middle" font-weight="600" fill="#1e3a8a">ServiceInvoker</text>
+  <line x1="930" y1="232" x2="1170" y2="232" stroke="#3b82f6"/>
+  <text x="938" y="247" font-size="11" fill="#1e3a8a">+ invoke(exchange, req, resp)</text>
+  <rect x="930" y="290" width="240" height="95" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1050.0" y="305" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«abstract»</text>
+  <text x="1050.0" y="323" text-anchor="middle" font-weight="600" fill="#1e3a8a">AbstractServiceInvoker</text>
+  <line x1="930" y1="332" x2="1170" y2="332" stroke="#3b82f6"/>
+  <text x="938" y="347" font-size="11" fill="#1e3a8a">+ invoke()　流程固定</text>
+  <text x="938" y="362" font-size="11" fill="#1e3a8a"># before() / after() / onError()</text>
+  <text x="938" y="377" font-size="11" fill="#1e3a8a"># doInvoke()</text>
+  <rect x="930" y="430" width="240" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1050.0" y="449" text-anchor="middle" font-weight="600" fill="#1e3a8a">LocalServiceInvoker</text>
+  <line x1="930" y1="458" x2="1170" y2="458" stroke="#3b82f6"/>
+  <text x="938" y="473" font-size="11" fill="#1e3a8a">本地入口：交给 Spring MVC</text>
+  <rect x="930" y="500" width="240" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1050.0" y="519" text-anchor="middle" font-weight="600" fill="#1e3a8a">HttpProxyInvoker</text>
+  <line x1="930" y1="528" x2="1170" y2="528" stroke="#3b82f6"/>
+  <text x="938" y="543" font-size="11" fill="#1e3a8a">微服务：签名后转发</text>
+  <rect x="930" y="570" width="240" height="51" rx="5" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="5 4"/>
+  <text x="1050.0" y="589" text-anchor="middle" font-weight="600" fill="#64748b">其他调用方式</text>
+  <line x1="930" y1="598" x2="1170" y2="598" stroke="#94a3b8"/>
+  <text x="938" y="613" font-size="11" fill="#64748b">预留：继承基类即可</text>
+  <rect x="30" y="660" width="200" height="65" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="130.0" y="675" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«interface»</text>
+  <text x="130.0" y="693" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewaySecurityAdapter</text>
+  <line x1="30" y1="702" x2="230" y2="702" stroke="#3b82f6"/>
+  <text x="38" y="717" font-size="11" fill="#1e3a8a">+ install(spec)</text>
+  <rect x="255" y="670" width="200" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="355.0" y="689" text-anchor="middle" font-weight="600" fill="#1e3a8a">SpringSecurityAdapter</text>
+  <line x1="255" y1="698" x2="455" y2="698" stroke="#3b82f6"/>
+  <text x="263" y="713" font-size="11" fill="#1e3a8a">按描述装出一条过滤器链</text>
+  <rect x="480" y="660" width="200" height="80" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="580.0" y="675" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«record»</text>
+  <text x="580.0" y="693" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayEndSpec</text>
+  <line x1="480" y1="702" x2="680" y2="702" stroke="#3b82f6"/>
+  <text x="488" y="717" font-size="11" fill="#1e3a8a">前缀、公开路径</text>
+  <text x="488" y="732" font-size="11" fill="#1e3a8a">认证器、过滤器、判定器</text>
+  <rect x="705" y="560" width="200" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="579" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayInvokeFilter</text>
+  <line x1="705" y1="588" x2="905" y2="588" stroke="#3b82f6"/>
+  <text x="713" y="603" font-size="11" fill="#1e3a8a">按资源位置选调用器</text>
+  <rect x="705" y="670" width="200" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="689" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayExchange</text>
+  <line x1="705" y1="698" x2="905" y2="698" stroke="#3b82f6"/>
+  <text x="713" y="713" font-size="11" fill="#1e3a8a">资源行、登录人、通过的功能点</text>
+  <rect x="930" y="660" width="240" height="95" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1050.0" y="675" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«abstract»</text>
+  <text x="1050.0" y="693" text-anchor="middle" font-weight="600" fill="#1e3a8a">AbstractRemoteService</text>
+  <line x1="930" y1="702" x2="1170" y2="702" stroke="#3b82f6"/>
+  <text x="938" y="717" font-size="11" fill="#1e3a8a"># api()　契约客户端</text>
+  <text x="938" y="732" font-size="11" fill="#1e3a8a"># unwrap(result)</text>
+  <text x="938" y="747" font-size="11" fill="#1e3a8a"># operator()</text>
+  <text x="30" y="640" font-size="12" fill="#334155" font-weight="600">管线与辅助</text>
+  <text x="930" y="770" font-size="11" fill="#475569">入口或桥接里按契约调微服务的类继承它</text>
+</svg>

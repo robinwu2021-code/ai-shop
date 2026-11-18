@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 930" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="12.5">
+  <title>网关层类图三：多方案调用微服务、透传、微服务侧守卫</title>
+  <desc>调用微服务有三种方案。方案一同进程直接调用：契约接口的本地实现直接调领域入口。方案二类型化契约客户端：契约接口的远程实现调用带 HttpExchange 注解的内部接口，客户端由内部调用工厂生成并挂上拦截器。方案三透传：透传过滤器用请求工厂改写请求，经调用器接口转发，再由响应写出器回写；调用器目前只有 RestClient 一个实现，预留其他转发实现的位置。三种方案出站时都经过同一个签名拦截器。微服务一侧由守卫过滤器验签并给出调用上下文。集成登记按配置决定每个服务是否开启以及用同进程还是远程方式。</desc>
+  <defs>
+    <marker id="tri" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#ffffff" stroke="#475569"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#475569" stroke-width="1.4"/></marker>
+  </defs>
+  <rect width="1200" height="930" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">网关层类图三：多方案调用微服务、透传、微服务侧守卫</text>
+  <text x="24" y="50" fill="#64748b" font-size="12">蓝 = 网关层新增；白 = 现有类；灰 = 框架自带；虚线框 = 预留、未实现。空心三角 = 继承或实现（虚线为实现接口）；箭头 = 使用</text>
+  <path d="M360,120.5 L335.0,120.5 L335.0,113.0 L310,113.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <text x="339.0" y="112.8" font-size="11" fill="#475569">读</text>
+  <path d="M630,120.5 L655.0,120.5 L655.0,130.0 L680,130.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M190.0,390 L190.0,360.0 L302.5,360.0 L302.5,330" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M570.0,390 L570.0,360.0 L467.5,360.0 L467.5,330" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M190.0,441 L190.0,460.5 L190.0,460.5 L190.0,480" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M570.0,441 L570.0,460.5 L570.0,460.5 L570.0,480" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M570.0,590 L570.0,567.5 L570.0,567.5 L570.0,545" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <text x="574.0" y="563.5" font-size="11" fill="#475569">生成代理</text>
+  <path d="M570.0,656 L570.0,678.0 L570.0,678.0 L570.0,700" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M400,609.8 L370.0,609.8 L370.0,605.5 L340,605.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M400,636.2 L370,636.2 L370,692.5 L340,692.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M190.0,770 L190.0,747.5 L190.0,747.5 L190.0,725" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <text x="194.0" y="743.5" font-size="11" fill="#475569">注册成</text>
+  <path d="M874.0,301 L874.0,325.5 L887.5,325.5 L887.5,350" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M1096.0,301 L1096.0,325.5 L1082.5,325.5 L1082.5,350" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M985.0,301 L985.0,385.5 L985.0,385.5 L985.0,470" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M887.5,580 L887.5,557.5 L892.5,557.5 L892.5,535" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M1082.5,580 L1082.5,557.5 L1077.5,557.5 L1077.5,535" fill="none" stroke="#475569" marker-end="url(#tri)"/>
+  <path d="M800,605.5 L770,605.5 L770,616.4 L740,616.4" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M975,740.0 L985.0,740.0 L985.0,733.0 L995,733.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M680,855.5 L655.0,855.5 L655.0,855.5 L630,855.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M930,855.5 L955.0,855.5 L955.0,855.5 L980,855.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <text x="942" y="848" font-size="11" fill="#475569">产出</text>
+  <path d="M340,795.5 L370,795.5 L370,855.5 L400,855.5" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <rect x="40" y="80" width="270" height="66" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="175.0" y="99" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayIntegrationProperties</text>
+  <line x1="40" y1="108" x2="310" y2="108" stroke="#3b82f6"/>
+  <text x="48" y="123" font-size="11" fill="#1e3a8a">integrations.&lt;服务&gt;.enabled</text>
+  <text x="48" y="138" font-size="11" fill="#1e3a8a">integrations.&lt;服务&gt;.mode</text>
+  <rect x="360" y="80" width="270" height="81" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="495.0" y="99" text-anchor="middle" font-weight="600" fill="#1e3a8a">IntegrationRegistry</text>
+  <line x1="360" y1="108" x2="630" y2="108" stroke="#3b82f6"/>
+  <text x="368" y="123" font-size="11" fill="#1e3a8a">+ isEnabled(service)</text>
+  <text x="368" y="138" font-size="11" fill="#1e3a8a">+ modeOf(service): InvocationMode</text>
+  <text x="368" y="153" font-size="11" fill="#1e3a8a">启动校验：地址与凭据齐全</text>
+  <rect x="680" y="90" width="180" height="80" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="770.0" y="105" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«enum»</text>
+  <text x="770.0" y="123" text-anchor="middle" font-weight="600" fill="#1e3a8a">InvocationMode</text>
+  <line x1="680" y1="132" x2="860" y2="132" stroke="#3b82f6"/>
+  <text x="688" y="147" font-size="11" fill="#1e3a8a">EMBEDDED</text>
+  <text x="688" y="162" font-size="11" fill="#1e3a8a">REMOTE</text>
+  <rect x="900" y="80" width="270" height="80" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="1035.0" y="95" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="1035.0" y="113" text-anchor="middle" font-weight="600" fill="#1e293b">ServiceLocator</text>
+  <line x1="900" y1="122" x2="1170" y2="122" stroke="#64748b"/>
+  <text x="908" y="137" font-size="11" fill="#1e293b">+ baseUrlOf(service): Optional&lt;String&gt;</text>
+  <text x="908" y="152" font-size="11" fill="#1e293b">读 shop.services.targets.*</text>
+  <rect x="220" y="250" width="330" height="80" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="385.0" y="265" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface · 契约（以支付为例）»</text>
+  <text x="385.0" y="283" text-anchor="middle" font-weight="600" fill="#1e293b">BizPaymentAppService</text>
+  <line x1="220" y1="292" x2="550" y2="292" stroke="#64748b"/>
+  <text x="228" y="307" font-size="11" fill="#1e293b">+ requestRefund(storeNo, …)</text>
+  <text x="228" y="322" font-size="11" fill="#1e293b">入口只依赖它，不知道后面是哪种方案</text>
+  <rect x="40" y="390" width="300" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="190.0" y="409" text-anchor="middle" font-weight="600" fill="#1e293b">BizPaymentAppServiceImpl</text>
+  <line x1="40" y1="418" x2="340" y2="418" stroke="#64748b"/>
+  <text x="48" y="433" font-size="11" fill="#1e293b">mode = EMBEDDED 时生效</text>
+  <rect x="400" y="390" width="340" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="570.0" y="409" text-anchor="middle" font-weight="600" fill="#1e293b">RemoteBizPaymentAppService</text>
+  <line x1="400" y1="418" x2="740" y2="418" stroke="#64748b"/>
+  <text x="408" y="433" font-size="11" fill="#1e293b">mode = REMOTE 时生效</text>
+  <rect x="40" y="480" width="300" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="190.0" y="499" text-anchor="middle" font-weight="600" fill="#1e293b">PayBizFacade</text>
+  <line x1="40" y1="508" x2="340" y2="508" stroke="#64748b"/>
+  <text x="48" y="523" font-size="11" fill="#1e293b">支付领域入口，同进程</text>
+  <rect x="400" y="480" width="340" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="570.0" y="495" text-anchor="middle" font-size="10.5" fill="#1e293b">«@HttpExchange»</text>
+  <text x="570.0" y="513" text-anchor="middle" font-weight="600" fill="#1e293b">PayBizInternalApi</text>
+  <line x1="400" y1="522" x2="740" y2="522" stroke="#64748b"/>
+  <text x="408" y="537" font-size="11" fill="#1e293b">POST /internal/pay/v1/biz/…/refunds</text>
+  <rect x="400" y="590" width="340" height="66" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="570.0" y="609" text-anchor="middle" font-weight="600" fill="#1e293b">InternalHttp</text>
+  <line x1="400" y1="618" x2="740" y2="618" stroke="#64748b"/>
+  <text x="408" y="633" font-size="11" fill="#1e293b">+ client(service, api, timeout)</text>
+  <text x="408" y="648" font-size="11" fill="#1e293b">加进程令牌，挂上拦截器</text>
+  <rect x="400" y="700" width="340" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="570.0" y="719" text-anchor="middle" font-weight="600" fill="#1e293b">ServiceClients（svc-client）</text>
+  <line x1="400" y1="728" x2="740" y2="728" stroke="#64748b"/>
+  <text x="408" y="743" font-size="11" fill="#1e293b">+ create(api, spec)</text>
+  <rect x="40" y="580" width="300" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="190.0" y="599" text-anchor="middle" font-weight="600" fill="#1e293b">CallSourceClientInterceptor</text>
+  <line x1="40" y1="608" x2="340" y2="608" stroke="#64748b"/>
+  <text x="48" y="623" font-size="11" fill="#1e293b">X-Call-Source：上游接口、端、登录人</text>
+  <rect x="40" y="660" width="300" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="190.0" y="675" text-anchor="middle" font-size="10.5" fill="#1e293b">«record»</text>
+  <text x="190.0" y="693" text-anchor="middle" font-weight="600" fill="#1e293b">InternalServiceInterceptor</text>
+  <line x1="40" y1="702" x2="340" y2="702" stroke="#64748b"/>
+  <text x="48" y="717" font-size="11" fill="#1e293b">按服务追加一个拦截器</text>
+  <rect x="40" y="770" width="300" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="190.0" y="789" text-anchor="middle" font-weight="600" fill="#1e3a8a">SignedContextInterceptor</text>
+  <line x1="40" y1="798" x2="340" y2="798" stroke="#3b82f6"/>
+  <text x="48" y="813" font-size="11" fill="#1e3a8a">出站签名：操作人、范围、下游动作</text>
+  <rect x="800" y="250" width="370" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="985.0" y="269" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayInvokeFilter</text>
+  <line x1="800" y1="278" x2="1170" y2="278" stroke="#3b82f6"/>
+  <text x="808" y="293" font-size="11" fill="#1e3a8a">按资源位置选调用器；微服务链接走下面这一路</text>
+  <rect x="800" y="350" width="175" height="66" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="887.5" y="369" text-anchor="middle" font-weight="600" fill="#1e3a8a">ProxyRequestFactory</text>
+  <line x1="800" y1="378" x2="975" y2="378" stroke="#3b82f6"/>
+  <text x="808" y="393" font-size="11" fill="#1e3a8a">改写路径</text>
+  <text x="808" y="408" font-size="11" fill="#1e3a8a">请求头白名单</text>
+  <rect x="995" y="350" width="175" height="66" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1082.5" y="369" text-anchor="middle" font-weight="600" fill="#1e3a8a">ProxyResponseWriter</text>
+  <line x1="995" y1="378" x2="1170" y2="378" stroke="#3b82f6"/>
+  <text x="1003" y="393" font-size="11" fill="#1e3a8a">统一包体</text>
+  <text x="1003" y="408" font-size="11" fill="#1e3a8a">错误映射</text>
+  <rect x="800" y="470" width="370" height="65" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="985.0" y="485" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«abstract · 实现 ServiceInvoker»</text>
+  <text x="985.0" y="503" text-anchor="middle" font-weight="600" fill="#1e3a8a">AbstractServiceInvoker</text>
+  <line x1="800" y1="512" x2="1170" y2="512" stroke="#3b82f6"/>
+  <text x="808" y="527" font-size="11" fill="#1e3a8a">流程固定：before → doInvoke → after / onError</text>
+  <rect x="800" y="580" width="175" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="887.5" y="599" text-anchor="middle" font-weight="600" fill="#1e3a8a">HttpProxyInvoker</text>
+  <line x1="800" y1="608" x2="975" y2="608" stroke="#3b82f6"/>
+  <text x="808" y="623" font-size="11" fill="#1e3a8a">RestClient 转发</text>
+  <rect x="995" y="580" width="175" height="66" rx="5" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="5 4"/>
+  <text x="1082.5" y="599" text-anchor="middle" font-weight="600" fill="#64748b">其他转发实现</text>
+  <line x1="995" y1="608" x2="1170" y2="608" stroke="#94a3b8"/>
+  <text x="1003" y="623" font-size="11" fill="#64748b">预留：如 Spring</text>
+  <text x="1003" y="638" font-size="11" fill="#64748b">Cloud Gateway</text>
+  <rect x="800" y="700" width="175" height="80" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="887.5" y="715" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«record»</text>
+  <text x="887.5" y="733" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayRoute</text>
+  <line x1="800" y1="742" x2="975" y2="742" stroke="#3b82f6"/>
+  <text x="808" y="757" font-size="11" fill="#1e3a8a">pattern, access, point</text>
+  <text x="808" y="772" font-size="11" fill="#1e3a8a">service, targetPath</text>
+  <rect x="995" y="700" width="175" height="66" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1082.5" y="719" text-anchor="middle" font-weight="600" fill="#1e3a8a">ServiceEndpoint</text>
+  <line x1="995" y1="728" x2="1170" y2="728" stroke="#3b82f6"/>
+  <text x="1003" y="743" font-size="11" fill="#1e3a8a">内部路径、动作</text>
+  <text x="1003" y="758" font-size="11" fill="#1e3a8a">读写、调用身份类型</text>
+  <rect x="400" y="830" width="230" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="515.0" y="849" text-anchor="middle" font-weight="600" fill="#1e3a8a">SignedContextCodec</text>
+  <line x1="400" y1="858" x2="630" y2="858" stroke="#3b82f6"/>
+  <text x="408" y="873" font-size="11" fill="#1e3a8a">编码、解码、验签</text>
+  <rect x="680" y="830" width="250" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="805.0" y="849" text-anchor="middle" font-weight="600" fill="#1e3a8a">SvcGuardFilter</text>
+  <line x1="680" y1="858" x2="930" y2="858" stroke="#3b82f6"/>
+  <text x="688" y="873" font-size="11" fill="#1e3a8a">验进程凭据、签名、时间窗</text>
+  <rect x="980" y="830" width="190" height="51" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1075.0" y="849" text-anchor="middle" font-weight="600" fill="#1e3a8a">CallerContext</text>
+  <line x1="980" y1="858" x2="1170" y2="858" stroke="#3b82f6"/>
+  <text x="988" y="873" font-size="11" fill="#1e3a8a">操作人、范围、功能点</text>
+  <text x="40" y="232" font-size="12" fill="#334155" font-weight="600">方案一　同进程直接调用</text>
+  <text x="420" y="232" font-size="12" fill="#334155" font-weight="600">方案二　类型化契约客户端</text>
+  <text x="820" y="232" font-size="12" fill="#334155" font-weight="600">方案三　透传</text>
+  <text x="745" y="668" font-size="11" fill="#475569">复用地址、令牌、</text>
+  <text x="745" y="684" font-size="11" fill="#475569">拦截器</text>
+  <text x="400" y="812" font-size="12" fill="#334155" font-weight="600">微服务进程一侧（svc-client 的 guard 包）</text>
+</svg>
