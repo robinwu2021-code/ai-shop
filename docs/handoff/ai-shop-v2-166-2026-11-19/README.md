@@ -699,3 +699,14 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - 代码：`V683__ops_role_cross_module_reads.sql`、`Perms.ROLE_PERMS` 两行（`OpsPermConfigFlowTest` 逐条比对库与代码）、H2 schema 重新生成；`OpsPermConfigFlowTest` / `SchemaGeneratorTest` / `SchemaDriftTest` 43 条通过。
 - **正式库**：已用 root 直接执行 V683 的语句（纯插入、可重复执行）。迁移历史**没有**手工登记：下次部署时 Flyway 会把 V683 当待执行跑一遍，语句都带 `NOT EXISTS`，不会重复插。回滚：删 `sys_role_point` 里这三行和 `sys_function_point` 的 `ACT__MERCHANT_MERCHANT_READ`。
 - 复验：`ST-V2UI-FINANCE` 调 `/ops/markets`、`ST-V2UI-GOODS` 调 `/ops/merchants` 都已 200（之前网关拒）；权限即时生效，不用重登。
+
+### 页面兜底、库存对差降级、商家列表提速并部署（2026-11-20，`b97dd1f34`）
+
+- **部署**：后端 `.80` `shop-app-b97dd1f34.jar`（run.sh 备份 `run.sh.before-b97dd1f34`；上一版 `059658126` 留在 releases），约 90 秒起好、已登记 Nacos。
+  注意：v2 只监听 `192.168.3.80:18180`，本机 `127.0.0.1:18180` 连不上，健康检查要用内网地址。
+  运营端 166 `current → releases/gateway-b97dd1f34`（上一版 `gateway-d77b90718` 保留，回滚改链接即可）。打包时 macOS tar 会带 `._*` 文件，已删；以后用 `COPYFILE_DISABLE=1`。
+- **V683**：Flyway 启动时登记为第 59 行；语句带 `NOT EXISTS`，没有重复插入。
+- **菜单外页面**：既不在他菜单里、也不持这一页权限码时，外壳直接显示「没有这个页面的权限」，页面本身不渲染、不发请求（`routeDenied`，`lib/route-denied.test.ts`）。菜单没拿到时不拦；详情页等不是菜单叶子的路径不判。
+- **库存对差**：没有 `system:job:read` 不再请求 `/ops/jobs/inv-recon/logs`；有权限但定时任务模块没开（接口 404）时提示「看不到连续记录」，不当整页失败。
+- **商家列表**：分页挪进 SQL，只为当前页拼数据。正式库 758 家，`/ops/merchants` 从 6.2 秒降到约 1.1–1.3 秒（每页 20 家仍是逐家查 5 次，要再快就得批量查）。
+- 附带：前端角色权限镜像跟 V683 同步；按码推算的菜单快照登记了这两个角色的预期变化（真实菜单按功能点下发，未变）；8 份生成文档重跑。
