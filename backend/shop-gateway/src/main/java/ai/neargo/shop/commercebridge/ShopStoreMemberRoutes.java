@@ -13,6 +13,7 @@ import java.util.List;
  */
 final class ShopStoreMemberRoutes {
 
+    private static final String ID = "[A-Za-z0-9_-]{1,64}";
     private static final String STORE = "/biz/store/[A-Za-z0-9_-]{1,64}/";
     private static final String STORE_PLURAL = "/biz/stores/[A-Za-z0-9_-]{1,64}/";
 
@@ -137,7 +138,45 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET", "/biz/(?:store-spec-dims|fulfillment/carriers)"),
             HostRoute.of("POST", "/biz/(?:notify/wecom/test|message/subscribe)"),
             // 设默认门店：/biz/store 不按族登记（pay-setting 要业务端权益），这一条单列；路径里的门店须等于所选门店
-            HostRoute.of("POST", STORE + "default"));
+            HostRoute.of("POST", STORE + "default"),
+            // —— 储值（门店侧）：2026-11-19 用户确认对新模型门店开放（docs/api/B端门店准入-补登记建议.md 第二组）——
+            // 方案、充值、消费、账户查询。逐条登记，不按族放开：以后新增的储值入口仍然默认关闭，要用时在这里加。
+            // 权限码 pay:sv:* 由控制器判；/biz/stores/{门店}/… 下的，路径里的门店须等于所选门店
+            HostRoute.of("GET", "/biz/stored-value/account-directory"),
+            HostRoute.of("GET", "/biz/stored-value/accounts/" + ID),
+            HostRoute.of("GET", "/biz/stored-value/brand-capability"),
+            HostRoute.of("POST", "/biz/stored-value/consumptions"),
+            HostRoute.of("GET", "/biz/stored-value/consumptions/orders/" + ID),
+            HostRoute.of("POST", "/biz/stored-value/consumptions/orders/" + ID + "/cancel"),
+            HostRoute.of("POST", "/biz/stored-value/consumptions/preview"),
+            HostRoute.of("POST", "/biz/stored-value/consumptions/resolve"),
+            HostRoute.of("GET", "/biz/stored-value/context"),
+            HostRoute.of("GET", "/biz/stored-value/customer-candidates"),
+            HostRoute.of("POST", "/biz/stored-value/customer-selections"),
+            HostRoute.of("GET", "/biz/stored-value/governance-capability"),
+            HostRoute.of("POST", "/biz/stored-value/plan-recharges"),
+            HostRoute.of("GET", "/biz/stored-value/plan-recharges/" + ID),
+            HostRoute.of("POST", "/biz/stored-value/plan-recharges/" + ID + "/cancel"),
+            HostRoute.of("POST", "/biz/stored-value/plan-recharges/" + ID + "/receive"),
+            HostRoute.of("POST", "/biz/stored-value/plan-recharges/" + ID + "/submit"),
+            HostRoute.of("GET,POST", "/biz/stored-value/plans"),
+            HostRoute.of("GET", "/biz/stored-value/plans/" + ID),
+            HostRoute.of("PUT", "/biz/stored-value/plans/" + ID + "/status"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/members"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/customer-candidates"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/stored-value/customer-selections"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/customer-selections/" + ID + "/accounts"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/customer-selections/" + ID + "/records"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/stored-value/issuer-recharges/cancel-create"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/stored-value/issuer-recharges/confirm-offline"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/stored-value/issuer-recharges/resolve"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/issuer-recharges/" + ID),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/stored-value/issuer-recharges/" + ID + "/cancel"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/issuer-records"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/issuer-records/" + ID),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/issuers"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/recharge-options"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/stored-value/store-summary"));
 
     private ShopStoreMemberRoutes() {
     }

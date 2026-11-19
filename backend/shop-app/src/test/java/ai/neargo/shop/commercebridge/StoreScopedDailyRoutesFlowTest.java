@@ -219,11 +219,24 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 没登记的仍然关着：储值在新模型门店上照旧进不去（要先确认储值是否上线，见补登记建议第二、三组）")
-    void storedValueStaysClosedUntilConfirmed() throws Exception {
+    @DisplayName("★★★ 储值对新模型门店开放（2026-11-19）：门店侧、门店命名空间下、管理空间下的入口都能进；没列出来的储值入口仍然关着")
+    void storedValueOpensForNewModelStoresButUnlistedStaysClosed() throws Exception {
         String[] o = newModelOwner("15965020132");
-        for (String path : new String[] {"/biz/stored-value/plans", "/biz/stores/" + o[1] + "/stored-value/issuers",
-                "/biz/management/stored-value/settlement-bills"}) {
+        for (String path : new String[] {"/biz/stored-value/plans", "/biz/stored-value/context?storeNo=" + o[1],
+                "/biz/stored-value/account-directory", "/biz/stored-value/brand-capability",
+                "/biz/stores/" + o[1] + "/stored-value/issuers", "/biz/stores/" + o[1] + "/stored-value/issuer-records",
+                "/biz/stores/" + o[1] + "/stored-value/store-summary",
+                "/biz/management/stored-value/settlement-bills", "/biz/management/stored-value/financial-capability",
+                "/biz/management/brands/B1/stored-value/activities", "/biz/management/stores/" + o[1] + "/stored-value/issuer"}) {
+            var response = mvc.perform(get(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1]))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), path + " → " + body);
+            assertNotEquals(403, response.getStatus(), path + " → " + body);
+        }
+        // 逐条登记的意思：没列进去的照旧默认关闭（迁移清单、端上没有用的旧充值与流水入口）
+        for (String path : new String[] {"/biz/stored-value/records", "/biz/stored-value/recharges/R1",
+                "/biz/management/stored-value/issuers/I1"}) {
             String body = mvc.perform(get(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1]))
                     .andReturn().getResponse().getContentAsString();
             assertEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
