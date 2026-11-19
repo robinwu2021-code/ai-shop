@@ -114,7 +114,10 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
         }
         if (!supported) {
             legacyMessage.accept("支付通道未接入：" + request.payChannel());
-            return operations.rejectNotSent(ticket.get(), NotSentReason.NO_GATEWAY);
+            // 旧下单入口复用同一收款意图与流水号：本次未发送不能证明早先没有在途请求，保留待查回（同主线 OrdinaryPaymentInitiationService）。
+            return legacyPayer != null
+                    ? operations.recordUnknown(ticket.get(), "PAYMENT_CHANNEL_NOT_CONNECTED")
+                    : operations.rejectNotSent(ticket.get(), NotSentReason.NO_GATEWAY);
         }
         request = ticket.get().payment();
         String account =
@@ -143,7 +146,9 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
         }
         if (result.disposition() == PayGateway.PrepayDisposition.NOT_SENT) {
             legacyMessage.accept(result.message());
-            return operations.rejectNotSent(ticket.get(), NotSentReason.LOCAL_PRECONDITION);
+            return legacyPayer != null
+                    ? operations.recordUnknown(ticket.get(), "PAYMENT_REJECTION_REQUIRES_RECONCILIATION")
+                    : operations.rejectNotSent(ticket.get(), NotSentReason.LOCAL_PRECONDITION);
         }
         if (!result.success()) {
             legacyMessage.accept(result.message());
