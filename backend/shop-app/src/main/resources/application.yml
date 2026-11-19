@@ -202,6 +202,11 @@ shop:
     automation:
       enabled: ${SHOP_AUTOMATION_ENABLED:false}
       public-key: ${SHOP_AUTOMATION_PUBLIC_KEY:}
+      # 按端分的公钥（可选，逗号分隔可列多把）：三端的测试账号与签票据的人不同，钥也分开；
+      # 某一端不配就用上面通用的那一把。运营端的钥签不出店主或买家的票据，反过来也一样。
+      public-key-ops: ${SHOP_AUTOMATION_PUBLIC_KEY_OPS:}
+      public-key-b: ${SHOP_AUTOMATION_PUBLIC_KEY_B:}
+      public-key-c: ${SHOP_AUTOMATION_PUBLIC_KEY_C:}
       subjects: ${SHOP_AUTOMATION_SUBJECTS:}
     # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
     #   memory  = 零依赖但**重启即全员掉线**，只适合测试

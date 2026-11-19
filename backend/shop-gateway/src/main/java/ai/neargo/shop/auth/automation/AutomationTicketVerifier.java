@@ -7,6 +7,10 @@ import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.List;
+import java.util.EnumSet;
+import java.util.EnumMap;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
@@ -60,7 +64,12 @@ public class AutomationTicketVerifier {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final boolean enabled;
-    private final PublicKey publicKey;
+    /**
+     * 每一端认哪几把公钥。三端的测试账号不同、签票据的人也不同，所以钥按端分：
+     * 运营端的钥签不出店主或买家的票据，反过来也一样 —— 一把私钥泄露，损失只到它那一端的白名单。
+     * 某一端没有单独配时，用通用的那一把（{@code shop.auth.automation.public-key}，与分端之前的行为相同）。
+     */
+    private final Map<TicketRealm, List<PublicKey>> keys;
     private final Set<String> subjects;
     private final Clock clock;
     /** 用过的 nonce → 可以忘掉它的时刻（秒）。单实例部署，进程内存够用；多实例要换共享存储（ADR-027 代价）。 */
@@ -69,34 +78,85 @@ public class AutomationTicketVerifier {
     @Autowired
     public AutomationTicketVerifier(@Value("${shop.auth.automation.enabled:false}") boolean enabled,
                                     @Value("${shop.auth.automation.public-key:}") String publicKey,
+                                    @Value("${shop.auth.automation.public-key-ops:}") String opsKeys,
+                                    @Value("${shop.auth.automation.public-key-b:}") String merchantKeys,
+                                    @Value("${shop.auth.automation.public-key-c:}") String consumerKeys,
                                     @Value("${shop.auth.automation.subjects:}") String subjects) {
-        this(enabled, publicKey, subjects, Clock.systemUTC());
+        this(enabled, publicKey, perRealm(opsKeys, merchantKeys, consumerKeys), subjects, Clock.systemUTC());
     }
 
     AutomationTicketVerifier(boolean enabled, String publicKey, String subjects, Clock clock) {
+        this(enabled, publicKey, Map.of(), subjects, clock);
+    }
+
+    private static Map<TicketRealm, String> perRealm(String ops, String merchant, String consumer) {
+        Map<TicketRealm, String> out = new EnumMap<>(TicketRealm.class);
+        out.put(TicketRealm.OPS, ops == null ? "" : ops);
+        out.put(TicketRealm.B, merchant == null ? "" : merchant);
+        out.put(TicketRealm.C, consumer == null ? "" : consumer);
+        return out;
+    }
+
+    /** @param perRealm 各端自己的公钥，逗号分隔可以列多把；空表示这一端用通用的那一把 */
+    AutomationTicketVerifier(boolean enabled, String publicKey, Map<TicketRealm, String> perRealm, String subjects,
+                             Clock clock) {
         this.enabled = enabled;
         this.clock = clock;
         this.subjects = Arrays.stream(subjects == null ? new String[0] : subjects.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toUnmodifiableSet());
         if (!enabled) {
-            this.publicKey = null;
+            this.keys = Map.of();
             return;
         }
         /*
          * 开着却没配齐就拒绝启动：公钥空 = 什么票据都验不过（以为开了其实没开）；
          * 白名单空 = 同上。两种都不报错，只会让人对着「登录失败」猜半天。
          */
-        if (publicKey == null || publicKey.isBlank()) {
-            throw new IllegalStateException("shop.auth.automation.enabled=true 但 SHOP_AUTOMATION_PUBLIC_KEY 为空");
-        }
         if (this.subjects.isEmpty()) {
             throw new IllegalStateException("shop.auth.automation.enabled=true 但 SHOP_AUTOMATION_SUBJECTS 为空");
         }
+        List<PublicKey> shared = parseKeys(publicKey, "SHOP_AUTOMATION_PUBLIC_KEY");
+        Map<TicketRealm, List<PublicKey>> byRealm = new EnumMap<>(TicketRealm.class);
+        for (TicketRealm realm : TicketRealm.values()) {
+            List<PublicKey> own = parseKeys(perRealm.getOrDefault(realm, ""), "SHOP_AUTOMATION_PUBLIC_KEY_" + realm);
+            byRealm.put(realm, own.isEmpty() ? shared : own);
+        }
+        // 白名单里出现的端必须有钥可验：否则那一端「以为开了其实没开」，只会让人对着登录失败猜
+        for (String subject : this.subjects) {
+            String realm = subject.contains(":") ? subject.substring(0, subject.indexOf(':')) : "";
+            boolean known = Arrays.stream(TicketRealm.values()).anyMatch(r -> r.name().equals(realm));
+            if (known && byRealm.get(TicketRealm.valueOf(realm)).isEmpty()) {
+                throw new IllegalStateException("shop.auth.automation.enabled=true 但白名单里的 " + realm
+                        + " 端没有公钥：配 SHOP_AUTOMATION_PUBLIC_KEY_" + realm + " 或通用的 SHOP_AUTOMATION_PUBLIC_KEY");
+            }
+        }
+        this.keys = byRealm;
+    }
+
+    private static List<PublicKey> parseKeys(String raw, String name) {
+        List<PublicKey> out = new ArrayList<>();
+        for (String one : (raw == null ? "" : raw).split(",")) {
+            if (one.isBlank()) {
+                continue;
+            }
+            try {
+                out.add(KeyFactory.getInstance("Ed25519")
+                        .generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(one.trim()))));
+            } catch (Exception e) {
+                throw new IllegalStateException(name + " 不是有效的 Ed25519 公钥（X.509 DER 的 base64）", e);
+            }
+        }
+        return out;
+    }
+
+    private static boolean verifies(PublicKey key, byte[] signed, byte[] signature) {
         try {
-            this.publicKey = KeyFactory.getInstance("Ed25519")
-                    .generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(publicKey.trim())));
+            Signature ed = Signature.getInstance("Ed25519");
+            ed.initVerify(key);
+            ed.update(signed);
+            return ed.verify(signature);
         } catch (Exception e) {
-            throw new IllegalStateException("SHOP_AUTOMATION_PUBLIC_KEY 不是有效的 Ed25519 公钥（X.509 DER 的 base64）", e);
+            return false;
         }
     }
 
@@ -120,16 +180,18 @@ public class AutomationTicketVerifier {
         } catch (IllegalArgumentException e) {
             throw new Rejected("AUTOMATION_MALFORMED");
         }
-        try {
-            Signature ed = Signature.getInstance("Ed25519");
-            ed.initVerify(publicKey);
-            ed.update(("v1." + parts[1]).getBytes(StandardCharsets.US_ASCII));
-            if (!ed.verify(sig)) {
-                throw new Rejected("AUTOMATION_BAD_SIGNATURE");
+        // 先验签：找出是哪些端的钥签的。此时 payload 一个字都还没信
+        Set<TicketRealm> signedFor = EnumSet.noneOf(TicketRealm.class);
+        byte[] signedBytes = ("v1." + parts[1]).getBytes(StandardCharsets.US_ASCII);
+        keys.forEach((realm, candidates) -> {
+            for (PublicKey candidate : candidates) {
+                if (verifies(candidate, signedBytes, sig)) {
+                    signedFor.add(realm);
+                    break;
+                }
             }
-        } catch (Rejected r) {
-            throw r;
-        } catch (Exception e) {
+        });
+        if (signedFor.isEmpty()) {
             throw new Rejected("AUTOMATION_BAD_SIGNATURE");
         }
 
@@ -144,6 +206,10 @@ public class AutomationTicketVerifier {
             realm = TicketRealm.valueOf(p.path("realm").asString(""));
         } catch (IllegalArgumentException e) {
             throw new Rejected("AUTOMATION_BAD_REALM");
+        }
+        // 签名是真的，但那把钥不是这一端的：运营端的钥签不出店主或买家的票据
+        if (!signedFor.contains(realm)) {
+            throw new Rejected("AUTOMATION_WRONG_KEY_FOR_REALM");
         }
         String sub = p.path("sub").asString("");
         String nonce = p.path("nonce").asString("");

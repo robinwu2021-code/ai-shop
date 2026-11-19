@@ -94,6 +94,26 @@ v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicke
 验收：C 票据换出 `ctk_`，能调要登录的 `/mp` 接口；拿它打 `/biz`、`/ops` 被拒；白名单里只有 `B:x` 时签不出 `C:x`。
 对应测试：`AutomationLoginFlowTest.consumerTicketGivesWorkingMpSession`、`AutomationTicketVerifierTest.malformedRejected`。
 
+### 4.6 钥按端分（2026-11-19 追加，用户：「各个端的用户不同，测试账号不同，密钥也不同」）
+
+三端的测试账号不同、签票据的人也不同，公钥按端配：
+
+| 配置项 | 含义 | 不配时 |
+|---|---|---|
+| `shop.auth.automation.public-key-ops`（`SHOP_AUTOMATION_PUBLIC_KEY_OPS`） | 运营端认的公钥 | 用通用的 `public-key` |
+| `shop.auth.automation.public-key-b`（`SHOP_AUTOMATION_PUBLIC_KEY_B`） | B 端认的公钥 | 同上 |
+| `shop.auth.automation.public-key-c`（`SHOP_AUTOMATION_PUBLIC_KEY_C`） | C 端认的公钥 | 同上 |
+
+每一项可以用逗号列多把（同一端有不止一个签票据的人时用）。通用的 `public-key` 保留，三项都不配时行为与原来完全相同。
+
+校验顺序不变（先验签，再看字段）：先用各端的钥验签名，得到「这张票据是哪些端的钥签的」，这时 payload 还一个字没信；
+然后才读 payload 里的端，它必须在那个集合里，否则以 `AUTOMATION_WRONG_KEY_FOR_REALM` 拒绝。
+所以运营端的私钥泄露，损失上限是运营端白名单里的账号，签不出店主或买家的会话。
+白名单里出现了某一端、而那一端一把钥都没有时拒绝启动。
+
+验收：各端用自己的钥能换到会话；拿别的端的钥签被拒；没单独配的端用通用的钥；被拒的票据不占 nonce。
+对应测试：`AutomationTicketVerifierTest.keysArePerRealm`。
+
 ## 五、验收标准
 
 | AC | 要求 | 落点 |
