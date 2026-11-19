@@ -55,3 +55,7 @@
 ## 门店英文代码（用户 2026-11-19：代码用英文，先完成 roger、oscar）
 
 运营接口 `PUT /ops/stores/{storeNo}/basics` 写入 `slug`，店主可改：`ume-breakfast`（已有）、`ume-cafe`、`chuangke-pay`（創科系統收款帳號）、`jeff-first-home`、`ume-plan-pay`（ume 套餐收款店）、`chuangke-sam`、`chuangke-oscar`。roger 的 5 家店还没有整店收款码，代码要等开码后才挂到支付链接。
+
+## ume咖啡廳 门店同步重放（用户 2026-11-19 同意改库）
+
+`sys_outbox` 18911（`MERCHANT_STORE_CHANGED`，04:25:56）投递 `sys_outbox_delivery` 846 以 `OUTCOME_UNKNOWN / IllegalStateException` 失败（同时刻 near-pay 有一次数据库死锁），按门店顺序投递阻塞了后续 3 条。按 `JdbcOutboxStore` 的 replay 逻辑手工执行：投递改回 PENDING（`replay_count` 1）、补 `sys_outbox_operation` 审计 `oscar-align-20261119-replay-846`、消息改回 PENDING。原值备份在会话临时目录。之后 4 条全部 SENT，`/s/ume-cafe` 打开 ume咖啡廳 收银台。
