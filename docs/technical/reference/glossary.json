@@ -48346,6 +48346,16 @@
         "zh": "权限要求的类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 留给入口方法判"
       },
       {
+        "name": "ApiResourceAdjustableAccess",
+        "client": "ops-web",
+        "values": [
+          "LOGIN",
+          "POINT",
+          "DEFER"
+        ],
+        "zh": "可以在库里调整成的类别（不能调成公开）"
+      },
+      {
         "name": "ApiResourceSource",
         "client": "ops-web",
         "values": [

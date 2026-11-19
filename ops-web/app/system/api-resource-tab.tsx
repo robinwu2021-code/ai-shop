@@ -3,7 +3,9 @@
 // 网关接口资源（TDD-网关层与统一权限 §2.23）—— 已接真后端 `/ops/api-resources/**`。
 //
 // 这一页回答两个问题：网关认得哪些链接、每条要什么权限；以及出事时把某一条停掉。
-// 权限要求是代码（本进程入口）或清单（微服务链接）定的，这里只读 —— 能改的只有停用与恢复。
+// 权限要求的初始值来自代码（本进程入口）或清单（微服务链接）。能改两件事：停用与恢复；
+// 以及在库里调整某条本进程入口的规则（`POST /ops/api-resources/{id}/rule`）—— 网关按调整后的判，
+// 业务代码与入口注解不动。微服务链接与不可停用的行不能调整，后端也会拒绝。
 //
 // 停用对本进程入口只在「提前判权」开到观察或拦截时生效。当前是哪一档由后端告诉页面，
 // 顶部据此如实说明：不能让人以为点了就停了。
@@ -14,13 +16,14 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { fmtTime } from "@/lib/utils";
 import { usePaging } from "@/lib/use-paging";
-import type { ApiResource } from "@/lib/types";
+import type { ApiResource, ApiResourceAdjustableAccess } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -55,9 +58,38 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
     });
   };
 
+  // 调整规则的抽屉：access 为空串 = 撤销调整
+  const [editing, setEditing] = useState<ApiResource | null>(null);
+  const [form, setForm] = useState<Record<string, unknown>>({});
+  const [saving, setSaving] = useState(false);
+  const openAdjust = (r: ApiResource) => {
+    setEditing(r);
+    setForm({ link: `${r.method} ${r.pattern}`, access: r.adjustedAccess ?? "", rule: r.adjustedRule ?? r.ruleText ?? "" });
+  };
+  const saveAdjust = () => {
+    if (!editing) return;
+    const access = (form.access as ApiResourceAdjustableAccess | "") || null;
+    const rule = String(form.rule ?? "").trim();
+    if (access === "POINT" && !rule) { notify.error(c.arAdjustRuleRequired); return; }
+    setSaving(true);
+    api.adjustApiResourceRule(editing.id, access, access === "POINT" ? rule : null)
+      .then(() => { invalidate(); setEditing(null); notify.success(access ? c.arAdjustedToast : c.arAdjustResetToast); })
+      .catch((e: unknown) => notify.error(e instanceof Error ? e.message : String(e)))
+      .finally(() => setSaving(false));
+  };
+
   const accessLabel: Record<ApiResource["access"], string> = {
     PUBLIC: c.arAccessPublic, LOGIN: c.arAccessLogin, POINT: c.arAccessPoint, DEFER: c.arAccessDefer,
   };
+
+  const adjustFields: FieldDef[] = [
+    { key: "link", label: c.arColLink, readOnlyOnEdit: true },
+    { key: "access", label: c.arAdjustAccess, type: "select", options: [
+      { value: "", label: c.arAdjustReset }, { value: "LOGIN", label: c.arAccessLogin },
+      { value: "POINT", label: c.arAccessPoint }, { value: "DEFER", label: c.arAccessDefer }] },
+    { key: "rule", label: c.arAdjustRule, type: "textarea", rows: 3, maxLength: 1000, help: c.arAdjustRuleHelp,
+      disabledWhen: (v) => v.access !== "POINT" },
+  ];
 
   const columns: Column<ApiResource>[] = [
     {
@@ -78,8 +110,18 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
       header: c.arColAccess, align: "start",
       cell: (r) => (
         <div>
-          <div>{accessLabel[r.access] ?? r.access}</div>
-          {r.ruleText && <code className="txt-caption text-muted-foreground">{r.ruleText}</code>}
+          <div className="flex flex-wrap items-center gap-1">
+            {accessLabel[r.adjustedAccess ?? r.access] ?? r.access}
+            {r.adjustedAccess && <Badge tone="info">{c.arAdjusted}</Badge>}
+          </div>
+          {(r.adjustedAccess ? r.adjustedRule : r.ruleText) && (
+            <code className="txt-caption text-muted-foreground">{r.adjustedAccess ? r.adjustedRule : r.ruleText}</code>
+          )}
+          {r.adjustedAccess && r.adjustedBy && (
+            <div className="txt-caption text-muted-foreground">
+              {fill(c.arAdjustedBy, { who: r.adjustedBy })}{r.adjustedAt ? ` · ${fmtTime(r.adjustedAt)}` : ""}
+            </div>
+          )}
           {r.admission && (
             <div className="txt-caption text-muted-foreground">{c.arAdmission} <code>{r.admission}</code></div>
           )}
@@ -104,9 +146,14 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
       cell: (r: ApiResource) => (r.locked && r.status === "ENABLED"
         ? <span className="txt-caption text-muted-foreground">{c.arLocked}</span>
         : (
-          <Button size="sm" variant="outline" onClick={() => toggle(r)}>
-            {r.status === "ENABLED" ? c.arDisableAct : c.arEnableAct}
-          </Button>
+          <span className="flex flex-wrap items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => toggle(r)}>
+              {r.status === "ENABLED" ? c.arDisableAct : c.arEnableAct}
+            </Button>
+            {r.source === "SCAN" && !r.locked && r.access !== "PUBLIC" && (
+              <Button size="sm" variant="outline" onClick={() => openAdjust(r)}>{c.arAdjustAct}</Button>
+            )}
+          </span>
         )),
     }] : []),
   ];
@@ -147,6 +194,18 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
         empty={c.arEmpty}
       />
       <Pagination page={page} size={size} total={list.data?.total ?? 0} onPage={setPage} onSize={setSize} />
+      <FormDrawer
+        open={!!editing}
+        onOpenChange={(o) => { if (!o) setEditing(null); }}
+        titleNew={c.arAdjustTitle}
+        titleEdit={c.arAdjustTitle}
+        isEdit
+        fields={adjustFields}
+        value={form}
+        onChange={setForm}
+        onSubmit={saveAdjust}
+        submitting={saving}
+      />
       {dialog}
     </>
   );

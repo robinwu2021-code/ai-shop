@@ -315,7 +315,7 @@ const zh = {
   avConfirmBody: "{platform} 的最低支持版将改为 {min}。低于此版本的商户将无法写入（下单、收款、改商品等全部被拒，并被要求升级），保存即对全部商户生效。",
 
   // ── 网关接口资源（TDD-网关层与统一权限 §2.23）──
-  arNotice: "网关认得的每一条接口：在哪、要什么权限。权限要求由代码或微服务清单决定，这里只读；能改的只有停用与恢复。停用后所有人都访问不了那条接口，直到恢复。",
+  arNotice: "网关认得的每一条接口：在哪、要什么权限。权限要求的初始值来自代码或微服务清单；本系统入口的规则可以在这里调整，网关按调整后的判。停用后所有人都访问不了那条接口，直到恢复。",
   /** `{total}` 总数，`{disabled}` 已停用，`{stale}` 已过期，`{manual}` 微服务接口数 */
   arSummary: "共 {total} 条，已停用 {disabled} 条，已过期 {stale} 条，微服务接口 {manual} 条。",
   arModeOn: "运营端已打开网关提前判权，停用运营端接口立即生效（其它服务器最多 60 秒）。商户端、消费者端接口是否生效取决于那一端服务自己的档位。",
@@ -358,6 +358,19 @@ const zh = {
   arEnableBody: "{link} 恢复后，有权限的人可以照常访问。",
   arDisabledToast: "已停用。本服务器立即生效，其它服务器最多 60 秒",
   arEnabledToast: "已恢复。本服务器立即生效，其它服务器最多 60 秒",
+  arAdjusted: "已调整",
+  /** `{who}` 调整人 */
+  arAdjustedBy: "由 {who} 调整",
+  arOriginal: "入口原规则",
+  arAdjustAct: "调整规则",
+  arAdjustTitle: "调整权限规则",
+  arAdjustAccess: "权限要求",
+  arAdjustReset: "不调整（按入口原规则）",
+  arAdjustRule: "权限式",
+  arAdjustRuleHelp: "只在「需要权限码」时填写。写法与列表里显示的一致：单个码写 a；多个写 (a 或 b)、(a 且 b)；按管理范围判的码写 码 @STORE(storeNo) 或 码 @SPACE(任一)。保存后网关按这里的规则判，业务代码不变。",
+  arAdjustRuleRequired: "选择「需要权限码」时必须填写权限式",
+  arAdjustedToast: "已保存。本服务器立即生效，其它服务器最多 60 秒",
+  arAdjustResetToast: "已撤销调整，回到入口原规则",
 };
 
 const en: typeof zh = {
@@ -666,7 +679,7 @@ const en: typeof zh = {
   avConfirmBody: "The minimum supported version for {platform} becomes {min}. Merchants below it will not be able to write (orders, payments, product edits are all rejected and they are asked to update). This applies to all merchants as soon as you save.",
 
   // ── Gateway API resources ──
-  arNotice: "Every endpoint the gateway knows: where it lives and what permission it needs. Permissions come from code or the service manifest and are read-only here; you can only disable or restore an endpoint. A disabled endpoint is unreachable for everyone until restored.",
+  arNotice: "Every endpoint the gateway knows: where it lives and what permission it needs. Initial permissions come from code or the service manifest; rules of in-process endpoints can be adjusted here and the gateway checks the adjusted rule. A disabled endpoint is unreachable for everyone until restored.",
   arSummary: "{total} endpoints, {disabled} disabled, {stale} stale, {manual} microservice endpoints.",
   arModeOn: "Gateway pre-authorization is on for the operations portal, so disabling an operations endpoint takes effect immediately (up to 60 seconds on other servers). Merchant endpoints depend on the merchant service's own setting.",
   arModeOff: "Gateway pre-authorization is off for the operations portal: disabling an operations endpoint here is only recorded and does not block requests. Merchant endpoints depend on the merchant service's own setting.",
@@ -707,6 +720,18 @@ const en: typeof zh = {
   arEnableBody: "Once {link} is restored, people with permission can use it as before.",
   arDisabledToast: "Disabled. Effective now on this server, within 60 seconds on others",
   arEnabledToast: "Restored. Effective now on this server, within 60 seconds on others",
+  arAdjusted: "Adjusted",
+  arAdjustedBy: "Adjusted by {who}",
+  arOriginal: "Original rule",
+  arAdjustAct: "Adjust rule",
+  arAdjustTitle: "Adjust permission rule",
+  arAdjustAccess: "Permission",
+  arAdjustReset: "No adjustment (use the original rule)",
+  arAdjustRule: "Permission expression",
+  arAdjustRuleHelp: "Only needed for \"Requires permission code\". Use the same notation as the expressions shown in the list, including the and/or keywords and the @TYPE(parameter) suffix for management-scoped codes. After saving, the gateway checks this rule; business code is unchanged.",
+  arAdjustRuleRequired: "A permission expression is required for \"Requires permission code\"",
+  arAdjustedToast: "Saved. Effective now on this server, within 60 seconds on others",
+  arAdjustResetToast: "Adjustment removed; the original rule applies again",
 };
 
 export const SYSTEM_COPY: PageCopy<typeof zh> = { zh, en };

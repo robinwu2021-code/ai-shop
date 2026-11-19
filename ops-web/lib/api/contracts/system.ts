@@ -1,6 +1,6 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
-  MarketPhonePolicy, SaveMarketPhonePolicy, ApiResource, ApiResourceQuery, ApiResourceStatus, ApiResourceSummary, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
+  MarketPhonePolicy, SaveMarketPhonePolicy, ApiResource, ApiResourceAdjustableAccess, ApiResourceQuery, ApiResourceStatus, ApiResourceSummary, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
@@ -28,6 +28,12 @@ export interface SystemApi {
    * 不带权限码的入口与本页自己的接口停不掉 → 10400。
    */
   setApiResourceStatus(id: number, status: ApiResourceStatus): Promise<ApiResource>;
+  /**
+   * 在库里调整一条本系统入口的权限规则，返回改后的那一行。要 `system:api-resource:update`。
+   * `access` 传 null 表示撤销调整，回到入口注解上的规则；`rule` 只在 `access=POINT` 时用，写法同列表里显示的权限式。
+   * 式子读不懂、行不可调整（微服务接口、不可停用的行）时后端拒绝。
+   */
+  adjustApiResourceRule(id: number, access: ApiResourceAdjustableAccess | null, rule?: string | null): Promise<ApiResource>;
 
   // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
   //

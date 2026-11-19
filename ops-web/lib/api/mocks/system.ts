@@ -91,6 +91,18 @@ export const systemMock: SystemApi = {
     return wait({ ...row });
   },
 
+  adjustApiResourceRule: async (id, access, rule) => {
+    const row = db.apiResources.find((r) => r.id === id);
+    if (!row) notFound("接口", "Endpoint", String(id));
+    if (row.source !== "SCAN" || row.locked) fail("这条接口的规则不能调整", "This endpoint's rule cannot be adjusted");
+    const text = rule?.trim() || null;
+    if (access === "POINT" && !text) fail("要权限码时必须填写权限式", "A permission expression is required");
+    Object.assign(row, access
+      ? { adjustedAccess: access, adjustedRule: access === "POINT" ? text : null, adjustedBy: "admin", adjustedAt: new Date().toISOString() }
+      : { adjustedAccess: null, adjustedRule: null, adjustedBy: null, adjustedAt: null });
+    return wait({ ...row });
+  },
+
   // ── App 版本策略 ── 与后端同一组护栏（版本前缀、min ≤ latest、两家商店、zh-Hant 必填、revision）
   listAppVersions: async () => wait(db.appVersions.map((r) => ({ ...r, notes: { ...r.notes } }))),
 

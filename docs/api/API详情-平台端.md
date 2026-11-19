@@ -13316,6 +13316,47 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/api-resources/{id}/rule`
+
+在库里调整一条本系统入口的权限规则，返回改后的那一行
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ApiResource`](#apiresource)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 行号，改状态时用 |
+| `endCode` | `string` | 是 | 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 / mp 消费者端 |
+| `method` | `string` | 是 | HTTP 方法；`*` 表示不限 |
+| `pattern` | `string` | 是 | 地址模式，如 `/ops/payments/refunds/{payRefundNo}/review` |
+| `source` | [`ApiResourceSource`](#apiresourcesource) | 是 | 来源：SCAN 启动扫描到的本进程入口 / MANUAL 录入的微服务链接 |
+| `location` | `string` | 是 | 位置：LOCAL 或目标服务名 |
+| `targetPath` | `string,null` | 是 | 微服务链接的内部地址；本进程入口为 null |
+| `access` | [`ApiResourceAccess`](#apiresourceaccess) | 是 | 权限要求的类别 |
+| `ruleText` | `string,null` | 是 | 权限码的与或式，给人读；access=POINT 时有值 |
+| `admission` | `string,null` | 否 | 商户端入口在门店准入表里落在哪一类（如 ACCOUNT、BOOTSTRAP、DENY）；这一步排在按角色判权之前。别的端为空 |
+| `handler` | `string,null` | 是 | 本进程入口的类与方法，排查用 |
+| `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
+| `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |
+| `locked` | `boolean` | 是 | true = 这一行不能停用（不带权限码的入口，或本页自己的接口） |
+| `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
+| `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
+| `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
+| `adjustedAccess` | [`ApiResourceAdjustableAccess`](#apiresourceadjustableaccess) \| `null` | 否 | 在库里调整后的类别；没调整过为 null（此时按入口注解上的规则判） |
+| `adjustedRule` | `string,null` | 否 | 调整后的权限式；adjustedAccess=POINT 时有值 |
+| `adjustedBy` | `string,null` | 否 | 调整人；没调整过为 null |
+| `adjustedAt` | `string,null` | 否 | 调整时间（ISO 字符串） |
+
+
 #### POST `/ops/api-resources/{id}/status`
 
 停用或恢复一条链接，返回改后的那一行
@@ -13351,6 +13392,10 @@ _无字段_
 | `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
 | `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
 | `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
+| `adjustedAccess` | [`ApiResourceAdjustableAccess`](#apiresourceadjustableaccess) \| `null` | 否 | 在库里调整后的类别；没调整过为 null（此时按入口注解上的规则判） |
+| `adjustedRule` | `string,null` | 否 | 调整后的权限式；adjustedAccess=POINT 时有值 |
+| `adjustedBy` | `string,null` | 否 | 调整人；没调整过为 null |
+| `adjustedAt` | `string,null` | 否 | 调整时间（ISO 字符串） |
 
 
 #### GET `/ops/api-resources/summary`
@@ -14200,7 +14245,7 @@ _无字段_
 
 ### ApiResource
 
-网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。 一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定， 页面只读；能改的只有停用与恢复。
+网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。 一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定， 初始值； 页面上能做两件事：停用与恢复，以及在库里调整某条本系统入口的规则（网关按调整后的判，业务代码不动）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
@@ -14221,6 +14266,10 @@ _无字段_
 | `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
 | `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
 | `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
+| `adjustedAccess` | [`ApiResourceAdjustableAccess`](#apiresourceadjustableaccess) \| `null` | 否 | 在库里调整后的类别；没调整过为 null（此时按入口注解上的规则判） |
+| `adjustedRule` | `string,null` | 否 | 调整后的权限式；adjustedAccess=POINT 时有值 |
+| `adjustedBy` | `string,null` | 否 | 调整人；没调整过为 null |
+| `adjustedAt` | `string,null` | 否 | 调整时间（ISO 字符串） |
 
 ### ApiResourceAccess
 
@@ -14229,6 +14278,16 @@ _无字段_
 枚举取值：
 
 - `PUBLIC`
+- `LOGIN`
+- `POINT`
+- `DEFER`
+
+### ApiResourceAdjustableAccess
+
+可以在库里调整成的类别（不能调成公开）
+
+枚举取值：
+
 - `LOGIN`
 - `POINT`
 - `DEFER`

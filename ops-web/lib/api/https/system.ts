@@ -13,6 +13,7 @@ export const systemHttp: SystemApi = {
   listApiResources: (q) => client.get("/ops/api-resources", q),
   getApiResourceSummary: () => client.get("/ops/api-resources/summary"),
   setApiResourceStatus: (id, status) => client.post(`/ops/api-resources/${id}/status`, { status }),
+  adjustApiResourceRule: (id, access, rule) => client.post(`/ops/api-resources/${id}/rule`, { access, rule: rule ?? null }),
   listTestPhones: () => client.get("/ops/test-phones"),
   saveTestPhone: (v) => client.post("/ops/test-phones", v),
   setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),

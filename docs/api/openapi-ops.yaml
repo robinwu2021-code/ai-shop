@@ -13226,6 +13226,26 @@ components:
             - "string"
             - "null"
           description: "最后更新时间（ISO 字符串）"
+        adjustedAccess:
+          anyOf:
+            - "$ref": "#/components/schemas/ApiResourceAdjustableAccess"
+            - type: "null"
+          description: "在库里调整后的类别；没调整过为 null（此时按入口注解上的规则判）"
+        adjustedRule:
+          type:
+            - "string"
+            - "null"
+          description: "调整后的权限式；adjustedAccess=POINT 时有值"
+        adjustedBy:
+          type:
+            - "string"
+            - "null"
+          description: "调整人；没调整过为 null"
+        adjustedAt:
+          type:
+            - "string"
+            - "null"
+          description: "调整时间（ISO 字符串）"
       required:
         - "id"
         - "endCode"
@@ -13244,7 +13264,7 @@ components:
         - "updatedBy"
         - "updatedAt"
       additionalProperties: false
-      description: "网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。\n\n一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定， 页面只读；能改的只有停用与恢复。"
+      description: "网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。\n\n一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定， 初始值； 页面上能做两件事：停用与恢复，以及在库里调整某条本系统入口的规则（网关按调整后的判，业务代码不动）。"
     ApiResourceSource:
       type: "string"
       enum:
@@ -13265,6 +13285,13 @@ components:
         - "ENABLED"
         - "DISABLED"
       description: "接口资源的状态"
+    ApiResourceAdjustableAccess:
+      type: "string"
+      enum:
+        - "LOGIN"
+        - "POINT"
+        - "DEFER"
+      description: "可以在库里调整成的类别（不能调成公开）"
     ApiResourceQuery:
       type: "object"
       properties:
@@ -37313,6 +37340,44 @@ paths:
     post:
       operationId: "setApiResourceStatus"
       summary: "停用或恢复一条链接，返回改后的那一行"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ApiResource"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/api-resources/{id}/rule":
+    post:
+      operationId: "adjustApiResourceRule"
+      summary: "在库里调整一条本系统入口的权限规则，返回改后的那一行"
       tags:
         - "system"
       responses:

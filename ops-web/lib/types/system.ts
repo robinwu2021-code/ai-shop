@@ -446,7 +446,8 @@ export interface SaveMarketPhonePolicy {
  * 网关接口资源的一行（`GET /ops/api-resources`；TDD-网关层与统一权限 §2.23）。
  *
  * 一行是运营端的一条链接：在哪（本进程入口还是哪个微服务）、要什么权限。权限要求由代码或清单决定，
- * 页面只读；能改的只有停用与恢复。
+ * 初始值；
+ * 页面上能做两件事：停用与恢复，以及在库里调整某条本系统入口的规则（网关按调整后的判，业务代码不动）。
  */
 export interface ApiResource {
   /** 行号，改状态时用 */
@@ -483,7 +484,18 @@ export interface ApiResource {
   updatedBy: string | null;
   /** 最后更新时间（ISO 字符串） */
   updatedAt: string | null;
+  /** 在库里调整后的类别；没调整过为 null（此时按入口注解上的规则判） */
+  adjustedAccess?: ApiResourceAdjustableAccess | null;
+  /** 调整后的权限式；adjustedAccess=POINT 时有值 */
+  adjustedRule?: string | null;
+  /** 调整人；没调整过为 null */
+  adjustedBy?: string | null;
+  /** 调整时间（ISO 字符串） */
+  adjustedAt?: string | null;
 }
+
+/** 可以在库里调整成的类别（不能调成公开） */
+export type ApiResourceAdjustableAccess = "LOGIN" | "POINT" | "DEFER";
 
 /** 接口资源的来源 */
 export type ApiResourceSource = "SCAN" | "MANUAL";
