@@ -122,6 +122,12 @@
                 <artifactId>tianai-captcha</artifactId>
                 <version>1.5.6</version>
             </dependency>
+            <!-- 服务注册与发现：Nacos 原生客户端（ADR-062）。版本与 192.168.3.80 上的服务端一致 -->
+            <dependency>
+                <groupId>com.alibaba.nacos</groupId>
+                <artifactId>nacos-client</artifactId>
+                <version>3.3.0</version>
+            </dependency>
             <dependency>
                 <groupId>ai.neargo.inventory</groupId>
                 <artifactId>inventory-api</artifactId>
