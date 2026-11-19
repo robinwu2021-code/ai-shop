@@ -73,6 +73,14 @@ def validate(channel, material):
     return None
 
 
+def clean_id(v):
+    """UME 导出里 LINE Pay channel_id 有尾随制表符或字面的 \\t（如 `1657463861\\t`），比对前去掉；与 channels.py clean() 同一规则。"""
+    v = str(v or '').strip()
+    while v.endswith('\\t'):
+        v = v[:-2].rstrip()
+    return v
+
+
 def columns():
     path = os.environ.get('UME_COLUMNS', os.path.join(HERE, 'ume-columns.json'))
     if os.path.exists(path):
@@ -127,7 +135,7 @@ class Ume:
             return None, 'AMBIGUOUS', 'UME %s 有 %d 组不同取值' % (key, len(distinct))
         vals = next(iter(distinct))
         if ch == 'LINEPAY':
-            if str(vals[0]).strip() != row['channelMerchantId']:
+            if clean_id(vals[0]) != row['channelMerchantId']:
                 return None, 'MISMATCH', 'UME 记录 %s 的 channel_id 与账户渠道商户号不一致' % key
             material = {'secret': Secret(vals[1] or '')}
         else:
@@ -193,6 +201,13 @@ def credential_key(api, row, reason):
     if live:
         return live[0]['keyId']
     return api.call('CONFIG', 'POST', '/pay-ops/v2/credentials', {'credentialType': t, 'ownerRef': row['accountNo'], 'reason': reason})['keyId']
+
+
+def already_active(api, no):
+    """账户已启用且已绑定凭据：重跑时跳过，避免用同一密钥轮换。"""
+    d = api.call('CONFIG', 'GET', '/pay-ops/v2/channel-accounts/%s' % no)
+    acct = ((d or {}).get('record') or {}).get('account') or {}
+    return acct.get('status') == 'ACTIVE' and bool(acct.get('credentialKeyId'))
 
 
 def migrate_direct(api, row, material, log):
@@ -291,10 +306,14 @@ def run(mode, rows, ume, api=None, out=None, pause=0.15):
         steps = []
         material, verdict, note = None, 'FAILED', ''
         try:
-            material, verdict, note = ume.lookup(r)
-            if mode == 'apply' and material is not None:
-                flow = migrate_one if os.environ.get('UME_KEYS_FLOW') == 'approval' else migrate_direct
-                verdict, note = flow(api, r, material, steps.append)
+            if mode == 'apply' and os.environ.get('UME_KEYS_FLOW') != 'approval' and os.environ.get('UME_KEYS_ROTATE') != '1' \
+                    and already_active(api, r['accountNo']):
+                verdict, note = 'DONE', '已启用，跳过（轮换须 UME_KEYS_ROTATE=1）'
+            else:
+                material, verdict, note = ume.lookup(r)
+                if mode == 'apply' and material is not None:
+                    flow = migrate_one if os.environ.get('UME_KEYS_FLOW') == 'approval' else migrate_direct
+                    verdict, note = flow(api, r, material, steps.append)
         except StepError as e:
             verdict, note = 'FAILED', str(e)
         except Exception as e:  # noqa: BLE001  —— 只报类型与消息，消息来自库驱动/HTTP，不含密钥

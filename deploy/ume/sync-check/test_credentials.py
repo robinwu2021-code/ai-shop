@@ -156,9 +156,33 @@ class CredentialsTest(unittest.TestCase):
             code = c.run('apply', [row('PM-A', 'NEWEBPAY', 'MS9', 'MS9')], self.ume({'MS9': [(NW_KEY, NW_IV)]}), api, pause=0)
         self.assertEqual(code, 0)
         self.assertEqual([(t, m, p) for t, m, p, _ in calls],
-                         [('CONFIG', 'POST', '/pay-ops/v2/channel-accounts/PM-A/migration-credential')])
-        self.assertIn(NW_KEY, calls[0][3])
+                         [('CONFIG', 'GET', '/pay-ops/v2/channel-accounts/PM-A'),
+                          ('CONFIG', 'POST', '/pay-ops/v2/channel-accounts/PM-A/migration-credential')],
+                         '先查状态（未绑定凭据，不跳过），再一次 POST')
+        self.assertIn(NW_KEY, calls[1][3])
+        self.assertNotIn(NW_KEY, calls[0][3])
         self.assertNotIn(NW_KEY, buf.getvalue())
+
+    def test_line_pay_channel_id_with_literal_tab_still_matches(self):
+        u = self.ume({'CM7': [('1657463861\\t', LP_SECRET)]})
+        self.assertEqual(u.lookup(row('PM-T', 'LINEPAY', '1657463861', 'CM7'))[1], 'FOUND')
+        self.assertEqual(c.clean_id('1657463861\\t'), '1657463861')
+
+    def test_direct_rerun_skips_active_accounts_without_reading_ume(self):
+        calls = []
+
+        def req(m, p, tok, b):
+            calls.append((m, p))
+            return 200, {'code': 0, 'data': {'record': {'account': {'status': 'ACTIVE', 'credentialKeyId': 7}}}}
+        api = c.PayOps(req, {'CONFIG': None, 'REVIEW1': None, 'REVIEW2': None})
+        db = FakeDb({'MS9': [(NW_KEY, NW_IV)]})
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = c.run('apply', [row('PM-A', 'NEWEBPAY', 'MS9', 'MS9')], c.Ume(db, c.DEFAULT_COLUMNS), api, pause=0)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [('GET', '/pay-ops/v2/channel-accounts/PM-A')], '只查状态，不再 POST')
+        self.assertEqual(db.sql, [], '已启用账户不读 UME 密钥')
+        self.assertIn('DONE', buf.getvalue())
 
     def test_rerun_on_an_active_account_does_nothing(self):
         os.environ['UME_KEYS_FLOW'] = 'approval'

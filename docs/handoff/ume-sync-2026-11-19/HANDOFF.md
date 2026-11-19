@@ -33,7 +33,7 @@
 |---|---|---|
 | `ST-UME-CONFIG` 超管 | ai-shop `sys_role_member`（`created_by='ume-batch-temp'`）与 `sys_ops_staff.roles` | 删该成员行、还原 roles |
 | near-pay 数据范围 | `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21` | 约 2026-11-21 自动过期，或提前撤销 |
-| near-pay 免审批密钥迁移开关 | 166 `/data0/app/nearpay-prod/cloud.properties`：`near-pay.credential.migration.enabled=true` **且 `near-pay.credential.migration.anonymous=true`（迁移端点免认证，用户 2026-11-19 要求）** | 把 `enabled` 改回 false（或删两行），`docker restart nearpay-prod`，即同时恢复认证与审批 |
+| near-pay 免审批密钥直录开关 | 166 `/data0/app/nearpay-prod/cloud.properties`：`near-pay.credential.migration.enabled=true`；**`anonymous=false`（已关，见下「安全事件」，不得再开）** | 迁移收尾把 `enabled` 改回 false，`docker restart nearpay-prod`，即恢复审批；运营端直录表单随之报「未开启」 |
 | 两个店主自动化白名单 | 166 `/home/ume/v46-entity-closure-20261115/ops-entity.properties` 末行 `shop.auth.automation.subjects=...`（备份 `.bak-before-automation-b-20261119`） | 删该行，`docker restart ai-shop-ops` |
 
 ## 三、接下来要做的事
@@ -59,3 +59,16 @@
 - `c7cfe79b7`、`fc522ecf4` 商户端 API 验收脚本与结果
 - `ae6e804df`、`3df7f3d92`、`16a1f31bc` 密钥迁移：备份到 near-pay 库、一键脚本、改从 .60 全库备份取数
 - 本文件
+
+
+## 2026-11-19 晚 · 密钥导入结果、全渠道直录上线、安全事件
+
+**密钥导入（用户执行，22:04–22:19 服务器时间）**：1140 个凭据版本写入并启用——藍新 704/704、LINE Pay 436/454 已 `ACTIVE`。剩 **18 个 LINE Pay**：UME `channel_id` 带字面 `\t`（与早先修过渠道号的 18 户一致），脚本比对不等被跳过；脚本已修（`clean_id`），重跑时已启用账户直接 `DONE` 跳过、不读密钥、不轮换。重跑：`bash deploy/ume/sync-check/run_keys_all.sh`（默认带运营令牌）。
+
+**全渠道录入 / 更新密钥（用户要求，免审批、开放给所有渠道账户）**：near-pay `786470b5d`——有商户凭据类型的渠道（NEWEBPAY、LINEPAY、JKOPAY、PAYBY、MOCKPAY）的 `MERCHANT_OWN` 账户：待核验时一次到可收款（产品取目录里已启用的），已启用时轮换。运营端「渠道凭证」页签新增录入 / 更新表单。待开通 7 渠道无适配器，不能录。
+- 后端覆盖部署 166：`5206f2c68749 → 18f2a134f440`（备份 `pay-svc.jar.before-20261119-allchan-786470b5d`）；冒烟：无令牌 401；待开通渠道 400；已启用账户格式错的密钥 400 且版本未变。
+- 运营前端 `/oms`：从线上同一提交 `07a5af196` 只叠本次前端改动构建（避免带入未部署后端所需的其它前端改动），发布 `nearpay-oms-releases/channel-key-20261119-786470b5d`，`/data/www/oms-root/oms` 已切换；回滚：把该链接指回 `previous-channel-key-20261119-786470b5d.txt` 记的 `entry-edit-20261119-07a5af196`。
+
+**安全事件**：迁移端点免认证上线后发现 166 nginx 把 `/oms-api/pay-ops/v2/` 转发到公网，端点对公网无认证可写密钥。已立即 `anonymous=false` 并重启，公网路径无令牌复验 401；日志确认无外部调用，期间写入均为用户导入。今后 `/pay-ops/**` 一律会话认证（near-pay TDD §8）。
+
+**覆盖包核查更正**：此前三次覆盖的 javap 比对脚本有误（路径带 `./`，比对为空），已用正确类名重做：首包无成员缺失；`5206f2c68749` 包里 `GuardFilter` 换成了 `18e6bee56` 源码版——私有 `onboardingMultipart` 改名 `trustedMultipart`，多放行渠道账单与认领文件两类 multipart（线上原 pay-guard 略早于 `18e6bee56`）；本次包只改直录服务与请求体的构造器和私有成员。
