@@ -2,10 +2,10 @@
 与 near-pay 库内的预期（ACCOUNTS.tsv）逐行比对：渠道、渠道商户号全号、状态、待开通原因、沙箱。
 
 用法：
-  AUTOMATION_KEY=~/work/env/ume/automation-ume-ed25519.pem OPS_BASE=http://127.0.0.1:28081 \\
+  AUTOMATION_KEY=~/work/env/ume/automation-ume-ed25519.pem OPS_BASE=http://127.0.0.1:28081 BIZ_BASE=http://127.0.0.1:28082 \\
     python3 -I verify_merchant_api.py EXPECTED.tsv ENTITY:USER_NO:STORE_NO [...]
 EXPECTED.tsv：entity<TAB>channel<TAB>mid<TAB>sub<TAB>accountStatus<TAB>verification<TAB>channelStatus<TAB>stores（库内复算）
-店主用户号须在服务端 SHOP_AUTOMATION_SUBJECTS 白名单里（形如 B:<userNo>）。令牌只在进程内，不打印。
+登录走 OPS_BASE 实例（店主用户号须在其自动化白名单里，形如 B:<userNo>），/biz 调用走 BIZ_BASE 实例。令牌只在进程内，不打印。
 """
 import collections, os, sys
 
@@ -58,7 +58,9 @@ def main(argv):
             bad += 1
             continue
         os.environ['AUTOMATION_STORE_NO'] = store
+        login_base, t.BASE_URL = t.BASE_URL, os.environ.get('BIZ_BASE', 'http://127.0.0.1:28082')  # /biz 只在商户端实例上
         st, r = t.request('GET', '/biz/merchant/payment?entityNo=' + entity, tok)
+        t.BASE_URL = login_base
         rows = (r or {}).get('data') or []
         problems = check(entity, rows, exp.get(entity, [])) if st == 200 and (r or {}).get('code') == 0 \
             else ['HTTP %s code=%s %s' % (st, (r or {}).get('code'), (r or {}).get('msg'))]

@@ -31,7 +31,7 @@
 
 - 店员账号（1667 个）：按用户决定暂不同步。
 - 渠道密钥：用户执行 `credentials.py` 导入（见下节）；其余渠道（橘子、ezPay 等）平台未接入，保持待开通。收款码与 H5 收款入口在可收款后再开。
-- 临时授权仍保留：`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）、near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
+- 临时授权仍保留：`ai-shop-ops` 附加配置里两个店主的自动化白名单（见「商户端 API 验收」）；`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）、near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
 - ai-shop 推送：`PayGoesThroughGatewayTest` 已修（`b042d7ca5`）—— 根因是本分支 `c3b53c337` 把旧下单入口改走 `PaymentDispatchService`，通道未接入 / 通道拒绝时会关单；主线（`OrdinaryPaymentInitiationService`）一直是保留原意图待查回。现只对旧入口恢复主线行为，测试 4/4。闸门另补：迁移端点登记为脚本专用（`known-orphan-endpoints.txt`）与权限归属 `merchant:merchant:pay-apply`。
 - 全量后端闸门剩 3 红 `ReviewStoreAttributionFlowTest.*`（商户登录取不到验证码），**干净 origin/main 上同样 3 红**，不是本分支引入；按闸门规矩不代改。用户批准计划后已 `--no-verify` 推送到 main（`6e9392abd..930dda43a`）。
 
@@ -73,3 +73,13 @@ roger 现只剩 `PM7DE952F9858C4FCA`（`TDL001`）一张支付寶卡片。
 
 ai-shop-bapp 分支 `feat/entity-channel-accounts-20261119`（工作树 `~/work/ai-shop-bapp-entchan`，基于 origin/main），按 [App 侧需求](../app-entity-channels-2026-11-19.md)：
 新状态「待開通」及两种原因说明、渠道商戶號全号、沙箱标记、新渠道用后端目录名；同一渠道多个账户（富邦微信两台终端）不再被合并、卡片键不重复。已推送远端（codeup）；nearboss 166 调试包已构建（`artifacts/android/nearboss-166-debug.apk`，sha256 前缀 `de867ac06bdaa6ea`）。模拟器 pos_phone 上已有不同签名的同包名应用，覆盖安装失败，为免抹掉他人数据未卸载；且验收 UME 渠道需店主登录，模拟器验收待用户或店主账号就绪后做。
+
+## 商户端 API 验收（2026-11-19，`verify_merchant_api.py`）
+
+以店主身份（自动化票据 B 域）调 `GET /biz/merchant/payment?entityNo=`，逐行比对 near-pay 预期：
+- oscar `MUME88600253990002308`：**OK 8 行** —— LINE Pay `1626862643`、藍新 `TRL00001898` 可收款（各绑 3 店），两个沙箱可收款并标 `sandbox=true`，橘子 `350421`、ezPay `PG100000254010`、富邦微信 ×2 待開通（CHANNEL_NOT_LIVE）。
+- roger `MUME02380159443150569472`：**OK 7 行** —— LINE Pay `1629714284`、藍新 `MS354053380` 待開通（ACCOUNT_UNVERIFIED，待补密钥），橘子、支付寶（去重后 1 条）、ezPay、Pi、Atome 待開通（CHANNEL_NOT_LIVE）。
+
+为此在 166 运营实例（`ai-shop-ops`，18081）的附加配置 `/home/ume/v46-entity-closure-20261115/ops-entity.properties` 追加一行（用户同意，备份 `.bak-before-automation-b-20261119`），重启 `ai-shop-ops`：
+`shop.auth.automation.subjects=${SHOP_AUTOMATION_SUBJECTS},B:U261113VG2HFDJMK0,B:UUMEU380162366651760640`（保留原白名单，只加两个店主）。
+商户端实例 `ai-shop-api` 未改动。**收尾时与其他临时授权一起删掉这一行并重启。**
