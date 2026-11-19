@@ -96,7 +96,6 @@ function IamInner() {
   // 角色名走框架层 i18n（`role.*` 中英各一份），不再用 lib/permissions 里那份中文常量 ——
   // 那份是给非 React 处用的，页面上直接渲染它会在英文界面漏出中文。
   const roleLabel = (r: Role) => t(`role.${r}`);
-  const roleOptions = ROLES.map((r) => ({ value: r, label: roleLabel(r) }));
   const tabs = useNavTabs("/iam", TAB_KEYS);
   const enabledOptions = ENABLED_OPTIONS(c);
   const criticalOptions = CRITICAL_OPTIONS(c);
@@ -160,10 +159,25 @@ function IamInner() {
   // 页面看着正常（没有报错），只是选项集合是空的。
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.listRoles(), enabled: tab === "roles" || tab === "staffs" });
   const lookupRoleDef = (code: string) => roles.data?.find((r) => toBackendRole(r.roleCode) === toBackendRole(code));
-  const displayRole = (code: string) => {
-    const builtin = ROLES.find((role) => toBackendRole(role) === toBackendRole(code));
-    return builtin ? roleLabel(builtin) : lookupRoleDef(code)?.name ?? code;
+  // 角色的显示名：与别的角色重名时带上编码 —— 库里有两个都叫「Nearpay integration」的自定义角色，
+  // 只显示名字的话，编辑账号时分不出给的是哪一个
+  const nameCount = new Map<string, number>();
+  (roles.data ?? []).forEach((r) => nameCount.set(r.name, (nameCount.get(r.name) ?? 0) + 1));
+  const roleDefLabel = (r: RoleDef) => {
+    const builtin = ROLES.find((role) => toBackendRole(role) === toBackendRole(r.roleCode));
+    const name = builtin ? roleLabel(builtin) : r.name;
+    return (nameCount.get(r.name) ?? 0) > 1 ? `${name}（${r.roleCode}）` : name;
   };
+  const displayRole = (code: string) => {
+    const def = lookupRoleDef(code);
+    if (def) return roleDefLabel(def);
+    const builtin = ROLES.find((role) => toBackendRole(role) === toBackendRole(code));
+    return builtin ? roleLabel(builtin) : code;
+  };
+  // 角色筛选用库里的全部角色（含自定义的）；角色列表还没回来时先用预置角色顶上
+  const roleOptions = roles.data
+    ? roles.data.map((r) => ({ value: r.roleCode, label: roleDefLabel(r) }))
+    : ROLES.map((r) => ({ value: r, label: roleLabel(r) }));
   // 功能点全集。**不按人切片** —— 配角色时要看到全部，包括自己没有的
   const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" || tab === "menu" });
   const rolePts = useQuery({
@@ -852,7 +866,7 @@ function IamInner() {
                         ? rolesForm.filter((x) => x !== r.roleCode)
                         : [...rolesForm, r.roleCode])}
                     >
-                      {r.name}
+                      {roleDefLabel(r)}
                     </Button>
                   );
                 })}
@@ -930,7 +944,7 @@ function IamInner() {
                         ...newStaff,
                         roles: on ? newStaff.roles.filter((x) => x !== r.roleCode) : [...newStaff.roles, r.roleCode],
                       })}>
-                      {r.name}
+                      {roleDefLabel(r)}
                     </Button>
                   );
                 })}
