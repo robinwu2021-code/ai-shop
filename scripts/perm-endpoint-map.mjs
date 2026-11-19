@@ -110,6 +110,7 @@ export const RULES = [
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/nudge$/, "merchant:merchant:nudge"],
   // 为主体申请支付服务（TDD-运营端申请支付服务，V633）
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/pay-service\/apply$/, "merchant:merchant:pay-apply"],
+  ["POST", /^\/ops\/merchant\/\{entityNo\}\/pay-service\/migrate$/, "merchant:merchant:pay-apply"],
   ["GET", /^\/ops\/merchant\/\{entityNo\}\/pay-service$/, "merchant:merchant:pay-apply"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/stock-doubt$/, "inventory:stock:read"],
   ["GET", /^\/ops\/merchant\/chain$/, "merchant:merchant:read"],
@@ -182,6 +183,7 @@ export const RULES = [
   // 两个粗码** —— 机械展开时会让只有其中一个粗码的角色白拿另一半，
   // 那正是这次改造要防的静默放宽。
   ["GET", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:read"],
+  ["POST", /^\/ops\/merchants\/[^/]+\/qualification-creations$/, "merchant:category:grant"],
   // 没有 GET /ops/merchants/{no}/auth-codes（只有 PUT）—— 写过一条，被死规则守卫抓出来了。
   // `GET /ops/merchants/auth-codes` 是另一条路径（少一段），落在下面的档案只读上
   ["*", /^\/ops\/(merchants\/[^/]+\/)?qualifications/, "merchant:category:grant"],
@@ -300,6 +302,7 @@ export const RULES = [
   // store:page:audit 不能借 —— 那是店招审核动作的钥匙，塞进只读档案等于「能查店 = 能审店」。
   // 全量同步门店到 near-pay（Perms.MERCHANT_STORE_NEARPAY_SYNC）
   ["POST", /^\/ops\/stores\/nearpay-sync$/, "merchant:store:nearpay-sync"],
+  ["PUT", /^\/ops\/stores\/[^/]+\/basics$/, "store:page:audit"],
   // 必须排在 /ops/stores/audits 与 business-mode 之后：规则第一条命中生效
   ["GET", /^\/ops\/stores(\/|$)/, "merchant:merchant:read"],
 

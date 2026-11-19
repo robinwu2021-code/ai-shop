@@ -192,7 +192,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:Industry", dom: "payment", shape: "CLASS", verdict: "TO_DICT",
     note: "sys_industry 是字典表，配 4 个 ops 接口。待确认行业会不会新增" },
   { decl: "shared:PaymentApplyStatus", dom: "payment", shape: "STATUS", verdict: "OK",
-    words: ["NONE", "APPLYING"] },
+    words: ["NONE", "APPLYING", "PENDING_ACTIVATION"],
+    note: "PENDING_ACTIVATION 申报为领域特有词（TDD-门店代码与商户渠道展示 C2）：支付侧渠道账户已登记、"
+      + "但渠道尚未对接或账户尚未补密钥核验 —— 「待开通」。不能用 L1 的 PENDING：同一字段里 APPLYING 已表示"
+      + "「进件已提交、等通道」，PENDING 读起来就是它的同义词，而待开通的球不在通道、在平台或商户补资料" },
   { decl: "shared:SkinId", dom: "ui", shape: "CLASS", verdict: "OK",
     note: "端上皮肤主题 id，纯展示层。后端零出现，也不该有 —— 换肤是端上的事" },
   { decl: "shared:ModeId", dom: "ui", shape: "CLASS", verdict: "OK",
@@ -576,6 +579,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "支付单状态（pay_order.status，支付运营端 /pay-ops/v1，TDD-支付服务-I5接入层 S9）。与后端 PayOrderStatus 逐字一致。" },
   { decl: "b-app:PayStatementKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["PAYMENT", "REFUND"],
     note: "商家端收款日流水的行类型（/biz/payment/statement，TDD-支付服务-I5接入层 S8）。与后端 PayStatementService.Item.kind 逐字一致。" },
+  { decl: "b-app:PayStoreMethodExclusion", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STORE", "MERCHANT", "CATALOG", "STORE_STATE", "ENTRY"],
+    note: "门店付款方式不可开 / 未开的层级（/biz/payment/store-method，TDD-门店付款方式-App设置）。与 near-pay StoreCollectionMethodService.Item.excludedBy 逐字一致；null 表示开启。" },
+  { decl: "b-app:PayStoreMethodMode", dom: "finance", shape: "CLASS", verdict: "OK", words: ["INHERIT", "OVERRIDE"],
+    note: "门店收款策略模式（pay_collection_policy.mode）：跟随商户 / 门店自定。" },
   { decl: "b-app:PayQrKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STORE", "TABLE"],
     note: "静态收款码的种类：门店码 / 桌台码（pay_qr_code.kind）。" },
   { decl: "b-app:PayQrStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["DISABLED"],

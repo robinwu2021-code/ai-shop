@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="150" viewBox="0 0 1000 150" role="img" aria-labelledby="title desc">
+  <title id="title">Oscar 同步与渠道验收执行顺序</title>
+  <desc id="desc">脚本依次调用独立运营 API：来源查询、账号主体门店核对、支付商户归属、渠道账户与产品、门店绑定、创建支付测试和回读验收。冲突时停止该项。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#64748b"/></marker></defs>
+  <rect width="1000" height="150" rx="12" fill="#f8fafc"/>
+  <g fill="#ffffff" stroke="#94a3b8">
+    <rect x="15" y="35" width="120" height="58" rx="8"/><rect x="155" y="35" width="130" height="58" rx="8"/>
+    <rect x="305" y="35" width="130" height="58" rx="8"/><rect x="455" y="35" width="120" height="58" rx="8"/>
+    <rect x="595" y="35" width="110" height="58" rx="8"/><rect x="725" y="35" width="115" height="58" rx="8"/><rect x="860" y="35" width="125" height="58" rx="8"/>
+  </g>
+  <g stroke="#64748b" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M135 64 H152"/><path d="M285 64 H302"/><path d="M435 64 H452"/><path d="M575 64 H592"/><path d="M705 64 H722"/><path d="M840 64 H857"/>
+  </g>
+  <g fill="#0f172a" font-family="sans-serif" font-size="14" text-anchor="middle">
+    <text x="75" y="60">来源资料<tspan x="75" dy="20">独立查询</tspan></text>
+    <text x="220" y="60">账号／主体／店<tspan x="220" dy="20">查询、缺失新建</tspan></text>
+    <text x="370" y="60">支付商户<tspan x="370" dy="20">核对并修复归属</tspan></text>
+    <text x="515" y="60">渠道及产品<tspan x="515" dy="20">承接或蓝新进件</tspan></text>
+    <text x="650" y="60">门店绑定<tspan x="650" dy="20">查询、缺失新建</tspan></text>
+    <text x="782" y="60">支付测试<tspan x="782" dy="20">独立创建</tspan></text>
+    <text x="922" y="60">回读验收<tspan x="922" dy="20">渠道受理及入口</tspan></text>
+    <text x="500" y="125" fill="#475569">查重、分支、顺序与重跑由脚本负责；已有正确记录复用，重复或归属冲突时停止该项。</text>
+  </g>
+</svg>

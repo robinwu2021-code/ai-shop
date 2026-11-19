@@ -79,6 +79,7 @@ public class OpenAiCertVisionGateway implements CertVisionPort {
                 CORPORATE_REGISTRATION 為法人股東的公司登記：corporateTaxNo=統一編號；corporateName=公司名稱；
                 corporateAddress=完整登記地址；corporateCapital=實收資本額，規則同 capitalAmount；representativeName=代表人。
                 ID_CARD_FRONT/BENEFICIARY_ID_CARD_FRONT 為台灣身分證正面，name=姓名，nationality 為「中華民國」；
+                ID_CARD_BACK 為台灣身分證背面，只取戶籍地址：registeredCity=縣市；registeredArea=鄉鎮市區；registeredAddress=去掉縣市與鄉鎮市區後的其餘地址；配偶、父母、役別等不回傳。
                 ARC_FRONT 為居留證正面：representativeName=英文姓名，identityNo=統一證號；ARC_BACK：arcBackNo=背面序號；
                 PASSPORT：representativeName=護照英文姓名，identityNo=護照號碼。
                 文件與選定類型不符或不是相關證明時 documentType=UNKNOWN、所有欄位 null。

@@ -1,5 +1,7 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.client.PayBizInternalApi;
+import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
@@ -34,6 +36,24 @@ public interface BizPaymentAppService {
 
     /** 本店带某个业务单号的付款链接与储值扣款原始行（TDD-业务单收款汇总） */
     ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo);
+
+    /** 门店付款方式（TDD-门店付款方式-App设置）：门店能用的方式及开关、不可开原因 */
+    StoreMethods storeMethods(String storeNo);
+
+    /** 保存开启集合（全开 = 跟随商户）；expectedVersion 取读到的 version */
+    StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
+                                                                             List<String> enabledProductCodes);
+
+    PayBizInternalApi.MethodPreferences methodPreferences(String storeNo);
+
+    /**
+     * 主体在支付侧的渠道账户（TDD-门店代码与商户渠道展示 C1）。merchantNo 为 null 表示支付侧没有已核验的支付商户，
+     * 调用方回退到本地进件表（C4）。调用方须已校验主体归属与 {@code biz:finance}。
+     */
+    PayBizInternalApi.EntityChannelAccounts entityChannelAccounts(String entityNo);
+
+    PayBizInternalApi.MethodPreferences saveMethodPreferences(String storeNo, String requestNo, long expectedVersion,
+            String eligibilityRevision, String mode, List<PayBizInternalApi.MethodChoice> choices);
 
     List<QrView> qrCodes(String storeNo);
 

@@ -1,0 +1,84 @@
+{
+  "executionId": "oscar-lyd-20261117",
+  "environment": "UME166",
+  "operator": "neara@neargo.ai（运营 API；制单与审核同一人，审计已标记）",
+  "source": {
+    "system": "UME",
+    "merchantId": "88600253990002308",
+    "name": "李昱達",
+    "individual": true,
+    "auditStatus": 2,
+    "idNumbers": "导入数据无任何证号；按用户决定不导入身份证"
+  },
+  "decisions": {
+    "subject": "NATURAL_PERSON",
+    "industry": "RETAIL（用户选定；自然人受行业白名单限制，CATERING 不放行）",
+    "registrationNo": "原系统商户号 88600253990002308（用户决定不导入身份证）",
+    "channels": "蓝新、LINE Pay 经渠道账户转移（N7）迁入；橘子支付、富邦微信、ezPay 不支持"
+  },
+  "steps": [
+    {
+      "api": "POST /ops/merchants/apply-on-behalf",
+      "result": "MA261116001QQQ384T，owner U261113VG2HFDJMK0，entityNo M261113Y3QW5XKEFW"
+    },
+    {
+      "api": "POST /ops/merchant/apply/MA261116001QQQ384T/accept + /audit(approved, serviceScope=PLATFORM)",
+      "result": "APPROVED；M261113Y3QW5XKEFW 由「創勢科技股份有限公司」改为「李昱達」，ACTIVE、NATURAL_PERSON、RETAIL、verified=1；门店 ST2611132NS49C2EPQ ume 早餐店保留为默认营业店"
+    },
+    {
+      "api": "POST /ops/stores/nearpay-sync",
+      "result": "queued 1；投影 entity=M261113Y3QW5XKEFW"
+    },
+    {
+      "api": "POST /ops/merchant/M261113Y3QW5XKEFW/pay-service/apply",
+      "result": "支付商户 PM2026111707510001（ACTIVE）；来源关联 SL96B723279D5F4F42 PENDING；资料修订 R1 SUBMITTED；门店关联 ACTIVE"
+    },
+    {
+      "api": "POST /pay-ops/v2/channel-account-transfers + approve + execute（neara 单人审批，依 single-operator）",
+      "result": "CT14CDF69BE48C4605 蓝新 TRL00001898、CTBB0D57C478D14E4C LINE Pay 1626862643 → PM2026111707510001；测试门店 900000041 旧绑定 INACTIVE；订单快照不变（55 笔仍归 UME-M）"
+    },
+    {
+      "api": "POST /pay-ops/v2/stores/ST2611132NS49C2EPQ/bindings ×2",
+      "result": "SB3AE65267D7994580（NEWEBPAY）、SBA7AC537FFDA74B32（LINEPAY）ACTIVE；门店 payMerchantNos 两账户，无同步问题"
+    },
+    {
+      "api": "支付审批 APE89B7E1A17C54853 + 来源核验",
+      "result": "PM2026111707510001 资料 R1 APPROVED、来源关联 SL96B723279D5F4F42 VERIFIED"
+    },
+    {
+      "api": "POST /pay-ops/v2/collection-entries + enable",
+      "result": "CE3A941F09E7E94974（H5，LINEPAY_ONLINE、NEWEBPAY_APPLEPAY_WEB）ACTIVE、就绪"
+    },
+    {
+      "api": "POST /pay-ops/v2/stores/ST2611132NS49C2EPQ/qr-codes（near-pay 5d1b962d 新增）",
+      "result": "静态码 nAjNe7H2GpWc1mEQu1hESw，https://twpay.umeshop.ai/q/nAjNe7H2GpWc1mEQu1hESw"
+    }
+  ],
+  "readBack": {
+    "store": "ST2611132NS49C2EPQ → merchant PM2026111707510001，syncIssue 无",
+    "otherEntitiesOfOwner": "M261115WNCEZQZWHF、M261116S7XAVV9MXN 仍为 PENDING_LICENSE，未动"
+  },
+  "pending": [
+    "蓝新 Apple Pay 人工验收或开通信用卡产品",
+    "不支持渠道：橘子支付、富邦微信、ezPay"
+  ],
+  "paymentTest": {
+    "date": "2026-11-17",
+    "amount": "TWD 1.00（不付款）",
+    "checkoutView": "收款方 李昱達 / ume 早餐店，支付方式 APPLE_PAY、LINE_PAY",
+    "linepay": {
+      "payOrderNo": "PYO261117091527321",
+      "outTradeNo": "PRace2da3f09104ba0bdd63fa30303b56e",
+      "account": "PM-UME-LINEPAY-1626862643",
+      "merchant": "PM2026111707510001",
+      "channelCall": "PRODUCTION /v3/payments/request HTTP 200 RESPONDED（883ms），LINE Pay 交易号 19 位（末 6 位 911810），PAYMENT_CHECK OK",
+      "order": "AWAITING_PAYMENT，到期自然关闭",
+      "entry": "收银台返回跳转 https://twpay.umeshop.ai/linepay/go/{outTradeNo}",
+      "result": "通过（渠道受理并返回交易号与支付入口）"
+    },
+    "newebpay": "未测：账户仅开 NEWEBPAY_APPLEPAY_WEB，需 iPhone Safari 人工扫码；信用卡产品未开通",
+    "notVerified": [
+      "未直接取到 LINE 原始 paymentUrl（报文脱敏）；/linepay/go 直接 GET 为 404、redirect 接口需 H5 上下文"
+    ]
+  }
+}

@@ -39,5 +39,22 @@ public record PaymentApplymentVO(String payChannel, String channelName, String a
                                  String subMchidMasked, String settleAccountType,
                                  String settleAccountMasked, String rejectReason,
                                  java.util.List<String> missing, boolean submitted,
-                                 Long appliedAt, Long activatedAt, String storeNo) {
+                                 Long appliedAt, Long activatedAt, String storeNo,
+                                 String channelMerchantId, Boolean sandbox, String channelStatus, String pendingReason,
+                                 java.util.List<EnabledStore> enabledStores) {
+
+    /**
+     * 本地进件表的行没有这几项：渠道商户号、沙箱、渠道状态、待开通原因、已启用门店只在主体已有支付侧支付商户时给
+     * （TDD-门店代码与商户渠道展示 C1）。
+     */
+    public PaymentApplymentVO(String payChannel, String channelName, String applyStatus, boolean canReceiveMoney,
+                              String payMerchantNo, String subMchidMasked, String settleAccountType, String settleAccountMasked,
+                              String rejectReason, java.util.List<String> missing, boolean submitted, Long appliedAt,
+                              Long activatedAt, String storeNo) {
+        this(payChannel, channelName, applyStatus, canReceiveMoney, payMerchantNo, subMchidMasked, settleAccountType,
+                settleAccountMasked, rejectReason, missing, submitted, appliedAt, activatedAt, storeNo, null, null, null, null, null);
+    }
+
+    /** 与 App 主体页读取的 {@code enabledStores[].storeNo} 同形 */
+    public record EnabledStore(String storeNo) {}
 }

@@ -54,4 +54,18 @@ public final class PayServiceApplicationServiceImpl implements PayServiceApplica
                     failure.statusCode()==409?ErrorCode.CONFLICT:ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         }
     }
+
+    @Override public PaySourceLinkApi.Result migrate(String entityNo,String actorNo) {
+        if(TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("pay service migration requires no ambient transaction");
+        var api=links.getIfAvailable();
+        if(api==null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        var entity=stores.entity(entityNo).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
+        var request=PayServiceApplyRequests.migration(entity,stores.storesOfEntity(entityNo),actorNo,props);
+        try { return api.apply(request); }
+        catch(ServiceCallException failure) {
+            throw BizException.of(failure.statusCode()==400?ErrorCode.BAD_REQUEST:
+                    failure.statusCode()==409?ErrorCode.CONFLICT:ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        }
+    }
 }

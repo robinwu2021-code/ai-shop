@@ -68,7 +68,7 @@ class QuickStartFlowTest {
     @DisplayName("★★ 没有证照也能把店开起来：主体 + 默认门店 + B 端身份，一次到位")
     void quickStartOpensARealShop() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160001");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160001");
 
         String body = mvc().perform(post("/biz/merchant/quick-start")
                         .header("Authorization", "Bearer " + token)
@@ -98,7 +98,7 @@ class QuickStartFlowTest {
     @DisplayName("★★★ 没证照的店对买家完全不可见 —— 撤掉可见性闸门这条必红")
     void shellIsInvisibleToBuyers() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160002");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160002");
         mvc().perform(post("/biz/merchant/quick-start")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +139,7 @@ class QuickStartFlowTest {
     @DisplayName("★★ 连点两次只会有一家店 —— 不能建出两个永远补不齐的空壳")
     void quickStartIsIdempotent() throws Exception {
         // A7：quickStart 打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160003");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160003");
         String first = quickStart(token, "手抖点了两次的店");
         String second = quickStart(token, "手抖点了两次的店");
 
@@ -147,7 +147,7 @@ class QuickStartFlowTest {
         assertThat(entityMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
                 .eq(ai.neargo.shop.merchant.entity.MchEntity::getOwnerUserNo,
-                        userNoOfPhone("12600160003"))))
+                        userNoOfPhone("16600160003"))))
                 .as("库里只有一个主体").isEqualTo(1L);
     }
 
@@ -155,7 +155,7 @@ class QuickStartFlowTest {
     @DisplayName("★ 店名必填 —— 没名字的店在列表里就是一行空白，谁也认不出是哪家")
     void storeNameIsRequired() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160004");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160004");
         mvc().perform(post("/biz/merchant/quick-start")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -171,7 +171,7 @@ class QuickStartFlowTest {
          * 很容易顺手把正常商家也挡掉，而那种故障没有任何报错 ——
          * 只是全平台的货突然对谁都不可见了。
          */
-        String token = merchantViaAudit("12600160005", "正常营业的店");
+        String token = merchantViaAudit("16600160005", "正常营业的店");
         String merchantNo = merchantNoOf(token);
 
         assertThat(merchantQueryPort.reachableCommunities(merchantNo))
@@ -182,7 +182,7 @@ class QuickStartFlowTest {
     @DisplayName("★★★ 补证照：店与货原样留着，从此对买家可见 —— 不是另开一家新店")
     void addingLicenseUpgradesTheSameShop() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160006");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160006");
         String merchantNo = quickStart(token, "先开着的店");
 
         /*
@@ -251,7 +251,7 @@ class QuickStartFlowTest {
         // ★ 手机号不能与别的用例重复：同一个人的 quick-start 是幂等的（返回既有占位主体），
         // 撞号会让另一条用例拿到「已经有壳了」而不是它要验的那个结果
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160012");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160012");
         String merchantNo = quickStart(token, "先上货后补证的店");
 
         /*
@@ -297,11 +297,11 @@ class QuickStartFlowTest {
     @DisplayName("★★ 改经营范围：货跟着走 —— 旧小区搜不到了，新小区搜得到")
     void scopeChangeMovesGoodsOutOfOldCommunity() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160013");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160013");
         String merchantNo = quickStart(token, "会改范围的店");
         approveLicense(token);          // 先补证照，让它进 CM001
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160013"); // 主体状态变了，重新登录拿作用域
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160013"); // 主体状态变了，重新登录拿作用域
 
         String goodsNo = onSaleGoods(token, "改范围前就在卖的抽纸");
         assertThat(buyerSees("CM001", goodsNo)).as("先确认它现在在 CM001 里").isTrue();
@@ -352,11 +352,11 @@ class QuickStartFlowTest {
     @DisplayName("★ 买家看到的货记得住是哪家店提供的 —— 单店商家就是默认店")
     void listedGoodsCarryTheProvidingStore() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160014");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160014");
         String merchantNo = quickStart(token, "记门店号的店");
         approveLicense(token);
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160014");
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160014");
 
         String goodsNo = onSaleGoods(token, "带门店号入池的抽纸");
         assertThat(buyerSees("CM001", goodsNo)).isTrue();
@@ -410,8 +410,8 @@ class QuickStartFlowTest {
     @DisplayName("★★ 证照数量上限：到顶之后建不出第 6 个主体")
     void entityQuotaIsEnforced() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160007");
-        String userNo = userNoOfPhone("12600160007");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "16600160007");
+        String userNo = userNoOfPhone("16600160007");
 
         /*
          * 直接造 5 个 owner 成员行 + 主体 —— 走真实入驻链路要五轮「申请 → 审核」，

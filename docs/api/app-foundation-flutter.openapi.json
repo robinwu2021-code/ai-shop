@@ -575,6 +575,18 @@
         "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
       }
     },
+    "/biz/pay/v2/merchant-channels": {
+      "get": {
+        "operationId": "get__biz_pay_v2_merchant_channels",
+        "responses": {
+          "200": {
+            "description": "near-pay merchant channel view (rows: opened accounts with products, applications; channels: options with onlineApplication). Same data as the ops console (TDD-支付渠道三端统一数据源)."
+          }
+        },
+        "x-source-commit": "341a03065",
+        "x-source-file": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayMerchantChannelController.java"
+      }
+    },
     "/biz/pay/v2/memberships": {
       "get": {
         "operationId": "get__biz_pay_v2_memberships_4f8a86",

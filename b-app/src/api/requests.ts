@@ -1,4 +1,5 @@
 import type {CurrencyCode} from "@shared/types";
+import type { PayStoreMethodMode } from "./pay";
 // B 端请求类型（wire contract）—— **入参的唯一真源**。
 //
 // 为什么需要这一层（与 C 端 `api/requests.ts` 同一个理由）：
@@ -1254,3 +1255,33 @@ export interface OfflineRecordVoidReq {
 
 // 平台商城的请求体住在 ./mall.ts（与 commerce-mall-openapi.json 逐字一致）；转出给 OpenAPI 生成器
 export type { MallQuoteRequest, MallPlaceRequest, MallOfflineClaimRequest } from "./mall";
+
+/** 保存门店付款方式（TDD-门店付款方式-App设置） */
+export interface PayStoreMethodReq {
+  /** 本次保存的幂等号，重试沿用 */
+  requestNo: string;
+  /** 读取时拿到的 version */
+  expectedVersion: number;
+  /** 要开启的产品码（至少一个，只能在可开范围内） */
+  enabledProductCodes: string[];
+}
+
+export interface PayMethodChoice {
+  /** 统一支付方式码 */
+  paymentMethodCode: string;
+  /** 此选择是否作用于测试渠道 */
+  test: boolean;
+}
+
+export interface PayStoreMethodPreferencesReq {
+  /** 保存请求的幂等编号 */
+  requestNo: string;
+  /** 最近读取的门店设置版本 */
+  expectedVersion: number;
+  /** 最近读取的商户及门店渠道资格版本 */
+  eligibilityRevision: string;
+  /** 继承商户配置或在门店自定义 */
+  mode: PayStoreMethodMode;
+  /** 自定义模式下启用的方式，继承模式传空 */
+  enabledMethods: PayMethodChoice[];
+}

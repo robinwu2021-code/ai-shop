@@ -3,11 +3,11 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1155** 个入口：支付 243、零售 545、餐饮 261、服务业 32、库存 45、平台与通用 29。
+共 **1160** 个入口：支付 248、零售 545、餐饮 261、服务业 32、库存 45、平台与通用 29。
 
-## 支付（243）
+## 支付（248）
 
-网关判权：能提前判 147、只要求登录 96。构建：默认构建 243。生产：已入网关 223、未部署 20。
+网关判权：能提前判 151、只要求登录 97。构建：默认构建 248。生产：已入网关 223、未部署 25。
 
 ### checkout（3）
 
@@ -142,7 +142,7 @@
 | POST | `/biz/merchant/payment/store/{storeNo}` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizMerchantController |
 | POST | `/biz/merchant/payment/{payChannel}/refresh` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizMerchantController |
 
-### pay（40）
+### pay（41）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -167,6 +167,7 @@
 | GET | `/biz/pay/v2/channel-account-claims/{claimNo}/files/{fileNo}` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizChannelAccountClaimController |
 | POST | `/biz/pay/v2/channel-account-claims/{claimNo}/submit` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizChannelAccountClaimController |
 | GET | `/biz/pay/v2/memberships` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayOnboardingController |
+| GET | `/biz/pay/v2/merchant-channels` | 登录即可 | 只要求登录 | 默认构建 | 未部署 | BizPayMerchantChannelController |
 | POST | `/biz/pay/v2/merchant-creations` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayMerchantController |
 | GET | `/biz/pay/v2/merchant-creations/by-request/{requestNo}` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayMerchantController |
 | GET | `/biz/pay/v2/merchant-creations/context` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayMerchantController |
@@ -187,7 +188,7 @@
 | POST | `/biz/pay/v2/onboardings/{no}/newebpay-materials` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayOnboardingController |
 | GET | `/biz/pay/v2/onboardings/{no}/readiness` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayOnboardingController |
 
-### payment（25）
+### payment（29）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -216,6 +217,10 @@
 | GET | `/biz/payment/refund` | `@perm.canAnyBiz('mch:pay:refund','mch:pay:statement')` | 能提前判 | 默认构建 | 已入网关 | BizPaymentController |
 | POST | `/biz/payment/refund` | `@perm.canBiz('mch:pay:refund')` | 能提前判 | 默认构建 | 已入网关 | BizPaymentController |
 | GET | `/biz/payment/statement` | `@perm.canBiz('mch:pay:statement')` | 能提前判 | 默认构建 | 已入网关 | BizPaymentController |
+| GET | `/biz/payment/store-method` | `@perm.canBiz('mch:pay:store-method')` | 能提前判 | 默认构建 | 未部署 | BizPaymentController |
+| PUT | `/biz/payment/store-method` | `@perm.canBiz('mch:pay:store-method')` | 能提前判 | 默认构建 | 未部署 | BizPaymentController |
+| GET | `/biz/payment/store-method-preference` | `@perm.canBiz('mch:pay:store-method')` | 能提前判 | 默认构建 | 未部署 | BizPaymentController |
+| PUT | `/biz/payment/store-method-preference` | `@perm.canBiz('mch:pay:store-method')` | 能提前判 | 默认构建 | 未部署 | BizPaymentController |
 
 ### payout-account（2）
 

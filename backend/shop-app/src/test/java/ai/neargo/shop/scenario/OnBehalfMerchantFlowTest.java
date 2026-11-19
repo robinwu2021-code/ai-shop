@@ -282,6 +282,42 @@ class OnBehalfMerchantFlowTest {
     }
 
     @Test
+    @DisplayName("迁移：指定店主名下待补证照主体代填，审核通过激活该主体并保留原门店，不另建主体")
+    void onBehalfWithEntityNoActivatesThatPendingEntityAndKeepsItsStore() {
+        String owner = userProvision.ensureUserByPhone(phone(23));
+        var shell = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(
+                owner, "Migrated store", "Original address"));
+        String applyNo = opsService.createApplyOnBehalf(full(owner, "Migrated entity"), "OPS_TEST", shell.entityNo());
+        assertThat(jdbc.queryForObject("select entity_no from mch_entity_apply where apply_no = ?", String.class, applyNo))
+                .isEqualTo(shell.entityNo());
+        opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(true, null,
+                "COMMUNITY", List.of("CMT-OB-1"), null));
+        assertThat(jdbc.queryForObject("select status from mch_entity where entity_no = ?", String.class, shell.entityNo())).isEqualTo("ACTIVE");
+        assertThat(jdbc.queryForObject("select name from mch_entity where entity_no = ?", String.class, shell.entityNo())).isEqualTo("Migrated entity");
+        assertThat(jdbc.queryForObject("select entity_no from mch_store where store_no = ?", String.class, shell.storeNo())).isEqualTo(shell.entityNo());
+        assertThat(jdbc.queryForObject("select count(*) from mch_entity where owner_user_no = ? and deleted = 0", Integer.class, owner)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("迁移：不能指定别人名下的主体，也不能同时带门店草稿")
+    void onBehalfWithEntityNoRejectsForeignEntityAndStoreDraft() {
+        String owner = userProvision.ensureUserByPhone(phone(24));
+        String other = userProvision.ensureUserByPhone(phone(25));
+        String foreign = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(
+                other, "Foreign store", "Somewhere")).entityNo();
+        assertThatThrownBy(() -> opsService.createApplyOnBehalf(full(owner, "Hijack"), "OPS_TEST", foreign))
+                .isInstanceOf(BizException.class);
+        var cmd = full(owner, "With draft");
+        var withDraft = new OpsService.SubmitApplyCommand(cmd.userNo(), cmd.name(), cmd.subject(), cmd.contactName(), cmd.contactPhone(),
+                cmd.referrerPhone(), cmd.category(), cmd.description(), cmd.serviceScope(), cmd.communityNos(), cmd.qualifications(),
+                cmd.asPickupPoint(), cmd.industry(), cmd.industryNote(), cmd.qualificationItems(), cmd.marketCode(),
+                new MerchantAdminPort.InitialStore("Draft", "Address", "RETAIL", "SHOP", "RETAIL"));
+        String own = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(owner, "Own store", "Here")).entityNo();
+        assertThatThrownBy(() -> opsService.createApplyOnBehalf(withDraft, "OPS_TEST", own)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("select count(*) from mch_entity_apply where user_no = ?", Integer.class, owner)).isZero();
+    }
+
+    @Test
     void rejectedLegacyAssociationCanBeRefiledIndependently() {
         String owner = userProvision.ensureUserByPhone(phone(22));
         String existing = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(

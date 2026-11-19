@@ -56,6 +56,16 @@ class RemoteBizPaymentAppServiceTest {
     }
 
     @Test
+    @DisplayName("主体渠道账户按主体号与门店同步的来源范围转发，读取留痕（TDD-门店代码与商户渠道展示 C1）")
+    void entityChannelAccountsCarryEntityAndSourceScope() {
+        var accounts = new PayBizInternalApi.EntityChannelAccounts("MUME1", "PM1", List.of());
+        when(api.entityChannelAccounts("MUME1", "MAIN")).thenReturn(PortResult.ok(accounts));
+
+        assertThat(remote.entityChannelAccounts("MUME1")).isEqualTo(accounts);
+        verify(audit).record("BIZ_PAY_VIEW", "MUME1", "主体渠道账户");
+    }
+
+    @Test
     @DisplayName("★★★ 支付的业务拒绝还原成同一个错误码（b-app 看到的与内嵌形态一致）；没做成的不留痕")
     void rejectionBecomesBizException() {
         when(api.requestRefund(eq("S-1"), any())).thenReturn(PortResult.rejected("PAY_FORBIDDEN", List.of()));
@@ -64,5 +74,37 @@ class RemoteBizPaymentAppServiceTest {
                 .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.PAY_FORBIDDEN));
         verify(api).requestRefund("S-1", new RefundReq("MCH-A", "PYO-1", 100L, null, null));
         org.mockito.Mockito.verifyNoInteractions(audit);
+    }
+
+    @Test
+    @DisplayName("★★★ 门店付款方式读写带当前商家账号与当前门店；保存成功才留痕，版本冲突还原成同一个错误码（TDD-门店付款方式-App设置）")
+    void storeMethodsCarryOperatorAndStore() {
+        var view = new PayBizInternalApi.StoreMethods("S-1", "OVERRIDE", 3, List.of(
+                new PayBizInternalApi.StoreMethodItem("LINEPAY_ONLINE", "LINEPAY", "LINE_PAY", false, true, true, null, true)));
+        when(api.storeMethods("S-1", "MCH-A")).thenReturn(PortResult.ok(view));
+        var req = new PayBizInternalApi.StoreMethodsReq("MCH-A", "R1", 3L, List.of("LINEPAY_ONLINE"));
+        when(api.saveStoreMethods("S-1", req)).thenReturn(PortResult.ok(view));
+
+        assertThat(remote.storeMethods("S-1")).isEqualTo(view);
+        assertThat(remote.saveStoreMethods("S-1", "R1", 3L, List.of("LINEPAY_ONLINE"))).isEqualTo(view);
+        verify(api).saveStoreMethods("S-1", req);
+        verify(audit).record("BIZ_PAY_STORE_METHOD", "S-1", "门店付款方式：LINEPAY_ONLINE", true);
+
+        when(api.saveStoreMethods(eq("S-2"), any())).thenReturn(PortResult.rejected("CONFLICT", List.of()));
+        assertThatThrownBy(() -> remote.saveStoreMethods("S-2", "R2", 1L, List.of("LINEPAY_ONLINE")))
+                .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+    }
+
+    @Test
+    void methodPreferencesRelayBoundOperatorAndBothVersions() {
+        var view = new PayBizInternalApi.MethodPreferences("S-1", "OVERRIDE", 4, "upstream", List.of());
+        var choices = List.of(new PayBizInternalApi.MethodChoice("LINE_PAY", false));
+        var command = new PayBizInternalApi.MethodPreferencesReq("MCH-A", "R3", 3, "upstream", "OVERRIDE", choices);
+        when(api.methodPreferences("S-1", "MCH-A")).thenReturn(PortResult.ok(view));
+        when(api.saveMethodPreferences("S-1", command)).thenReturn(PortResult.ok(view));
+
+        assertThat(remote.methodPreferences("S-1")).isEqualTo(view);
+        assertThat(remote.saveMethodPreferences("S-1", "R3", 3, "upstream", "OVERRIDE", choices)).isEqualTo(view);
+        verify(api).saveMethodPreferences("S-1", command);
     }
 }

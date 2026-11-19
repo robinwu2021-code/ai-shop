@@ -30,7 +30,7 @@ class OpsMerchantRegionalContactTest {
             var error = assertThrows(BizException.class, () -> controller.applyOnBehalf(
                     new OpsMerchantApplyController.OnBehalfReq(null, "Entity", "ENTERPRISE",
                             null, null, null, null, null, null, null, null, null, null,
-                            null, "missing@example.test", null)));
+                            null, "missing@example.test", null, null)));
             assertEquals(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE, error.errorCode());
         }
         verifyNoInteractions(service);
@@ -96,7 +96,7 @@ class OpsMerchantRegionalContactTest {
         try(var security=mockStatic(SecurityUtils.class)) {
         security.when(SecurityUtils::currentUserNo).thenReturn("OPS");
         assertThrows(ai.neargo.shop.common.BizException.class,()->controller.applyOnBehalf(
-            new OpsMerchantApplyController.OnBehalfReq("13800138000","Entity","ENTERPRISE",null,null,null,null,null,null,null,null,null,null,"CN",null,null)));
+            new OpsMerchantApplyController.OnBehalfReq("13800138000","Entity","ENTERPRISE",null,null,null,null,null,null,null,null,null,null,"CN",null,null,null)));
         }
         verifyNoInteractions(service,users);verify(phones,never()).validateContact(any(),any());
     }

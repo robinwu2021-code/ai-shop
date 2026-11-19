@@ -660,6 +660,9 @@ shop:
     # PAY 侧另需 near-pay.entity-profiles.enabled。V46 的联系人／放弃修订／缩略图依赖 PAY 对应内部端点。
     entity-profiles:
       enabled: ${SHOP_PAY_ENTITY_PROFILES_ENABLED:false}
+      # 无 worker 的部署（UME166 只跑 api/ops）用进程内单线程定时器跑主体登记投影；
+      # 与 worker 的 @Scheduled 共用 ShedLock 锁名，worker profile 下不装配。只在一个实例上打开。
+      projection-in-process: ${SHOP_PAY_ENTITY_PROJECTION_IN_PROCESS:false}
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
       # Original ORDER-coupon compatibility stays opt-in until core checkout/import acceptance.

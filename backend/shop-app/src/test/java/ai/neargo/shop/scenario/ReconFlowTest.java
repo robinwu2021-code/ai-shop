@@ -70,6 +70,7 @@ class ReconFlowTest {
         var o = new ai.neargo.shop.trade.entity.OrdOrder();
         o.setOrderNo(orderNo);
         o.setUserNo("U-RECON");
+        o.setIdentityRevision(1L);
         o.setStatus(status);
         o.setPayAmount(9900L);
         o.setPayTradeNo("WX-HEAL-1");

@@ -1,5 +1,9 @@
 package ai.neargo.shop.payclient.impl;
 
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.client.PayBizInternalApi;
+import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
@@ -68,6 +72,35 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
         BizReceipts result = biz.receipts(storeNo, operator(), bizNo);
         auditLogPort.record("BIZ_PAY_VIEW", storeNo + "/" + bizNo, "业务单收款记录");
         return result;
+    }
+
+    /** 门店付款方式只在独立形态（near-pay）提供：内嵌形态没有门店收款策略服务（TDD-门店付款方式-App设置 §6） */
+    @Override
+    public StoreMethods storeMethods(String storeNo) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+    }
+
+    @Override
+    public StoreMethods saveStoreMethods(String storeNo, String requestNo, Long expectedVersion,
+                                                                                    List<String> enabledProductCodes) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+    }
+
+    /** 内嵌形态没有独立支付商户：回退到本地进件表（C4） */
+    @Override
+    public PayBizInternalApi.EntityChannelAccounts entityChannelAccounts(String entityNo) {
+        return new PayBizInternalApi.EntityChannelAccounts(entityNo, null, List.of());
+    }
+
+    @Override
+    public PayBizInternalApi.MethodPreferences methodPreferences(String storeNo) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+    }
+
+    @Override
+    public PayBizInternalApi.MethodPreferences saveMethodPreferences(String storeNo, String requestNo, long expectedVersion,
+            String eligibilityRevision, String mode, List<PayBizInternalApi.MethodChoice> choices) {
+        throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
     }
 
     @Override

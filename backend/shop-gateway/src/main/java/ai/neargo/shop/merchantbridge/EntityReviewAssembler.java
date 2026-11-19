@@ -42,7 +42,8 @@ public class EntityReviewAssembler {
         if (!approved.isEmpty()) {
             var rows = DataScopeContext.executeWithoutScope(() -> qualifications.selectList(
                     Wrappers.<MchQualification>lambdaQuery().in(MchQualification::getEntityNo, approved)
-                            .eq(MchQualification::getQualType, MchQualification.BUSINESS_LICENSE)
+                            // A natural person's qualification is their ID card, held only masked.
+                            .in(MchQualification::getQualType, MchQualification.BUSINESS_LICENSE, "ID_CARD")
                             .orderByDesc(MchQualification::getId)));
             for (var row : rows) numbers.putIfAbsent(row.getEntityNo(), row.getQualNumber());
         }

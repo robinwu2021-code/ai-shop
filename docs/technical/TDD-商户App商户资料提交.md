@@ -847,3 +847,22 @@ pre-push 全量（MySQL 9.7 本机，4594 项／36 模块）：5 项失败均在
 - 原计划的账号接口 `name`（S6）：本后端没有 `/biz/auth/account`，改为在 `contact` 端点内由 owner 的 `mch_account` 覆盖「账号本人」的姓名与手机（`MerchantEntityService.ownerContact`）。
 - 缩略图响应体用 `ByteArrayResource`：全局 `ApiResponseWrapper` 会把 `byte[]` 包成信封，`Resource` 不包。
 
+
+## 2026-11-17 主体登记投影进程内触发（1 档：新增配置项）
+
+### §0 需求 → 设计
+- AC1：在不带 `worker` profile 的部署（UME166：`api`、`ops`，`SHOP_JOB_ENABLED=false`）上，near-pay 已核准的主体由投影推进为 ACTIVE。→ `EntityRegistrationProjectionTimer`，配置 `shop.pay.entity-profiles.projection-in-process`。
+- AC2：不启动其他任何定时任务。→ 不开 `@EnableScheduling`、不开 `shop.job.enabled`；定时器只调 `EntityRegistrationProjectionCoordinator#run`。
+- AC3：同进程内两条路径不同时触发，多实例不并发。→ 定时器 `@Profile("!worker")`；锁名沿用 `entity-registration-projection`（经 `LockingTaskExecutor`，锁时长与 `@SchedulerLock` 一致）。
+
+### §2 方案
+仿 `StoreSyncPublisher`：`ApplicationReadyEvent` 后起守护单线程 `ScheduledExecutorService`，每 `projection-delay`（默认 30s，下限 5s）一次，进分布式锁再跑 `run()`。默认关闭；UME166 只在 `ai-shop-ops` 的挂载配置里打开。投影 SQL 均为单表语句，不跨 `mch_entity_profile_projection`（`utf8mb4_unicode_ci`）与 `mch_entity`/`mch_qualification`（`utf8mb4_unicode_520_ci`）连接。
+
+### §5 实现 → 需求
+- AC1、AC3（锁）：`EntityProfileAccountFlowTest#inProcessTimerProjectsApprovedTargetWithoutWorkerUnderTheSharedLock`（非 worker profile，`tick()` 后主体 ACTIVE、投影 APPLIED、`shedlock` 有该锁名行）。
+- AC3（profile 互斥）、默认关闭：`EntityRegistrationProjectionTimerWiringTest` 4 项。
+- AC2：`ScheduledJobConventionTest`（6 项）、`ConditionalBeanWiringTest`、`ArchitectureTest` 通过。
+- 实跑：`mvn -o -pl shop-app -am test -Dtest=…` → Timer 4/0、EntityProfileAccountFlow 14/0、ScheduledJobConvention 6/0、ConditionalBeanWiring 1/0、Architecture 23/0（1 skipped）。
+
+### §6 设计 → 实现
+`EntityRegistrationProjectionTimer`（新）、`EntityRegistrationProjectionCoordinator`（`LOCK` 改包可见）、`application.yml`（新配置项）、两份测试、本节。无偏差。

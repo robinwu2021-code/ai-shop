@@ -73,6 +73,7 @@ class MediaRefCoverageTest {
                     + "不是说这一列装着图片地址"));
 
     static {
+        NOT_MEDIA.put("sys_notify_log.content", "NotifyLoggingSmsPort 写入短信网关实际提交的纯文本正文，不存上传资产");
         NOT_MEDIA.put("prn_template.content", "PrintDocumentPolicy.template/render只允许{{document}}与{{reprint}}的纯文本替换；内容打印为文本，不渲染上传图片");
         NOT_MEDIA.put("biz_print_fact.receipt_intent_key", "BusinessPrintFactServiceImpl保存sourceType+sourceNo的SHA256作为收据业务意图幂等键；只含散列值，不是上传资产地址，注释中的意图不表示图片");
         NOT_MEDIA.put("ord_print_fact.receipt_intent_key", "OrderPrintFactRecorder将RECEIPT+身份+子单做SHA256，用于收据scene幂等；注释中的意图不是图片");

@@ -94,7 +94,7 @@ public class OpsMerchantApplyController {
         boolean phoneOwner="CN".equals(market) && !policy.recordOnly();
         String ownerUserNo=phoneOwner?userProvision.ensureUserByPhone(req.phone()):userProvision.registeredUserByEmail(req.ownerEmail())
                 .orElseThrow(()->BizException.of(ErrorCode.OWNER_ACCOUNT_UNAVAILABLE));
-        String applyNo = opsService.createApplyOnBehalf(new OpsService.SubmitApplyCommand(
+        var command = new OpsService.SubmitApplyCommand(
                 ownerUserNo, req.name(), req.subject(),
                 // 推荐人传 null：这条是 BD 代填，来源已由 submitted_by 记下，不是「谁推荐的」
                 req.contactName(), req.contactPhone()==null?req.phone():req.contactPhone(), null, req.category(), req.description(),
@@ -102,7 +102,9 @@ public class OpsMerchantApplyController {
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 // 手填行业传 null：代填的是 BD，他按运营口径直接选了行业码（V360）
                 null,
-                req.qualificationItems(), market, req.storeProfile()), operator);
+                req.qualificationItems(), market, req.storeProfile());
+        String applyNo = req.entityNo() == null ? opsService.createApplyOnBehalf(command, operator)
+                : opsService.createApplyOnBehalf(command, operator, req.entityNo());
         /*
          * 审计里写「进队列待审」而不是「已创建」。
          * 代填最容易被误解成「运营把这家店开出来了」—— 而它只是录了一张表，
@@ -141,6 +143,8 @@ public class OpsMerchantApplyController {
             List<OpsService.QualificationItem> qualificationItems,
             @Pattern(regexp="[A-Z]{2}") String market,
             @Email @Size(max=254) String ownerEmail,
-            @Valid MerchantAdminPort.InitialStore storeProfile) {
+            @Valid MerchantAdminPort.InitialStore storeProfile,
+            // 可选：店主名下待补证照主体号；给出时审核通过激活该主体并保留其门店（迁移用）
+            @Pattern(regexp="[A-Za-z0-9_-]{1,64}") String entityNo) {
     }
 }

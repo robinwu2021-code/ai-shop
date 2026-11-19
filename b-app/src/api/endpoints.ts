@@ -389,6 +389,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPayRecordOffline: { method: "POST", path: "/biz/payment/offline-records", auth: true, summary: "记一笔 App 外收款" },
   mPayOfflineRecords: { method: "GET", path: "/biz/payment/offline-records", auth: true, summary: "App 外收款记录" },
   mPayOfflineSummary: { method: "GET", path: "/biz/payment/offline-records/summary", auth: true, summary: "App 外收款合计" },
+  // 门店付款方式（TDD-门店付款方式-App设置）：门店取当前门店，只有主体属主可读写
+  mPayStoreMethods: { method: "GET", path: "/biz/payment/store-method", auth: true, summary: "本店付款方式" },
+  mPaySaveStoreMethods: { method: "PUT", path: "/biz/payment/store-method", auth: true, summary: "保存本店付款方式" },
+  mPayStoreMethodPreferences: { method: "GET", path: "/biz/payment/store-method-preference", auth: true, summary: "本店付款方式设置" },
+  mPaySaveStoreMethodPreferences: { method: "PUT", path: "/biz/payment/store-method-preference", auth: true, summary: "保存本店付款方式设置" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
 
   // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：

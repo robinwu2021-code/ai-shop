@@ -328,10 +328,10 @@ class PayBizOnboardingHttpTest {
   void timeoutAndInterruptionUseSafeStatusesAndNeverRetryTheWrite() throws Exception {
     var forwarder = mock(BizOnboardingForwarder.class);
     var boundary =
-        MockMvcBuilders.standaloneSetup(new BizPayOnboardingController(forwarder))
+        MockMvcBuilders.standaloneSetup(new BizPayOnboardingController(forwarder, new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(PayBizSourceDelegation.class)))
             .setControllerAdvice(new PayBizExceptionHandler(), new ApiResponseWrapper())
             .build();
-    when(forwarder.forward(any(), any(), any(), any()))
+    when(forwarder.forward(any(), any(), any(), any(), any()))
         .thenThrow(new java.net.http.HttpTimeoutException("private-internal-detail"));
     boundary
         .perform(
@@ -342,16 +342,16 @@ class PayBizOnboardingHttpTest {
                 .string(
                     org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("private-internal-detail"))));
-    verify(forwarder, times(1)).forward(any(), any(), any(), any());
+    verify(forwarder, times(1)).forward(any(), any(), any(), any(), any());
     reset(forwarder);
-    when(forwarder.forward(any(), any(), any(), any()))
+    when(forwarder.forward(any(), any(), any(), any(), any()))
         .thenThrow(new InterruptedException("private-internal-detail"));
     try {
       boundary
           .perform(post("/biz/pay/v2/onboardings").contentType("application/json").content("{}"))
           .andExpect(status().isBadGateway());
       assertTrue(Thread.currentThread().isInterrupted());
-      verify(forwarder, times(1)).forward(any(), any(), any(), any());
+      verify(forwarder, times(1)).forward(any(), any(), any(), any(), any());
     } finally {
       Thread.interrupted();
     }

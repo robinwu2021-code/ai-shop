@@ -97,8 +97,14 @@ class PayChannelAccountClaimHostMysqlTest {
             mvc.perform(selected(request)).andExpect(status().isOk());assertEquals(entry.getKey()+" "+path,target.get());
         }
         assertEquals("Bearer "+owner,headers.get().getFirst("Authorization"));
-        mvc.perform(get("/biz/pay/v2/memberships").header("Authorization","Bearer "+owner)).andExpect(status().isOk());
-        assertEquals("GET /biz/pay/v2/memberships",target.get());
+        int beforeMemberships = calls.get();
+        mvc.perform(get("/biz/pay/v2/memberships").header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].merchantNo").value("PM"));
+        assertEquals(beforeMemberships, calls.get());
+        mvc.perform(get("/biz/pay/v2/memberships").header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk());
+        assertEquals(beforeMemberships + 1, calls.get());
+        assertEquals("GET /biz/pay/v2/memberships", target.get());
     }
     @Test void freshDbSessionRejectsConsumerExpiredRevokedDisabledAndNoFinanceBeforeForward() throws Exception {
         mvc.perform(get(BASE).header("Authorization","Bearer ctk_wrong").header("X-Store-No","S").header("X-Merchant-No","PM")).andExpect(status().isForbidden());
@@ -134,9 +140,13 @@ class PayChannelAccountClaimHostMysqlTest {
                 +"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"proof.png\"\r\nContent-Type: image/png\r\n\r\nprivate-proof\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.UTF_8);
         byte[] binary={0,-1,2,0};response.set(binary);
         mvc.perform(selected(post(BASE+"/C/files")).contentType("multipart/form-data; boundary="+boundary).content(bytes)
-                .header("X-Internal-Token","forged").header("X-Internal-Caller","forged"))
+                .header("X-Internal-Token","forged").header("X-Internal-Caller","forged")
+                .header("X-Internal-Credential","forged"))
                 .andExpect(status().isOk()).andExpect(content().bytes(binary)).andExpect(header().string("Cache-Control","private, no-store"));
-        assertArrayEquals(bytes,received.get());assertNull(headers.get().getFirst("X-Internal-Token"));assertNull(headers.get().getFirst("X-Internal-Caller"));
+        assertArrayEquals(bytes, received.get());
+        assertNull(headers.get().getFirst("X-Internal-Token"));
+        assertEquals("AI_SHOP_UME", headers.get().getFirst("X-Internal-Caller"));
+        assertEquals("local-test", headers.get().getFirst("X-Internal-Credential"));
         mvc.perform(selected(post(BASE)).contentType(MediaType.APPLICATION_JSON).content(new byte[1024*1024+1])).andExpect(status().isPayloadTooLarge());
         mvc.perform(selected(post(BASE+"/C/files")).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnsupportedMediaType());
         assertEquals(1,calls.get());

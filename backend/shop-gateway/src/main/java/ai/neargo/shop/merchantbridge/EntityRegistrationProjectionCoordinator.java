@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "shop.pay.entity-profiles.enabled", havingValue = "true")
 public class EntityRegistrationProjectionCoordinator {
-  private static final String LOCK = "entity-registration-projection";
+  static final String LOCK = "entity-registration-projection";
 
   private final EntityRegistrationProjection projection;
   private final PayEntityProfileApi pay;
@@ -91,7 +91,9 @@ public class EntityRegistrationProjectionCoordinator {
             (String) facts.get("name"),
             (String) facts.get("legalForm"),
             (String) facts.get("registrationNo"),
-            (String) facts.get("evidenceRef")),
+            (String) facts.get("evidenceRef"),
+            (String) facts.get("identityMasked"),
+            (String) facts.get("identityHash")),
         intended);
   }
 }

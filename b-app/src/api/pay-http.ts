@@ -1,7 +1,7 @@
 import { http } from "@shared/net/http-client";
 import { ENDPOINTS as E, buildPath } from "./endpoints";
 import type { PayApi } from "./pay";
-import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery, PayStoreMethodPreferencesReq, PayStoreMethodReq } from "./requests";
 
 export const payHttp: PayApi = {
   mPayServiceStatus: () => http.get(E.mPayServiceStatus.path),
@@ -19,4 +19,8 @@ export const payHttp: PayApi = {
     http.post(E.mPayRecordOffline.path, body satisfies OfflineRecordCreateReq, { "Idempotency-Key": key }),
   mPayOfflineRecords: (query) => http.get(E.mPayOfflineRecords.path, query satisfies OfflineRecordListQuery | undefined),
   mPayOfflineSummary: (query) => http.get(E.mPayOfflineSummary.path, query satisfies OfflineRecordSummaryQuery | undefined),
+  mPayStoreMethods: () => http.get(E.mPayStoreMethods.path),
+  mPaySaveStoreMethods: (body) => http.put(E.mPaySaveStoreMethods.path, body satisfies PayStoreMethodReq),
+  mPayStoreMethodPreferences: () => http.get(E.mPayStoreMethodPreferences.path),
+  mPaySaveStoreMethodPreferences: (body) => http.put(E.mPaySaveStoreMethodPreferences.path, body satisfies PayStoreMethodPreferencesReq),
 };

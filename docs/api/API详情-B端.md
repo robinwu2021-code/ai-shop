@@ -6578,6 +6578,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### POST `/biz/merchant/payment/{payChannel}/refresh`
@@ -6610,6 +6615,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### POST `/biz/merchant/payment/store/{storeNo}`
@@ -6642,6 +6652,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### GET `/biz/merchant/profile`
@@ -7818,6 +7833,84 @@ App 外收款合计　🔒
 | `refundCount` | `number` | 是 | 当日退成笔数 |
 | `refundMinor` | `number` | 是 | 当日退成合计（最小单位） |
 | `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
+
+
+#### GET `/biz/payment/store-method`
+
+本店付款方式　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayStoreMethods`](#paystoremethods)
+
+
+#### PUT `/biz/payment/store-method`
+
+保存本店付款方式　🔒
+
+**入参**
+
+请求体：[`PayStoreMethodReq`](#paystoremethodreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 本次保存的幂等号，重试沿用 |
+| `expectedVersion` | `number` | 是 | 读取时拿到的 version |
+| `enabledProductCodes` | `string`\[\] | 是 | 要开启的产品码（至少一个，只能在可开范围内） |
+
+**出参**（`data`）
+
+类型：[`PayStoreMethods`](#paystoremethods)
+
+
+#### GET `/biz/payment/store-method-preference`
+
+本店付款方式设置　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayStoreMethodPreferences`](#paystoremethodpreferences)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
+
+
+#### PUT `/biz/payment/store-method-preference`
+
+保存本店付款方式设置　🔒
+
+**入参**
+
+请求体：[`PayStoreMethodPreferencesReq`](#paystoremethodpreferencesreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 保存请求的幂等编号 |
+| `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
+| `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
+
+**出参**（`data`）
+
+类型：[`PayStoreMethodPreferences`](#paystoremethodpreferences)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
 
 
 ### payout-account
@@ -15897,6 +15990,13 @@ Processing state of the order points refund projection.
 - `ACTIVE`
 - `REVOKED`
 
+### PayMethodChoice
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentMethodCode` | `string` | 是 | 统一支付方式码 |
+| `test` | `boolean` | 是 | 此选择是否作用于测试渠道 |
+
 ### PayQrCode
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -15974,9 +16074,60 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 - `PAYMENT`
 - `REFUND`
 
+### PayStoreMethodMode
+
+门店付款方式模式：INHERIT 跟随商户；OVERRIDE 门店自定
+
+枚举取值：
+
+- `INHERIT`
+- `OVERRIDE`
+
+### PayStoreMethodPreference
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `choice` | [`PayMethodChoice`](#paymethodchoice) | 是 | 方式与测试环境组合 |
+| `configuredEnabled` | `boolean` | 是 | 已保存的门店意愿 |
+| `effectiveEnabled` | `boolean` | 是 | 当前商户与门店渠道配置下是否可用 |
+| `editable` | `boolean` | 是 | 当前是否允许由门店开启 |
+| `blockedReason` | `string,null` | 是 | 暂不可启用的原因，可启用时为空 |
+| `productCodes` | `string`\[\] | 是 | 受门店产品授权范围约束的产品码 |
+| `channelCodes` | `string`\[\] | 是 | 方式对应的候选渠道码 |
+
+### PayStoreMethodPreferences
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 当前门店编号 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
+| `version` | `number` | 是 | 门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 商户及门店渠道资格版本 |
+| `items` | [`PayStoreMethodPreference`](#paystoremethodpreference)\[\] | 是 | 正式与测试分别列出的支付方式 |
+
+### PayStoreMethodPreferencesReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 保存请求的幂等编号 |
+| `expectedVersion` | `number` | 是 | 最近读取的门店设置版本 |
+| `eligibilityRevision` | `string` | 是 | 最近读取的商户及门店渠道资格版本 |
+| `mode` | [`PayStoreMethodMode`](#paystoremethodmode) | 是 | 继承商户配置或在门店自定义 |
+| `enabledMethods` | [`PayMethodChoice`](#paymethodchoice)\[\] | 是 | 自定义模式下启用的方式，继承模式传空 |
+
+### PayStoreMethodReq
+
+保存门店付款方式（TDD-门店付款方式-App设置）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestNo` | `string` | 是 | 本次保存的幂等号，重试沿用 |
+| `expectedVersion` | `number` | 是 | 读取时拿到的 version |
+| `enabledProductCodes` | `string`\[\] | 是 | 要开启的产品码（至少一个，只能在可开范围内） |
+
 ### PaymentApplyStatus
 
-支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
+支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。 `PENDING_ACTIVATION`：支付侧渠道账户待开通（渠道未对接或账户未核验，TDD-门店代码与商户渠道展示 C2）。
 
 枚举取值：
 
@@ -15985,6 +16136,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 - `ACTIVE`
 - `REJECTED`
 - `FROZEN`
+- `PENDING_ACTIVATION`
 
 ### PaymentApplyment
 
@@ -16006,6 +16158,11 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 ### PaymentMerchant
 

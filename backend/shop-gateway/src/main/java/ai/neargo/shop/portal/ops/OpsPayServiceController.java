@@ -75,6 +75,16 @@ public class OpsPayServiceController {
                 status.reviewReason(), merchantUrl, PayOpsLinks.onboarding(opsBase, status.merchantRef()));
     }
 
+    /** UME 迁移建档（TDD-UME迁移建档）：不带资料、只限 UME 导入主体，门店一并关联；同一主体版本重复调用返回同一支付商户 */
+    public record MigrateReq(@jakarta.validation.constraints.NotBlank
+                             @jakarta.validation.constraints.Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String requestNo) {}
+
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_PAY_APPLY + "')")
+    @PostMapping("/ops/merchant/{entityNo}/pay-service/migrate")
+    public PaySourceLinkApi.Result migrate(@PathVariable String entityNo, @Valid @RequestBody MigrateReq req) {
+        return applications.migrate(entityNo, SecurityUtils.currentUserNoOrNull());
+    }
+
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_PAY_APPLY + "')")
     @PostMapping("/ops/merchant/{entityNo}/pay-service/apply")
     public PaySourceLinkApi.Result apply(@PathVariable String entityNo, @Valid @RequestBody PayServiceApplyRequests.ApplyReq form) {

@@ -130,6 +130,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
       return;
     }
     String canonical = master.canonicalSubject(facts.legalForm());
+    boolean person = "NATURAL_PERSON".equals(canonical);
     if (!"TW".equals(facts.market())
         || !facts.market().equals(entity.get("market"))
         || canonical == null
@@ -137,29 +138,41 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
         || facts.name() == null
         || facts.name().isBlank()
         || facts.name().length() > 64
-        || !facts.registrationNo().matches("[0-9]{8}")
+        || (person
+            ? facts.registrationNo() != null
+                || facts.identityHash() == null
+                || !facts.identityHash().matches("[0-9a-f]{64}")
+                || facts.identityMasked() == null
+                || facts.identityMasked().length() > 32
+            : facts.registrationNo() == null || !facts.registrationNo().matches("[0-9]{8}"))
+        || facts.evidenceRef() == null
         || !facts.evidenceRef().matches("file:entity-profile/[a-f0-9]{32}"))
       throw BizException.of(ErrorCode.BAD_REQUEST);
+    // A natural person has no registration: their ID card is the qualification, kept only as a
+    // masked number (a changed person shows as a different masked number). The projection's
+    // registration_no stays empty for them; it is an 8-digit company number column.
+    String qualType = person ? "ID_CARD" : "BUSINESS_LICENSE";
+    String identity = person ? null : facts.registrationNo();
+    String shown = person ? facts.identityMasked() : facts.registrationNo();
     var registrations =
         jdbc.queryForList(
             "SELECT qual_no,qual_number,status FROM mch_qualification WHERE tenant_no=? AND"
-                + " entity_no=? AND qual_type='BUSINESS_LICENSE' AND deleted=0",
+                + " entity_no=? AND qual_type=? AND deleted=0",
             tenant,
-            facts.entityNo());
+            facts.entityNo(),
+            qualType);
     boolean conflictingRegistration =
         registrations.stream()
-            .anyMatch(
-                r ->
-                    r.get("qual_number") != null
-                        && !facts.registrationNo().equals(r.get("qual_number")));
+            .anyMatch(r -> r.get("qual_number") != null && !shown.equals(r.get("qual_number")));
     if (registrations.stream().anyMatch(r -> "REVOKED".equals(r.get("status")))
         || conflictingRegistration
         || "ACTIVE".equals(entity.get("status"))
             && entity.get("legal_form") != null
             && !canonical.equals(master.canonicalSubject((String) entity.get("legal_form")))
         || !List.of("PENDING_LICENSE", "ACTIVE").contains(entity.get("status"))
-        || receipt.get("registration_no") != null
-            && !facts.registrationNo().equals(receipt.get("registration_no"))) {
+        || identity != null
+            && receipt.get("registration_no") != null
+            && !identity.equals(receipt.get("registration_no"))) {
       jdbc.update(
           "UPDATE mch_entity_profile_projection SET state='BLOCKED' WHERE tenant_no=? AND"
               + " entity_no=?",
@@ -170,10 +183,13 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
     var now = Timestamp.valueOf(LocalDateTime.now());
     jdbc.update(
         "UPDATE mch_entity SET"
-            + " name=?,legal_form=?,biz_qualification='REGISTERED',verified=1,status='ACTIVE',version=version+1,updated_at=?"
+            + " name=?,legal_form=?,biz_qualification=?,verified=1,status='ACTIVE',version=version+1,updated_at=?"
             + " WHERE tenant_no=? AND entity_no=? AND deleted=0",
         facts.name(),
         canonical,
+        // Per the natural-person plan: no business registration on file. Nothing gates trading on
+        // this column yet; revisit (EXEMPT) before anything does.
+        person ? "UNREGISTERED" : "REGISTERED",
         now,
         tenant,
         facts.entityNo());
@@ -185,7 +201,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
               + " qual_name=?,qual_number=?,status='VALID',expire_at=NULL,version=version+1,updated_at=?,updated_by='SYSTEM:PAY_PROFILE'"
               + " WHERE tenant_no=? AND entity_no=? AND qual_no=?",
           facts.name(),
-          facts.registrationNo(),
+          shown,
           now,
           tenant,
           facts.entityNo(),
@@ -194,12 +210,13 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
       jdbc.update(
           "INSERT INTO"
               + " mch_qualification(tenant_no,qual_no,entity_no,qual_type,qual_name,qual_number,status,created_at,updated_at,created_by,updated_by)"
-              + " VALUES(?,?,?,'BUSINESS_LICENSE',?,?,'VALID',?,?,?,?)",
+              + " VALUES(?,?,?,?,?,?,'VALID',?,?,?,?)",
           tenant,
           qualNo,
           facts.entityNo(),
+          qualType,
           facts.name(),
-          facts.registrationNo(),
+          shown,
           now,
           now,
           "SYSTEM:PAY_PROFILE",
@@ -212,7 +229,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
         facts.revision(),
         facts.revisionRef(),
         hash,
-        facts.registrationNo(),
+        identity,
         facts.evidenceRef(),
         tenant,
         facts.entityNo());

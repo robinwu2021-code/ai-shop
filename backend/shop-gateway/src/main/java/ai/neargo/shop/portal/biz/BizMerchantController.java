@@ -831,9 +831,19 @@ public class BizMerchantController {
     @GetMapping("/biz/merchant/payment")
     public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
         var target = paymentAccess.require(request, ownedEntity(entityNo), null);
-        return paymentService.list(target.entityNo()).stream()
+        java.util.function.Supplier<List<PaymentApplymentVO>> local = () -> paymentService.list(target.entityNo());
+        var rows = channelListing == null ? local.get() : channelListing.list(target.entityNo(), local);
+        return rows.stream()
                 .filter(row -> nz(row.storeNo()).isBlank() || target.storeNo().equals(row.storeNo()))
                 .toList();
+    }
+
+    /** 主体页渠道列表优先读支付侧渠道账户（TDD-门店代码与商户渠道展示 C1）；未装配时只读本地进件表 */
+    private ai.neargo.shop.payclient.MerchantChannelListing channelListing;
+
+    @Autowired(required = false)
+    public void setChannelListing(ai.neargo.shop.payclient.MerchantChannelListing channelListing) {
+        this.channelListing = channelListing;
     }
 
     /**

@@ -32,8 +32,8 @@ public final class OtpScenePolicies {
                 case OtpScenes.EMAIL_CHANGE -> Set.of(Channel.EMAIL);
                 default -> Set.of(Channel.SMS, Channel.EMAIL);
             };
-            var mode = override.getCaptchaMode() != null ? override.getCaptchaMode()
-                    : login || pickup ? CaptchaMode.ADAPTIVE : CaptchaMode.ALWAYS;
+            // Every SMS / email send shows the slider only past the per-recipient or platform threshold.
+            var mode = override.getCaptchaMode() != null ? override.getCaptchaMode() : CaptchaMode.ADAPTIVE;
             var validity = Map.of(Channel.SMS, Duration.ofSeconds(override.getSmsTtlSeconds() == null ? 300 : override.getSmsTtlSeconds()),
                     Channel.EMAIL, Duration.ofSeconds(override.getEmailTtlSeconds() == null ? (login || OtpScenes.EMAIL_CHANGE.equals(scene) ? 600 : 300) : override.getEmailTtlSeconds()));
             rules.put(scene, new OtpScenePolicy(scene, override.getEnabled() == null ? login : override.getEnabled(),

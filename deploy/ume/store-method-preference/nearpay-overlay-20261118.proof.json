@@ -1,0 +1,10 @@
+{
+  "baselineSha256": "7524f333e7626dabfe43b0e1ac8b8ba08edb8e534b071d133f2e4bdf380aba82",
+  "replaced": {
+    "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar": {
+      "ai/neargo/shop/pay/platmch/store/policy/StoreCollectionMethodService.class": "9c7d330eae12e76c60440bf0eae13252584455776c89e249a916ccce85faf153"
+    }
+  },
+  "unrelatedEntriesPreserved": true,
+  "candidateSha256": "5043920a23f97a4534812302307791f31eeaf906713416e6a266428343eb17f7"
+}

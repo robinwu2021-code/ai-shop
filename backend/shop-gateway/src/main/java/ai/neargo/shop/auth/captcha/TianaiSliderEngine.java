@@ -6,57 +6,53 @@ import cloud.tianai.captcha.generator.common.model.dto.ImageCaptchaInfo;
 import cloud.tianai.captcha.generator.impl.StandardSliderImageCaptchaGenerator;
 import cloud.tianai.captcha.resource.*;
 import cloud.tianai.captcha.resource.common.model.dto.Resource;
+import cloud.tianai.captcha.resource.common.model.dto.ResourceMap;
 import cloud.tianai.captcha.resource.impl.DefaultImageCaptchaResourceManager;
 import cloud.tianai.captcha.resource.impl.LocalMemoryResourceStore;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.security.SecureRandom;
-import javax.imageio.ImageIO;
+import cloud.tianai.captcha.resource.impl.provider.ClassPathResourceProvider;
+import java.util.List;
 
-/** Uses Tianai core directly, without its Spring Boot starter or local challenge cache. */
+/**
+ * Uses Tianai core directly, without its Spring Boot starter or local challenge cache.
+ *
+ * <p>Each challenge picks one of the bundled 320x180 backgrounds and one of the cut-out shapes at
+ * random (Tianai's two built-in puzzle pieces plus ours). Everything is read from the jar's
+ * classpath; the URL and file providers Tianai registers by default are removed, so a challenge
+ * can never fetch anything remote. The images are drawn by {@code scripts/captcha/GenerateSliderImages.java}.
+ */
 public class TianaiSliderEngine {
+    static final String ROOT = "captcha/slider/";
+    static final List<String> BACKGROUNDS = List.of(
+            "bg-01-sunset-mountains", "bg-02-ocean-waves", "bg-03-city-skyline", "bg-04-pine-forest",
+            "bg-05-desert-dunes", "bg-06-aurora", "bg-07-rice-terraces", "bg-08-lake-reflection",
+            "bg-09-starry-night", "bg-10-geometric-tiles", "bg-11-flower-field", "bg-12-snow-peaks");
+    static final List<String> SHAPES = List.of("circle", "rounded-square", "star", "hexagon", "heart", "shield");
+
     private final ImageCaptchaGenerator generator;
 
     public TianaiSliderEngine() {
         var resources = new LocalMemoryResourceStore();
         new DefaultBuiltInResources(DefaultBuiltInResources.PATH_PREFIX)
                 .addDefaultTemplate(CaptchaTypeConstant.SLIDER, resources);
-        resources.addResource(CaptchaTypeConstant.SLIDER, new Resource("private-generated", "fresh"));
+        for (String shape : SHAPES) {
+            var template = new ResourceMap("default", 4);
+            template.put("active.png", new Resource(ClassPathResourceProvider.NAME, ROOT + "templates/" + shape + "/active.png"));
+            template.put("fixed.png", new Resource(ClassPathResourceProvider.NAME, ROOT + "templates/" + shape + "/fixed.png"));
+            resources.addTemplate(CaptchaTypeConstant.SLIDER, template);
+        }
+        for (String background : BACKGROUNDS)
+            resources.addResource(CaptchaTypeConstant.SLIDER,
+                    new Resource(ClassPathResourceProvider.NAME, ROOT + "backgrounds/" + background + ".png"));
         var providers = new ResourceProviders();
-        providers.registerResourceProvider(new FreshBackground());
+        providers.listResourceProviders().stream()
+                .map(ResourceProvider::getName)
+                .filter(name -> !ClassPathResourceProvider.NAME.equals(name))
+                .toList()
+                .forEach(providers::deleteResourceProviderByName);
         generator = new StandardSliderImageCaptchaGenerator(new DefaultImageCaptchaResourceManager(resources, providers)).init();
     }
 
     public ImageCaptchaInfo generate() {
         return generator.generateCaptchaImage(CaptchaTypeConstant.SLIDER, "png", "png");
-    }
-
-    /** A fresh textured image per request; no original is saved or exposed by an HTTP URL. */
-    private static class FreshBackground implements ResourceProvider {
-        private final SecureRandom random = new SecureRandom();
-        public InputStream getResourceInputStream(Resource resource) {
-            var image = new BufferedImage(320, 180, BufferedImage.TYPE_INT_RGB);
-            Graphics2D g = image.createGraphics();
-            try {
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setPaint(new GradientPaint(0, 0, color(), 320, 180, color()));
-                g.fillRect(0, 0, 320, 180);
-                for (int i = 0; i < 90; i++) {
-                    g.setColor(color());
-                    int x = random.nextInt(360) - 20, y = random.nextInt(220) - 20;
-                    int size = 12 + random.nextInt(70);
-                    g.fillOval(x, y, size, size);
-                }
-                var bytes = new ByteArrayOutputStream();
-                ImageIO.write(image, "png", bytes);
-                return new ByteArrayInputStream(bytes.toByteArray());
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            } finally { g.dispose(); }
-        }
-        private Color color() { return new Color(50 + random.nextInt(170), 60 + random.nextInt(160), 70 + random.nextInt(150)); }
-        public boolean supported(Resource resource) { return getName().equals(resource.getType()); }
-        public String getName() { return "private-generated"; }
     }
 }

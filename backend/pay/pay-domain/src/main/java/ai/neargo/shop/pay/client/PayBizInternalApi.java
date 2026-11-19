@@ -43,6 +43,35 @@ public interface PayBizInternalApi {
     record CollectReq(String operatorNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
     }
 
+    /** 门店付款方式（TDD-门店付款方式-App设置；与 near-pay 同形）。excludedBy：null 开启 / STORE 门店关（可开）/ MERCHANT、CATALOG、STORE_STATE、ENTRY 不可开 */
+    /** @param checkout H5 收银台此刻是否显示（near-pay 与收银台同一计算）；null = 无法判断 */
+    record StoreMethodItem(String productCode, String channelCode, String method, boolean test, boolean enabled, boolean editable,
+                           String excludedBy, Boolean checkout) {
+    }
+
+    record StoreMethods(String storeNo, String mode, long version, List<StoreMethodItem> items) {
+    }
+
+    record StoreMethodsReq(String operatorNo, String requestNo, Long expectedVersion, List<String> enabledProductCodes) {
+    }
+
+    record MethodChoice(String paymentMethodCode, boolean test) {}
+    record MethodPreference(MethodChoice choice, boolean configuredEnabled, boolean effectiveEnabled,
+                            boolean editable, String blockedReason, List<String> productCodes, List<String> channelCodes) {}
+    record MethodPreferences(String storeNo, String mode, long version, String eligibilityRevision,
+                             List<MethodPreference> items) {}
+    /**
+     * 主体在支付侧的渠道账户（TDD-门店代码与商户渠道展示 C1–C3；与 near-pay 同形）。channelMerchantId 为全号；
+     * pendingReason：CHANNEL_NOT_LIVE（渠道待开通 / 停用）、ACCOUNT_UNVERIFIED（渠道已开通、账户未核验），可用时为 null。
+     */
+    record EntityChannelAccount(String payMerchantNo, String channelCode, String channelName, boolean sandbox,
+                                String channelStatus, String channelMerchantId, String accountStatus,
+                                String verificationStatus, String pendingReason, List<String> boundStoreNos) {}
+    /** merchantNo 为 null：主体在支付侧没有已核验的支付商户（据此回退到本地进件表）。 */
+    record EntityChannelAccounts(String entityNo, String merchantNo, List<EntityChannelAccount> accounts) {}
+    record MethodPreferencesReq(String operatorNo, String requestNo, long expectedVersion,
+                                String eligibilityRevision, String mode, List<MethodChoice> enabledMethods) {}
+
     record QrReq(String operatorNo, String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
     }
 
@@ -65,6 +94,23 @@ public interface PayBizInternalApi {
 
     @PostExchange(PREFIX + "/collections")
     PortResult<CollectView> collect(@PathVariable("storeNo") String storeNo, @RequestBody CollectReq req);
+
+    @GetExchange(PREFIX + "/collection-methods")
+    PortResult<StoreMethods> storeMethods(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    @PutExchange(PREFIX + "/collection-methods")
+    PortResult<StoreMethods> saveStoreMethods(@PathVariable("storeNo") String storeNo, @RequestBody StoreMethodsReq req);
+
+    @GetExchange(PREFIX + "/method-preferences")
+    PortResult<MethodPreferences> methodPreferences(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    @PutExchange(PREFIX + "/method-preferences")
+    PortResult<MethodPreferences> saveMethodPreferences(@PathVariable("storeNo") String storeNo, @RequestBody MethodPreferencesReq req);
+
+    /** 主体的渠道账户（按来源关联找支付商户），只读 */
+    @GetExchange(PaymentInternalPaths.PREFIX + "/biz/entities/{entityNo}/channel-accounts")
+    PortResult<EntityChannelAccounts> entityChannelAccounts(@PathVariable("entityNo") String entityNo,
+                                                            @RequestParam("sourceScope") String sourceScope);
 
     @GetExchange(PREFIX + "/qr-codes")
     PortResult<List<QrView>> qrCodes(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);

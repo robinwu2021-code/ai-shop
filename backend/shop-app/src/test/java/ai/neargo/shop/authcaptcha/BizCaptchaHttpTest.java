@@ -54,10 +54,11 @@ class BizCaptchaHttpTest {
         assertThat(response.path("data").path("action").asString()).isEqualTo(action);
     }
 
-    @Test void missingAndUntrustedHeadersCannotBypassPasswordLoginOrIdentityDiscovery() throws Exception {
+    @Test void passwordLoginAndIdentityDiscoveryNeverAskForTheSlider() throws Exception {
         for (String path : new String[]{"/biz/auth/login", "/biz/auth/identities"}) {
-            required(postJson(path,password("http-password@example.test"),null),"LOGIN");
-            required(postJson(path,password("http-password@example.test"),"client-says-success"),"LOGIN");
+            var response = postJson(path,password("http-password@example.test"),null);
+            assertThat(response.path("code").asInt()).as(response.toString()).isNotEqualTo(10452);
+            assertThat(response.path("data").path("captchaRequired").asBoolean()).isFalse();
         }
     }
 
@@ -133,7 +134,7 @@ class BizCaptchaHttpTest {
                 .path("code").asInt()).isNotEqualTo(10452);
     }
 
-    @Test void anonymousChallengeAndVerifyUseRealEngineAndFailedPasswordConsumesProof() throws Exception {
+    @Test void anonymousChallengeAndVerifyUseRealEngineAndProofIsSingleUse() throws Exception {
         String principal = "proof-"+UUID.randomUUID()+"@example.test";
         var issued = postJson("/biz/auth/captcha/challenge",Map.of("action","LOGIN","principal",principal),null);
         assertThat(issued.path("code").asInt()).as(issued.toString()).isZero();
@@ -147,8 +148,7 @@ class BizCaptchaHttpTest {
                 "challengeId",c.challengeId(),"track",track),null);
         assertThat(verified.path("code").asInt()).as(verified.toString()).isZero();
         String token = verified.path("data").path("captchaToken").asString();
-        assertThat(postJson("/biz/auth/login",password(principal),token).path("code").asInt()).isNotEqualTo(10452);
-        required(postJson("/biz/auth/identities",password(principal),token),"LOGIN");
+        // A LOGIN challenge still round-trips for older App builds, but nothing requires it any more.
         assertThat(postJson("/biz/auth/captcha/verify",Map.of("action","LOGIN","principal",principal,
                 "challengeId",c.challengeId(),"track",track),null).path("code").asInt()).isEqualTo(10452);
     }

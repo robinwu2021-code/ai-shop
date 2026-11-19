@@ -1,0 +1,20 @@
+{
+  "requestPrefix": "oscar-20261116",
+  "email": "oscar@umeshop.ai",
+  "userNo": "U261113VG2HFDJMK0",
+  "entityNo": "M261113Y3QW5XKEFW",
+  "entityName": "創勢科技股份有限公司",
+  "storeNo": "ST2611132NS49C2EPQ",
+  "storeName": "ume 早餐店",
+  "requiredQualTypes": [],
+  "qualifications": [],
+  "repair": {
+    "merchantNo": "PM13A13B737D7C4A57",
+    "fromEntityNo": "M261106BF7GK8052W",
+    "storeNos": ["ST2611132NS49C2EPQ"],
+    "evidence": "待填写：归属依据（如营业登记与负责人一致的核对结论，不写证件原文）"
+  },
+  "channels": [
+    {"payChannel": "NEWEBPAY", "payMerchantNo": "PMD3A0C5A8C8FB4F92"}
+  ]
+}

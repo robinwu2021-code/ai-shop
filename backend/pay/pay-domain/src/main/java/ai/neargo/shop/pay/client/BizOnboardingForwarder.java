@@ -7,10 +7,12 @@ import java.time.Duration;
 import java.util.*;
 
 /**
- * ai-shop adapter: bounded, allowlisted relay of the original BIZ token and payload. No identity
- * headers, service secrets, token cache, retries, redirect or business storage.
+ * ai-shop adapter: bounded, allowlisted relay of the original BIZ token and payload. The caller decides
+ * whether to add its source-caller credential (merchant authorization decided by ai-shop); no token cache,
+ * retries, redirect or business storage.
  */
 public final class BizOnboardingForwarder {
+  public static final Set<String> SOURCE_HEADERS = Set.of("x-internal-caller", "x-internal-credential");
   private final String origin;
   private final HttpClient http;
 
@@ -42,6 +44,13 @@ public final class BizOnboardingForwarder {
 
   public Response forward(String method, String target, Map<String, String> headers, byte[] body)
       throws IOException, InterruptedException {
+    return forward(method, target, headers, body, Map.of());
+  }
+
+  /** {@code source}: the host's own source-caller credential, added only after the host authorized the merchant. */
+  public Response forward(
+      String method, String target, Map<String, String> headers, byte[] body, Map<String, String> source)
+      throws IOException, InterruptedException {
     if (!allowed(method, target))
       throw new IllegalArgumentException("unsupported BIZ onboarding route");
     URI uri = URI.create(target);
@@ -67,6 +76,10 @@ public final class BizOnboardingForwarder {
         (name, value) -> {
           if (name != null && value != null && input.contains(name.toLowerCase(Locale.ROOT)))
             b.header(name, value);
+        });
+    source.forEach(
+        (name, value) -> {
+          if (SOURCE_HEADERS.contains(name.toLowerCase(Locale.ROOT)) && value != null) b.setHeader(name, value);
         });
     var r = http.send(b.build(), HttpResponse.BodyHandlers.ofByteArray());
     Map<String, List<String>> out = new LinkedHashMap<>();
@@ -105,7 +118,7 @@ public final class BizOnboardingForwarder {
     if (uri.isAbsolute() || uri.getAuthority() != null) return false;
     String p = uri.getPath(), base = "/biz/pay/v2";
     if (method.equals("GET")
-        && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings")
+        && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings", base + "/merchant-channels")
             .contains(p)) return true;
     if (method.equals("POST") && p.equals(base + "/merchant-profile-revisions")) return true;
     if (method.equals("GET") && (p.equals(base + "/merchant-profile-revisions") || p.matches(base + "/merchant-profile-revisions/by-request/[A-Za-z0-9_-]{1,64}"))) return true;

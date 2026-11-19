@@ -145,9 +145,13 @@ class MediaHostMigrationTest {
              * 而这取决于本测试之前哪条用例往同一张 H2 库里插过多件单 —— 表现成与本测试无关的随机串台
              * （报表用例落多件单后，全量里它恰好排在前面就红）。所以挑一个只对应一行的键。
              * 都对应多行时跳过该列（与这张表为空时同样处理），下面的 exercised ≥ 5 仍兜得住。
+             * 只挑这一列本来就有值的行：有的列与别的列成对约束（stl_payment_operation 的
+             * evidence_ref 与 evidence_json 须同为空或同有值），把空值行改成非空会撞约束，
+             * 撞不撞又取决于之前的用例落了什么行 —— 同样表现为全量里随机红。
              */
             List<Object> keys = jdbc.queryForList(
                     "SELECT " + c.keyColumn() + " FROM " + c.table()
+                            + " WHERE " + c.column() + " IS NOT NULL"
                             + " GROUP BY " + c.keyColumn() + " HAVING COUNT(*) = 1"
                             + " ORDER BY " + c.keyColumn() + " LIMIT 1", Object.class);
             if (keys.isEmpty()) {

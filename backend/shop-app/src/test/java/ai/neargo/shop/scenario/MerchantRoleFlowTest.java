@@ -229,6 +229,8 @@ class MerchantRoleFlowTest {
         // 少一条就是「有个功能授不出去」，多一条就是提权：数量本身要钉住
         var actual=new HashSet<String>();
         for(var option:json.readTree(body).get("data")) actual.add(option.get("code").asText());
+        // 门店付款方式只给属主（TDD-门店付款方式-App设置 Q2 / AC6）：老板也不能把它授给店长、店员
+        assertThat(actual).doesNotContain(ai.neargo.shop.auth.BizPerms.PAY_STORE_METHOD);
         assertThat(actual).containsExactlyInAnyOrderElementsOf(Set.of(
                 "biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods",
                 "biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:finance",

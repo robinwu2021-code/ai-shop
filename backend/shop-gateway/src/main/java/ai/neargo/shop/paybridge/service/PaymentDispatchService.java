@@ -1,5 +1,6 @@
 package ai.neargo.shop.paybridge.service;
 
+import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests.PayerIdentity;
 import ai.neargo.shop.spi.settle.PaymentOperationPort.OfflinePaymentReceiptReq;
 import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationReq;
 import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationView;
@@ -16,5 +17,5 @@ public interface PaymentDispatchService {
     PaymentOperationView confirmOffline(OfflinePaymentReceiptReq request);
 
     /** The old trade caller shares exactly the same canonical send arbitration. */
-    SettlePort.PayInitResult initiateLegacy(SettlePort.PaymentOpen payment);
+    SettlePort.PayInitResult initiateLegacy(SettlePort.PaymentOpen payment, PayerIdentity payer);
 }

@@ -17,10 +17,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 渠道注册表（设计：触达推送中台-模块抽象 · N2）。
  *
- * <p>验三件事：种子把现有通道登齐、状态**读时派生**得对（测试环境一律走桩）、
+ * <p>验三件事：种子把现有通道登齐、状态**读时派生**得对（测试环境已选用的外部通道走桩）、
  * 软启停即时生效且 INAPP 关不掉。
  */
-@SpringBootTest
+@SpringBootTest(properties = {"shop.sms.provider=ali", "shop.sms.stub=true"})
 @ActiveProfiles("test")
 class NotifyChannelRegistryTest {
 
@@ -31,10 +31,10 @@ class NotifyChannelRegistryTest {
     @DisplayName("★★ 种子登齐：现有各通道 PLATFORM 都在，外部通道各有 TEST(桩)")
     void seedCoversExistingChannels() {
         List<NotifyChannel> all = registry.list();
-        // 平台侧七条（SMS/MAIL/WXSUB + PUSH×3 + INAPP）
+        // 平台短信登记包含当前供应商和备用供应商
         assertThat(all).filteredOn(c -> NotifyChannel.SCOPE_PLATFORM.equals(c.getScope()))
                 .extracting(NotifyChannel::getChannelNo)
-                .contains("NCH-SMS-ALI", "NCH-MAIL-SMTP", "NCH-WXSUB-WECHAT",
+                .contains("NCH-SMS-ALI", "NCH-SMS-MITAKE", "NCH-MAIL-SMTP", "NCH-WXSUB-WECHAT",
                         "NCH-PUSH-GETUI", "NCH-PUSH-FCM", "NCH-PUSH-APNS", "NCH-INAPP");
         // 四条外部通道各有测试接入
         assertThat(all).filteredOn(c -> NotifyChannel.SCOPE_TEST.equals(c.getScope()))
@@ -52,6 +52,8 @@ class NotifyChannelRegistryTest {
             String status = registry.statusOf(ch);
             if (NotifyChannel.SCOPE_TEST.equals(ch.getScope())) {
                 assertThat(status).as("测试接入恒 STUB").isEqualTo(NotifyChannel.STATUS_STUB);
+            } else if (NotifyChannel.PROV_MITAKE.equals(ch.getProvider())) {
+                assertThat(status).as("未选用的短信供应商").isEqualTo(NotifyChannel.STATUS_DISABLED);
             } else if (NotifyChannel.TYPE_INAPP.equals(ch.getChannelType())) {
                 // 站内信无需凭据、从不走桩 → 开着就是 READY
                 assertThat(status).as("INAPP 平台通道就绪").isEqualTo(NotifyChannel.STATUS_READY);

@@ -66,6 +66,7 @@ public class BizEntityRecognitionController {
     REGISTRATION(DocumentType.ENTITY_REGISTRATION),
     CORPORATE_REGISTRATION(DocumentType.CORPORATE_REGISTRATION),
     ID_CARD_FRONT(DocumentType.ID_CARD_FRONT),
+    ID_CARD_BACK(DocumentType.ID_CARD_BACK),
     ARC_FRONT(DocumentType.ARC_FRONT),
     ARC_BACK(DocumentType.ARC_BACK),
     PASSPORT(DocumentType.PASSPORT),
@@ -94,7 +95,14 @@ public class BizEntityRecognitionController {
     }
   }
 
-  /** 新增经营实体前读登记证明：实体还不存在，文件只读不存。 */
+  /** 实体建立前能识别的证件：公司读登记证明，自然人读身分证正反面。 */
+  static final java.util.Set<EntityRecognitionType> BEFORE_CREATE =
+      java.util.EnumSet.of(
+          EntityRecognitionType.REGISTRATION,
+          EntityRecognitionType.ID_CARD_FRONT,
+          EntityRecognitionType.ID_CARD_BACK);
+
+  /** 新增经营实体前读证件：实体还不存在，文件只读不存。 */
   @PostMapping(value = "/biz/entity-recognitions", consumes = "multipart/form-data")
   public Result beforeCreate(
       @RequestParam("file") MultipartFile file,
@@ -103,7 +111,7 @@ public class BizEntityRecognitionController {
       HttpServletResponse response)
       throws IOException {
     response.setHeader("Cache-Control", "no-store");
-    if (docType != EntityRecognitionType.REGISTRATION) throw BizException.of(ErrorCode.BAD_REQUEST);
+    if (!BEFORE_CREATE.contains(docType)) throw BizException.of(ErrorCode.BAD_REQUEST);
     taiwanOnly();
     return recognize(CertDocumentReader.read(file), docType);
   }
@@ -156,6 +164,29 @@ public class BizEntityRecognitionController {
     return out;
   }
 
+  /**
+   * 身分证发证地点 → 蓝新 NWP_IDCardPlace 代码。证面印的是简称（北市）或全称（臺北市）都认；
+   * 不在表内（含尚未确认的雲縣）就丢弃，不猜。
+   */
+  static final Map<String, String> ISSUE_PLACE = issuePlaces();
+
+  private static Map<String, String> issuePlaces() {
+    String[][] pairs = {
+      {"北市", "臺北市"}, {"新北市", "新北市"}, {"桃市", "桃園市"}, {"中市", "臺中市"}, {"南市", "臺南市"},
+      {"高市", "高雄市"}, {"基市", "基隆市"}, {"竹市", "新竹市"}, {"嘉市", "嘉義市"}, {"竹縣", "新竹縣"},
+      {"苗縣", "苗栗縣"}, {"彰縣", "彰化縣"}, {"投縣", "南投縣"}, {"嘉縣", "嘉義縣"}, {"屏縣", "屏東縣"},
+      {"宜縣", "宜蘭縣"}, {"花縣", "花蓮縣"}, {"東縣", "臺東縣"}, {"澎縣", "澎湖縣"}, {"金門", "金門縣"},
+      {"連江", "連江縣"}, {"北縣", "臺北縣"}, {"桃縣", "桃園縣"}, {"中縣", "臺中縣"}, {"南縣", "臺南縣"},
+      {"高縣", "高雄縣"}
+    };
+    var out = new java.util.HashMap<String, String>();
+    for (String[] p : pairs) {
+      out.put(p[0], p[0]);
+      out.put(p[1], p[0]);
+    }
+    return Map.copyOf(out);
+  }
+
   private static final UnaryOperator<String> DATE_ONLY = v -> DATE.matcher(v).matches() ? v : null;
   private static final UnaryOperator<String> DIGITS = v -> v.matches("\\d+") ? v : null;
   private static final Map<String, UnaryOperator<String>> RULES =
@@ -166,8 +197,9 @@ public class BizEntityRecognitionController {
           "incorporationDate", DATE_ONLY,
           "capitalAmount", DIGITS,
           "corporateCapital", DIGITS,
-          "legalForm", v -> v.equals("ENTERPRISE") || v.equals("INDIVIDUAL") ? v : null,
-          "issuePlace", v -> v.replaceAll("[()（）]", ""),
+          "legalForm",
+          v -> v.equals("ENTERPRISE") || v.equals("INDIVIDUAL") || v.equals("NATURAL_PERSON") ? v : null,
+          "issuePlace", v -> ISSUE_PLACE.get(v.replaceAll("[()（）\\s]", "").replace('台', '臺')),
           "idIssueType",
           v ->
               switch (v) {

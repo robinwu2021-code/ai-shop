@@ -60,3 +60,11 @@ POST /ops/stores/nearpay-sync
 PUT /ops/x/commerce/product-profiles/{profileNo}
 GET /ops/x/commerce/support/health
 GET /ops/x/commerce/support/operations/{operationNo}
+# 商户迁移同步脚本专用（TDD-商户迁移同步与渠道关联 N2）：只由 deploy/ume/oscar-sync 调用，运营页面仍用登记或更新接口
+POST /ops/merchants/{merchantNo}/qualification-creations
+# 迁移与收款验收：运营代改门店名称与 slug（TDD-商户迁移同步与渠道关联 §10），由迁移脚本调用
+PUT /ops/stores/{storeNo}/basics
+# ── 2026-11-19 追加 1 条：UME 迁移建档（TDD-UME迁移建档）──
+# 只给 UME 导入主体（MUME…）批量建支付商户与来源关联，由 deploy/ume/sync-check/migrate.py 以运营身份逐户调用；
+# 739 户已在 UME166 跑完，一次性迁移动作，不做页面。
+POST /ops/merchant/{entityNo}/pay-service/migrate

@@ -69,5 +69,59 @@
     "rollback": "/home/ume/entity-v46-20261116/pay-before-v46.jar written back in place; V104 table can stay; oms symlink back to entity-tw2-20261116",
     "notVerified": "actual review submission, operator review and discard on 166 (not exercised)",
     "verified": "2026-11-16 by the onboarding session, App with ENTITY_WORKSPACE_V46_SERVER on, V40 test entity: contact saved and read back; channelMaterials stored, NEWEBPAY complete after 8 items; thumbnails served; all four sections complete and submit enabled (not submitted, per user). Evidence: ai-shop-bapp feat/core-flow-ui docs/api/经营实体证件识别接口.md §9"
+  },
+  "consolidation20261117": {
+    "nearPay": "origin/release/166-live-20261117 d62e4280 rebuilds the live jar d6a489c9 class for class (except an orphan OpsMerchantDtos$ProfileRevisionDto$2 left by an older overlay)",
+    "aiShop": "origin/release/166-live-20261117 d1918f778 = main + the Oscar session's local feat/onboarding-doc-recognition commits; a superset of live, every extra class traced"
+  },
+  "naturalPersonRelease": {
+    "approvedBy": "user, 2026-11-17 (Deploy to 166)",
+    "source": "near-pay feat/entity-natural-person efa8eaae; ai-shop feat/entity-natural-person (on release/166-live-20261117)",
+    "pay": "overlay of EntityProfilePolicy, EntityProfileService, EntityChannelPreparation, EntityProfileConfiguration on d6a489c9 -> ee19c192c96fff4e5f181379f6e20aff5b86cb57b61ed41b4bae0ba1130b7d81; readiness OK",
+    "opsWeb": "/data/www/oms-root/oms -> /data/www/nearpay-oms-releases/entity-natural-person-20261117",
+    "aiShop": "overlay of 15 classes (BizEntityController, BizEntityRecognitionController, EntityRegistrationProjection(Impl)/Coordinator, EntityReviewAssembler, CertVisionPort types, OpenAiCertVisionGateway) on d56da3ff -> 64259e9334e8551de3355deaa358d34dfcba3d11747b9e11c4d48f1bf619b477; in place (inode kept); api and ops restarted and UP; api now also runs the Oscar ops classes that were on disk since 2026-11-16",
+    "migration": "none",
+    "rollback": "/home/ume/entity-natural-person-20261117/{pay-before-natural-person.jar,shop-before-natural-person.jar} written back in place; oms symlink back to entity-v46-20261116",
+    "openDecision": "natural persons are projected with biz_qualification=UNREGISTERED per the plan; EXEMPT would be the accurate value once anything gates trading on it",
+    "notVerified": "App natural-person flow on 166 (ENTITY_NATURAL_PERSON) not yet exercised"
+  },
+  "captchaRulesRelease": {
+    "approvedBy": "user, 2026-11-17 (Deploy to 166)",
+    "source": "ai-shop feat/captcha-rules b2982e589 (on release/166-live-20261117)",
+    "aiShop": "overlay on 456def27 (other session's store-basics release) of TianaiSliderEngine, BizAuthController(+inner), BizIdentityController(+inner), shop-base-auth OtpScenePolicies, plus 24 new classpath images under captcha/slider/ -> 9d750af95e6a00af0a4375283e9b26dc190582299ade35daa5f1dd675bd21eda; in place, both containers UP after 140 s, no new errors; live challenge returns 320x180 background and 110 px piece. The stale TianaiSliderEngine$FreshBackground class stays in the jar, unreferenced",
+    "config": "none changed; SHOP_AUTH_CAPTCHA_ENABLED still off on 166",
+    "rollback": "/home/ume/captcha-rules-20261117/shop-before-captcha.jar written back in place, restart both containers"
+  },
+  "entityProjectionRelease": {
+    "approvedBy": "user, 2026-11-17 (Yes, deploy)",
+    "source": "ai-shop claude/entity-projection-in-process 9a2ac2f43 (on release/166-live-20261117)",
+    "aiShop": "overlay on 9d750af9 (captcha rules release) of EntityRegistrationProjectionCoordinator (LOCK made package-visible only) and new EntityRegistrationProjectionTimer -> d66b300b23222a3b924f6cc495eda63d9ff3894c48dd33727a1dceb86fcfe633; in place (inode 965003630), both containers UP after 140 s, no new errors. application.yml not overlaid: the branch build's yml also carries shop.sms provider/mitake lines that the live jar lacks",
+    "config": "appended shop.pay.entity-profiles.projection-in-process=true to /home/ume/v46-entity-closure-20261115/ops-entity.properties in place (inode 1174522026), ai-shop-ops only; ai-shop-api unchanged. No @EnableScheduling, SHOP_JOB_ENABLED stays false: no other scheduled job starts",
+    "verified": "first tick 2026-11-17T05:22:57Z under ShedLock entity-registration-projection: M261115WNCEZQZWHF WAITING->APPLIED (approved_revision 2), mch_entity PENDING_LICENSE->ACTIVE verified=1, BUSINESS_LICENSE qualification VALID; M261115B1H3EMFBG8 and M261116S7XAVV9MXN checked, still WAITING (near-pay revision SUBMITTED); soft-deleted BLOCKED M2611171209QTX20X and M2611173EP67AQ7RC untouched",
+    "rollback": "/home/ume/entity-projection-20261117/shop-before-projection.jar and ops-entity.properties.before-projection written back in place, restart both containers",
+    "naturalPersonVerified": "2026-11-17T06:38:06Z TEST ONLY M261117Q484GXZQ06 (approved in near-pay by user via neara, PM2026111713380001-R1, source mapping verified): projection APPLIED revision 1, registration_no NULL, facts_hash written; mch_entity ACTIVE verified=1 NATURAL_PERSON biz_qualification UNREGISTERED; one ID_CARD qualification VALID with masked number only (A12****789), created_by SYSTEM:PAY_PROFILE; no store or payment merchant rows; no projection errors. Test entity cleanup arranged by the 进件/优化 sessions"
+  },
+  "productionDelivery20261117": {
+    "approvedBy": "user, 2026-11-17 (Switch to production)",
+    "why": "After ADR-046 near-pay executes everything as PRODUCTION but merchant collections recorded and delivered only SANDBOX, so no payment result reached ai-shop",
+    "aiShop": "ai-shop-api payment-sse.private.properties: + shop.payment-collections.environments=SANDBOX,PRODUCTION and secrets.PRODUCTION (SANDBOX keeps the legacy secret); written in place (single-file bind mount), restarted 05:10 UTC, health 200",
+    "nearPay": "nearpay-prod payment-sse.private.properties: merchant-collections.environment=PRODUCTION, + environments=PRODUCTION, secrets.PRODUCTION; delivery-targets[SANDBOX][0] renamed to [PRODUCTION][0] (same 18082 URL; targets may not overlap); restarted 05:12 UTC, settings 401 after 42 s. Oscar session notified and recorded it in near-pay deploy/sandbox-unify/README",
+    "key": "generated on the server, shared by both sides, root-only at /home/ume/prod-delivery-20261117/production.key; never printed",
+    "rollback": "write /home/ume/prod-delivery-20261117/{ai-shop,nearpay}-payment-sse.before back in place and restart the matching container",
+    "notVerified": "resolved 08:05 UTC, see collectionStoreFix20261117"
+  },
+  "entityCleanup20261117": {
+    "approvedBy": "user, 2026-11-17 (Approve it / Clean it up)",
+    "nearPay": "PM2026111713380001-R1 approved and executed as neara (APA3E3A87DA10B4674); not sent to NewebPay",
+    "aiShop": "after the ID_CARD projection check: mch_account 2076, mch_entity M261117Q484GXZQ06 and mch_qualification 11 set deleted=1; projection BLOCKED"
+  },
+  "collectionStoreFix20261117": {
+    "approvedBy": "user, 2026-11-17 (Code fix and deploy; Merge and push)",
+    "incident": "after the 05:12 PRODUCTION switch, MerchantCollectionResultRecorder ran inside settlement and called the payment-store source API (not integrated on 166); the exception rolled back settlement, so paid PRODUCTION orders stayed AWAITING_PAYMENT (05:12-07:59 UTC)",
+    "nearPay": "1edc910e (fix/collection-store-lookup-20261117), merged into release/166-live-20261117 as 60dbdbc9; overlay of MerchantCollectionResultRecorder.class into pay-domain of b43d1194 -> pay-svc.jar 61a6fb2e, restarted ~08:00 UTC, ready in 39 s; Oscar session agreed",
+    "aiShop": "payment_collection_source + PRODUCTION/1/CHECKOUT/1 bindings: payment store 2070 -> ST2611132NS49C2EPQ (ume早餐店), 2074 -> ST261117JC0WT5KSDV (LINE Pay 沙箱測試), entity M261113Y3QW5XKEFW",
+    "verified": "PYO261117144731387 (NewebPay sandbox card NT$1) SUCCEEDED 08:02, delivered 08:05:06 (7th attempt, 200) -> receipt PCR261117CFS1VKAEX8 projected to the store stream; App announcement not observed by this session",
+    "rollback": "/home/ume/collection-store-fix-20261117/pay-svc.jar.before written back in place + restart; delete the two PRODUCTION rows",
+    "notTested": "the native MySQL regression test needs PAYMENT_SSE_JDBC_URL credentials and was skipped locally"
   }
 }

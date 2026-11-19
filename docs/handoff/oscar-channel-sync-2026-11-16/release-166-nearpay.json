@@ -1,0 +1,20 @@
+{
+  "releaseId": "oscar-repair-20261116",
+  "environment": "UME166",
+  "approvedBy": "user, 2026-11-16（同意发布；建表授权按用户指示经 db61 root 本机登录临时授予并收回）",
+  "nearPay": {
+    "source": "release/166-oscar-repair-20261116 = c33b3c9b（线上运行源 feat/entity-material-recognition 62e0deb3 + 文档）+ 608c7d8d + 5f1fe3d9 + fc874b14",
+    "scope": "N3 一个经营主体一个支付商户、N5 来源归属修复申请、N6 运营代建须主体已有门店、V105 pay_source_association_repair",
+    "method": "在运行 jar 上只覆盖 23 个条目（pay-domain 19、pay-portal 4）；条目清单为干净构建 c33b3c9b 与候选的差异，且这些条目在运行 jar 中与基线一致；其余 11 处既有覆盖（收款通知、订单读取等）原样保留",
+    "jarBefore": "a047d57d877736a862b66975fa3bc1d26608f9b6e19f1ce7c58fa8addea0173f",
+    "jarAfter": "3d0c4d87acc7479d388664ba9b6e7d3bb66d22cd6e20d04bc868d2f65266af21",
+    "fileAttributes": "原地覆盖，inode、属主 root:root、模式 640 与 ACL 不变",
+    "migration": "V105 经 migrate-helper（validate 后 apply pay，DB_TARGET=105）在 nearpay-prod 容器内以应用连接执行，成功；执行前对 nearpay_prod_app@192.168.3.166 临时 GRANT CREATE，执行后立即 REVOKE，权限复原为 SELECT/INSERT/UPDATE/DELETE；flyway 历史 105 success；新表 0 行",
+    "health": "首次启动 37s 就绪（当时 V104 落后 V105 告警）；迁移后重启，日志 database at V105 matches bundled pay migrations",
+    "publicProbe": "nearshop / twpay 两域 /oms-api/pay-ops/v2/source-association-repair-requests 无令牌 401（未知路径同为 401，鉴权在路由前）",
+    "notVerified": "带令牌调用新接口；运营角色尚未授予 pay:merchant:repair / pay:merchant:repair:approve",
+    "backup": "/home/ume/oscar-repair-20261116/pay-before-oscar-repair.jar",
+    "rollback": "V105 为新增表，可保留；回滚 jar 时停 nearpay-prod，原地写回备份 jar（保 inode/ACL），启动。旧 jar 启动会报 V105 超前，需确认其环境表策略对未知表的处理"
+  },
+  "aiShop": "未发布；N2 资质只新建接口不影响本次迁移（Oscar 无待建资质）"
+}

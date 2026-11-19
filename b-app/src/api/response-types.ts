@@ -6,6 +6,7 @@ import type { AfterSale, Order } from "@shared/types";
 export type {
   PayServiceStatus, PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant,
   OfflineRecord, OfflineRecordHistory, OfflineRecordPage, OfflineRecordSummary,
+  PayStoreMethodPreferences, PayStoreMethodPreference,
 } from "./pay";
 // 平台商城（向平台采购，线下银行转账）的响应类型住在 ./mall.ts；同样转出一次
 export type {

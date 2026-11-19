@@ -43403,6 +43403,13 @@
         "module": "shop-gateway"
       },
       {
+        "host": "PayServiceApplyRequests",
+        "name": "UME_ENTITY_PREFIX",
+        "value": "MUME",
+        "zh": "UME 导入主体编号前缀（TDD-UME迁移建档 AC3）",
+        "module": "shop-gateway"
+      },
+      {
         "host": "Codes",
         "name": "BIZ_APP",
         "value": "END_BIZ_APP",
@@ -45159,6 +45166,7 @@
           "ENTITY_REGISTRATION",
           "CORPORATE_REGISTRATION",
           "ID_CARD_FRONT",
+          "ID_CARD_BACK",
           "ARC_FRONT",
           "ARC_BACK",
           "PASSPORT",
@@ -45182,6 +45190,7 @@
           "REGISTRATION",
           "CORPORATE_REGISTRATION",
           "ID_CARD_FRONT",
+          "ID_CARD_BACK",
           "ARC_FRONT",
           "ARC_BACK",
           "PASSPORT",
@@ -50048,6 +50057,27 @@
         "zh": "流水行：收款 / 退款"
       },
       {
+        "name": "PayStoreMethodExclusion",
+        "client": "b-app",
+        "values": [
+          "STORE",
+          "MERCHANT",
+          "CATALOG",
+          "STORE_STATE",
+          "ENTRY"
+        ],
+        "zh": "门店付款方式的不可开原因：null 开启。"
+      },
+      {
+        "name": "PayStoreMethodMode",
+        "client": "b-app",
+        "values": [
+          "INHERIT",
+          "OVERRIDE"
+        ],
+        "zh": "门店付款方式模式：INHERIT 跟随商户。"
+      },
+      {
         "name": "PaymentApplyStatus",
         "client": "shared",
         "values": [
@@ -50055,7 +50085,8 @@
           "APPLYING",
           "ACTIVE",
           "REJECTED",
-          "FROZEN"
+          "FROZEN",
+          "PENDING_ACTIVATION"
         ],
         "zh": "支付**进件**状态（`MerchantPayment.applyStatus`）。"
       },
@@ -52130,6 +52161,14 @@
       "type": "String",
       "value": "\"-\"",
       "zh": "旧地址没有路径引用",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "BizOnboardingForwarder",
+      "name": "SOURCE_HEADERS",
+      "type": "Set<String>",
+      "value": "Set.of(\"x-internal-caller\", \"x-internal-credential\")",
+      "zh": "",
       "module": "pay/pay-domain"
     },
     {
@@ -55042,6 +55081,14 @@
       "type": "String",
       "value": "\"mch:pay:qr\"",
       "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_STORE_METHOD",
+      "type": "String",
+      "value": "\"mch:pay:store-method\"",
+      "zh": "按门店开关付款方式（TDD-门店付款方式-App设置 Q2）：只授予主体属主（OWNER 的 *），不进店长、店员模板 —— 关掉一种付款方式会直接影响顾客能不能付钱。",
       "module": "shop-base-auth"
     },
     {

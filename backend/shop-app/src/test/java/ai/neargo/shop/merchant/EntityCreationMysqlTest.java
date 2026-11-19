@@ -61,9 +61,12 @@ class EntityCreationMysqlTest {
         String fixture=new ClassPathResource("schema-test.sql").getContentAsString(StandardCharsets.UTF_8);
         for(String table:List.of("usr_account","mch_entity","mch_account","mch_store","mch_entity_plan","sys_merchant_plan_def")) {
             var match=Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS "+table+"\\s*\\(.*?\n\\);").matcher(fixture);
-            assertTrue(match.find(),table);jdbc.execute(match.group()
-                    .replace("    contact_name VARCHAR(64) DEFAULT NULL,\n", "")
-                    .replace("    contact_phone VARCHAR(32) DEFAULT NULL,\n", ""));
+            assertTrue(match.find(),table);
+            String ddl = match.group();
+            if ("mch_store".equals(table)) {
+                ddl = ddl.replaceAll("(?m)^ +contact_(?:name|phone) [^\n]+,\n", "");
+            }
+            jdbc.execute(ddl);
         }
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V674__store_contact_and_entity_creation.sql"),new ClassPathResource("db/migration/V675__entity_profile_initialization_receipt.sql")).execute(ds);
         jdbc.update("INSERT INTO usr_account(user_no,market,created_at,updated_at) VALUES('ENTITY_OWNER','TW',NOW(),NOW())");
