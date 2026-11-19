@@ -4682,7 +4682,8 @@ components:
         - "ACTIVE"
         - "REJECTED"
         - "FROZEN"
-      description: "支付**进件**状态（`MerchantPayment.applyStatus`）。\n\n⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。"
+        - "PENDING_ACTIVATION"
+      description: "支付**进件**状态（`MerchantPayment.applyStatus`）。\n\n⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。\n\n`PENDING_ACTIVATION`：支付侧渠道账户待开通（渠道未对接或账户未核验，TDD-门店代码与商户渠道展示 C2）。"
     PlanStatus:
       type: "string"
       enum:
@@ -5542,6 +5543,39 @@ components:
         storeNo:
           type: "string"
           description: "这条进件是**为哪家门店**做的；空 = 主体级默认号。\n\n多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。"
+        channelMerchantId:
+          type:
+            - "string"
+            - "null"
+          description: "渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。"
+        sandbox:
+          type:
+            - "boolean"
+            - "null"
+          description: "测试（沙箱）渠道。本地进件行为空"
+        channelStatus:
+          type:
+            - "string"
+            - "null"
+          description: "渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空"
+        pendingReason:
+          type:
+            - "string"
+            - "null"
+          description: "待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空"
+        enabledStores:
+          anyOf:
+            - type: "array"
+              items:
+                type: "object"
+                properties:
+                  storeNo:
+                    type: "string"
+                required:
+                  - "storeNo"
+                additionalProperties: false
+            - type: "null"
+          description: "已启用该渠道账户的门店。本地进件行为空"
       required:
         - "payChannel"
         - "channelName"

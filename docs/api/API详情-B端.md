@@ -6578,6 +6578,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### POST `/biz/merchant/payment/{payChannel}/refresh`
@@ -6610,6 +6615,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### POST `/biz/merchant/payment/store/{storeNo}`
@@ -6642,6 +6652,11 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 
 #### GET `/biz/merchant/profile`
@@ -16112,7 +16127,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 ### PaymentApplyStatus
 
-支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
+支付**进件**状态（`MerchantPayment.applyStatus`）。 ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 —— `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。 `PENDING_ACTIVATION`：支付侧渠道账户待开通（渠道未对接或账户未核验，TDD-门店代码与商户渠道展示 C2）。
 
 枚举取值：
 
@@ -16121,6 +16136,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 - `ACTIVE`
 - `REJECTED`
 - `FROZEN`
+- `PENDING_ACTIVATION`
 
 ### PaymentApplyment
 
@@ -16142,6 +16158,11 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+| `channelMerchantId` | `string,null` | 否 | 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。 |
+| `sandbox` | `boolean,null` | 否 | 测试（沙箱）渠道。本地进件行为空 |
+| `channelStatus` | `string,null` | 否 | 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 |
+| `pendingReason` | `string,null` | 否 | 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 |
+| `enabledStores` | `object`（见下）\[\] \| `null` | 否 | 已启用该渠道账户的门店。本地进件行为空 |
 
 ### PaymentMerchant
 

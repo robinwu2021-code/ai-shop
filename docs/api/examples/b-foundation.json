@@ -565,7 +565,12 @@
           "submitted": false,
           "appliedAt": null,
           "activatedAt": null,
-          "storeNo": ""
+          "storeNo": "",
+          "channelMerchantId": null,
+          "sandbox": null,
+          "channelStatus": null,
+          "pendingReason": null,
+          "enabledStores": null
         },
         {
           "payChannel": "ALIPAY",
@@ -585,7 +590,12 @@
           "submitted": false,
           "appliedAt": null,
           "activatedAt": null,
-          "storeNo": ""
+          "storeNo": "",
+          "channelMerchantId": null,
+          "sandbox": null,
+          "channelStatus": null,
+          "pendingReason": null,
+          "enabledStores": null
         },
         {
           "payChannel": "TEST",
@@ -605,7 +615,12 @@
           "submitted": false,
           "appliedAt": null,
           "activatedAt": null,
-          "storeNo": ""
+          "storeNo": "",
+          "channelMerchantId": null,
+          "sandbox": null,
+          "channelStatus": null,
+          "pendingReason": null,
+          "enabledStores": null
         }
       ]
     }
@@ -644,7 +659,12 @@
         "submitted": true,
         "appliedAt": 1793717763907,
         "activatedAt": 1793717763911,
-        "storeNo": null
+        "storeNo": null,
+        "channelMerchantId": null,
+        "sandbox": null,
+        "channelStatus": null,
+        "pendingReason": null,
+        "enabledStores": null
       }
     }
   },

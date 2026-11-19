@@ -327,8 +327,10 @@ export type SettleAccountType = "PERSONAL_BANK_CARD" | "MERCHANT_ID";
  *
  * ⚠️ 此前叫 `ApplyStatus`，与入驻审核的 `ApplyStatus` 同名不同义 ——
  * `ACTIVE`/`FROZEN` 两个值就是证据：审核不会有这两个态。
+ *
+ * `PENDING_ACTIVATION`：支付侧渠道账户待开通（渠道未对接或账户未核验，TDD-门店代码与商户渠道展示 C2）。
  */
-export type PaymentApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+export type PaymentApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN" | "PENDING_ACTIVATION";
 /**
  * 增值包订阅状态。
  *
@@ -1091,6 +1093,18 @@ export interface PaymentApplyment {
    * 等于让他猜自己的钱打进了哪张卡。
    */
   storeNo?: string;
+  /**
+   * 渠道商户号**全号**（TDD-门店代码与商户渠道展示 C1）。只在主体已有支付侧支付商户时给；本地进件行为空。
+   */
+  channelMerchantId?: string | null;
+  /** 测试（沙箱）渠道。本地进件行为空 */
+  sandbox?: boolean | null;
+  /** 渠道状态，运营维护：ENABLED 已开通 / PENDING 待开通 / DISABLED 已停用。本地进件行为空 */
+  channelStatus?: string | null;
+  /** 待开通原因：CHANNEL_NOT_LIVE 平台尚未支援此渠道 / ACCOUNT_UNVERIFIED 待补密钥并完成核验；可用时为空 */
+  pendingReason?: string | null;
+  /** 已启用该渠道账户的门店。本地进件行为空 */
+  enabledStores?: { storeNo: string }[] | null;
 }
 /**
  * 一张**证照**（营业执照）。库里叫 `mch_entity`，**对外一律叫「证照」**——

@@ -49986,7 +49986,8 @@
           "APPLYING",
           "ACTIVE",
           "REJECTED",
-          "FROZEN"
+          "FROZEN",
+          "PENDING_ACTIVATION"
         ],
         "zh": "支付**进件**状态（`MerchantPayment.applyStatus`）。"
       },
