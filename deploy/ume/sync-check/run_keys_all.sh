@@ -3,6 +3,7 @@
 #
 #   bash deploy/ume/sync-check/run_keys_all.sh
 #
+# 重跑安全：已启用并绑定凭据的账户直接记 DONE 跳过（不读 UME、不轮换）；需要轮换设 UME_KEYS_ROTATE=1。
 # 依次：备份（ume-db61 上从 .60 每日全库备份抽 msm_mms 两张表 → nearpay_prod.stg_ume_*）→ 列名 → check
 #       → roger 试点 apply → 全量 apply → 删除明文备份表。出现 AMBIGUOUS / MISMATCH / INVALID / FAILED 就停，备份表保留待查；
 #       MISSING（备份日之后 UME 才新增的密钥）跳过不导，报告里列出。
@@ -32,7 +33,7 @@ lsof -iTCP:23307 -sTCP:LISTEN >/dev/null 2>&1 || ssh -F "$S" -o LogLevel=ERROR -
 export UME_DB_HOST=127.0.0.1 UME_DB_PORT=23307 UME_DB_USER=root UME_DB_PASSWORD="$NP_PWD"
 export UME_COLUMNS=deploy/ume/sync-check/ume-columns.stage.json
 export AUTOMATION_KEY=${AUTOMATION_KEY:-$HOME/work/env/ume/automation-ume-ed25519.pem}
-export UME_KEYS_ANON=${UME_KEYS_ANON:-1}   # 迁移端点免认证，不取运营令牌；设 0 可退回令牌调用
+export UME_KEYS_ANON=${UME_KEYS_ANON:-0}   # 166 已关闭免认证（/oms-api/pay-ops/v2 对公网可达），默认用运营令牌调用
 run() { "$PY" -I deploy/ume/sync-check/credentials.py "$@"; }
 verdicts() { grep -E '^SUMMARY' "$1"; }
 
