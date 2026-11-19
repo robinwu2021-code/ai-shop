@@ -79,6 +79,9 @@ b-app 按响应里的状态名做了多语言映射。所以这一步只做加�
 83 条真的关着、App 里也没有调用，要逐组定性。标注用测试店主实打全部 372 个 GET 核对过。
 单测：`StoreAdmissionRoutesTest`；相关的商城流程测试（`CommerceMerchantScopeFlowTest`、`CommerceAccessSecurityFlowTest`、`StoreScopedDailyRoutesFlowTest`）照常通过。
 
+**补登记（2026-11-19）：** B 类 119 条已全部补进准入表并上线到 v2（日常经营 35 条、储值 84 条），B 端显示为关闭的入口剩 83 条。
+储值开放之后，**第 3 步的优先级提高了**：管理空间下的储值入口现在对新模型门店可达，而网关对它们只要求登录。建议第 3 步先做储值这一批。
+
 ### 第 2 步：准入并进网关的流程
 
 - `AbstractAccessDecider` 增加「准入」一步，排在权限之前；`BizAccessDecider` 的实现就是调用现有的准入规则（`CommerceRoutePolicy` + 门店事实），规则本身不改。
