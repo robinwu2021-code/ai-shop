@@ -298,7 +298,7 @@ shop.appops:
 
 票据本身单次有效、短时（AppOps 60~300 秒）、绑定提交的公钥，所以匿名接口拿到的票据只能被持有对应私钥的安装兑换。
 
-文件：`shop-core` `platform/config/AppOpsProps`、`platform/AppOpsTicketService`、`platform/impl/AppOpsTicketServiceImpl`、`platform/dto/AppOpsTicketVOs`、`platform/api/common/AppOpsTicketController`；测试 `shop-app` `scenario/AppOpsTicketHttpTest`（本机假 AppOps 校验 Basic、Bearer 复用、幂等键、请求体；未配置 App/非 Ed25519 公钥 10400 且不打 AppOps；同 IP 限流 10429；AppOps 拒绝 10505 且不透传）。2026-11-19 实跑：该测试 4 项与 `AppVersionHttpTest` 7 项全部通过。
+文件：`shop-core` `platform/config/AppOpsProps`、`platform/AppOpsTicketService`、`platform/impl/AppOpsTicketServiceImpl`、`platform/dto/AppOpsTicketVOs`；`shop-app` `portal/common/AppOpsTicketController`（取客户端 IP 需 `HttpServletRequest`，按 ADR-044 放在 app 层而非领域包）；测试 `shop-app` `scenario/AppOpsTicketHttpTest`（本机假 AppOps 校验 Basic、Bearer 复用、幂等键、请求体；未配置 App/非 Ed25519 公钥 10400 且不打 AppOps；同 IP 限流 10429；AppOps 拒绝 10505 且不透传）。2026-11-19 实跑：该测试 4 项与 `AppVersionHttpTest` 7 项全部通过。
 
 ### 运营端配套
 

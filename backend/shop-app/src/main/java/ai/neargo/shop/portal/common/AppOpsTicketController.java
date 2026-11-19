@@ -1,4 +1,4 @@
-package ai.neargo.shop.platform.api.common;
+package ai.neargo.shop.portal.common;
 
 import ai.neargo.shop.auth.ClientMeta;
 import ai.neargo.shop.platform.AppOpsTicketService;
