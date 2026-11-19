@@ -13335,7 +13335,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `id` | `number` | 是 | 行号，改状态时用 |
-| `endCode` | `string` | 是 | 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 |
+| `endCode` | `string` | 是 | 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 / mp 消费者端 |
 | `method` | `string` | 是 | HTTP 方法；`*` 表示不限 |
 | `pattern` | `string` | 是 | 地址模式，如 `/ops/payments/refunds/{payRefundNo}/review` |
 | `source` | [`ApiResourceSource`](#apiresourcesource) | 是 | 来源：SCAN 启动扫描到的本进程入口 / MANUAL 录入的微服务链接 |
@@ -14204,7 +14204,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `id` | `number` | 是 | 行号，改状态时用 |
-| `endCode` | `string` | 是 | 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 |
+| `endCode` | `string` | 是 | 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 / mp 消费者端 |
 | `method` | `string` | 是 | HTTP 方法；`*` 表示不限 |
 | `pattern` | `string` | 是 | 地址模式，如 `/ops/payments/refunds/{payRefundNo}/review` |
 | `source` | [`ApiResourceSource`](#apiresourcesource) | 是 | 来源：SCAN 启动扫描到的本进程入口 / MANUAL 录入的微服务链接 |

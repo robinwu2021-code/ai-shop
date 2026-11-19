@@ -451,7 +451,7 @@ export interface SaveMarketPhonePolicy {
 export interface ApiResource {
   /** 行号，改状态时用 */
   id: number;
-  /** 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 */
+  /** 端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 / mp 消费者端 */
   endCode: string;
   /** HTTP 方法；`*` 表示不限 */
   method: string;

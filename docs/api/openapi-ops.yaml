@@ -13166,7 +13166,7 @@ components:
           description: "行号，改状态时用"
         endCode:
           type: "string"
-          description: "端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端"
+          description: "端：ops 运营端主链 / pay-ops 支付运营面 / biz 商户端 / mp 消费者端"
         method:
           type: "string"
           description: "HTTP 方法；`*` 表示不限"

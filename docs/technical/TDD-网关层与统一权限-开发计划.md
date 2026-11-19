@@ -849,6 +849,32 @@ classes 73 run 245 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，�
 
 没有做的：支付的接入（在 near-pay 仓库里做）；配置中心；现有版本（v1）的接入。
 
+**「C 端接入网关」的任务级计划与真实输出**（2026-11-19，分支 `feat/gateway-mp-index`，叠在 `feat/gateway-nacos-discovery` 之上；方案 §2.25）：
+
+| # | 任务 | 结果 |
+|---|---|---|
+| C.1 | C 端入口进索引，类别如实 | `LocalScanResourceProvider`：`/mp/` 下无注解的记 `DEFER` |
+| C.2 | C 端的判定器与档位 | `MpAccessDecider`、`MpGatewayEnd.accessDecider()`，`shop.gateway.mp.precheck` 默认关 |
+| C.3 | 入库 | `ResourceSyncRunner` 同步名单加 `mp` |
+| C.4 | 页面 | 登录类入口锁住不能停用；筛选加「消费者端」 |
+
+```
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.MpResourceIndexTest
+# gateway 包 + arch 包 + BizRoleForbidden* + Mp*
+classes 77 run 281 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，与本次无关
+# 三份快照（入口、安全链、未登录探测）与上一个分支相比 0 行不同
+# 运营端：tsc 通过；eslint 通过；vitest 140 个文件 1273 条全过
+```
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| AC35 入口都在索引里，类别是「留给入口判」 | `MpResourceIndexTest.indexCoversEveryConsumerEndpoint` | 通过 |
+| AC36 就绪后入库，端为 `mp` | `…consumerRowsAreSynced` | 通过 |
+| AC37 匿名照常通过；停用后回 404 | `…anonymousPassesAndDisableWorks` | 通过 |
+
+没有做的：C 端的公开地址清单没有进库（哪些不用登录仍只在 c-app 的接口声明里）；C 端 v2 的对外入口；
+餐饮与服务业插件里的 41 个 C 端入口不在默认构建里，所以也不在索引里。
+
 **D3 相对计划的偏差：**
 
 | 计划 | 实际 | 原因 |

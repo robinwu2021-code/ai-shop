@@ -12,6 +12,7 @@ import ai.neargo.shop.gateway.core.resource.ResourceStore.AdminRow;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,6 +27,7 @@ public class ApiResourceAdmin {
     /** 本页自己的接口都在这个前缀下。 */
     public static final String SELF_PREFIX = "/ops/api-resources";
     private static final Set<String> STATUSES = Set.of("ENABLED", "DISABLED");
+    private static final Pattern CONSUMER_LOGIN = Pattern.compile("/(login|logout|otp|token|captcha|auth)(/|$)");
 
     /** 给页面的一行；{@code locked} 为 true 表示这一行不能停用。 */
     public record ApiResourceVO(long id, String endCode, String method, String pattern, String source,
@@ -90,7 +92,9 @@ public class ApiResourceAdmin {
     private static boolean locked(AdminRow row) {
         // 本进程里不带权限码的入口就是登录、验证码、当前用户、菜单这一类：扫描只知道它们「没有注解」，分不出哪条是登录
         boolean shell = "SCAN".equals(row.source()) && !"POINT".equals(row.access()) && !"DEFER".equals(row.access());
-        return shell || row.pattern().startsWith(SELF_PREFIX);
+        // C 端的入口都记成「留给入口判」，上面那条认不出登录；按地址把登录、验证码、令牌这几类单独锁住
+        boolean consumerLogin = "mp".equals(row.endCode()) && CONSUMER_LOGIN.matcher(row.pattern()).find();
+        return shell || consumerLogin || row.pattern().startsWith(SELF_PREFIX);
     }
 
     private static ApiResourceVO view(AdminRow row) {

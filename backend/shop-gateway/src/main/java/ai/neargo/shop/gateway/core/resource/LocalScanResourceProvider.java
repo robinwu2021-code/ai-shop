@@ -62,7 +62,9 @@ public class LocalScanResourceProvider implements ResourceProvider {
             annotation = AnnotatedElementUtils.findMergedAnnotation(handler.getBeanType(), PreAuthorize.class);
         }
         if (annotation == null) {
-            return new ApiResource(verb, pattern, ApiResource.LOCAL, Access.LOGIN, null, where);
+            // C 端整条链在网关放行，要不要登录由业务代码判：网关不知道，如实记成「留给入口判」，不冒充「只需登录」
+            Access unannotated = pattern.startsWith("/mp/") ? Access.DEFER : Access.LOGIN;
+            return new ApiResource(verb, pattern, ApiResource.LOCAL, unannotated, null, where);
         }
         Optional<PermRule> rule = PermRuleParser.parse(annotation.value(), methods);
         return rule.map(r -> new ApiResource(verb, pattern, ApiResource.LOCAL, Access.POINT, r, where))

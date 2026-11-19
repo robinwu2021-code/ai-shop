@@ -7,6 +7,7 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.gateway.core.config.ConditionalOnGatewayEnd;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
 import ai.neargo.shop.gateway.core.end.AbstractGatewayEnd;
+import ai.neargo.shop.gateway.core.security.AccessDecider;
 import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.security.SpringSecurityAdapter;
 import org.springframework.beans.factory.ObjectProvider;
@@ -63,6 +64,12 @@ public class MpGatewayEnd extends AbstractGatewayEnd {
     @Override
     protected AbstractTokenAuthFilter authenticator() {
         return new ConsumerTokenAuthFilter(tokenStore);
+    }
+
+    /** 只做定位与停用，不判权限；档位由 {@code shop.gateway.mp.precheck} 定，默认关。 */
+    @Override
+    protected AccessDecider accessDecider() {
+        return new MpAccessDecider();
     }
 
     /** 整条链放行到业务层，理由见类注释。 */

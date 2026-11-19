@@ -12,7 +12,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
- * 应用就绪后，把运营端与 B 端扫出来的链接同步进接口资源表（TDD-网关层与统一权限 §2.13；开发计划 M4b）。
+ * 应用就绪后，把运营端、B 端与 C 端扫出来的链接同步进接口资源表（TDD-网关层与统一权限 §2.13；开发计划 M4b）。
  *
  * <p>等到应用就绪才做：那时 Spring MVC 的处理方法已全部登记。
  * 同步失败只告警、不影响启动 —— 判权读的是进程内的索引，库里这份是给人看的副本。
@@ -27,7 +27,8 @@ public class ResourceSyncRunner {
     }
 
     private static final List<Chain> CHAINS = List.of(new Chain("ops", "/ops", "ops", "ops"),
-            new Chain("pay-ops", "/pay-ops", "ops", "ops"), new Chain("biz", "/biz", "biz", "api"));
+            new Chain("pay-ops", "/pay-ops", "ops", "ops"), new Chain("biz", "/biz", "biz", "api"),
+            new Chain("mp", "/mp", "mp", "api"));
 
     private final ResourceIndexes indexes;
     private final ObjectProvider<ResourceStore> store;
