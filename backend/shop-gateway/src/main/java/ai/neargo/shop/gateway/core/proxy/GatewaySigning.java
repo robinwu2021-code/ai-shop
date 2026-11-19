@@ -120,10 +120,17 @@ public class GatewaySigning {
                 .map(ApiResource::rule).map(rule -> List.copyOf(rule.codes())).orElse(List.of());
     }
 
+    /**
+     * 给发往某个下游服务的调用签名的拦截器：带上这个服务的下游动作。没配密钥时什么头都不加。
+     * 手工建客户端的桥接（如库存）用它；按服务挂拦截器的客户端用下面的 {@link InternalServiceInterceptor}。
+     */
+    public SignedContextInterceptor outbound(String service) {
+        return new SignedContextInterceptor(() -> key, () -> caller(service));
+    }
+
     /** 发往支付的每个内部调用都带上签名上下文；支付那边目前只比对、不拒绝。 */
     @Bean
     InternalServiceInterceptor paySignedContext() {
-        return new InternalServiceInterceptor(ServiceName.PAY,
-                new SignedContextInterceptor(() -> key, () -> caller(ServiceName.PAY)));
+        return new InternalServiceInterceptor(ServiceName.PAY, outbound(ServiceName.PAY));
     }
 }

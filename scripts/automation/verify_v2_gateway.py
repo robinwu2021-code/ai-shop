@@ -28,6 +28,17 @@ BUYER, OWNER = "UUMV2TESTBUYER0000000001", "UUMV2TESTOWNER0000000001"
 UNAUTH, EXPIRED, FORBIDDEN, BAD_REQUEST = 10401, 10402, 10403, 10400
 # 不打的地址：长连接、导出下载（体积大或会落文件）
 SKIP = re.compile(r"/(events|stream|sse|export|exports|download)(/|$)")
+# 必须带查询参数才有意义的地址：不带时业务按「看不到范围」拒，会被误报成管理员被拒。
+# 打印运营按门店看打印机，三个参数都要；取测试门店（租户 MAIN）
+REQUIRED_QUERY = {
+    "/ops/print/health": "tenantNo=MAIN&entityNo=M261119TS0PN0XBK9&storeNo=ST261119BE70D8B9C9",
+    "/ops/print/incidents": "tenantNo=MAIN&entityNo=M261119TS0PN0XBK9&storeNo=ST261119BE70D8B9C9",
+}
+
+
+def with_query(pattern: str) -> str:
+    query = REQUIRED_QUERY.get(pattern)
+    return pattern if query is None else f"{pattern}?{query}"
 
 
 def resources(admin: str, end: str) -> list[dict]:
@@ -104,8 +115,8 @@ def main() -> int:
         if path is None:
             tally["支付运营面（公网入口不放行，未打）"] += 1
             continue
-        status_a, code_a, _ = call("OPS", "GET", "/ops" + path, admin)
-        status_s, code_s, _ = call("OPS", "GET", "/ops" + path, support)
+        status_a, code_a, _ = call("OPS", "GET", with_query("/ops" + path), admin)
+        status_s, code_s, _ = call("OPS", "GET", with_query("/ops" + path), support)
         if status_a == 401 or code_a in (UNAUTH, EXPIRED, FORBIDDEN):
             problems.append(f"运营端 管理员被拒 {row['pattern']} http={status_a} code={code_a}")
         if status_a >= 500 or status_a == 0:

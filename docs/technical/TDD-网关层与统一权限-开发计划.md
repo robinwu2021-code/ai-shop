@@ -222,10 +222,10 @@ Nacos 3.3.0 在 .80，v2 与支付都已登记，v2 配了支付回落地址。�
 
 | # | 任务 | 说明 |
 |---|---|---|
-| 15 | `mch:pay:store-method` 的支付动作映射 | 对应的支付入口在 near-pay，要先在 near-pay 里核对它判什么动作，再补进 `PayDownstreamActions` |
-| 16 | 库存改用签名上下文；五类对象的统一接入配置（方案 §2.22） | 网关功能往前做的主线 |
-| 17 | 各端的特定配置改成按端取值（清点已完成，见方案 §2.28） | 目前有几项是进程级的、三端只能共用一份；按需要再做 |
-| 18 | 验证脚本带上打印接口的门店参数 | `verify_v2_gateway.py` 打 `/ops/print/*` 时没带 `tenantNo`、`entityNo`、`storeNo`，每次都报 2 条假的「要看」 |
+| 15 | ~~`mch:pay:store-method` 的支付动作映射~~（2026-11-19 查清） | near-pay 那四个入口不按动作判，不映射；签出去的动作为空，near-pay 比对时记 `NO_ACTIONS` |
+| 16 | ~~库存改用签名上下文；五类对象的统一接入配置~~（2026-11-19 已做，见下方两节与方案 §2.22「落地情况」） | 功能点在权限库里标为不可用、`point-namespaces` 校验、统一 `read-timeout` 三处留待有需要时再做 |
+| 17 | ~~各端的特定配置改成按端取值~~（2026-11-19 复核：本轮不改） | 两处真正的冲突都已定（简讯账号用 B/C 端那份、自动化登录公钥已按端分开）；其余项没有「两端要不同」的具体需求，理由见方案 §2.28 |
+| 18 | ~~验证脚本带上打印接口的门店参数~~（2026-11-19 已改） | `verify_v2_gateway.py` 的 `REQUIRED_QUERY` 给 `/ops/print/health`、`/ops/print/incidents` 带上测试门店的三个参数 |
 | ~~—~~ | ~~后台任务重复执行核对；公网 308；Nacos 备份与支付回落；连接池看日志；10 个 `or` 入口的 HTTP 验证；存储不可用回 503~~ | 2026-11-19 均已完成或查清，细节见上线记录；Nacos 每日定时备份**暂不做**（用户 2026-11-19） |
 
 **三、工程上的欠账**
@@ -235,6 +235,27 @@ Nacos 3.3.0 在 .80，v2 与支付都已登记，v2 配了支付回落地址。�
 | 19 | PR robinwu2021-code/ai-shop#20 评审、合并 | 合并前迁移号若被占用要顺延（主干目前最新 V678） |
 | 20 | pre-push 全量测试闸门 | 剩 5 条红分属 4 个类，在合并基点上同样失败；`backend/known-failures.txt` 是空的，闸门仍过不去，所以本分支一直 `--no-verify` 推送 |
 | 21 | near-pay 全量测试的原有失败 | 18 个类在 `develop/s1` 基点上就失败（H2 测试库缺表、凭据两人控制等）；`ApprovalFlowIntegrationTest` 全量时受其它测试残留数据影响，单独跑通过 |
+
+#### 库存改用签名上下文（2026-11-19，只比对）
+
+| 位置 | 内容 |
+|---|---|
+| `ServiceName.INVENTORY` | 补上库存的服务名（方案 §4.2 第 7 条） |
+| `GatewaySigning.outbound(service)` | 给发往某个服务的调用签名的拦截器；支付原来那个拦截器改用它，行为不变 |
+| `invbridge.InventoryReservationConfiguration` | 建库存客户端时挂上 `outbound(INVENTORY)`：谁、哪一端、哪家店、判过哪些功能点随调用带给库存 |
+| `inventory-client` 的 `InventoryClient.create(…, interceptors)` | 新重载，原方法转调它、行为不变；库存客户端的其余代码不动 |
+| `inventory-svc` 的 `InventoryApplication.signedContextGuard` | 挂 `svc-client` 现成的 `SignedContextGuardFilter`，只拦 `/api/inventory/v1/`，排在凭证过滤器之前；**只有关与只比对两档**，写成 `enforce` 也按关。密钥 `inventory.gateway.signing-key`（与网关同一把），没配就不验 |
+
+库存目前在 v1、v2 上都是同进程运行，调用不走 HTTP，所以这一节对现在的生产没有作用，是给库存独立部署准备的。库存没有映射动作（`actions` 为空）：
+库存服务自己按应用凭证与操作人判，没有按功能点分的动作清单。
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| 签名对得上，入口拿得到上下文，请求体还能再读 | `InventorySignedContextGuardTest.verifiedContextReachesTheEndpoint` | 通过 |
+| 签名对不上、没配钥、写成 enforce：都放行 | `…neverRejects` | 通过 |
+| 只拦库存的服务入口 | `…onlyTheServicePrefix` | 通过 |
+| 调用方挂的拦截器的头到了库存服务端，凭证头照旧；不挂拦截器的老写法照旧 | `InventoryClientInterceptorTest` | 通过 |
+| 库存的架构规则（不依赖 ai-shop 代码，只许 `svc-client`）与客户端契约测试 | `InventoryArchitectureTest`、`InventoryClientContractTest`、`ReservationClientContractTest` | 通过 |
 
 #### 功能点 → 支付动作（2026-11-19；用户：「先放在代码中，容易维护」）
 
@@ -262,7 +283,7 @@ Nacos 3.3.0 在 .80，v2 与支付都已登记，v2 配了支付回落地址。�
 
 **没有写进表的，以及要知道的：**
 
-- `mch:pay:store-method`（门店付款方式）：对应的支付内部入口只在 near-pay 里，判不判动作还没核对。
+- `mch:pay:store-method`（门店付款方式）：**不映射**。near-pay 的 `collection-methods`、`method-preferences` 四个内部入口只核对「店归这个操作员」，不经 `CallerPolicy`，没有动作可批（2026-11-19 核对）。
 - 不靠权限码、却会调支付的地方，签出去的动作为空：`GET /biz/stores/{storeNo}/features`（只要求是本店成员，会读收款状态 READ_LEDGER）、
   C 端下单付款（CREATE_ONLINE，C 端没有权限码）、定时关单与对账（没有登录人）、餐饮结账（经内部入口）。支付侧以后按动作核对时，这几类要另给口径。
 - 同一个码覆盖的动作差异较大：`mch:pay:collect` 同时能建单、关单、读流水；`mch:pay:app-grant` 新建授权在支付侧只判 QUERY。表照实记录，不在这里改权限设计。

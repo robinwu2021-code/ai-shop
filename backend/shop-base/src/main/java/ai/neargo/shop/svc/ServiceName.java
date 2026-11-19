@@ -27,6 +27,9 @@ public final class ServiceName {
     /** 美业独立内部业务进程；公开入口仍在PLATFORM。 */
     public static final String BEAUTY = "BEAUTY";
 
+    /** 库存（进销存）独立服务；同进程过渡期不存在这个进程。地址与凭证仍读 {@code shop.inventory.service.*}（TDD-网关层与统一权限 §2.22） */
+    public static final String INVENTORY = "INVENTORY";
+
     private ServiceName() {
     }
 }

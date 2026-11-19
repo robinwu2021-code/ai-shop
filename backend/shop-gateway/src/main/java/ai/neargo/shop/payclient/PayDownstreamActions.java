@@ -50,7 +50,8 @@ public class PayDownstreamActions implements DownstreamActions {
             BizPerms.PAY_ORDER_VIEW, EnumSet.of(READ_LEDGER, QUERY),
             // 第三方应用授权的列表与新建（QUERY）；撤销支付侧不判动作
             BizPerms.PAY_APP_GRANT, EnumSet.of(QUERY));
-    // 没有写进来的：PAY_STORE_METHOD（门店付款方式）—— 对应的支付内部入口只在 near-pay 里，判不判动作还没核对
+    // 不写进来的：PAY_STORE_METHOD（门店付款方式）—— near-pay 的 collection-methods、method-preferences 四个内部入口
+    // 只核对「店归这个操作员」（PayBizFacade.ownerOf），不经 CallerPolicy，没有动作可批（2026-11-19 核对 near-pay develop/s1）
 
     /** 运营端：支付侧是 {@code OPS} 调用方。其余运营端支付入口在支付侧都不判动作。 */
     private static final Map<String, Set<PayAction>> OPERATOR = Map.of(

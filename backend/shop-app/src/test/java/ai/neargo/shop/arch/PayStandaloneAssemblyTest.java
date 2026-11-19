@@ -49,6 +49,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(properties = {
         "shop.pay.deployment=standalone",
+        // 独立部署必须拿得到支付地址，否则网关的接入登记（IntegrationRegistry）在启动时就拒绝；与生产一致（v1 配的就是本机 8083）。
+        // 这个测试只看装配，不真的调支付
+        "shop.services.targets.PAY=http://127.0.0.1:8083",
         "spring.datasource.url=jdbc:h2:mem:shopstandalone;MODE=MySQL;"
                 + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
         "shop.inventory.datasource.url=jdbc:h2:mem:invstandalone;MODE=MySQL;"

@@ -39266,6 +39266,13 @@
         "module": "shop-base"
       },
       {
+        "host": "ServiceName",
+        "name": "INVENTORY",
+        "value": "INVENTORY",
+        "zh": "库存（进销存）独立服务。",
+        "module": "shop-base"
+      },
+      {
         "host": "BizPerms",
         "name": "OWNER",
         "value": "OWNER",
