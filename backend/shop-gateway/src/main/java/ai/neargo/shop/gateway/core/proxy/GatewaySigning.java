@@ -2,6 +2,7 @@ package ai.neargo.shop.gateway.core.proxy;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.PermChecker;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.gateway.core.end.Access;
@@ -17,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,14 +30,21 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  *
  * <p>密钥是 {@code shop.gateway.signing.key}，没有默认值；不配就不签，行为与今天相同。
  * 两处用它：转发库里录入的微服务链接（{@link HttpProxyInvoker}），以及发往支付的内部调用。
+ *
+ * <p>发往支付的调用另带「下游动作」：判过且这个人持有的功能点，按支付的映射表（{@link DownstreamActions}）换成支付的动作。
  */
 @Configuration(proxyBeanMethods = false)
 public class GatewaySigning {
 
     private final String key;
+    private final ObjectProvider<DownstreamActions> downstream;
+    private final ObjectProvider<PermChecker> perm;
 
-    public GatewaySigning(@Value("${shop.gateway.signing.key:}") String key) {
+    public GatewaySigning(@Value("${shop.gateway.signing.key:}") String key,
+                          ObjectProvider<DownstreamActions> downstream, ObjectProvider<PermChecker> perm) {
         this.key = key == null ? "" : key.trim();
+        this.downstream = downstream;
+        this.perm = perm;
     }
 
     public boolean enabled() {
@@ -71,6 +80,35 @@ public class GatewaySigning {
         return new Caller(user.userNo(), user.realm().name(), merchantNo, storeNo, judgedPoints(), null);
     }
 
+    /** 发往某个下游服务的调用是替谁发的：在 {@link #caller()} 之上，加上这个服务的动作。 */
+    public Caller caller(String service) {
+        Caller who = caller();
+        LoginUser user = SecurityUtils.currentUser().orElse(null);
+        if (user == null || who.points().isEmpty()) {
+            return who;
+        }
+        List<String> held = who.points().stream().filter(code -> holds(user, code)).toList();
+        List<String> actions = downstream.orderedStream().filter(map -> map.service().equals(service))
+                .flatMap(map -> map.actionsOf(user.realm(), held).stream()).distinct().sorted().toList();
+        return new Caller(who.operator(), who.realm(), who.merchantNo(), who.storeNo(), who.points(),
+                who.requestId(), actions);
+    }
+
+    /**
+     * 这个人是否确实持有这个码。规则是「a 或 b」时判过的码里可能有他没有的那个，映射只认他有的；
+     * 判断沿用两端原有的口径（运营端认通配，B 端看当前门店的角色），不在这里另写一套。
+     */
+    private boolean holds(LoginUser user, String code) {
+        if (user.realm() == Realm.MERCHANT) {
+            return BizContext.current().can(code);
+        }
+        if (user.realm() == Realm.OPERATOR) {
+            PermChecker checker = perm.getIfAvailable();
+            return checker != null && checker.can(code);
+        }
+        return false;
+    }
+
     /** 网关在这次请求上判过的功能点：命中的资源行上的权限码。没有经过定位（提前判权与转发都没开）时为空。 */
     private static List<String> judgedPoints() {
         if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
@@ -85,6 +123,7 @@ public class GatewaySigning {
     /** 发往支付的每个内部调用都带上签名上下文；支付那边目前只比对、不拒绝。 */
     @Bean
     InternalServiceInterceptor paySignedContext() {
-        return new InternalServiceInterceptor(ServiceName.PAY, new SignedContextInterceptor(() -> key, this::caller));
+        return new InternalServiceInterceptor(ServiceName.PAY,
+                new SignedContextInterceptor(() -> key, () -> caller(ServiceName.PAY)));
     }
 }

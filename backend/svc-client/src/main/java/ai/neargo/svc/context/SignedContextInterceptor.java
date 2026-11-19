@@ -1,6 +1,7 @@
 package ai.neargo.svc.context;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.springframework.http.HttpRequest;
@@ -16,9 +17,23 @@ import org.springframework.http.client.ClientHttpResponse;
  */
 public class SignedContextInterceptor implements ClientHttpRequestInterceptor {
 
-    /** 这次调用是替谁发的。取不到登录人（定时任务、消息消费）时各项为空，照样签。 */
+    /**
+     * 这次调用是替谁发的。取不到登录人（定时任务、消息消费）时各项为空，照样签。
+     *
+     * @param actions 判过的功能点在这个下游服务上允许的动作；没有映射时为空
+     */
     public record Caller(String operator, String realm, String merchantNo, String storeNo,
-                         java.util.List<String> points, String requestId) {
+                         List<String> points, String requestId, List<String> actions) {
+
+        public Caller {
+            actions = actions == null ? List.of() : List.copyOf(actions);
+        }
+
+        /** 不带下游动作。 */
+        public Caller(String operator, String realm, String merchantNo, String storeNo,
+                      List<String> points, String requestId) {
+            this(operator, realm, merchantNo, storeNo, points, requestId, List.of());
+        }
     }
 
     private final Supplier<String> key;
@@ -40,7 +55,8 @@ public class SignedContextInterceptor implements ClientHttpRequestInterceptor {
             String encoded = SignedContextCodec.encode(new SignedContext(who.operator(), who.realm(),
                     who.merchantNo(), who.storeNo(), who.points(),
                     who.requestId() == null ? UUID.randomUUID().toString() : who.requestId(),
-                    System.currentTimeMillis(), request.getMethod().name(), path, SignedContextCodec.digest(body)));
+                    System.currentTimeMillis(), request.getMethod().name(), path, SignedContextCodec.digest(body),
+                    who.actions()));
             request.getHeaders().set(SignedContextCodec.HEADER_CONTEXT, encoded);
             request.getHeaders().set(SignedContextCodec.HEADER_SIGNATURE, SignedContextCodec.sign(encoded, secret));
         }

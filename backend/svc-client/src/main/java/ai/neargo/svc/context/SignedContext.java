@@ -17,12 +17,27 @@ import java.util.List;
  * @param method     HTTP 方法
  * @param path       下游地址（含查询串）
  * @param bodyDigest 请求体的 SHA-256（十六进制）；没有请求体时是空串的摘要
+ * @param actions    按网关的映射表，判过的功能点允许在这个下游服务上做的动作（如支付的 {@code REQUEST_REFUND}）；
+ *                   没有映射时为空。下游可据此核对「这次调用的动作是不是网关批过的」
  */
 public record SignedContext(String operator, String realm, String merchantNo, String storeNo, List<String> points,
-                            String requestId, long timestamp, String method, String path, String bodyDigest) {
+                            String requestId, long timestamp, String method, String path, String bodyDigest,
+                            List<String> actions) {
 
     public SignedContext {
         points = points == null ? List.of() : List.copyOf(points);
+        actions = actions == null ? List.of() : List.copyOf(actions);
+    }
+
+    /** 不带下游动作。 */
+    public SignedContext(String operator, String realm, String merchantNo, String storeNo, List<String> points,
+                         String requestId, long timestamp, String method, String path, String bodyDigest) {
+        this(operator, realm, merchantNo, storeNo, points, requestId, timestamp, method, path, bodyDigest, List.of());
+    }
+
+    /** 网关有没有批这个下游动作。 */
+    public boolean hasAction(String action) {
+        return actions.contains(action);
     }
 
     /** 这次调用带没带这个功能点。 */

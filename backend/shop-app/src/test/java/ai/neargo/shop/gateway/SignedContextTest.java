@@ -48,6 +48,39 @@ class SignedContextTest {
     }
 
     @Test
+    @DisplayName("★★★ 下游动作：编了再解原样回来；不带动作时编码与加字段之前逐字节相同，旧的验证方照样验得过")
+    void downstreamActionsRoundTripAndOldFormatUnchanged() {
+        long now = System.currentTimeMillis();
+        SignedContext withActions = new SignedContext("OP-1", "MERCHANT", "ENT-1", "S-1", List.of("biz:refund"),
+                "RID-1", now, "POST", PATH, SignedContextCodec.digest(BODY), List.of("REQUEST_REFUND", "QUERY"));
+        String encoded = SignedContextCodec.encode(withActions);
+        SignedContext back = SignedContextCodec.decode(encoded).orElseThrow();
+        assertThat(back.actions()).containsExactly("REQUEST_REFUND", "QUERY");
+        assertThat(back.hasAction("REQUEST_REFUND")).isTrue();
+        assertThat(back.hasAction("REVIEW_REFUND")).isFalse();
+        assertThat(new SignedContextVerifier(KEY).verify(encoded, SignedContextCodec.sign(encoded, KEY), "POST", PATH,
+                BODY, now).outcome()).isEqualTo(Outcome.OK);
+
+        String plain = encoded(now);
+        assertThat(new String(java.util.Base64.getUrlDecoder().decode(plain), StandardCharsets.UTF_8))
+                .as("没有动作时不写这一项").doesNotContain("actions=");
+        assertThat(SignedContextCodec.decode(plain).orElseThrow().actions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 改了签名里的动作（把查询改成退款），签名就对不上")
+    void tamperedActionsFailTheSignature() {
+        long now = System.currentTimeMillis();
+        String query = SignedContextCodec.encode(new SignedContext("OP-1", "MERCHANT", "ENT-1", "S-1",
+                List.of("biz:order"), "RID-1", now, "POST", PATH, SignedContextCodec.digest(BODY), List.of("QUERY")));
+        String refund = SignedContextCodec.encode(new SignedContext("OP-1", "MERCHANT", "ENT-1", "S-1",
+                List.of("biz:order"), "RID-1", now, "POST", PATH, SignedContextCodec.digest(BODY),
+                List.of("REQUEST_REFUND")));
+        assertThat(new SignedContextVerifier(KEY).verify(refund, SignedContextCodec.sign(query, KEY), "POST", PATH,
+                BODY, now).outcome()).isEqualTo(Outcome.BAD_SIGNATURE);
+    }
+
+    @Test
     @DisplayName("★★★ 验证：对的通过；没带、签名被改、过期、换了地址、换了请求体各有各的结论")
     void verifierTellsEachFailureApart() {
         long now = System.currentTimeMillis();

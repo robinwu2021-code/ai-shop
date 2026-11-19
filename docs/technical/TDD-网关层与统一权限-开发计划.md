@@ -221,7 +221,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | 11 | （清点已完成，见方案 §2.28；改成按端取值是新开发，按需要再做）各端的特定配置收拢：把「按端不同」的配置项列成一张表（档位、公开地址、令牌与会话、简讯账号、自动化登录公钥等），目前有几项是进程级的、三端只能共用一份 | 合并时遇到的三处冲突就是这一类 |
 | 12 | 主库池大小：三端共用上限 4 | 2026-11-19 看过：日志没有取连接超时，正式库峰值 184/250、没有因连满被拒。要持续看等待数得打开 `/actuator/metrics`，是配置变更，未做 |
 | 13 | ~~存储不可用时网关回 503~~（2026-11-19 代码已完成，见 §5；未部署） | 第一批留下的待办 |
-| 14 | 功能点到下游动作的映射；库存改用签名上下文；五类对象的统一接入配置（方案 §2.22） | 网关功能往前做的主线 |
+| 14 | 功能点到下游动作的映射：~~支付这一张~~（2026-11-19 已做，见下方「功能点 → 支付动作」）；库存改用签名上下文；五类对象的统一接入配置（方案 §2.22） | 网关功能往前做的主线。支付侧按动作核对要在 near-pay 仓库做，先只比对 |
 | 15 | ~~Nacos 没有备份；v2 没有配支付的回落地址~~（2026-11-19 已做） | 回落地址 `SHOP_SERVICES_TARGETS_PAY` 已配；冷备份脚本 `/data0/nacos/nacos-backup.sh` 跑过一次。每日定时**暂不做**（2026-11-19 用户：「nacos的定时任务先不用处理」），需要时手动跑脚本 |
 | 16 | ~~10 个 `or` 权限入口改成任一即可之后，没有用受限账号从 HTTP 验证~~（2026-11-19 已在测试里验证，见 §5） | — |
 
@@ -232,6 +232,51 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | 17 | ~~开 PR~~（2026-11-19 已开 robinwu2021-code/ai-shop#20，已合并主干并部署到 v2）；评审、合并 | 合并前迁移号若被占用要顺延 |
 | 18 | pre-push 全量测试 | 2026-11-19 在本机配上商城测试库后第一次跑全：6378 条里剩 5 条红，分属 4 个类（`MediaRefCoverageTest`、`MallHostConfigurationTest`、`MallUntrackedHardwareTest`、`NotifyChannelRegistryTest`），在不含本分支的合并基点 `6e9392abd` 上同样失败，不是本分支引起的。`backend/known-failures.txt` 是空的，所以闸门仍然过不去。跑全的过程中发现并修了本分支的一个真缺陷（没有 Web 层的进程起不来） |
 | 19 | ~~公网 `nearshop.umeshop.ai/api/internal/` 返回 308~~（2026-11-19 查清） | 308 来自站点前端的 Node 服务（`X-Powered-By: Express`）去掉末尾斜杠；跳过去的 `/api/internal` 是 404，内部接口没有暴露，不用修 |
+
+#### 功能点 → 支付动作（2026-11-19；用户：「先放在代码中，容易维护」）
+
+**做了什么：** 网关调支付时，把「这次判过、并且这个人确实持有」的功能点换成支付的动作（`PayAction`），签进签名上下文的新字段 `actions`。
+支付据此可以核对「这次调用的动作是不是网关批过的」（AC6、AC16 的网关这一半）。
+
+| 位置 | 内容 |
+|---|---|
+| `gateway.core.proxy.DownstreamActions` | 通用接口：给定端与功能点，算出某个下游服务的动作 |
+| `payclient.PayDownstreamActions` | 支付这一张表，**唯一定义处**；码用 `BizPerms` / `Perms` 常量，动作用支付的枚举，写错名字编译不过 |
+| `GatewaySigning.caller(service)` | 判过的码里只认这个人持有的（运营端走 `PermChecker.can`，认通配；B 端走 `BizContext.can`），再按服务挑映射 |
+| `svc-client` 的 `SignedContext` / `SignedContextCodec` / `SignedContextInterceptor.Caller` | 加 `actions`；只在有值时写进编码，不带动作的上下文与之前逐字节相同，旧的验证方照样验得过 |
+
+表的内容（每一格都按调用链核对过：入口权限码 → ai-shop 支付客户端 → 支付内部入口 → 支付在那里 `CallerPolicy.check` 的动作）：
+
+| 端 | 权限码 | 支付动作 | 依据 |
+|---|---|---|---|
+| B 端 | `mch:pay:collect` | CREATE_ONLINE、QUERY、CLOSE、READ_LEDGER | 建收款单；重发付款链接；作废付款链接 |
+| B 端 | `mch:pay:qr` | QUERY、CREATE_ONLINE | 收款码列表；新建收款码（停用不判动作） |
+| B 端 | `mch:pay:refund` | REQUEST_REFUND、QUERY | 发起退款；退款记录 |
+| B 端 | `mch:pay:statement` | READ_LEDGER、QUERY | 对账单、收款汇总；退款记录（与退款码任一即可） |
+| B 端 | `mch:pay:order:view` | READ_LEDGER、QUERY | 收款单列表、查找、详情、收款状态、付款链接、业务单收款；向渠道查单补账 |
+| B 端 | `mch:pay:app-grant` | QUERY | 授权列表与新建（撤销不判动作） |
+| 运营端 | `pay:refund:review` | REVIEW_REFUND | 退款复核；其余运营端支付入口在支付侧都不判动作 |
+
+**没有写进表的，以及要知道的：**
+
+- `mch:pay:store-method`（门店付款方式）：对应的支付内部入口只在 near-pay 里，判不判动作还没核对。
+- 不靠权限码、却会调支付的地方，签出去的动作为空：`GET /biz/stores/{storeNo}/features`（只要求是本店成员，会读收款状态 READ_LEDGER）、
+  C 端下单付款（CREATE_ONLINE，C 端没有权限码）、定时关单与对账（没有登录人）、餐饮结账（经内部入口）。支付侧以后按动作核对时，这几类要另给口径。
+- 同一个码覆盖的动作差异较大：`mch:pay:collect` 同时能建单、关单、读流水；`mch:pay:app-grant` 新建授权在支付侧只判 QUERY。表照实记录，不在这里改权限设计。
+- **支付侧还没有核对**：生产上的支付是独立的 near-pay 仓库，它有同一套 `PayAction`，但还不认网关的签名上下文；而且生产上网关与支付都还没配 `shop.gateway.signing.key`，现在什么都不签。
+  顺序：near-pay 先加「只比对、记日志」→ 两边配同一把密钥 → 看日志里对不上的条数 → 清零稳定后再议拒绝（需单独确认）。
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| 表里每个码都是登记过的功能点，每个动作在这一端调用方（B 端 `BIZ`、运营端 `OPS`）的能力矩阵里允许 | `PayDownstreamActionsTest.everyEntryIsARealPointAndAnAllowedAction` | 通过 |
+| 发起退款只在 B 端退款码上、复核只在运营端复核码上；只看收款单的人拿不到退款 | `…refundRequestAndReviewStayOnTheirOwnSide` | 通过 |
+| 规则是「a 或 b」、这个人只有 a：只换 a 的动作 | `GatewayDownstreamActionsTest.onlyHeldPointsBecomeActions` | 通过 |
+| 运营端通配权限照原口径算持有；别的服务的映射不混进支付；没判过码不带动作 | `…wildcardCountsAndServicesStayApart`、`…nothingJudgedMeansNoActions` | 通过 |
+| 动作编了再解原样回来；不带动作时编码不变；改了动作签名对不上 | `SignedContextTest.downstreamActionsRoundTripAndOldFormatUnchanged`、`…tamperedActionsFailTheSignature` | 通过 |
+| 出站拦截器签进去的动作，支付这边验过之后拿得到 | `InternalGuardSignedContextTest.outboundSignatureVerifiesOnThePaySide` | 通过 |
+| 网关、支付内部入口、快照、端点权限等相关测试 147 条；架构测试 27 条 | — | 全部通过 |
+
+没有迁移、端点、权限码、配置项的变化；签名上下文多一个可选字段。
 
 ### 2.7 规模
 
@@ -817,7 +862,7 @@ classes 76 run 268 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，�
 | 方案 | 实际 | 原因 |
 |---|---|---|
 | 在建客户端的地方统一加拦截器，所有出站调用都签 | 只有两条路签：转发的微服务链接、发往支付的内部调用 | 用的是现成的「按服务挂拦截器」（`InternalServiceInterceptor`）。餐饮已有自己的范围凭证（ADR-049），库存、商城、美业按各自排期迁移，一次全挂上风险与收益不成比例 |
-| 签进「已判定的下游功能点」（经登记表的下游映射） | 签的是网关这一侧的功能点码 | 还没有任何功能点登记了下游映射（F 期只留了模型）。下游现在拿到的是 ai-shop 的码 |
+| 签进「已判定的下游功能点」（经登记表的下游映射） | 2026-11-19 起：发往支付的调用另带 `actions`（支付的动作），由 `payclient.PayDownstreamActions` 换算；转发的微服务链接仍只带网关这一侧的码 | 用户定映射放代码；其余服务还没有映射 |
 | 支付守卫验签，门店与操作人以签名里的为准；调用方策略与签名里的动作取交集（AC16） | 只比对、记日志 | 这是改变支付放行结论的一步，按约定要单独确认。支付这一处拿不到请求体，比对的是签名、时间窗、方法与地址，不含请求体摘要 |
 | 守卫模块只依赖 Servlet 与 spring-web | 过滤器只依赖 Servlet | 少一层依赖，库存这类不带 Spring 容器的构建也能用 |
 | 密钥按服务各一把 | 一把 `shop.gateway.signing.key` | 现在验签的只有支付（比对）与将来接入的服务；按服务分钥等有第二个真的在拒绝的验签方时再做 |

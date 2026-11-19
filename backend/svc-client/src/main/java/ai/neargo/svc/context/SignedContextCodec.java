@@ -46,6 +46,10 @@ public final class SignedContextCodec {
         fields.put("method", context.method());
         fields.put("path", context.path());
         fields.put("body", context.bodyDigest());
+        // 只在有动作时才写：不带动作的上下文与加这一项之前逐字节相同
+        if (!context.actions().isEmpty()) {
+            fields.put("actions", String.join(",", context.actions()));
+        }
         StringBuilder out = new StringBuilder();
         fields.forEach((key, value) -> {
             if (out.length() > 0) {
@@ -70,17 +74,11 @@ public final class SignedContextCodec {
                     fields.put(pair.substring(0, eq), URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8));
                 }
             }
-            List<String> points = new ArrayList<>();
-            for (String point : fields.getOrDefault("points", "").split(",")) {
-                if (!point.isBlank()) {
-                    points.add(point);
-                }
-            }
             return Optional.of(new SignedContext(blankToNull(fields.get("op")), blankToNull(fields.get("realm")),
-                    blankToNull(fields.get("mch")), blankToNull(fields.get("store")), points,
+                    blankToNull(fields.get("mch")), blankToNull(fields.get("store")), list(fields.get("points")),
                     blankToNull(fields.get("rid")), Long.parseLong(fields.getOrDefault("ts", "0")),
                     blankToNull(fields.get("method")), blankToNull(fields.get("path")),
-                    blankToNull(fields.get("body"))));
+                    blankToNull(fields.get("body")), list(fields.get("actions"))));
         } catch (IllegalArgumentException e) {
             return Optional.empty();
         }
@@ -112,6 +110,16 @@ public final class SignedContextCodec {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private static List<String> list(String joined) {
+        List<String> out = new ArrayList<>();
+        for (String item : (joined == null ? "" : joined).split(",")) {
+            if (!item.isBlank()) {
+                out.add(item);
+            }
+        }
+        return out;
     }
 
     private static String blankToNull(String value) {

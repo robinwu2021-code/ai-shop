@@ -71,6 +71,19 @@ class InternalGuardSignedContextTest {
         assertThat(result.context().orElseThrow().storeNo()).isEqualTo("STORE-1");
         assertThat(result.context().orElseThrow().points()).containsExactly("mch:pay:refund");
 
+        // 调用方给了下游动作：签进去，支付这边验过之后拿得到
+        MockClientHttpRequest refund = new MockClientHttpRequest(HttpMethod.POST,
+                URI.create("http://pay.internal/internal/pay/v1/refunds"));
+        new SignedContextInterceptor(() -> KEY, () -> new Caller("MCH-1", "MERCHANT", "ENT-1", "STORE-1",
+                List.of("biz:refund"), null, List.of("REQUEST_REFUND")))
+                .intercept(refund, body, (request, bytes) -> new MockClientHttpResponse());
+        var signed = new SignedContextVerifier(KEY).verify(
+                refund.getHeaders().getFirst(SignedContextCodec.HEADER_CONTEXT),
+                refund.getHeaders().getFirst(SignedContextCodec.HEADER_SIGNATURE),
+                "POST", "/internal/pay/v1/refunds", body, System.currentTimeMillis());
+        assertThat(signed.outcome()).isEqualTo(SignedContextVerifier.Outcome.OK);
+        assertThat(signed.context().orElseThrow().actions()).containsExactly("REQUEST_REFUND");
+
         // 没配密钥：什么头都不加
         MockClientHttpRequest plain = new MockClientHttpRequest(HttpMethod.GET, URI.create("http://pay.internal/x"));
         new SignedContextInterceptor(() -> "", () -> new Caller(null, null, null, null, List.of(), null))
