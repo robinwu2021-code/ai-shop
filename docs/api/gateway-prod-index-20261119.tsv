@@ -1,4 +1,4 @@
-# 生产上网关实际入库的接口（192.168.3.80 的 v2 写入正式库 sys_api_resource），2026-11-19 导出（包 5c9c6f0d1 部署后重导）。列：端	方法	地址	判权类别
+# 生产上网关实际入库的接口（192.168.3.80 的 v2 单实例写入正式库 sys_api_resource），2026-11-19 导出（合成单实例后重导）。列：端	方法	地址	判权类别
 biz	GET	/biz/activities	POINT
 biz	POST	/biz/activities	POINT
 biz	GET	/biz/activities/{activityNo}	POINT
@@ -1430,6 +1430,10 @@ ops	POST	/ops/pricing-templates/{no}/preview	POINT
 ops	POST	/ops/pricing-templates/{no}/publish	POINT
 ops	GET	/ops/pricing-templates/{no}/revisions/{revisionNo}	POINT
 ops	POST	/ops/pricing-templates/seed-import	POINT
+ops	GET	/ops/print/health	POINT
+ops	GET	/ops/print/incidents	POINT
+ops	GET	/ops/print/operations/{operationNo}	POINT
+ops	POST	/ops/print/reconciliations	POINT
 ops	GET	/ops/product/{goodsNo}/chain	POINT
 ops	GET	/ops/product/policy	POINT
 ops	POST	/ops/product/policy	POINT

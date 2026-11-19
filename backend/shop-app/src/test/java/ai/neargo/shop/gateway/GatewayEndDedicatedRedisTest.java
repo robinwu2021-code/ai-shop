@@ -1,7 +1,6 @@
 package ai.neargo.shop.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
@@ -58,9 +57,15 @@ class GatewayEndDedicatedRedisTest {
                         .andReturn().getResponse().getStatus())
                 .as("运营端不带令牌：还没碰到 Redis，照常 401").isEqualTo(401);
 
-        // 运营端带令牌：要去它自己的 Redis 查会话，连不上
-        assertThatThrownBy(() -> mvc.perform(MockMvcRequestBuilders.get("/ops/admission/policies")
-                .header("Authorization", "Bearer otk_isolation-probe")))
-                .hasRootCauseInstanceOf(java.net.ConnectException.class);
+        // 运营端带令牌：要去它自己的 Redis 查会话，连不上 —— 回 503（AC26 后半），不是 401，也不是未处理的异常
+        var broken = mvc.perform(MockMvcRequestBuilders.get("/ops/admission/policies")
+                .header("Authorization", "Bearer otk_isolation-probe")).andReturn().getResponse();
+        assertThat(broken.getStatus()).isEqualTo(503);
+        assertThat(broken.getHeader("Retry-After")).isEqualTo("5");
+        assertThat(broken.getContentAsString()).contains("\"code\":10500");
+        // 同一时刻 C 端带令牌的请求仍然正常
+        assertThat(mvc.perform(MockMvcRequestBuilders.get("/mp/after-sale")
+                        .header("Authorization", "Bearer " + consumer)).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
     }
 }

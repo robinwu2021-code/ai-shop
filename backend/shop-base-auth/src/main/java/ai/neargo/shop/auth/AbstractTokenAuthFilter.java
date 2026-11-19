@@ -1,6 +1,7 @@
 package ai.neargo.shop.auth;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,8 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
      * 一个让人重新登录，一个让人去找老板要权限。
      */
     public static final String TOKEN_EXPIRED_ATTR = "shop.auth.tokenExpired";
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AbstractTokenAuthFilter.class);
 
     private final TokenStore tokenStore;
     private final Realm realm;
@@ -78,7 +81,25 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
         boolean scopeSet = false;
         String token = bearer(req);
         if (token != null) {
-            TokenStore.SessionData d = tokenStore.get(token).orElse(null);
+            TokenStore.SessionData d;
+            try {
+                d = tokenStore.get(token).orElse(null);
+            } catch (RuntimeException e) {
+                /*
+                 * **会话存储连不上（Redis 或会话库），不是「没登录」，也不是程序错。**
+                 *
+                 * 当成没登录回 401 最危险：端上对 401 的动作是清掉本地令牌、跳登录页 ——
+                 * 存储抖一下，在线的人全部被踢下线，而他们的会话其实都还在。
+                 * 任它抛出去则是 500，看起来像代码缺陷，重试与告警都按错的方向走。
+                 * 503 说的是实情：这一端暂时判不了身份，稍后再试；别的端用的是自己的存储，不受影响。
+                 */
+                log.error("会话存储不可用，{} 端暂时无法认证 · {} {} · {}", realm, req.getMethod(),
+                        req.getRequestURI(), e.toString());
+                RequestMetaContext.clear();
+                resp.setHeader("Retry-After", "5");
+                ApiAuthEntryPoint.writeError(resp, 503, ErrorCode.INTERNAL_ERROR);
+                return;
+            }
             /*
              * **带了令牌却查不到会话 = 已过期/被吊销**，与「没带令牌」不是一回事。
              *

@@ -360,6 +360,52 @@ class BizRoleForbiddenFlowTest {
 
     // ---------------------------------------------------------------- 装配
 
+    @Test
+    @DisplayName("★★★ 任一即可：只有「写在后面的那个权限」的人也进得去，两样都没有的人进不去")
+    void anyOfAcceptsALaterPermission() throws Exception {
+        /*
+         * 这 10 个入口原来写成 canBiz(a) or canBiz(b)：canBiz 缺权限时是抛异常而不是返回 false，
+         * 所以 or 后面的永远轮不到，实际只认第一个。改成 canAnyBiz 之后只有约定测试守着写法，
+         * 没有人拿一个「只有后面那个权限」的账号真的打过一次 —— 这里补上。
+         * 每个角色只给写在后面的那一个码；预置角色凑不出这种组合，所以用自定义角色。
+         */
+        String owner = merchant("18600250090", "任一即可店");
+        String storeOnly = customRole(owner, "只管门店", "biz:store");
+        String statementOnly = customRole(owner, "只看流水", "mch:pay:statement");
+        String rechargeCreateOnly = customRole(owner, "只办充值", "pay:sv:recharge:create");
+        String stockOnly = customRole(owner, "只看库存", "biz:stock");
+
+        Staff store = staffFor(owner, "18600250091", storeOnly);
+        allowed(store, get("/biz/express/companies"));                       // 发货 或 门店
+
+        Staff statement = staffFor(owner, "18600250092", statementOnly);
+        allowed(statement, get("/biz/payment/refund"));                         // 退款 或 流水
+
+        Staff recharge = staffFor(owner, "18600250093", rechargeCreateOnly);
+        allowed(recharge, get("/biz/stored-value/plan-recharges/NOT-EXIST")); // 充值查看 或 充值办理
+        allowed(recharge, get("/biz/stored-value/context").param("storeNo", firstStore(owner)));
+
+        Staff picker = staffFor(owner, "18600250094", "PICKER");
+        allowed(picker, get("/biz/dashboard/todo"));                         // 理货员只有到货登记，排在第二个
+
+        // 反过来：一样都没有的人仍然被挡住 —— 任一即可不是谁都可以
+        Staff stock = staffFor(owner, "18600250095", stockOnly);
+        forbidden(stock, get("/biz/express/companies"));
+        forbidden(stock, get("/biz/payment/refund"));
+        forbidden(stock, get("/biz/stored-value/plan-recharges/NOT-EXIST"));
+        forbidden(stock, get("/biz/dashboard/todo"));
+    }
+
+    /** 建一个只含给定权限码的自定义角色，返回角色编码 */
+    private String customRole(String owner, String name, String perm) throws Exception {
+        String body = mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"perms\":[\"" + perm + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("roleCode").asString();
+    }
+
     record Staff(String token) {
     }
 

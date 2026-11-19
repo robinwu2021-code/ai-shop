@@ -60,7 +60,12 @@ public class ApiAuthEntryPoint implements AuthenticationEntryPoint {
                     req.getMethod(), req.getRequestURI(), auth.substring(7, 11));
         }
 
-        resp.setStatus(HttpStatus.UNAUTHORIZED.value());
+        writeError(resp, HttpStatus.UNAUTHORIZED.value(), code);
+    }
+
+    /** 认证层（Spring MVC 之外）统一的错误包体：与 ApiResult 逐字节一致，状态码由调用方定。 */
+    static void writeError(HttpServletResponse resp, int status, ErrorCode code) throws IOException {
+        resp.setStatus(status);
         resp.setContentType(MediaType.APPLICATION_JSON_VALUE);
         resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
         /*
