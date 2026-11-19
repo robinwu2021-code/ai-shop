@@ -71,14 +71,24 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
     }
 
     private PaymentOperationView initiate(String operationNo, PayerIdentity legacyPayer) {
+        return initiate(operationNo, legacyPayer, message -> {});
+    }
+
+    /**
+     * @param legacyMessage 旧下单入口（{@link #initiateLegacy}）要给调用方的原因文案：通道未接入、通道明确拒绝时的通道原话。
+     *                      只回传给本次调用方，不改变持久化的原因码与「待对账」语义。
+     */
+    private PaymentOperationView initiate(String operationNo, PayerIdentity legacyPayer,
+                                          java.util.function.Consumer<String> legacyMessage) {
         outside();
-        var result = dispatchOriginal(operationNo, legacyPayer);
+        var result = dispatchOriginal(operationNo, legacyPayer, legacyMessage);
         // The ticket belongs to the canonical root, while the caller keeps its own durable
         // identity.
         return operationNo.equals(result.operationNo()) ? result : operations.find(operationNo);
     }
 
-    private PaymentOperationView dispatchOriginal(String operationNo, PayerIdentity legacyPayer) {
+    private PaymentOperationView dispatchOriginal(String operationNo, PayerIdentity legacyPayer,
+                                                  java.util.function.Consumer<String> legacyMessage) {
         var opened = operations.open(operationNo);
         if (legacyPayer != null && legacyPayer.appId() != null && opened.outTradeNo() != null) {
             ledger.freezePayer(opened.outTradeNo(), legacyPayer.userNo(), legacyPayer.openId(), legacyPayer.appId());
@@ -103,6 +113,7 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
             return query(operationNo);
         }
         if (!supported) {
+            legacyMessage.accept("支付通道未接入：" + request.payChannel());
             return operations.rejectNotSent(ticket.get(), NotSentReason.NO_GATEWAY);
         }
         request = ticket.get().payment();
@@ -131,9 +142,11 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
             return operations.recordUnknown(ticket.get(), "PAYMENT_RESPONSE_UNKNOWN");
         }
         if (result.disposition() == PayGateway.PrepayDisposition.NOT_SENT) {
+            legacyMessage.accept(result.message());
             return operations.rejectNotSent(ticket.get(), NotSentReason.LOCAL_PRECONDITION);
         }
         if (!result.success()) {
+            legacyMessage.accept(result.message());
             // A verified channel rejection is not the NOT_SENT proof required to close this ticket.
             return operations.recordUnknown(ticket.get(), "PAYMENT_REJECTION_REQUIRES_RECONCILIATION");
         }
@@ -233,7 +246,8 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
         outside();
         PayOrdinaryPaymentRequests.requirePayer(payment, payer);
         var prepared = operations.prepareLegacy(payment);
-        var result = initiate(prepared.operationNo(), payer);
+        String[] reason = {null};
+        var result = initiate(prepared.operationNo(), payer, message -> reason[0] = message);
         boolean ready =
                 "SUCCEEDED".equals(result.phase())
                         || "PAYABLE".equals(result.phase()) && !result.payParams().isEmpty();
@@ -242,7 +256,7 @@ public class PaymentDispatchServiceImpl implements PaymentDispatchService {
                 result.outTradeNo(),
                 payment.payChannel(),
                 result.payParams(),
-                ready ? null : "PAYMENT_ORIGINAL_RESULT_PENDING");
+                ready ? null : reason[0] != null && !reason[0].isBlank() ? reason[0] : "PAYMENT_ORIGINAL_RESULT_PENDING");
     }
 
     private PaymentOperationView project(PaymentOperationView view) {
