@@ -780,6 +780,34 @@ D2 记下的缺口「带给下游的操作人身份没有签名」到这里补�
 
 没有验证的：两个真实进程之间的签名与比对（网关到独立部署的支付）；机器之间时钟偏差超过 5 分钟时的表现；没有登录人的调用（定时任务、消息消费）发往支付时，签出来的上下文操作人为空，支付侧比对结果是「通过」但没有身份 —— 打开拒绝之前要先定这类调用怎么算。
 
+**「接入 Nacos」的任务级计划与真实输出**（2026-11-19，分支 `feat/gateway-nacos-discovery`，叠在 `feat/gateway-layer-20261118` 之上；ADR-062、方案 §2.24）：
+
+| # | 任务 | 结果 |
+|---|---|---|
+| N.1 | 引入客户端 | `shop-gateway` 加 `com.alibaba.nacos:nacos-client:3.3.0`；依赖收敛检查通过 |
+| N.2 | 按服务名发现，回落到配置 | `NacosServiceLocator` |
+| N.3 | 登记本实例 | `NacosRegistrar` |
+| N.4 | 装配与开关 | `NacosDiscoveryConfiguration`、`NacosDiscoveryProperties`，默认关 |
+
+```
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.gateway.NacosDiscoveryTest
+# gateway 包 + arch 包
+classes 73 run 245 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，与本次无关
+# 三份快照与上一个分支相比 0 行不同
+```
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| AC30 默认关闭不装任何东西；开了没配地址拒绝启动 | `NacosDiscoveryTest.offByDefault` | 通过 |
+| AC31 名单里的服务取 Nacos 的地址，键大小写不敏感，认 `scheme` | `…mappedServiceResolvesFromNacos` | 通过 |
+| AC32 没有健康实例、Nacos 出错都回落；名单外的服务不访问 Nacos | `…fallsBackToConfiguredAddress`、`…unmappedServiceNeverAsksNacos` | 通过 |
+| AC33 就绪后登记、停机摘除、失败不抛 | `…registersOnReadyAndDeregistersOnClose` | 通过 |
+
+测试里的 Nacos 是替身。**没有对着 192.168.3.80 上真的 Nacos 验证过**：它开着鉴权，管理员口令还没初始化，没有可用的账号。
+已确认的只有网络：从 166 到 .80 的 8848、9848、8080 三个端口都通。
+
+没有做的：把这个版本部署到 166 上的 v2 并打开开关（要先有 Nacos 账号）；支付的接入（在 near-pay 仓库里做）；配置中心。
+
 **D3 相对计划的偏差：**
 
 | 计划 | 实际 | 原因 |
@@ -815,3 +843,4 @@ D2 记下的缺口「带给下游的操作人身份没有签名」到这里补�
 | 2026-11-18 | F 第一步完成（本地，未推送）：功能点登记表与对齐测试；入库、菜单取数、码的物理搬迁未做；偏差见 §5 |
 | 2026-11-18 | F 第二步完成（本地，未推送）：功能点表加模块归属（V681）、启动回填、菜单与 B 端可勾选项按模块装没装降级；偏差见 §5 |
 | 2026-11-18 | S 完成（本地，未推送）：签名上下文、出站签名（转发与支付）、微服务侧守卫、支付内部入口只比对；不配密钥时行为不变；偏差见 §5 |
+| 2026-11-19 | 接入 Nacos 的 ai-shop 一侧完成（本地，未推送）：注册与发现用原生客户端，默认关；未对真实 Nacos 验证；ADR-062 |

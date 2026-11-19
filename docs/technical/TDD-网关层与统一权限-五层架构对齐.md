@@ -2177,6 +2177,41 @@ shop:
 - AC28：停用一条普通链接后（提前判权为拦截），访问它回 404；恢复后照常。全程不用等快照过期。
 - AC29：停用不带权限码的入口或本页接口被拒，库里的状态不变。
 
+### 2.24 接入 Nacos：服务注册与发现（2026-11-19，ADR-062）
+
+**做什么：** ai-shop 的每个实例启动后把自己登记进 Nacos；调别的服务时，名单里的服务先向 Nacos 要地址，要不到就用配置里的。
+用的是 Nacos 原生客户端，代码在 `gateway.core.discovery`，默认关闭。
+
+| 类 | 做什么 |
+|---|---|
+| `NacosDiscoveryProperties` | `shop.nacos.*` 的配置 |
+| `NacosDiscoveryConfiguration` | `shop.nacos.enabled=true` 时才装配：客户端、定位、登记 |
+| `NacosServiceLocator` | `ServiceLocator` 的新实现（`@Primary`）：名单里的服务问 Nacos，其余与回落读配置 |
+| `NacosRegistrar` | 就绪后登记本实例（临时实例），停机时摘除；失败每 30 秒重试 |
+
+配置项（都是新增）：
+
+| 配置项 | 默认 | 含义 |
+|---|---|---|
+| `shop.nacos.enabled` | `false` | 总开关 |
+| `shop.nacos.server-addr` | 空 | Nacos 地址，如 `192.168.3.80:8848`；开了总开关而没配则拒绝启动 |
+| `shop.nacos.namespace`、`shop.nacos.group` | 空（public）、`DEFAULT_GROUP` | 命名空间与分组 |
+| `shop.nacos.username`、`shop.nacos.password` | 空 | Nacos 账号，没有默认值 |
+| `shop.nacos.register.enabled` | `true` | 是否登记本实例 |
+| `shop.nacos.register.service-name` | 按部署面：`ai-shop-ops` / `ai-shop-api` | 登记用的服务名 |
+| `shop.nacos.register.ip`、`.port` | `server.address`、`server.port` | 登记的地址 |
+| `shop.nacos.register.metadata.*` | — | 附加元数据；自动带 `face`（部署面）、`scheme`、`buildTime` |
+| `shop.nacos.discovery.services.<服务>` | 空 | 本仓库服务名 → Nacos 服务名，如 `PAY: near-pay`。只有列出的才问 Nacos |
+
+**验收（AC30–AC33）：**
+
+- AC30：总开关关着时，不创建 Nacos 客户端，`ServiceLocator` 仍是读配置的实现。
+- AC31：名单里的服务在 Nacos 有健康实例时，地址取自 Nacos；实例元数据声明了 `scheme` 时按它拼。
+- AC32：Nacos 没有健康实例或调用出错时，地址回落到配置；名单外的服务完全不访问 Nacos。
+- AC33：实例就绪后登记一次，带部署面等元数据；停机时摘除；登记失败不影响启动。
+
+**接入顺序：** 先 ai-shop（本节）；支付在 near-pay 仓库里登记自己之后，在 ai-shop 的名单里加 `PAY` 一行即可切到按 Nacos 发现，不用改代码。
+
 ## §3 选型：是否集成 Spring Cloud Gateway
 
 结论：**现在不集成**。第二版加进来的四项要求（独立模块、三端配置、独立权限库、微服务集成）不改变这个结论：出口模块仍与业务层同进程，要解决的是模块边界、数据归属和调用约定，不是路由。
