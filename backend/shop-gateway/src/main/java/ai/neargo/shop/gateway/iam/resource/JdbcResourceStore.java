@@ -56,7 +56,7 @@ public class JdbcResourceStore implements ResourceStore {
             String key = resource.method() + " " + resource.pattern();
             seen.add(key);
             String access = resource.access().name();
-            String rule = resource.rule() == null ? null : resource.rule().toString();
+            String rule = resource.rule() == null ? resource.basis() : resource.rule().toString();
             Row row = existing.get(key);
             if (row == null) {
                 jdbc.sql("INSERT INTO sys_api_resource (end_code, method, pattern, source, location, access,"

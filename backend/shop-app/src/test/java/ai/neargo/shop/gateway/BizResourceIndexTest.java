@@ -32,6 +32,8 @@ class BizResourceIndexTest {
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
+    ai.neargo.shop.gateway.iam.resource.ApiResourceAdmin admin;
+    @Autowired
     @Qualifier("requestMappingHandlerMapping")
     RequestMappingHandlerMapping mapping;
 
@@ -74,6 +76,13 @@ class BizResourceIndexTest {
         assertThat(PermRuleParser.parse("@perm.can('order:read')", PermRuleParser.BIZ_METHODS)).isEmpty();
         assertThat(PermRuleParser.parse("@perm.merchantAccount()", PermRuleParser.BIZ_METHODS)).isEmpty();
         assertThat(PermRuleParser.parse("@managementAccess.authenticated()", PermRuleParser.BIZ_METHODS)).isEmpty();
+        // 这两种写法不是权限式，另由 bizLoginOnly 认；只认整条表达式，不认组合
+        assertThat(PermRuleParser.bizLoginOnly("@perm.merchantAccount()")).isTrue();
+        assertThat(PermRuleParser.bizLoginOnly(" @managementAccess.authenticated( ) ")).isTrue();
+        assertThat(PermRuleParser.bizLoginOnly("@perm.merchantAccount() and @perm.canBiz('a')")).isFalse();
+        assertThat(PermRuleParser.bizLoginOnly("@perm.memberOfSelectedStore(#storeNo)")).isFalse();
+        assertThat(PermRuleParser.bizLoginOnly("isAuthenticated()")).isFalse();
+        assertThat(PermRuleParser.bizLoginOnly(null)).isFalse();
 
         var any = PermRuleParser.parse("@perm.canAnyBiz('a','b','c')", PermRuleParser.BIZ_METHODS).orElseThrow();
         assertThat(any.codes()).containsExactly("a", "b", "c");
@@ -84,6 +93,37 @@ class BizResourceIndexTest {
                 PermRuleParser.BIZ_METHODS).orElseThrow();
         assertThat(mixed.test(Set.of("a", "c")::contains)).isTrue();
         assertThat(mixed.test(Set.of("b", "c")::contains)).isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 只问「是不是商家」的入口归为只要求登录，带着依据入库，且仍可停用")
+    void merchantOnlyEndpointsAreLoginWithBasis() {
+        // 前提由 CrossRealmRejectionTest 守着：B 端的链只收商家令牌，登录了就一定是商家
+        ResourceIndex biz = indexes.of(List.of("/biz"));
+        List<ApiResource> merchantOnly = biz.all().stream()
+                .filter(r -> r.access() == Access.LOGIN && r.basis() != null).toList();
+        assertThat(merchantOnly).isNotEmpty().allSatisfy(r -> {
+            assertThat(PermRuleParser.bizLoginOnly(r.basis())).isTrue();
+            assertThat(r.rule()).isNull();
+        });
+        List<ApiResource> deferred = biz.all().stream().filter(r -> r.access() == Access.DEFER).toList();
+        System.out.println("B 端只问商家身份 " + merchantOnly.size() + "，仍留给方法判 " + deferred.size() + "："
+                + deferred.stream().map(r -> r.method() + " " + r.pattern()).sorted().toList());
+        assertThat(deferred).as("剩下留给方法判的应当只有带方法参数的那几条").hasSizeLessThanOrEqualTo(10);
+
+        assertThat(jdbc.queryForObject("select count(*) from sys_api_resource where end_code='biz' and stale=0"
+                + " and access='LOGIN' and rule_text is not null", Integer.class)).isEqualTo(merchantOnly.size());
+        // 页面上：带依据的行可以停用；B 端真正不带注解的行（登录、验证码）仍然锁着
+        var rows = new java.util.ArrayList<ai.neargo.shop.gateway.iam.resource.ApiResourceAdmin.ApiResourceVO>();
+        for (long page = 1; rows.size() < biz.all().size() && page <= 20; page++) {
+            rows.addAll(admin.page("biz", null, null, null, page, 200).records());
+        }
+        assertThat(rows).filteredOn(r -> "LOGIN".equals(r.access()) && r.ruleText() != null)
+                .hasSize(merchantOnly.size()).noneMatch(r -> r.locked());
+        assertThat(rows).filteredOn(r -> "LOGIN".equals(r.access()) && r.ruleText() == null)
+                .isNotEmpty().allMatch(r -> r.locked());
+        // 运营端与 C 端不受这条规则影响
+        assertThat(indexes.of(List.of("/ops")).all()).noneMatch(r -> r.basis() != null);
     }
 
     @Test

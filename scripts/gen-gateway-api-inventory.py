@@ -297,6 +297,9 @@ def gateway_judgement(endpoint, end, publics, consumer):
         return "公开", "公开"
     if not rule:
         return "登录即可", "只要求登录"
+    # B 端的链只收商家令牌，登录了就是商家：网关把这两种写法认成只要求登录（PermRuleParser.bizLoginOnly）
+    if end == "biz" and re.fullmatch(r'@(perm\.merchantAccount|managementAccess\.authenticated)\(\)', re.sub(r'\s+', '', rule)):
+        return "商家身份", "只要求登录"
     allowed = ("can",) if end == "ops" else ("canBiz", "canAnyBiz")
     stripped = rule.replace("(", " ").replace(")", " ")
     calls = re.findall(r'@(\w+)\.(\w+)', rule)
@@ -305,8 +308,6 @@ def gateway_judgement(endpoint, end, publics, consumer):
     leftover = re.sub(r'\b(and|or)\b|[()\s]', "", leftover)
     if only_known and not leftover and "?" not in rule:
         return rule, "能提前判"
-    if re.fullmatch(r'@(perm\.merchantAccount|managementAccess\.authenticated)\(\)', rule.strip()):
-        return "商家身份", "留给入口判（只问是不是商家）"
     return rule, "留给入口判"
 
 

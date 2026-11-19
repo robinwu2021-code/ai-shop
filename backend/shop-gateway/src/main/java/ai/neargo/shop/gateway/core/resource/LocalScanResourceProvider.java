@@ -66,6 +66,10 @@ public class LocalScanResourceProvider implements ResourceProvider {
             Access unannotated = pattern.startsWith("/mp/") ? Access.DEFER : Access.LOGIN;
             return new ApiResource(verb, pattern, ApiResource.LOCAL, unannotated, null, where);
         }
+        if (pattern.startsWith("/biz/") && PermRuleParser.bizLoginOnly(annotation.value())) {
+            // 只问「是不是商家」：B 端的链登录了就是商家，网关按「只要求登录」算；原表达式留作依据
+            return ApiResource.local(verb, pattern, Access.LOGIN, where, annotation.value().trim());
+        }
         Optional<PermRule> rule = PermRuleParser.parse(annotation.value(), methods);
         return rule.map(r -> new ApiResource(verb, pattern, ApiResource.LOCAL, Access.POINT, r, where))
                 .orElseGet(() -> new ApiResource(verb, pattern, ApiResource.LOCAL, Access.DEFER, null, where));

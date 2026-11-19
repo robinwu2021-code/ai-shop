@@ -29,11 +29,22 @@ public final class PermRuleParser {
     /** B 端的写法：按当前门店判的 {@code canBiz}，以及任一即可的 {@code canAnyBiz}。 */
     public static final Set<String> BIZ_METHODS = Set.of("canBiz", "canAnyBiz");
 
+    /**
+     * B 端上只问「是不是商家」的两种写法。B 端的认证链只收商家令牌（{@code MerchantTokenAuthFilter}），
+     * 登录了就一定是商家，所以它们等同于「只要求登录」。只认整条表达式恰好是其中之一，不认它们与别的东西的组合。
+     */
+    private static final Set<String> BIZ_LOGIN_ONLY = Set.of("@perm.merchantAccount()", "@managementAccess.authenticated()");
+
     private static final Pattern PERM_CALL = Pattern.compile("^@perm\\.(\\w+)\\(('[^']+'(?:,'[^']+')*)\\)$");
     private static final Pattern QUOTED = Pattern.compile("'([^']+)'");
     private static final SpelExpressionParser PARSER = new SpelExpressionParser();
 
     private PermRuleParser() {
+    }
+
+    /** B 端：整条表达式是不是只在问「是不是商家」。 */
+    public static boolean bizLoginOnly(String expression) {
+        return expression != null && BIZ_LOGIN_ONLY.contains(expression.replaceAll("\\s+", ""));
     }
 
     public static Optional<PermRule> parse(String expression) {

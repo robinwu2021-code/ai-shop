@@ -875,6 +875,24 @@ classes 77 run 281 fail 2 err 0 skip 2        # 2 条失败自 M0 起就有，�
 没有做的：C 端的公开地址清单没有进库（哪些不用登录仍只在 c-app 的接口声明里）；C 端 v2 的对外入口；
 餐饮与服务业插件里的 41 个 C 端入口不在默认构建里，所以也不在索引里。
 
+**「B 端只问商家身份的入口归为只要求登录」的真实输出**（2026-11-19，分支 `feat/gateway-mp-index`；方案 §2.26；接口验证清单第 4 条）：
+
+改了 `PermRuleParser.bizLoginOnly`、`LocalScanResourceProvider`、`ApiResource`（多一个「依据」）、`JdbcResourceStore`（依据写进 `rule_text`）、`ApiResourceAdmin`（锁定规则收窄）。
+
+```
+# gateway 包 + arch 包 + BizRoleForbidden* + Mp* + CrossRealmRejectionTest
+78 classes run 286 err 0 fail 2               # 2 条失败自 M0 起就有，与本次无关
+B 端资源清点：共 608，需功能点 445，留给方法判 0，只需登录 163      # 改之前：留给方法判 106，只需登录 57
+# 三份快照与上一个分支相比 0 行不同
+```
+
+| 验收 | 测试 | 结果 |
+|---|---|---|
+| AC38 归为只要求登录并带依据入库；只认整条表达式 | `BizResourceIndexTest.merchantOnlyEndpointsAreLoginWithBasis`、`…parserKeepsTheTwoEndsApart` | 通过 |
+
+接口清单（按源码全量，含插件与带条件的入口）里 B 端「留给入口判」从 149 条降到 6 条。
+同一条用例也断言了页面接口返回的锁定状态：带依据的行不锁，真正不带注解的行（登录、验证码）仍锁。**没有部署**，生产索引里还是旧的类别。
+
 **D3 相对计划的偏差：**
 
 | 计划 | 实际 | 原因 |

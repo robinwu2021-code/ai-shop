@@ -91,7 +91,9 @@ public class ApiResourceAdmin {
 
     private static boolean locked(AdminRow row) {
         // 本进程里不带权限码的入口就是登录、验证码、当前用户、菜单这一类：扫描只知道它们「没有注解」，分不出哪条是登录
-        boolean shell = "SCAN".equals(row.source()) && !"POINT".equals(row.access()) && !"DEFER".equals(row.access());
+        // 入口上写了「只问是不是商家」而被归为登录即可的行带着依据（rule_text 非空），它们是业务入口，可以停用
+        boolean shell = "SCAN".equals(row.source()) && !"POINT".equals(row.access()) && !"DEFER".equals(row.access())
+                && (row.ruleText() == null || row.ruleText().isBlank());
         // C 端的入口都记成「留给入口判」，上面那条认不出登录；按地址把登录、验证码、令牌这几类单独锁住
         boolean consumerLogin = "mp".equals(row.endCode()) && CONSUMER_LOGIN.matcher(row.pattern()).find();
         return shell || consumerLogin || row.pattern().startsWith(SELF_PREFIX);

@@ -7,7 +7,7 @@
 
 ## 支付（243）
 
-网关判权：能提前判 147、留给入口判（只问是不是商家） 75、只要求登录 21。构建：默认构建 243。生产：已入网关 223、未部署 20。
+网关判权：能提前判 147、只要求登录 96。构建：默认构建 243。生产：已入网关 223、未部署 20。
 
 ### checkout（3）
 
@@ -67,66 +67,66 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/management/brands/{brandNo}/stored-value/activities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| PUT | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-presets` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-schedules` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/issuer` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/issuer` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueBrandActivationController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/store-breakdown` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueReportController |
-| GET | `/biz/management/brands/{brandNo}/stored-value/summary` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueReportController |
-| POST | `/biz/management/entities/{entityNo}/stored-value/financial-permissions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/activities/{activityNo}/summary` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueReportController |
-| GET | `/biz/management/stored-value/activity-approvals` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/management/stored-value/activity-approvals/{approvalNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/management/stored-value/activity-approvals/{approvalNo}/decisions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/management/stored-value/financial-brand-changes/{changeNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
-| POST | `/biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
-| GET | `/biz/management/stored-value/financial-capability` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/financial-resources` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/issuers/{issuerNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| GET | `/biz/management/stored-value/issuers/{issuerNo}/collection-routes` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-checks` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-versions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stored-value/migration-manifests` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueMigrationController |
-| POST | `/biz/management/stored-value/migration-manifests/{manifestNo}/map` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueMigrationController |
-| POST | `/biz/management/stored-value/migration-manifests/{manifestNo}/pause` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueMigrationController |
-| GET | `/biz/management/stored-value/policies` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
-| POST | `/biz/management/stored-value/policies` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
-| PUT | `/biz/management/stored-value/policies/{policyNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
-| POST | `/biz/management/stored-value/policy-permissions/prepare` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
-| GET | `/biz/management/stored-value/policy-targets` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
-| GET | `/biz/management/stored-value/settlement-bills` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/generations` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/actions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/adjustments` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/disputes` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/events` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/items` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/settlement-entity-candidates` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/voids` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueSettlementController |
-| GET | `/biz/management/stored-value/store-issuer-summary` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueReportController |
-| GET | `/biz/management/stores/{storeNo}/stored-value/financial-brand-change-original` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
-| POST | `/biz/management/stores/{storeNo}/stored-value/financial-brand-changes` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
-| GET | `/biz/management/stores/{storeNo}/stored-value/issuer` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/access-refresh` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| PUT | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-presets` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-schedules` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandStoredValueActivityController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/issuer` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueBrandActivationController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/store-breakdown` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
+| GET | `/biz/management/brands/{brandNo}/stored-value/summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
+| POST | `/biz/management/entities/{entityNo}/stored-value/financial-permissions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/activities/{activityNo}/summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
+| GET | `/biz/management/stored-value/activity-approvals` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/management/stored-value/activity-approvals/{approvalNo}` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/management/stored-value/activity-approvals/{approvalNo}/decisions` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/management/stored-value/financial-brand-changes/{changeNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
+| POST | `/biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
+| GET | `/biz/management/stored-value/financial-capability` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/financial-resources` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/issuers/{issuerNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| GET | `/biz/management/stored-value/issuers/{issuerNo}/collection-routes` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-checks` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-versions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stored-value/migration-manifests` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueMigrationController |
+| POST | `/biz/management/stored-value/migration-manifests/{manifestNo}/map` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueMigrationController |
+| POST | `/biz/management/stored-value/migration-manifests/{manifestNo}/pause` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueMigrationController |
+| GET | `/biz/management/stored-value/policies` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| POST | `/biz/management/stored-value/policies` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| PUT | `/biz/management/stored-value/policies/{policyNo}` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| POST | `/biz/management/stored-value/policy-permissions/prepare` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| GET | `/biz/management/stored-value/policy-targets` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| GET | `/biz/management/stored-value/settlement-bills` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/generations` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/actions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/adjustments` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/disputes` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/events` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/items` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/settlement-entity-candidates` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/voids` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueSettlementController |
+| GET | `/biz/management/stored-value/store-issuer-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
+| GET | `/biz/management/stores/{storeNo}/stored-value/financial-brand-change-original` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
+| POST | `/biz/management/stores/{storeNo}/stored-value/financial-brand-changes` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandFinancialChangeController |
+| GET | `/biz/management/stores/{storeNo}/stored-value/issuer` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/access-refresh` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueIssuerController |
 
 ### merchant（9）
 
@@ -285,7 +285,7 @@
 | GET | `/biz/stored-value/account-directory` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueMerchantQueryController |
 | GET | `/biz/stored-value/accounts` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
 | GET | `/biz/stored-value/accounts/{accountRef}` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueMerchantQueryController |
-| GET | `/biz/stored-value/brand-capability` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueBrandActivationController |
+| GET | `/biz/stored-value/brand-capability` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueBrandActivationController |
 | POST | `/biz/stored-value/consumptions` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
 | GET | `/biz/stored-value/consumptions/orders/{orderNo}` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
 | POST | `/biz/stored-value/consumptions/orders/{orderNo}/cancel` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
@@ -294,7 +294,7 @@
 | GET | `/biz/stored-value/context` | `@perm.canAnyBiz('pay:sv:plan:read','pay:sv:plan:manage','pay:sv:account:read','pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValuePlanController |
 | GET | `/biz/stored-value/customer-candidates` | `@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueCustomerController |
 | POST | `/biz/stored-value/customer-selections` | `@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueCustomerController |
-| GET | `/biz/stored-value/governance-capability` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueGovernanceCapabilityController |
+| GET | `/biz/stored-value/governance-capability` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueGovernanceCapabilityController |
 | POST | `/biz/stored-value/plan-recharges` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValuePlanRechargeController |
 | POST | `/biz/stored-value/plan-recharges/cancel-create` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValuePlanRechargeController |
 | POST | `/biz/stored-value/plan-recharges/confirm-offline` | `@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValuePlanRechargeController |
@@ -320,22 +320,22 @@
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
 | GET | `/biz/stores/{storeNo}/receivables/{bizNo}` | `@perm.canBiz('mch:pay:order:view')` | 能提前判 | 默认构建 | 已入网关 | BizReceivableController |
-| GET | `/biz/stores/{storeNo}/stored-value/activities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/stores/{storeNo}/stored-value/activities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/checks` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/copies` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| PUT | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/draft` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/stop-issuance` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/submissions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/stores/{storeNo}/stored-value/activity-context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/stores/{storeNo}/stored-value/activity-presets` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
-| GET | `/biz/stores/{storeNo}/stored-value/activity-schedules` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/stores/{storeNo}/stored-value/activities` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/stores/{storeNo}/stored-value/activities` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/checks` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/copies` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| PUT | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/draft` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/stop-issuance` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| POST | `/biz/stores/{storeNo}/stored-value/activities/{activityNo}/submissions` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/stores/{storeNo}/stored-value/activity-context` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/stores/{storeNo}/stored-value/activity-presets` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
+| GET | `/biz/stores/{storeNo}/stored-value/activity-schedules` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValueActivityController |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-candidates` | `@perm.canBiz('biz:customer') and @perm.canAnyBiz('pay:sv:recharge:create','pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizMemberScopeController |
 | POST | `/biz/stores/{storeNo}/stored-value/customer-selections` | `@perm.canBiz('biz:customer') and @perm.canAnyBiz('pay:sv:recharge:create','pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizMemberScopeController |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueWalletController |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueWalletController |
-| GET | `/biz/stores/{storeNo}/stored-value/effective-policy` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 未部署 | BizStoredValuePolicyController |
+| GET | `/biz/stores/{storeNo}/stored-value/effective-policy` | 商家身份 | 只要求登录 | 默认构建 | 未部署 | BizStoredValuePolicyController |
 | POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/cancel-create` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/confirm-offline` | `@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | POST | `/biz/stores/{storeNo}/stored-value/issuer-recharges/resolve` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
@@ -345,11 +345,11 @@
 | GET | `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/issuers` | `@perm.canAnyBiz('pay:sv:account:read','pay:sv:recharge:create','pay:sv:plan:manage','pay:sv:plan:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
-| GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoredValueReportController |
+| GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
 
 ## 零售（545）
 
-网关判权：能提前判 416、留给入口判（只问是不是商家） 68、只要求登录 55、留给入口判 6。构建：默认构建 477、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 77。
+网关判权：能提前判 416、只要求登录 123、留给入口判 6。构建：默认构建 477、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 77。
 
 ### activities（5）
 
@@ -390,12 +390,12 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/app/legal-subjects` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
-| GET | `/biz/app/operating-entities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
-| POST | `/biz/app/operating-entities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
-| GET | `/biz/app/operating-entities/context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
-| GET | `/biz/app/operating-entities/create-results/{key}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
-| GET | `/biz/app/operating-entities/{id}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| GET | `/biz/app/legal-subjects` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| GET | `/biz/app/operating-entities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| POST | `/biz/app/operating-entities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| GET | `/biz/app/operating-entities/context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| GET | `/biz/app/operating-entities/create-results/{key}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
+| GET | `/biz/app/operating-entities/{id}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizAppOperatingEntityController |
 
 ### appointment-slots（1）
 
@@ -407,9 +407,9 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/business-types` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizFoundationController |
-| GET | `/biz/business-types/{typeCode}/feature-matrix` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreFeatureController |
-| GET | `/biz/business-types/{typeCode}/plans` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizFoundationController |
+| GET | `/biz/business-types` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizFoundationController |
+| GET | `/biz/business-types/{typeCode}/feature-matrix` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreFeatureController |
+| GET | `/biz/business-types/{typeCode}/plans` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizFoundationController |
 
 ### campaign（3）
 
@@ -499,33 +499,33 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/entities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityController |
-| POST | `/biz/entities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityController |
-| GET | `/biz/entities/create-results/{requestNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityController |
-| POST | `/biz/entities/{entity}/channel-requests` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| GET | `/biz/entities/{entity}/commands/{request}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/contact` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/files` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| GET | `/biz/entities/{entity}/files/{file}/preview` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| GET | `/biz/entities/{entity}/profile-draft` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/profile-draft` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| GET | `/biz/entities/{entity}/profile-template` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/recognitions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityRecognitionController |
-| POST | `/biz/entities/{entity}/review-submissions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/revision-discards` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
-| POST | `/biz/entities/{entity}/revisions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityProfileController |
+| GET | `/biz/entities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityController |
+| POST | `/biz/entities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityController |
+| GET | `/biz/entities/create-results/{requestNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityController |
+| POST | `/biz/entities/{entity}/channel-requests` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| GET | `/biz/entities/{entity}/commands/{request}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/contact` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/files` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| GET | `/biz/entities/{entity}/files/{file}/preview` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| GET | `/biz/entities/{entity}/profile-draft` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/profile-draft` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| GET | `/biz/entities/{entity}/profile-template` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/recognitions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityRecognitionController |
+| POST | `/biz/entities/{entity}/review-submissions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/revision-discards` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
+| POST | `/biz/entities/{entity}/revisions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityProfileController |
 
 ### entity（1）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/entity/{entityNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityController |
+| GET | `/biz/entity/{entityNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityController |
 
 ### entity-recognitions（1）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| POST | `/biz/entity-recognitions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizEntityRecognitionController |
+| POST | `/biz/entity-recognitions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizEntityRecognitionController |
 
 ### express（1）
 
@@ -537,8 +537,8 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| POST | `/biz/feedback` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizFeedbackController |
-| GET | `/biz/feedback/mine` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizFeedbackController |
+| POST | `/biz/feedback` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizFeedbackController |
+| GET | `/biz/feedback/mine` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizFeedbackController |
 
 ### freight-template（1）
 
@@ -620,38 +620,38 @@
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/management/brand-changes/{changeNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreOperatingContextController |
-| POST | `/biz/management/brand-changes/{changeNo}/decisions` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreOperatingContextController |
-| GET | `/biz/management/brands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| POST | `/biz/management/brands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| PUT | `/biz/management/brands/{brandNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/audit-events` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/commands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| PUT | `/biz/management/brands/{brandNo}/legal-entity` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/legal-entity-candidates` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/legal-entity/commands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/marketing/activities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/commands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| POST | `/biz/management/brands/{brandNo}/marketing/commands` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/cost-rules` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/cost-statements` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/coupon-issues` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| GET | `/biz/management/brands/{brandNo}/marketing/coupons` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandMarketingController |
-| POST | `/biz/management/brands/{brandNo}/status-changes` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/brands/{brandNo}/stores` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizBrandController |
-| GET | `/biz/management/context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/entities/{entityNo}/payment-merchants` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| POST | `/biz/management/spaces` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/entities` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/grant-commands/{action}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/grant-options` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| POST | `/biz/management/spaces/{managementNo}/grants` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| DELETE | `/biz/management/spaces/{managementNo}/grants/{grantNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/recipients` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/resources` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
-| GET | `/biz/management/spaces/{managementNo}/stores` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/brand-changes/{changeNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
+| POST | `/biz/management/brand-changes/{changeNo}/decisions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
+| GET | `/biz/management/brands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| POST | `/biz/management/brands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| PUT | `/biz/management/brands/{brandNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/audit-events` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/commands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| PUT | `/biz/management/brands/{brandNo}/legal-entity` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/legal-entity-candidates` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/legal-entity/commands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/marketing/activities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/commands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| POST | `/biz/management/brands/{brandNo}/marketing/commands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/cost-rules` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/cost-statements` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/coupon-issues` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| GET | `/biz/management/brands/{brandNo}/marketing/coupons` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandMarketingController |
+| POST | `/biz/management/brands/{brandNo}/status-changes` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/brands/{brandNo}/stores` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
+| GET | `/biz/management/context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/entities/{entityNo}/payment-merchants` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| POST | `/biz/management/spaces` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/entities` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/grant-commands/{action}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/grant-options` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| POST | `/biz/management/spaces/{managementNo}/grants` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| DELETE | `/biz/management/spaces/{managementNo}/grants/{grantNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/recipients` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/resources` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
+| GET | `/biz/management/spaces/{managementNo}/stores` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizManagementController |
 
 ### marketing（1）
 
@@ -733,10 +733,10 @@
 | GET | `/biz/merchant/store-claims/by-request/{requestNo}` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizStoreClaimRecoveryController |
 | GET | `/biz/merchant/store-claims/{claimNo}` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizStoreClaimRecoveryController |
 | POST | `/biz/merchant/store-claims/{claimNo}/resume` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizStoreClaimRecoveryController |
-| GET | `/biz/merchant/store-creation-context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreCreationAccessController |
-| POST | `/biz/merchant/store-openings` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizMerchantController |
-| GET | `/biz/merchant/store-openings/{requestNo}` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizMerchantController |
-| GET | `/biz/merchant/store-setup` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizFoundationController |
+| GET | `/biz/merchant/store-creation-context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreCreationAccessController |
+| POST | `/biz/merchant/store-openings` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizMerchantController |
+| GET | `/biz/merchant/store-openings/{requestNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizMerchantController |
+| GET | `/biz/merchant/store-setup` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizFoundationController |
 
 ### message（5）
 
@@ -1128,7 +1128,7 @@
 | GET | `/biz/store/poster` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizDashboardController |
 | GET | `/biz/store/qrcode` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizPickupController |
 | POST | `/biz/store/scope-preview` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizMerchantController |
-| GET | `/biz/store/settings` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreSettingsController |
+| GET | `/biz/store/settings` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreSettingsController |
 | POST | `/biz/store/settings/basic` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 默认构建 | 已入网关 | BizStoreSettingsController |
 | POST | `/biz/store/settings/contact` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 默认构建 | 已入网关 | BizStoreSettingsController |
 | POST | `/biz/store/settings/hours` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizStoreSettingsController |
@@ -1185,8 +1185,8 @@
 | GET | `/biz/stores/mine` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizEntityController |
 | GET | `/biz/stores/{storeNo}/appointment-slots` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizStoreFulfillmentController |
 | POST | `/biz/stores/{storeNo}/appointment-slots` | `@perm.canBiz('biz:store')` | 能提前判 | 默认构建 | 已入网关 | BizStoreFulfillmentController |
-| POST | `/biz/stores/{storeNo}/brand-changes` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreOperatingContextController |
-| POST | `/biz/stores/{storeNo}/brand-changes/check` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreOperatingContextController |
+| POST | `/biz/stores/{storeNo}/brand-changes` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
+| POST | `/biz/stores/{storeNo}/brand-changes/check` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
 | POST | `/biz/stores/{storeNo}/channel-after-sale-decisions` | `@perm.canBiz('biz:aftersale')` | 能提前判 | 默认构建 | 未部署 | BizChannelAfterSaleDecisionController |
 | POST | `/biz/stores/{storeNo}/channel-after-sale-decisions/release-unissued` | `@perm.canBiz('biz:aftersale')` | 能提前判 | 默认构建 | 未部署 | BizChannelAfterSaleDecisionController |
 | GET | `/biz/stores/{storeNo}/channel-order-policies` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 默认构建 | 未部署 | BizChannelOrderPolicyController |
@@ -1224,7 +1224,7 @@
 | POST | `/biz/stores/{storeNo}/mall/quotes` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | CommerceBuyerMallHttpController |
 | POST | `/biz/stores/{storeNo}/mall/upgrade-quotes` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | CommerceBuyerMallHttpController |
 | POST | `/biz/stores/{storeNo}/members` | `@perm.canBiz('biz:customer')` | 能提前判 | 默认构建 | 已入网关 | BizMemberScopeController |
-| GET | `/biz/stores/{storeNo}/operating-context` | 商家身份 | 留给入口判（只问是不是商家） | 默认构建 | 已入网关 | BizStoreOperatingContextController |
+| GET | `/biz/stores/{storeNo}/operating-context` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
 | GET | `/biz/stores/{storeNo}/pos/access` | `@perm.canBiz('biz:receive')` | 能提前判 | 默认构建 | 已入网关 | CommerceEndController |
 | GET | `/biz/stores/{storeNo}/subscription` | `@perm.memberOfSelectedStore(#storeNo)` | 留给入口判 | 默认构建 | 已入网关 | BizFoundationController |
 
