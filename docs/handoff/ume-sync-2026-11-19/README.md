@@ -105,3 +105,5 @@ ai-shop-bapp 分支 `feat/entity-channel-accounts-20261119`（工作树 `~/work/
    ~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py apply $T --out apply.json
    ```
 3. **清理**：全部导入后在 ume-db61 执行 `bash /tmp/stage_keys.sh --drop`，删掉明文备份表。
+
+**更新（一键、免输入）**：`bash deploy/ume/sync-check/run_keys_all.sh`。源改为 .61 上 .60 的每日全库备份（`/data0/data_bak/60/mysqldump_master/`，最新 2026-11-08，62 GB 单文件 dump；之后的每日备份未再生成），在 db61 上流式抽 `msm_mms` 两张表进 near-pay 备份表，不需要 UME 口令；mysql9 root 口令由脚本读本机 `nearpay-prod/mysql9-root.env`。11-08 之后才在 UME 新增的密钥会记为 MISSING 并跳过，报告单列。
