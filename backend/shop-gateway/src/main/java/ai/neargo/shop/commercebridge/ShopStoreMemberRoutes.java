@@ -115,7 +115,29 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/(?:groups|group|group-request|quote|period)(?:/.*)?"),
             // 平台活动与营销活动
             HostRoute.of("GET,POST", "/biz/(?:platform-activity|activities|campaign)(?:/.*)?"),
-            HostRoute.of("GET,POST", "/biz/(?:activity-presets|activity-conflicts|marketing-summary|marketing/summary)"));
+            HostRoute.of("GET,POST", "/biz/(?:activity-presets|activity-conflicts|marketing-summary|marketing/summary)"),
+            // —— App 第三批（2026-11-19 清点：准入表里关着、而商户 App 在调用的入口，docs/api/B端门店准入-补登记建议.md 第一组）——
+            // 结算、发票、保证金与欠款（「我的 › 结算」；权限码 biz:finance 由控制器判）
+            HostRoute.of("GET", "/biz/settle/(?:batch|bills|daily-flow|income|invoice-pending|invoice-title|invoices|rate-card|statement)"),
+            HostRoute.of("POST", "/biz/settle/invoices"),
+            HostRoute.of("GET", "/biz/(?:deposit|deposit/txns|merchant/debt)"),
+            // 配送规则、申请服务社区（biz:store）
+            HostRoute.of("GET,POST", "/biz/delivery/rule"),
+            HostRoute.of("GET", "/biz/communities/applies"),
+            HostRoute.of("POST", "/biz/communities/(?:apply|from-map)"),
+            // 客户、会员码识别、跨店统计（biz:customer；跨店统计另有档位检查 70023，登记后那条检查才轮得到）
+            HostRoute.of("GET", "/biz/(?:customers|cross-store/compare|cross-store/overview)"),
+            HostRoute.of("POST", "/biz/member-code/resolve"),
+            // 行政区划与小区（公共数据；端上只在选了门店之后的页面用：配送范围、商品列表）
+            HostRoute.of("GET", "/biz/regions(?:/path|/search|/villages)?"),
+            HostRoute.of("POST", "/biz/regions/parse"),
+            HostRoute.of("GET", "/biz/geo/estates(?:/counts)?"),
+            // 零散漏掉的：活动上下架此前只登记了 GET/POST；规格漏了一个名字；通知漏了测试发送；消息漏了订阅
+            HostRoute.of("PUT", "/biz/activities/[A-Za-z0-9_-]{1,64}/status"),
+            HostRoute.of("GET", "/biz/(?:store-spec-dims|fulfillment/carriers)"),
+            HostRoute.of("POST", "/biz/(?:notify/wecom/test|message/subscribe)"),
+            // 设默认门店：/biz/store 不按族登记（pay-setting 要业务端权益），这一条单列；路径里的门店须等于所选门店
+            HostRoute.of("POST", STORE + "default"));
 
     private ShopStoreMemberRoutes() {
     }

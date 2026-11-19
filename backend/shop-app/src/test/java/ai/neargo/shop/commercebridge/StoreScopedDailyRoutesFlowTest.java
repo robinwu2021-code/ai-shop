@@ -187,6 +187,51 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ App 第三批（结算 / 保证金 / 配送规则 / 社区 / 客户 / 跨店 / 区划 / 零散漏掉的）在新模型门店上能进门店（2026-11-19 清点出的漏登记）")
+    void appThirdBatchPassesAdmission() throws Exception {
+        String[] o = newModelOwner("15965020131");
+        for (String path : new String[] {
+                "/biz/settle/batch", "/biz/settle/bills", "/biz/settle/daily-flow", "/biz/settle/income",
+                "/biz/settle/invoice-pending", "/biz/settle/invoice-title", "/biz/settle/invoices",
+                "/biz/settle/rate-card", "/biz/settle/statement", "/biz/deposit", "/biz/deposit/txns",
+                "/biz/merchant/debt", "/biz/delivery/rule", "/biz/communities/applies", "/biz/customers",
+                "/biz/cross-store/compare", "/biz/cross-store/overview", "/biz/regions", "/biz/regions/path",
+                "/biz/regions/search", "/biz/regions/villages", "/biz/geo/estates", "/biz/geo/estates/counts",
+                "/biz/store-spec-dims", "/biz/fulfillment/carriers"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+        // 写接口：只看有没有被门店准入挡住。请求体是空的，进到入口之后的参数错、业务错都算「进去了」
+        for (String[] write : new String[][] {
+                {"POST", "/biz/settle/invoices"}, {"POST", "/biz/delivery/rule"}, {"POST", "/biz/communities/apply"},
+                {"POST", "/biz/communities/from-map"}, {"POST", "/biz/member-code/resolve"},
+                {"POST", "/biz/regions/parse"}, {"POST", "/biz/notify/wecom/test"}, {"POST", "/biz/message/subscribe"},
+                {"PUT", "/biz/activities/NO-SUCH-ACTIVITY/status"}, {"POST", "/biz/store/" + o[1] + "/default"}}) {
+            var request = "PUT".equals(write[0])
+                    ? org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(write[1]) : post(write[1]);
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), write[0] + " " + write[1] + " → " + body);
+            assertNotEquals(403, response.getStatus(), write[0] + " " + write[1] + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 没登记的仍然关着：储值在新模型门店上照旧进不去（要先确认储值是否上线，见补登记建议第二、三组）")
+    void storedValueStaysClosedUntilConfirmed() throws Exception {
+        String[] o = newModelOwner("15965020132");
+        for (String path : new String[] {"/biz/stored-value/plans", "/biz/stores/" + o[1] + "/stored-value/issuers",
+                "/biz/management/stored-value/settlement-bills"}) {
+            String body = mvc.perform(get(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1]))
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+            assertTrue(body.contains("STORE_ACCESS"), path + " → " + body);
+        }
+    }
+
+    @Test
     @DisplayName("★★ App 第二批写接口（门店公告、改店名、评价回复、加打印机）在新模型门店上能进门店（不是 70006）")
     void appSecondBatchWritesPassAdmission() throws Exception {
         String[] o = newModelOwner("15965020111");
