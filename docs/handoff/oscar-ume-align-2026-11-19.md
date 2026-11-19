@@ -40,3 +40,14 @@
 - **蓝新 `MS354053380` 未登记**：UME 内 3 户共用（02380159443150569472、88600248120000008、88600254990000004），无法按 UME 数据定归属。
 - **未迁**：near-pay 暂不支持的渠道（两户：橘子支付、支付寶、ezPay 簡單付、Pi 拍錢包、Atome、富邦微信）须先做渠道目录「待开通」（TDD）；UME 店员账号（oscar 28、roger 43）未导入，多数无手机号。
 - 另：166 near-pay 于 05:04 UTC 被其他会话重新部署（jar `a6219a718557`），已核对收银域名并存与门店付款方式仍在。
+
+## 待开通渠道与蓝新（用户 2026-11-19 决定）
+
+- **渠道目录新增 7 个「待开通」渠道**（near-pay `POST /pay-ops/v2/channels`，市场 TW、FIAT，适配器未注册，状态 DISABLED，要等适配器上线才能启用）：`GAMAPAY` 橘子支付、`ALIPAY` 支付寶、`EZPAY` ezPay簡單付、`EZPAY_CROSSBORDER` ezPay境外、`FUBON_WECHAT` 富邦微信、`PIPAY` Pi拍錢包、`ATOME` Atome。
+- **渠道账户（均 UNVERIFIED / PENDING，凭证 `file:ume/msm_mms/chn_mer_scan_<alias>_info/<UME 记录号>`）**：
+  - oscar `PM2026111707510001`：GAMAPAY `350421`、FUBON_WECHAT `CM529807626322706433` 与 `CM529807626700193793`（原系统无渠道商户号，用 UME 记录号）、EZPAY `PG100000254010`。
+  - roger `PM0E0F6CC8F7454D75`：GAMAPAY `136768`、ALIPAY `50766768201`（store_id）、EZPAY `PG300000185100`、PIPAY `US364LU2N44ALZPG`（partner_id，channel_id BEECOMB）、ATOME `02380159443150569472`。
+  - 计划表 `mig_ume_channel_20261117` 对 ezPay / 支付寶 / Pi 填的是 UME 记录号，登记时改用原始导出里的真实渠道商户号。
+- **蓝新 `MS354053380`** 按 UME 数据登记给 roger（原记录商户名「创科」）：`PM80D58ACC11C044CF`，UNVERIFIED / PENDING。UME 内另 2 户（88600248120000008、88600254990000004）引用同号，批量迁移时再按 UME 数据处理。
+- 收银台不受影响：停用渠道没有产品，不出现在付款方式里。商户 App 目前也看不到这些渠道，要显示「待开通」需改 App 与收款方式接口（TDD）。
+- UME 店员账号按用户要求暂不同步。
