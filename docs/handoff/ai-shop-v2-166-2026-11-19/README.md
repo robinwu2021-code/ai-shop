@@ -273,6 +273,36 @@ Nacos：ai-shop-ops 1 个实例、ai-shop-api 1 个实例，均健康
 - 启动用了约 160 秒（两个实例同时起，.80 是 2 核）。
 - 登录后的功能仍然没有验证。
 
+## 2026-11-19 追加：C 端接入网关（用户：「C 端接入网关」）
+
+v2 的两个实例换成了提交 `942d950bc` 的包（`shop-app-942d950bc.jar`，sha256 `0a99d8ec770a…`），C 端的入口进了网关索引。方案 §2.25。
+
+| 改了什么 | 在哪 | 备份 / 回退 |
+|---|---|---|
+| 启动脚本指向新包，标签改为 `gateway-mp-942d950bc` | .80 `/data0/app/ai-shop-v2/run.sh` | `run.sh.before-mp-20261119`；旧包 `shop-app-e084b5d55.jar` 仍在 `releases/` |
+| api 实例加 `SHOP_GATEWAY_MP_PRECHECK=observe` | .80 `ai-shop-api-v2.env` | `ai-shop-api-v2.env.before-mp-20261119` |
+| 运营端页面（「接口资源」页的端筛选多了「消费者端」） | 166 `/data/www/ai-shop-ops-v2/releases/gateway-942d950bc`，`current` 已指过去 | 把 `current` 指回 `releases/gateway-1ce21cf86` |
+| 正式库 `sys_api_resource` 多了 174 行（`end_code = mp`，全部是「留给入口判」、启用） | .61 `ai_shop_ume` | `delete from sys_api_resource where end_code = 'mp'`；实例若还开着 C 端档位，下次启动会再写回 |
+
+回退整件事：把两个 `.before-mp-20261119` 复制回去，`run.sh api restart`、`run.sh ops restart`，再把 `current` 指回旧目录。
+
+**过程：** 先重启 api 实例（约 88 秒起来），确认后再重启运营端实例（约 85 秒）。两个 v2 入口各自中断了一分半左右；现有版本（v1）没有动。
+库连接重启前 137/250，重启后 129/250。
+
+**验证到的：**
+
+- 内网直连 api 实例：`/mp/goods` 不带令牌 200、`/mp/order/list` 不带令牌 401、不存在的地址 404 —— 与接入前的行为一致，网关没有多拦。
+- 运营端实例上 `/mp/**`、`/biz/**` 仍是 404。
+- 公网：`/ops-shop-v2/` 200，`/ops-shop-v2/ops/auth/me`、`/ops/api-resources` 401，`/shop-api-v2/biz/goods` 401，`/shop-api-v2/common/app/version` 200，`/ops-shop/` 200；页面已是新构建。
+- 正式库里 C 端 174 行，与清单里默认构建的 C 端入口逐条相同；其余三类行（运营端 630、支付运营面 10、B 端 765）没有变化。
+
+**没有做的：**
+
+- **C 端没有对外入口。** `/shop-api-v2/mp/**` 在公网仍是 404。166 的 nginx 上没有找到现有的 C 端公网入口，开这一条是新增对外暴露，等用户定。
+- 「接口资源」页上的「消费者端」筛选没有登录进去看过（不用正式账号）。
+- C 端是观察档：停用某一条目前只记日志、不拦。要真拦得改成 `enforce`。
+- 部署时一条筛环境文件的命令过滤没写严，`SHOP_MANAGEMENT_SIGNING_KEY` 的值出现在了操作会话的输出里（没有写进任何文件或仓库）。是否轮换由用户定。
+
 ## 怎么连
 
 经 UME 跳板机（资料在 `~/work/env/ume/`）。那份 `ssh.config` 里 `ProxyCommand` 用了 `%d`，本机的 ssh 不认，

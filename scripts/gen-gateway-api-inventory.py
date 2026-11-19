@@ -378,9 +378,7 @@ def main():
             others["/" + (first[0] if first else "")] += 1
             continue
         requirement, judge = gateway_judgement(endpoint, end, publics, consumer)
-        if end == "mp":
-            prod = "网关未建索引"
-        elif not live_keys:
+        if not live_keys:
             prod = "—"
         else:
             prod = "已入网关" if (endpoint["method"], endpoint["path"]) in live_keys else "未部署"
@@ -422,11 +420,9 @@ def main():
             index.append(f"| {label} | {name} | {default or '—'} | {len(rows) - default or '—'} |")
     index += ["", "## 生产上的状态", "",
               f"「已入网关」指这个入口在生产的网关索引里（取自 `{export_name}`，是网关版本写进正式库的接口资源表的导出）；"
-              "「未部署」指源码里有、生产的网关里没有。C 端在网关上还没有建索引，这一列对 C 端不适用。", "",
+              "「未部署」指源码里有、生产的网关里没有。C 端的入口进了索引只表示网关能定位、能按条停用，网关不替它判登录与权限。", "",
               "| 端 | 对象 | 已入网关 | 未部署 |", "|---|---|---:|---:|"]
     for code, label, _ in ENDS:
-        if code == "mp":
-            continue
         for name in OBJECTS:
             rows = [row for row in per_end[code] if row["object"] == name]
             if not rows:
@@ -448,7 +444,7 @@ def main():
               "| 只要求登录 | 入口上没有权限注解，网关只要求登录 |",
               "| 留给入口判 | 权限式里有网关认不出的东西，网关只要求登录，其余由入口上的注解判 |",
               "| 公开 | 写在该端的公开地址清单里，不用登录 |",
-              "| 网关放行，登录由业务层判 | C 端整条链在网关不拦，要不要登录由业务代码决定 |", "",
+              "| 网关放行，登录由业务层判 | C 端的入口网关只定位、可按条停用，不判登录与权限；要不要登录由业务代码决定 |", "",
               "## 三端之外的入口", "",
               "下面这些不属于三端，这份清单不展开：", "",
               "| 前缀 | 入口数 |", "|---|---:|"]
