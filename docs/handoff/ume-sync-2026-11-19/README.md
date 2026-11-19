@@ -64,9 +64,9 @@ T=docs/handoff/ume-sync-2026-11-19/credential-targets.tsv
 （`/biz/merchant/payment` 端到端要店主登录，内部接口要服务密钥，均未走；以库内复算代替。）
 
 清单外 4 行：oscar 两个沙箱、roger Atome（均为有意登记），以及 **roger 支付寶重复**：同一 UME 记录 `CM434194562391605248` 有两个账户，`PM7DE952F9858C4FCA`（终端 `TDL001`，按批量规则）与早先手工登记的 `PM9C0E0F6696DF4660`（无子商户号、版本 0、无门店绑定、无凭据）。
-运营接口关闭被拒（near-pay S1 未开放「关闭渠道账户」，409 10409）；直接改库软删除被自动审查拦下，**待用户决定**：在 166 执行
+运营接口关闭被拒（near-pay S1 未开放「关闭渠道账户」，409 10409）；**用户同意后已软删除**（2026-11-19，影响 1 行，`deleted=1`、`version` 0→1，可改回）：
 `UPDATE nearpay_prod.pay_merchant SET deleted=1, updated_by='ume-dedup-20261119', version=version+1 WHERE pay_merchant_no='PM9C0E0F6696DF4660' AND version=0 AND sec_key_id IS NULL;`
-未处理前 roger 在 App 会看到两张支付寶卡片。
+roger 现只剩 `PM7DE952F9858C4FCA`（`TDL001`）一张支付寶卡片。
 
 ## App 主体页渠道列表
 
