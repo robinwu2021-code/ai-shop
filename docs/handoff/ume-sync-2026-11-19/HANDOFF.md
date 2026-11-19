@@ -79,4 +79,7 @@
 - 导入结束：藍新 704、LINE Pay 436 已启用；**其余 18 个 LINE Pay（UME 渠道号带 `\t`）不再跑脚本，由运营在「渠道凭证」页签人工录入**；今后各渠道密钥的录入、更换都走该页签。
 - **直录开关常驻**：`near-pay.credential.migration.enabled=true` 不再是临时授权，**不要关**（关了运营端录入会报「未开启」）；`anonymous=false` 必须保持。
 - **权限补回**（near-pay `00dbaf37e`）：直录端点要求运营会话 + `pay:channel-account:manage` + 数据范围，去掉无会话回退。覆盖部署 166 `18f2a134f440 → d09e409d202d`（备份 `pay-svc.jar.before-20261119-perm-00dbaf37e`）；冒烟：无令牌 401、超管到业务校验、无管理权限的复核人 403。
-- 仍待撤的临时授权：`ST-UME-CONFIG` 超管、near-pay 两个数据范围（约 11-21 过期）、`ai-shop-ops` 的两个店主自动化白名单（见第二节）。
+- **迁移期临时授权已全部撤销**（用户同意，2026-11-19）：
+  - `ST-UME-CONFIG` 超管：`sys_role_member` id 25 置 `deleted=1`，`sys_ops_staff.roles` 还原为 `["NP_IT_CONFIG"]`（`updated_by='ume-batch-revoke'`）；复验仍可登录、权限无 `*`。
+  - near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`：经运营接口撤销，状态 `REVOKED`。（同期另两个 `DSD4615…`、`DSF94A7…` 属 11-18 沙箱试运行，非本任务，未动。）
+  - `ai-shop-ops` 两个店主自动化白名单：`ops-entity.properties` 恢复为备份内容（改前另存 `.before-revoke-automation-b-20261119`），重启 `ai-shop-ops`；复验两个店主票据登录被拒、运营票据正常。
