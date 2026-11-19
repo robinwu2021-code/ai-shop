@@ -16,7 +16,7 @@
 | 来源 | 判的是什么 | 码长什么样 | 谁来授 | 入口数 |
 |---|---|---|---|---:|
 | 门店角色 | 这个人在**当前门店**的角色有没有这个码 | `biz:goods`、`mch:pay:refund`、`pay:sv:plan:read` | 店主给店员分角色 | 535 |
-| 管理范围 | 这个人在**某个管理空间**里，对某个品牌、门店、主体有没有这个码 | `sv.brand.activity.read`、`sv.settlement.read` | 管理空间的属主发授权 | 72 已配；另 10 条待确认 |
+| 管理范围 | 这个人在**某个管理空间**里，对某个品牌、门店、主体有没有这个码 | `sv.brand.activity.read`、`sv.settlement.read` | 管理空间的属主发授权 | 82 已配 |
 | 账户级 | 只要是登录的商家账号 | — | — | 139（入口上没有注解的 101 条，加上「只问是不是商家」里属于账户级的 38 条） |
 
 另有 6 条留给入口判（带方法参数的门店成员检查、商城入口职责），83 条在门店准入表里对新模型门店关闭（见 [关闭入口清点](B端门店准入-关闭入口清点.md)）。
@@ -1057,9 +1057,8 @@
 
 | 状态 | 条数 |
 |---|---:|
-| 已配 | 72 |
+| 已配 | 82 |
 | 保持登录即可 | 38 |
-| 待确认 | 10 |
 | 不处理 | 3 |
 
 #### 已配（72）
@@ -1139,20 +1138,23 @@
 | GET | `/biz/stores/{storeNo}/operating-context` | `store.read @STORE(storeNo)` | queries.operating |
 | GET | `/biz/stores/{storeNo}/stored-value/store-summary` | `(sv.store.report @STORE(storeNo) 或 sv.store.report.all @SPACE(任一))` | reportLookup(STORE)：门店上的 sv.store.report，或空间的 sv.store.report.all 加本人是该店主体的属主（属主这一半留给业务） |
 
-#### 待确认（10）
+#### 后补的 10 条（2026-11-19 已配）
 
-| 方法 | 地址 | 建议的规则 | 依据 |
+这 10 条每条都至少有一个判定的范围号不在地址里（要查库或在请求体里），所以网关只判「每条路径都会判」的那一部分，其余仍由业务判。
+其中 6 条的管理空间号在请求体里（1、2、4、8、9、10 行）：请求头没带 `X-Management-No` 时网关不判。
+
+| 方法 | 地址 | 网关判的规则 | 留给业务的部分 |
 |---|---|---|---|
-| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | — | 品牌发行方激活，没读完 |
-| POST | `/biz/management/entities/{entityNo}/stored-value/financial-permissions` | — | 只认主体属主，授权表里没有对应的码 |
-| GET | `/biz/management/stored-value/financial-brand-changes/{changeNo}` | — | 同上 |
-| POST | `/biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions` | — | 同上 |
-| GET | `/biz/management/stored-value/issuers/{issuerNo}` | — | BizStoredValueIssuerController |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions` | — | 在付款服务里按原命令判，没读到固定的码 |
-| GET | `/biz/management/stores/{storeNo}/stored-value/financial-brand-change-original` | — | 在品牌资金变更的协调器里判，没读完 |
-| POST | `/biz/management/stores/{storeNo}/stored-value/financial-brand-changes` | — | 同上 |
-| POST | `/biz/stores/{storeNo}/brand-changes` | — | 同上 |
-| POST | `/biz/stores/{storeNo}/brand-changes/check` | — | 管理空间号在请求体里；具体要哪个码没读确定 |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | `(management.enter @SPACE(任一) 且 sv.issuer.configure @BRAND(brandNo))` | 每条路径都先判这两条；首次激活还要结算主体、收款商户上的码，范围号来自支付侧的发行方配置，留给业务 |
+| POST | `/biz/management/entities/{entityNo}/stored-value/financial-permissions` | `(management.enter @SPACE(任一) 且 management.grant.manage @SPACE(任一))` | 另要求本人是该主体的属主：纯属主判断，没有对应的码，留给业务 |
+| GET | `/biz/management/stored-value/financial-brand-changes/{changeNo}` | `management.enter @SPACE(任一)` | 门店号、品牌号都要按 changeNo 查库，留给业务 |
+| POST | `/biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions` | `management.enter @SPACE(任一)` | 同上 |
+| GET | `/biz/management/stored-value/issuers/{issuerNo}` | `management.enter @SPACE(任一)` | sv.issuer.read 的范围要先按 issuerNo 到支付侧定位，留给业务 |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions` | `management.enter @SPACE(任一)` | 付款方主体上的 sv.settlement.payment.register 在支付侧按账单判，留给业务 |
+| GET | `/biz/management/stores/{storeNo}/stored-value/financial-brand-change-original` | `(management.enter @SPACE(任一) 且 store.read @STORE(storeNo))` | 查到原记录时业务再判 store.brand.change 与品牌上的码 |
+| POST | `/biz/management/stores/{storeNo}/stored-value/financial-brand-changes` | `(management.enter @SPACE(任一) 且 store.read @STORE(storeNo) 且 store.brand.change @STORE(storeNo))` | 来源与目标品牌上的 brand.manage、brand.change.decide 留给业务（来源品牌要查库） |
+| POST | `/biz/stores/{storeNo}/brand-changes` | `(management.enter @SPACE(任一) 且 store.read @STORE(storeNo) 且 store.brand.change @STORE(storeNo))` | 品牌上的 brand.manage 留给业务 |
+| POST | `/biz/stores/{storeNo}/brand-changes/check` | `(management.enter @SPACE(任一) 且 store.read @STORE(storeNo) 且 store.brand.change @STORE(storeNo))` | 同上；brand.change.decide 只用来算返回字段，不拦 |
 
 #### 保持登录即可（38）
 
@@ -1813,7 +1815,7 @@ C 端没有角色。一个入口对谁开，只有两档：**访客**（不登�
 | 端 | 这一次可以配的 | 配成什么 | 状态 |
 |---|---:|---|---|
 | B 端 | 72 | 见 1.5「已配」逐条的规则 | **已一次配进库**（2026-11-19），抽查与业务自己的判断一致 |
-| B 端 | 10 | — | 待确认：属主判定或没读完的协调器 |
+| B 端 | 10 | 见 1.5「后补的 10 条」 | **已配**（2026-11-19）：只判每条路径都会判的那部分，范围号要查库的留给业务 |
 | C 端 | 106 | 要登录 | 已配 |
 | C 端 | 15 | 要登录或公开 | 2.2 的写接口，逐条定 |
 

@@ -533,3 +533,13 @@ B 端「只问是不是商家」的 123 条现在的归属：72 条已配、38 �
 ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
     -o UserKnownHostsFile=~/work/env/ume/ssh-known-hosts ume@192.168.3.166
 ```
+
+## 2026-11-19 晚：合并主干、开 PR、补齐 B 端最后 10 条
+
+- 分支已合并 `origin/main`（主干最新迁移 V678，与 V679–V682 不冲突），PR：robinwu2021-code/ai-shop#20。**v2 上跑的仍是合并前的包 `shop-app-da7adb5c4.jar`**，合并后的包还没有部署。
+- 运营端「接口资源」页加了「调整规则」（接已有的 `POST /ops/api-resources/{id}/rule`），代码已在分支上，**前端静态包还没有重新发布到 166**。
+- B 端「只问是不是商家」的 123 条现在：82 条已配、38 条保持登录即可、3 条不处理。后补的 10 条逐条规则见 `docs/api/B端C端功能矩阵.md` 1.5。
+  这 10 条的范围号都有一部分不在地址里，网关只判每条路径都会判的那部分（进入管理空间、门店上的码、品牌发行方配置），其余留给业务。
+- 验证（测试门店，店主与店员）：`financial-brand-change-original`、`brand-changes/check` 带管理空间号时由网关拒（缺 `store.read`），不带时由业务拒，两边结论一致；
+  `issuers/{issuerNo}` 仍先被门店准入挡住（属于还关着的 83 条）。
+- 注意：6 条入口的管理空间号在请求体里。客户端带了 `X-Management-No` 头时网关按头里的空间判，业务按请求体里的判；两者不一致时以更严的为准（网关拒了就进不去）。b-app 统一带头之前这 6 条在网关上不判。
