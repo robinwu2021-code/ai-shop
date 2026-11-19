@@ -20,7 +20,7 @@ import sys
 import time
 
 from v2_session import call, login
-from verify_v2_gateway import probes, resources, satisfied, with_query
+from verify_v2_gateway import effective, probes, resources, satisfied, with_query
 
 ADMIN = "ST-V2TEST-ADMIN"
 ROLES = ["SUPPORT", "BD", "GOODS_OPS", "CAMPAIGN_OPS", "COMMUNITY_OPS", "AUDITOR", "FINANCE", "RISK", "ANALYST",
@@ -39,21 +39,22 @@ def judge(token: str, perms: set[str], row: dict) -> tuple[str, str]:
     message = body.get("msg") if isinstance(body, dict) else None
     denied = code == FORBIDDEN or status == 403
     by_gateway = denied and message == GATEWAY_MESSAGE
-    if row["access"] != "POINT" or not row.get("ruleText"):
+    access, rule = effective(row)
+    if access != "POINT" or not rule:
         if denied:
             return "不按码判却被拒", f"{row['pattern']} http={status} code={code} msg={message}"
         return "不按码判", ""
-    should_deny = not satisfied(row["ruleText"], perms)
+    should_deny = not satisfied(rule, perms)
     if should_deny and by_gateway:
         return "该拒且被网关拒", ""
     if should_deny and denied:
-        return "该拒、被业务拒（网关放过了）", f"{row['pattern']} 权限式={row['ruleText']} msg={message}"
+        return "该拒、被业务拒（网关放过了）", f"{row['pattern']} 权限式={rule} msg={message}"
     if should_deny:
-        return "该拒却放行", f"{row['pattern']} 权限式={row['ruleText']} http={status} code={code}"
+        return "该拒却放行", f"{row['pattern']} 权限式={rule} http={status} code={code}"
     if by_gateway:
-        return "该放却被网关拒", f"{row['pattern']} 权限式={row['ruleText']}"
+        return "该放却被网关拒", f"{row['pattern']} 权限式={rule}"
     if denied:
-        return "该放、网关放过、业务拒", f"{row['pattern']} 权限式={row['ruleText']} msg={message}"
+        return "该放、网关放过、业务拒", f"{row['pattern']} 权限式={rule} msg={message}"
     if status >= 500 or status == 0:
         return f"该放、http {status}", f"{row['pattern']} code={code}"
     return "该放且放行", ""

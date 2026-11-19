@@ -54,6 +54,13 @@ def resources(admin: str, end: str) -> list[dict]:
         page += 1
 
 
+def effective(row: dict) -> tuple[str, str | None]:
+    """这一行网关实际按什么判：库里调整过的用调整后的，没调整过的用入口注解抄进来的。"""
+    if row.get("adjustedAccess"):
+        return row["adjustedAccess"], row.get("adjustedRule")
+    return row["access"], row.get("ruleText")
+
+
 def probes(rows: list[dict]) -> list[dict]:
     return sorted((r for r in rows if r["method"] == "GET" and "{" not in r["pattern"] and "*" not in r["pattern"]
                    and not SKIP.search(r["pattern"]) and r["status"] == "ENABLED" and not r["stale"]),
@@ -122,7 +129,8 @@ def main() -> int:
         if status_a >= 500 or status_a == 0:
             tally[f"管理员 http {status_a}"] += 1
             problems.append(f"运营端 管理员 {status_a} {row['pattern']} code={code_a}")
-        should_deny = row["access"] == "POINT" and bool(row.get("ruleText")) and not satisfied(row["ruleText"], perms)
+        access, rule = effective(row)
+        should_deny = access == "POINT" and bool(rule) and not satisfied(rule, perms)
         denied = code_s == FORBIDDEN
         # 缺必填参数时入口先报参数错（10400），还没走到方法上的判权：这一条在入口这边看不出该不该拒，单独记数。
         # 网关提前判权排在读参数之前，开到拦截档后这类请求会直接得到「没有权限」
@@ -132,12 +140,12 @@ def main() -> int:
         if undecided:
             tally["受限角色：该拒，但入口先报了参数错（未走到判权）"] += 1
             continue
-        if row["access"] == "POINT" and should_deny != denied:
-            problems.append(f"运营端 判权不一致 {row['pattern']} 权限式={row.get('ruleText')} "
+        if access == "POINT" and should_deny != denied:
+            problems.append(f"运营端 判权不一致 {row['pattern']} 权限式={rule} "
                             f"网关算出{'该拒' if should_deny else '该放'} 入口实际{'拒了' if denied else '放了'}(code={code_s})")
         if status_s == 401 or code_s in (UNAUTH, EXPIRED):
             problems.append(f"运营端 受限角色被当成没登录 {row['pattern']} http={status_s} code={code_s}")
-        tally[f"受限角色：{'被拒' if denied else '放行'}（{row['access']}）"] += 1
+        tally[f"受限角色：{'被拒' if denied else '放行'}（{access}）"] += 1
     for key in sorted(tally):
         say(f"- {key}：{tally[key]}")
     say(f"- 按权限式算出该拒 {expect_denied} 条，入口实际拒了 {actual_denied} 条")
