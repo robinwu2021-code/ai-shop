@@ -148,6 +148,45 @@ Nacos 里 ai-shop-ops 的实例数: 1
 
 回退这一步：用 `ai-shop-v2.env.before-nacos-20261119` 覆盖环境文件，并把容器换回 `shop-app-1ce21cf86.jar` 重建。
 
+## 2026-11-19 追加：v2 的 api 实例与 B 端入口
+
+用户要求「继续部署网关版本的 ai-shop」。按先前定的顺序，运营端之后是 B 端。
+
+- **容器 `ai-shop-api-v2`**：`api` 面（`/biz/**`、`/mp/**`），`127.0.0.1:18182`，与运营端 v2 同一个包（`e084b5d55`）。
+  环境文件 `/data0/app/ai-shop-v2/ai-shop-api-v2.env` 由现有的 `ai-shop-api.env` 复制，改了：端口、
+  `SHOP_GATEWAY_BIZ_PRECHECK=observe`、Nacos 五项、三项连接池设置（见下）；现有实例用 `-e` 传的管理签名密钥写进了文件。
+  堆上限是 512 MiB（现有实例是 768 MiB），为了给 166 省内存。
+- **B 端入口**：`https://nearshop.umeshop.ai/shop-api-v2`。规则追加在 `/etc/nginx/snippets/ai-shop-ops-v2.locations.conf` 里
+  （改之前的备份 `.before-shop-api-v2-20261119`），放行范围与现有的 `/shop-api/` 相同：只有 `/biz/**`、主数据、App 版本检查，
+  其余 `/shop-api-v2/` 路径回 404。**C 端（`/mp`）的入口还没有加。**
+- 启动后同步了商户端接口资源 765 条；在 Nacos 里登记为 `ai-shop-api`（`192.168.3.166:18182`）。
+
+```
+公网（未登录）：
+  /shop-api-v2/common/master-data  200      /shop-api-v2/common/app/version  200
+  /shop-api-v2/biz/goods           401      /shop-api-v2/ops/auth/me、/internal/x、/mp/category/tree  404
+  /shop-api/biz/goods              401      （现有入口不变）
+Nacos：ai-shop-ops 1 个实例、ai-shop-api 1 个实例，均健康
+```
+
+### 出过的一个问题：正式库连接数顶到了上限
+
+每个 ai-shop 实例启动后固定占 30 个库连接（主库相关 22、进销存 8），连接池启动即占满。两个 v2 实例把正式库的连接数
+从 89 推到了 **149，上限是 150**。发现时没有出现过连接被拒（`Connection_errors_max_connections` 为 0）。
+
+处理：给两个 v2 实例加了 `SHOP_INVENTORY_DATASOURCE_MAX_POOL_SIZE=2`、`SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=4`、
+`SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=1` 并重启（只重启了 v2 的两个，各中断约 2.5 分钟）。
+结果：每个 v2 实例从 30 降到 24，**总数 127 / 150**。主库那两项设置没有起作用（主库的连接池是代码里自建的，不读这两项），
+降下来的只有进销存那一池；支付 8、密钥 4 两个池的大小写死在代码里。
+
+**现在的余量是 23 个连接，部署 v2 之前是 61 个。** 这个余量偏小：`appops_app` 账号此前有 10 个连接、发现问题时已是 0，
+它再连回来余量就只剩 13；夜间备份、支付的连接池增长都要用连接。两条出路，都需要用户定：
+把正式库的 `max_connections` 调大（动态生效，改的是生产库设置）；或者改代码让那几个池的大小可配，v2 并存期间调小。
+
+### 166 的内存
+
+可用内存约 0.95 GiB（部署 v2 之前是 2.35 GiB），机器没有交换分区。四个 ai-shop 实例各占约 0.7 GiB。
+
 ## 怎么连
 
 经 UME 跳板机（资料在 `~/work/env/ume/`）。那份 `ssh.config` 里 `ProxyCommand` 用了 `%d`，本机的 ssh 不认，
