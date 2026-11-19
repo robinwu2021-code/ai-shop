@@ -263,7 +263,9 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 - 不靠权限码、却会调支付的地方，签出去的动作为空：`GET /biz/stores/{storeNo}/features`（只要求是本店成员，会读收款状态 READ_LEDGER）、
   C 端下单付款（CREATE_ONLINE，C 端没有权限码）、定时关单与对账（没有登录人）、餐饮结账（经内部入口）。支付侧以后按动作核对时，这几类要另给口径。
 - 同一个码覆盖的动作差异较大：`mch:pay:collect` 同时能建单、关单、读流水；`mch:pay:app-grant` 新建授权在支付侧只判 QUERY。表照实记录，不在这里改权限设计。
-- **支付侧还没有核对**：生产上的支付是独立的 near-pay 仓库，它有同一套 `PayAction`，但还不认网关的签名上下文；而且生产上网关与支付都还没配 `shop.gateway.signing.key`，现在什么都不签。
+- **支付侧的核对（2026-11-19 已在 near-pay 写好，只比对）**：near-pay 分支 `feat/gateway-signed-actions-20261119`（提交 `ecc3c6ec1`，尚未推送、未部署）。
+  `InternalGuard` 验签并把上下文放进请求属性；`MatrixCallerPolicy` 放行后由 `SignedActionObserver` 看动作在不在 `actions` 里，不在记 warn，从不拒绝。
+  格式是同格式副本，near-pay 的测试里钉了两组由 ai-shop 编码器生成的样本。生产上网关与支付都还没配 `shop.gateway.signing.key`，现在什么都不签。
   顺序：near-pay 先加「只比对、记日志」→ 两边配同一把密钥 → 看日志里对不上的条数 → 清零稳定后再议拒绝（需单独确认）。
 
 | 验收 | 测试 | 结果 |
