@@ -543,3 +543,13 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - 验证（测试门店，店主与店员）：`financial-brand-change-original`、`brand-changes/check` 带管理空间号时由网关拒（缺 `store.read`），不带时由业务拒，两边结论一致；
   `issuers/{issuerNo}` 仍先被门店准入挡住（属于还关着的 83 条）。
 - 注意：6 条入口的管理空间号在请求体里。客户端带了 `X-Management-No` 头时网关按头里的空间判，业务按请求体里的判；两者不一致时以更严的为准（网关拒了就进不去）。b-app 统一带头之前这 6 条在网关上不判。
+
+### 同晚续：支付回落地址、Nacos 备份、连接池、打印接口
+
+- **支付回落地址**：v2 环境文件加了 `SHOP_SERVICES_TARGETS_PAY=http://192.168.3.166:18093`（与 Nacos 里 near-pay 登记的是同一实例；备份 `ai-shop-all-v2.env.before-payfallback-20261119`），已重启，88 秒起好。Nacos 取不到 near-pay 时回落到它。回落路径只有单测覆盖，没有用真实支付调用演练过。
+- **Nacos 备份**：脚本 `/data0/nacos/nacos-backup.sh`（root）：停 Nacos → 打包 `data` 与 `conf` → 起 Nacos → 保留最近 14 份，放 `/data0/nacos/backups/`。已手动跑一次：`nacos-data-20261119-222523.tar.gz`（448K，data 实际内容 11M，raft 日志是预分配的稀疏文件），冷重启后 `near-pay`、`ai-shop` 各 1 个健康实例，两个账号都在。
+  **没有挂定时任务**：每天自动停一次 Nacos 属于长期生效的配置，需要你点头。要挂的话（root）：
+  `echo "30 3 * * * root /data0/nacos/nacos-backup.sh >> /data0/nacos/backups/backup.log 2>&1" > /etc/cron.d/nacos-backup`
+- **连接池**：v2 日志里没有取连接超时；正式库峰值用过 184/250，没有因连接数满被拒。v2 主库池上限 4，连到 .61 共 16 条。指标接口（`/actuator/metrics`）没有对外开，要持续看等待数需要打开它，属于配置变更，没做。
+- **后台任务**：v2 关着（`SHOP_JOB_ENABLED=false`），定时任务只在 v1 跑，v2 这边不涉及。
+- **超管访问 `/ops/print/health`、`/ops/print/incidents` 得 403**：不是权限问题。这两个接口必须带 `tenantNo`、`entityNo`、`storeNo`，打印模块按门店判可见范围，没带就拒。带上测试门店后超管 200；客服被网关按 `ops:print:read` 拒，判定正确。
