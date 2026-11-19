@@ -13348,6 +13348,7 @@ _无字段_
 | `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
 | `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |
 | `locked` | `boolean` | 是 | true = 这一行不能停用（不带权限码的入口，或本页自己的接口） |
+| `adjustable` | `boolean` | 否 | true = 可以在库里调整规则（本系统入口里除登录、当前用户、菜单这类会话外壳与本页自己的接口） |
 | `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
 | `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
 | `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
@@ -13389,6 +13390,7 @@ _无字段_
 | `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
 | `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |
 | `locked` | `boolean` | 是 | true = 这一行不能停用（不带权限码的入口，或本页自己的接口） |
+| `adjustable` | `boolean` | 否 | true = 可以在库里调整规则（本系统入口里除登录、当前用户、菜单这类会话外壳与本页自己的接口） |
 | `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
 | `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
 | `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
@@ -14263,6 +14265,7 @@ _无字段_
 | `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
 | `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |
 | `locked` | `boolean` | 是 | true = 这一行不能停用（不带权限码的入口，或本页自己的接口） |
+| `adjustable` | `boolean` | 否 | true = 可以在库里调整规则（本系统入口里除登录、当前用户、菜单这类会话外壳与本页自己的接口） |
 | `appVersion` | `string,null` | 是 | 最近一次写入这一行的应用版本 |
 | `updatedBy` | `string,null` | 是 | 最近一次人工修改的人；没人改过为 null |
 | `updatedAt` | `string,null` | 是 | 最后更新时间（ISO 字符串） |
