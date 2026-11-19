@@ -124,6 +124,8 @@ class CredentialsTest(unittest.TestCase):
         self.assertEqual(args, ['MS1', 'CH380202039616995328'])
 
     def test_apply_runs_the_full_chain_with_separated_operators_and_reports_no_secret(self):
+        os.environ['UME_KEYS_FLOW'] = 'approval'
+        self.addCleanup(os.environ.pop, 'UME_KEYS_FLOW', None)
         pay = FakePay('NEWEBPAY')
         api = c.PayOps(pay.request, {'CONFIG': 'CONFIG', 'REVIEW1': 'REVIEW1', 'REVIEW2': 'REVIEW2'})
         u = self.ume({'MS9': [(NW_KEY, NW_IV)]})
@@ -142,7 +144,25 @@ class CredentialsTest(unittest.TestCase):
             self.assertNotIn(s, report)
         self.assertEqual(sum(NW_KEY in b for b in pay.bodies), 1, '密钥只出现在录入版本那一次请求里')
 
+    def test_apply_defaults_to_the_migration_endpoint_with_one_call(self):
+        calls = []
+
+        def req(m, p, tok, b):
+            calls.append((tok, m, p, json.dumps(b or {})))
+            return 200, {'code': 0, 'data': {'record': {'account': {'status': 'ACTIVE'}}}}
+        api = c.PayOps(req, {'CONFIG': 'CONFIG', 'REVIEW1': 'REVIEW1', 'REVIEW2': 'REVIEW2'})
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = c.run('apply', [row('PM-A', 'NEWEBPAY', 'MS9', 'MS9')], self.ume({'MS9': [(NW_KEY, NW_IV)]}), api, pause=0)
+        self.assertEqual(code, 0)
+        self.assertEqual([(t, m, p) for t, m, p, _ in calls],
+                         [('CONFIG', 'POST', '/pay-ops/v2/channel-accounts/PM-A/migration-credential')])
+        self.assertIn(NW_KEY, calls[0][3])
+        self.assertNotIn(NW_KEY, buf.getvalue())
+
     def test_rerun_on_an_active_account_does_nothing(self):
+        os.environ['UME_KEYS_FLOW'] = 'approval'
+        self.addCleanup(os.environ.pop, 'UME_KEYS_FLOW', None)
         pay = FakePay('LINEPAY')
         pay.acct['status'] = 'ACTIVE'
         api = c.PayOps(pay.request, {'CONFIG': 'CONFIG', 'REVIEW1': 'REVIEW1', 'REVIEW2': 'REVIEW2'})

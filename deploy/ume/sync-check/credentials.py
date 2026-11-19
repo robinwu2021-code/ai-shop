@@ -7,8 +7,9 @@
   check  TARGETS [--only X] [--limit N] [--out R.json]
                                    只读 UME：逐户确认能唯一查到密钥且格式合法（不调 near-pay）
   apply  TARGETS [--only X] [--limit N] [--out R.json]
-                                   逐户：登记凭据 → 录入版本 → 核验 → 启用审批（两人）→ 启用 → 绑定账户
-                                   → 开通产品 → 账户核验审批 → 核验 → 启用账户。每步先查后做，可重复执行。
+                                   逐户调 near-pay 迁移导入端点 POST /pay-ops/v2/channel-accounts/{no}/migration-credential
+                                   （一次到可收款，不经审批，需开关 near-pay.credential.migration.enabled）；
+                                   UME_KEYS_FLOW=approval 时改走原审批流程。可重复执行。
 
 TARGETS：docs/handoff/ume-sync-2026-11-19/credential-targets.tsv（near-pay 待补密钥的账户，只有编号）。
 --only：账户号（PM…，渠道账户）或支付商户号（PM…，主体），只跑这一户 —— 先拿 roger（PM0E0F6CC8F7454D75）试。
@@ -194,6 +195,20 @@ def credential_key(api, row, reason):
     return api.call('CONFIG', 'POST', '/pay-ops/v2/credentials', {'credentialType': t, 'ownerRef': row['accountNo'], 'reason': reason})['keyId']
 
 
+def migrate_direct(api, row, material, log):
+    """near-pay 迁移导入端点（TDD-UME渠道密钥迁移导入）：一次调用直到账户可收款，不经审批；按 requestNo 与外部编号续做。"""
+    no, ch = row['accountNo'], row['payChannel']
+    reason = REASON % ('LINE Pay' if ch == 'LINEPAY' else '藍新', row['umeRecord'])
+    body = ({'secret': material['secret'].reveal()} if ch == 'LINEPAY'
+            else {'hashKey': material['hashKey'].reveal(), 'hashIv': material['hashIv'].reveal()})
+    d = api.call('CONFIG', 'POST', '/pay-ops/v2/channel-accounts/%s/migration-credential' % no,
+                 {**body, 'requestNo': rid('ume-key', no), 'reason': reason})
+    body = None
+    acct = ((d or {}).get('record') or {}).get('account') or {}
+    log('迁移导入完成')
+    return ('ACTIVATED', '') if acct.get('status') == 'ACTIVE' else ('FAILED', '导入后状态 %s' % acct.get('status'))
+
+
 def migrate_one(api, row, material, log):
     no, ch = row['accountNo'], row['payChannel']
     reason = REASON % ('LINE Pay' if ch == 'LINEPAY' else '藍新', row['umeRecord'])
@@ -278,7 +293,8 @@ def run(mode, rows, ume, api=None, out=None, pause=0.15):
         try:
             material, verdict, note = ume.lookup(r)
             if mode == 'apply' and material is not None:
-                verdict, note = migrate_one(api, r, material, steps.append)
+                flow = migrate_one if os.environ.get('UME_KEYS_FLOW') == 'approval' else migrate_direct
+                verdict, note = flow(api, r, material, steps.append)
         except StepError as e:
             verdict, note = 'FAILED', str(e)
         except Exception as e:  # noqa: BLE001  —— 只报类型与消息，消息来自库驱动/HTTP，不含密钥
