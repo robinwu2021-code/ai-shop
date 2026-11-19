@@ -1,6 +1,6 @@
 # TDD-门店代码与商户渠道展示
 
-状态：已实现（2026-11-19；代码已在本地分支提交，未推送、未部署；App 部分交 App 会话）
+状态：已实现、已上线 UME166（2026-11-19；App 部分待 App 会话）
 档位：2（跨端：near-pay 渠道目录状态与内部业务接口 + ai-shop `/biz/merchant/payment` 数据来源 + Flutter 商户 App 主体页；改 near-pay 渠道状态取值，不加权限码）
 关联需求：用户 2026-11-19 口述——
 1. 「门店数据要增加门店名称代码，给到支付链接用」；「代码用英文」。
@@ -204,6 +204,7 @@ ai-shop `1c476d3ef`：`pay/pay-domain/.../PayBizInternalApi.java`（副本同步
 | 2026-11-19 | roger、oscar 导入：门店英文代码 `ume-breakfast`、`ume-cafe`、`chuangke-pay`、`jeff-first-home`、`ume-plan-pay`、`chuangke-sam`、`chuangke-oscar`（运营接口，店主可改）；roger 的 5 家店尚无收款码，代码待开码后进链接 |
 | 2026-11-19 | 第一版草稿（付款方式接口加 `pendingChannels`）→ 第二版（拼音代码、系统计算状态、新页）→ 第三版（按用户四点回复） |
 | 2026-11-19 | 用户确认第三版（「确认，开始实现」）；near-pay `24a2ab6de`、ai-shop `1c476d3ef` 与导入脚本实现完成，相关测试全绿（§5）。未推送、未部署；上线后用运营接口把 7 个 UME 渠道改为 `PENDING` |
+| 2026-11-19 | 推送：near-pay `develop/s1` `525207556`（含 V112 排序规则修复）；ai-shop 推送过程中补了契约示例与 OpenAPI（`720496ec1`）、状态词申报（`a6dc6926d`）。上线 UME166（覆盖部署，校验清单见 `deploy/ume/entity-channels/`）：near-pay `dbc3a6b2da0a → 75b5a2272e78`，备份 `pay-svc.jar.before-entity-channels-20261119-525207556`，V112 已由 root 执行并登记 `flyway_schema_history`（checksum −1256008217）；ai-shop `d0ade3d80fc0 → a43238a6ecc1`，备份 `shop-app.jar.before-entity-channels-20261119-1c476d3ef`。7 个 UME 渠道已用 `POST /pay-ops/v2/channels/{code}/pending` 改为 `PENDING`；收银台付款方式不变（B4）。按接口规则用 SQL 复核：oscar 9 个账户、roger 7 个，原因与状态符合 C1–C3；`/biz/merchant/payment` 需店主登录，端到端验收待 App |
 
 ## §8 后续（不计入本 TDD 验收）
 

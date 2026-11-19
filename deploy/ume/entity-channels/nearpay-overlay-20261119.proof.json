@@ -1,0 +1,79 @@
+{
+ "baselineSha256": "dbc3a6b2da0a1d41871ab9c8a5f6cb450ad6f732eaaf4dc4a9dee7070b97e1ca",
+ "targets": [
+  {
+   "lib": "BOOT-INF/lib/pay-domain-0.1.0-SNAPSHOT.jar",
+   "replaced": {
+    "ai/neargo/shop/pay/biz/PayBizFacade$BizReceipts.class": "b442c3593c8ef6922667a0c5c6dc34763864cd063c640302df5370c644298e30",
+    "ai/neargo/shop/pay/biz/PayBizFacade.class": "77df231ba28e18d5166529de7e8e7c4351af0dc3f581649a924e593c880ee9cd",
+    "ai/neargo/shop/pay/biz/PayBizFacade$RefundView.class": "6cb8c66deea84ad4fa798ea5e3e2a6d8f554c8b0089a9b09d6d254b4d218611b",
+    "ai/neargo/shop/pay/biz/PayBizFacade$PaymentQuery.class": "7bef313bedbe5d492437f7200e1430a8ef198a28f33e1e1febe55f582c56d58b",
+    "ai/neargo/shop/pay/biz/PayBizFacade$StoredValueReceipt.class": "5f373b8dd69237538926ff12fa99969f2b78b6c9ed03e38c32c9b6fa5445699a",
+    "ai/neargo/shop/pay/biz/PayBizFacade$QrView.class": "1447fa017d4f4061faeefc1980d2fc7ba01fe1fb5b5b5de0bc5a63c11fbe00bb",
+    "ai/neargo/shop/pay/biz/PayBizFacade$CollectView.class": "ab03a6c3b5755246f5440e1826288730eeeeb84f0983d36c3819901e9f92339c",
+    "ai/neargo/shop/pay/catalog/CatalogModels$CatalogSnapshot.class": "5637508f38d0241c6e0ffd535bf539e34393301f8910fa51ab68929d279c2a3d",
+    "ai/neargo/shop/pay/catalog/CatalogModels$AdapterView.class": "6223e996413a70e6cbefeaafe442cf6120569f4e8221d3a731d4bfbc9485caf2",
+    "ai/neargo/shop/pay/catalog/CatalogModels$ChannelCommand.class": "ae71468c5cf1c82218534765a40184843d2377a53fbd66ace2970f10df62eeb8",
+    "ai/neargo/shop/pay/catalog/CatalogModels$CurrencyLimit.class": "b5ab4540c5cedb40c32aea2d6a2950025139514b9a69033eece77e22f5716fce",
+    "ai/neargo/shop/pay/catalog/CatalogModels$AccessMapping.class": "08a1b49dc5de55d77111205a82bb8a5855614e0f92b62388002e4ae45e073568",
+    "ai/neargo/shop/pay/catalog/CatalogModels$ProductCommand.class": "aa8515d29a4b4a84e49df61bb7abe5ea8405c374f3d2163ffdc87f60e10a108c",
+    "ai/neargo/shop/pay/catalog/CatalogModels$ProductView.class": "6defe4e26c0ace26f03090c2fd92a9d01ea9976e26130b5d3f3fca00bbc5d6f2",
+    "ai/neargo/shop/pay/catalog/ChannelCatalogService$DiagnoseJob.class": "70b2bebe3ba48e1c5dfee7604ef75861a6775d0c39bb685ea54e5b2dd2d94673",
+    "ai/neargo/shop/pay/catalog/CatalogModels.class": "6accd4217e66539218b98c23134fd5970418316b266bcd39b337453f67acd48b",
+    "ai/neargo/shop/pay/catalog/CatalogModels$Endpoint.class": "6e1dabe81f457937dcfae42b6b7bd4253a5189686bef4df010b0d6006d17e87f",
+    "ai/neargo/shop/pay/catalog/CatalogModels$ChannelView.class": "f857ca59bb994c9093a434d5720f32683ae8db1e2b547f45e60ffd40231afafd",
+    "ai/neargo/shop/pay/catalog/CatalogModels$ProductAggregate.class": "129c1511d659df8c304e65f22152744853891e4a5a445f0f6af4ea90ac06f7dc",
+    "ai/neargo/shop/pay/catalog/ChannelCatalogService.class": "bc0b06f7b768646b6e39fa44d50520a8f53734410f217260407415645a2a1a19",
+    "ai/neargo/shop/pay/catalog/CatalogModels$StatusCommand.class": "9bd44014152893a6552d408bf9252f841a46c2c74e3ba14941f49e87c23e9b64",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$PaymentSearchReq.class": "3289fbc41b577b36db077aa0beb10ef1cfbabfdab2da32ecc42cd1990059a697",
+    "ai/neargo/shop/pay/client/PayBizInternalApi.class": "90c403feecc70a1e03837378e8466e88a3bebe9bcf64becb2203a28f9d434b54",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$RefundReq.class": "bce9a242b58cf567eaf9192bcaef76d654b0115f6d9bb69feb9c5ed2a63ddae2",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$CollectReq.class": "0df917513facbe532deaa55f728361a10655acbed16ed3a6d71f19fcc727a2f0",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreferences.class": "f631c026291a189fa9f6255472601de21db635846b2e2cd15c0482fb6cc3e6a9",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$StoreMethodItem.class": "4312cfa2037f56f71c6127ded54fe205d570cf3b025e388f59c971e5c371d91b",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$StoreMethodsReq.class": "be6c7d15f27428eb0e605f75794bea3972b45a9bba5591c1c3327d7626b9bb06",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreference.class": "e8c7e683a2d01a5936b9c66ab21d9c542496513202c3910253b79dc0d25b09bf",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$QrReq.class": "65f627d608fa3830e2501d692be8bc12e14267477c7c85184a99b27da61f9fc5",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$VoidLinkReq.class": "7ef07f1a9d024c39d8d53ce5c19ffb3497abeb9dde958faf7caca08baf0fb0ae",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$MethodPreferencesReq.class": "017100644bb2bdc432012e43b0b9962996ba143da0741a2cee57b2dfaab8ed55",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$GrantReq.class": "326d9021d5b22f95917bc0ab78acb2d3260c3044f8dd63a948decfd4b83181ed",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$MethodChoice.class": "46117409d693a0ba601b8dcaac326c53009ede793e85c52a029d81dc5f986582",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$StoreMethods.class": "a318d4ff4d05c3197aa2f1526e37d440c2450e6dd4152479d757f475c8f29a03",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$ProductCommand.class": "fbe600f07d219f1cf8e3e01b7eab078c195cf0b7a7f8539c810186bfca693718",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$Guard.class": "7819ae998694dd6814250dc01f080d8eee2042aee74929e97a4e2c6cec1983aa",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$UpdateCommand.class": "1673436da1a60b974a635343acaab5071fa046d8d7e952350d798c7fbbd7630b",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$RegisterCommand.class": "8dc31e8101ff49d066218f9a5c561db1859e8f6fbabb02fa3593d827d0d1dcbc",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService.class": "69009cc09339f1533acc5d4565f9f15545898563d1aa60fcae5a0df58ada2efb",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$StateCommand.class": "671784cca3f26b1e6ef06a2af16fb7c92bc490933341b4b8ed69855a6ccc701f",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$ProductView.class": "9b6701f00fbe48443640b2a0f5f9844fa4764b4016067c30a8dcdb627d830705",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$CredentialCommand.class": "5b99e95b69f3a7b654434a0a2ccd9f2c6e3d0c053eba45ac4ff6bf29e9d6117c",
+    "ai/neargo/shop/pay/merchant/account/ChannelAccountService$VerifyCommand.class": "932f6269f09f01d87456ad45aaccbee0dad195e0cc2db6c0bb347b673f785357"
+   },
+   "added": {
+    "ai/neargo/shop/pay/client/PayBizInternalApi$EntityChannelAccount.class": "9b7b5a8c9bf5eb0289e473866b47a202c4ca9932db7641f97f5f9f886ce0d774",
+    "ai/neargo/shop/pay/client/PayBizInternalApi$EntityChannelAccounts.class": "f4a96501f6570ad0abee5c97fcb64fb5f3a6507140b5d5493f3397db2ee0edf2",
+    "ai/neargo/shop/pay/platmch/store/policy/MerchantChannelQuery$1Row.class": "b70fb3a24f1da42a1f5290fdc236fce52a343f3ecb1808a591aea220c5927a57",
+    "ai/neargo/shop/pay/platmch/store/policy/MerchantChannelQuery.class": "20a5d895813fdd8e716a6f8e54d3d344d23cdffa51621e28c5b0eb583028d38c"
+   },
+   "dropped": []
+  },
+  {
+   "lib": "BOOT-INF/lib/pay-portal-0.1.0-SNAPSHOT.jar",
+   "replaced": {
+    "ai/neargo/shop/pay/api/ops/v2/OpsChannelController.class": "4a3db1a6d1ca7513a52d204c9620aa690d67a6d0ccf528a880e9640914d293f2"
+   },
+   "added": {},
+   "dropped": []
+  },
+  {
+   "lib": null,
+   "replaced": {
+    "BOOT-INF/classes/ai/neargo/shop/pay/svc/InternalPayBizEndpoint.class": "1fd7e9c389667d84ee6dcc88626c811d51e3a47ecb9e70cbc6f7a99732ff5f0a"
+   },
+   "added": {},
+   "dropped": []
+  }
+ ],
+ "candidateSha256": "75b5a2272e78cb4ac56682a698210c01fef92a5b529ce9439804c661cca21d62",
+ "unrelatedEntriesPreserved": true
+}

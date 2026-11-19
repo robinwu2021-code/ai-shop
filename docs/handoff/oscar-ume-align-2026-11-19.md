@@ -59,3 +59,11 @@
 ## ume咖啡廳 门店同步重放（用户 2026-11-19 同意改库）
 
 `sys_outbox` 18911（`MERCHANT_STORE_CHANGED`，04:25:56）投递 `sys_outbox_delivery` 846 以 `OUTCOME_UNKNOWN / IllegalStateException` 失败（同时刻 near-pay 有一次数据库死锁），按门店顺序投递阻塞了后续 3 条。按 `JdbcOutboxStore` 的 replay 逻辑手工执行：投递改回 PENDING（`replay_count` 1）、补 `sys_outbox_operation` 审计 `oscar-align-20261119-replay-846`、消息改回 PENDING。原值备份在会话临时目录。之后 4 条全部 SENT，`/s/ume-cafe` 打开 ume咖啡廳 收银台。
+
+## 门店代码与商户渠道展示上线（2026-11-19，用户「推送并部署」）
+
+- near-pay `develop/s1` `525207556`：渠道 `PENDING` 状态与运营接口、主体渠道账户内部接口、ops-web 待开通操作、V112。覆盖部署 `dbc3a6b2da0a → 75b5a2272e78`（备份 `pay-svc.jar.before-entity-channels-20261119-525207556`）。重启时另一会话 14:03 改的 `cloud.properties`（监听 0.0.0.0、内部来源加 .80）一并生效。
+- V112：DDL 早前已由 root 执行；本次补登记 `flyway_schema_history` rank 66（checksum −1256008217，用 V111 验证过算法）。
+- 7 个 UME 渠道改为 `PENDING`（运营接口）。
+- ai-shop 覆盖部署 `d0ade3d80fc0 → a43238a6ecc1`（备份 `shop-app.jar.before-entity-channels-20261119-1c476d3ef`），`ai-shop-api`、`ai-shop-ops` 已重启。App 走 `tw.neargo.ai` → 166 本机 18082，即这台。
+- 未完成：`/biz/merchant/payment` 的端到端验收需店主登录（App 会话）；App 显示改动见 [app-entity-channels-2026-11-19](app-entity-channels-2026-11-19.md)。
