@@ -230,7 +230,7 @@ mvn -pl shop-app -am test -Dtest='EndpointSnapshotTest,SecurityChainSnapshotTest
 | # | 任务 | 说明 |
 |---|---|---|
 | 17 | 开 PR、评审、合并 | 分支 `feat/gateway-mp-index` 已推送；合并前迁移号若被占用要顺延 |
-| 18 | pre-push 全量测试从没完整通过过 | 缺 `COMMERCE_MYSQL_*` 环境变量与 `node_modules`；另有 4 条既有失败 |
+| 18 | pre-push 全量测试 | 2026-11-19 在本机配上商城测试库后第一次跑全：6378 条里剩 5 条红，分属 4 个类（`MediaRefCoverageTest`、`MallHostConfigurationTest`、`MallUntrackedHardwareTest`、`NotifyChannelRegistryTest`），在不含本分支的合并基点 `6e9392abd` 上同样失败，不是本分支引起的。`backend/known-failures.txt` 是空的，所以闸门仍然过不去。跑全的过程中发现并修了本分支的一个真缺陷（没有 Web 层的进程起不来） |
 | 19 | 公网检查脚本报 `nearshop.umeshop.ai/api/internal/` 返回 308 而不是 404 | 不是网关改动引起的，原因没查 |
 
 ### 2.7 规模
