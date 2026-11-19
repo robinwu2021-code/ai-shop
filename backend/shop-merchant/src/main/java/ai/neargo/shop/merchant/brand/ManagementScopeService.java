@@ -20,6 +20,12 @@ public interface ManagementScopeService {
     /** Check current effective authority, including the full grant source chain. */
     boolean can(Actor a,String m,String type,String no,String permission);
 
+    /**
+     * 在这个管理空间里，对至少一个该类型的资源持有这个码（规则与 {@link #can} 相同，只是不限定是哪一个资源）。
+     * 给入口和网关在「资源要从业务对象查出来」时先把一道关；具体资源仍由各服务用 {@link #require} 裁。
+     */
+    boolean canAny(Actor a,String m,String type,String permission);
+
     /** Validate the complete original grant chain before disclosing its resource. */
     boolean valid(Actor a,Map<String,Object> g,Set<String> seen);
 

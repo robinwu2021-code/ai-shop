@@ -54,6 +54,17 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
    if(valid(a,g,new HashSet<>()))return true;
   return false;
  }
+ public boolean canAny(Actor a,String m,String type,String permission){
+  var s=space(a,m);if(s==null||!"ACTIVE".equals(str(s,"status"))||!PERMISSIONS.getOrDefault(type,Set.of()).contains(permission))return false;
+  // 属主的天然权限与 can 相同：空间本身，以及空间下已有的品牌
+  if(a.actorKey().equals(str(s,"owner_actor_no"))){
+   if("SPACE".equals(type))return true;
+   if("BRAND".equals(type)&&db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND deleted=0 LIMIT 1",a.tenantNo(),m)!=null)return true;
+  }
+  for(var g:db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND permission_code=? AND deleted=0",a.tenantNo(),m,a.actorKey(),type,permission))
+   if(valid(a,g,new HashSet<>()))return true;
+  return false;
+ }
  public boolean valid(Actor a,Map<String,Object> g,Set<String> seen){
   if(g==null||!"ACTIVE".equals(str(g,"status"))||seen.size()>=8||!seen.add(str(g,"grant_no")))return false;
   String recipient=str(g,"actor_no");

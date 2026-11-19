@@ -25,6 +25,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.spi.merchant.ManagementAuthorityPort;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** B 端出口（{@code /biz/**}）：要登录；能做什么由门店上下文与权限码判。 */
 @ConditionalOnGatewayEnd(end = "biz", legacyProfiles = "api")
@@ -48,6 +50,14 @@ public class BizGatewayEnd extends AbstractGatewayEnd {
         this.portalFilters = portalFilters;
         this.appVersions = appVersions;
         this.json = json;
+    }
+
+    private ObjectProvider<ManagementAuthorityPort> management;
+
+    /** 管理范围的授权出口，给判定器判「带范围的码」用；没有也能起来（那类码一律不成立）。 */
+    @Autowired
+    void setManagement(ObjectProvider<ManagementAuthorityPort> management) {
+        this.management = management;
     }
 
     @Bean
@@ -108,7 +118,7 @@ public class BizGatewayEnd extends AbstractGatewayEnd {
     /** 按当前门店的角色提前判权；档位由 {@code shop.gateway.biz.precheck} 定，默认关。 */
     @Override
     protected AccessDecider accessDecider() {
-        return new BizAccessDecider();
+        return new BizAccessDecider(() -> management == null ? null : management.getIfAvailable());
     }
 
     @Override
