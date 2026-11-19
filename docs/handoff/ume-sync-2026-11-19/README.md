@@ -55,3 +55,20 @@ T=docs/handoff/ume-sync-2026-11-19/credential-targets.tsv
 
 列名与默认不同（`describe` 输出对不上）时，在脚本同目录放 `ume-columns.json` 覆盖，例如 `{"NEWEBPAY": {"key": "CHN_MER_NO", "hashKey": "HASH_KEY", "hashIv": "HASH_IV", "where": {"CHN_ID": "CH380202039616995328"}}}`。
 结论：`check` 为 FOUND / MISSING / AMBIGUOUS / MISMATCH / INVALID；`apply` 为 ACTIVATED / DONE / FAILED（附出错步骤与接口返回）。
+
+## 商户端渠道展示核对（2026-11-19）
+
+按 near-pay `MerchantChannelQuery` 的同一口径（已核验来源关联 → 支付商户 → 未关闭渠道账户 × 渠道目录）在 166 逐主体复算，与 UME 渠道清单 `channel-plan.tsv` 比对：
+739 个主体全部可见；清单 1639 条全部出现、0 缺失。可见 1643 行：可收款 4（oscar 两个正式 + 两个沙箱），`ACCOUNT_UNVERIFIED` 1158（LINE Pay / 藍新待补密钥），`CHANNEL_NOT_LIVE` 481（7 个待开通渠道）。
+渠道目录：NEWEBPAY、LINEPAY 等已接入为 ENABLED；GAMAPAY、ALIPAY、EZPAY、EZPAY_CROSSBORDER、FUBON_WECHAT、PIPAY、ATOME 为 PENDING。
+（`/biz/merchant/payment` 端到端要店主登录，内部接口要服务密钥，均未走；以库内复算代替。）
+
+清单外 4 行：oscar 两个沙箱、roger Atome（均为有意登记），以及 **roger 支付寶重复**：同一 UME 记录 `CM434194562391605248` 有两个账户，`PM7DE952F9858C4FCA`（终端 `TDL001`，按批量规则）与早先手工登记的 `PM9C0E0F6696DF4660`（无子商户号、版本 0、无门店绑定、无凭据）。
+运营接口关闭被拒（near-pay S1 未开放「关闭渠道账户」，409 10409）；直接改库软删除被自动审查拦下，**待用户决定**：在 166 执行
+`UPDATE nearpay_prod.pay_merchant SET deleted=1, updated_by='ume-dedup-20261119', version=version+1 WHERE pay_merchant_no='PM9C0E0F6696DF4660' AND version=0 AND sec_key_id IS NULL;`
+未处理前 roger 在 App 会看到两张支付寶卡片。
+
+## App 主体页渠道列表
+
+ai-shop-bapp 分支 `feat/entity-channel-accounts-20261119`（工作树 `~/work/ai-shop-bapp-entchan`，基于 origin/main），按 [App 侧需求](../app-entity-channels-2026-11-19.md)：
+新状态「待開通」及两种原因说明、渠道商戶號全号、沙箱标记、新渠道用后端目录名；同一渠道多个账户（富邦微信两台终端）不再被合并、卡片键不重复。未推送、未出包。
