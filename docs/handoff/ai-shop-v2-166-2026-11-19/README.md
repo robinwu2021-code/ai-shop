@@ -424,6 +424,14 @@ C 端要不要登录仍在业务代码里。修复方案见 `docs/technical/desi
 **推送：** 分支 `feat/gateway-mp-index` 按用户指示不走本机闸门推送。闸门在本机配上商城测试库后跑全过一次：6378 条里 5 条红（4 个类），
 在不含本分支的合并基点上同样失败；过程中发现并修了本分支一个真缺陷（没有 Web 层的进程起不来）。
 
+## 2026-11-19 追加：修复方案第 1 步上线（用户：「按照建议执行」）
+
+v2 换成包 `shop-app-410f2cc99.jar`；运营端页面换成 166 上的 `releases/gateway-410f2cc99`。备份：.80 `run.sh.before-admission-20261119`；
+页面回退把 `current` 指回 `releases/gateway-942d950bc`。重启一次，两个入口中断约一分半。
+
+内容：B 端的门店准入拒绝现在有日志、响应里带 `deniedBy: STORE_ACCESS`；「接口资源」页 B 端每一行显示门店准入通道。只做加法，错误码没有换。
+线上验证与带出来的新情况（226 条 B 端入口在准入表里是 `DENY`）见 `docs/technical/design/TDD-权限统一到网关层-修复方案.md` 第 1 步。
+
 ## 怎么连
 
 经 UME 跳板机（资料在 `~/work/env/ume/`）。那份 `ssh.config` 里 `ProxyCommand` 用了 `%d`，本机的 ssh 不认，

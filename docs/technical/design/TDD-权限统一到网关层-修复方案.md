@@ -65,6 +65,17 @@ b-app 按响应里的状态名做了多语言映射。所以这一步只做加�
 
 没有新表、新端点、新权限码、新配置、新迁移。接口 `/ops/api-resources` 的每一行多一个可空字段 `admission`。
 
+**上线后的验证（v2，包 `410f2cc99`）：**
+
+- 测试店主、测试店员访问 `/biz/settle/bills`：HTTP 403、70006，`data` 为 `{"nextAction":"CONTACT_ADMIN","deniedBy":"STORE_ACCESS"}`；服务器日志有对应的「门店准入拒绝」两行。
+- 测试店员访问 `/biz/staff`：HTTP 200、70006，`data` 为空 —— 这是网关按角色拒的，日志是「提前判权拒绝」。两种拒绝现在分得开。
+- 「接口资源」接口返回的 765 条 B 端入口都带上了准入通道：`BOOTSTRAP` 441、**`DENY` 226**、`ACCOUNT` 94、`END_PROTECTED` 3、`LEGACY_PREVIEW` 1；运营端、C 端的行为空。
+
+**这一步带出来的新情况：226 条 B 端入口在准入表里是 `DENY`。** 意思是：对新模型的门店，这些入口默认关闭（准入表里没有登记它们）；
+老模型的门店不受这张表约束，所以现有商户感觉不到。测试店是新模型，所以结算、储值、`/biz/pay/*` 这些它一概进不去。
+这 226 条里哪些是「本来就不该对新模型门店开」、哪些是「漏登记」，要逐条过一遍 —— 这是第 2 步之前要先做的清点。
+单测：`StoreAdmissionRoutesTest`；相关的商城流程测试（`CommerceMerchantScopeFlowTest`、`CommerceAccessSecurityFlowTest`、`StoreScopedDailyRoutesFlowTest`）照常通过。
+
 ### 第 2 步：准入并进网关的流程
 
 - `AbstractAccessDecider` 增加「准入」一步，排在权限之前；`BizAccessDecider` 的实现就是调用现有的准入规则（`CommerceRoutePolicy` + 门店事实），规则本身不改。
