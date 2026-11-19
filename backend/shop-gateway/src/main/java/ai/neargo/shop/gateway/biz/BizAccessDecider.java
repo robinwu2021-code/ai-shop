@@ -58,6 +58,10 @@ public class BizAccessDecider extends AbstractAccessDecider {
         var request = ManagementScopeRequest.current();
         String managementNo = ManagementScopeRequest.managementNo(request);
         if (managementNo == null) {
+            // 管理空间自己的入口把空间号放在路径里：/biz/management/spaces/{managementNo}/…
+            managementNo = pathVariable(request, resource.pattern(), ManagementAuthority.PARAM);
+        }
+        if (managementNo == null) {
             // 过渡规则：管理空间号在请求体里，这一层读不到 —— 不判，留给入口上的注解与服务
             log.info("带范围的码未判：请求上没有管理空间号 {} {} · {}", request == null ? "?" : request.getMethod(),
                     resource.pattern(), node.code());
@@ -66,6 +70,10 @@ public class BizAccessDecider extends AbstractAccessDecider {
         var port = management.get();
         if (port == null) {
             return false;
+        }
+        if ("SPACE".equals(node.scopeType())) {
+            // 「空间」这类资源只有一个，就是当前这个管理空间：不看参数名，也不用「任一」去查
+            return port.can(user.tenantNo(), actorKey, managementNo, "SPACE", managementNo, node.code());
         }
         if (node.scopeParam() == null) {
             return port.canAny(user.tenantNo(), actorKey, managementNo, node.scopeType(), node.code());
@@ -80,13 +88,21 @@ public class BizAccessDecider extends AbstractAccessDecider {
         if (request == null) {
             return null;
         }
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        var matched = PATTERNS.parse(pattern)
-                .matchAndExtract(PathContainer.parsePath(path));
-        String value = matched == null ? null : matched.getUriVariables().get(name);
-        if (value == null || value.isBlank()) {
+        String value = pathVariable(request, pattern, name);
+        if (value == null) {
             value = request.getParameter(name);
         }
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    /** 按地址模式取路径变量；没有这个变量返回 null。 */
+    static String pathVariable(HttpServletRequest request, String pattern, String name) {
+        if (request == null) {
+            return null;
+        }
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        var matched = PATTERNS.parse(pattern).matchAndExtract(PathContainer.parsePath(path));
+        String value = matched == null ? null : matched.getUriVariables().get(name);
         return value == null || value.isBlank() ? null : value;
     }
 

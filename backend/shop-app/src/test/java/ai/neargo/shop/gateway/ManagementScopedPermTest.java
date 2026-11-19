@@ -172,6 +172,18 @@ class ManagementScopedPermTest {
         JsonNode noScope = mvc(mvc, get(path).header("Authorization", "Bearer " + other));
         assertThat(noScope.path("code").asInt()).as("没带管理空间号：网关不判").isNotEqualTo(10403);
 
+        // 管理空间自己的入口：空间号在路径里，「空间」这类资源就是当前这个空间
+        long recipients = jdbc.queryForObject("select id from sys_api_resource where end_code='biz' and method='GET'"
+                + " and pattern='/biz/management/spaces/{managementNo}/recipients'", Long.class);
+        admin.adjust(recipients, "POINT",
+                "(management.resource.read @SPACE(managementNo) 且 management.grant.manage @SPACE(managementNo))", "tester");
+        String recipientsPath = "/biz/management/spaces/" + m + "/recipients";
+        assertThat(mvc(mvc, get(recipientsPath).header("Authorization", "Bearer " + other)).path("code").asInt())
+                .as("外人：空间号取自路径").isEqualTo(10403);
+        assertThat(mvc(mvc, get(recipientsPath).header("Authorization", "Bearer " + owner)).path("code").asInt())
+                .as("属主过网关").isNotEqualTo(10403);
+        admin.adjust(recipients, null, null, "tester");
+
         // 再同步一遍（等于重启）：调整还在，注解抄进来的那一份也没被调整覆盖
         sync.syncOnReady();
         Map<String, Object> row = jdbc.queryForMap("select access, rule_text, adjusted_access, adjusted_rule"
