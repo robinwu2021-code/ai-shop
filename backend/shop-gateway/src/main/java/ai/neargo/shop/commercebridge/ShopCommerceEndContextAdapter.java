@@ -13,6 +13,8 @@ import org.springframework.web.context.request.*;
 
 public final class ShopCommerceEndContextAdapter
         implements BizContextFilter.Admission, StorePaySettingService.WriteAdmission {
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ShopCommerceEndContextAdapter.class);
     private static final String CHECK = ShopCommerceEndContextAdapter.class.getName() + ".check";
     static final String CLIENT = "X-Client-Id", PROOF = "X-End-Context";
     private final ShopCommerceStoreAdapter stores;
@@ -44,8 +46,13 @@ public final class ShopCommerceEndContextAdapter
             select(user, legacy, req);
             return true;
         } catch (AccessDenied denied) {
+            // 这一步排在网关按角色判权之前。此前它不留任何日志，而它用的错误码与「角色不够」相同 ——
+            // 排查「这个账号怎么进不去」时分不出是店没开这类功能，还是人的角色不够
+            log.warn("门店准入拒绝 {} {} · {} · 门店 {}", req.getMethod(), req.getRequestURI(), denied.status(),
+                    req.getHeader(BizContextFilter.STORE_HEADER));
             reject(resp, denied);
         } catch (RuntimeException unavailable) {
+            log.warn("门店准入检查不可用 {} {} · {}", req.getMethod(), req.getRequestURI(), unavailable.toString());
             reject(resp, new AccessDenied(AccessStatus.CHECK_UNAVAILABLE));
         }
         return false;
@@ -72,7 +79,8 @@ public final class ShopCommerceEndContextAdapter
                                 + status.name()
                                 + "\",\"data\":{\"nextAction\":\""
                                 + denied.nextAction()
-                                + "\"}}");
+                                // 是哪一步拒的：门店准入。错误码与网关按角色拒绝时相同，端上靠这个字段分开
+                                + "\",\"deniedBy\":\"STORE_ACCESS\"}}");
     }
 
     static int errorCode(AccessStatus status) {

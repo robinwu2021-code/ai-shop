@@ -80,6 +80,9 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
         <div>
           <div>{accessLabel[r.access] ?? r.access}</div>
           {r.ruleText && <code className="txt-caption text-muted-foreground">{r.ruleText}</code>}
+          {r.admission && (
+            <div className="txt-caption text-muted-foreground">{c.arAdmission} <code>{r.admission}</code></div>
+          )}
         </div>
       ),
     },

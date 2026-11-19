@@ -467,6 +467,8 @@ export interface ApiResource {
   access: ApiResourceAccess;
   /** 权限码的与或式，给人读；access=POINT 时有值 */
   ruleText: string | null;
+  /** 商户端入口在门店准入表里落在哪一类（如 ACCOUNT、BOOTSTRAP、DENY）；这一步排在按角色判权之前。别的端为空 */
+  admission?: string | null;
   /** 本进程入口的类与方法，排查用 */
   handler: string | null;
   /** 启用 / 停用 */

@@ -3,6 +3,7 @@ package ai.neargo.shop.gateway.iam.resource;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.commercebridge.StoreAdmissionRoutes;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
 import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
 import ai.neargo.shop.gateway.core.resource.ResourceStatusCache;
@@ -34,7 +35,7 @@ public class ApiResourceAdmin {
     public record ApiResourceVO(long id, String endCode, String method, String pattern, String source,
                                 String location, String targetPath, String access, String ruleText, String handler,
                                 String status, boolean stale, boolean locked, String appVersion, String updatedBy,
-                                LocalDateTime updatedAt) {
+                                LocalDateTime updatedAt, String admission) {
     }
 
     /** 条数与当前部署的两个开关；页面据此说明停用现在生不生效。 */
@@ -105,6 +106,18 @@ public class ApiResourceAdmin {
     private static ApiResourceVO view(AdminRow row) {
         return new ApiResourceVO(row.id(), row.endCode(), row.method(), row.pattern(), row.source(), row.location(),
                 row.targetPath(), row.access(), row.ruleText(), row.handler(), row.status(), row.stale(), locked(row),
-                row.appVersion(), row.updatedBy(), row.updatedAt());
+                row.appVersion(), row.updatedBy(), row.updatedAt(), admission(row));
+    }
+
+    /** B 端入口在门店准入表里落在哪一类；别的端没有这一步。读不出来不影响这一页，留空 */
+    private static String admission(AdminRow row) {
+        if (!"biz".equals(row.endCode())) {
+            return null;
+        }
+        try {
+            return StoreAdmissionRoutes.describe(row.method(), row.pattern());
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }

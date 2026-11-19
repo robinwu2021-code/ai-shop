@@ -13343,6 +13343,7 @@ _无字段_
 | `targetPath` | `string,null` | 是 | 微服务链接的内部地址；本进程入口为 null |
 | `access` | [`ApiResourceAccess`](#apiresourceaccess) | 是 | 权限要求的类别 |
 | `ruleText` | `string,null` | 是 | 权限码的与或式，给人读；access=POINT 时有值 |
+| `admission` | `string,null` | 否 | 商户端入口在门店准入表里落在哪一类（如 ACCOUNT、BOOTSTRAP、DENY）；这一步排在按角色判权之前。别的端为空 |
 | `handler` | `string,null` | 是 | 本进程入口的类与方法，排查用 |
 | `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
 | `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |
@@ -14212,6 +14213,7 @@ _无字段_
 | `targetPath` | `string,null` | 是 | 微服务链接的内部地址；本进程入口为 null |
 | `access` | [`ApiResourceAccess`](#apiresourceaccess) | 是 | 权限要求的类别 |
 | `ruleText` | `string,null` | 是 | 权限码的与或式，给人读；access=POINT 时有值 |
+| `admission` | `string,null` | 否 | 商户端入口在门店准入表里落在哪一类（如 ACCOUNT、BOOTSTRAP、DENY）；这一步排在按角色判权之前。别的端为空 |
 | `handler` | `string,null` | 是 | 本进程入口的类与方法，排查用 |
 | `status` | [`ApiResourceStatus`](#apiresourcestatus) | 是 | 启用 / 停用 |
 | `stale` | `boolean` | 是 | true = 最近一次启动扫描里已经没有这条链接 |

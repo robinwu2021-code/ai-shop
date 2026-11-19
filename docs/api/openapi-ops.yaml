@@ -13192,6 +13192,11 @@ components:
             - "string"
             - "null"
           description: "权限码的与或式，给人读；access=POINT 时有值"
+        admission:
+          type:
+            - "string"
+            - "null"
+          description: "商户端入口在门店准入表里落在哪一类（如 ACCOUNT、BOOTSTRAP、DENY）；这一步排在按角色判权之前。别的端为空"
         handler:
           type:
             - "string"
