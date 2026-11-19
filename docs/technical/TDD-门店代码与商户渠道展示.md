@@ -1,6 +1,6 @@
 # TDD-门店代码与商户渠道展示
 
-状态：草稿（2026-11-19 第三版，按用户四点回复改写；待确认 §3 后实施）
+状态：已实现（2026-11-19；代码已在本地分支提交，未推送、未部署；App 部分交 App 会话）
 档位：2（跨端：near-pay 渠道目录状态与内部业务接口 + ai-shop `/biz/merchant/payment` 数据来源 + Flutter 商户 App 主体页；改 near-pay 渠道状态取值，不加权限码）
 关联需求：用户 2026-11-19 口述——
 1. 「门店数据要增加门店名称代码，给到支付链接用」；「代码用英文」。
@@ -129,10 +129,10 @@ EntityChannelAccounts entityChannelAccounts(@PathVariable String entityNo);
 | # | 问题 | 决定 | 状态 |
 |---|---|---|---|
 | Q1 | 门店代码 | 英文；运营设置或批量导入，店主可改；不自动生成 | ✅ 用户 2026-11-19 |
-| Q2 | 渠道状态 | 运营维护，存 `pay_channel.status`；新增 `PENDING` 表示待开通 | ✅ 用户 2026-11-19（「状态由运营人员维护」）；`PENDING` 取值待确认 |
+| Q2 | 渠道状态 | 运营维护，存 `pay_channel.status`；新增 `PENDING` 表示待开通 | ✅ 用户 2026-11-19 |
 | Q3 | 渠道商户号 | 全号，只给有 `biz:finance` 的商户管理员 | ✅ 用户 2026-11-19 |
 | Q4 | 商户端入口 | App 现有主体页的渠道列表；后端 `GET /biz/merchant/payment` 改为以 near-pay 渠道账户为准 | ✅ 用户 2026-11-19 |
-| Q5 | 主体在 near-pay 没有支付商户时 | 列表照旧读 ai-shop 本地进件表（C4） | 待确认 |
+| Q5 | 主体在 near-pay 没有支付商户时 | 列表照旧读 ai-shop 本地进件表（C4） | ✅ 用户 2026-11-19 |
 
 ## §4 风险
 
@@ -145,18 +145,56 @@ EntityChannelAccounts entityChannelAccounts(@PathVariable String entityNo);
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-| AC | 测试方法 | 跑过 |
-|---|---|---|
-| A1 | 166 验证（现有链路）：`/s/ume-breakfast` 打开新 ume早餐店 | ✅ 2026-11-19 |
-| A2 | 现有 `setSlug` 测试回归 | 待实现 |
-| A3 | `deploy/ume/store-codes/test_import.py`（撞码、不合规、正常） | 待实现 |
-| B1–B3 | near-pay `ChannelPendingStatusTest` | 待实现 |
-| B4 | near-pay 收银台付款方式测试补一例 | 待实现 |
-| C1–C3 | near-pay `MerchantChannelQueryTest` | 待实现 |
-| C4–C5 | ai-shop `MerchantPaymentNearPaySourceTest`、`MerchantPaymentFlowTest` 回归 | 待实现 |
-| C6 | App `merchant_api_test.dart`（未知状态） | 待实现 |
+2026-11-19 在两个实现分支上运行（near-pay `feat/channel-pending-entity-accounts-20261119` `24a2ab6de`；ai-shop `codex/ops-fiat-local-closure` `1c476d3ef` 起）。
 
-## §6 对账二 · 设计 → 实现（实现完再填）
+| AC | 测试方法 | 结果 |
+|---|---|---|
+| A1 | 166 验证（现有链路，未改代码）：`/s/ume-breakfast`、`/s/ume-cafe` 打开对应门店收银台 | ✅ |
+| A2 | 现有接口未改；166 上用 `PUT /ops/stores/{storeNo}/basics` 写入 7 家门店代码 | ✅ |
+| A3 | `deploy/ume/store-codes/test_import.py`：仅 `--apply` 才写、不合规 / 保留词 / 清单内重复 / 接口拒绝逐行报告且不影响其他行、同值重写幂等 | ✅ 3/3 |
+| B1–B3 | near-pay `ChannelPendingStatusTest`：设为待开通写 `PENDING` 且不校验适配器；待开通启用仍被适配器校验拒绝 | ✅ 2/2 |
+| B1 | near-pay 运营前端：`presentation.ts` 状态表加「待开通」，`channels-page.tsx` 行操作「标为待开通」；`tsc --noEmit` 通过，`channel-catalog`、`channel-test-attribute`、`channel-account-products-ui` 测试 | ✅ 29/29 |
+| B4 | 收银台只取 `ENABLED` 渠道（未改代码）；回归 `CatalogServiceCommandTest` | ✅ 18/18 |
+| C1–C3 | near-pay `MerchantChannelQueryTest`：全号、按目录排序、关闭不列、两种待开通原因、沙箱、启用门店；无已核验来源关联时返回空商户 | ✅ 2/2 |
+| C1、C2、C4 | ai-shop `MerchantChannelListingTest`：有支付商户改读支付侧并映射 `PENDING_ACTIVATION` / 全号 / 启用门店；没有时原样返回本地进件表 | ✅ 2/2 |
+| C1 | ai-shop `RemoteBizPaymentAppServiceTest#entityChannelAccountsCarryEntityAndSourceScope` | ✅ 5/5 |
+| C5 | ai-shop `BizEndpointPermTest`（`/biz/merchant/payment` 权限未变）、`MerchantPaymentFlowTest` 回归 | ✅ 12/12、10/10 |
+| C6 | App 侧，交 App 会话（旧版 App 遇未知 `applyStatus` 走 `ChannelState.unavailable`） | 待 App |
+
+另跑：near-pay `StoreCollectionMethodServiceTest` 9/9、`PayBizFacadeCollectStatusTest` 3/3；ai-shop `StoreMethodPreferenceContractTest` 5/5、`ArchitectureTest` 23（1 跳过）。
+
+## §6 对账二 · 设计 → 实现
+
+near-pay `24a2ab6de`（`git show --stat`）：
+
+```
+ backend/pay/pay-domain/.../biz/PayBizFacade.java                       | +13
+ backend/pay/pay-domain/.../catalog/CatalogModels.java                  |  +2
+ backend/pay/pay-domain/.../catalog/ChannelCatalogService.java          |  +8 -1
+ backend/pay/pay-domain/.../client/PayBizInternalApi.java               | +15
+ backend/pay/pay-domain/.../merchant/account/ChannelAccountService.java |  +6
+ backend/pay/pay-domain/.../platmch/store/policy/MerchantChannelQuery.java      | 新增
+ backend/pay/pay-domain/src/test/.../catalog/ChannelPendingStatusTest.java      | 新增
+ backend/pay/pay-domain/src/test/.../policy/MerchantChannelQueryTest.java       | 新增
+ backend/pay/pay-portal/.../ops/v2/OpsChannelController.java            |  +8
+ backend/pay/pay-svc/.../svc/InternalPayBizEndpoint.java                |  +5
+ ops-web/features/catalog/channels-page.tsx、commands.tsx               | 待开通操作与确认框
+ ops-web/lib/channel-catalog/mock.ts、presentation.ts、types.ts         | PENDING 状态
+```
+
+ai-shop `1c476d3ef`：`pay/pay-domain/.../PayBizInternalApi.java`（副本同步）、`payclient/BizPaymentAppService.java`、`impl/BizPaymentAppServiceImpl.java`、`impl/RemoteBizPaymentAppService.java`、`payclient/MerchantChannelListing.java`（新）、`portal/biz/BizMerchantController.java`、`merchant/dto/PaymentApplymentVO.java` 与两份测试；以及本次的 `deploy/ume/store-codes/`（脚本、测试、说明）。
+
+| 差异 | 说明 |
+|---|---|
+| TDD 列了 `MerchantPaymentServiceImpl#list`，实际没动 | `shop-merchant` 不依赖支付模块；改在 `shop-app` 新增 `MerchantChannelListing`，由 `BizMerchantController#payments` 先问支付侧、没有支付商户再回退到 `paymentService.list` |
+| TDD 没写、实际新增 `PaymentApplymentVO.enabledStores` | App 主体页本来就读 `enabledStores[].storeNo`；支付侧行用它带出已绑定门店。保留旧 14 参构造，原调用不变 |
+| TDD 没写、实际改了 near-pay `ops-web` | 运营前端要能显示与设置「待开通」（B1 的「运营查看」） |
+| `MerchantPaymentNearPaySourceTest` 未新建 | 由 `MerchantChannelListingTest` 覆盖同一行为 |
+| 导入脚本不预读现有代码 | 运营门店详情 `GET /ops/stores/{storeNo}` 不回显代码；改为写后以返回值回读，同值重写幂等 |
+
+### 偏差说明
+
+上表即全部偏差，均已同步到本节；§2 的设计意图不变（数据来源以支付侧为准、无支付商户回退本地）。
 
 ## §7 确认与完成
 
@@ -165,6 +203,7 @@ EntityChannelAccounts entityChannelAccounts(@PathVariable String entityNo);
 | 2026-11-19 | 数据先行（运营接口，UME166）：7 个 UME 渠道入目录（暂为 `DISABLED`）；oscar、roger 的 11 个渠道账户；藍新 `MS354053380` 按 UME 数据登记给 roger |
 | 2026-11-19 | roger、oscar 导入：门店英文代码 `ume-breakfast`、`ume-cafe`、`chuangke-pay`、`jeff-first-home`、`ume-plan-pay`、`chuangke-sam`、`chuangke-oscar`（运营接口，店主可改）；roger 的 5 家店尚无收款码，代码待开码后进链接 |
 | 2026-11-19 | 第一版草稿（付款方式接口加 `pendingChannels`）→ 第二版（拼音代码、系统计算状态、新页）→ 第三版（按用户四点回复） |
+| 2026-11-19 | 用户确认第三版（「确认，开始实现」）；near-pay `24a2ab6de`、ai-shop `1c476d3ef` 与导入脚本实现完成，相关测试全绿（§5）。未推送、未部署；上线后用运营接口把 7 个 UME 渠道改为 `PENDING` |
 
 ## §8 后续（不计入本 TDD 验收）
 
