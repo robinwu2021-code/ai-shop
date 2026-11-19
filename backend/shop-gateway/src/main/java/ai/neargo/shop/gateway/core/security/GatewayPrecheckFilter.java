@@ -95,6 +95,18 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
             return;
         }
 
+        // C 端的认证链整条放行，要不要登录本来由业务逐个入口判。库里把一条入口配成了「要登录」时，
+        // 由网关在这里拦未登录的请求；另外两端的链自己会拦未登录的，轮不到这里
+        if (user == null && "mp".equals(endCode) && !"off".equals(precheck)
+                && (resource.access() == Access.LOGIN || resource.access() == Access.POINT)) {
+            if ("enforce".equals(precheck)) {
+                log.warn("提前判权拒绝 {} · 未登录", line);
+                new ApiAuthEntryPoint().commence(request, response,
+                        new InsufficientAuthenticationException("这条入口要登录"));
+                return;
+            }
+            log.warn("提前判权（观察）会要求登录 {} · {}", line, resource.handler());
+        }
         if (user != null && !"off".equals(precheck)) {
             Decision decision = decider.decide(user, resource);
             if (!decision.permitted()) {

@@ -762,6 +762,7 @@
     "GET /ops/after-sales/fast-refund-rule",
     "POST /ops/after-sales/fast-refund-rule",
     "GET /ops/api-resources",
+    "POST /ops/api-resources/{id}/rule",
     "POST /ops/api-resources/{id}/status",
     "GET /ops/api-resources/summary",
     "GET /ops/app-versions",
