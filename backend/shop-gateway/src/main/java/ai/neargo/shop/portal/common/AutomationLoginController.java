@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><b>为什么挂在 {@code /common}</b>：它要在「还没有任何会话」时被调用（与登录接口同一处境），
  * 而 {@code /common/**} 本来就是匿名链；一个入口同时签店主（{@code btk_}）与运营（{@code otk_}），
- * 不为运营另开一个没有页面入口的 {@code /ops} 端点。
+ * 不为运营另开一个没有页面入口的 {@code /ops} 端点。消费者（{@code ctk_}）也从这里签。
  *
  * <p>签出的会话与正常登录<b>同构</b>：店主走与 {@code /biz/auth/login} 相同的 {@code merchantByUser}，
  * 运营走 {@link OpsService#issueSessionFor}（与密码登录共用签发那一段）。权限不多一分。
@@ -54,7 +54,7 @@ public class AutomationLoginController {
     public record TicketReq(String ticket) {
     }
 
-    /** {@code realm}：B 或 OPS；{@code token}：与对应端正常登录返回的令牌同一种 */
+    /** {@code realm}：B、OPS 或 C；{@code token}：与对应端正常登录返回的令牌同一种 */
     public record SessionResp(String realm, String subject, String token) {
     }
 
@@ -81,6 +81,16 @@ public class AutomationLoginController {
             token = tokenStore.issue(TokenStore.SessionData.of(
                     LoginUser.merchantByUser(user.userNo(), user.nickname())));
             auditor.succeeded(Realm.MERCHANT, user.userNo());
+        } else if (v.realm() == AutomationTicketVerifier.TicketRealm.C) {
+            // 消费者：与 C 端正常登录同构的 ctk_ 会话。账号必须已经存在，这里不替白名单建号
+            UserQueryPort.UserBrief user = userQuery.find(v.subject()).orElse(null);
+            if (user == null) {
+                auditor.failed(Realm.CONSUMER, "automation", "AUTOMATION_NO_SUCH_USER");
+                log.warn("[automation-login] 拒绝 · 白名单里的账号不存在：{}", v.subject());
+                throw BizException.of(ErrorCode.UNAUTHORIZED);
+            }
+            token = tokenStore.issue(TokenStore.SessionData.of(LoginUser.consumer(user.userNo(), user.nickname())));
+            auditor.succeeded(Realm.CONSUMER, user.userNo());
         } else {
             token = opsService.issueSessionFor(v.subject()).token();
             auditor.succeeded(Realm.OPERATOR, v.subject());

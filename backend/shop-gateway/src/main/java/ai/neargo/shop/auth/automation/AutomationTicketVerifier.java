@@ -22,7 +22,7 @@ import tools.jackson.databind.ObjectMapper;
  * 密钥票据的校验（ADR-027，TDD-密钥票据免登录）。
  *
  * <p>票据 = {@code v1.<base64url(payload)>.<base64url(Ed25519 签名)>}，签名覆盖 {@code v1.<payload>}。
- * payload = {@code {realm: B|OPS, sub, exp, nonce}}。
+ * payload = {@code {realm: B|OPS|C, sub, exp, nonce}}。
  *
  * <p><b>线上只有公钥</b>：这台机器被翻遍也签不出票据。私钥在本机（仓库外），由
  * {@code scripts/automation/_ticket.py} 使用（keygen.py / api.py 经它签票）。
@@ -37,7 +37,8 @@ public class AutomationTicketVerifier {
     /** 允许的时钟偏差：本机与服务器差几秒很常见，差更多说明有问题 */
     static final long CLOCK_SKEW_SECONDS = 5;
 
-    public enum TicketRealm { B, OPS }
+    /** B 店主、OPS 运营、C 消费者（2026-11-19 加：三端都要能用测试账号从接口验证）。 */
+    public enum TicketRealm { B, OPS, C }
 
     public record Verified(TicketRealm realm, String subject) {
     }

@@ -32,7 +32,7 @@
   │ scripts/automation/ticket.py 签票据
   ▼
 v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicketVerifier
-  payload = {realm: B|OPS, sub, exp, nonce}             ① 开关开着？（默认关：404）
+  payload = {realm: B|OPS|C, sub, exp, nonce}             ① 开关开着？（默认关：404）
                                                         ② 公钥验签
                                                         ③ exp 在 60 秒内、未过期
                                                         ④ nonce 没用过（用过即记，TTL 覆盖有效期）
@@ -58,8 +58,8 @@ v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicke
 
 | 字段 | 含义 | 校验 |
 |---|---|---|
-| `realm` | `B`（店主）或 `OPS`（运营） | 只认这两个 |
-| `sub` | B：`user_no`；OPS：`staff_no` | `realm:sub` 必须在白名单 |
+| `realm` | `B`（店主）、`OPS`（运营）或 `C`（消费者，2026-11-19 加） | 只认这三个 |
+| `sub` | B、C：`user_no`；OPS：`staff_no` | `realm:sub` 必须在白名单；同一个 `user_no` 要签 B 和 C 得各列一条 |
 | `exp` | 过期时刻（秒） | `now < exp ≤ now + 60`（签得太远的也拒：防止签一张一年有效的） |
 | `nonce` | 随机串 ≥ 16 字节 | 用过即记，60 秒内再来拒 |
 
@@ -85,6 +85,14 @@ v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicke
 - 本机脚本（`scripts/automation/`）：`keygen.py`（生成密钥对，私钥 0600、仓库外）、
   `ticket.py`（签票据，输出到 stdout 供管道使用）、`emulator-login.sh`、`ops.py`（换会话后调运营接口）。
   **票据与会话只在脚本进程里流转，不打印到终端。**
+
+### 4.5 消费者端（2026-11-19 追加）
+
+网关版本上线后三端都要能用测试账号从接口验证，而 C 端正常登录只有简讯验证码一条路，测试账号收不了简讯。
+所以票据多认一个 `realm = C`：换出与 C 端正常登录同构的 `ctk_` 会话（`LoginUser.consumer`）。
+账号必须已经存在于 `usr_account`，接口不替白名单建号；白名单仍按「端:账号」逐条列。没有新增端点、配置项或错误码。
+验收：C 票据换出 `ctk_`，能调要登录的 `/mp` 接口；拿它打 `/biz`、`/ops` 被拒；白名单里只有 `B:x` 时签不出 `C:x`。
+对应测试：`AutomationLoginFlowTest.consumerTicketGivesWorkingMpSession`、`AutomationTicketVerifierTest.malformedRejected`。
 
 ## 五、验收标准
 

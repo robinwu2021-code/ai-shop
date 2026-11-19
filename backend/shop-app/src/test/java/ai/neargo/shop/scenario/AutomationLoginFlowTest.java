@@ -75,7 +75,7 @@ class AutomationLoginFlowTest {
     @TestPropertySource(properties = {
             "spring.datasource.url=jdbc:h2:mem:automation;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
             "shop.auth.automation.enabled=true",
-            "shop.auth.automation.subjects=B:U-AUTOTEST,OPS:ST-SUPPORT",
+            "shop.auth.automation.subjects=B:U-AUTOTEST,OPS:ST-SUPPORT,C:U-AUTOTEST",
     })
     @DisplayName("开关开着")
     class Enabled {
@@ -110,6 +110,20 @@ class AutomationLoginFlowTest {
 
             assertThat(token).startsWith("btk_");
             assertThat(get(port, "/biz/merchant/profile", token).path("code").asInt()).isZero();
+        }
+
+        @Test
+        @DisplayName("★★★ 消费者票据 → ctk_，能调要登录的 /mp 接口；拿它打 /biz、/ops 是 401")
+        void consumerTicketGivesWorkingMpSession() throws Exception {
+            String token = exchange(ticket("C", "U-AUTOTEST")).path("data").path("token").asString();
+
+            assertThat(token).startsWith("ctk_");
+            assertThat(get(port, "/mp/after-sale", token).path("code").asInt()).isZero();
+            // 跨端：C 端的令牌进不了另外两端
+            assertThat(get(port, "/biz/merchant/profile", token).path("code").asInt()).isNotZero();
+            assertThat(get(port, "/ops/auth/me", token).path("code").asInt()).isNotZero();
+            // 白名单按「端:账号」记：只列了 B 的账号签不出 C 的票据，反过来也一样
+            assertThat(exchange(ticket("C", "ST-SUPPORT")).path("data").path("token").asString("")).isEmpty();
         }
 
         @Test

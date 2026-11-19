@@ -122,8 +122,10 @@ class AutomationTicketVerifierTest {
     void malformedRejected() {
         rejected("garbage", "AUTOMATION_MALFORMED");
         rejected("v2.a.b", "AUTOMATION_MALFORMED");
-        rejected(ticket(KEYS.getPrivate(), payload("C", "U1", NOW + 60, "nonce-gggggggggggg1")),
+        rejected(ticket(KEYS.getPrivate(), payload("X", "U1", NOW + 60, "nonce-gggggggggggg1")),
                 "AUTOMATION_BAD_REALM");
+        // C 是认识的端（消费者），但白名单按「端:账号」记：只列了 B:U1，C:U1 签不出来
+        rejected(ok("C", "U1", "nonce-gggggggggggg2"), "AUTOMATION_NOT_ALLOWED");
         rejected(ticket(KEYS.getPrivate(), payload("B", "U1", NOW + 60, "short")), "AUTOMATION_MALFORMED");
     }
 

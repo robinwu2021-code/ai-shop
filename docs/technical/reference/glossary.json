@@ -48057,9 +48057,10 @@
         "name": "TicketRealm",
         "values": [
           "B",
-          "OPS"
+          "OPS",
+          "C"
         ],
-        "zh": "",
+        "zh": "B 店主、OPS 运营、C 消费者（2026-11-19 加：三端都要能用测试账号从接口验证）。",
         "module": "shop-gateway"
       },
       {
