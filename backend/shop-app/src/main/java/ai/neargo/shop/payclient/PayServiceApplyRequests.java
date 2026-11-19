@@ -77,6 +77,32 @@ public final class PayServiceApplyRequests {
                 new PaySourceLinkApi.ActorRef(realm, operatorNo, "1", PERM), "FIAT", revision, profile);
     }
 
+    /** UME 导入主体编号前缀（TDD-UME迁移建档 AC3） */
+    public static final String UME_ENTITY_PREFIX = "MUME";
+
+    /**
+     * UME 迁移建档（TDD-UME迁移建档）：同 {@link #build} 组门店，但不带资料 —— 不提交证件号，支付侧不生成资料修订，
+     * 由商户或运营之后补。事件号按主体版本固定，支付侧按它幂等。
+     */
+    public static PaySourceLinkApi.Apply migration(StoreSnapshotReader.Entity entity, List<StoreSnapshotReader.Snapshot> stores,
+                                                   String operatorNo, StoreSyncProperties props) {
+        if (entity == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (blank(operatorNo) || entity.entityNo() == null || !entity.entityNo().startsWith(UME_ENTITY_PREFIX)
+                || blank(entity.name())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        long revision = Math.max(1, entity.revision());
+        List<PaySourceLinkApi.StoreInput> storeInputs = stores.stream().filter(s -> !s.deleted()).map(s -> {
+            Map<String, Object> r = NearPayStoreProfile.request(s, props);
+            return new PaySourceLinkApi.StoreInput((String) r.get("storeRef"), ((Number) r.get("revision")).longValue(),
+                    (String) r.get("profileHash"), s.storeNo());
+        }).toList();
+        if (storeInputs.size() > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
+        return new PaySourceLinkApi.Apply("ais-migrate-" + entity.entityNo() + "-" + revision, props.sourceScope(),
+                entity.entityNo(), revision, entity.name(), storeInputs,
+                new PaySourceLinkApi.ActorRef("OPERATOR", operatorNo, "1", PERM), "FIAT", null, null);
+    }
+
     private static String digest(PaySourceLinkApi.Profile p) {
         String canonical = String.join("\u0001", p.purpose(), n(p.legalName()), n(p.registrationNo()),
                 n(p.registeredAddress()), n(p.representativeName()), n(p.contactPhone()));

@@ -38097,6 +38097,13 @@
         "module": "shop-app"
       },
       {
+        "host": "PayServiceApplyRequests",
+        "name": "UME_ENTITY_PREFIX",
+        "value": "MUME",
+        "zh": "UME 导入主体编号前缀（TDD-UME迁移建档 AC3）",
+        "module": "shop-app"
+      },
+      {
         "host": "Codes",
         "name": "BIZ_APP",
         "value": "END_BIZ_APP",
