@@ -35,7 +35,7 @@ KEY_PATHS = {
 }
 SSH = os.environ.get("V2_SSH", "")
 INTERNAL = os.environ.get("V2_INTERNAL_BASE", "http://192.168.3.80:18180").rstrip("/")
-PUBLIC = os.environ.get("V2_PUBLIC_BASE", "https://nearshop.umeshop.ai").rstrip("/")
+PUBLIC = os.environ.get("V2_PUBLIC_BASE", "https://tw.neargo.ai").rstrip("/")  # 首选入口；nearshop.umeshop.ai 仍可用
 # 三端的公网前缀：运营端页面与接口同在 /ops-shop-v2 下，B 端与 C 端在 /shop-api-v2 下
 PREFIX = {"OPS": "/ops-shop-v2", "B": "/shop-api-v2", "C": "/shop-api-v2"}
 

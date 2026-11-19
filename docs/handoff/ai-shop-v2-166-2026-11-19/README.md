@@ -598,3 +598,18 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
   而 v2 的 `SHOP_CORS_EXTRA_ORIGINS` 只有 `https://twpay.umeshop.ai`，后端回 403 `Invalid CORS request`。此前一直用脚本验证（不带 Origin），所以没暴露。
   已在 v2 环境文件追加 `https://nearshop.umeshop.ai`（备份 `ai-shop-all-v2.env.before-cors-20261119`）并重启；v1 未动。
   B/C 端若有从这个域名打开的网页（H5）会遇到同样的问题，这一项配置也覆盖了它们。
+
+### 对外域名：`tw.neargo.ai` 为首选（2026-11-19 用户）
+
+| 入口 | 首选地址 | 仍可用 |
+|---|---|---|
+| 运营端页面 | `https://tw.neargo.ai/ops-shop-v2/` | `https://nearshop.umeshop.ai/ops-shop-v2/` |
+| B 端接口 | `https://tw.neargo.ai/shop-api-v2/biz/**` | `nearshop.umeshop.ai` 同路径 |
+| C 端接口 | `https://tw.neargo.ai/shop-api-v2/mp/**` | `nearshop.umeshop.ai` 同路径 |
+
+- nginx 本来就把两个域名配在同一个站点（166 `nearshop.umeshop.ai.conf` 的 `server_name nearshop.umeshop.ai tw.neargo.ai`），证书有效，**nginx 与证书未改**。
+- v2 允许的浏览器来源改为 `SHOP_CORS_EXTRA_ORIGINS=https://tw.neargo.ai,https://nearshop.umeshop.ai,https://twpay.umeshop.ai`（首选放第一位；备份 `ai-shop-all-v2.env.before-twneargo-20261119`），已重启；名单外的来源仍回 `Invalid CORS request`。v1 未动。
+- 验证脚本默认入口改为 `https://tw.neargo.ai`（`V2_PUBLIC_BASE` 可覆盖）；三端用自动化票据经它登录都成功。
+- **没有改的**：`SHOP_PAY_CHECKOUT_BASE_URL`、`SHOP_PAY_OPS_PUBLIC_BASE_URL` 仍是 `twpay.umeshop.ai`——那是支付服务自己的站点（与 `tpay.neargo.ai` 同一个 nginx 站点），不是商城域名。
+  `SHOP_WEB_BASE_URL`（分享链接、店铺码落地页）v1、v2 都没配，所以不发这类链接；这个域名下的 `/s/<码>` 目前被 nginx 转去支付收银台，
+  若现在配成 `tw.neargo.ai` 发出去的链接会落到收银台，所以不配，等商城落地页在 nginx 上有了自己的路径再定。
