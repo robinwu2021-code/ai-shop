@@ -50,8 +50,17 @@ public class PrimaryPersistenceConfiguration {
 
     @Bean
     @Primary
-    DataSource dataSource(DataSourceProperties properties) {
+    DataSource dataSource(DataSourceProperties properties, org.springframework.core.env.Environment environment) {
         var primary = properties.initializeDataSourceBuilder().build();
+        /*
+         * 这个池是手工建的，Spring Boot 不会替它绑 spring.datasource.hikari.*。不绑的后果：
+         * 池大小只能是 Hikari 的默认值（最多 10、空闲也保持 10），一个实例一启动就把 10 个连接占满，
+         * 而运维在环境里写的 SPRING_DATASOURCE_HIKARI_* 静悄悄地不生效。没配时行为与原来一样。
+         */
+        if (primary instanceof com.zaxxer.hikari.HikariDataSource hikari) {
+            org.springframework.boot.context.properties.bind.Binder.get(environment).bind("spring.datasource.hikari",
+                    org.springframework.boot.context.properties.bind.Bindable.ofInstance(hikari));
+        }
         // Same primary database/configuration, independent bounded capacity. Lazy until fresh auth runs.
         var fresh = properties.initializeDataSourceBuilder().type(com.zaxxer.hikari.HikariDataSource.class).build();
         fresh.setPoolName("account-fresh-primary");
