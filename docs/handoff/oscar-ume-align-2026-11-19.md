@@ -29,6 +29,6 @@
 ## 影响与遗留
 
 - **旧门店已不能收款**：其投影仍指向旧主体，而支付商户来源关联已改到新主体，收款码 `nAjNe7H2GpWc1mEQu1hESw`、`Maswh_NWjnpkfp1MPfLfGw` 返回 70082。下架时一并停用这两个码与旧入口 `CE3A941F09E7E94974`、`CEE0415EE3D9CD4969`。
-- 短链 `/s/ume-breakfast` 仍挂旧门店，要转给新门店需另行决定。
+- 短链已切到新门店（用户 2026-11-19 要求）：旧门店 slug 改为 `ume-breakfast-old`（同步后旧码 `nAjNe7H2GpWc1mEQu1hESw` 的门店码随之改名、释放原码），新门店 slug 设为 `ume-breakfast`，同步后门店码落到 `mqB-LZBjK8UM4-YO_BwacQ`。`/s/ume-breakfast` 已打开新 ume早餐店收银台。
 - 测试付款待用户在 ume早餐店收款页用测试渠道付一笔（输入测试卡/LINE 登录须用户本人）。
 - 临时授权仍保留：`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）；near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
