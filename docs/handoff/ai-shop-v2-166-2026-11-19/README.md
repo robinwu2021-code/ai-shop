@@ -648,3 +648,15 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 4. `GET /ops/merchants` 慢：4.5～9 秒（`api.slow` 日志）。
 5. 运营端推送 `/ops-shop-v2/ops/stream` 走通用转发（读超时 100 秒、开缓冲），空闲 100 秒后回 504，前端重连；B 端推送有专门的 location（关缓冲、3600 秒），运营端缺一个。
 6. 验证脚本打 GET 时碰到 `GET /ops/payables/payout-list`（下载付款清单），在生产审计留了两条「导出付款清单」高危记录（0 家 0 分）；脚本已加入跳过。
+
+### 三个浏览器页面测试用户（2026-11-19，用户：「创建 2-3 个测试用户，设置不同的角色……从菜单展示到页面点击，都通过 v2」）
+
+| 编号 | 登录名 | 角色 | 权限码 | 菜单项 |
+|---|---|---|---:|---:|
+| `ST-V2UI-CS` | `gw-cs@example.invalid` | 客服 | 17 | 29 |
+| `ST-V2UI-FINANCE` | `gw-finance@example.invalid` | 财务 | 20 | 31 |
+| `ST-V2UI-GOODS` | `gw-goods@example.invalid` | 商品运营 | 27 | 40 |
+
+- 直接写库（`v2test-ui-users.sql`，含清理语句），不走新建员工流程，所以不发邮件；免二次验证、不强制改密；已加进 v2 自动化登录名单（备份 `ai-shop-all-v2.env.before-v2ui-20261119`）。
+- **密码由用户自己设**：`scripts/automation/set_test_staff_password.py`，在用户终端里输入（不回显），本机算 bcrypt 后只把哈希写库；只认 `ST-V2UI-` / `ST-V2TEST-` 开头的测试账号。生产上 Claude 不设、不输入任何密码。
+- 菜单核对（按角色勾的功能点 vs 持有的码）：客服、商品运营完全对应；财务有 `pay:order:view` 但角色没勾「订单 → 支付单」「订单 → 支付异常」两个菜单点，接口能访问、菜单看不到——角色配置问题，要不要补由用户定。
