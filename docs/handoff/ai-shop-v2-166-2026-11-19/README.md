@@ -553,3 +553,17 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - **连接池**：v2 日志里没有取连接超时；正式库峰值用过 184/250，没有因连接数满被拒。v2 主库池上限 4，连到 .61 共 16 条。指标接口（`/actuator/metrics`）没有对外开，要持续看等待数需要打开它，属于配置变更，没做。
 - **后台任务**：v2 关着（`SHOP_JOB_ENABLED=false`），定时任务只在 v1 跑，v2 这边不涉及。
 - **超管访问 `/ops/print/health`、`/ops/print/incidents` 得 403**：不是权限问题。这两个接口必须带 `tenantNo`、`entityNo`、`storeNo`，打印模块按门店判可见范围，没带就拒。带上测试门店后超管 200；客服被网关按 `ops:print:read` 拒，判定正确。
+
+### 同晚续：合并后的版本上线 v2
+
+- v2 换成包 `shop-app-50d549bf4.jar`（合并主干后的分支，PR robinwu2021-code/ai-shop#20；容器标签 `gateway-merge-50d549bf4`），备份 .80 `run.sh.before-merge-20261119`。
+  重启一次，82 秒起好，没有报错，已重新登记到 Nacos。没有新迁移（主干最新 V678，分支 V679–V682 早已在正式库）。
+- 运营端页面换成 166 `/data/www/ai-shop-ops-v2/releases/gateway-50d549bf4`（`current` 已指过去），「接口资源」页有了「调整规则」。
+- 回退：.80 复原 `run.sh.before-merge-20261119` 后 `./run.sh all restart`；166 把 `current` 指回 `releases/gateway-410f2cc99`。
+- 接口验证（`verify_v2_gateway.py`）：运营端受限角色该拒 177 条、实际拒 177 条；C 端 32 条匿名被拒、带令牌后 0 条被误拒；三端密钥互不通用，令牌跨端全部被拒。
+  要看的 8 条都是已知原因：
+  - `/ops/print/health`、`/ops/print/incidents`：探测没带门店参数（见上一节），不是权限问题；
+  - `/biz/pay/v2/*` 6 条 502：v2 的 `NEARPAY_BIZ_ORIGIN` 是 `127.0.0.1`，从 .80 连不到 166 上的支付进件服务。比上次多的 `merchant-channels` 是主干新加的接口，同一个原因。要修得把它指到 166 上可达的支付进件地址，涉及支付那边对内网开口，没动。
+- B 端店主与店员（`verify_v2_biz_perms.py`，报告 `verify-B端权限-合并后.md`）：191 个 GET，**店员的判权全部一致**（该拒且被拒 90，该放且放行 30）。
+  店主放行后仍被拒的从 69 条降到 35 条（之前开放了门店准入）。新出现的 `/biz/payment/store-method`、`/biz/payment/store-method-preference`
+  是主干新加的接口，转发到支付侧后被支付侧的调用方校验拒了（70082），和已有的 7 条同类，属于业务层，网关已放行。
