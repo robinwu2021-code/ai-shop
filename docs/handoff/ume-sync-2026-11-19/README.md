@@ -30,6 +30,28 @@
 ## 未做 / 待办
 
 - 店员账号（1667 个）：按用户决定暂不同步。
-- 渠道密钥：全部渠道账户待补密钥核验；收款码与 H5 收款入口在可收款后再开。
+- 渠道密钥：用户执行 `credentials.py` 导入（见下节）；其余渠道（橘子、ezPay 等）平台未接入，保持待开通。收款码与 H5 收款入口在可收款后再开。
 - 临时授权仍保留：`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）、near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
 - ai-shop 推送：`PayGoesThroughGatewayTest` 两个用例与 ADR-047 的「确证未发送即关单」冲突，待负责人决定；本地分支已含全部提交，未推送。
+
+## 渠道密钥迁移（用户执行）
+
+对象：[`credential-targets.tsv`](credential-targets.tsv)，1158 个待补密钥的渠道账户（LINE Pay 454、藍新 704；只有编号，2026-11-19 从 166 near-pay 导出）。
+脚本：`deploy/ume/sync-check/credentials.py`（测试 `test_credentials.py`）。密钥只在进程内存里，从 UME `msm_mms` 读出后直接交给 near-pay 凭据库；屏幕与报告只有账户号、步骤和结论。
+
+每户步骤（先查后做，可重复执行）：登记凭据 → 录入版本 → 核验（证据为 UME 记录号）→ `CREDENTIAL_ENABLE` 审批（REVIEW1、REVIEW2）→ 启用 → 绑定渠道账户 → 开通产品（LINE Pay `LINEPAY_ONLINE`；藍新 `NEWEBPAY_CARD_ONETIME`、`NEWEBPAY_APPLEPAY_WEB`）→ `CHANNEL_ACCOUNT_VERIFY` 审批 → 由复核人核验 → 启用账户。
+
+```bash
+python3 -m venv ~/.venvs/ume-keys && ~/.venvs/ume-keys/bin/pip install pymysql
+cd ~/work/ai-shop-fiat
+export UME_DB_HOST=<UME msm_mms 库地址> UME_DB_USER=<只读账号>     # 口令运行时提示输入
+export AUTOMATION_KEY=~/work/env/ume/automation-ume-ed25519.pem    # 另需 28081 / 28093 隧道
+T=docs/handoff/ume-sync-2026-11-19/credential-targets.tsv
+~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py describe                       # 1 核对列名
+~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py check $T --out check.json        # 2 只读 UME，看能否逐户唯一查到
+~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py apply $T --only PM0E0F6CC8F7454D75 --out pilot.json   # 3 先跑 roger
+~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py apply $T --out apply.json        # 4 全量
+```
+
+列名与默认不同（`describe` 输出对不上）时，在脚本同目录放 `ume-columns.json` 覆盖，例如 `{"NEWEBPAY": {"key": "CHN_MER_NO", "hashKey": "HASH_KEY", "hashIv": "HASH_IV", "where": {"CHN_ID": "CH380202039616995328"}}}`。
+结论：`check` 为 FOUND / MISSING / AMBIGUOUS / MISMATCH / INVALID；`apply` 为 ACTIVATED / DONE / FAILED（附出错步骤与接口返回）。
