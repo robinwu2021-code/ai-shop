@@ -16,6 +16,12 @@ public final class StoreAdmissionRoutes {
     /** 地址模式里的路径变量换成这个值再去匹配；它满足准入表对编号的格式要求 */
     private static final String SAMPLE_ID = "ID0000000000000001";
 
+    /** 与 {@code BizContextFilter} 里先放行的那几个地址相同 */
+    private static final java.util.Set<String> PRE_LOGIN = java.util.Set.of(
+            "/biz/auth/login", "/biz/auth/staff-login", "/biz/auth/otp/send", "/biz/auth/email-otp/send",
+            "/biz/auth/logout", "/biz/auth/identities", "/biz/auth/identities/enter",
+            "/biz/auth/captcha/challenge", "/biz/auth/captcha/verify");
+
     private StoreAdmissionRoutes() {
     }
 
@@ -26,6 +32,14 @@ public final class StoreAdmissionRoutes {
     public static String describe(String method, String pattern) {
         if (pattern == null || !pattern.startsWith("/biz/")) {
             return null;
+        }
+        // 这两类根本不经过门店准入，照着准入表读会被误标成 DENY（2026-11-19 用测试账号实测对出来的）：
+        // 支付进件走的是支付自己的那条认证链；登录前的几个动作在过滤器里先放行了
+        if (pattern.startsWith("/biz/pay/v2/")) {
+            return "NOT_APPLIED · PAY_ONBOARDING_CHAIN";
+        }
+        if (PRE_LOGIN.contains(pattern)) {
+            return "NOT_APPLIED · PRE_LOGIN";
         }
         String path = pattern.replaceAll("\\{[^/}]+}", SAMPLE_ID).replace("/**", "/x").replace("*", "x");
         CommerceRoutePolicy.Route route = POLICY.match("*".equals(method) ? "GET" : method, path);

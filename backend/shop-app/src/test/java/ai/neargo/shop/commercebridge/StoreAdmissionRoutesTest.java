@@ -22,6 +22,14 @@ class StoreAdmissionRoutesTest {
     }
 
     @Test
+    @DisplayName("★★ 不经过门店准入的两类如实标出来，不照着准入表误标成关闭")
+    void routesThatBypassAdmissionAreNotShownAsDenied() {
+        assertThat(StoreAdmissionRoutes.describe("GET", "/biz/pay/v2/onboardings")).startsWith("NOT_APPLIED");
+        assertThat(StoreAdmissionRoutes.describe("POST", "/biz/auth/captcha/challenge")).startsWith("NOT_APPLIED");
+        assertThat(StoreAdmissionRoutes.describe("POST", "/biz/auth/login")).startsWith("NOT_APPLIED");
+    }
+
+    @Test
     @DisplayName("★★★ 没登记进准入表的门店路由默认关闭：它在这里显示为 DENY，而不是悄悄没有")
     void unknownStoreRouteIsShownAsDenied() {
         assertThat(StoreAdmissionRoutes.describe("GET", "/biz/stores/{storeNo}/no-such-feature")).startsWith("DENY");
