@@ -5,7 +5,7 @@
 
 ## 一句话
 
-- **B 端 765 条入口**：576 条按权限码判、183 条只要求登录、6 条留给入口判。入口注解上「只问是不是商家」的有 **123 条**——它们该不该带权限码、带哪个，是本文件要定的；其中 41 条已经在库里配了规则。
+- **B 端 765 条入口**：607 条按权限码判、152 条只要求登录、6 条留给入口判。入口注解上「只问是不是商家」的有 **123 条**——它们该不该带权限码、带哪个，是本文件要定的；其中 72 条已经在库里配了规则。
 - **C 端 174 条入口**：C 端没有角色，只有「访客」与「登录的买家」。106 条已在库里配成要登录，68 条没配。
 - 能从业务源码确认权限码的入口，本文件给出了建议的规则；确认不了的单独列出，不猜。
 
@@ -16,8 +16,8 @@
 | 来源 | 判的是什么 | 码长什么样 | 谁来授 | 入口数 |
 |---|---|---|---|---:|
 | 门店角色 | 这个人在**当前门店**的角色有没有这个码 | `biz:goods`、`mch:pay:refund`、`pay:sv:plan:read` | 店主给店员分角色 | 535 |
-| 管理范围 | 这个人在**某个管理空间**里，对某个品牌、门店、主体有没有这个码 | `sv.brand.activity.read`、`sv.settlement.read` | 管理空间的属主发授权 | 41 已配；另 35 条待读源码、8 条待确认 |
-| 账户级 | 只要是登录的商家账号 | — | — | 137（入口上没有注解的 101 条，加上「只问是不是商家」里属于账户级的 36 条） |
+| 管理范围 | 这个人在**某个管理空间**里，对某个品牌、门店、主体有没有这个码 | `sv.brand.activity.read`、`sv.settlement.read` | 管理空间的属主发授权 | 72 已配；另 10 条待确认 |
+| 账户级 | 只要是登录的商家账号 | — | — | 139（入口上没有注解的 101 条，加上「只问是不是商家」里属于账户级的 38 条） |
 
 另有 6 条留给入口判（带方法参数的门店成员检查、商城入口职责），83 条在门店准入表里对新模型门店关闭（见 [关闭入口清点](B端门店准入-关闭入口清点.md)）。
 
@@ -1057,99 +1057,89 @@
 
 | 状态 | 条数 |
 |---|---:|
-| 已配 | 41 |
-| 保持登录即可 | 36 |
-| 待配（同一套办法） | 35 |
-| 待确认 | 8 |
+| 已配 | 72 |
+| 保持登录即可 | 38 |
+| 待确认 | 10 |
 | 不处理 | 3 |
 
-#### 已配（41）
+#### 已配（72）
 
 | 方法 | 地址 | 建议的规则 | 依据 |
 |---|---|---|---|
-| GET | `/biz/management/brands/{brandNo}/stored-value/activities` | `sv.brand.activity.read @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}` | `sv.brand.activity.read @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| PUT | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions` | `sv.brand.activity.publish @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-context` | `sv.brand.activity.read @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-presets` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/activity-schedules` | `sv.brand.activity.manage @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/issuer` | `sv.issuer.read @BRAND(brandNo)` | 已上线并验证 |
-| POST | `/biz/management/brands/{brandNo}/stored-value/issuer` | `sv.issuer.configure @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/store-breakdown` | `sv.brand.report @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/brands/{brandNo}/stored-value/summary` | `sv.brand.report @BRAND(brandNo)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/activities/{activityNo}/summary` | `(sv.activity.report @STORE(任一) 或 sv.activity.report @BRAND(任一))` | 已上线并验证 |
-| GET | `/biz/management/stored-value/financial-resources` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/issuers/{issuerNo}/collection-routes` | `(sv.issuer.read @STORE(任一) 或 sv.issuer.read @BRAND(任一))` | 已上线并验证 |
-| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-checks` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | 已上线并验证 |
-| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-versions` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/generations` | `sv.settlement.generate @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/actions` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/adjustments` | `sv.settlement.adjust @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions` | `sv.settlement.dispute.resolve @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/disputes` | `sv.settlement.dispute @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/events` | `sv.settlement.audit @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/items` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | `sv.settlement.read @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | `sv.settlement.payment.register @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations` | `sv.settlement.reconcile @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/settlement-entity-candidates` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations` | `sv.settlement.receipt.confirm @ENTITY(任一)` | 已上线并验证 |
-| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/voids` | `sv.settlement.payment.void @ENTITY(任一)` | 已上线并验证 |
-| GET | `/biz/management/stored-value/store-issuer-summary` | `sv.store.report.all @SPACE(任一)` | 已上线并验证 |
-| GET | `/biz/management/stores/{storeNo}/stored-value/issuer` | `sv.issuer.read @STORE(storeNo)` | 已上线并验证 |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer` | `sv.issuer.configure @STORE(storeNo)` | 已上线并验证 |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/access-refresh` | `sv.issuer.read @STORE(storeNo)` | 已上线并验证 |
-| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` | `(management.grant.manage @SPACE(任一) 且 store.read @STORE(storeNo))` | 已上线并验证 |
-| GET | `/biz/stores/{storeNo}/stored-value/store-summary` | `(sv.store.report @STORE(storeNo) 或 sv.store.report.all @SPACE(任一))` | 已上线并验证 |
+| GET | `/biz/management/brand-changes/{changeNo}` | `management.enter @SPACE(任一)` | BrandService.change：resolve；之后按变更单上的门店或品牌判，留给业务 |
+| POST | `/biz/management/brand-changes/{changeNo}/decisions` | `store.brand.change @STORE(任一)` | decide：require(STORE, store.brand.change)，门店从变更单查出 |
+| GET | `/biz/management/brands` | `management.enter @SPACE(managementNo)` | queries.list：resolve |
+| POST | `/biz/management/brands` | `brand.manage @SPACE(任一)` | BrandService.create：require(SPACE, brand.manage) |
+| GET | `/biz/management/brands/{brandNo}` | `brand.read @BRAND(brandNo)` | detail：require(BRAND, brand.read) |
+| PUT | `/biz/management/brands/{brandNo}` | `brand.manage @BRAND(brandNo)` | mutate |
+| GET | `/biz/management/brands/{brandNo}/audit-events` | `brand.audit.read @BRAND(brandNo)` | queries.audit |
+| GET | `/biz/management/brands/{brandNo}/commands` | `brand.manage @BRAND(brandNo)` | editResult |
+| PUT | `/biz/management/brands/{brandNo}/legal-entity` | `brand.manage @BRAND(brandNo)` | mutate |
+| GET | `/biz/management/brands/{brandNo}/legal-entity-candidates` | `brand.manage @BRAND(brandNo)` | legalEntityCandidates |
+| GET | `/biz/management/brands/{brandNo}/legal-entity/commands` | `brand.manage @BRAND(brandNo)` | legalEntityResult |
+| GET | `/biz/management/brands/{brandNo}/marketing/activities` | `management.enter @SPACE(managementNo)` | 同上 |
+| GET | `/biz/management/brands/{brandNo}/marketing/commands` | `management.enter @SPACE(managementNo)` | 同上 |
+| POST | `/biz/management/brands/{brandNo}/marketing/commands` | `management.enter @SPACE(managementNo)` | 同上；具体动作的码在请求体里 |
+| GET | `/biz/management/brands/{brandNo}/marketing/context` | `management.enter @SPACE(managementNo)` | BrandPromotionAuthority：resolve；按活动类型的码留给业务 |
+| GET | `/biz/management/brands/{brandNo}/marketing/cost-rules` | `management.enter @SPACE(managementNo)` | 同上 |
+| GET | `/biz/management/brands/{brandNo}/marketing/cost-statements` | `management.enter @SPACE(managementNo)` | 同上 |
+| GET | `/biz/management/brands/{brandNo}/marketing/coupon-issues` | `management.enter @SPACE(managementNo)` | 同上 |
+| GET | `/biz/management/brands/{brandNo}/marketing/coupons` | `management.enter @SPACE(managementNo)` | 同上 |
+| POST | `/biz/management/brands/{brandNo}/status-changes` | `brand.manage @BRAND(brandNo)` | mutate |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activities` | `sv.brand.activity.read @BRAND(brandNo)` | 控制器 list：context(…,"sv.brand.activity.read") |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}` | `sv.brand.activity.read @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/checks` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/copies` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| PUT | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/draft` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/stop-issuance` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| POST | `/biz/management/brands/{brandNo}/stored-value/activities/{activityNo}/submissions` | `sv.brand.activity.publish @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-context` | `sv.brand.activity.read @BRAND(brandNo)` | 控制器 context：同上 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-presets` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/activity-schedules` | `sv.brand.activity.manage @BRAND(brandNo)` | 品牌储值活动：码在控制器里直接看得到 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/issuer` | `sv.issuer.read @BRAND(brandNo)` | IssuerAuthority.readScope → sv.issuer.read |
+| POST | `/biz/management/brands/{brandNo}/stored-value/issuer` | `sv.issuer.configure @BRAND(brandNo)` | configureScope → sv.issuer.configure；另要结算主体上的 sv.issuer.settlement.authorize（主体号在请求体里，留给业务） |
+| GET | `/biz/management/brands/{brandNo}/stored-value/store-breakdown` | `sv.brand.report @BRAND(brandNo)` | 同上 |
+| GET | `/biz/management/brands/{brandNo}/stored-value/summary` | `sv.brand.report @BRAND(brandNo)` | reportLookup(BRAND, …, sv.brand.report) |
+| GET | `/biz/management/brands/{brandNo}/stores` | `brand.read @BRAND(brandNo)` | 先 detail |
+| GET | `/biz/management/entities/{entityNo}/payment-merchants` | `(entity.read @ENTITY(entityNo) 且 payment.merchant.read @ENTITY(entityNo))` | PaymentMerchantScope.candidates；带门店号时另要 store.read，留给业务 |
+| GET | `/biz/management/spaces/{managementNo}/entities` | `management.enter @SPACE(managementNo)` | queries.list：resolve |
+| GET | `/biz/management/spaces/{managementNo}/grant-commands/{action}` | `(management.enter @SPACE(managementNo) 且 management.resource.read @SPACE(managementNo) 且 management.grant.manage @SPACE(managementNo))` | grantResult：三条 require |
+| GET | `/biz/management/spaces/{managementNo}/grant-options` | `(management.resource.read @SPACE(managementNo) 且 management.grant.manage @SPACE(managementNo) 且 brand.read @BRAND(brandNo))` | queries.grantOptions：三条 require |
+| POST | `/biz/management/spaces/{managementNo}/grants` | `management.grant.manage @SPACE(managementNo)` | scopes.grant |
+| DELETE | `/biz/management/spaces/{managementNo}/grants/{grantNo}` | `management.grant.manage @SPACE(managementNo)` | scopes.revoke |
+| GET | `/biz/management/spaces/{managementNo}/recipients` | `(management.resource.read @SPACE(managementNo) 且 management.grant.manage @SPACE(managementNo))` | queries.recipients |
+| GET | `/biz/management/spaces/{managementNo}/resources` | `management.resource.read @SPACE(managementNo)` | queries.resources；看授权视图时另要 grant.manage，留给业务 |
+| GET | `/biz/management/spaces/{managementNo}/stores` | `management.enter @SPACE(managementNo)` | queries.list：resolve |
+| GET | `/biz/management/stored-value/activities/{activityNo}/summary` | `(sv.activity.report @STORE(任一) 或 sv.activity.report @BRAND(任一))` | activityResource → sv.activity.report；发行方属于门店还是品牌事先不知道 |
+| GET | `/biz/management/stored-value/financial-resources` | `sv.settlement.read @ENTITY(任一)` | readableDirectory：按有 sv.settlement.read 的主体过滤 |
+| GET | `/biz/management/stored-value/issuers/{issuerNo}/collection-routes` | `(sv.issuer.read @STORE(任一) 或 sv.issuer.read @BRAND(任一))` | 按发行方号查出它属于门店还是品牌，再 readScope；类型事先不知道 |
+| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-checks` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | 同上，configureScope |
+| POST | `/biz/management/stored-value/issuers/{issuerNo}/configuration-versions` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | 同上 |
+| GET | `/biz/management/stored-value/settlement-bills` | `sv.settlement.read @ENTITY(任一)` | 支付域 QueryService：至少一个主体有 sv.settlement.read |
+| POST | `/biz/management/stored-value/settlement-bills/generations` | `sv.settlement.generate @ENTITY(任一)` | SettlementService.GENERATE |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}` | `sv.settlement.read @ENTITY(任一)` | detail：requireEither(…, sv.settlement.read) |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/actions` | `sv.settlement.read @ENTITY(任一)` | actions 内部调 detail |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/adjustments` | `sv.settlement.adjust @ENTITY(任一)` | requireEither |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions` | `sv.settlement.dispute.resolve @ENTITY(任一)` | requireEither |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/disputes` | `sv.settlement.dispute @ENTITY(任一)` | requireEither |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/events` | `sv.settlement.audit @ENTITY(任一)` | events 要的是**审计**权限，不是读 |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/items` | `sv.settlement.read @ENTITY(任一)` | items |
+| GET | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | `sv.settlement.read @ENTITY(任一)` | payments |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/payments` | `sv.settlement.payment.register @ENTITY(任一)` | PaymentService.REGISTER |
+| POST | `/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations` | `sv.settlement.reconcile @ENTITY(任一)` | requireParty(…, sv.settlement.reconcile) |
+| GET | `/biz/management/stored-value/settlement-entity-candidates` | `(sv.issuer.configure @STORE(任一) 或 sv.issuer.configure @BRAND(任一))` | settlementCandidates → sv.issuer.configure；类型在查询参数 scopeType 里，是变量 |
+| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations` | `sv.settlement.receipt.confirm @ENTITY(任一)` | PaymentService.RECEIVE |
+| POST | `/biz/management/stored-value/settlement-payments/{paymentNo}/voids` | `sv.settlement.payment.void @ENTITY(任一)` | PaymentService.VOID |
+| GET | `/biz/management/stored-value/store-issuer-summary` | `sv.store.report.all @SPACE(任一)` | FinancialAuthority：require(SPACE, sv.store.report.all) |
+| GET | `/biz/management/stores/{storeNo}/stored-value/issuer` | `sv.issuer.read @STORE(storeNo)` | readScope(STORE) |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer` | `sv.issuer.configure @STORE(storeNo)` | configureScope(STORE)；结算主体的授权留给业务 |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/access-refresh` | `sv.issuer.read @STORE(storeNo)` | readScope(STORE) |
+| POST | `/biz/management/stores/{storeNo}/stored-value/issuer/prepare` | `(management.grant.manage @SPACE(任一) 且 store.read @STORE(storeNo))` | prepareSettings：两条 require |
+| GET | `/biz/stores/{storeNo}/operating-context` | `store.read @STORE(storeNo)` | queries.operating |
+| GET | `/biz/stores/{storeNo}/stored-value/store-summary` | `(sv.store.report @STORE(storeNo) 或 sv.store.report.all @SPACE(任一))` | reportLookup(STORE)：门店上的 sv.store.report，或空间的 sv.store.report.all 加本人是该店主体的属主（属主这一半留给业务） |
 
-#### 待配（同一套办法）（35）
-
-| 方法 | 地址 | 建议的规则 | 依据 |
-|---|---|---|---|
-| GET | `/biz/management/brand-changes/{changeNo}` | — | 门店换品牌：`store.read` / `store.brand.change` / `brand.change.read` / `brand.change.decide`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/brand-changes/{changeNo}/decisions` | — | 门店换品牌：`store.read` / `store.brand.change` / `brand.change.read` / `brand.change.decide`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/brands` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| PUT | `/biz/management/brands/{brandNo}` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/audit-events` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/commands` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| PUT | `/biz/management/brands/{brandNo}/legal-entity` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/legal-entity-candidates` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/legal-entity/commands` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/activities` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/commands` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/brands/{brandNo}/marketing/commands` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/context` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/cost-rules` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/cost-statements` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/coupon-issues` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/marketing/coupons` | — | 品牌营销：`promotion.*`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/brands/{brandNo}/status-changes` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/brands/{brandNo}/stores` | — | 品牌：`brand.read` / `brand.manage` / `brand.audit.read`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/context` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/entities/{entityNo}/payment-merchants` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/spaces` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/entities` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/grant-commands/{action}` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/grant-options` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| POST | `/biz/management/spaces/{managementNo}/grants` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| DELETE | `/biz/management/spaces/{managementNo}/grants/{grantNo}` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/recipients` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/resources` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| GET | `/biz/management/spaces/{managementNo}/stores` | — | 管理空间与授权：`management.enter` / `management.resource.read` / `management.grant.manage`；逐条的码还没从源码读出来 |
-| POST | `/biz/stores/{storeNo}/brand-changes` | — | 门店换品牌：`store.read` / `store.brand.change` / `brand.change.read` / `brand.change.decide`；逐条的码还没从源码读出来 |
-| POST | `/biz/stores/{storeNo}/brand-changes/check` | — | 门店换品牌：`store.read` / `store.brand.change` / `brand.change.read` / `brand.change.decide`；逐条的码还没从源码读出来 |
-| GET | `/biz/stores/{storeNo}/operating-context` | — | 门店换品牌：`store.read` / `store.brand.change` / `brand.change.read` / `brand.change.decide`；逐条的码还没从源码读出来 |
-
-#### 待确认（8）
+#### 待确认（10）
 
 | 方法 | 地址 | 建议的规则 | 依据 |
 |---|---|---|---|
@@ -1161,8 +1151,10 @@
 | GET | `/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions` | — | 在付款服务里按原命令判，没读到固定的码 |
 | GET | `/biz/management/stores/{storeNo}/stored-value/financial-brand-change-original` | — | 在品牌资金变更的协调器里判，没读完 |
 | POST | `/biz/management/stores/{storeNo}/stored-value/financial-brand-changes` | — | 同上 |
+| POST | `/biz/stores/{storeNo}/brand-changes` | — | 同上 |
+| POST | `/biz/stores/{storeNo}/brand-changes/check` | — | 管理空间号在请求体里；具体要哪个码没读确定 |
 
-#### 保持登录即可（36）
+#### 保持登录即可（38）
 
 | 方法 | 地址 | 建议的规则 | 依据 |
 |---|---|---|---|
@@ -1194,6 +1186,8 @@
 | GET | `/biz/entity/{entityNo}` | — | 账户级：建店、主体资料、业务类型、问题回报等，本来就不按角色判 |
 | POST | `/biz/feedback` | — | 账户级：建店、主体资料、业务类型、问题回报等，本来就不按角色判 |
 | GET | `/biz/feedback/mine` | — | 账户级：建店、主体资料、业务类型、问题回报等，本来就不按角色判 |
+| GET | `/biz/management/context` | — | 账户级：列出我能进的管理空间 |
+| POST | `/biz/management/spaces` | — | 账户级：建管理空间，凭的是本人是某个主体的属主，授权表里没有对应的码 |
 | GET | `/biz/management/stored-value/financial-capability` | — | 只返回就绪开关 |
 | GET | `/biz/merchant/store-creation-context` | — | 账户级：建店、主体资料、业务类型、问题回报等，本来就不按角色判 |
 | POST | `/biz/merchant/store-openings` | — | 账户级：建店、主体资料、业务类型、问题回报等，本来就不按角色判 |
@@ -1818,9 +1812,8 @@ C 端没有角色。一个入口对谁开，只有两档：**访客**（不登�
 
 | 端 | 这一次可以配的 | 配成什么 | 状态 |
 |---|---:|---|---|
-| B 端 | 41 | 见 1.5「已配」逐条的规则 | **已一次配进库**（2026-11-19），抽查与业务自己的判断一致 |
-| B 端 | 35 | 管理空间、品牌、品牌营销、门店换品牌 | 码还没从源码逐条读出来；读完后同样一次配 |
-| B 端 | 8 | — | 待确认：属主判定或没读完的协调器 |
+| B 端 | 72 | 见 1.5「已配」逐条的规则 | **已一次配进库**（2026-11-19），抽查与业务自己的判断一致 |
+| B 端 | 10 | — | 待确认：属主判定或没读完的协调器 |
 | C 端 | 106 | 要登录 | 已配 |
 | C 端 | 15 | 要登录或公开 | 2.2 的写接口，逐条定 |
 
