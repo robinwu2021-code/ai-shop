@@ -51,3 +51,7 @@
 - **蓝新 `MS354053380`** 按 UME 数据登记给 roger（原记录商户名「创科」）：`PM80D58ACC11C044CF`，UNVERIFIED / PENDING。UME 内另 2 户（88600248120000008、88600254990000004）引用同号，批量迁移时再按 UME 数据处理。
 - 收银台不受影响：停用渠道没有产品，不出现在付款方式里。商户 App 目前也看不到这些渠道，要显示「待开通」需改 App 与收款方式接口（TDD）。
 - UME 店员账号按用户要求暂不同步。
+
+## 门店英文代码（用户 2026-11-19：代码用英文，先完成 roger、oscar）
+
+运营接口 `PUT /ops/stores/{storeNo}/basics` 写入 `slug`，店主可改：`ume-breakfast`（已有）、`ume-cafe`、`chuangke-pay`（創科系統收款帳號）、`jeff-first-home`、`ume-plan-pay`（ume 套餐收款店）、`chuangke-sam`、`chuangke-oscar`。roger 的 5 家店还没有整店收款码，代码要等开码后才挂到支付链接。
