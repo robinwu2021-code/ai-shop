@@ -48,6 +48,12 @@ class PlanTest(unittest.TestCase):
         self.assertEqual({r['plan'] for r in rows if r['merchantId'] == 'M1' and r['payChannel'] in ('LINEPAY', 'FUBON_WECHAT', 'NEWEBPAY')},
                          {'REGISTER'})
 
+    def test_trailing_tab_junk_in_ume_ids_is_removed(self):
+        rows = self.run_plan([('M1', [scan('linepay', 'CM1', {'channel_id': '1657463861\\t'}),
+                                      scan('gamapay', 'CM2', {'merchant_id': ' 136768\t'})], [])],
+                             {'M1': ('甲', 'PM1')})
+        self.assertEqual(sorted(r['channelMerchantId'] for r in rows), ['136768', '1657463861'])
+
     def test_a_shared_merchant_id_goes_only_to_the_entity_named_in_the_ume_record(self):
         rows = self.run_plan([('A', [], [card('MS354053380', name='创科')]), ('B', [], [card('MS354053380', name='创科')]),
                               ('C', [], [card('MSX', name='丙')]), ('D', [], [card('MSX', name='丙')])],

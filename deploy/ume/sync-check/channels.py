@@ -32,12 +32,20 @@ def norm(s):
     return ''.join((s or '').split()).replace('股份有限公司', '').replace('有限公司', '').replace('（', '(').replace('）', ')').lower()
 
 
+def clean(v):
+    """UME 导出里有渠道号尾随制表符或字面的 \\t（如 LINE Pay `1657463861\\t`），去掉。"""
+    v = (v or '').strip()
+    while v.endswith('\\t'):
+        v = v[:-2].rstrip()
+    return v
+
+
 def mid_of(kind, c, field):
     if kind == 'CARD':
-        return (c.get('channel_merchant_no') or '').strip()
+        return clean(c.get('channel_merchant_no'))
     for v in (c.get('provider_identifiers') or {}).values():
         if isinstance(v, dict) and v.get(field) not in (None, ''):
-            return str(v[field]).strip()
+            return clean(str(v[field]))
     return ''
 
 
