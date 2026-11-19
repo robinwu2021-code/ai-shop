@@ -1,6 +1,6 @@
 # TDD-UME迁移建档
 
-状态：已确认（2026-11-19，用户要求「自动进行，不要人工干涉」并以同步门店与商户资料为核心任务；按「方案 B 迁移建档」实施）
+状态：已实现、已上线 UME166（2026-11-19，用户要求「自动进行，不要人工干涉」并以同步门店与商户资料为核心任务；按「方案 B 迁移建档」实施）
 档位：1（新增一个运营端点；near-pay 不改；不改库表、不加权限码）
 关联需求：用户 2026-11-19「目前核心任务是同步门店和商户的资料并进行验证」。对账基线（`deploy/ume/sync-check/reconcile.sql`）：744 个 UME 商户中 739 户卡在「没有支付商户」，其门店在 near-pay 已有投影但 `UNLINKED_ENTITY`。
 关联设计：[TDD-运营端申请支付服务]（`PayServiceApplyRequests` / `OpsPayServiceController`）；near-pay `SourceLinkService#apply`（不带 profile 合法）；[TDD-门店代码与商户渠道展示](TDD-门店代码与商户渠道展示.md)；交接 [oscar-ume-align-2026-11-19](../handoff/oscar-ume-align-2026-11-19.md)。
@@ -49,13 +49,14 @@
 
 | AC | 测试 | 结果 |
 |---|---|---|
-| AC1、AC2、AC4 | `PayServiceMigrationRequestsTest` | 待实现 |
-| AC3 | `PayServiceMigrationRequestsTest#nonUmeEntitiesAreRefused` | 待实现 |
-| AC5 | `BizEndpointPermTest` / 运营权限矩阵生成物 | 待实现 |
-| 端到端 | 166：先试 5 户，再全量；对账脚本 stage 由 `5_NO_PAY_MERCHANT` 前进 | 待实现 |
+| AC1、AC2、AC4 | `PayServiceMigrationRequestsTest#umeEntityIsAppliedWithItsStoresAndNoProfile`、`#theEventIdIsFixedPerEntityRevision` | ✅ 3/3 |
+| AC3 | `PayServiceMigrationRequestsTest#nonUmeEntitiesAreRefused` | ✅ |
+| AC5 | 运营角色×端点矩阵生成物登记 `POST /ops/merchant/{entityNo}/pay-service/migrate`（`merchant:merchant:pay-apply`）；回归 `OpsPayServiceControllerTest` 5/5 | ✅ |
+| 端到端 | 166：试跑 1 户 + 5 户，再全量 739 户（734 新建、5 已有、0 失败）；对账 `5_NO_PAY_MERCHANT` 739 → 0 | ✅ |
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-11-19 | 草稿并按用户「自动进行」直接实施 |
+| 2026-11-19 | 实现 `08a0025db`；覆盖部署 ai-shop `a43238a6ecc1 → dae705102e65`（备份 `shop-app.jar.before-ume-migrate-20261119-08a0025db`）；全量迁移完成，见 [交接](../handoff/ume-sync-2026-11-19/README.md) |
