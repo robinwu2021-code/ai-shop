@@ -67,7 +67,8 @@ public class ResourceSyncRunner {
             }
             try {
                 // 只同步本进程入口；录入的微服务链接本来就在库里
-                List<ApiResource> scanned = indexes.of(List.of(prefix)).all().stream()
+                // 抄进库的必须是入口注解上写的那一份，不是叠加过库里调整的那一份
+                List<ApiResource> scanned = indexes.scanned(List.of(prefix)).stream()
                         .filter(resource -> !resource.remote()).toList();
                 if (scanned.isEmpty()) {
                     return;

@@ -6,7 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.gateway.core.security.AbstractAccessDecider;
 import ai.neargo.shop.gateway.core.security.Decision;
-import ai.neargo.shop.spi.merchant.ManagementAuthorityPort;
 import java.util.function.Supplier;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -14,7 +13,6 @@ import org.springframework.web.util.pattern.PathPatternParser;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
 import ai.neargo.shop.gateway.core.resource.PermRule;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.auth.ManagementScopeRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.server.PathContainer;
 
@@ -34,14 +32,14 @@ public class BizAccessDecider extends AbstractAccessDecider {
     private static final PathPatternParser PATTERNS =
             new PathPatternParser();
 
-    private final Supplier<ManagementAuthorityPort> management;
+    private final Supplier<ManagementAuthority> management;
 
     public BizAccessDecider() {
         this(() -> null);
     }
 
     /** @param management 管理范围的授权出口；商户模块没装时给出 null，带范围的码一律不成立 */
-    public BizAccessDecider(Supplier<ManagementAuthorityPort> management) {
+    public BizAccessDecider(Supplier<ManagementAuthority> management) {
         this.management = management;
     }
 
@@ -100,6 +98,11 @@ public class BizAccessDecider extends AbstractAccessDecider {
     @Override
     public BizException denial(Decision decision) {
         if (!merchant() || decision.missing().isEmpty()) {
+            return BizException.of(ErrorCode.FORBIDDEN);
+        }
+        // 缺的是管理空间里的码（写法是 a.b.c，门店角色的码是 a:b）：70006 说的是「找店主加角色」，
+        // 而这里该找的是管理空间的属主，所以回通用的「没有操作权限」
+        if (!decision.missing().get(0).contains(":")) {
             return BizException.of(ErrorCode.FORBIDDEN);
         }
         return BizException.of(ErrorCode.BIZ_ROLE_FORBIDDEN, BizPerms.labelOf(decision.missing().get(0)));

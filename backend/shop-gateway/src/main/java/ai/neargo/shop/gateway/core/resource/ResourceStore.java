@@ -28,7 +28,9 @@ public interface ResourceStore {
     /** 给「接口资源」页看的一行。 */
     record AdminRow(long id, String endCode, String method, String pattern, String source, String location,
                     String targetPath, String access, String ruleText, String handler, String status, boolean stale,
-                    String appVersion, String updatedBy, java.time.LocalDateTime updatedAt) {
+                    String appVersion, String updatedBy, java.time.LocalDateTime updatedAt,
+                    String adjustedAccess, String adjustedRule, String adjustedBy,
+                    java.time.LocalDateTime adjustedAt) {
     }
 
     /** 列表的筛选条件；各项为空表示不限。 */
@@ -53,4 +55,17 @@ public interface ResourceStore {
 
     /** 这一端被停用的链接，键是「方法 + 空格 + 地址模式」。 */
     Set<String> disabledKeys(String endCode);
+
+    /**
+     * 这一端本进程入口在库里的<b>生效</b>规则：有调整用调整，没有用启动时从入口注解抄进来的。
+     * 网关按这一份判权 —— 入口注解只是它的初始来源，之后的调整都在库里做，业务代码不为网关改写法。
+     * 过期的行不返回。
+     */
+    List<ApiResource> loadEffective(String endCode);
+
+    /**
+     * 在库里调整一条入口的放行方式与权限式；{@code access} 为 null 表示撤销调整，回到入口注解抄进来的那一份。
+     * 调用方负责校验（权限式读得懂、POINT 必须带式子）。
+     */
+    void adjust(long id, String access, String rule, String operator);
 }

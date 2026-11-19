@@ -5,6 +5,7 @@ import ai.neargo.shop.gateway.core.end.GatewayEndRuntimes;
 import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
 import ai.neargo.shop.gateway.core.resource.PermRule;
+import ai.neargo.shop.gateway.core.resource.PermRuleText;
 import ai.neargo.shop.gateway.core.resource.ResourceStore;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -125,6 +126,37 @@ public class JdbcResourceStore implements ResourceStore {
     }
 
     @Override
+    public List<ApiResource> loadEffective(String endCode) {
+        return jdbc.sql("SELECT method, pattern, location, access, rule_text, handler, adjusted_access, adjusted_rule"
+                        + " FROM sys_api_resource WHERE end_code = ? AND source = 'SCAN' AND stale = 0")
+                .param(endCode)
+                .query((rs, n) -> {
+                    String adjusted = rs.getString("adjusted_access");
+                    Access access = Access.valueOf(adjusted == null ? rs.getString("access") : adjusted);
+                    String text = adjusted == null ? rs.getString("rule_text") : rs.getString("adjusted_rule");
+                    String method = rs.getString("method");
+                    String pattern = rs.getString("pattern");
+                    String handler = rs.getString("handler");
+                    if (access != Access.POINT) {
+                        // 不带权限式的行，rule_text 里放的是「凭什么是这个类别」
+                        return ApiResource.local(method, pattern, access, handler, text);
+                    }
+                    // 式子读不懂就按「留给入口判」：不猜，也不因为库里一行写坏了而放行
+                    return PermRuleText.parse(text)
+                            .map(rule -> new ApiResource(method, pattern, ApiResource.LOCAL, Access.POINT, rule, handler))
+                            .orElseGet(() -> ApiResource.local(method, pattern, Access.DEFER, handler, null));
+                }).list();
+    }
+
+    @Override
+    @Transactional
+    public void adjust(long id, String access, String rule, String operator) {
+        jdbc.sql("UPDATE sys_api_resource SET adjusted_access = ?, adjusted_rule = ?, adjusted_by = ?,"
+                        + " adjusted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .params(access, access == null ? null : rule, operator, id).update();
+    }
+
+    @Override
     @Transactional
     public int seedManual(String endCode, List<ApiResource> seeds) {
         int inserted = 0;
@@ -148,7 +180,8 @@ public class JdbcResourceStore implements ResourceStore {
     }
 
     private static final String ADMIN_COLUMNS = "id, end_code, method, pattern, source, location, target_path,"
-            + " access, rule_text, handler, status, stale, app_version, updated_by, updated_at";
+            + " access, rule_text, handler, status, stale, app_version, updated_by, updated_at,"
+            + " adjusted_access, adjusted_rule, adjusted_by, adjusted_at";
 
     private static AdminRow adminRow(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new AdminRow(rs.getLong("id"), rs.getString("end_code"), rs.getString("method"),
@@ -156,7 +189,9 @@ public class JdbcResourceStore implements ResourceStore {
                 rs.getString("target_path"), rs.getString("access"), rs.getString("rule_text"),
                 rs.getString("handler"), rs.getString("status"), rs.getInt("stale") == 1,
                 rs.getString("app_version"), rs.getString("updated_by"),
-                rs.getObject("updated_at", java.time.LocalDateTime.class));
+                rs.getObject("updated_at", java.time.LocalDateTime.class),
+                rs.getString("adjusted_access"), rs.getString("adjusted_rule"), rs.getString("adjusted_by"),
+                rs.getObject("adjusted_at", java.time.LocalDateTime.class));
     }
 
     /** 拼筛选条件；参数按顺序放进 args。 */

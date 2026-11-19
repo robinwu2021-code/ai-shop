@@ -5,6 +5,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.commercebridge.StoreAdmissionRoutes;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
+import ai.neargo.shop.gateway.core.resource.PermRuleText;
 import ai.neargo.shop.gateway.core.resource.ResourceIndexes;
 import ai.neargo.shop.gateway.core.resource.ResourceStatusCache;
 import ai.neargo.shop.gateway.core.resource.ResourceStore;
@@ -35,7 +36,8 @@ public class ApiResourceAdmin {
     public record ApiResourceVO(long id, String endCode, String method, String pattern, String source,
                                 String location, String targetPath, String access, String ruleText, String handler,
                                 String status, boolean stale, boolean locked, String appVersion, String updatedBy,
-                                LocalDateTime updatedAt, String admission) {
+                                LocalDateTime updatedAt, String admission, String adjustedAccess,
+                                String adjustedRule, String adjustedBy, LocalDateTime adjustedAt) {
     }
 
     /** 条数与当前部署的两个开关；页面据此说明停用现在生不生效。 */
@@ -106,7 +108,50 @@ public class ApiResourceAdmin {
     private static ApiResourceVO view(AdminRow row) {
         return new ApiResourceVO(row.id(), row.endCode(), row.method(), row.pattern(), row.source(), row.location(),
                 row.targetPath(), row.access(), row.ruleText(), row.handler(), row.status(), row.stale(), locked(row),
-                row.appVersion(), row.updatedBy(), row.updatedAt(), admission(row));
+                row.appVersion(), row.updatedBy(), row.updatedAt(), admission(row), row.adjustedAccess(),
+                row.adjustedRule(), row.adjustedBy(), row.adjustedAt());
+    }
+
+    /** 库里可以把一条入口调整成的放行方式。不能调成「公开」：把一条入口变成不用登录，不该是页面上点一下的事。 */
+    private static final Set<String> ADJUSTABLE = Set.of("LOGIN", "POINT", "DEFER");
+
+    /**
+     * 在库里调整一条入口的权限规则（TDD-管理范围权限搬到网关-权限码方案「规则在库里」）。
+     *
+     * <p>入口注解上写的规则启动时抄进库，是初始值；这里做的调整叠在上面，网关按调整后的判，
+     * 业务代码不用为此改一行。{@code access} 传空表示撤销调整。
+     *
+     * <p>只调本进程入口的行；登录、验证码这类不能停用的行也不能调（调错了整端进不来）。
+     * 调整只在网关提前判权开着（观察或拦截）时起作用 —— 网关关着时，生效的仍是入口上的注解。
+     *
+     * @param access LOGIN / POINT / DEFER；空 = 撤销
+     * @param rule   权限式，写法同页面上显示的，如 {@code (a 或 b)}、{@code sv.x.read @BRAND(brandNo)}
+     */
+    public ApiResourceVO adjust(long id, String access, String rule, String operator) {
+        AdminRow row = store.find(id).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        boolean clear = access == null || access.isBlank();
+        if (!"SCAN".equals(row.source()) || locked(row) || (!clear && !ADJUSTABLE.contains(access))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String text = clear || rule == null || rule.isBlank() ? null : rule.trim();
+        if ("POINT".equals(access)) {
+            // 式子必须读得懂；存进去的是规范写法，页面上看到的与网关判的是同一段文字
+            text = PermRuleText.parse(text).map(Object::toString).orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
+        } else if (!clear) {
+            text = null;
+        }
+        store.adjust(id, clear ? null : access, text, operator);
+        indexes.invalidate();
+        String before = row.adjustedAccess() == null ? row.access() + " " + nullToDash(row.ruleText())
+                : row.adjustedAccess() + " " + nullToDash(row.adjustedRule());
+        auditLog.record(clear ? "API_RESOURCE_RULE_RESET" : "API_RESOURCE_RULE_ADJUSTED", row.method() + " " + row.pattern(),
+                (clear ? "撤销接口权限规则的调整 " : "调整接口权限规则 ") + row.method() + " " + row.pattern()
+                        + "：" + before + " → " + (clear ? "入口注解上的规则" : access + " " + nullToDash(text)), true);
+        return view(store.find(id).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND)));
+    }
+
+    private static String nullToDash(String value) {
+        return value == null ? "-" : value;
     }
 
     /** B 端入口在门店准入表里落在哪一类；别的端没有这一步。读不出来不影响这一页，留空 */

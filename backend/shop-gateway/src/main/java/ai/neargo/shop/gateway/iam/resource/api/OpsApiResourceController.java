@@ -56,6 +56,24 @@ public class OpsApiResourceController {
         return admin.setStatus(id, req.status(), SecurityUtils.currentUserNo());
     }
 
+    /**
+     * 在库里调整一条入口的权限规则；网关按调整后的判，业务代码不用改。返回改后的那一行。
+     * {@code access} 传空表示撤销调整，回到入口注解上的规则。
+     */
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_API_RESOURCE_UPDATE + "')")
+    @PostMapping("/ops/api-resources/{id}/rule")
+    public ApiResourceVO adjustRule(@PathVariable long id, @RequestBody RuleReq req) {
+        return admin.adjust(id, req.access(), req.rule(), SecurityUtils.currentUserNo());
+    }
+
+    /**
+     * @param access LOGIN（登录即可）/ POINT（要权限码）/ DEFER（留给入口判）；空 = 撤销调整
+     * @param rule   权限式，{@code access=POINT} 时必填。写法同列表里显示的：{@code a}、{@code (a 或 b)}、{@code (a 且 b)}；
+     *               按管理空间判的码写成 {@code 码 @类型(参数名)} 或 {@code 码 @类型(任一)}
+     */
+    public record RuleReq(String access, String rule) {
+    }
+
     /** @param status ENABLED 或 DISABLED */
     public record StatusReq(String status) {
     }

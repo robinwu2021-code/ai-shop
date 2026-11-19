@@ -22,57 +22,9 @@ import org.springframework.stereotype.Component;
 public class PermChecker {
 
     private final ObjectProvider<LivePermResolver> liveResolver;
-    private ObjectProvider<ai.neargo.shop.spi.merchant.ManagementAuthorityPort> management;
 
     public PermChecker(ObjectProvider<LivePermResolver> liveResolver) {
         this.liveResolver = liveResolver;
-    }
-
-    /** 管理范围的授权出口。商户模块没装时为空，{@link #canManage} 一律不放行。 */
-    @org.springframework.beans.factory.annotation.Autowired
-    public void setManagement(ObjectProvider<ai.neargo.shop.spi.merchant.ManagementAuthorityPort> management) {
-        this.management = management;
-    }
-
-    /**
-     * B 端按<b>管理空间</b>判的权限（TDD-管理范围权限搬到网关-权限码方案）：
-     * 此人在当前请求的管理空间里，对<b>这一个</b>资源持有这个码。
-     *
-     * <p>与 {@link #canBiz} 的差别：那个看「当前门店上的角色」，这个看「管理空间里的授权」——
-     * 品牌储值活动、发行方、储值结算这些不按门店圈，按管理空间授权。码表与授权数据是商户模块里现成的那一份。
-     *
-     * <p>管理空间号从请求头 {@code X-Management-No} 或查询参数 {@code managementNo} 取。
-     * <b>两处都没有时这里不判、返回 true</b>：写接口目前把管理空间号放在请求体里，这一层读不到，
-     * 仍由服务里原有的检查把关。等端上都带了请求头，再改成拒绝。
-     *
-     * @param resourceType SPACE / BRAND / STORE / ENTITY / PAYMENT_MERCHANT
-     * @param resourceNo   资源号，取自路径变量或查询参数
-     */
-    public boolean canManage(String code, String resourceType, String resourceNo) {
-        return manage(code, resourceType, resourceNo, false);
-    }
-
-    /** 同 {@link #canManage}，但只要求对<b>任一</b>该类型的资源持有：资源要从业务对象查出来时用，具体哪一个仍由服务裁。 */
-    public boolean canManageAny(String code, String resourceType) {
-        return manage(code, resourceType, null, true);
-    }
-
-    private boolean manage(String code, String resourceType, String resourceNo, boolean any) {
-        LoginUser user = SecurityUtils.currentUser().orElse(null);
-        String actorKey = ManagementScopeRequest.actorKey(user);
-        if (actorKey == null) {
-            return false;
-        }
-        String managementNo = ManagementScopeRequest.managementNo(ManagementScopeRequest.current());
-        if (managementNo == null) {
-            return true;
-        }
-        var port = management == null ? null : management.getIfAvailable();
-        if (port == null || (!any && (resourceNo == null || resourceNo.isBlank()))) {
-            return false;
-        }
-        return any ? port.canAny(user.tenantNo(), actorKey, managementNo, resourceType, code)
-                : port.can(user.tenantNo(), actorKey, managementNo, resourceType, resourceNo, code);
     }
 
     /**

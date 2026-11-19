@@ -13156,6 +13156,10 @@ CREATE TABLE IF NOT EXISTS sys_api_resource
     updated_by  VARCHAR(64)  NULL,
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    adjusted_access VARCHAR(16)   NULL,
+    adjusted_rule   VARCHAR(1000) NULL,
+    adjusted_by     VARCHAR(64)   NULL,
+    adjusted_at     DATETIME      NULL,
     CONSTRAINT uk_api_resource UNIQUE (end_code, method, pattern)
 );
 

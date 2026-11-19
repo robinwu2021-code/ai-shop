@@ -25,7 +25,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import tools.jackson.databind.ObjectMapper;
-import ai.neargo.shop.spi.merchant.ManagementAuthorityPort;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /** B 端出口（{@code /biz/**}）：要登录；能做什么由门店上下文与权限码判。 */
@@ -52,11 +51,11 @@ public class BizGatewayEnd extends AbstractGatewayEnd {
         this.json = json;
     }
 
-    private ObjectProvider<ManagementAuthorityPort> management;
+    private ObjectProvider<ManagementAuthority> management;
 
     /** 管理范围的授权出口，给判定器判「带范围的码」用；没有也能起来（那类码一律不成立）。 */
     @Autowired
-    void setManagement(ObjectProvider<ManagementAuthorityPort> management) {
+    void setManagement(ObjectProvider<ManagementAuthority> management) {
         this.management = management;
     }
 

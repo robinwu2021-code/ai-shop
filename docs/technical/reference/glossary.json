@@ -56944,8 +56944,8 @@
       "host": "PermRuleParser",
       "name": "BIZ_METHODS",
       "type": "Set<String>",
-      "value": "Set.of(\"canBiz\", \"canAnyBiz\", \"canManage\", \"canManageAny\")",
-      "zh": "B 端的写法：按当前门店判的 canBiz、任一即可的 canAnyBiz， 以及按管理空间判的 canManage(码, 类型, #参数) 与 canManageAny(码, 类型)。",
+      "value": "Set.of(\"canBiz\", \"canAnyBiz\")",
+      "zh": "B 端的写法：按当前门店判的 canBiz，以及任一即可的 canAnyBiz。",
       "module": "shop-gateway"
     },
     {

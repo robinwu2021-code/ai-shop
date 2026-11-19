@@ -26,17 +26,8 @@ public final class PermRuleParser {
 
     /** 运营端的写法。 */
     public static final Set<String> OPS_METHODS = Set.of("can");
-    /**
-     * B 端的写法：按当前门店判的 {@code canBiz}、任一即可的 {@code canAnyBiz}，
-     * 以及按管理空间判的 {@code canManage(码, 类型, #参数)} 与 {@code canManageAny(码, 类型)}。
-     */
-    public static final Set<String> BIZ_METHODS = Set.of("canBiz", "canAnyBiz", "canManage", "canManageAny");
-
-    /** {@code @perm.canManage('码','类型',#参数)}：参数必须是一个方法参数的引用，不能是表达式 */
-    private static final Pattern MANAGE_ON =
-            Pattern.compile("^@perm\\.canManage\\('([^']+)','([A-Z_]+)',#([A-Za-z_][A-Za-z0-9_]*)\\)$");
-    private static final Pattern MANAGE_ANY =
-            Pattern.compile("^@perm\\.canManageAny\\('([^']+)','([A-Z_]+)'\\)$");
+    /** B 端的写法：按当前门店判的 {@code canBiz}，以及任一即可的 {@code canAnyBiz}。 */
+    public static final Set<String> BIZ_METHODS = Set.of("canBiz", "canAnyBiz");
 
     /**
      * B 端上只问「是不是商家」的两种写法。B 端的认证链只收商家令牌（{@code MerchantTokenAuthFilter}），
@@ -83,20 +74,8 @@ public final class PermRuleParser {
             }
             return node instanceof OpAnd ? PermRule.all(children) : PermRule.any(children);
         }
-        String ast = node.toStringAST();
-        Matcher manageOn = MANAGE_ON.matcher(ast);
-        if (manageOn.matches()) {
-            return methods.contains("canManage") ? PermRule.scoped(manageOn.group(1), manageOn.group(2), manageOn.group(3))
-                    : null;
-        }
-        Matcher manageAny = MANAGE_ANY.matcher(ast);
-        if (manageAny.matches()) {
-            return methods.contains("canManageAny") ? PermRule.scoped(manageAny.group(1), manageAny.group(2), null)
-                    : null;
-        }
-        Matcher leaf = PERM_CALL.matcher(ast);
-        // canManage / canManageAny 只认上面两种精确的形状；写成别的样子（少一个参数、范围是表达式）一律认不出
-        if (!leaf.matches() || !methods.contains(leaf.group(1)) || leaf.group(1).startsWith("canManage")) {
+        Matcher leaf = PERM_CALL.matcher(node.toStringAST());
+        if (!leaf.matches() || !methods.contains(leaf.group(1))) {
             return null;
         }
         List<PermRule> codes = new ArrayList<>();
