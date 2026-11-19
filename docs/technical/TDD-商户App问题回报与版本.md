@@ -271,6 +271,35 @@
 
 `POST /biz/auth/password`（设密码）**照拦**：它是账号写入，旧包拿到 10426 进 Y11 即可。
 
+### 接口五 · `POST /common/appops/enrollment-ticket` AppOps 安装票据（匿名，2026-11-19 新增）
+
+背景：nearboss 在线升级改为方案 B——App 以 AppOps 普通安装身份直连 AppOps 查询升级（AppOps 分支 `feat/update-decision-contract`，APP-API-13/14/15/42/43）。AppOps 的 APP-API-13（签发登记票据）只接受 App 业务后端的 APP_BACKEND CLIENT，ai-shop 就是这个后端，所以由这里代 App 申请票据。
+
+| 项 | 约定 |
+|---|---|
+| 请求 | `{"app":"nearboss","publicKey":"<Ed25519 SPKI DER 44 字节，无 padding Base64URL，59 字符>"}` |
+| 响应 | 标准信封，`data = {"ticket","expiresAt"}`；`Cache-Control: no-store` |
+| 鉴权 | 匿名（挂 `/common`，与版本检查同理：App 首次启动、未登录时就要登记） |
+| 校验 | `app` 必须在 `shop.appops.apps` 配置内；公钥必须是 Ed25519 SPKI（固定 12 字节前缀 + 32 字节），否则 `10400`，且不调 AppOps |
+| 限流 | 每客户端 IP 每分钟 `tickets-per-ip-per-minute`（默认 10）、每 App 每分钟 `tickets-per-app-per-minute`（默认 600），超过 `10429`。IP 用 `ClientMeta.clientIp`（`/common` 链没有 `RequestMetaFilter`，只信内网反代的 `X-Real-IP`）；进程内限流的多实例口径同 `InMemoryRateLimiter` 说明 |
+| 下游 | `POST {base-url}/oauth2/token`（client_credentials，Basic）取 CLIENT 令牌并缓存到过期前 60 秒；`POST {base-url}/api/appops/v1/internal/installations/enrollment-tickets`（Bearer + 每次新的 `Idempotency-Key`），body `profile_id/distribution_id/public_key`；401 时换一次令牌重试 |
+| 失败 | 未配置、AppOps 不可达或拒绝 → `10505 RESOURCE_DEPENDENCY_UNAVAILABLE`，只记日志里的状态码与错误码，不回传 AppOps 细节；CLIENT 令牌和密钥不出 ai-shop |
+
+配置（`shop.appops`，`AppOpsProps`；`base-url` 为空即关闭）：
+
+```yaml
+shop.appops:
+  base-url: http://192.168.3.80:18090   # 内网直连 AppOps，不走公网网关
+  client-id: ${APPOPS_CLIENT_ID}         # 密钥库注入
+  client-secret: ${APPOPS_CLIENT_SECRET}
+  apps:
+    nearboss: { profile-id: <AppOps Profile>, distribution-id: <DIRECT_APK 发行> }
+```
+
+票据本身单次有效、短时（AppOps 60~300 秒）、绑定提交的公钥，所以匿名接口拿到的票据只能被持有对应私钥的安装兑换。
+
+文件：`shop-core` `platform/config/AppOpsProps`、`platform/AppOpsTicketService`、`platform/impl/AppOpsTicketServiceImpl`、`platform/dto/AppOpsTicketVOs`、`platform/api/common/AppOpsTicketController`；测试 `shop-app` `scenario/AppOpsTicketHttpTest`（本机假 AppOps 校验 Basic、Bearer 复用、幂等键、请求体；未配置 App/非 Ed25519 公钥 10400 且不打 AppOps；同 IP 限流 10429；AppOps 拒绝 10505 且不透传）。2026-11-19 实跑：该测试 4 项与 `AppVersionHttpTest` 7 项全部通过。
+
 ### 运营端配套
 
 | 页面 | 要不要做 | 说明 |
