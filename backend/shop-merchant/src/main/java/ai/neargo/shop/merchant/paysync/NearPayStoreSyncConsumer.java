@@ -78,7 +78,8 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
         try {
             resp = http.send(req, HttpResponse.BodyHandlers.ofString());
         } catch (java.io.IOException e) {
-            throw new IllegalStateException("near-pay store sync unreachable: " + e.getClass().getSimpleName(), e);
+            // 门店同步按事件号与版本幂等：不可达、超时都可以原样重投（RetryableOutboxException 走退避重试，不停在「结果未知」）
+            throw new ai.neargo.shop.event.outbox.RetryableOutboxException("near-pay store sync unreachable: " + e.getClass().getSimpleName());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("near-pay store sync interrupted", e);
@@ -89,7 +90,8 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
             return;
         }
         if (code >= 500 || code == 429) {
-            throw new IllegalStateException("near-pay store sync HTTP " + code);
+            // 支付侧并发死锁等返回 5xx（UME166 2026-11-19 批量同步）：同上，幂等可重投
+            throw new ai.neargo.shop.event.outbox.RetryableOutboxException("near-pay store sync HTTP " + code);
         }
         log.error("[nearpay-store-sync] store {} revision {} rejected HTTP {}: {}", snapshot.storeNo(), snapshot.revision(), code, brief(resp.body()));
     }
