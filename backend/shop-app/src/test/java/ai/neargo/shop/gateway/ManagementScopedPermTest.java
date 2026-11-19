@@ -156,6 +156,8 @@ class ManagementScopedPermTest {
         assertThat(adjusted.adjustedAccess()).isEqualTo("POINT");
         assertThat(adjusted.adjustedRule()).isEqualTo("brand.read @BRAND(brandNo)");
         assertThat(adjusted.access()).as("入口注解抄进来的那一份原样留着").isEqualTo("LOGIN");
+        assertThat(jdbc.queryForList("select perm_code from sys_api_resource_point where resource_id=?", String.class, id))
+                .as("「入口—权限码」关联表跟着调整后的规则走").containsExactly("brand.read");
         ApiResource located = indexes.of(List.of("/biz")).locate("GET", path).orElseThrow();
         assertThat(located.access()).isEqualTo(Access.POINT);
         assertThat(located.rule()).hasToString("brand.read @BRAND(brandNo)");
@@ -191,11 +193,15 @@ class ManagementScopedPermTest {
         assertThat(row.get("access")).isEqualTo("LOGIN");
         assertThat(row.get("adjusted_access")).isEqualTo("POINT");
         assertThat(row.get("adjusted_rule")).isEqualTo("brand.read @BRAND(brandNo)");
+        assertThat(jdbc.queryForList("select perm_code from sys_api_resource_point where resource_id=?", String.class, id))
+                .as("重新同步之后关联表仍是调整后的码").containsExactly("brand.read");
         assertThat(String.valueOf(row.get("rule_text"))).contains("managementAccess");
 
         // 撤销：回到入口注解上的规则，网关不再拦外人
         admin.adjust(id, null, null, "tester");
         assertThat(indexes.of(List.of("/biz")).locate("GET", path).orElseThrow().access()).isEqualTo(Access.LOGIN);
+        assertThat(jdbc.queryForObject("select count(*) from sys_api_resource_point where resource_id=?", Integer.class, id))
+                .as("撤销后这条入口不再关联任何码").isZero();
         assertThat(call(mvc, other, path, m).path("code").asInt()).isNotEqualTo(10403);
     }
 

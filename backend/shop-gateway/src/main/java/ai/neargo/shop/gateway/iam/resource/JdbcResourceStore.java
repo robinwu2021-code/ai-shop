@@ -77,8 +77,8 @@ public class JdbcResourceStore implements ResourceStore {
                                 + " app_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                         .params(resource.location(), access, rule, resource.handler(), appVersion, row.id())
                         .update();
-                jdbc.sql("DELETE FROM sys_api_resource_point WHERE resource_id = ?").param(row.id()).update();
-                writePoints(row.id(), resource);
+                // 这一行在库里调整过规则的话，关联表跟着调整后的规则走，不被注解的那一份冲掉
+                rewritePoints(row.id());
                 updated++;
             }
         }
@@ -154,6 +154,26 @@ public class JdbcResourceStore implements ResourceStore {
         jdbc.sql("UPDATE sys_api_resource SET adjusted_access = ?, adjusted_rule = ?, adjusted_by = ?,"
                         + " adjusted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                 .params(access, access == null ? null : rule, operator, id).update();
+        rewritePoints(id);
+    }
+
+    /**
+     * 按这一行<b>生效</b>的规则重写「入口—权限码」关联：有调整用调整后的式子，没有用入口注解抄进来的。
+     * 这张关联表回答的是「哪个角色能访问哪些接口」，必须与网关实际判的那一份一致。
+     */
+    private void rewritePoints(long id) {
+        jdbc.sql("DELETE FROM sys_api_resource_point WHERE resource_id = ?").param(id).update();
+        jdbc.sql("SELECT access, rule_text, adjusted_access, adjusted_rule FROM sys_api_resource WHERE id = ?")
+                .param(id)
+                .query((rs, n) -> {
+                    String adjusted = rs.getString("adjusted_access");
+                    String access = adjusted == null ? rs.getString("access") : adjusted;
+                    String text = adjusted == null ? rs.getString("rule_text") : rs.getString("adjusted_rule");
+                    return "POINT".equals(access) ? text : null;
+                }).optional().flatMap(PermRuleText::parse)
+                .ifPresent(rule -> new java.util.LinkedHashSet<>(rule.codes()).forEach(code ->
+                        jdbc.sql("INSERT INTO sys_api_resource_point (resource_id, perm_code) VALUES (?, ?)")
+                                .params(id, code).update()));
     }
 
     @Override
