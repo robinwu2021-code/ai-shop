@@ -158,6 +158,19 @@ class CredentialsTest(unittest.TestCase):
         self.assertIn('FOUND', buf.getvalue())
         self.assertNotIn(LP_SECRET, buf.getvalue())
 
+    def test_stage_mapping_reads_the_nearpay_backup_tables(self):
+        os.environ['UME_COLUMNS'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ume-columns.stage.json')
+        try:
+            cols = c.columns()
+        finally:
+            del os.environ['UME_COLUMNS']
+        self.assertEqual(cols['LINEPAY']['table'], 'nearpay_prod.stg_ume_chn_mer_scan_linepay_info_20261119')
+        self.assertEqual(cols['NEWEBPAY']['table'], 'nearpay_prod.stg_ume_chn_mer_card_inf_20261119')
+        self.assertEqual(cols['NEWEBPAY']['where'], {'chn_id': 'CH380202039616995328'}, '列名与条件沿用默认')
+        u = c.Ume(FakeDb({'MS9': [(NW_KEY, NW_IV)]}), cols)
+        self.assertEqual(u.lookup(row('PM-A', 'NEWEBPAY', 'MS9', 'MS9'))[1], 'FOUND')
+        self.assertIn('`nearpay_prod`.`stg_ume_chn_mer_card_inf_20261119`', u.conn.sql[0][0])
+
 
 if __name__ == '__main__':
     unittest.main()

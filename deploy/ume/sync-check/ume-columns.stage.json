@@ -1,0 +1,4 @@
+{
+  "LINEPAY": {"table": "nearpay_prod.stg_ume_chn_mer_scan_linepay_info_20261119"},
+  "NEWEBPAY": {"table": "nearpay_prod.stg_ume_chn_mer_card_inf_20261119"}
+}

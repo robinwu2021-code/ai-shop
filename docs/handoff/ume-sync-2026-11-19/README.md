@@ -83,3 +83,25 @@ ai-shop-bapp 分支 `feat/entity-channel-accounts-20261119`（工作树 `~/work/
 为此在 166 运营实例（`ai-shop-ops`，18081）的附加配置 `/home/ume/v46-entity-closure-20261115/ops-entity.properties` 追加一行（用户同意，备份 `.bak-before-automation-b-20261119`），重启 `ai-shop-ops`：
 `shop.auth.automation.subjects=${SHOP_AUTOMATION_SUBJECTS},B:U261113VG2HFDJMK0,B:UUMEU380162366651760640`（保留原白名单，只加两个店主）。
 商户端实例 `ai-shop-api` 未改动。**收尾时与其他临时授权一起删掉这一行并重启。**
+
+## 渠道密钥：先备份到 near-pay 库，再导入（用户执行）
+
+**为什么不直接写库**：near-pay 凭据由它的密钥服务加密后存 `sec_key_version` / 密文表，直接 SQL 写不出合法凭据，也绕过两人启用审批，所以入库必须走运营接口（`credentials.py`）。
+
+1. **备份**（ume-db61 上执行；密钥只在服务器内流式传递，会话关闭 binlog，不打印）：
+   ```bash
+   scp -F <ssh 配置> deploy/ume/sync-check/stage_keys.sh ume-db61:/tmp/ && ssh -t -F <ssh 配置> ume-db61 'bash /tmp/stage_keys.sh'
+   ```
+   结果：`nearpay_prod.stg_ume_chn_mer_scan_linepay_info_20261119`、`stg_ume_chn_mer_card_inf_20261119`，屏幕只有行数。
+2. **导入**（本机执行，经隧道调 near-pay 运营接口；源改为上面的备份表）：
+   ```bash
+   ssh -F <ssh 配置> -f -N -L 23307:127.0.0.1:3307 ume-db61
+   export UME_DB_HOST=127.0.0.1 UME_DB_PORT=23307 UME_DB_USER=root UME_COLUMNS=deploy/ume/sync-check/ume-columns.stage.json
+   export AUTOMATION_KEY=~/work/env/ume/automation-ume-ed25519.pem
+   T=docs/handoff/ume-sync-2026-11-19/credential-targets.tsv
+   ~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py describe      # 列名对不上就把输出发来
+   ~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py check $T --out check.json
+   ~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py apply $T --only PM0E0F6CC8F7454D75 --out pilot.json
+   ~/.venvs/ume-keys/bin/python -I deploy/ume/sync-check/credentials.py apply $T --out apply.json
+   ```
+3. **清理**：全部导入后在 ume-db61 执行 `bash /tmp/stage_keys.sh --drop`，删掉明文备份表。
