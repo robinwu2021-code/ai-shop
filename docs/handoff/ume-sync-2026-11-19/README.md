@@ -32,7 +32,8 @@
 - 店员账号（1667 个）：按用户决定暂不同步。
 - 渠道密钥：用户执行 `credentials.py` 导入（见下节）；其余渠道（橘子、ezPay 等）平台未接入，保持待开通。收款码与 H5 收款入口在可收款后再开。
 - 临时授权仍保留：`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）、near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
-- ai-shop 推送：`PayGoesThroughGatewayTest` 两个用例与 ADR-047 的「确证未发送即关单」冲突，待负责人决定；本地分支已含全部提交，未推送。
+- ai-shop 推送：`PayGoesThroughGatewayTest` 已修（`b042d7ca5`）—— 根因是本分支 `c3b53c337` 把旧下单入口改走 `PaymentDispatchService`，通道未接入 / 通道拒绝时会关单；主线（`OrdinaryPaymentInitiationService`）一直是保留原意图待查回。现只对旧入口恢复主线行为，测试 4/4。闸门另补：迁移端点登记为脚本专用（`known-orphan-endpoints.txt`）与权限归属 `merchant:merchant:pay-apply`。
+- 全量后端闸门剩 3 红 `ReviewStoreAttributionFlowTest.*`（商户登录取不到验证码），**干净 origin/main 上同样 3 红**，不是本分支引入；按闸门规矩不代改，未推送，待用户决定是否 `--no-verify` 推送或先由负责人修。
 
 ## 渠道密钥迁移（用户执行）
 
