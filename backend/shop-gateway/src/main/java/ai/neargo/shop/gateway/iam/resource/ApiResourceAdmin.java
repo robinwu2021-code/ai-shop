@@ -13,6 +13,7 @@ import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -47,11 +48,13 @@ public class ApiResourceAdmin {
     private final AuditLogPort auditLog;
 
     public ApiResourceAdmin(ResourceStore store, ResourceStatusCache statuses, ResourceIndexes indexes,
-                            GatewayProperties properties, AuditLogPort auditLog) {
+                            ObjectProvider<GatewayProperties> properties, AuditLogPort auditLog) {
         this.store = store;
         this.statuses = statuses;
         this.indexes = indexes;
-        this.properties = properties;
+        // 没有 Web 层的进程（任务执行器）不装网关的安全配置，也就没有这个配置 bean；那里没有人调本类，用默认值即可。
+        // 直接要求注入会让那种进程起不来 —— 而这个类只是给「接口资源」页用的
+        this.properties = properties.getIfAvailable(GatewayProperties::new);
         this.auditLog = auditLog;
     }
 
