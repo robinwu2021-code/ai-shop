@@ -192,7 +192,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:Industry", dom: "payment", shape: "CLASS", verdict: "TO_DICT",
     note: "sys_industry 是字典表，配 4 个 ops 接口。待确认行业会不会新增" },
   { decl: "shared:PaymentApplyStatus", dom: "payment", shape: "STATUS", verdict: "OK",
-    words: ["NONE", "APPLYING"] },
+    words: ["NONE", "APPLYING", "PENDING_ACTIVATION"],
+    note: "PENDING_ACTIVATION 申报为领域特有词（TDD-门店代码与商户渠道展示 C2）：支付侧渠道账户已登记、"
+      + "但渠道尚未对接或账户尚未补密钥核验 —— 「待开通」。不能用 L1 的 PENDING：同一字段里 APPLYING 已表示"
+      + "「进件已提交、等通道」，PENDING 读起来就是它的同义词，而待开通的球不在通道、在平台或商户补资料" },
   { decl: "shared:SkinId", dom: "ui", shape: "CLASS", verdict: "OK",
     note: "端上皮肤主题 id，纯展示层。后端零出现，也不该有 —— 换肤是端上的事" },
   { decl: "shared:ModeId", dom: "ui", shape: "CLASS", verdict: "OK",
