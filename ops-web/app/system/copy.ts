@@ -369,6 +369,7 @@ const zh = {
   arAdjustRule: "权限式",
   arAdjustRuleHelp: "只在「需要权限码」时填写。写法与列表里显示的一致：单个码写 a；多个写 (a 或 b)、(a 且 b)；按管理范围判的码写 码 @STORE(storeNo) 或 码 @SPACE(任一)。保存后网关按这里的规则判，业务代码不变。",
   arAdjustRuleRequired: "选择「需要权限码」时必须填写权限式",
+  arAdjustRuleInvalid: "权限式读不懂，没有保存。检查括号是否成对、码之间是否用「或」「且」连接，写法见输入框下方的说明",
   arAdjustedToast: "已保存。本服务器立即生效，其它服务器最多 60 秒",
   arAdjustResetToast: "已撤销调整，回到入口原规则",
 };
@@ -730,6 +731,7 @@ const en: typeof zh = {
   arAdjustRule: "Permission expression",
   arAdjustRuleHelp: "Only needed for \"Requires permission code\". Use the same notation as the expressions shown in the list, including the and/or keywords and the @TYPE(parameter) suffix for management-scoped codes. After saving, the gateway checks this rule; business code is unchanged.",
   arAdjustRuleRequired: "A permission expression is required for \"Requires permission code\"",
+  arAdjustRuleInvalid: "The permission expression could not be read, so nothing was saved. Check that brackets are paired and codes are joined with the and/or keywords as described below the field",
   arAdjustedToast: "Saved. Effective now on this server, within 60 seconds on others",
   arAdjustResetToast: "Adjustment removed; the original rule applies again",
 };

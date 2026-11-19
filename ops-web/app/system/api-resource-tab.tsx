@@ -62,9 +62,16 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
   const [editing, setEditing] = useState<ApiResource | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  // 这条接口眼下生效的权限式：切到「需要权限码」时带进输入框，在它的基础上改，不用从头输入
+  const currentRule = (r: ApiResource) => r.adjustedRule ?? r.ruleText ?? "";
   const openAdjust = (r: ApiResource) => {
     setEditing(r);
-    setForm({ link: `${r.method} ${r.pattern}`, access: r.adjustedAccess ?? "", rule: r.adjustedRule ?? r.ruleText ?? "" });
+    setForm({ link: `${r.method} ${r.pattern}`, access: r.adjustedAccess ?? "", rule: currentRule(r) });
+  };
+  // 表单在字段被禁用时会清空它的值（「不调整」时权限式是禁用的），所以切回「需要权限码」时补回去
+  const changeAdjust = (next: Record<string, unknown>) => {
+    const refill = next.access === "POINT" && !String(next.rule ?? "").trim() && editing;
+    setForm(refill ? { ...next, rule: currentRule(editing) } : next);
   };
   const saveAdjust = () => {
     if (!editing) return;
@@ -74,7 +81,9 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
     setSaving(true);
     api.adjustApiResourceRule(editing.id, access, access === "POINT" ? rule : null)
       .then(() => { invalidate(); setEditing(null); notify.success(access ? c.arAdjustedToast : c.arAdjustResetToast); })
-      .catch((e: unknown) => notify.error(e instanceof Error ? e.message : String(e)))
+      // 后端读不懂权限式时只回「请求参数有误」：在需要权限码时把它说清楚
+      .catch((e: unknown) => notify.error(access === "POINT" ? c.arAdjustRuleInvalid
+        : e instanceof Error ? e.message : String(e)))
       .finally(() => setSaving(false));
   };
 
@@ -202,7 +211,7 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
         isEdit
         fields={adjustFields}
         value={form}
-        onChange={setForm}
+        onChange={changeAdjust}
         onSubmit={saveAdjust}
         submitting={saving}
       />
