@@ -118,6 +118,36 @@ sudo docker rm -f ai-shop-ops-v2
 
 迁移历史里的三行不要删：删了之后 v2 再启动会尝试重新执行，而应用账号没有建表权限。
 
+## 2026-11-19 追加：v2 接入 Nacos
+
+用户要求「基于 nacos，pay、aishop 都接入进来，先用 aishop 接入」，并要求自动创建账号。
+
+- **Nacos**：192.168.3.80 上的 3.3.0，单机、内置存储。控制台 `http://192.168.3.80:8080/`，服务端 `192.168.3.80:8848`。
+  管理员 `nacos` 已初始化；给 ai-shop 建了账号 `ai-shop`（角色 `ai-shop-svc`，对 `public` 命名空间读写）。
+  两个口令都在 .80 上随机生成，存在 `/data0/nacos/secrets/`（权限 600），没有出现在任何输出里。
+- **v2 换了包**：提交 `e084b5d55`（分支 `feat/gateway-nacos-discovery`），SHA-256 `3b1549313a652c6bb382eba06233e24453061ae12192a0588cc0e5954bce8381`，
+  在 `/data0/app/ai-shop-v2/releases/shop-app-e084b5d55.jar`。上一个包 `shop-app-1ce21cf86.jar` 还在同一目录。
+- **v2 的环境文件加了五项**（改之前的备份是 `ai-shop-v2.env.before-nacos-20261119`）：
+  `SHOP_NACOS_ENABLED=true`、`SHOP_NACOS_SERVER_ADDR=192.168.3.80:8848`、`SHOP_NACOS_USERNAME=ai-shop`、`SHOP_NACOS_PASSWORD`、`SHOP_NACOS_REGISTER_IP=192.168.3.166`。
+- **只打开了登记，发现名单是空的**：所有服务地址（包括支付）仍然读配置，调用路径没有变化。日志里没有一次「取自 Nacos」或「回落」。
+
+```
+v2 启动：Started ShopApplication in 74 秒；已登记到 Nacos：ai-shop-ops@DEFAULT_GROUP 192.168.3.166:18181
+Nacos 里 ai-shop-ops 的实例数: 1
+  192.168.3.166:18181 healthy=True ephemeral=True metadata={buildTime, scheme=http, face=ops}
+公网：/ops-shop-v2/ 200，/ops-shop-v2/ops/auth/me 401，/ops-shop/ops/auth/me 401
+现有 ops、api 实例健康检查 200；166 可用内存约 1.48 GiB
+```
+
+要留意的：
+
+- 登记的地址是 `192.168.3.166:18181`，而实例只绑 `127.0.0.1`，别的机器按这个地址连不上。现在登记的作用是在 Nacos 里看得见实例与版本。
+- v2 换包重启时中断了约 75 秒；现有版本没有动。
+- 现有的 `ai-shop-ops`、`ai-shop-api`（v1）没有接入 Nacos：它们的包里没有这段代码。
+- 支付的接入要在 near-pay 的仓库里做。它登记之后，在 v2 的环境里加 `SHOP_NACOS_DISCOVERY_SERVICES_PAY=<它登记的服务名>` 即可切到按 Nacos 发现；取不到会回落到现在的配置地址。
+
+回退这一步：用 `ai-shop-v2.env.before-nacos-20261119` 覆盖环境文件，并把容器换回 `shop-app-1ce21cf86.jar` 重建。
+
 ## 怎么连
 
 经 UME 跳板机（资料在 `~/work/env/ume/`）。那份 `ssh.config` 里 `ProxyCommand` 用了 `%d`，本机的 ssh 不认，
