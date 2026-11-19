@@ -216,12 +216,41 @@ class ManagementScopedPermTest {
             assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> admin.adjust(id, bad[0], bad[1], "tester")))
                     .as(bad[0] + " " + bad[1]).isInstanceOf(BizException.class);
         }
-        Long login = jdbc.queryForObject("select min(id) from sys_api_resource where end_code='biz' and source='SCAN'"
-                + " and access='LOGIN' and rule_text is null", Long.class);
+        Long login = jdbc.queryForObject("select id from sys_api_resource where end_code='biz' and method='POST'"
+                + " and pattern='/biz/auth/login'", Long.class);
         assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> admin.adjust(login, "POINT", "biz:goods", "tester")))
                 .as("登录、验证码这类入口不能调").isInstanceOf(BizException.class);
         assertThat(jdbc.queryForObject("select count(*) from sys_api_resource where adjusted_access is not null"
                 + " and (id=? or id=?)", Integer.class, id, login)).isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 没有注解的业务入口可以在库里调规则（权限在方法体里判的那类）；会话外壳（当前用户、菜单）仍然不能调；停用的锁不变")
+    void unannotatedBusinessRowsAreAdjustable() {
+        sync.syncOnReady();
+        Long business = jdbc.queryForObject("select min(id) from sys_api_resource where end_code='ops' and source='SCAN'"
+                + " and access='LOGIN' and (rule_text is null or rule_text='') and pattern not like '%/auth/%'"
+                + " and pattern not like '/ops/menu%' and pattern not like '/ops/captcha%' and pattern not like '/ops/stream%'"
+                + " and pattern not like '/ops/api-resources%'", Long.class);
+        String pattern = jdbc.queryForObject("select pattern from sys_api_resource where id=?", String.class, business);
+        var before = admin.page("ops", pattern, null, null, 1, 50).records().stream()
+                .filter(r -> r.id() == business).findFirst().orElseThrow();
+        assertThat(before.locked()).as("停用仍然锁着：扫描分不出它是不是登录").isTrue();
+        assertThat(before.adjustable()).isTrue();
+        var adjusted = admin.adjust(business, "POINT", "system:param:read", "tester");
+        assertThat(adjusted.adjustedRule()).isEqualTo("system:param:read");
+        admin.adjust(business, null, null, "tester");
+
+        Long me = jdbc.queryForObject("select id from sys_api_resource where end_code='ops' and method='GET'"
+                + " and pattern='/ops/auth/me'", Long.class);
+        Long menu = jdbc.queryForObject("select id from sys_api_resource where end_code='ops' and method='GET'"
+                + " and pattern='/ops/menu'", Long.class);
+        for (Long shell : new Long[] {me, menu}) {
+            assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> admin.adjust(shell, "POINT", "x:y", "tester")))
+                    .isInstanceOf(BizException.class);
+        }
+        assertThat(admin.page("ops", "/ops/auth/me", null, null, 1, 20).records().stream()
+                .filter(r -> r.pattern().equals("/ops/auth/me")).findFirst().orElseThrow().adjustable()).isFalse();
     }
 
     private static TreeSet<String> describe(List<ApiResource> resources) {

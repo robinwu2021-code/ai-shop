@@ -31,13 +31,22 @@ public class ApiResourceAdmin {
     public static final String SELF_PREFIX = "/ops/api-resources";
     private static final Set<String> STATUSES = Set.of("ENABLED", "DISABLED");
     private static final Pattern CONSUMER_LOGIN = Pattern.compile("/(login|logout|otp|token|captcha|auth)(/|$)");
+    /**
+     * 会话外壳：登录、登出、验证码、令牌、当前用户、菜单、消息推送、免登录票据。它们不能在库里调规则 ——
+     * 调成要权限码，整端就进不来了。按地址认，不按「有没有注解」认：没注解的也可能是权限写在方法体里的业务入口。
+     */
+    private static final Pattern SESSION_SHELL =
+            Pattern.compile("/(auth|login|logout|captcha|otp|token|menu|session|stream)(/|$)|^/common/");
 
-    /** 给页面的一行；{@code locked} 为 true 表示这一行不能停用。 */
+    /**
+     * 给页面的一行；{@code locked} 为 true 表示这一行不能停用，{@code adjustable} 为 true 表示可以在库里调规则。
+     * 两者不同：没有注解的入口一律不让停（扫描分不出哪条是登录），但只要不是会话外壳就可以调规则。
+     */
     public record ApiResourceVO(long id, String endCode, String method, String pattern, String source,
                                 String location, String targetPath, String access, String ruleText, String handler,
                                 String status, boolean stale, boolean locked, String appVersion, String updatedBy,
                                 LocalDateTime updatedAt, String admission, String adjustedAccess,
-                                String adjustedRule, String adjustedBy, LocalDateTime adjustedAt) {
+                                String adjustedRule, String adjustedBy, LocalDateTime adjustedAt, boolean adjustable) {
     }
 
     /** 条数与当前部署的两个开关；页面据此说明停用现在生不生效。 */
@@ -105,11 +114,17 @@ public class ApiResourceAdmin {
         return shell || consumerLogin || row.pattern().startsWith(SELF_PREFIX);
     }
 
+    /** 能不能在库里调规则：只调本进程入口；会话外壳与本页自己的接口不能调。 */
+    private static boolean adjustable(AdminRow row) {
+        return "SCAN".equals(row.source()) && !"PUBLIC".equals(row.access()) && !row.pattern().startsWith(SELF_PREFIX)
+                && !SESSION_SHELL.matcher(row.pattern()).find();
+    }
+
     private static ApiResourceVO view(AdminRow row) {
         return new ApiResourceVO(row.id(), row.endCode(), row.method(), row.pattern(), row.source(), row.location(),
                 row.targetPath(), row.access(), row.ruleText(), row.handler(), row.status(), row.stale(), locked(row),
                 row.appVersion(), row.updatedBy(), row.updatedAt(), admission(row), row.adjustedAccess(),
-                row.adjustedRule(), row.adjustedBy(), row.adjustedAt());
+                row.adjustedRule(), row.adjustedBy(), row.adjustedAt(), adjustable(row));
     }
 
     /** 库里可以把一条入口调整成的放行方式。不能调成「公开」：把一条入口变成不用登录，不该是页面上点一下的事。 */
@@ -121,7 +136,8 @@ public class ApiResourceAdmin {
      * <p>入口注解上写的规则启动时抄进库，是初始值；这里做的调整叠在上面，网关按调整后的判，
      * 业务代码不用为此改一行。{@code access} 传空表示撤销调整。
      *
-     * <p>只调本进程入口的行；登录、验证码这类不能停用的行也不能调（调错了整端进不来）。
+     * <p>只调本进程入口的行；会话外壳（登录、验证码、当前用户、菜单等，见 {@code SESSION_SHELL}）不能调（调错了整端进不来）。
+     * 没有注解、权限写在方法体里的业务入口可以调 —— 网关就是靠这一步接管它们的权限。
      * 调整只在网关提前判权开着（观察或拦截）时起作用 —— 网关关着时，生效的仍是入口上的注解。
      *
      * @param access LOGIN / POINT / DEFER；空 = 撤销
@@ -130,7 +146,7 @@ public class ApiResourceAdmin {
     public ApiResourceVO adjust(long id, String access, String rule, String operator) {
         AdminRow row = store.find(id).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         boolean clear = access == null || access.isBlank();
-        if (!"SCAN".equals(row.source()) || locked(row) || (!clear && !ADJUSTABLE.contains(access))) {
+        if (!adjustable(row) || (!clear && !ADJUSTABLE.contains(access))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         String text = clear || rule == null || rule.isBlank() ? null : rule.trim();

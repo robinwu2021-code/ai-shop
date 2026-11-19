@@ -478,6 +478,8 @@ export interface ApiResource {
   stale: boolean;
   /** true = 这一行不能停用（不带权限码的入口，或本页自己的接口） */
   locked: boolean;
+  /** true = 可以在库里调整规则（本系统入口里除登录、当前用户、菜单这类会话外壳与本页自己的接口） */
+  adjustable?: boolean;
   /** 最近一次写入这一行的应用版本 */
   appVersion: string | null;
   /** 最近一次人工修改的人；没人改过为 null */

@@ -108,7 +108,9 @@ export const appVersions: AppVersionPolicy[] = [
 const res = (id: number, method: string, pattern: string, over: Partial<ApiResource> = {}): ApiResource => ({
   id, endCode: "ops", method, pattern, source: "SCAN", location: "LOCAL", targetPath: null, access: "POINT",
   ruleText: null, handler: null, status: "ENABLED", stale: false, locked: false, appVersion: "1.0.0",
-  updatedBy: null, updatedAt: "2026-11-18T09:00:00", ...over,
+  updatedBy: null, updatedAt: "2026-11-18T09:00:00",
+  adjustable: (over.source ?? "SCAN") === "SCAN" && !/\/(auth|login|logout|captcha|menu)(\/|$)|^\/ops\/api-resources/.test(pattern),
+  ...over,
 });
 export const apiResources: ApiResource[] = [
   res(1, "POST", "/ops/auth/login", { access: "LOGIN", locked: true, handler: "OpsAuthController#login" }),

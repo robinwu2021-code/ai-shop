@@ -152,18 +152,21 @@ export function ApiResourceTab({ c, canWrite }: { c: SystemCopy; canWrite: boole
     },
     ...(canWrite ? [{
       header: c.arColActions,
-      cell: (r: ApiResource) => (r.locked && r.status === "ENABLED"
-        ? <span className="txt-caption text-muted-foreground">{c.arLocked}</span>
-        : (
-          <span className="flex flex-wrap items-center gap-1">
-            <Button size="sm" variant="outline" onClick={() => toggle(r)}>
-              {r.status === "ENABLED" ? c.arDisableAct : c.arEnableAct}
-            </Button>
-            {r.source === "SCAN" && !r.locked && r.access !== "PUBLIC" && (
-              <Button size="sm" variant="outline" onClick={() => openAdjust(r)}>{c.arAdjustAct}</Button>
+      // 停用与调规则分开锁：没注解的入口不让停（扫描分不出哪条是登录），但不是会话外壳就可以调规则
+      cell: (r: ApiResource) => (
+        <span className="flex flex-wrap items-center gap-1">
+          {r.locked && r.status === "ENABLED"
+            ? <span className="txt-caption text-muted-foreground">{c.arLocked}</span>
+            : (
+              <Button size="sm" variant="outline" onClick={() => toggle(r)}>
+                {r.status === "ENABLED" ? c.arDisableAct : c.arEnableAct}
+              </Button>
             )}
-          </span>
-        )),
+          {r.adjustable && (
+            <Button size="sm" variant="outline" onClick={() => openAdjust(r)}>{c.arAdjustAct}</Button>
+          )}
+        </span>
+      ),
     }] : []),
   ];
 

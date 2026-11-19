@@ -94,7 +94,7 @@ export const systemMock: SystemApi = {
   adjustApiResourceRule: async (id, access, rule) => {
     const row = db.apiResources.find((r) => r.id === id);
     if (!row) notFound("接口", "Endpoint", String(id));
-    if (row.source !== "SCAN" || row.locked) fail("这条接口的规则不能调整", "This endpoint's rule cannot be adjusted");
+    if (!row.adjustable) fail("这条接口的规则不能调整", "This endpoint's rule cannot be adjusted");
     const text = rule?.trim() || null;
     if (access === "POINT" && !text) fail("要权限码时必须填写权限式", "A permission expression is required");
     Object.assign(row, access
