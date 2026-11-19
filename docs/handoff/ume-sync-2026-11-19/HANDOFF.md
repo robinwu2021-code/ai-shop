@@ -33,7 +33,6 @@
 |---|---|---|
 | `ST-UME-CONFIG` 超管 | ai-shop `sys_role_member`（`created_by='ume-batch-temp'`）与 `sys_ops_staff.roles` | 删该成员行、还原 roles |
 | near-pay 数据范围 | `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21` | 约 2026-11-21 自动过期，或提前撤销 |
-| near-pay 免审批密钥直录开关 | 166 `/data0/app/nearpay-prod/cloud.properties`：`near-pay.credential.migration.enabled=true`；**`anonymous=false`（已关，见下「安全事件」，不得再开）** | 迁移收尾把 `enabled` 改回 false，`docker restart nearpay-prod`，即恢复审批；运营端直录表单随之报「未开启」 |
 | 两个店主自动化白名单 | 166 `/home/ume/v46-entity-closure-20261115/ops-entity.properties` 末行 `shop.auth.automation.subjects=...`（备份 `.bak-before-automation-b-20261119`） | 删该行，`docker restart ai-shop-ops` |
 
 ## 三、接下来要做的事
@@ -72,3 +71,12 @@
 **安全事件**：迁移端点免认证上线后发现 166 nginx 把 `/oms-api/pay-ops/v2/` 转发到公网，端点对公网无认证可写密钥。已立即 `anonymous=false` 并重启，公网路径无令牌复验 401；日志确认无外部调用，期间写入均为用户导入。今后 `/pay-ops/**` 一律会话认证（near-pay TDD §8）。
 
 **覆盖包核查更正**：此前三次覆盖的 javap 比对脚本有误（路径带 `./`，比对为空），已用正确类名重做：首包无成员缺失；`5206f2c68749` 包里 `GuardFilter` 换成了 `18e6bee56` 源码版——私有 `onboardingMultipart` 改名 `trustedMultipart`，多放行渠道账单与认领文件两类 multipart（线上原 pay-guard 略早于 `18e6bee56`）；本次包只改直录服务与请求体的构造器和私有成员。
+
+
+## 2026-11-19 晚 · 收口：密钥导入结束，直录转为日常维护
+
+用户：「密钥导入的任务已经完成了，以上是解决日常的渠道信息维护」。
+- 导入结束：藍新 704、LINE Pay 436 已启用；**其余 18 个 LINE Pay（UME 渠道号带 `\t`）不再跑脚本，由运营在「渠道凭证」页签人工录入**；今后各渠道密钥的录入、更换都走该页签。
+- **直录开关常驻**：`near-pay.credential.migration.enabled=true` 不再是临时授权，**不要关**（关了运营端录入会报「未开启」）；`anonymous=false` 必须保持。
+- **权限补回**（near-pay `00dbaf37e`）：直录端点要求运营会话 + `pay:channel-account:manage` + 数据范围，去掉无会话回退。覆盖部署 166 `18f2a134f440 → d09e409d202d`（备份 `pay-svc.jar.before-20261119-perm-00dbaf37e`）；冒烟：无令牌 401、超管到业务校验、无管理权限的复核人 403。
+- 仍待撤的临时授权：`ST-UME-CONFIG` 超管、near-pay 两个数据范围（约 11-21 过期）、`ai-shop-ops` 的两个店主自动化白名单（见第二节）。
