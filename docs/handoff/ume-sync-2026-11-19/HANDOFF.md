@@ -33,7 +33,7 @@
 |---|---|---|
 | `ST-UME-CONFIG` 超管 | ai-shop `sys_role_member`（`created_by='ume-batch-temp'`）与 `sys_ops_staff.roles` | 删该成员行、还原 roles |
 | near-pay 数据范围 | `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21` | 约 2026-11-21 自动过期，或提前撤销 |
-| near-pay 免审批密钥迁移开关 | 166 `/data0/app/nearpay-prod/cloud.properties` 末行 `near-pay.credential.migration.enabled=true`（备份 `.before-credential-migration-20261119-ac710c329`） | 改回 false（或删该行），`docker restart nearpay-prod` |
+| near-pay 免审批密钥迁移开关 | 166 `/data0/app/nearpay-prod/cloud.properties`：`near-pay.credential.migration.enabled=true` **且 `near-pay.credential.migration.anonymous=true`（迁移端点免认证，用户 2026-11-19 要求）** | 把 `enabled` 改回 false（或删两行），`docker restart nearpay-prod`，即同时恢复认证与审批 |
 | 两个店主自动化白名单 | 166 `/home/ume/v46-entity-closure-20261115/ops-entity.properties` 末行 `shop.auth.automation.subjects=...`（备份 `.bak-before-automation-b-20261119`） | 删该行，`docker restart ai-shop-ops` |
 
 ## 三、接下来要做的事
@@ -41,6 +41,7 @@
 | # | 事项 | 谁 | 前置 |
 |---|---|---|---|
 | 0 | near-pay 新增免审批迁移导入端点 `POST /pay-ops/v2/channel-accounts/{no}/migration-credential`（near-pay `ac710c329`，TDD-UME渠道密钥迁移导入；仅 `file:ume/` 迁移账户、开关控制，一次到可收款）——**已覆盖部署 166**（`cb44f1220b2d → e1732435b4be`，备份 `pay-svc.jar.before-ume-credential-migration-20261119-ac710c329`），冒烟：非迁移账户被拒且未写入。`credentials.py apply` 默认改走该端点 | ✅ 完成 | — |
+| 0b | 该端点改为**迁移窗口内免认证**（near-pay `6ea6f1a40`，用户「整段免认证」；守卫只放行这一条 OPS 路径，无会话用系统身份 `SYS-UME-MIGRATION-API`）——**已覆盖部署 166**（`e1732435b4be → 5206f2c68749`，备份 `pay-svc.jar.before-20261119-anon-6ea6f1a40`），冒烟：无令牌调该端点达业务校验（非迁移账户被拒）、其它 OPS 路径无令牌仍 401。脚本默认 `UME_KEYS_ANON=1` 不取令牌 | ✅ 完成 | — |
 | 1 | **导入渠道密钥**：本机执行 `bash deploy/ume/sync-check/run_keys_all.sh`（免输入：从 db61 上 .60 的 2026-11-08 全库备份抽 `msm_mms` 两张表到 near-pay 备份表 → 列名 → check → roger 试点 → 全量 1158 户 → 删备份表）。Claude 不代跑：涉及把支付密钥写入凭据库 | **用户** | 隧道与 venv 已就绪（`~/.venvs/ume-keys`） |
 | 1a | 若停在 check：多半是列名映射（脚本按经验猜的），把 `~/work/env/ume/keys-run-*/describe.txt`、`check.log` 交给 Claude 改 `ume-columns.stage.json` 后重跑；已完成的户自动跳过 | 用户 + Claude | — |
 | 1b | 11-08 之后 UME 新增的密钥会记 MISSING 跳过（`missing.txt`）；需另行取数（.60 在线口令或新备份） | 用户 | .60 每日备份 11-08 后未再生成，需排查备份任务 |

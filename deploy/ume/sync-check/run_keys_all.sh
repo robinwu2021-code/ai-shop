@@ -32,6 +32,7 @@ lsof -iTCP:23307 -sTCP:LISTEN >/dev/null 2>&1 || ssh -F "$S" -o LogLevel=ERROR -
 export UME_DB_HOST=127.0.0.1 UME_DB_PORT=23307 UME_DB_USER=root UME_DB_PASSWORD="$NP_PWD"
 export UME_COLUMNS=deploy/ume/sync-check/ume-columns.stage.json
 export AUTOMATION_KEY=${AUTOMATION_KEY:-$HOME/work/env/ume/automation-ume-ed25519.pem}
+export UME_KEYS_ANON=${UME_KEYS_ANON:-1}   # 迁移端点免认证，不取运营令牌；设 0 可退回令牌调用
 run() { "$PY" -I deploy/ume/sync-check/credentials.py "$@"; }
 verdicts() { grep -E '^SUMMARY' "$1"; }
 

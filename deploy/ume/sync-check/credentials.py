@@ -320,6 +320,11 @@ def ops_client():
     sys.path.insert(0, os.path.join(HERE, '..', '..', '..', 'scripts', 'automation'))
     import _ticket as t
     ops, pay = os.environ.get('OPS_BASE', 'http://127.0.0.1:28081'), os.environ.get('PAY_BASE', 'http://127.0.0.1:28093')
+    # 迁移端点在迁移窗口内免认证（near-pay.credential.migration.anonymous）：UME_KEYS_ANON=1 时不取令牌、不带 Authorization。
+    # 审批流程（UME_KEYS_FLOW=approval）仍需运营令牌。
+    if os.environ.get('UME_KEYS_ANON') == '1' and os.environ.get('UME_KEYS_FLOW') != 'approval':
+        t.BASE_URL = pay
+        return PayOps(lambda m, p, tok, b: t.request(m, p, None, b, timeout=60), {k: None for k in ('CONFIG', 'REVIEW1', 'REVIEW2')})
     t.BASE_URL = ops
     tokens = {who: t.session('OPS', os.environ.get('SUB_' + who, 'ST-UME-' + who))
               for who in ('CONFIG', 'REVIEW1', 'REVIEW2')}
