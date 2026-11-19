@@ -298,10 +298,27 @@ v2 的两个实例换成了提交 `942d950bc` 的包（`shop-app-942d950bc.jar`�
 
 **没有做的：**
 
-- **C 端没有对外入口。** `/shop-api-v2/mp/**` 在公网仍是 404。166 的 nginx 上没有找到现有的 C 端公网入口，开这一条是新增对外暴露，等用户定。
 - 「接口资源」页上的「消费者端」筛选没有登录进去看过（不用正式账号）。
 - C 端是观察档：停用某一条目前只记日志、不拦。要真拦得改成 `enforce`。
 - 部署时一条筛环境文件的命令过滤没写严，`SHOP_MANAGEMENT_SIGNING_KEY` 的值出现在了操作会话的输出里（没有写进任何文件或仓库）。是否轮换由用户定。
+
+### 同日：开 C 端的公网入口（用户：「开 C 端入口」）
+
+166 的 `/etc/nginx/snippets/ai-shop-ops-v2.locations.conf` 里加了一个块：`/shop-api-v2/mp/*` → `192.168.3.80:18182/mp/*`
+（写法与 `/shop-api-v2/biz/` 相同，放在兜底的 404 之前）。备份 `.before-mp-entry-20261119`；撤掉就是复原这份备份后 `nginx -t`、reload。
+**此前 C 端没有公网入口，这一条是新增对外暴露**：C 端里不用登录的入口（商品、店铺等）现在可以从公网读到正式数据。
+
+公网验证（`nearshop.umeshop.ai`，`tw.neargo.ai` 同一个 server 块也通）：
+
+| 地址 | 结果 |
+|---|---|
+| `/shop-api-v2/mp/goods`（不带令牌） | 200 |
+| `/shop-api-v2/mp/order/list`（不带令牌） | 401 |
+| `/shop-api-v2/mp/` 下不存在的地址 | 404 |
+| `/shop-api-v2/ops/…`、`/shop-api-v2/internal/…`，以及用 `..`、`%2e%2e` 从 `/mp/` 绕过去 | 404 |
+| `/shop-api-v2/biz/goods`、`/common/app/version`、`/ops-shop-v2/`、`/ops-shop/`、`/shop-api/common/app/version` | 与之前相同（401 / 200 / 200 / 200 / 200） |
+
+没有做的：登录后的 C 端验证；c-app 还没有指向 `/shop-api-v2` 的构建；C 端的支付回跳、收银台等不在 `/mp/` 下的地址没有 v2 入口。
 
 ## 怎么连
 
