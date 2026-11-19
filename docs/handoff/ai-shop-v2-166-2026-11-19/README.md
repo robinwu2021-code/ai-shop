@@ -567,3 +567,17 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - B 端店主与店员（`verify_v2_biz_perms.py`，报告 `verify-B端权限-合并后.md`）：191 个 GET，**店员的判权全部一致**（该拒且被拒 90，该放且放行 30）。
   店主放行后仍被拒的从 69 条降到 35 条（之前开放了门店准入）。新出现的 `/biz/payment/store-method`、`/biz/payment/store-method-preference`
   是主干新加的接口，转发到支付侧后被支付侧的调用方校验拒了（70082），和已有的 7 条同类，属于业务层，网关已放行。
+
+### 同晚续：剩余开发项做完，统一验证（包 `db8cc5405`）
+
+- 做了什么：五类对象接入登记（`IntegrationRegistry`，关掉的对象前缀 404，启动时五条校验）；库存签名上下文（网关签、库存只比对）；
+  `mch:pay:store-method` 查清不映射；验证脚本给打印接口带门店参数。各项细节见开发计划 §2.6b 与方案 §2.22「落地情况」。第 17 项（各端配置按端取值）复核后不改，理由见方案 §2.28。
+- near-pay 的签名动作比对已进 `develop/s1`（`ecc3c6ec1`），**未部署**。
+- v2 换成包 `shop-app-db8cc5405.jar`（标签 `gateway-integrations-db8cc5405`），备份 .80 `run.sh.before-integrations-20261119`；81 秒起好，没有报错。
+  启动日志：`网关代理对象：retail=开 embedded; commerce=开 embedded; food=关; beauty=关; pay=开 standalone; inventory=开 embedded`。运营端页面没有变化，未重新发布。
+  回退：复原 `run.sh.before-integrations-20261119` 后 `./run.sh all restart`。
+- 测试：ai-shop 全量 9063 条里 37 个类失败，把这 37 个类在 `origin/main` 上单独跑，逐类失败数完全相同（多数是本机测试环境发不出验证码），本批没有引入新失败；
+  `PayStandaloneAssemblyTest` 因新的启动校验需要支付地址，补上与生产一致的地址后通过。库存模块、near-pay 守卫与策略的测试全部通过。
+- 接口验证（报告 `verify-三端-接入登记后.md`、`verify-B端权限-接入登记后.md`）：运营端该拒 177 条实拒 177 条；C 端匿名 32 条被拒、带令牌 0 条误拒；
+  三端密钥与令牌互不通用；B 端店员判权全部一致，店主仍被拒的 35 条与上次逐条相同；打印接口不再误报。剩下 6 处都是已知的 `/biz/pay/v2/*` 502（进件服务连不到）。
+  抽查：`/biz/x/food/**`、`/biz/x/beauty/**` 回 404（对象关着），`/biz/goods` 正常；v2 的包里没有 `/x/commerce` 接口（商城插件未打进 v2），所以不存在被误封的商城接口。
