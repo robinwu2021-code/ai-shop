@@ -685,3 +685,17 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - 两处加载失败，都是已知、与网关无关：
   1. 财务 → 退款分账 `/ops/refund-split-backs` 10500：正式库排序规则不一致（前面已记，需 root 改表）。
   2. 商品运营 → 库存对差 `/ops/jobs/inv-recon/logs` 404：v2 的 `SHOP_JOB_ENABLED=false`，任务控制器整个没装（`OpsJobController` 依赖该开关）——即「正式环境业务任务哪儿都没跑」那一条；页面应在任务模块关闭时降级显示，而不是报错。
+
+### 给财务、商品运营补跨模块读码（V683，2026-11-20）
+
+用户要求补上页面验证里「菜单内页面缺一块」的两处：
+
+| 角色 | 补的码 | 为哪一页 | 授予方式 |
+|---|---|---|---|
+| 财务 FINANCE | `system:param:read` | 经营财务 / 渠道费率 读 `/ops/markets` | 现有仅后端动作点 `ACT__SYSTEM_PARAM_READ` |
+| 商品运营 GOODS_OPS | `merchant:merchant:read` | 商品资料 / 商品管理 读 `/ops/merchants` | 新建仅后端动作点 `ACT__MERCHANT_MERCHANT_READ`（超管同时授予） |
+
+- 只授动作点、不授菜单点：两人的菜单没有多出系统设置或商家档案（核对过 `/ops/menu`）。
+- 代码：`V683__ops_role_cross_module_reads.sql`、`Perms.ROLE_PERMS` 两行（`OpsPermConfigFlowTest` 逐条比对库与代码）、H2 schema 重新生成；`OpsPermConfigFlowTest` / `SchemaGeneratorTest` / `SchemaDriftTest` 43 条通过。
+- **正式库**：已用 root 直接执行 V683 的语句（纯插入、可重复执行）。迁移历史**没有**手工登记：下次部署时 Flyway 会把 V683 当待执行跑一遍，语句都带 `NOT EXISTS`，不会重复插。回滚：删 `sys_role_point` 里这三行和 `sys_function_point` 的 `ACT__MERCHANT_MERCHANT_READ`。
+- 复验：`ST-V2UI-FINANCE` 调 `/ops/markets`、`ST-V2UI-GOODS` 调 `/ops/merchants` 都已 200（之前网关拒）；权限即时生效，不用重登。

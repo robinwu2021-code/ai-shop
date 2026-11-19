@@ -20583,6 +20583,12 @@ SELECT 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS_IAM', 'system:api-resource:update
 INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_API_RESOURCE_UPDATE');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'ACT__MERCHANT_MERCHANT_READ','OPS_MERCHANT','merchant:merchant:read','仅后端',NULL,NULL,'merchant:merchant:read','IMPLEMENTED',0,NULL,'ACTION',931,NOW(),NOW()
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='ACT__MERCHANT_MERCHANT_READ');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__MERCHANT_MERCHANT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__MERCHANT_MERCHANT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'GOODS_OPS','ACT__MERCHANT_MERCHANT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='GOODS_OPS' AND point_code='ACT__MERCHANT_MERCHANT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','ACT__SYSTEM_PARAM_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='ACT__SYSTEM_PARAM_READ' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -727,6 +727,8 @@ public final class Perms {
 
             Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_READ,
                     MEMBER_MEMBER_READ, MEMBER_PERSON_READ,
+                    // 商品管理页按商家筛选，要读 /ops/merchants（V683，只给仅后端动作点，不给商家档案菜单）
+                    MERCHANT_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
@@ -811,7 +813,9 @@ public final class Perms {
                     // 提现审批码 2026-10-09 从角色表撤掉（提现端点与菜单点一起退役，见 V392）
                     MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ,
                     // 支付运营端：看支付单、复核退款、看业务通知。处置异常与重推不给 —— 那是动钱 / 动外部系统
-                    PAY_ORDER_VIEW, PAY_REFUND_VIEW, PAY_REFUND_REVIEW, PAY_LOG_VIEW)),
+                    PAY_ORDER_VIEW, PAY_REFUND_VIEW, PAY_REFUND_REVIEW, PAY_LOG_VIEW,
+                    // 渠道费率页按市场列出费率，要读 /ops/markets（V683，只给仅后端动作点，不给系统设置菜单）
+                    SYSTEM_PARAM_READ)),
 
             /*
              * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。
