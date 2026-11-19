@@ -21,7 +21,10 @@
 
 ## 过程中发现的问题
 
-- **near-pay 门店投影并发死锁**：ai-shop 多个发件箱线程并发推门店同步时，near-pay `StoreProjectionService.syncOnce` 出现数据库死锁（25 分钟内 68 次），返回 500；ai-shop 把它记成 `OUTCOME_UNKNOWN` 并且不再重试，阻塞该门店后续同步。本次按框架重放逻辑分 9 轮重放（审计 `sys_outbox_operation` 请求号 `ume-sync-replay-20261119-*`），2469 条全部 SENT。**建议后续修**：near-pay 对死锁重试，或 ai-shop 把 5xx 视为可重试。
+- **near-pay 门店投影并发死锁**：ai-shop 多个发件箱线程并发推门店同步时，near-pay `StoreProjectionService.syncOnce` 出现数据库死锁（25 分钟内 68 次），返回 500；ai-shop 把它记成 `OUTCOME_UNKNOWN` 并且不再重试，阻塞该门店后续同步。本次按框架重放逻辑分 9 轮重放（审计 `sys_outbox_operation` 请求号 `ume-sync-replay-20261119-*`），2469 条全部 SENT。
+  **已修（用户「修死锁」）**：near-pay `develop/s1` `18e6bee56`：门店投影同步遇死锁 / 取锁超时整体重试至多 4 次（`LockConflictRetry`，测试 3/3，门店相关 56 个测试回归通过）；ai-shop `4abe2f32e`：同步消费端遇 5xx / 429 / 不可达抛 `RetryableOutboxException`，交发件箱退避重试，不再停在「结果未知」（测试 3/3）。
+  覆盖部署：near-pay `75b5a2272e78 → cb44f1220b2d`（备份 `pay-svc.jar.before-store-sync-lock-retry-20261119-18e6bee56`）；ai-shop `dae705102e65 → 26830f87ca02`（备份 `shop-app.jar.before-store-sync-retry-20261119-4abe2f32e`）。
+  验证：一次触发 300 家 UME 门店同步，300/300 SENT、0 失败；期间 near-pay 仍发生 2 次死锁，均被重试消化。
 - 11-13 首次导入时就有 22 条门店同步卡在同样的失败上，一并重放了。
 
 ## 未做 / 待办
