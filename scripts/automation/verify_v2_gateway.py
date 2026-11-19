@@ -26,8 +26,9 @@ from v2_session import call, exchange, login
 ADMIN, SUPPORT = "ST-V2TEST-ADMIN", "ST-V2TEST-SUPPORT"
 BUYER, OWNER = "UUMV2TESTBUYER0000000001", "UUMV2TESTOWNER0000000001"
 UNAUTH, EXPIRED, FORBIDDEN, BAD_REQUEST = 10401, 10402, 10403, 10400
-# 不打的地址：长连接、导出下载（体积大或会落文件）
-SKIP = re.compile(r"/(events|stream|sse|export|exports|download)(/|$)")
+# 不打的地址：长连接、导出下载（体积大或会落文件），以及访问一次就记一条高危审计的 GET（如下载付款清单）——
+# 验证脚本不该在生产审计里留下「导出」记录（2026-11-19 发现 /ops/payables/payout-list 留过两条）
+SKIP = re.compile(r"/(events|stream|sse|export|exports|download)(/|$)|^/ops/payables/payout-list$")
 # 必须带查询参数才有意义的地址：不带时业务按「看不到范围」拒，会被误报成管理员被拒。
 # 打印运营按门店看打印机，三个参数都要；取测试门店（租户 MAIN）
 REQUIRED_QUERY = {
