@@ -32,3 +32,11 @@
 - 短链已切到新门店（用户 2026-11-19 要求）：旧门店 slug 改为 `ume-breakfast-old`（同步后旧码 `nAjNe7H2GpWc1mEQu1hESw` 的门店码随之改名、释放原码），新门店 slug 设为 `ume-breakfast`，同步后门店码落到 `mqB-LZBjK8UM4-YO_BwacQ`。`/s/ume-breakfast` 已打开新 ume早餐店收银台。
 - 测试付款待用户在 ume早餐店收款页用测试渠道付一笔（输入测试卡/LINE 登录须用户本人）。
 - 临时授权仍保留：`ST-UME-CONFIG` 的 `SUPER_ADMIN`（`created_by='ume-batch-temp'`）；near-pay 数据范围 `DSB2C80A6DB2924070`、`DS9A7CFE0DD0314A21`（约 2026-11-21 过期）。
+
+## roger@umeshop.ai（創科系統有限公司，UME 商户 02380159443150569472）· 同日
+
+- 账号、主体 `MUME02380159443150569472`、5 家门店与 UME 一致；支付商户 `PM0E0F6CC8F7454D75`（名称仍为「TEST ONLY 創科系統有限公司 UME166」，正式使用前要改名）已关联 5 家门店。
+- **LINE Pay 登记**（用户同意以 UME 导出为凭证）：渠道账户 `PM1998CCD12EEE4748`，渠道号 `1629714284`，凭证 `file:ume/msm_mms/chn_mer_scan_linepay_info/CM443256451075538944`（原记录快照在 `nearpay_prod.stg_ume_active_payment_merchants_20261112`）。状态 UNVERIFIED / PENDING：须商户或运营补 LINE Pay 密钥并核验后才能启用、绑定门店。
+- **蓝新 `MS354053380` 未登记**：UME 内 3 户共用（02380159443150569472、88600248120000008、88600254990000004），无法按 UME 数据定归属。
+- **未迁**：near-pay 暂不支持的渠道（两户：橘子支付、支付寶、ezPay 簡單付、Pi 拍錢包、Atome、富邦微信）须先做渠道目录「待开通」（TDD）；UME 店员账号（oscar 28、roger 43）未导入，多数无手机号。
+- 另：166 near-pay 于 05:04 UTC 被其他会话重新部署（jar `a6219a718557`），已核对收银域名并存与门店付款方式仍在。
