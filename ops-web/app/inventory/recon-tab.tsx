@@ -41,9 +41,16 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
    * 数据不用新建：`inv-recon` 每天跑一轮，结论就落在它自己的运行记录里
    * （成功 = 那天对差为零）。**另存一份的话，两处迟早对同一天给出两种说法。**
    */
+  /*
+   * 运行记录归定时任务模块：**没有 system:job:read 就不去要**（网关必拒，页面平白多一个错），
+   * 部署没开定时任务时接口不存在 —— 两种都只说「看不到连续记录」，不当成整页加载失败。
+   */
+  const canReadJobs = allow("system:job:read");
   const runs = useQuery({
     queryKey: ["job-logs", "inv-recon"],
     queryFn: () => api.listJobLogs({ name: "inv-recon", size: 30 }),
+    enabled: canReadJobs,
+    retry: false,
   });
   const streak = cleanStreak(runs.data);
   /*
@@ -159,6 +166,9 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
         * 而能不能切真相源要看「连着多久」。跑失败与跑没跑过要分开：
         * 「连续 0 天」和「还没跑过」都不能切，但前者是有差异、后者是没有依据。
         */}
+      {(!canReadJobs || runs.isError) && (
+        <Notice tone="info">{canReadJobs ? c.invStreakUnavailable : c.invStreakNoPerm}</Notice>
+      )}
       {runs.data && runs.data.length === 0 && (
         <Notice tone="warning">{c.invStreakNeverRan}</Notice>
       )}

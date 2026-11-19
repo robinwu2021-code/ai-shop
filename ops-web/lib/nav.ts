@@ -712,6 +712,33 @@ export function routeLockedPhase(
 }
 
 /**
+ * 按 URL 判断当前路由是否**不在这个人的菜单里**（页面级兜底用）。
+ *
+ * 菜单里有、或持有这一页自己的权限码，都放行。
+ * 只在服务端菜单已到手时判：没拿到菜单时不拦（接口抖一下就把人挡在门外，比多显示一页坏得多）。
+ * 只判 URL 正好是某个菜单叶子的情况：详情页、跨页深链不是叶子，交给页面自己与网关。
+ * 带 tab/view 的 URL 按精确叶子判；不带的，同一路径下任一叶子在菜单里就放行（页面会落到他能看的那个标签）。
+ */
+export function routeDenied(
+  pathname: string, tab: string | null, view: string | null,
+  serverHrefs: Set<string> | undefined, perms: string[] | undefined, nav: NavSection[] = NAV,
+): boolean {
+  if (!serverHrefs?.size) return false;
+  const p = normPath(pathname);
+  const leaves = nav.flatMap((s) => s.children ?? []).filter((l) => leafParts(l.href).path === p);
+  // 不带 tab 的路径页面会自己落到他能看的标签（如 /system 的默认标签），所以同路径任一叶子都算
+  const candidates = tab || view ? leaves.filter((l) => {
+    const parts = leafParts(l.href);
+    return parts.tab === tab && parts.view === view;
+  }) : leaves;
+  if (!candidates.length) return false;
+  const granted = (href: string) => serverHrefs.has(href);
+  // 持有叶子自己的权限码也放行：跨页深链（比如从订单点进退款回退）不该因为菜单里没挂这一页就被挡
+  const holds = (l: NavLeaf) => l.anyPerms ? l.anyPerms.some((x) => can(perms, x)) : l.perm ? can(perms, l.perm) : true;
+  return !candidates.some((l) => granted(l.href) || l.legacyHrefs?.some(granted) || holds(l));
+}
+
+/**
  * 面包屑：L1 › 分组 › 子功能。
  * 分组是视觉聚类不是可导航节点，仅作不可点的中间项；叶子无 group 时退化为两级。
  *

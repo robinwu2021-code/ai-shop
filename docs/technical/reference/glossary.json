@@ -30509,6 +30509,18 @@
           "ar": null
         },
         {
+          "key": "phase.deniedDesc",
+          "zh-CN": "你的角色没有开放这一页。需要的话请联系管理员在「角色权限」里授予。",
+          "en": "Your role does not include this page. Ask an administrator to grant it under Roles & permissions.",
+          "ar": null
+        },
+        {
+          "key": "phase.deniedTitle",
+          "zh-CN": "没有这个页面的权限",
+          "en": "No access to this page",
+          "ar": null
+        },
+        {
           "key": "phase.lockedDesc",
           "zh-CN": "「{feature}」将于 {phase} 开放，系统当前处于 {current}。",
           "en": "“{feature}” ships in {phase}; the system is currently on {current}.",

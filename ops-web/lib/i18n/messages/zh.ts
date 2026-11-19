@@ -48,6 +48,8 @@ export const zh = {
     p3: "P2 增强",
     suffix: "阶段功能",
     lockedTitle: "功能尚未开放",
+    deniedTitle: "没有这个页面的权限",
+    deniedDesc: "你的角色没有开放这一页。需要的话请联系管理员在「角色权限」里授予。",
     lockedDesc: "「{feature}」将于 {phase} 开放，系统当前处于 {current}。",
     backHome: "返回工作台",
   },

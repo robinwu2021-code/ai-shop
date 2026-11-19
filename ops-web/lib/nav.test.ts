@@ -216,6 +216,9 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       if (role === "TECH_OPS") for (const href of ["/system?tab=authCode", "/system?tab=industry", "/system?tab=scope"]) was.delete(href);
       if (role === "PRODUCT_OPS") was.add("/system?tab=authCode");
       if (role === "COMMUNITY_OPS") for (const href of ["/system?tab=industry", "/system?tab=scope"]) was.add(href);
+      // V683 补跨模块读码（财务读市场、商品运营读商家）：按码推算会多出这些页，真实菜单按功能点下发、没有变
+      if (role === "FINANCE") for (const href of ["/system?tab=market", "/system?tab=flags"]) was.add(href);
+      if (role === "PRODUCT_OPS") for (const href of ["/merchants?tab=plans", "/merchants?tab=plan-defs", "/merchants?tab=list", "/merchants?tab=stores", "/merchants?tab=credit", "/merchants?tab=chain"]) was.add(href);
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);

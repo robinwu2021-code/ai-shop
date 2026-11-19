@@ -180,6 +180,8 @@ const zh = {
   invStreakBroken: "最近一轮不为零 —— 连续计数已中断",
   invStreakNeverRan: "对差任务还没跑过 —— 「没有差异」与「没有依据」是两回事，现在是后者",
   invStreakOf: "（近 {n} 轮记录）",
+  invStreakUnavailable: "看不到对差的连续记录：这套部署没开定时任务，对差任务不会每天跑 —— 上面的结论只代表此刻",
+  invStreakNoPerm: "连续记录归定时任务模块，你的角色没有查看权限 —— 上面的结论只代表此刻",
   // 「差多少才够」比「已经几轮」更是这一页要答的那个问题
   invStreakEnough: "已达到切换门槛（要求 {n} 轮）",
   invStreakShort: "还差 {n} 轮才够（要求 {need} 轮）",
@@ -352,6 +354,8 @@ const en: typeof zh = {
   invStreakBroken: "Latest run was not clean — the streak is broken",
   invStreakNeverRan: "The reconciliation job has never run — \"no differences\" and \"no evidence\" are not the same thing, and this is the latter",
   invStreakOf: "(last {n} runs)",
+  invStreakUnavailable: "No run history: scheduled jobs are off in this deployment, so reconciliation does not run daily — the result above is only a snapshot",
+  invStreakNoPerm: "Run history belongs to scheduled jobs, which your role cannot view — the result above is only a snapshot",
   invStreakEnough: "Threshold met (needs {n})",
   invStreakShort: "{n} more needed (threshold {need})",
 };
