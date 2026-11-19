@@ -594,3 +594,7 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
   停用的锁不变（提交 `2b2e1436b`）；v2 换成包 `shop-app-059658126.jar`（备份 `run.sh.before-adjustlock-20261119`），页面换成 `releases/gateway-059658126`；
   然后把 46 条按代码里实际判的码在库里配成需要权限码（`commerce:catalog:read/edit/publish`、`commerce:mall:*` 等，判法与 `Permissions.matches` 同口径）。
 - **验证**（`verify_v2_ops_roles.py`，按库里生效的规则比对）：14 个角色每个都 0 处不一致（报告 `verify-运营端逐角色.md`）；三端验证运营端该拒 187 实拒 187，余下 6 处是已知的进件 502。
+- **运营端浏览器登录被跨域拦截**（用户在 v2 运营端页面登录得到「无权限」）：浏览器请求带 `Origin: https://nearshop.umeshop.ai`，
+  而 v2 的 `SHOP_CORS_EXTRA_ORIGINS` 只有 `https://twpay.umeshop.ai`，后端回 403 `Invalid CORS request`。此前一直用脚本验证（不带 Origin），所以没暴露。
+  已在 v2 环境文件追加 `https://nearshop.umeshop.ai`（备份 `ai-shop-all-v2.env.before-cors-20261119`）并重启；v1 未动。
+  B/C 端若有从这个域名打开的网页（H5）会遇到同样的问题，这一项配置也覆盖了它们。
