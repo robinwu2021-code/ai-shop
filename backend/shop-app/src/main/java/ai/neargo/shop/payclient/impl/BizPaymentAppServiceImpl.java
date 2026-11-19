@@ -86,6 +86,12 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
         throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
     }
 
+    /** 内嵌形态没有独立支付商户：回退到本地进件表（C4） */
+    @Override
+    public PayBizInternalApi.EntityChannelAccounts entityChannelAccounts(String entityNo) {
+        return new PayBizInternalApi.EntityChannelAccounts(entityNo, null, List.of());
+    }
+
     @Override
     public PayBizInternalApi.MethodPreferences methodPreferences(String storeNo) {
         throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);

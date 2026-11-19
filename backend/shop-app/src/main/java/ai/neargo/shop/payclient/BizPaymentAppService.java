@@ -46,6 +46,12 @@ public interface BizPaymentAppService {
 
     PayBizInternalApi.MethodPreferences methodPreferences(String storeNo);
 
+    /**
+     * 主体在支付侧的渠道账户（TDD-门店代码与商户渠道展示 C1）。merchantNo 为 null 表示支付侧没有已核验的支付商户，
+     * 调用方回退到本地进件表（C4）。调用方须已校验主体归属与 {@code biz:finance}。
+     */
+    PayBizInternalApi.EntityChannelAccounts entityChannelAccounts(String entityNo);
+
     PayBizInternalApi.MethodPreferences saveMethodPreferences(String storeNo, String requestNo, long expectedVersion,
             String eligibilityRevision, String mode, List<PayBizInternalApi.MethodChoice> choices);
 

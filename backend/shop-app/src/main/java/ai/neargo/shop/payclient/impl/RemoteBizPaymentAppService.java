@@ -112,6 +112,20 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
         return result;
     }
 
+    private String sourceScope = "MAIN";
+
+    @Autowired(required = false)
+    void setStoreSync(ai.neargo.shop.merchant.paysync.StoreSyncProperties sync) {
+        if (sync != null && sync.sourceScope() != null && !sync.sourceScope().isBlank()) this.sourceScope = sync.sourceScope();
+    }
+
+    @Override
+    public PayBizInternalApi.EntityChannelAccounts entityChannelAccounts(String entityNo) {
+        var result = unwrap(() -> pay.entityChannelAccounts(entityNo, sourceScope));
+        auditLogPort.record("BIZ_PAY_VIEW", entityNo, "主体渠道账户");
+        return result;
+    }
+
     @Override
     public PayBizInternalApi.MethodPreferences methodPreferences(String storeNo) {
         var result = unwrap(() -> pay.methodPreferences(storeNo, operator()));

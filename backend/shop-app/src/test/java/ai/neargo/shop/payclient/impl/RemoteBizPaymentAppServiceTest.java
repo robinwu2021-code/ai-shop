@@ -56,6 +56,16 @@ class RemoteBizPaymentAppServiceTest {
     }
 
     @Test
+    @DisplayName("主体渠道账户按主体号与门店同步的来源范围转发，读取留痕（TDD-门店代码与商户渠道展示 C1）")
+    void entityChannelAccountsCarryEntityAndSourceScope() {
+        var accounts = new PayBizInternalApi.EntityChannelAccounts("MUME1", "PM1", List.of());
+        when(api.entityChannelAccounts("MUME1", "MAIN")).thenReturn(PortResult.ok(accounts));
+
+        assertThat(remote.entityChannelAccounts("MUME1")).isEqualTo(accounts);
+        verify(audit).record("BIZ_PAY_VIEW", "MUME1", "主体渠道账户");
+    }
+
+    @Test
     @DisplayName("★★★ 支付的业务拒绝还原成同一个错误码（b-app 看到的与内嵌形态一致）；没做成的不留痕")
     void rejectionBecomesBizException() {
         when(api.requestRefund(eq("S-1"), any())).thenReturn(PortResult.rejected("PAY_FORBIDDEN", List.of()));
