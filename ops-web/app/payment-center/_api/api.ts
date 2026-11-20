@@ -10,6 +10,7 @@ import type {
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
   AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
   NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
+  AdapterRow, BindingImpact, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRegister, ChannelAccountRow, ChannelKeyEntry, ClaimResolve, EscalatedRow, PaymentMethodRow, StoreBinding,
 } from "./types";
 
 export type Q = Record<string, string | number | boolean | undefined>;
@@ -59,6 +60,8 @@ export interface PayCenterApi {
     list(q: Q): Promise<PayPage<ExceptionRow>>;
     refund(id: number, reason: string): Promise<unknown>;
     ignore(id: number, reason: string): Promise<unknown>;
+    /** 转人工（near-pay 自动恢复用尽、待人工跟进的订单） */
+    escalations(q: Q): Promise<PayPage<EscalatedRow>>;
   };
   merchants: {
     list(q: Q): Promise<PayPage<MerchantRow>>;
@@ -144,6 +147,9 @@ export interface PayCenterApi {
     enable(code: string, c: Cmd): Promise<ActionResult>;
     disable(code: string, c: Cmd): Promise<ActionResult>;
     diagnose(code: string, c: Cmd): Promise<{ jobNo: string; status: string; errorCode: string | null }>;
+    /** 标为待开通（运营维护的状态，不进收银台） */
+    pending(code: string, c: Cmd): Promise<ActionResult>;
+    adapters(): Promise<AdapterRow[]>;
   };
   products: {
     list(q: Q): Promise<PayPage<ProductRow>>;
@@ -152,6 +158,38 @@ export interface PayCenterApi {
     update(code: string, body: ProductSave): Promise<ActionResult>;
     enable(code: string, c: Cmd): Promise<ActionResult>;
     disable(code: string, c: Cmd): Promise<ActionResult>;
+    paymentMethods(): Promise<PaymentMethodRow[]>;
+  };
+  /** 渠道账户（商户「渠道账户」抽屉，TDD §2.11）；状态命令用 Cmd（版本 + 理由） */
+  channelAccounts: {
+    list(q: Q): Promise<PayPage<ChannelAccountRow>>;
+    detail(no: string): Promise<Detail<ChannelAccountDetail>>;
+    register(body: ChannelAccountRegister): Promise<Detail<ChannelAccountDetail>>;
+    reject(no: string, c: Cmd): Promise<ActionResult>;
+    activate(no: string, c: Cmd): Promise<ActionResult>;
+    suspend(no: string, c: Cmd): Promise<ActionResult>;
+    refundOnly(no: string, c: Cmd): Promise<ActionResult>;
+    openProduct(no: string, productCode: string, body: { expectedVersion: number; evidenceRef: string; reason: string }): Promise<ActionResult>;
+    closeProduct(no: string, productCode: string, c: Cmd): Promise<ActionResult>;
+    bindCredential(no: string, body: { expectedVersion: number; keyId: number; reason: string }): Promise<ActionResult>;
+    enterKey(no: string, body: ChannelKeyEntry): Promise<Detail<ChannelAccountDetail>>;
+    bindings(no: string): Promise<PayPage<StoreBinding>>;
+  };
+  /** 门店渠道绑定（门店「渠道绑定」抽屉）；换绑执行在审批通过后由审核待办触发，这里不直调 */
+  storeBindings: {
+    list(storeNo: string): Promise<PayPage<StoreBinding>>;
+    bind(storeNo: string, body: { payChannel: string; payMerchantNo: string; reason: string }): Promise<Detail<StoreBinding>>;
+    unbind(storeNo: string, bindingNo: string, c: Cmd): Promise<ActionResult>;
+    impact(storeNo: string, bindingNo: string, targetPayMerchantNo: string): Promise<BindingImpact>;
+    rebindRequest(storeNo: string, bindingNo: string, body: { expectedVersion: number; targetPayMerchantNo: string; reason: string }): Promise<ActionResult>;
+    rebindWithdraw(storeNo: string, bindingNo: string, c: Cmd): Promise<ActionResult>;
+  };
+  /** 商户号认领（实例未开放时 near-pay 回 404） */
+  claims: {
+    list(merchantNo: string): Promise<ChannelAccountClaim[]>;
+    detail(no: string): Promise<ChannelAccountClaim>;
+    resolve(no: string, body: ClaimResolve): Promise<ChannelAccountClaim>;
+    file(no: string, fileNo: string): Promise<Blob>;
   };
   entries: {
     list(q: Q): Promise<PayPage<EntryRow>>;
@@ -336,6 +374,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       list: (q) => c.page("/payment-exceptions", q),
       refund: (id, reason) => c.command(`/payment-exceptions/${id}/refund`, { reason }, { idempotent: false }),
       ignore: (id, reason) => c.command(`/payment-exceptions/${id}/ignore`, { reason }, { idempotent: false }),
+      escalations: (q) => c.page("/payment-escalations", q),
     },
     merchants: {
       list: (q) => c.page("/merchants", q),
@@ -413,11 +452,42 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       enable: (code, cmd) => c.command(`/channels/${e(code)}/enable`, { ...cmd }),
       disable: (code, cmd) => c.command(`/channels/${e(code)}/disable`, { ...cmd }),
       diagnose: (code, cmd) => c.command(`/channels/${e(code)}/diagnose`, { ...cmd }),
+      pending: (code, cmd) => c.command(`/channels/${e(code)}/pending`, { ...cmd }),
+      adapters: () => c.get("/adapters"),
     },
     products: {
       ...crud<ProductRow, ProductSave>("/products"),
       enable: (code, cmd) => c.command(`/products/${e(code)}/enable`, { ...cmd }),
       disable: (code, cmd) => c.command(`/products/${e(code)}/disable`, { ...cmd }),
+      paymentMethods: () => c.get("/payment-methods"),
+    },
+    channelAccounts: {
+      list: (q) => c.page("/channel-accounts", q),
+      detail: (no) => detailOf(c, `/channel-accounts/${e(no)}`),
+      register: (body) => c.command(`/channel-accounts`, { ...body }),
+      reject: (no, cmd) => c.command(`/channel-accounts/${e(no)}/verify`, { ...cmd, result: "REJECTED" }),
+      activate: (no, cmd) => c.command(`/channel-accounts/${e(no)}/activate`, { ...cmd }),
+      suspend: (no, cmd) => c.command(`/channel-accounts/${e(no)}/suspend`, { ...cmd }),
+      refundOnly: (no, cmd) => c.command(`/channel-accounts/${e(no)}/refund-only`, { ...cmd }),
+      openProduct: (no, code, body) => c.command(`/channel-accounts/${e(no)}/products/${e(code)}/open`, { ...body, source: "OPS_CONFIRMED" }),
+      closeProduct: (no, code, cmd) => c.command(`/channel-accounts/${e(no)}/products/${e(code)}/close`, { ...cmd }),
+      bindCredential: (no, body) => c.command(`/channel-accounts/${e(no)}/credential`, { ...body }, { method: "PUT" }),
+      enterKey: (no, body) => c.command(`/channel-accounts/${e(no)}/migration-credential`, { ...body }),
+      bindings: (no) => c.page(`/channel-accounts/${e(no)}/bindings`, { size: 100 }),
+    },
+    storeBindings: {
+      list: (store) => c.page(`/stores/${e(store)}/bindings`, { size: 100 }),
+      bind: (store, body) => c.command(`/stores/${e(store)}/bindings`, { ...body }),
+      unbind: (store, b, cmd) => c.command(`/stores/${e(store)}/bindings/${e(b)}/unbind`, { ...cmd }),
+      impact: (store, b, target) => c.get(`/stores/${e(store)}/bindings/${e(b)}/rebind-impact`, { targetPayMerchantNo: target }),
+      rebindRequest: (store, b, body) => c.command(`/stores/${e(store)}/bindings/${e(b)}/rebind-request`, { ...body }),
+      rebindWithdraw: (store, b, cmd) => c.command(`/stores/${e(store)}/bindings/${e(b)}/rebind-request/withdraw`, { ...cmd }),
+    },
+    claims: {
+      list: (merchantNo) => c.get("/channel-account-claims", { merchantNo }),
+      detail: (no) => c.get(`/channel-account-claims/${e(no)}`),
+      resolve: (no, body) => c.command(`/channel-account-claims/${e(no)}/resolve`, { ...body }),
+      file: (no, fileNo) => c.blob(`/channel-account-claims/${e(no)}/files/${e(fileNo)}`),
     },
     entries: {
       ...crud<EntryRow, EntrySave>("/collection-entries"),

@@ -176,3 +176,66 @@ describe("P4 映射（商户与进件工作区，near-pay /pay-ops/v2）", () =>
     expect(up.draft.missing).not.toContain("LICENSE_1");
   });
 });
+
+describe("P5 渠道账户、门店绑定、认领与补齐的端点（TDD §2.11）", () => {
+  it("渠道账户：列表 / 登记 / 驳回走 verify 带 REJECTED / 开通产品记运营确认 / 绑定凭据 PUT / 录入密钥", async () => {
+    const { f, api } = httpApi({ resourceNo: "A1", status: "ACTIVE", version: 2 });
+    await api.channelAccounts.list({ merchantNo: "PM1", size: 100 });
+    await api.channelAccounts.register({ ownerType: "MERCHANT", merchantNo: "PM1", payChannel: "LINEPAY", channelMerchantId: "123", accountMode: "MERCHANT_OWN", fundsPath: "DIRECT", evidenceRef: "file:x", reason: "登记" });
+    await api.channelAccounts.reject("A 1", { expectedVersion: 1, reason: "坐标不符" });
+    await api.channelAccounts.openProduct("A1", "NEWEBPAY_CARD", { expectedVersion: 2, evidenceRef: "file:y", reason: "开通" });
+    await api.channelAccounts.bindCredential("A1", { expectedVersion: 3, keyId: 501, reason: "绑定" });
+    await api.channelAccounts.enterKey("A1", { hashKey: "k".repeat(32), hashIv: "v".repeat(16), reason: "录入" });
+    expect(call(f, 0).url).toBe("/pay/channel-accounts?merchantNo=PM1&size=100");
+    expect(call(f, 1)).toMatchObject({ url: "/pay/channel-accounts", method: "POST", body: { payChannel: "LINEPAY", ownerType: "MERCHANT" } });
+    expect(call(f, 2)).toMatchObject({ url: "/pay/channel-accounts/A%201/verify", body: { result: "REJECTED", expectedVersion: 1 } });
+    expect(call(f, 3)).toMatchObject({ url: "/pay/channel-accounts/A1/products/NEWEBPAY_CARD/open", body: { source: "OPS_CONFIRMED", evidenceRef: "file:y" } });
+    expect(call(f, 4)).toMatchObject({ url: "/pay/channel-accounts/A1/credential", method: "PUT", body: { keyId: 501 } });
+    expect(call(f, 5)).toMatchObject({ url: "/pay/channel-accounts/A1/migration-credential", method: "POST" });
+    expect(call(f, 5).body.requestNo).toMatch(/^ops-/);
+  });
+
+  it("门店绑定：列表 / 绑定 / 解绑 / 影响预览带目标 / 换绑登记与撤回", async () => {
+    const { f, api } = httpApi({ records: [], total: 0 });
+    await api.storeBindings.list("S1");
+    await api.storeBindings.bind("S1", { payChannel: "NEWEBPAY", payMerchantNo: "A1", reason: "绑定" });
+    await api.storeBindings.unbind("S1", "B1", { expectedVersion: 1, reason: "解绑" });
+    await api.storeBindings.impact("S1", "B1", "A2");
+    await api.storeBindings.rebindRequest("S1", "B1", { expectedVersion: 1, targetPayMerchantNo: "A2", reason: "换绑" });
+    await api.storeBindings.rebindWithdraw("S1", "B1", { expectedVersion: 2, reason: "撤回" });
+    expect(call(f, 0).url).toBe("/pay/stores/S1/bindings?size=100");
+    expect(call(f, 1)).toMatchObject({ url: "/pay/stores/S1/bindings", method: "POST", body: { payMerchantNo: "A1" } });
+    expect(call(f, 2).url).toBe("/pay/stores/S1/bindings/B1/unbind");
+    expect(call(f, 3)).toMatchObject({ url: "/pay/stores/S1/bindings/B1/rebind-impact?targetPayMerchantNo=A2", method: "GET" });
+    expect(call(f, 4)).toMatchObject({ url: "/pay/stores/S1/bindings/B1/rebind-request", body: { targetPayMerchantNo: "A2" } });
+    expect(call(f, 5).url).toBe("/pay/stores/S1/bindings/B1/rebind-request/withdraw");
+  });
+
+  it("认领、转人工、待开通、适配器与支付方式字典", async () => {
+    const { f, api } = httpApi([]);
+    await api.claims.list("PM1");
+    await api.claims.resolve("CL1", { expectedVersion: 1, result: "LINKED", payMerchantNo: "A1", expectedAccountVersion: 3, reason: "核实" });
+    await api.exceptions.escalations({ storeNo: "S1", page: 1, size: 20 });
+    await api.channels.pending("LINEPAY", { expectedVersion: 2, reason: "待签约" });
+    await api.channels.adapters();
+    await api.products.paymentMethods();
+    expect(call(f, 0).url).toBe("/pay/channel-account-claims?merchantNo=PM1");
+    expect(call(f, 1)).toMatchObject({ url: "/pay/channel-account-claims/CL1/resolve", body: { result: "LINKED", expectedAccountVersion: 3 } });
+    expect(call(f, 2).url).toBe("/pay/payment-escalations?storeNo=S1&page=1&size=20");
+    expect(call(f, 3)).toMatchObject({ url: "/pay/channels/LINEPAY/pending", body: { expectedVersion: 2, reason: "待签约" } });
+    expect(call(f, 4).url).toBe("/pay/adapters");
+    expect(call(f, 5).url).toBe("/pay/payment-methods");
+  });
+
+  it("mock：未核验不得启用；录入密钥一次到可收款；同门店同渠道只能一条生效绑定", async () => {
+    const api = createMockPayCenterApi();
+    const pending = await api.channelAccounts.detail("LNP7100");
+    await expect(api.channelAccounts.activate("LNP7100", { expectedVersion: pending.version, reason: "启用" })).rejects.toThrow();
+    const entered = await api.channelAccounts.enterKey("LNP7100", { secret: "s".repeat(16), reason: "录入" });
+    expect(entered.record.account).toMatchObject({ status: "ACTIVE", verificationStatus: "VERIFIED" });
+    await expect(api.storeBindings.bind("ST2001", { payChannel: "NEWEBPAY", payMerchantNo: "NWP7000", reason: "再绑" })).rejects.toThrow(/BINDING_CONFLICT/);
+    const b = await api.storeBindings.bind("ST2002", { payChannel: "LINEPAY", payMerchantNo: "LNP7100", reason: "绑定" });
+    expect((await api.storeBindings.list("ST2002")).records.map((x) => x.bindingNo)).toEqual([b.record.bindingNo]);
+    expect((await api.channelAccounts.list({ merchantNo: "PM1001" })).records.find((a) => a.payMerchantNo === "LNP7100")?.boundStoreCount).toBe(1);
+  });
+});

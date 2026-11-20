@@ -56073,6 +56073,54 @@
     },
     {
       "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_VIEW",
+      "type": "String",
+      "value": "\"pay:channel-account:view\"",
+      "zh": "渠道账户（商户「渠道账户」）与门店渠道绑定：查看 / 登记与维护 / 驳回核验与换绑执行分开授权（near-pay 同名码，TDD-支付中心运营页面 §2.11）",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel-account:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_APPROVE",
+      "type": "String",
+      "value": "\"pay:channel-account:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_VIEW",
+      "type": "String",
+      "value": "\"pay:store-binding:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_MANAGE",
+      "type": "String",
+      "value": "\"pay:store-binding:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_APPROVE",
+      "type": "String",
+      "value": "\"pay:store-binding:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SEC_KEY_VIEW",
       "type": "String",
       "value": "\"sec:key:view\"",

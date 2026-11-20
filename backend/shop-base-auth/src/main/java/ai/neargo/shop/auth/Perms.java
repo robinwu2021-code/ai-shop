@@ -238,6 +238,13 @@ public final class Perms {
     public static final String PAY_CHANNEL_COST_MANAGE = "pay:channel-cost:manage";
     public static final String PAY_FEE_PLAN_VIEW = "pay:fee-plan:view";
     public static final String PAY_FEE_PLAN_MANAGE = "pay:fee-plan:manage";
+    /** 渠道账户（商户「渠道账户」）与门店渠道绑定：查看 / 登记与维护 / 驳回核验与换绑执行分开授权（near-pay 同名码，TDD-支付中心运营页面 §2.11） */
+    public static final String PAY_CHANNEL_ACCOUNT_VIEW = "pay:channel-account:view";
+    public static final String PAY_CHANNEL_ACCOUNT_MANAGE = "pay:channel-account:manage";
+    public static final String PAY_CHANNEL_ACCOUNT_APPROVE = "pay:channel-account:approve";
+    public static final String PAY_STORE_BINDING_VIEW = "pay:store-binding:view";
+    public static final String PAY_STORE_BINDING_MANAGE = "pay:store-binding:manage";
+    public static final String PAY_STORE_BINDING_APPROVE = "pay:store-binding:approve";
     /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。

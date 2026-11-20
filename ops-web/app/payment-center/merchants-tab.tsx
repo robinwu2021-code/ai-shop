@@ -18,9 +18,10 @@ import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, joinCsv, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
 import { merchantExtraSections, useMerchantPageActions, useMerchantRowActions, useMws } from "./merchant-workspace";
+import { ChannelAccountsPanel, useCac } from "./channel-accounts";
 
 const NAME = "merchants";
-const DETAIL_ACTIONS = ["suspend", "assist", "submitAssist", "policy", "verifyLink", "confirm", "submitResume", "activate", "entity", "entityMore"];
+const DETAIL_ACTIONS = ["channelAccounts", "suspend", "assist", "submitAssist", "policy", "verifyLink", "confirm", "submitResume", "activate", "entity", "entityMore"];
 
 export function MerchantsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
@@ -31,6 +32,7 @@ export function MerchantsTab({ header }: { header: React.ReactNode }) {
   const list = useTabList<MerchantRow, { status: string; profileStatus: string }>(NAME, { status: "", profileStatus: "" }, (api, q) => api.merchants.list(q));
   const { api } = list;
   const mw = useMws();
+  const ca = useCac();
   const workspace = useMerchantRowActions(api, run);
   const pageActions = useMerchantPageActions(api, run);
 
@@ -78,6 +80,10 @@ export function MerchantsTab({ header }: { header: React.ReactNode }) {
           }}
         </DetailLoader>
       ),
+    },
+    {
+      key: "channelAccounts", label: ca.accountsAction, kind: "drawer", width: "w-[880px]", perm: "pay:channel-account:view", title: () => ca.accountsTitle,
+      render: (ctx) => <ChannelAccountsPanel api={api} merchantNo={ctx.row!.merchantNo} run={run} />,
     },
     {
       key: "suspend", label: c.suspend, kind: "dialog", perm: "pay:merchant:manage", danger: true, visible: (r) => r?.status === "ACTIVE",

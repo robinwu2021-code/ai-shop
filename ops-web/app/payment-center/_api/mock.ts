@@ -7,6 +7,7 @@ import type {
   AlertEventRow, AlertRuleRow, AppGrant, AppRow, ApprovalFlowRow, ChannelCallRow, ChannelCallbackRow, OperatingSettings, RefundListRow, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ChannelRow, DataScopeRow, Detail, EntryRow, ExceptionRow,
   MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow, NewebpayModification, OnboardingDraft,
+  AccountStatus, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRow, StoreBinding, VerificationStatus,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -108,11 +109,12 @@ export function createMockPayCenterApi(): PayCenterApi {
       version: 1, updatedAt: T0 - i * 24 * H, updatedBy: "admin", market: "TW", testChannel: code === "MOCKPAY",
     };
   }), (r) => r.channelCode);
+  const products_name = (code: string) => products.find(code)?.displayName ?? code;
   const products = new VersionedTable<ProductRow>([
     ["NEWEBPAY_CARD", "NEWEBPAY", "信用卡（蓝新）", "CARD"], ["NEWEBPAY_TWQR", "NEWEBPAY", "台湾 Pay QR", "TWQR"], ["LINEPAY_H5", "LINEPAY", "LINE Pay", "LINE_PAY"], ["MOCKPAY_TEST", "MOCKPAY", "测试支付", "TEST_PAY"],
   ].map(([code, ch, name, pm], i) => ({
     productCode: code, channelCode: ch, displayName: name, tradeMode: "ONE_TIME", paymentMethods: [pm],
-    accessMethods: [{ accessMethod: "H5", channelMethod: "WEB", enabled: true }], accountModes: ["PLATFORM_SUB"],
+    accessMethods: [{ accessMethod: "H5", channelMethod: "WEB", enabled: true }], accountModes: ["PLATFORM_SUB", "MERCHANT_OWN"],
     currencyLimits: [{ currency: "TWD", amountScale: 0, minMinor: 1, maxMinor: 0, enabled: true }], refundRule: { refundMode: "PARTIAL", maxPartialRefunds: 5 },
     twoPhase: false, status: i === 1 ? "DISABLED" : "ENABLED", sortNo: i * 10, version: 1, updatedAt: T0 - i * 24 * H, updatedBy: "admin", protocolProductCode: null,
   })), (r) => r.productCode);
@@ -191,6 +193,31 @@ export function createMockPayCenterApi(): PayCenterApi {
     return out;
   };
 
+  // ── P5 渠道账户、门店绑定、认领（TDD §2.11）：PM1001 蓝新已启用 + LINE Pay 待核验；PM1003 蓝新仅退款 ──
+  const accounts = new VersionedTable<ChannelAccountDetail & { version: number; payMerchantNo: string }>([
+    ["NWP7000", 0, "NEWEBPAY", "MS350001091", "ACTIVE", "VERIFIED", 1, ["NEWEBPAY_CARD"]],
+    ["LNP7100", 0, "LINEPAY", "2000781234", "UNVERIFIED", "PENDING", 0, []],
+    ["NWP7002", 2, "NEWEBPAY", "MS350001093", "REFUND_ONLY", "VERIFIED", 1, ["NEWEBPAY_CARD"]],
+  ].map(([no, m, ch, mid, st, vs, bound, prods]) => {
+    const [merchantNo, merchantName] = MERCHANTS[m as number];
+    const account: ChannelAccountRow = { payMerchantNo: no as string, ownerType: "MERCHANT", merchantNo, merchantName, payChannel: ch as string, market: "TW", currency: "TWD",
+      channelMerchantId: `****${(mid as string).slice(-4)}`, subMerchantId: null, accountMode: "MERCHANT_OWN", fundsPath: "DIRECT", parentPayMerchantNo: null,
+      source: st === "UNVERIFIED" ? "MANUAL" : "ONBOARDING", onboardingNo: st === "UNVERIFIED" ? null : `OB${no}`, evidenceRef: "file:签约证明", verificationStatus: vs as VerificationStatus,
+      status: st as AccountStatus, credentialKeyId: st === "UNVERIFIED" ? null : 501, boundStoreCount: bound as number, updatedAt: T0 - 3 * H, version: 1 };
+    return { account, payMerchantNo: no as string, version: 1, verifiedBy: vs === "VERIFIED" ? "admin" : null, verifiedAt: vs === "VERIFIED" ? T0 - 48 * H : null, verifyApprovalNo: null, verifyReason: null, registeredBy: "admin",
+      products: (prods as string[]).map((code) => ({ productCode: code, productName: "信用卡（蓝新）", status: "OPEN" as const, source: "CHANNEL_RECEIPT" as const, evidenceRef: null, openedBy: "system", openedAt: T0 - 47 * H })),
+      credentialVersion: st === "UNVERIFIED" ? null : 1, settleCycle: "T1", poolAccountRef: null, maxSplitRate: null,
+      statusLogs: st === "UNVERIFIED" ? [] : [{ fromStatus: "UNVERIFIED", toStatus: "ACTIVE", reason: "进件通过", approvalNo: null, operatorNo: "admin", changedAt: T0 - 47 * H }] };
+  }), (r) => r.payMerchantNo);
+  const syncAccount = (no: string, patch: Partial<ChannelAccountRow>) => { const d = accounts.get(no); Object.assign(d.account, patch, { version: d.version }); };
+  const bindings = new VersionedTable<StoreBinding>([
+    { bindingNo: "SB5001", storeNo: "ST2001", merchantNo: "PM1001", payChannel: "NEWEBPAY", payMerchantNo: "NWP7000", status: "ACTIVE", reason: "进件通过自动绑定", approvalNo: null, boundBy: "system", effectiveFrom: T0 - 47 * H, effectiveTo: null, endedReason: null, pendingTargetPayMerchantNo: null, pendingReason: null, version: 1 },
+    { bindingNo: "SB5002", storeNo: "ST2004", merchantNo: "PM1003", payChannel: "NEWEBPAY", payMerchantNo: "NWP7002", status: "ACTIVE", reason: "进件通过自动绑定", approvalNo: null, boundBy: "system", effectiveFrom: T0 - 40 * H, effectiveTo: null, endedReason: null, pendingTargetPayMerchantNo: null, pendingReason: null, version: 1 },
+  ], (r) => r.bindingNo);
+  const claims = new VersionedTable<ChannelAccountClaim>([
+    { claimNo: "CL6001", requestNo: "REQ-CL6001", merchantNo: "PM1001", payChannel: "LINEPAY", channelMerchantMasked: "****1234", channelMerchantId: "2000781234", subMerchantId: null, state: "PENDING_VERIFY", version: 1, files: [], reason: null, payMerchantNo: null, accountVerificationStatus: null, accountStatus: null },
+  ], (r) => r.claimNo);
+
   const cmdCheck = (c: Cmd) => reasonOf(c.reason);
   const setStatus = async <R extends { version: number; status: string }>(t: VersionedTable<R>, id: string, c: Cmd, from: string[], to: string) => {
     cmdCheck(c);
@@ -233,6 +260,7 @@ export function createMockPayCenterApi(): PayCenterApi {
       list: (q) => pageOf(exceptions.all(), q, ["payOrderNo"]),
       refund: (id, reason) => run(async () => { reasonOf(reason); need(exceptions.get(String(id)).status === "OPEN", "只能处理待处理的异常"); await exceptions.update(String(id), { status: "AUTO_REFUNDING", note: reason, handledBy: "admin" }); return { id, action: "REFUND" }; }),
       ignore: (id, reason) => run(async () => { reasonOf(reason, 4); need(exceptions.get(String(id)).status === "OPEN", "只能处理待处理的异常"); await exceptions.update(String(id), { status: "IGNORED", note: reason, handledBy: "admin" }); return { id, action: "IGNORE" }; }),
+      escalations: (q) => pageOf(orders.filter((o) => o.status === "AWAITING_CONFIRM" && (!q.storeNo || o.storeNo === q.storeNo)).map((o, k) => ({ order: o, followup: { id: 8000 + k, operation: "QUERY", payChannel: o.payChannel ?? "NEWEBPAY", status: "ESCALATED", recoveryPath: "MANUAL", attempts: 6, nextAt: null, lastResult: "渠道查询超时", resolvedAt: null, createdAt: T0 - (k + 1) * H, payOrderNo: o.payOrderNo } })), { ...q, storeNo: undefined }, []),
     },
     merchants: {
       list: (q) => pageOf(merchants.all(), q, ["merchantNo", "displayName", "entityName"]),
@@ -470,9 +498,11 @@ export function createMockPayCenterApi(): PayCenterApi {
       detail: (code) => run(() => { const c = channels.get(code); return wrap(c, c.version, ["EDIT", c.status === "ENABLED" ? "DISABLE" : "ENABLE", "DIAGNOSE"]); }),
       create: (b) => run(async () => { reasonOf(b.reason); need(b.expectedVersion === 0, "新建时版本必须为 0"); if (channels.find(b.channelCode)) throw new MockPayError("STATE_CONFLICT", "渠道编码已存在"); const row: ChannelRow = { channelCode: b.channelCode, name: b.name, channelType: b.channelType as ChannelRow["channelType"], adapterCode: b.adapterCode, platformCredentialKeyId: b.platformCredentialKeyId ?? null, status: "DISABLED", sortNo: b.sortNo ?? 0, enabledProductCount: 0, endpoints: b.endpoints.map((x) => ({ ...x, environment: x.environment as "SANDBOX", callbackStyle: x.callbackStyle as "PATH" | null, enabled: true })), version: 1, updatedAt: Date.now(), updatedBy: "admin", market: b.market, testChannel: !!b.testChannel }; await channels.insert(row); return wrap(row, 1, ["EDIT", "ENABLE", "DIAGNOSE"]); }),
       update: (code, b) => run(async () => { reasonOf(b.reason); const r = await channels.update(code, { name: b.name, adapterCode: b.adapterCode, sortNo: b.sortNo ?? 0, market: b.market, testChannel: !!b.testChannel, platformCredentialKeyId: b.platformCredentialKeyId ?? null, endpoints: b.endpoints.map((x) => ({ ...x, environment: x.environment as "SANDBOX", callbackStyle: x.callbackStyle as "PATH" | null, enabled: true })), updatedAt: Date.now() }, b.expectedVersion); return ok(code, r.status, r.version); }),
-      enable: (code, c) => run(() => setStatus(channels, code, c, ["DISABLED"], "ENABLED")),
-      disable: (code, c) => run(() => setStatus(channels, code, c, ["ENABLED"], "DISABLED")),
+      enable: (code, c) => run(() => setStatus(channels, code, c, ["DISABLED", "PENDING"], "ENABLED")),
+      disable: (code, c) => run(() => setStatus(channels, code, c, ["ENABLED", "PENDING"], "DISABLED")),
       diagnose: (code, c) => run(() => { cmdCheck(c); channels.get(code); return { jobNo: `JOB${Date.now() % 100000}`, status: "SUCCEEDED", errorCode: null }; }),
+      pending: (code, c) => run(() => setStatus(channels, code, c, ["ENABLED", "DISABLED"], "PENDING")),
+      adapters: () => run(() => ["NEWEBPAY", "LINEPAY", "JKOPAY", "MOCKPAY", "PAYBY"].map((a) => ({ adapterCode: a, channelType: "FIAT", operations: ["PAY", "REFUND", "QUERY"], accountModes: ["MERCHANT_OWN"], channelMethods: ["WEB"], tradeModes: ["ONE_TIME"] }))),
     },
     products: {
       list: (q) => pageOf(products.all(), q, ["productCode", "displayName"]),
@@ -481,6 +511,42 @@ export function createMockPayCenterApi(): PayCenterApi {
       update: (code, b) => run(async () => { reasonOf(b.reason); const { expectedVersion, reason: _r, ...rest } = b; const r = await products.update(code, { ...rest, updatedAt: Date.now() }, expectedVersion); return ok(code, r.status, r.version); }),
       enable: (code, c) => run(() => setStatus(products, code, c, ["DISABLED"], "ENABLED")),
       disable: (code, c) => run(() => setStatus(products, code, c, ["ENABLED"], "DISABLED")),
+      paymentMethods: () => run(() => [{ code: "CARD", name: "信用卡", category: "CARD" }, { code: "TWQR", name: "台湾 Pay QR", category: "QR" }, { code: "LINEPAY", name: "LINE Pay", category: "WALLET" }, { code: "JKOPAY", name: "街口支付", category: "WALLET" }]),
+    },
+    channelAccounts: {
+      list: (q) => pageOf(accounts.all().map((d) => d.account).filter((a) => (!q.merchantNo || a.merchantNo === q.merchantNo) && (!q.status || a.status === q.status) && (!q.payChannel || a.payChannel === q.payChannel)), { ...q, merchantNo: undefined, status: undefined, payChannel: undefined, ownerType: undefined }, ["payMerchantNo", "channelMerchantId"]),
+      detail: (no) => run(() => { const d = accounts.get(no); const a = d.account; return wrap(d, d.version, [
+        ...(a.verificationStatus !== "VERIFIED" ? ["submitVerify", "verify"] : []), ...(a.verificationStatus === "VERIFIED" && a.status === "UNVERIFIED" ? ["activate"] : []),
+        ...(a.status === "ACTIVE" ? ["refundOnly", "suspend"] : []), ...(a.status === "SUSPENDED" ? ["resume"] : []), ...(a.status !== "CLOSED" ? ["products", "credential"] : []),
+      ]); }),
+      register: (b) => run(async () => { reasonOf(b.reason); need(!accounts.all().some((d) => d.account.payChannel === b.payChannel && d.account.channelMerchantId.endsWith(b.channelMerchantId.slice(-4))), "同一渠道商户号只能登记一次");
+        const no = `${b.payChannel.slice(0, 3)}${7200 + accounts.all().length}`; const m = merchants.get(b.merchantNo);
+        const row = { payMerchantNo: no, version: 1, verifiedBy: null, verifiedAt: null, verifyApprovalNo: null, verifyReason: null, registeredBy: "admin", products: [], credentialVersion: null, settleCycle: null, poolAccountRef: null, maxSplitRate: null, statusLogs: [],
+          account: { payMerchantNo: no, ownerType: "MERCHANT" as const, merchantNo: b.merchantNo, merchantName: m.displayName, payChannel: b.payChannel, market: "TW", currency: "TWD", channelMerchantId: `****${b.channelMerchantId.slice(-4)}`, subMerchantId: b.subMerchantId ?? null, accountMode: b.accountMode, fundsPath: b.fundsPath, parentPayMerchantNo: null, source: "MANUAL" as const, onboardingNo: null, evidenceRef: b.evidenceRef, verificationStatus: "PENDING" as const, status: "UNVERIFIED" as const, credentialKeyId: null, boundStoreCount: 0, updatedAt: Date.now(), version: 1 } };
+        await accounts.insert(row); return wrap(row, 1, ["submitVerify", "verify", "products", "credential"]); }),
+      reject: (no, c) => run(async () => { cmdCheck(c); need(accounts.get(no).account.verificationStatus === "PENDING", "只有待核验账户可驳回"); const r = await accounts.update(no, { verifyReason: c.reason }, c.expectedVersion); syncAccount(no, { verificationStatus: "REJECTED" }); return ok(no, "REJECTED", r.version); }),
+      activate: (no, c) => run(async () => { cmdCheck(c); const d = accounts.get(no); need(d.account.verificationStatus === "VERIFIED" && d.products.some((p) => p.status === "OPEN") && !!d.account.credentialKeyId, "须已核验、至少开通一个产品、凭据就绪"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "ACTIVE" }); return ok(no, "ACTIVE", r.version); }),
+      suspend: (no, c) => run(async () => { cmdCheck(c); need(["ACTIVE", "REFUND_ONLY"].includes(accounts.get(no).account.status), "当前状态不允许停用"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "SUSPENDED" }); return ok(no, "SUSPENDED", r.version); }),
+      refundOnly: (no, c) => run(async () => { cmdCheck(c); need(accounts.get(no).account.status === "ACTIVE", "只有可收款账户可改为仅退款"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "REFUND_ONLY" }); return ok(no, "REFUND_ONLY", r.version); }),
+      openProduct: (no, code, b) => run(async () => { reasonOf(b.reason); need(!!b.evidenceRef.trim(), "请填写证明引用"); const d = accounts.get(no); const products = [...d.products.filter((p) => p.productCode !== code), { productCode: code, productName: products_name(code), status: "OPEN" as const, source: "OPS_CONFIRMED" as const, evidenceRef: b.evidenceRef, openedBy: "admin", openedAt: Date.now() }]; const r = await accounts.update(no, { products }, b.expectedVersion); syncAccount(no, {}); return ok(no, d.account.status, r.version); }),
+      closeProduct: (no, code, c) => run(async () => { cmdCheck(c); const d = accounts.get(no); need(d.account.status !== "ACTIVE" || d.products.filter((p) => p.status === "OPEN").length > 1, "可收款账户须保留至少一个产品"); const r = await accounts.update(no, { products: d.products.map((p) => (p.productCode === code ? { ...p, status: "CLOSED" as const } : p)) }, c.expectedVersion); syncAccount(no, {}); return ok(no, d.account.status, r.version); }),
+      bindCredential: (no, b) => run(async () => { reasonOf(b.reason); const r = await accounts.update(no, { credentialVersion: 1 }, b.expectedVersion); syncAccount(no, { credentialKeyId: b.keyId }); return ok(no, accounts.get(no).account.status, r.version); }),
+      enterKey: (no, b) => run(async () => { reasonOf(b.reason); const d = accounts.get(no); const first = d.account.status === "UNVERIFIED"; await accounts.update(no, { credentialVersion: (d.credentialVersion ?? 0) + 1, ...(first ? { verifiedBy: "admin", verifiedAt: Date.now() } : {}) }); syncAccount(no, first ? { credentialKeyId: 600 + accounts.all().length, verificationStatus: "VERIFIED", status: "ACTIVE" } : {}); const n = accounts.get(no); return wrap(n, n.version, []); }),
+      bindings: (no) => pageOf(bindings.all().filter((b) => b.payMerchantNo === no), { size: 100 }, []),
+    },
+    storeBindings: {
+      list: (store) => pageOf(bindings.all().filter((b) => b.storeNo === store), { size: 100 }, []),
+      bind: (store, b) => run(async () => { reasonOf(b.reason); need(!bindings.all().some((x) => x.storeNo === store && x.payChannel === b.payChannel && x.status === "ACTIVE"), "同门店同渠道已有生效绑定（BINDING_CONFLICT）"); const s = stores.get(store); const row: StoreBinding = { bindingNo: `SB${5100 + bindings.all().length}`, storeNo: store, merchantNo: s.merchantNo, payChannel: b.payChannel, payMerchantNo: b.payMerchantNo, status: "ACTIVE", reason: b.reason, approvalNo: null, boundBy: "admin", effectiveFrom: Date.now(), effectiveTo: null, endedReason: null, pendingTargetPayMerchantNo: null, pendingReason: null, version: 1 }; await bindings.insert(row); syncAccount(b.payMerchantNo, { boundStoreCount: accounts.get(b.payMerchantNo).account.boundStoreCount + 1 }); return wrap(row, 1, []); }),
+      unbind: (store, b, c) => run(async () => { cmdCheck(c); const x = bindings.get(b); need(x.status === "ACTIVE" && x.storeNo === store, "只能解绑生效中的绑定"); const r = await bindings.update(b, { status: "INACTIVE", effectiveTo: Date.now(), endedReason: c.reason }, c.expectedVersion); syncAccount(x.payMerchantNo, { boundStoreCount: Math.max(0, accounts.get(x.payMerchantNo).account.boundStoreCount - 1) }); return ok(b, "INACTIVE", r.version); }),
+      impact: (store, b, target) => run(() => { const x = bindings.get(b); const t = accounts.find(target); const bindable = !!t && t.account.verificationStatus === "VERIFIED" && ["ACTIVE", "REFUND_ONLY"].includes(t.account.status) && t.account.merchantNo === x.merchantNo; const cur = accounts.find(x.payMerchantNo)?.products.filter((p) => p.status === "OPEN").map((p) => p.productCode) ?? []; const next = t?.products.filter((p) => p.status === "OPEN").map((p) => p.productCode) ?? []; return { bindingNo: b, currentPayMerchantNo: x.payMerchantNo, targetPayMerchantNo: target, targetBindable: bindable, blockedReason: bindable ? null : "目标账户未核验或不可收款", productsKept: cur.filter((c) => next.includes(c)), productsLost: cur.filter((c) => !next.includes(c)), productsGained: next.filter((c) => !cur.includes(c)), inflightPayments: "UNKNOWN" as const }; }),
+      rebindRequest: (store, b, body) => run(async () => { reasonOf(body.reason); need(!bindings.get(b).pendingTargetPayMerchantNo, "已有待审换绑"); const r = await bindings.update(b, { pendingTargetPayMerchantNo: body.targetPayMerchantNo, pendingReason: body.reason }, body.expectedVersion); return ok(b, "ACTIVE", r.version); }),
+      rebindWithdraw: (store, b, c) => run(async () => { cmdCheck(c); need(!!bindings.get(b).pendingTargetPayMerchantNo, "没有待审换绑"); const r = await bindings.update(b, { pendingTargetPayMerchantNo: null, pendingReason: null }, c.expectedVersion); return ok(b, "ACTIVE", r.version); }),
+    },
+    claims: {
+      list: (merchantNo) => run(() => claims.all().filter((c) => c.merchantNo === merchantNo)),
+      detail: (no) => run(() => claims.get(no)),
+      resolve: (no, b) => run(async () => { reasonOf(b.reason); need(claims.get(no).state === "PENDING_VERIFY", "只有待核实的认领可处理"); return claims.update(no, { state: b.result, reason: b.reason, payMerchantNo: b.payMerchantNo ?? null }, b.expectedVersion); }),
+      file: () => Promise.reject(new MockPayError("NOT_FOUND", "mock 没有证明文件")),
     },
     entries: {
       list: (q) => pageOf(entries.all(), q, ["entryNo", "name", "storeNo"]),

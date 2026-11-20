@@ -13,6 +13,7 @@ import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
 import { STORE_MODES, STORE_SOURCE_STATUSES, type StoreAssociation, type StoreRow } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
+import { StoreBindingsPanel, useCac } from "./channel-accounts";
 import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, usePayCenterApi } from "./shared";
 
 const NAME = "stores";
@@ -21,6 +22,7 @@ export function StoresTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
   const operator = useDraftOperator();
   const run = useRun(NAME);
+  const ca = useCac();
   const sourceMap = useStatusMap("source", STORE_SOURCE_STATUSES, { ACTIVE: "success", PENDING_SYNC: "warning", DELETED: "danger" });
   const modeMap = useStatusMap("mode", STORE_MODES, { OVERRIDE: "info" });
   const list = useTabList<StoreRow, { sourceStatus: string; configMode: string }>(NAME, { sourceStatus: "", configMode: "" }, (api, q) => api.stores.list(q));
@@ -62,12 +64,16 @@ export function StoresTab({ header }: { header: React.ReactNode }) {
                     { header: c.validTo, cell: (r) => fmtTime(r.validTo) },
                   ]} /> },
                 ]}
-                actions={<DetailActions ctx={ctx} keys={["policy", p ? "cancelChange" : "requestChange", ...(p ? ["executeChange"] : [])]} />}
+                actions={<DetailActions ctx={ctx} keys={["bindings", "policy", p ? "cancelChange" : "requestChange", ...(p ? ["executeChange"] : [])]} />}
               />
             );
           }}
         </DetailLoader>
       ),
+    },
+    {
+      key: "bindings", label: ca.bindingsAction, kind: "drawer", width: "w-[880px]", perm: "pay:store-binding:view", title: () => ca.bindingsTitle,
+      render: (ctx) => <StoreBindingsPanel api={api} storeNo={ctx.row!.storeNo} merchantNo={ctx.row!.merchantNo} run={run} />,
     },
     {
       key: "policy", label: c.editPolicy, kind: "drawer", perm: "pay:collection-policy:manage", title: () => c.editPolicyTitle,
