@@ -303,7 +303,7 @@ function RevisionSelect({ revisions, value, onChange }: { revisions: MerchantDet
   return (
     <label className="mb-4 flex items-center gap-2 txt-body">
       <span className="text-muted-foreground">{m.revisionPick}</span>
-      <select className="h-9 rounded-control bg-muted px-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="h-[var(--ctl-h)] focus-ring rounded-control bg-muted px-2" value={value} onChange={(e) => onChange(e.target.value)}>
         {revisions.map((r) => <option key={r.revisionNo} value={r.revisionNo}>{`r${r.revision} · ${r.purpose} · ${r.reviewStatus}`}</option>)}
       </select>
     </label>
@@ -392,7 +392,7 @@ function EntityMaterialsView({ api, merchantNo, revisionNo, data }: { api: PayCe
           <div className="mb-2 flex items-center justify-between"><h4 className="txt-label text-muted-foreground">{docLabel(viewer.purpose)}</h4><Button size="sm" variant="ghost" onClick={() => { release(); setViewer(null); }}>{m.closePreview}</Button></div>
           {viewer.kind?.startsWith("image/")
             ? <img src={viewer.url} alt={docLabel(viewer.purpose)} className="max-h-96 rounded-card" />
-            : <a href={viewer.url} download={`${viewer.purpose.toLowerCase()}.pdf`} className="text-primary-ink hover:underline txt-body">{m.pdfDownload}</a>}
+            : <a href={viewer.url} download={`${viewer.purpose.toLowerCase()}.pdf`} className="text-primary-ink hover:underline focus-ring txt-body">{m.pdfDownload}</a>}
         </section>
       )}
       {reading && !reading.busy && (

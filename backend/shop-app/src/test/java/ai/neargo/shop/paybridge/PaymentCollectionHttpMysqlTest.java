@@ -57,6 +57,8 @@ class PaymentCollectionHttpMysqlTest {
         var f = host.fixture;
         String at = Long.toString(Instant.now().getEpochSecond()),
                 nonce = UUID.randomUUID().toString();
+        String signingEnvironment = f.properties.secretFor(environment) == null
+                ? f.properties.getEnvironment() : environment;
         return http.send(
                 HttpRequest.newBuilder(
                                 URI.create(
@@ -68,7 +70,7 @@ class PaymentCollectionHttpMysqlTest {
                         .header("X-Payment-Environment", environment)
                         .header(
                                 "X-Payment-Signature",
-                                f.security.signature(at, nonce, environment, raw))
+                                f.security.signature(at, nonce, signingEnvironment, raw))
                         .POST(HttpRequest.BodyPublishers.ofString(raw))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -125,6 +127,53 @@ class PaymentCollectionHttpMysqlTest {
             } finally {
                 ai.neargo.shop.auth.BizContext.clear();
                 org.springframework.security.core.context.SecurityContextHolder.clearContext();
+            }
+        }
+    }
+
+    @Test
+    void canonicalCheckoutUsesHostIdWithoutLegacyBindingAndRejectsConflicts() throws Exception {
+        try (var f = new PaymentCollectionMysqlFixture();
+                var host = new PaymentCollectionSandboxHost(f, 0)) {
+            var body = (tools.jackson.databind.node.ObjectNode) f.json.valueToTree(f.fact(802));
+            body.put("schemaVersion", 2).put("storeId", 101).put("tenantNo", "MAIN")
+                    .put("entityNo", "ENT_SSE_SANDBOX");
+            String raw = f.json.writeValueAsString(body);
+            assertEquals(403, post(host, raw, "SANDBOX").statusCode());
+            f.properties.setCanonicalCheckoutSources(Set.of("SANDBOX:MAIN:42"));
+            assertEquals(403, post(host, raw.replace("\"tenantNo\":\"MAIN\"", "\"tenantNo\":\"OTHER\""), "SANDBOX").statusCode());
+            assertEquals(403, post(host, raw.replace("ENT_SSE_SANDBOX", "ENT_WRONG"), "SANDBOX").statusCode());
+            assertEquals(403, post(host, raw.replace("\"sourceId\":42", "\"sourceId\":999"), "SANDBOX").statusCode());
+            assertEquals(403, post(host, f.json.writeValueAsString(body.deepCopy().put("storeId", 999)), "SANDBOX").statusCode());
+            assertEquals(403, post(host, raw.replace("\"market\":\"TW\"", "\"market\":\"JP\""), "SANDBOX").statusCode());
+            assertEquals(403, post(host, f.json.writeValueAsString(body.deepCopy()
+                    .put("storeNo", "ST_SSE_OTHER")), "SANDBOX").statusCode());
+            f.jdbc.update("INSERT INTO payment_collection_source"
+                    + " (environment,pay_app_id,source_type,source_id,payment_store_id,store_no,entity_no)"
+                    + " VALUES ('SANDBOX',42,'CHECKOUT',42,101,'ST_SSE_OTHER','ENT_SSE_SANDBOX')");
+            assertEquals(403, post(host, raw, "SANDBOX").statusCode());
+            f.jdbc.update("UPDATE payment_collection_source SET store_no='ST_SSE_SANDBOX', enabled=0"
+                    + " WHERE payment_store_id=101");
+            assertEquals(403, post(host, raw, "SANDBOX").statusCode());
+            assertEquals(0, f.jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_receipt", Integer.class));
+            assertEquals(0, f.jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class));
+            f.jdbc.update("DELETE FROM payment_collection_source WHERE payment_store_id=101");
+            var stream = http.send(request(host, "/biz/payment/events").build(),
+                    HttpResponse.BodyHandlers.ofInputStream());
+            assertEquals(200, stream.statusCode());
+            try (var reader = new BufferedReader(new InputStreamReader(stream.body()))) {
+                assertEquals("ready", frame(reader).event());
+                var applied = post(host, raw, "SANDBOX");
+                assertEquals(200, applied.statusCode(), applied.body());
+                assertEquals("APPLIED", f.json.readTree(applied.body()).path("status").asString());
+                var live = frame(reader);
+                assertEquals("payment.succeeded", live.event());
+                assertEquals("ST_SSE_SANDBOX", f.json.readTree(live.data()).path("storeNo").asString());
+                assertEquals("DUPLICATE", f.json.readTree(post(host, raw, "SANDBOX").body()).path("status").asString());
+                assertEquals(1, f.jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_receipt", Integer.class));
+                assertEquals(1, f.jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM notify_message WHERE receiver_no='USR_SSE_SANDBOX' AND store_no='ST_SSE_SANDBOX'",
+                        Integer.class));
             }
         }
     }

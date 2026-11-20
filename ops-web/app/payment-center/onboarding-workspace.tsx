@@ -88,7 +88,7 @@ function CreateOnboarding({ api, run, ctx }: { api: PayCenterApi; run: Run; ctx:
       <label className="block txt-body">
         <span className="mb-1 block txt-label text-muted-foreground">{o.merchantNo}</span>
         <span className="flex gap-2">
-          <input className="h-9 flex-1 rounded-control bg-muted px-3" value={merchantNo} maxLength={64} onChange={(e) => setMerchantNo(e.target.value)} onBlur={() => setLooked(merchantNo.trim())} />
+          <input className="h-[var(--ctl-h)] focus-ring flex-1 rounded-control bg-muted px-3" value={merchantNo} maxLength={64} onChange={(e) => setMerchantNo(e.target.value)} onBlur={() => setLooked(merchantNo.trim())} />
           <Button variant="outline" onClick={() => setLooked(merchantNo.trim())}>{o.merchantLookup}</Button>
         </span>
       </label>
@@ -100,7 +100,7 @@ function CreateOnboarding({ api, run, ctx }: { api: PayCenterApi; run: Run; ctx:
           {channels.isPending ? <Skeleton className="h-6 w-1/2" /> : usable.length === 0 ? <Notice tone="info">{o.noChannels}</Notice> : (
             <label className="block txt-body">
               <span className="mb-1 block txt-label text-muted-foreground">{o.channelPick}</span>
-              <select className="h-9 w-full rounded-control bg-muted px-2" value={channel} onChange={(e) => setChannel(e.target.value)}>
+              <select className="h-[var(--ctl-h)] focus-ring w-full rounded-control bg-muted px-2" value={channel} onChange={(e) => setChannel(e.target.value)}>
                 <option value="">—</option>
                 {usable.map((x) => <option key={x.channelCode} value={x.channelCode}>{`${x.name} · ${x.channelCode}`}</option>)}
               </select>
@@ -261,7 +261,7 @@ export function onboardingExtraSections(api: PayCenterApi, d: Detail<OnboardingD
   const lastResult = d.record.versions[0]?.resultCode ?? null;
   const warn = [lastResult === "AMR10014" ? o.warnAmr10014 : null, lastResult === "KEY_RECEIPT_MISSING" ? o.warnReceipt : null].filter(Boolean) as string[];
   if (warn.length) out.push({ title: o.sectionWarnings, content: <>{warn.map((w) => <Notice key={w} tone="warning" className="mb-2">{w}</Notice>)}</> });
-  if (row.signUrl) out.push({ title: o.signUrl, content: <a href={row.signUrl} target="_blank" rel="noreferrer noopener" className="txt-body text-primary-ink hover:underline">{o.openSign}</a> });
+  if (row.signUrl) out.push({ title: o.signUrl, content: <a href={row.signUrl} target="_blank" rel="noreferrer noopener" className="txt-body text-primary-ink hover:underline focus-ring">{o.openSign}</a> });
   if (usesDraft(row)) {
     out.push({ title: o.draftState, content: <DraftSummary api={api} row={row} /> });
     out.push({ title: o.sectionReadiness, content: (
@@ -365,7 +365,7 @@ function NwpForm({ api, row, run, d, section, draftRef, onDone }: { api: PayCent
       {needType && (
         <label className="mb-4 block txt-body">
           <span className="mb-1 block txt-label text-muted-foreground">{o.representativeType}</span>
-          <select className="h-9 w-full rounded-control bg-muted px-2" value={repType} onChange={(e) => setRepType(e.target.value)}>
+          <select className="h-[var(--ctl-h)] focus-ring w-full rounded-control bg-muted px-2" value={repType} onChange={(e) => setRepType(e.target.value)}>
             <option value="">—</option>
             {Object.entries(representativeTypes).map(([k, v]) => <option key={k} value={k}>{`${k} · ${v}`}</option>)}
           </select>
@@ -444,7 +444,7 @@ function AttachmentsPanel({ api, row, run, canEdit }: { api: PayCenterApi; row: 
               {f?.fileNo && !f.expired && <Button size="sm" variant="outline" onClick={() => void view(f)}>{o.view}</Button>}
               {canEdit && (
                 <>
-                  <input ref={(el) => { inputs.current[s] = el; }} type="file" accept="image/png,image/jpeg,application/pdf" className="hidden"
+                  <input ref={(el) => { inputs.current[s] = el; }} type="file" accept="image/png,image/jpeg,application/pdf" className="hidden focus-ring"
                     onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void upload(s, file); }} />
                   <Button size="sm" variant="outline" onClick={() => inputs.current[s]?.click()}>{f ? o.replace : o.upload}</Button>
                 </>
@@ -456,7 +456,7 @@ function AttachmentsPanel({ api, row, run, canEdit }: { api: PayCenterApi; row: 
       {preview && (
         <section>
           <div className="mb-2 flex items-center justify-between"><span className="txt-label text-muted-foreground">{preview.slot}</span><Button size="sm" variant="ghost" onClick={() => { release(); setPreview(null); }}>{o.closePreview}</Button></div>
-          {preview.type.startsWith("image/") ? <img src={preview.url} alt={preview.slot} className="max-h-96 rounded-card" /> : <a href={preview.url} download={`${preview.slot}.pdf`} className="txt-body text-primary-ink hover:underline">PDF</a>}
+          {preview.type.startsWith("image/") ? <img src={preview.url} alt={preview.slot} className="max-h-96 rounded-card" /> : <a href={preview.url} download={`${preview.slot}.pdf`} className="txt-body text-primary-ink hover:underline focus-ring">PDF</a>}
         </section>
       )}
     </div>
@@ -494,13 +494,13 @@ function RecognizePanel({ api, row, run, onDone }: { api: PayCenterApi; row: Onb
       {!draft.data?.fields.LEGAL_FORM && draft.data && <Notice tone="warning">{o.needLegalForm}</Notice>}
       <label className="block txt-body">
         <span className="mb-1 block txt-label text-muted-foreground">{o.docType}</span>
-        <select className="h-9 w-full rounded-control bg-muted px-2" value={type} onChange={(e) => { setType(e.target.value as DocumentType); setResult(null); }}>
+        <select className="h-[var(--ctl-h)] focus-ring w-full rounded-control bg-muted px-2" value={type} onChange={(e) => { setType(e.target.value as DocumentType); setResult(null); }}>
           {DOCUMENT_TYPES.map((x) => <option key={x} value={x}>{tr(o, `doc_${x}`, x)}</option>)}
         </select>
       </label>
       <label className="block txt-body">
         <span className="mb-1 block txt-label text-muted-foreground">{o.docFile}</span>
-        <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); }} />
+        <input type="file" className="focus-ring" accept="image/png,image/jpeg,application/pdf" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); }} />
       </label>
       <Button disabled={!file || busy} onClick={() => void recognize()}>{busy ? o.recognizing : o.runRecognize}</Button>
       {result && !result.recognized && <Notice tone="info">{o.notRecognized}</Notice>}
@@ -509,7 +509,7 @@ function RecognizePanel({ api, row, run, onDone }: { api: PayCenterApi; row: Onb
           <p className="txt-label text-muted-foreground">{o.pickFields}</p>
           {keys.map((k) => (
             <label key={k} className="flex items-center gap-2 txt-body">
-              <input type="checkbox" checked={picked.includes(k)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, k] : p.filter((x) => x !== k)))} />
+              <input type="checkbox" className="focus-ring" checked={picked.includes(k)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, k] : p.filter((x) => x !== k)))} />
               <span className="w-28 text-muted-foreground">{k}</span><span>{result.fields[k]}</span>
             </label>
           ))}

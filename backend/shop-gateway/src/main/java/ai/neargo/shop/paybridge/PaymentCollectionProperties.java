@@ -43,6 +43,10 @@ public class PaymentCollectionProperties {
     @Size(min = 32)
     private String cursorSecret;
 
+    /** Allowlisted environment:tenantNo:payAppId combinations for canonical checkout IDs. */
+    private Set<@Pattern(regexp = "(SANDBOX|PRODUCTION):[A-Za-z0-9_-]{1,64}:[1-9][0-9]{0,18}") String>
+            canonicalCheckoutSources = new LinkedHashSet<>();
+
     @Min(100)
     private long pollMs = 1000;
 

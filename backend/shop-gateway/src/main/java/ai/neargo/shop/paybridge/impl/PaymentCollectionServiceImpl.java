@@ -3,6 +3,7 @@ package ai.neargo.shop.paybridge.impl;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.paybridge.PaymentCollectionFact;
+import ai.neargo.shop.paybridge.PaymentCollectionProperties;
 import ai.neargo.shop.paybridge.PaymentCollectionSecurity;
 import ai.neargo.shop.paybridge.PaymentCollectionService;
 import ai.neargo.shop.paybridge.PaymentCollectionWork;
@@ -13,6 +14,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
 import java.util.Objects;
 
 import javax.sql.DataSource;
@@ -22,12 +24,15 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     private final OutboxEventBus events;
+    private final PaymentCollectionProperties properties;
 
     public PaymentCollectionServiceImpl(
-            DataSource ds, PlatformTransactionManager manager, OutboxEventBus events) {
+            DataSource ds, PlatformTransactionManager manager, OutboxEventBus events,
+            PaymentCollectionProperties properties) {
         jdbc = new JdbcTemplate(ds);
         transaction = new TransactionTemplate(manager);
         this.events = events;
+        this.properties = properties;
     }
 
     @Override
@@ -69,7 +74,8 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                         throw new ResponseStatusException(
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                                 "not a normal merchant collection");
-                    var binding = store(environment, fact);
+                    var binding = fact.schemaVersion() == 2
+                            ? canonicalStore(environment, fact) : legacyStore(environment, fact);
                     jdbc.update(
                             "UPDATE payment_collection_receipt SET store_no=?,entity_no=? WHERE"
                                     + " receipt_no=?",
@@ -86,7 +92,7 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
      * store near-pay resolved; without one, the store number in the signed snapshot is trusted when the
      * store exists and its entity's market matches (TDD-沙箱收款消息与SSE, 2026-11-16 增量).
      */
-    private java.util.Map<String, Object> store(String environment, PaymentCollectionFact fact) {
+    private Map<String, Object> legacyStore(String environment, PaymentCollectionFact fact) {
         var bindings =
                 jdbc.queryForList(
                         "SELECT s.store_no,s.entity_no,e.market FROM"
@@ -113,7 +119,44 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                 || !Objects.equals(bindings.getFirst().get("market"), fact.market())
                 || fact.storeNo() != null
                         && !fact.storeNo().equals(bindings.getFirst().get("store_no")))
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "untrusted source/store mapping");
+            throw untrustedStore();
         return bindings.getFirst();
+    }
+
+    private Map<String, Object> canonicalStore(String environment, PaymentCollectionFact fact) {
+        if (!"CHECKOUT_QR".equals(fact.bizType()) || !"CHECKOUT".equals(fact.sourceType())
+                || !Objects.equals(fact.payAppId(), fact.sourceId())
+                || fact.tenantNo() == null || fact.entityNo() == null
+                || !properties.getCanonicalCheckoutSources().contains(
+                        environment + ":" + fact.tenantNo() + ":" + fact.payAppId())) {
+            throw untrustedStore();
+        }
+        var stores = jdbc.queryForList("""
+                SELECT s.store_no, s.entity_no, s.tenant_no, e.market
+                FROM mch_store s JOIN mch_entity e
+                  ON e.tenant_no=s.tenant_no AND e.entity_no=s.entity_no AND e.deleted=0
+                WHERE s.tenant_no=? AND s.id=? AND s.deleted=0
+                """, fact.tenantNo(), fact.storeId());
+        if (stores.size() != 1) throw untrustedStore();
+        var store = stores.getFirst();
+        if (!fact.tenantNo().equals(store.get("tenant_no")) || !fact.entityNo().equals(store.get("entity_no"))
+                || !fact.market().equals(store.get("market"))
+                || fact.storeNo() != null && !fact.storeNo().equals(store.get("store_no"))) {
+            throw untrustedStore();
+        }
+
+        var bindings = jdbc.query("""
+                SELECT store_no, entity_no, enabled FROM payment_collection_source
+                WHERE environment=? AND pay_app_id=? AND source_type=? AND source_id=? AND payment_store_id=?
+                """, (rs, index) -> rs.getBoolean("enabled")
+                        && Objects.equals(store.get("store_no"), rs.getString("store_no"))
+                        && Objects.equals(store.get("entity_no"), rs.getString("entity_no")),
+                environment, fact.payAppId(), fact.sourceType(), fact.sourceId(), fact.storeId());
+        if (bindings.contains(Boolean.FALSE)) throw untrustedStore();
+        return store;
+    }
+
+    private static ResponseStatusException untrustedStore() {
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, "untrusted source/store mapping");
     }
 }
