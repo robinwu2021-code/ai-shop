@@ -773,3 +773,7 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - **写操作没做成**：为测试主体 `M261119TS0PN0XBK9` 新建支付商户被 near-pay 拒绝 `10403 经营主体不在运营授权范围`——超管在 near-pay 的数据范围不含该主体。加数据范围是改生产权限，停下等用户定。
 - **发现的小问题**：带 `?action=create` 打开时，「新建支付商户」要等 near-pay 可用性接口返回才出现，深链接被清掉（点按钮正常）。
 - **期间 near-pay 被别的会话换包**：14:31–14:37 CST `nearpay-prod` 停约 6 分钟，换成 jar `79c47ed862d1f24e`、支付库到 **V127**（不是本会话的操作）；恢复后 P3a 接口与储值交易修复都在，支付中心不受影响。
+- **写操作根因（续）**：用户让「给测试主体加数据范围」——查下来不需要：超管 `ST-NEARA` 在 near-pay 的数据范围已是 `entityNos: ["*"]`。
+  真正原因两层：① 代建支付商户要的是**经营主体**（`mch_operating_entity`），测试主体 `M261119TS0PN0XBK9` 是直接写库建的，没有经营主体（正式库只有一个经营主体 `OE26111074KRRAD8Q5`「NearGo科技测试主体-1110-01」）；
+  ② 用它再试仍被拒：near-pay `AiShopBizIdentityClient.forOperator` 把**运营端**接口 `/ops/customers/operating-entities/{id}` 发到 `near-pay.biz.ai-shop.base-url=http://127.0.0.1:18082`（ai-shop api 实例，没有 `/ops/**`，回 404），被翻译成「经营主体不在运营授权范围」。
+  ai-shop 运营端（v1 18081 与 v2）用同一令牌查该经营主体都返回正常且含 `PAYMENT_MERCHANT_CREATE`。**生产上代建支付商户对所有人都不可用**（含旧 /oms 页），要 near-pay 改用 `near-pay.ops.ai-shop.base-url`（18081）并发版。两次尝试均被拒，正式数据无改动。
