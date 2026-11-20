@@ -725,3 +725,32 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - **残留一行**：锁路时门店没有自提配置行，于是新建了一行 `mch_fulfillment_channel`（id 21，enabled=0、ops_locked=0）。不影响行为：只有「开启且未锁」的行才会取代默认兜底，接口返回与测试前一致。没删。
 - **支付系统**：只收到一条 `MERCHANT_STORE_CHANGED` 通知（sys_outbox 23322，00:09:27 已发送），时间在最后一次写之后；通知只带修订号，支付系统读的是当前快照，即原名。中间的测试名没推过去。
 - 没测：提交 / 判定经营审核（会留审核记录、可能改门店状态）、资金路径（同步收款商户表，主体无照时改回归集会被拒，可能改不回来）。
+
+## 支付中心原生页上线 v2（2026-11-20，`39bea6a65`；用户：「基于线上环境测试」→ 选「部署到 v2 再测」、写操作只限测试数据）
+
+**发布分支** `release/v2-paycenter-20261120` = `feat/gateway-mp-index` `c92b384f9`（即 v2 在跑的 `b97dd1f34` + 文档）合并 `feat/ops-pay-center-menu`（`baecf5033`）。
+有意没带 `origin/feat/gateway-mp-index` 的 `c91d8f839`（库存 Nacos 发现 + 库存库迁移 V28，别的会话的、尚未部署）。
+冲突三处：`nav-platform-settings.test.ts` 两边新增的动作点归属取并集；`schema-test.sql`、`规范-运营端.md` 重新生成。
+本机验证：ops-web tsc 0、vitest 147 文件 1366 条全过；后端 `FunctionPointPermAlignmentTest`/`SchemaDriftTest`/`SchemaGeneratorTest`/`OpsPermConfigFlowTest` 50 条全过；界面清单、运营端孤儿检查通过。
+
+| 步 | 做了什么 | 结果 | 回退 |
+|---|---|---|---|
+| 正式库备份 | .61 `/data0/mysql9/backups/ai-shop-v2-gateway-20261119/before-V684.sql.gz`（`flyway_schema_history`、`sys_function_point`、`sys_role_point`） | 连接数 138/250 | — |
+| v2 后端 | .80 `releases/shop-app-39bea6a65.jar`（sha256 前缀 `b154af23a9b64906`），run.sh 备份 `run.sh.before-39bea6a65`，标签 `gateway-paycenter-39bea6a65` | Flyway 跑了 `V684`、`V685`（只插 26 个功能点与超管授权），历史到 v685；85 秒起好 | 复原 run.sh 后 `./run.sh all restart`；V684/V685 的行留着无害（旧版前端不认这些 href），要删按备份 |
+| 运营端页面 | 166 `releases/gateway-39bea6a65`，`current` 已指过去 | `/ops-shop-v2/payment-center/` 200 | `current` 指回 `releases/gateway-b97dd1f34` |
+| near-pay（未成） | 想把 P3a 接口一起发（`release/nearpay-p3a-20261120` `6c409d27a`） | **启动失败，`deploy-safe.sh` 自动回退**，见下 | 已回退 |
+
+**near-pay 为什么没发成**：线上 jar（`d09e409d202d98f4`）不是 `00dbaf37e` 打的——它的支付库迁移只到 V111（库在 V112），而 `00dbaf37e` 与 P3a 分支都带到 V125。
+新 jar 启动时 `CatalogStartupChecks` 查 `channel_id` 列（V115 才加）报 `Unknown column`，脚本回退到原 jar。**正式支付中断约 2 分钟**（04:19–04:20:55 UTC），回退后无 ERROR，`pay-svc.jar.failed` 留在目录里。
+备份名 `pay-svc.jar.before-20261120-p3a-6c409d27a` 就是原 jar。线上 near-pay 的源码不在任何分支上（备份名里的 `00dbaf37e` 只是那次挑进去的提交）。
+要让 P3a 上线：要么 near-pay 那边把 P3a 挑到线上那条线（V111/V112）上再发，要么先把 V113–V125 作为一次单独的支付库发布执行——两者都不是本次范围。
+
+**线上测试**（用户已登录的超管会话，`https://tw.neargo.ai/ops-shop-v2/payment-center/`，只读）：
+
+- 菜单：一级「支付中心」，分组 审批 / 支付商户 / 交易 / 渠道接入 / 费率 / 资金结算 / 对账 / 会员资产，与菜单 TDD 一致。
+- 31 个页签逐个打开：**20 个正常出真实数据**（支付单 142、商户 757、门店 835、进件 12、渠道 15、产品 16、收款接入 13、数据范围 6、审批流程 17、告警规则 5、渠道调用 9、请求日志 4508 等；审核待办、异常、终端、应用、告警事件、回调为空表）。
+- **10 个 P3a 页签 404**（交易流水、渠道成本、佣金规则、资金流水、结算、提现、出款、对账差异、储值账户、储值交易）：near-pay 未发，预期内，页面显示「支付服务请求失败（HTTP 404）」+ 重试，不白屏。
+- **退款订单 404，是新发现**：退款只有 v1 接口，而 166 nginx 只把 `/oms-api/pay-ops/v2/` 转给 near-pay，`/oms-api/` 其余一律 404（有意为之）。不打算对公网开 v1；要 near-pay 出 v2 的退款列表/详情。
+- 详情抽屉：测试门店 `ST261119BE70D8B9C9` 点「查看」开一层抽屉，基本信息与「同步问题 UNLINKED_ENTITY」正确；带 `?action=view&id=` 直接打开同样还原抽屉。
+- 写操作**没做**：测试门店在 near-pay 的 `allowedActions` 为空，测试主体 `M261119TS0PN0XBK9` 不在 near-pay 商户列表（未进件）；剩下能写的都是真实商户、真实支付单或会进生产审批队列的提交。
+- 观察：门店行上「收款策略」「变更归属」两个按钮不看 `allowedActions` 照样显示（测试门店为空也显示），提交会被后端拒；是否按 `allowedActions` 收起待定。
