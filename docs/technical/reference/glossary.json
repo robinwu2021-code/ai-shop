@@ -29256,7 +29256,7 @@
         },
         {
           "key": "actionKit.draftUnavailable",
-          "zh-CN": "当前浏览器无法保存草稿，关闭前请先提交",
+          "zh-CN": "浏览器无法存草稿，关闭前请先提交",
           "en": "This browser can't save drafts. Submit before closing",
           "ar": null
         },
