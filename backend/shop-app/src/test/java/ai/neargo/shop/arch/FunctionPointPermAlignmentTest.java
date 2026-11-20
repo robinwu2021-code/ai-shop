@@ -248,13 +248,24 @@ class FunctionPointPermAlignmentTest {
         Set<String> rendered = new TreeSet<>();
         Matcher key = Pattern.compile("\"?([a-z-]+)\"?:\\s*[A-Z]\\w*Tab\\b").matcher(table.group(1));
         while (key.find()) rendered.add(key.group(1));
+        // 库里还没改址的 5 个 V671 旧地址（V686 待 v1 下线后执行），前端按 module.ts 的 LEGACY_TAB_REDIRECT 映射到支付中心页签
+        Map<String, String> legacy = new TreeMap<>();
+        Matcher block = Pattern.compile("LEGACY_TAB_REDIRECT[^=]*=\\s*\\{(.*?)\\};", Pattern.DOTALL).matcher(tabs);
+        assertThat(block.find()).as("module.ts 的 LEGACY_TAB_REDIRECT 未读到").isTrue();
+        Matcher path = Pattern.compile("\"(/[a-z-]+)\":\\s*\\{([^}]*)\\}").matcher(block.group(1));
+        while (path.find()) {
+            Matcher e = Pattern.compile("\"?([a-z-]+)\"?:\\s*\"([a-z-]+)\"").matcher(path.group(2));
+            while (e.find()) legacy.put(path.group(1) + "?tab=" + e.group(1), e.group(2));
+        }
+        assertThat(legacy).as("旧支付地址映射未读到").hasSize(5);
         List<RemoteMenu> menus = jdbc.sql("""
                 SELECT href, perm_code FROM sys_function_point
-                 WHERE deleted=0 AND point_type='MENU' AND href LIKE '/payment-center?tab=%' AND perm_code IS NOT NULL
+                 WHERE deleted=0 AND point_type='MENU' AND href IS NOT NULL AND perm_code IS NOT NULL
                 """).query((rs, row) -> new RemoteMenu(rs.getString("href"), rs.getString("perm_code"))).list();
         Set<String> out = new TreeSet<>();
         for (RemoteMenu menu : menus) {
-            String k = menu.href().substring("/payment-center?tab=".length());
+            String k = menu.href().startsWith("/payment-center?tab=") ? menu.href().substring("/payment-center?tab=".length()) : legacy.get(menu.href());
+            if (k == null) continue;
             if (rendered.contains(k) && menu.permission().equals(permOfTab.get(k))) out.add(menu.permission());
         }
         return out;
