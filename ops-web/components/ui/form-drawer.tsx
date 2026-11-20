@@ -42,6 +42,11 @@ export type FieldDef = ValidatableField & {
   csv?: boolean;
   /** 字段下方灰色说明。 */
   help?: string;
+  /**
+   * 敏感字段（银行账号、密钥、证件号、凭据）：不进本地草稿、不进日志。
+   * 见 `lib/draft.ts` 与 TDD-支付中心运营页面 §2.4。
+   */
+  sensitive?: boolean;
 };
 
 type FormValue = FormValues;
@@ -63,6 +68,22 @@ function InputForField({
   const cur = value[f.key];
   const disabled = isFieldDisabled(f, value, isEdit);
 
+  if (f.type === "multiselect") {
+    // csv：值是逗号串（"A,B"）；否则是数组。此前没有这个分支，multiselect 退化成文本框
+    const arr = f.csv ? csvToArray(cur) : ((cur as string[] | undefined) ?? []);
+    return (
+      <MultiSelect
+        className="w-full"
+        value={arr}
+        options={f.options ?? []}
+        disabled={disabled}
+        invalid={invalid}
+        onBlur={onBlur}
+        placeholder={f.placeholder}
+        onChange={(v) => set(f.csv ? arrayToCsv(v) : v)}
+      />
+    );
+  }
   if (f.type === "select") {
     return (
       <Select

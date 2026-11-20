@@ -183,6 +183,61 @@ public final class Perms {
      */
     public static final String PAY_APP_MANAGE = "pay:app:manage";
     public static final String PAY_APP_CREDENTIAL_REVOKE = "pay:app-credential:revoke";
+    /*
+     * 支付中心原生页（TDD-支付中心运营页面 P1）：与 near-pay /pay-ops/v2 守卫同名的码。
+     * near-pay 按宿主下发的 perms 判权（AiShopOpsSessionFilter → /ops/auth/me），所以码名必须一字不差。
+     * 这里只登记；角色授予由统一网关的权限种子落库（TDD-支付中心菜单整合 G2/G3）。
+     */
+    public static final String PAY_STORE_VIEW = "pay:store:view";
+    public static final String PAY_STORE_MANAGE = "pay:store:manage";
+    public static final String PAY_STORE_APPROVE = "pay:store:approve";
+    public static final String PAY_COLLECTION_POLICY_VIEW = "pay:collection-policy:view";
+    public static final String PAY_COLLECTION_POLICY_MANAGE = "pay:collection-policy:manage";
+    public static final String PAY_MERCHANT_MANAGE = "pay:merchant:manage";
+    public static final String PAY_MERCHANT_APPROVE = "pay:merchant:approve";
+    public static final String PAY_ONBOARDING_MANAGE = "pay:onboarding:manage";
+    public static final String PAY_ONBOARDING_APPROVE = "pay:onboarding:approve";
+    public static final String PAY_ORDER_COMPENSATE = "pay:order:compensate";
+    public static final String PAY_APPROVAL_VIEW = "pay:approval:view";
+    public static final String PAY_APPROVAL_REVIEW = "pay:approval:review";
+    public static final String PAY_APPROVAL_DISPATCH = "pay:approval:dispatch";
+    public static final String PAY_CHANNEL_MANAGE = "pay:channel:manage";
+    public static final String PAY_PRODUCT_VIEW = "pay:product:view";
+    public static final String PAY_PRODUCT_MANAGE = "pay:product:manage";
+    public static final String PAY_COLLECTION_ENTRY_VIEW = "pay:collection-entry:view";
+    public static final String PAY_COLLECTION_ENTRY_MANAGE = "pay:collection-entry:manage";
+    public static final String PAY_DATA_SCOPE_VIEW = "pay:data-scope:view";
+    public static final String PAY_DATA_SCOPE_MANAGE = "pay:data-scope:manage";
+    public static final String PAY_DATA_SCOPE_APPROVE = "pay:data-scope:approve";
+    // P2：终端、接入应用、追踪、告警、审批流程
+    public static final String PAY_TERMINAL_VIEW = "pay:terminal:view";
+    public static final String PAY_TERMINAL_MANAGE = "pay:terminal:manage";
+    public static final String PAY_TERMINAL_VERIFY = "pay:terminal:verify";
+    public static final String PAY_APP_VIEW = "pay:app:view";
+    public static final String PAY_APP_APPROVE = "pay:app:approve";
+    public static final String PAY_CREDENTIAL_MANAGE = "pay:credential:manage";
+    public static final String PAY_TRACE_VIEW = "pay:trace:view";
+    public static final String PAY_ALERT_RULE_VIEW = "pay:alert-rule:view";
+    public static final String PAY_ALERT_RULE_MANAGE = "pay:alert-rule:manage";
+    public static final String PAY_ALERT_RULE_APPROVE = "pay:alert-rule:approve";
+    public static final String PAY_ALERT_EVENT_VIEW = "pay:alert-event:view";
+    public static final String PAY_ALERT_EVENT_HANDLE = "pay:alert-event:handle";
+    public static final String PAY_APPROVAL_FLOW_VIEW = "pay:approval-flow:view";
+    // P3a：交易流水、资金流水、结算、提现、出款、对账差异、储值、渠道成本、佣金（near-pay docs/api/handbook/08）
+    public static final String PAY_FUND_ACCOUNT_VIEW = "pay:fund-account:view";
+    public static final String PAY_SETTLEMENT_VIEW = "pay:settlement:view";
+    public static final String PAY_WITHDRAWAL_VIEW = "pay:withdrawal:view";
+    public static final String PAY_WITHDRAWAL_REVIEW = "pay:withdrawal:review";
+    public static final String PAY_WITHDRAWAL_MANAGE = "pay:withdrawal:manage";
+    public static final String PAY_PAYOUT_VIEW = "pay:payout:view";
+    public static final String PAY_PAYOUT_MANAGE = "pay:payout:manage";
+    public static final String PAY_RECON_DIFF_VIEW = "pay:recon-diff:view";
+    public static final String PAY_RECON_DIFF_MANAGE = "pay:recon-diff:manage";
+    public static final String PAY_STORED_VALUE_VIEW = "pay:stored-value:view";
+    public static final String PAY_CHANNEL_COST_VIEW = "pay:channel-cost:view";
+    public static final String PAY_CHANNEL_COST_MANAGE = "pay:channel-cost:manage";
+    public static final String PAY_FEE_PLAN_VIEW = "pay:fee-plan:view";
+    public static final String PAY_FEE_PLAN_MANAGE = "pay:fee-plan:manage";
     /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。

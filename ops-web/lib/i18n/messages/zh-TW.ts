@@ -278,6 +278,29 @@ export const zhTW: Messages = {
     MERCHANT_OWNED: "商家自帶",
     PLATFORM: "平臺流量",
   },
+  actionKit: {
+    draftRestored: "已恢復 {time} 的草稿",
+    draftDiscard: "放棄草稿",
+    draftConflict: "這筆記錄在你編輯後被修改過，草稿基於舊版本，請核對後再提交",
+    draftUnavailable: "瀏覽器無法存草稿，關閉前請先提交",
+    draftKept: "草稿已儲存，可稍後繼續",
+    myDrafts: "我的草稿",
+    myDraftsCount: "我的草稿 ({n})",
+    myDraftsEmpty: "沒有未提交的草稿",
+    newRecord: "新增",
+    backToDetail: "返回詳情",
+    reveal: "顯示",
+    hide: "隱藏",
+    submitFailed: "提交失敗：{msg}",
+  },
+  payKit: {
+    approvalRequired: "這項修改需要審批，提交後由審核人在「審核待辦」處理",
+    approvalSubmitted: "已提交審批",
+    goApprovals: "去審核待辦",
+    copied: "已複製",
+    copy: "複製",
+    orderStatus: { CREATED: "待支付", PAYING: "支付中", PAID: "已支付", CLOSED: "已關閉", FAILED: "支付失敗", REFUNDED: "已退款" },
+  },
 };
 
 

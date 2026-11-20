@@ -9,6 +9,13 @@ import { cn } from "@/lib/utils";
 /** 底栏插槽：让抽屉里的子组件把动作按钮放进**这个**抽屉的底栏（见 `DrawerFooter`）。 */
 const FooterSlot = React.createContext<{ el: HTMLElement | null; claim: () => () => void } | null>(null);
 
+/**
+ * 是否已经身处一个打开的抽屉里。抽屉**不叠层**（TDD-支付中心运营页面 §2.2）：
+ * 要在抽屉里编辑，用 `FormDrawer inDrawer` 原地展开，或由 `ActionHost` 替换内容；
+ * 要确认 / 填理由，用弹框。开发态嵌套时报错，测试里据此断言；生产不拦。
+ */
+const InDrawer = React.createContext(false);
+
 // 右侧抽屉（详情/表单）。基于 radix dialog。
 export function Drawer({
   open, onOpenChange, title, desc, children, footer, width = "w-[440px]", className, headerClassName, bodyClassName, onEscapeKeyDown, onOpenAutoFocus, onCloseAutoFocus, onInteractOutside, titleRef,
@@ -38,6 +45,10 @@ export function Drawer({
   const slot = React.useMemo(() => ({ el: footerEl, claim }), [footerEl, claim]);
   // 子组件占用底栏时，自带的 footer 让位 —— 同一条底栏上不出现两组互不相干的动作
   const ownFooter = claims === 0 ? footer : null;
+  const nested = React.useContext(InDrawer);
+  if (nested && open && process.env.NODE_ENV !== "production") {
+    console.error(`[Drawer] nested drawer "${title}": drawers must not stack; replace the content or use a dialog`);
+  }
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -54,6 +65,7 @@ export function Drawer({
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
           onInteractOutside={onInteractOutside}
+          data-surface="drawer"
           className={cn(
             /*
              * `max-w-full` 不是可选的收尾：抽屉是 `fixed right-0` + 固定宽度，
@@ -82,7 +94,9 @@ export function Drawer({
             </Dialog.Close>
           </div>
           <FooterSlot.Provider value={slot}>
-            <div className={cn("flex-1 overflow-y-auto p-5", bodyClassName)}>{children}</div>
+            <InDrawer.Provider value={true}>
+              <div className={cn("flex-1 overflow-y-auto p-5", bodyClassName)}>{children}</div>
+            </InDrawer.Provider>
           </FooterSlot.Provider>
           {/* 底栏常驻挂载（插槽要有落点），没有内容时隐藏 */}
           <div ref={setFooterEl} className={cn("flex justify-end gap-2 bg-muted/40 p-4", !ownFooter && claims === 0 && "hidden")}>
