@@ -760,3 +760,16 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - near-pay 分支 `release/nearpay-p3a-live-20261120`（`525207556` 线 + 线上已有的挑选提交 + P3a + 修复 `ca9954695`），jar `883bed5c45ce724f`，12:49 CST 上线；细节与核对见 near-pay `deploy/nearpay/prod/README.md` 同日两节。
 - 支付中心 31 个页签：**30 个正常**（P3a 十个现在都 200，交易流水 109、资金流水 40）；只剩**退款订单**（v1 接口公网不可达）。
 - 上线后发现并修了一处：储值交易 SQL 手写环境列被隔离边界拒（400），已修并加边界测试。
+
+### 同日续：P4（支付中心独立模块、商户与进件原生化）上线 v2（`b4335120a`；用户：「按照建议执行」）
+
+- **分支**：`release/v2-paycenter-20261120` 合并 `feat/ops-pay-center-menu`（P4 `c15a55aab` + `1cc0c2b70`），合并提交 `3c0419a4a`、`b4335120a`；冲突只在生成文档，已按合并后源码重跑。前端 vitest 1382、tsc 0；后端四个测试类 49 条通过。
+- **V686 没有执行**（用户 2026-11-20 定）：正式库菜单表 v1 / v2 共用，改 5 个 V671 支付入口的 href 会让 v1（`/ops-shop/`）这 5 项失效。SQL 挪到 `docs/technical/pending-sql/ops_payment_center_own_module.sql`，v1 下线后再执行；
+  v2 前端读菜单时把库里的旧地址映射到支付中心页签（`normalizeLegacyPaymentMenu`）。备份照做了：.61 `…/ai-shop-v2-gateway-20261119/before-V686.sql.gz`（没用上）。
+  打包时 `target/classes` 里残留过 V686，已删后重打——**以后重打包前先清 `target/classes/db/migration` 里源码已删的迁移**。
+- **部署**：.80 `releases/shop-app-b4335120a.jar`（sha256 前缀 `ca9a843d6312b593`），run.sh 备份 `run.sh.before-b4335120a`，83 秒起好，Flyway「Schema is up to date」没有改库；
+  166 `current → releases/gateway-b4335120a`。回退：.80 复原 run.sh 后 `./run.sh all restart`；166 把 `current` 指回 `releases/gateway-39bea6a65`。
+- **线上验证**（超管会话）：菜单 5 项都进支付中心（服务端仍返回旧地址，前端映射）；支付中心 31 个页签全部正常（退款改走 shop 接口后 200）；生产 `merchant-creations/context` 可用、`test-merchants/context` 关闭（「新建测试商户」不出现）。
+- **写操作没做成**：为测试主体 `M261119TS0PN0XBK9` 新建支付商户被 near-pay 拒绝 `10403 经营主体不在运营授权范围`——超管在 near-pay 的数据范围不含该主体。加数据范围是改生产权限，停下等用户定。
+- **发现的小问题**：带 `?action=create` 打开时，「新建支付商户」要等 near-pay 可用性接口返回才出现，深链接被清掉（点按钮正常）。
+- **期间 near-pay 被别的会话换包**：14:31–14:37 CST `nearpay-prod` 停约 6 分钟，换成 jar `79c47ed862d1f24e`、支付库到 **V127**（不是本会话的操作）；恢复后 P3a 接口与储值交易修复都在，支付中心不受影响。
