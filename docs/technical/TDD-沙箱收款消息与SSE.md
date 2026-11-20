@@ -219,7 +219,7 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 
 ### §5 验证入口
 
-C1、C2 由 `PaymentCollectionHttpMysqlTest#canonicalCheckoutUsesHostIdWithoutLegacyBindingAndRejectsConflicts` 覆盖。C3 由 `PaymentCollectionProductionMysqlTest` 和 `PaymentCollectionHttpMysqlTest` 覆盖。
+C1、C2 由 `PaymentCollectionHttpMysqlTest#canonicalSourcesUseHostIdWithoutLegacyBindingAndRejectsConflicts` 覆盖。C3 由 `PaymentCollectionProductionMysqlTest` 和 `PaymentCollectionHttpMysqlTest` 覆盖。
 
 MySQL 9.7.4 定向验证，隔离数据库。Maven 输出 `Tests run: 18, Failures: 0, Errors: 0, Skipped: 0`、`BUILD SUCCESS`。
 
@@ -228,3 +228,29 @@ MySQL 9.7.4 定向验证，隔离数据库。Maven 输出 `Tests run: 18, Failur
 - 协议和部署配置对应 `PaymentCollectionFact`、`PaymentCollectionProperties`、`PaymentCollectionConfiguration`。
 - 门店归属、冲突拒绝与回执事务对应 `PaymentCollectionServiceImpl`。
 - 签名入口、实时事件与旧版兼容对应 `PaymentCollectionHttpMysqlTest`、`PaymentCollectionMysqlFixture` 以及已有原生 MySQL 测试。
+
+## 2026-11-20 增量：H5 动态付款链接在线通知
+
+### §0 需求与验收
+
+授权商户 App 在线时，动态付款链接收款成功后收到对应门店的实时事件。店内有权接收收款消息的身份也能查看持久消息。与静态码的白名单各自独立。重复投递只返回同一回执，旧版事件继续沿用原协议。
+
+### §1 接口契约
+
+签名 v2 接受 `BIZ/BIZ_COLLECT` 组合，仍要求 `sourceId=payAppId` 以及冻结的门店 ID、租户和主体。动态链接的授权组合配置在 `shop.payment-collections.canonical-biz-collect-sources`，格式为 `环境:租户:接入方ID`，例如 `PRODUCTION:MAIN:1`。门店、租户、主体、市场和显式来源映射按静态码 v2 的同一规则核对。
+
+### §2 实施与发布
+
+`PaymentCollectionProperties` 增加动态链接白名单，`PaymentCollectionServiceImpl` 按来源和业务类型选用各自白名单，并复用原有回执、商户消息和 SSE 流。先发布 NearGo 并配置白名单，再发布 NearPay 并开启动态链接发送开关。回退时先关闭动态链接发送开关，保留待重投 v2 的接收能力。
+
+### §5 验证入口
+
+`PaymentCollectionHttpMysqlTest#canonicalSourcesUseHostIdWithoutLegacyBindingAndRejectConflicts` 使用原生 MySQL 的签名 HTTP 和在线 SSE 会话，覆盖两类白名单的独立授权、门店冲突、回执、持久消息和重投去重。
+
+隔离 MySQL 9.7.4 定向验证执行了 `PaymentCollectionHttpMysqlTest`、`PaymentCollectionProductionMysqlTest`、`PaymentCollectionNativeMysqlTest` 和 `PaymentCollectionEnvironmentTest`，共 19 个用例通过，无失败、错误或跳过。Maven 构建成功。
+
+### §6 实现对账
+
+- `PaymentCollectionProperties` 绑定动态链接接入方白名单。
+- `PaymentCollectionServiceImpl` 按来源类型和业务类型查白名单，并复用门店归属校验、回执、消息和实时事件流程。
+- `PaymentCollectionHttpMysqlTest` 使用真实 HTTP 和 SSE 验证白名单隔离、门店映射和接收结果。
