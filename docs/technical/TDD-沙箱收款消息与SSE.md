@@ -198,3 +198,33 @@ API增量部署SHA `b3da994752b77fcf5780612f49ae307b680b865bd8640dda6b69692dfefa
 | AC6 | near-pay：PRODUCTION 订单在配置含 PRODUCTION 时生成通知、按 PRODUCTION 密钥与环境头投递，未配置时不生成；能解析门店时快照带 `storeNo`，解析不到时发旧快照；旧快照事件重放不冲突 |
 
 **实现记录（2026-11-16）**：ai-shop `86caa03f4`（`feat/bapp-account-funds`）；near-pay 分支 `feat/production-collection-sse`。测试：ai-shop `PaymentCollectionEnvironmentTest`（AC1/AC2，已通过）、`PaymentCollectionProductionMysqlTest`（AC3–AC5，需原生 MySQL，未运行）；near-pay `MerchantCollectionConfigurationTest`（已通过）、`MerchantCollectionNativeMysqlTest#resolvedStoreIsSignedAndLegacySnapshotsStillReplay`（需原生 MySQL，未运行）。ADR 见 ADR-059。
+
+## 2026-11-20 增量：按门店主键关联 H5 收款通知
+
+### §0 需求与验收
+
+| 验收 | 验证 |
+|---|---|
+| C1 | 白名单内的签名 v2 H5 静态码收款按 `tenantNo + mch_store.id` 找到门店。无逐店绑定也能产生一条商户消息和实时事件，原事件重投返回 DUPLICATE。 |
+| C2 | 拒绝未授权来源、未知门店、错误租户或主体、市场不符、可选门店号不符，以及显式绑定冲突或停用。拒绝的事件不保存回执或入队。 |
+| C3 | 接收已存在的 v1 事件，沿用显式绑定及签名门店号规则，按事件及原文哈希去重。 |
+
+### §1 接口契约
+
+既有签名 HTTP 入口接受 `schemaVersion=2`。`stateVersion` 保持 2。v2 必须带 `tenantNo`、`storeId`（宿主门店主键）、`entityNo`，`storeNo` 可选。通过原验签后，仅接受 `CHECKOUT/CHECKOUT_QR`，且 `sourceId=payAppId`。按 `shop.payment-collections.canonical-checkout-sources` 列表核准环境、租户和接入方 ID，例如 `PRODUCTION:MAIN:1`。执行环境以签名的环境为准。
+
+### §2 实施与发布
+
+先发布 NearGo，配置相应执行环境、租户、接入方的白名单。验证旧快照仍可投递后，再发布 NearPay 并开启 v2 发出开关。回退时先关闭发送开关，保留 NearGo 对已经生成的 v2 事件的接收能力，直至这些事件全部处理完成。历史事件继续按原始版本和字节重投。
+
+### §5 验证入口
+
+C1、C2 由 `PaymentCollectionHttpMysqlTest#canonicalCheckoutUsesHostIdWithoutLegacyBindingAndRejectsConflicts` 覆盖。C3 由 `PaymentCollectionProductionMysqlTest` 和 `PaymentCollectionHttpMysqlTest` 覆盖。
+
+MySQL 9.7.4 定向验证，隔离数据库。Maven 输出 `Tests run: 18, Failures: 0, Errors: 0, Skipped: 0`、`BUILD SUCCESS`。
+
+### §6 实现对账
+
+- 协议和部署配置对应 `PaymentCollectionFact`、`PaymentCollectionProperties`、`PaymentCollectionConfiguration`。
+- 门店归属、冲突拒绝与回执事务对应 `PaymentCollectionServiceImpl`。
+- 签名入口、实时事件与旧版兼容对应 `PaymentCollectionHttpMysqlTest`、`PaymentCollectionMysqlFixture` 以及已有原生 MySQL 测试。

@@ -39,8 +39,9 @@ public class PaymentCollectionConfiguration {
 
     @Bean
     PaymentCollectionService paymentCollectionService(
-            DataSource ds, PlatformTransactionManager tx, OutboxEventBus events) {
-        return new PaymentCollectionServiceImpl(ds, tx, events);
+            DataSource ds, PlatformTransactionManager tx, OutboxEventBus events,
+            PaymentCollectionProperties properties) {
+        return new PaymentCollectionServiceImpl(ds, tx, events, properties);
     }
 
     @Bean

@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record PaymentCollectionFact(
-        @Min(1) @Max(1) int schemaVersion,
+        @Min(1) @Max(2) int schemaVersion,
         @Min(2) @Max(2) int stateVersion,
         @NotBlank @Size(max = 64) @Pattern(regexp = "PAYMENT_SUCCEEDED\\|O[0-9]{1,19}\\|2")
                 String eventId,
@@ -32,4 +32,6 @@ public record PaymentCollectionFact(
         @NotBlank @Size(max = 128) String channelTradeNo,
         @Positive long succeededAt,
         /** The store near-pay resolved from the paid order; absent in senders before 2026-11-16. */
-        @Size(max = 64) @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String storeNo) {}
+        @Size(max = 64) @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String storeNo,
+        @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String tenantNo,
+        @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String entityNo) {}
