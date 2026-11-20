@@ -52,7 +52,7 @@
   {
     "functionKey": "merchant",
     "pointCode": "OPS_MERCHANT__TAB_PAYMENT",
-    "href": "/merchants?tab=payment",
+    "href": "/payment-center?tab=merchants",
     "label": "商户列表",
     "perm": "pay:merchant:view",
     "group": "商户资料",
@@ -62,7 +62,7 @@
   {
     "functionKey": "merchant",
     "pointCode": "OPS_MERCHANT__TAB_PAYMENT_ONBOARDING",
-    "href": "/merchants?tab=payment-onboarding",
+    "href": "/payment-center?tab=onboardings",
     "label": "渠道进件",
     "perm": "pay:onboarding:view",
     "group": "收款开通",
@@ -72,7 +72,7 @@
   {
     "functionKey": "iam",
     "pointCode": "OPS_IAM__TAB_PAYMENT_CHANNELS",
-    "href": "/merchants?tab=payment-channels",
+    "href": "/payment-center?tab=channels",
     "label": "支付渠道",
     "perm": "pay:channel:view",
     "group": "渠道费率",
@@ -82,7 +82,7 @@
   {
     "functionKey": "order",
     "pointCode": "OPS_ORDER__TAB_PAYMENTS",
-    "href": "/orders?tab=payments",
+    "href": "/payment-center?tab=orders",
     "label": "支付订单",
     "perm": "pay:order:view",
     "group": "支付记录",
@@ -92,7 +92,7 @@
   {
     "functionKey": "order",
     "pointCode": "OPS_ORDER__TAB_PAYMENT_EXCEPTIONS",
-    "href": "/orders?tab=payment-exceptions",
+    "href": "/payment-center?tab=exceptions",
     "label": "支付异常",
     "perm": "pay:order:view",
     "group": "支付记录",

@@ -8,8 +8,8 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailBody } from "@/components/ui/detail-drawer";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell } from "@/components/payment/pay-kit";
-import type { ChannelCallRow, ChannelCallbackRow, RequestLogRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell } from "@/app/payment-center/_kit/pay-kit";
+import type { ChannelCallRow, ChannelCallbackRow, RequestLogRow } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, useStatusMap, useTabList, usePc, type C } from "./shared";
 

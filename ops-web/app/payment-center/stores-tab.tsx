@@ -10,8 +10,8 @@ import { ActionForm } from "@/components/ui/action-form";
 import { Notice } from "@/components/ui/notice";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
-import { STORE_MODES, STORE_SOURCE_STATUSES, type StoreAssociation, type StoreRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import { STORE_MODES, STORE_SOURCE_STATUSES, type StoreAssociation, type StoreRow } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, usePayCenterApi } from "./shared";
 

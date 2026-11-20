@@ -76,34 +76,26 @@ it("resolves canonical customer aliases without altering the legacy source tabs"
   await render();
   expect(result()).toMatchObject({ selected: "stores", tabs: [{ key: "stores", label: "门店列表" }] });
 });
-it("resolves canonical payment aliases from exact server menu grants", async () => {
-  Object.assign(state, { path: "/orders", keys: ["all", "exception", "payments", "payment-exceptions"], query: "tab=payments", perms: ["pay:order:view"], hrefSet: new Set(["/orders?tab=payments"]) });
-  await render();
-  expect(result()).toMatchObject({ selected: "payments", tabs: [{ key: "payments", label: "支付订单" }] });
+it("old payment tab keys have no menu leaf any more (moved to the payment center, V686): a page that still lists them fails loudly", async () => {
+  Object.assign(state, { path: "/orders", keys: ["all", "exception", "payments"], query: "tab=payments", perms: ["pay:order:view"], hrefSet: new Set(["/payment-center?tab=orders"]) });
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  await expect(render()).rejects.toThrow(/没有对应叶子/);
+  errors.mockRestore();
 });
 
 it('shows only mall-owned merchant tabs while visiting an entity plan', async () => {
-  Object.assign(state, { path: '/merchants', keys: ['audit', 'list', 'stores', 'plans', 'plan-defs', 'payment', 'payment-onboarding'], query: 'tab=plans', perms: ['*'] });
+  Object.assign(state, { path: '/merchants', keys: ['audit', 'list', 'stores', 'plans', 'plan-defs'], query: 'tab=plans', perms: ['*'] });
   await render();
   expect(result().tabs.map(t => t.key)).toEqual(['plans', 'plan-defs']);
   expect(result().selected).toBe('plans');
 });
-it('shows only payment-center tabs while preserving the complete legacy profile context', async () => {
-  Object.assign(state, { path: '/merchants', keys: ['audit', 'list', 'plans', 'plan-defs', 'payment', 'payment-onboarding', 'payment-channels'], query: 'tab=payment', perms: ['*'] });
+it('merchant profile tabs work without the old payment tabs', async () => {
+  Object.assign(state, { path: '/merchants', keys: ['audit', 'list', 'plans', 'plan-defs'], query: 'tab=list', perms: ['*'] });
   await render();
-  // 支付渠道随菜单移入支付中心（TDD-支付中心菜单整合），三个 /merchants 上的支付入口同属一个一级目录
-  expect([...result().tabs.map(t => t.key)].sort()).toEqual(['payment', 'payment-channels', 'payment-onboarding']);
-  state.query = 'tab=list'; await render();
-  expect(result().tabs.map(t => t.key)).toContain('audit');
-  expect(result().tabs.map(t => t.key)).toContain('list');
+  expect(result().tabs.map(t => t.key)).toEqual(expect.arrayContaining(['audit', 'list']));
 });
-it('separates operating and payment order tabs by primary root and honors exact server grants', async () => {
-  Object.assign(state, { path: '/orders', keys: ['all', 'exception', 'proxy', 'payments', 'payment-exceptions'], query: '', perms: ['*'] });
+it('order center shows only operating order tabs', async () => {
+  Object.assign(state, { path: '/orders', keys: ['all', 'exception', 'proxy'], query: '', perms: ['*'] });
   await render();
-  // 订单中心只留经营订单；支付订单 / 支付异常属支付中心（TDD-支付中心菜单整合）
   expect(result().tabs.map(t => t.key)).toEqual(['all', 'exception']);
-  state.query = 'tab=payments'; await render();
-  expect(result().tabs.map(t => t.key)).toEqual(['payments', 'payment-exceptions']);
-  state.query = 'tab=payments'; state.hrefSet = new Set(['/orders?tab=payments']); await render();
-  expect(result().tabs.map(t => t.key)).toEqual(['payments']);
 });

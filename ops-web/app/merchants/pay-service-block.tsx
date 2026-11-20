@@ -7,6 +7,8 @@
 // 只有持 merchant:merchant:pay-apply 的运营看得到按钮（只给超管）。
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { payCenterHref } from "@/app/payment-center/module";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { PayServiceApplyForm } from "@/lib/api/contracts/merchant";
@@ -111,9 +113,11 @@ function PaymentDetails({ merchantNo, merchantName, c, visible }: { merchantNo: 
           {status.data.linkStatus && <p>{c.payServiceLinkStatus}：{status.data.linkStatus}</p>}
           {status.data.profileStatus && <p>{c.payServiceProfileStatus}：{status.data.profileStatus}</p>}
           {status.data.reviewReason && <p>{c.payServiceReviewReason}：{status.data.reviewReason}</p>}
-          {status.data.merchantOpsUrl && <p><a className="focus-ring underline" href={status.data.merchantOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceMerchantOps}</a></p>}
-          {status.data.onboardingOpsUrl && <p><a className="focus-ring underline" href={status.data.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceOnboardingOps}</a></p>}
-          {!status.data.merchantOpsUrl && !status.data.onboardingOpsUrl && <p className="text-muted-foreground">{c.payServiceNoOpsLink}</p>}
+          {/* 支付商户与进件都在支付中心（独立模块）里办，不再跳 near-pay 运营端 */}
+          {status.data.merchantRef ? <>
+            <p><Link className="focus-ring underline" href={payCenterHref("merchants", { action: "view", id: status.data.merchantRef })}>{c.payServiceMerchantOps}</Link></p>
+            <p><Link className="focus-ring underline" href={payCenterHref("onboardings")}>{c.payServiceOnboardingOps}</Link></p>
+          </> : <p className="text-muted-foreground">{c.payServiceNoOpsLink}</p>}
         </>}
       </div>
       <Button size="sm" variant="outline" disabled={status.isFetching} onClick={() => void status.refetch()}>{c.payServiceRefresh}</Button>{" "}

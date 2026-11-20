@@ -63,9 +63,11 @@ export interface OnboardingRow {
   onboardingNo: string; merchantNo: string; merchantName: string | null; payChannel: string; submitMode: string;
   materialVersion: number; reviewStatus: string; status: string; channelApplyNo: string | null; signUrl: string | null;
   rejectReason: string | null; payMerchantNo: string | null; updatedAt: number; version: number;
+  /** 渠道最近一次结果码（AMR10014 蓝新商店已存在、KEY_RECEIPT_MISSING 回执缺失） */
+  submitOutcome?: "UNKNOWN" | null; ezpayBindingStatus?: string | null; candidateStatus?: "PENDING" | "ACCEPTED" | null; subMerchantId?: string | null; profileRevisionRef?: string | null;
 }
-export interface OnboardingVersion { versionIndex: number; reviewStatus: string; reviewReason: string | null; reviewedBy: string | null; status: string; submittedBy: string | null; submittedAt: number | null; materials: { fieldCode: string; fieldKind: string; display: string }[] }
-export interface OnboardingDetail { onboarding: OnboardingRow; versions: OnboardingVersion[] }
+export interface OnboardingVersion { versionIndex: number; approvalNo?: string | null; resultCode?: string | null; channelApplyNo?: string | null; rejectReason?: string | null; reviewStatus: string; reviewReason: string | null; reviewedBy: string | null; status: string; submittedBy: string | null; submittedAt: number | null; materials: { fieldCode: string; fieldKind: string; display: string }[] }
+export interface OnboardingDetail { onboarding: OnboardingRow; versions: OnboardingVersion[]; candidate?: OnboardingCandidate | null }
 
 // ── 6 审批 ──
 export const APPROVAL_STATUSES = ["PENDING_FIRST", "PENDING_SECOND", "APPROVED", "REJECTED", "CANCELLED", "EXPIRED"] as const;
@@ -251,3 +253,55 @@ export interface ChannelCostRow {
 export interface CommissionRuleRow {
   ruleNo: string; businessMode: string; trafficSource: string; rateBps: number; effectiveFrom: number; status: string; remark: string | null; createdAt: number | null; createdBy: string | null;
 }
+
+// ── P4 商户工作区（near-pay OpsMerchantAssistanceController / OpsTestMerchantController / 能力进度 / 渠道 / 主体资料）──
+export interface MerchantCreation { merchantNo: string; operatingEntityId: string; name: string; market: string | null; status: string }
+export interface TestMerchantContext { enabled: boolean; market: string }
+export interface TestMerchantCreated { merchantNo: string; displayName: string; market: string; synthetic: boolean }
+export const CAPABILITIES = ["FIAT", "STORED_VALUE", "POINTS", "CRYPTO"] as const;
+export interface CapabilityItem { capability: string; stage: string; available: boolean; applicationNo: string | null; status: string | null; reviewStatus: string | null; note: string | null; entry: string | null }
+export interface CapabilityProgress { merchantNo: string; items: CapabilityItem[] }
+export interface MerchantChannelRow {
+  payChannel: string; channelName: string | null; test: boolean; stage: "OPEN" | "APPLYING" | string; payMerchantNo: string | null; channelMerchantId: string | null;
+  accountStatus: string | null; verificationStatus: string | null; boundStoreCount: number; products: { productCode: string; productName: string | null; status: string | null }[]; onboardingNo: string | null;
+  onboardingStatus: string | null; reviewStatus: string | null; reason: string | null;
+}
+export interface MerchantChannels { merchantNo: string; rows: MerchantChannelRow[]; channels: { payChannel: string; channelName: string | null; onlineApplication: boolean }[] }
+export interface SourceEvent { eventNo?: string; eventType: string; sourceSystem?: string | null; externalEntityId?: string | null; summary?: string | null; occurredAt?: number | null; createdAt?: number | null; [k: string]: unknown }
+/** 代填资料：6 个字段；敏感三项服务端只回脱敏值 */
+export const ASSISTED_FIELDS = ["legalName", "registrationNo", "registeredAddress", "representativeName", "contactPhone", "industry"] as const;
+export type AssistedField = (typeof ASSISTED_FIELDS)[number];
+export interface AssistedProfileView { version: number; state: "EDITING" | "SUBMITTED" | string; profile: Record<string, string | null>; filledFields: string[]; revisionNo: string | null }
+export interface MerchantConfirmResult { verifiedLinks: string[]; approvedRevisions: string[] }
+export interface EntityMaterials { version: number; fields: Record<string, string | null>; documents: Record<string, string>; submittedRevision: number | null }
+/** 证照识别（shop 端 /ops/onboarding-documents/recognize） */
+export const DOCUMENT_TYPES = ["REGISTRATION", "OWNER_FRONT", "OWNER_BACK", "BANK_COVER"] as const;
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+export interface RecognizeResult { recognized: boolean; documentType: string; fields: Record<string, string | null>; confidence: number | null }
+
+// ── P4 进件工作区（OpsOnboardingController 草稿 / 附件 / 交接 / 人工结果 / 蓝新修改）──
+export const DRAFT_STATES = ["EDITING", "CONFIRMED", "FROZEN"] as const;
+export const LEGAL_FORMS = ["COMPANY", "INDIVIDUAL"] as const;
+export const SETTLE_ACCOUNT_TYPES = ["CORPORATE_BANK", "PERSONAL_BANK_CARD", "MERCHANT_ID"] as const;
+export const LICENSE_SLOTS = ["LICENSE_1", "LICENSE_2", "LICENSE_3", "LICENSE_4", "LICENSE_5", "LICENSE_6", "LICENSE_7", "LICENSE_8", "LICENSE_9", "LICENSE_10"] as const;
+export interface SupplementHistory { materialVersion: number; source: string; fields: string[]; reason: string; createdBy: string; createdAt: number }
+export interface MaterialDifference { fieldCode: string; change: "ADDED" | "REPLACED" | "RETAINED" | "REMOVED" }
+/** 字段与 near-pay ops-web lib/onboarding/types.ts 的 OnboardingDraft 一致；`fields` 不含敏感值与附件引用，只在 filledFields 里标「已填」 */
+export interface OnboardingDraft {
+  schemaVersion?: string; frozenSchemaVersion?: string | null; representativeType?: string | null;
+  channelMissing?: string[]; channelIssues?: { field: string; code: string }[];
+  onboardingNo: string; expectedVersion: number; draftVersion: number; state: "EDITING" | "CONFIRMED" | "FROZEN";
+  fields: Record<string, string>; filledFields: string[]; missing: string[]; editable: boolean; fileUploadAvailable: boolean;
+  supplementFields: string[]; supplementReason: string | null; confirmedBy: string | null; confirmedAt: number | null; confirmationMode: string | null;
+  supplementHistory: SupplementHistory[]; differences: MaterialDifference[];
+}
+export interface OnboardingReadiness {
+  receiptStage: string; candidateStage: string | null; payMerchantNo: string | null; accountStatus: string | null; verificationStatus: string | null;
+  credentialStatus: string | null; openProductCount: number; storeReadinessEvaluated: boolean; channelReady: boolean;
+}
+export interface OnboardingCandidate { channelMerchantId: string; subMerchantId: string | null; origin: "API" | "MANUAL"; evidenceRef: string | null; status: "PENDING" | "ACCEPTED" }
+export interface OnboardingFile { slot: string; fileNo: string | null; contentType: string | null; byteLength: number | null; expiresAt: number | null; pinned: boolean; expired: boolean; legacy: boolean }
+export const MANUAL_RESULTS = ["NEED_SIGN", "APPROVED", "REJECTED"] as const;
+export const MODIFICATION_STATUSES = ["PENDING", "APPROVED", "SENDING", "ACCEPTED", "REJECTED", "UNKNOWN", "CANCELLED"] as const;
+export interface NewebpayModification { changeNo: string; status: string; fieldCodes: string[]; maskedChanges: Record<string, string>; approvalNo: string | null; resultCode: string | null; version: number }
+export interface NewebpayModificationsView { legalForm: string | null; fields: { code: string; label: string; maxLength: number; options: Record<string, string> | null }[]; requests: NewebpayModification[] }

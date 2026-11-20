@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
 import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
-import { LEGACY_MENU_HREF, PAY_CENTER_TABS, PENDING_MENU } from "./pay-ops/center-tabs";
+import { PAY_CENTER_TABS, PENDING_MENU } from "@/app/payment-center/module";
 import { permsOf, ROLE_LABEL } from "./permissions";
 import { UI_PERM_MAP } from "./perm-map";
 import { pointsLegacyServerMenuHref } from "./points-ops-routes";
@@ -594,7 +594,7 @@ describe("路由归属与面包屑", () => {
     const keys = PAY_CENTER_TABS.map((t) => t.key);
     // 既有 5 个入口在菜单上用 V671 的原 href（开关打开后跳到原生页），其余用 /payment-center?tab=
     const menuHrefs = new Set(platformNav().flatMap((sec) => (sec.children ?? []).map((l) => l.href)));
-    const registered = new Set(keys.filter((k) => menuHrefs.has(LEGACY_MENU_HREF[k] ?? `/payment-center?tab=${k}`)));
+    const registered = new Set(keys.filter((k) => menuHrefs.has(`/payment-center?tab=${k}`)));
     const lost = keys.filter((k) => !registered.has(k) && !PENDING_MENU.includes(k));
     const stale = PENDING_MENU.filter((k) => registered.has(k));
     expect(lost, "这些支付中心页签既没有菜单叶子，也不在 PENDING_MENU：").toEqual([]);

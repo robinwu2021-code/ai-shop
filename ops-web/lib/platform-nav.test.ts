@@ -23,13 +23,13 @@ describe('platform primary navigation', () => {
       ['/customers?tab=members', 'member:member:read'], ['/customers?tab=stores', 'merchant:merchant:read'],
       ['/customers?tab=chains', 'merchant:merchant:read'],
     ]);
-    // 订单中心只留经营订单；支付订单 / 支付异常移入支付中心「交易」（point_code、href 不变）
+    // 订单中心只留经营订单；支付订单 / 支付异常移入支付中心「交易」（point_code 不变，href 由 V686 改到支付中心）
     expect(nav[3].children?.map(l => l.href)).toEqual(['/orders', '/orders?tab=exception', '/after-sales']);
     expect(nav[4].children?.map(l => [l.href, l.group])).toEqual([
       ['/payment-center?tab=approvals', '审批'],
-      ['/merchants?tab=payment', '支付商户'], ['/payment-center?tab=stores', '支付商户'], ['/merchants?tab=payment-onboarding', '支付商户'], ['/payment-center?tab=merchant-changes', '支付商户'],
-      ['/orders?tab=payments', '交易'], ['/orders?tab=payment-exceptions', '交易'], ['/payment-center?tab=attempts', '交易'], ['/payment-center?tab=refunds', '交易'],
-      ['/merchants?tab=payment-channels', '渠道接入'], ['/payment-center?tab=products', '渠道接入'], ['/payment-center?tab=access', '渠道接入'],
+      ['/payment-center?tab=merchants', '支付商户'], ['/payment-center?tab=stores', '支付商户'], ['/payment-center?tab=onboardings', '支付商户'], ['/payment-center?tab=merchant-changes', '支付商户'],
+      ['/payment-center?tab=orders', '交易'], ['/payment-center?tab=exceptions', '交易'], ['/payment-center?tab=attempts', '交易'], ['/payment-center?tab=refunds', '交易'],
+      ['/payment-center?tab=channels', '渠道接入'], ['/payment-center?tab=products', '渠道接入'], ['/payment-center?tab=access', '渠道接入'],
       ['/payment-center?tab=terminals', '渠道接入'], ['/payment-center?tab=apps', '渠道接入'],
       ['/payment-center?tab=channel-costs', '费率'], ['/payment-center?tab=commission-rules', '费率'],
       ['/payment-center?tab=ledger-entries', '资金结算'], ['/payment-center?tab=settlements', '资金结算'], ['/payment-center?tab=withdrawals', '资金结算'], ['/payment-center?tab=payouts', '资金结算'],
@@ -50,7 +50,7 @@ describe('platform primary navigation', () => {
     for (const s of platformSections(perms)) expect(visibleLeaves(s, perms).length).toBeGreaterThan(0);
   });
   it('honors exact database point grants for custom roles', () => {
-    const allowed = new Set(['/customers?tab=stores', '/orders?tab=payments']);
+    const allowed = new Set(['/customers?tab=stores', '/payment-center?tab=orders']);
     expect(platformSections([], allowed).map(s => s.key)).toEqual(['customers', 'paymentMerchant']);
     expect(platformSections([], new Set(['/products?tab=templates']))).toEqual([]);
     expect(platformSections(['product:sku:audit'])).toEqual([]);
@@ -79,7 +79,7 @@ it('has an explicit primary root matrix for all twelve backend roles', () => {
       expect(hrefs).not.toContain('/merchants?tab=payment');
       expect(hrefs).not.toContain('/merchants?tab=payment-onboarding');
       expect(hrefs).not.toContain('/merchants?tab=payment-channels');
-      expect(hrefs.some(href => href === '/orders?tab=payments')).toBe(role === 'FINANCE');
+      expect(hrefs.some(href => href === '/payment-center?tab=orders')).toBe(role === 'FINANCE');
     }
   }
 });

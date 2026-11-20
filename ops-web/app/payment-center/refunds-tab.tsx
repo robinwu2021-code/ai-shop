@@ -8,9 +8,9 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell } from "@/components/payment/pay-kit";
-import { payCenterHref } from "@/lib/pay-ops/center-tabs";
-import { REFUND_STATUSES, type RefundListRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell } from "@/app/payment-center/_kit/pay-kit";
+import { payCenterHref } from "@/app/payment-center/module";
+import { REFUND_STATUSES, type RefundListRow } from "@/app/payment-center/_api/types";
 import { fmtTime, money } from "@/lib/utils";
 import { useRun, useStatusMap, useTabList, usePc } from "./shared";
 

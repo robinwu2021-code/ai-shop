@@ -13,9 +13,11 @@ import { useCan } from "@/lib/use-can";
 import { useI18n } from "@/lib/i18n";
 import { notify } from "@/lib/notify";
 import { useLocaleStore } from "@/lib/stores/locale";
-import { createPayOpsClient, resolvePayOpsV1Base, type PayOpsClient } from "@/lib/pay-ops/client";
-import { createHttpPayCenterApi, isPayMock, type PayCenterApi } from "@/lib/pay-ops/api";
-import { createMockPayCenterApi } from "@/lib/pay-ops/mock";
+import { createPayOpsClient, type PayOpsClient } from "@/app/payment-center/_api/client";
+import { createHttpPayCenterApi, isPayMock, type PayCenterApi } from "@/app/payment-center/_api/api";
+import { createMockPayCenterApi } from "@/app/payment-center/_api/mock";
+import type { DocumentType, RecognizeResult, RefundListRow } from "@/app/payment-center/_api/types";
+import { api } from "@/lib/api";
 
 /** 支付中心列表页：ListPage + 当前账号的判权 + 当前操作人的草稿。 */
 export function PayListPage<T>(props: Omit<ListPageProps<T>, "allow" | "drafts"> & { draftPage?: string; resolve?: (id: string) => T | null | Promise<T | null> }) {
@@ -53,9 +55,32 @@ export function usePayCenterApi(): PayCenterApi {
   const client = usePayOps();
   return React.useMemo(() => {
     if (isPayMock()) return (mockApi ??= createMockPayCenterApi());
-    const v1 = createPayOpsClient({ baseUrl: resolvePayOpsV1Base(), getToken: () => useAuth.getState().token, locale: () => useLocaleStore.getState().locale });
-    return createHttpPayCenterApi(client, v1);
+    return createHttpPayCenterApi(client, {
+      refunds: {
+        list: (q) => api.payOpsRefunds(q) as Promise<RefundListRow[]>,
+        review: (no, body) => api.payOpsReviewRefund(no, body) as Promise<RefundListRow>,
+      },
+      documents: { recognize: recognizeOnShop },
+    });
   }, [client]);
+}
+
+/**
+ * 证照识别走 shop 后端（`/ops/onboarding-documents/recognize`，multipart）。shop 的通用客户端不发 multipart，
+ * 这里用同一个运营会话直接发；信封 {code,msg,data}。
+ */
+async function recognizeOnShop(file: File, documentType: DocumentType): Promise<RecognizeResult> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  form.append("documentType", documentType);
+  const token = useAuth.getState().token;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE ?? ""}/ops/onboarding-documents/recognize`, {
+    method: "POST", body: form, credentials: "same-origin",
+    headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "Accept-Language": useLocaleStore.getState().locale },
+  });
+  const body = await res.json().catch(() => null) as { code?: number; msg?: string; data?: RecognizeResult } | null;
+  if (!res.ok || !body || body.code !== 0 || !body.data) throw new Error(body?.msg || `证照识别失败（HTTP ${res.status}）`);
+  return body.data;
 }
 
 /** 订单状态映射（喂 StatusBadge 与 FilterSelect）。 */

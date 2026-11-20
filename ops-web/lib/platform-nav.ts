@@ -21,13 +21,13 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
   };
   const settings = nav.find(s => s.key === 'iam')!;
   const mall = nav.find(s => s.key === 'commerce')!;
-  const pc = (key: string) => pick(`/payment-center?tab=${key}`);
+  const pc = (key: string, group?: string) => pick(`/payment-center?tab=${key}`, group);
   const settingsRest = (settings.children ?? []).filter(l => l.group !== '基础配置');
   const lastAccess = settingsRest.map(l => l.group).lastIndexOf('权限管理');
   /*
    * 支付中心（TDD-支付中心菜单整合 §2.2，2026-11-20 起在本分支落地，原定交网关的 G4）：
    * 「商户管理」改名「支付中心」，收全部支付业务；订单中心只留经营订单；平台设置的支付渠道移走，
-   * 加数据范围（权限管理）、支付配置、支付运维两组。V671 的 5 个既有入口 point_code / href 不变，只换分组。
+   * 加数据范围（权限管理）、支付配置、支付运维两组。V671 的 5 个既有入口 point_code 不变，href 由 V686 改到 /payment-center（支付中心是独立模块，商户/订单模块不再挂支付页签）。
    * 还没原生化的页面不进菜单（P3 隐藏，不灰显）。
    */
   return [
@@ -47,9 +47,9 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
     { key: 'paymentMerchant', label: '支付中心', icon: 'Landmark', modules: ['pay'], href: '/payment-center', match: ['/payment-center'],
       children: [
         pc('approvals'),
-        pick('/merchants?tab=payment', '支付商户'), pc('stores'), pick('/merchants?tab=payment-onboarding', '支付商户'), pc('merchant-changes'),
-        pick('/orders?tab=payments', '交易'), pick('/orders?tab=payment-exceptions', '交易'), pc('attempts'), pc('refunds'),
-        pick('/merchants?tab=payment-channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
+        pc('merchants', '支付商户'), pc('stores'), pc('onboardings', '支付商户'), pc('merchant-changes'),
+        pc('orders', '交易'), pc('exceptions', '交易'), pc('attempts'), pc('refunds'),
+        pc('channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
         // P3a（V685）：费率 / 资金结算 / 对账 / 会员资产；P3b、P3c 的页面接口出来再进
         pc('channel-costs'), pc('commission-rules'),
         pc('ledger-entries'), pc('settlements'), pc('withdrawals'), pc('payouts'),

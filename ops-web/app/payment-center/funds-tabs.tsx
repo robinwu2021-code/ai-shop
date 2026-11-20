@@ -10,8 +10,8 @@ import { ActionForm } from "@/components/ui/action-form";
 import { Notice } from "@/components/ui/notice";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
-import { PAYOUT_STATUSES, SETTLEMENT_STATUSES, WITHDRAWAL_STATUSES, type LedgerEntryRow, type PayoutRow, type SettlementRow, type WithdrawalRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import { PAYOUT_STATUSES, SETTLEMENT_STATUSES, WITHDRAWAL_STATUSES, type LedgerEntryRow, type PayoutRow, type SettlementRow, type WithdrawalRow } from "@/app/payment-center/_api/types";
 import { fmtTime, money } from "@/lib/utils";
 import { DetailLoader, MiniTable, useRun, useStatusMap, useTabList, usePc, usePayCenterApi, amt, useInstanceCurrency } from "./shared";
 

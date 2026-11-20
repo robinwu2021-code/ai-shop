@@ -29225,6 +29225,84 @@
           "ar": null
         },
         {
+          "key": "actionKit.backToDetail",
+          "zh-CN": "返回详情",
+          "en": "Back to details",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftConflict",
+          "zh-CN": "这条记录在你编辑后被修改过，草稿基于旧版本，请核对后再提交",
+          "en": "This record changed after you started editing. Your draft is based on an older version; check it before submitting",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftDiscard",
+          "zh-CN": "放弃草稿",
+          "en": "Discard draft",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftKept",
+          "zh-CN": "草稿已保存，可稍后继续",
+          "en": "Draft saved. You can continue later",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftRestored",
+          "zh-CN": "已恢复 {time} 的草稿",
+          "en": "Draft from {time} restored",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftUnavailable",
+          "zh-CN": "当前浏览器无法保存草稿，关闭前请先提交",
+          "en": "This browser can't save drafts. Submit before closing",
+          "ar": null
+        },
+        {
+          "key": "actionKit.hide",
+          "zh-CN": "隐藏",
+          "en": "Hide",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDrafts",
+          "zh-CN": "我的草稿",
+          "en": "My drafts",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDraftsCount",
+          "zh-CN": "我的草稿 ({n})",
+          "en": "My drafts ({n})",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDraftsEmpty",
+          "zh-CN": "没有未提交的草稿",
+          "en": "No unsubmitted drafts",
+          "ar": null
+        },
+        {
+          "key": "actionKit.newRecord",
+          "zh-CN": "新建",
+          "en": "New",
+          "ar": null
+        },
+        {
+          "key": "actionKit.reveal",
+          "zh-CN": "显示",
+          "en": "Show",
+          "ar": null
+        },
+        {
+          "key": "actionKit.submitFailed",
+          "zh-CN": "提交失败：{msg}",
+          "en": "Submit failed: {msg}",
+          "ar": null
+        },
+        {
           "key": "afterSaleStatus.APPLIED",
           "zh-CN": "待商家处理",
           "en": "Awaiting merchant",
@@ -30500,6 +30578,72 @@
           "key": "orderStatus.WAIT_PAY",
           "zh-CN": "待支付",
           "en": "Awaiting payment",
+          "ar": null
+        },
+        {
+          "key": "payKit.approvalRequired",
+          "zh-CN": "这项修改需要审批，提交后由审核人在「审核待办」处理",
+          "en": "This change needs approval. After you submit it, a reviewer handles it in Approvals",
+          "ar": null
+        },
+        {
+          "key": "payKit.approvalSubmitted",
+          "zh-CN": "已提交审批",
+          "en": "Submitted for approval",
+          "ar": null
+        },
+        {
+          "key": "payKit.copied",
+          "zh-CN": "已复制",
+          "en": "Copied",
+          "ar": null
+        },
+        {
+          "key": "payKit.copy",
+          "zh-CN": "复制",
+          "en": "Copy",
+          "ar": null
+        },
+        {
+          "key": "payKit.goApprovals",
+          "zh-CN": "去审核待办",
+          "en": "Go to Approvals",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.CLOSED",
+          "zh-CN": "已关闭",
+          "en": "Closed",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.CREATED",
+          "zh-CN": "待支付",
+          "en": "Awaiting payment",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.FAILED",
+          "zh-CN": "支付失败",
+          "en": "Failed",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.PAID",
+          "zh-CN": "已支付",
+          "en": "Paid",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.PAYING",
+          "zh-CN": "支付中",
+          "en": "Paying",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.REFUNDED",
+          "zh-CN": "已退款",
+          "en": "Refunded",
           "ar": null
         },
         {
@@ -55540,6 +55684,390 @@
       "name": "PAY_APP_CREDENTIAL_REVOKE",
       "type": "String",
       "value": "\"pay:app-credential:revoke\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_VIEW",
+      "type": "String",
+      "value": "\"pay:store:view\"",
+      "zh": "支付中心原生页（TDD-支付中心运营页面 P1）：与 near-pay /pay-ops/v2 守卫同名的码。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_MANAGE",
+      "type": "String",
+      "value": "\"pay:store:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_APPROVE",
+      "type": "String",
+      "value": "\"pay:store:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_POLICY_VIEW",
+      "type": "String",
+      "value": "\"pay:collection-policy:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_POLICY_MANAGE",
+      "type": "String",
+      "value": "\"pay:collection-policy:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_MANAGE",
+      "type": "String",
+      "value": "\"pay:merchant:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_APPROVE",
+      "type": "String",
+      "value": "\"pay:merchant:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_MANAGE",
+      "type": "String",
+      "value": "\"pay:onboarding:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_APPROVE",
+      "type": "String",
+      "value": "\"pay:onboarding:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_COMPENSATE",
+      "type": "String",
+      "value": "\"pay:order:compensate\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_VIEW",
+      "type": "String",
+      "value": "\"pay:approval:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_REVIEW",
+      "type": "String",
+      "value": "\"pay:approval:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_DISPATCH",
+      "type": "String",
+      "value": "\"pay:approval:dispatch\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PRODUCT_VIEW",
+      "type": "String",
+      "value": "\"pay:product:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PRODUCT_MANAGE",
+      "type": "String",
+      "value": "\"pay:product:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_ENTRY_VIEW",
+      "type": "String",
+      "value": "\"pay:collection-entry:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_ENTRY_MANAGE",
+      "type": "String",
+      "value": "\"pay:collection-entry:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_VIEW",
+      "type": "String",
+      "value": "\"pay:data-scope:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_MANAGE",
+      "type": "String",
+      "value": "\"pay:data-scope:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_APPROVE",
+      "type": "String",
+      "value": "\"pay:data-scope:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_VIEW",
+      "type": "String",
+      "value": "\"pay:terminal:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:terminal:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_VERIFY",
+      "type": "String",
+      "value": "\"pay:terminal:verify\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_VIEW",
+      "type": "String",
+      "value": "\"pay:app:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_APPROVE",
+      "type": "String",
+      "value": "\"pay:app:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:credential:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TRACE_VIEW",
+      "type": "String",
+      "value": "\"pay:trace:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_VIEW",
+      "type": "String",
+      "value": "\"pay:alert-rule:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_MANAGE",
+      "type": "String",
+      "value": "\"pay:alert-rule:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_APPROVE",
+      "type": "String",
+      "value": "\"pay:alert-rule:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_EVENT_VIEW",
+      "type": "String",
+      "value": "\"pay:alert-event:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_EVENT_HANDLE",
+      "type": "String",
+      "value": "\"pay:alert-event:handle\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_FLOW_VIEW",
+      "type": "String",
+      "value": "\"pay:approval-flow:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FUND_ACCOUNT_VIEW",
+      "type": "String",
+      "value": "\"pay:fund-account:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_SETTLEMENT_VIEW",
+      "type": "String",
+      "value": "\"pay:settlement:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_VIEW",
+      "type": "String",
+      "value": "\"pay:withdrawal:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_REVIEW",
+      "type": "String",
+      "value": "\"pay:withdrawal:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:withdrawal:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PAYOUT_VIEW",
+      "type": "String",
+      "value": "\"pay:payout:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PAYOUT_MANAGE",
+      "type": "String",
+      "value": "\"pay:payout:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_RECON_DIFF_VIEW",
+      "type": "String",
+      "value": "\"pay:recon-diff:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_RECON_DIFF_MANAGE",
+      "type": "String",
+      "value": "\"pay:recon-diff:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORED_VALUE_VIEW",
+      "type": "String",
+      "value": "\"pay:stored-value:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_COST_VIEW",
+      "type": "String",
+      "value": "\"pay:channel-cost:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_COST_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel-cost:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FEE_PLAN_VIEW",
+      "type": "String",
+      "value": "\"pay:fee-plan:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FEE_PLAN_MANAGE",
+      "type": "String",
+      "value": "\"pay:fee-plan:manage\"",
       "zh": "",
       "module": "shop-base-auth"
     },

@@ -1,6 +1,6 @@
 # TDD-支付中心运营页面
 
-状态：P0–P2 已提交（bd35f1058、8765add55）、菜单落地已提交（0a6fbec0a）；P3a 已实现（2026-11-20，未提交）；全部只对 mock 验证，真接口待联调；P3b / P3c 待 near-pay 补接口
+状态：P0–P3a 已提交并已上线 v2（39bea6a65，near-pay P3a 已上线）；P4（商户与进件原生化、支付中心独立成模块）进行中（§2.9–§2.10）；P3b / P3c 待 near-pay 补接口
 档位：1 · 依据：[TDD-支付中心菜单整合](TDD-支付中心菜单整合.md)（菜单、权限码、岗位）+ 用户 2026-11-20 页面要求
 创建：2026-11-20 · 最后更新：2026-11-20
 
@@ -40,11 +40,12 @@
 ### 2.1 契约变更
 
 - **端点**：ops-web 新增对 near-pay `/pay-ops/v2/*` 的调用。**第一步**沿用今天 near-pay 运营端已在用的同源路径与共享会话（不新增对外暴露）；**网关代理（菜单 TDD G6）就绪后**只改客户端的基础路径配置切过去，页面不动。
-- **库表**：无（菜单点位由网关种子维护）。
+- **库表**：无新表。菜单点位：V684/V685 新增；**V686 把 V671 的 5 个既有支付入口的 href 改到 `/payment-center?tab=`**（point_code、权限码、授权不动，§2.9）。
 - **权限码**：用菜单 TDD §2.2 的查看码；各页维护码随页面移植登记（经网关 G2）。
 - **i18n**：每页的标题、列名、操作名、状态名、提示三语（简 / 繁 / 英）。
-- **配置项**：`NEXT_PUBLIC_PAY_OPS_API_BASE`（默认同源 `/oms-api/pay-ops/v2`，网关就绪后改为网关代理前缀）；
-  `NEXT_PUBLIC_PAY_NATIVE_PAGES`（P1 新增，默认关：打开后既有支付菜单项由跳 `/oms/` 改进 `/payment-center`）。
+- **配置项**：`NEXT_PUBLIC_PAY_OPS_API_BASE`（默认同源 `/oms-api/pay-ops/v2`，网关就绪后改为网关代理前缀）。
+  ~~`NEXT_PUBLIC_PAY_NATIVE_PAGES`~~：P1 加的过渡开关，2026-11-20 随 §2.9 删除（支付入口只有原生页一条路）。
+- **退款**走 shop 后端已有的 `/ops/payments/refunds`（near-pay 退款只有 v1，生产 nginx 对公网只转 `/oms-api/pay-ops/v2/`）。
 - **浏览器存储**：新增草稿键空间 `neargo-ops-draft:v1:*`（§2.4）。
 
 ### 2.2 页面与操作规则
@@ -185,6 +186,57 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 5. 三语词条齐；mock 与真实接口两套都能跑。
 6. 单元测试（配置、判权、草稿）+ 浏览器实机走一遍关键路径（本机 ops-web + mock；能连 near-pay 测试库的再连真实接口）。
 7. 菜单项改为可见、`/oms/` 跳转下线（经网关 G1 / G4 更新点位状态）；`gen-ui-catalog.py` 重生成并提交。
+
+### 2.9 模块边界与 P4（2026-11-20 用户：「商户列表，渠道进件页面还在支付那边，要统一思想放在 shop 这边一起实现，支付中心放在独立的模块」）
+
+用户选定：**全量对齐**（near-pay `/oms` 商户与进件工作区的功能全部原生化，不再跳 `/oms`）+ **菜单、代码、网关模块三层都独立**。
+
+**模块边界**
+
+| 层 | 规则 | 守卫 |
+|---|---|---|
+| 菜单 | 支付相关的菜单点位全部指向 `/payment-center?tab=`：V684/V685 新增的，加 V686 改址的 5 个（商户列表、渠道进件、支付渠道、支付订单、支付异常）。商户、订单模块不再挂支付页签；旧书签由 `useLegacyPayTabRedirect` 转到新页签 | `platform-nav.test`、`use-page-tab.test`（页面再列旧页签键会因「没有对应叶子」报错） |
+| 代码 | 页面、接口客户端（`_api/`，原 `lib/pay-ops`）、组件（`_kit/`，原 `components/payment`）全在 `app/payment-center/`；模块外只许 import `app/payment-center/module.ts`（页签登记、旧书签转发）；模块内不 import 其它业务页 | `lib/payment-center-module.test.ts` 三条：对外只经 module、对内不引业务页、不再跳 `/oms` |
+| 网关 | 支付中心全部菜单点位的权限码都是 `pay:*`，`ModuleOwnership` 按前缀归 `pay` 模块；pay 没装配时菜单接口不下发 | 网关既有的 `FunctionModuleSync` |
+
+删除：`components/payment-ops-entry.tsx`（跳 `/oms` 的过渡页）、`LEGACY_MENU_HREF`、`NEXT_PUBLIC_PAY_NATIVE_PAGES`、near-pay v1 客户端（退款改走 shop）。
+
+**P4 商户与进件原生化**：把 near-pay `/oms` 的商户工作区（新建商户、资料代填、主体资料、能力进度、渠道、收款策略、门店设置、批量绑定、测试商户）与进件工作区（申请草稿、补件、文件上传、证照识别、蓝新资料与变更）做进支付中心的「商户档案」「渠道进件」两个页签。接口契约与分步见 §2.10。做完后 `merchants-tab` / `onboardings-tab` 里的 `WorkspaceHint` 删除，守卫第三条转绿。
+
+### 2.10 P4 契约与分步（依据：near-pay 线上那条线 `release/nearpay-p3a-live-20261120` 的 ops-web 与控制器）
+
+**口径**：调用 near-pay 已有的 `/pay-ops/v2` 端点，**near-pay 后端不改**。幂等号沿用本模块客户端的规则（路径 + 请求体算出 `requestNo`：
+超时后原样重发是同一个号，near-pay 按号去重），所以不照搬旧页的「恢复上次操作 / 核查原请求」按钮。需要审批的动作只「提交审批」（`POST /approvals`），批与驳在「审核待办」。
+
+| 页签 | 操作（抽屉 = 一件事；弹框 = 确认 / 理由） | 端点 | 码 |
+|---|---|---|---|
+| 商户档案 | 页面：新建支付商户（经营主体号 + 名称；`/merchant-creations/context` 可用才出现） | `GET /merchant-creations/context`、`POST /merchant-creations` | `pay:merchant:manage` |
+| | 页面：新建测试商户（批次号；`/test-merchants/context` 可用才出现，标「仅测试」） | `GET/POST /test-merchants` | 同上 |
+| | 查看：基本、收款能力进度、已开通 / 申请中渠道、收款策略、来源关联、资料版本、来源事件 | `GET /merchants/{no}`、`/capability-progress`、`/channels`、`/collection-policy`、`/source-events` | `pay:merchant:view` |
+| | 代填资料（6 个字段，留空 = 不改，敏感三项不进草稿；只对无来源关联的商户） | `GET/PUT /merchants/{no}/assisted-profile/draft` | manage |
+| | 提交资料审核（确认） | `POST …/assisted-profile/submit` | manage |
+| | 收款策略（模式 + 产品 + 理由） | `PUT /merchants/{no}/collection-policy` | `pay:collection-policy:manage` |
+| | 核验来源关联（选关联 + 通过 / 不一致 + 理由） | `POST …/source-links/{link}/verify` | manage |
+| | 一键确认审核（单人模式实例；确认） | `POST /merchants/{no}/confirm` | approve + manage |
+| | 提交恢复审批（弹框） | `POST /approvals` `PLATFORM_MERCHANT_RESUME` | `pay:approval:view` |
+| | 主体资料核对（选版本 → 字段、证件预览、证照识别比对）/ 退回指定资料补件 | `GET …/entity-materials`、`…/files/{no}`、`POST …/request-more`；识别 `POST /ops/onboarding-documents/recognize`（shop） | `pay:merchant:approve` |
+| 渠道进件 | 页面：代商户创建进件（商户号 → 按商户市场列出可用的法币渠道 → 选一个） | `GET /merchants/{no}`、`GET /channels`、`POST /onboardings` | `pay:onboarding:manage` |
+| | 查看：基本、开户交接进度（蓝新）、账户候选、签约链接、各材料版本（脱敏显示）、渠道告警（AMR10014 / 回执缺失） | `GET /onboardings/{no}`、`/draft/readiness` | view |
+| | 平台资料（法律形式、联系人、电话*、结算账户类型、结算账号*） | `PUT /draft`；* 先 `POST /newebpay-materials` 换 `cipherRef` | manage |
+| | 蓝新资料 · 主体与代表人 / 联系与管理者 / 商店 / 结算 / 运营字段（5 个抽屉，字段按法律形式与代表人类型显隐） | 同上 | manage |
+| | 附件（`LICENSE_1..10`，PNG / JPEG / PDF ≤5 MiB，预览走 blob） | `GET/POST /files`、`GET /files/{no}` | manage / view |
+| | 证照识别填资料（上传证件 → 识别结果映射到字段 → 勾选写入草稿） | shop `/ops/onboarding-documents/recognize` + `PUT /draft` | manage |
+| | 代商户确认资料、提交完整版本审核（确认） | `POST /draft/confirm`、`/draft/submit` | manage |
+| | 提交平台审核批准（弹框）· 退回补件 / 驳回（抽屉） · 退回指定字段补件（抽屉，勾字段） | `POST /approvals` `ONBOARDING_REVIEW`、`/review`、`/draft/request-more` | manage / approve |
+| | 送件（人工模式填回执号）· 刷新渠道进度 · 登记渠道结果（人工模式）· 重试本地交接 · 取消 | `/dispatch`、`/refresh`、`/manual-result`、`/draft/handoff/retry`、`/cancel` | manage / approve |
+| | 蓝新商户资料修改：列表与提交审批 / 发送 / 取消；新建修改（字段由服务端给） | `…/newebpay-modifications*` | view / manage |
+
+- **蓝新字段定义**：near-pay 由 `backend/pay/pay-channel/src/main/resources/newebpay/onboarding-ndna-1.1.1.json` 经 `scripts/generate-newebpay-onboarding.py` 生成 `ops-web/lib/onboarding/newebpay-fields.ts`，没有运行时接口；本模块原样拷一份到 `_api/newebpay-fields.ts`（文件头注明来源与版本 `NEWEBPAY_NDNA_1_1_1`），JSON 改了要重拷。
+- **非蓝新渠道**仍用原有的「提交材料」表单（`POST /submit`），蓝新开了草稿后 near-pay 拒绝直接提交（409），按渠道分流。
+- **不做**（near-pay 线上不可达或无后端）：门店设置与批量绑定（旧原型适配器，线上路由不到）、`/merchant-changes` 复核（near-pay 无此控制器；资料版本的批驳在「商户变更」页签已有）。
+- **已知限制**：蓝新资料修改只在 near-pay 网关为 sandbox / mock 时存在（生产 `gateway.newebpay=disabled`），接口 404 时该操作不出现；其查看码在 near-pay 写成 `pay:onboarding:read`（疑似笔误），由 near-pay 修。
+
+**分步**：① 客户端补上传（multipart）与文件下载（blob）、接口与 mock；② 商户档案；③ 渠道进件；④ 删 `WorkspaceHint` 与 `paymentWorkspaceHref`，商户详情「支付服务」块的跳转改进支付中心；⑤ 测试、守卫、浏览器、提交。
 
 ### 2.8 不做
 
@@ -327,3 +379,27 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 20. **又登记 14 个 `pay:*` 码**，累计 48 个；只登记不授予，同偏差 10。
 21. **near-pay 分支未合并**：本页面按其分支上的契约实现，near-pay 合并、部署后才能联调。
 
+
+### P4 · 模块独立与商户 / 进件原生化（2026-11-20，同一工作树与分支，未提交）
+
+**模块边界（§2.9）**
+- 代码：`lib/pay-ops/*` → `app/payment-center/_api/`，`components/payment/pay-kit.tsx` → `app/payment-center/_kit/`，`center-tabs.ts` → `app/payment-center/module.ts`（模块对外唯一入口：页签登记、`payCenterHref`、`useLegacyPayTabRedirect`）。vitest 加 `app/payment-center/**/*.test.ts`。
+- 守卫 `lib/payment-center-module.test.ts`：模块外只 import `module.ts`（`app/dev/` 画廊除外）、模块内不 import 别的业务页、模块内不再出现 `paymentWorkspaceHref` / `shareOpsToken`。三条全绿；第三条在删 `WorkspaceHint` 前是红的。
+- 菜单：`V686` 只改 5 个 V671 点位的 href（`/merchants?tab=payment|payment-onboarding|payment-channels`、`/orders?tab=payments|payment-exceptions` → `/payment-center?tab=merchants|onboardings|channels|orders|exceptions`），点位码、权限码、授权不动；`platform-menu-aliases.json`、`platform-nav.ts` 同步；商户页、订单页删支付页签与 `PaymentOpsEntry`，旧书签由 `useLegacyPayTabRedirect` 转发。
+- 删除：`components/payment-ops-entry.tsx`、`LEGACY_MENU_HREF`、`NEXT_PUBLIC_PAY_NATIVE_PAGES`、`resolvePayOpsV1Base`、`ops-bridge.ts` 的 `PAYMENT_WORKSPACES` / `paymentWorkspaceHref`（及其测试）；`FunctionPointPermAlignmentTest` 去掉「跨系统工作区」分支，支付码只认支付中心原生页签（读 `module.ts`）。
+- 退款改走 shop `/ops/payments/refunds`（`RefundPort`），near-pay v1 客户端删除。线上 v2 实测该接口 200。
+- 商户详情「支付服务」块：两个跳 `/oms` 的链接改成进支付中心（商户详情抽屉 / 渠道进件页签），文案同步。
+
+**商户档案（merchant-workspace.tsx）**：新建支付商户 / 测试商户（context 可用才出现）、代填资料（6 字段，敏感 3 项不进草稿）、提交资料审核、收款策略、核验来源关联、一键确认（单人模式）、提交恢复审批、主体资料核对（证件 blob 预览 + 识别比对）、退回指定资料补件；详情加收款能力、渠道、默认策略、来源事件四段。
+
+**渠道进件（onboarding-workspace.tsx + _api/onboarding-draft.ts）**：代商户创建（查商户 → 按市场列可用法币渠道）、平台资料、蓝新 5 段资料（按法律形式 / 代表人类型显隐；敏感值先 `newebpay-materials` 封存再写草稿）、附件（10 槽，上传 / 预览）、证照识别填资料、代商户确认、提交完整版本、提交平台审核批准、退回 / 驳回、退回指定字段、送件（人工填回执号）、登记渠道结果、重试交接、蓝新资料修改（接口 404 时提示不可用）；详情加资料状态与缺项、开户交接进度、账户候选、签约链接、渠道提示（AMR10014 / 回执缺失）。非蓝新渠道保留一次性「提交材料」。原「审核」抽屉的直接通过去掉（通过走审批）。
+
+**验证**
+- 前端：tsc 0；vitest 148 文件 1374 条（新增 client 上传 / 取文件 2、P4 映射 4、识别 4、草稿规则 5、模块边界 3、支付服务块链接 1；删除旧工作区链接测试 3）；eslint 无错；界面清单、运营端孤儿、生成文档（另重跑 perm-seed doc/matrix、doc-index、perm-domain-matrix、glossary、ops-ui-spec）全过。
+- 后端：`FunctionPointPermAlignmentTest`（6）、`SchemaDriftTest`、`SchemaGeneratorTest`、`OpsPermConfigFlowTest` 通过；`schema-test.sql` 重新生成（含 V686）。
+- 浏览器（本机 mock）：菜单 5 项都指向 `/payment-center`；新建商户 → 代填资料（草稿里没有统一编号）→ 提交审核；商户详情四段；主体资料识别比对（单层抽屉）；进件平台资料保存（电话 / 账号不进本地存储、经封存）；蓝新主体段按代表人类型出字段；附件上传。确认 / 提交在缺项时被拒并提示。
+- **没验证**：真 near-pay 上的写操作（新建商户、草稿、附件、识别都只在 mock 上跑过）；证照识别接口在本分支的后端不存在（在网关分支 / v2 上）。
+
+**偏差**
+22. 「恢复上次操作 / 核查原请求」按钮不做：本模块幂等号由请求内容决定，原样重发即同号去重。
+23. 页面顶部「系统切换」里跳 near-pay 运营端的入口保留：near-pay 还有渠道账户、密钥等工作区没进支付中心。

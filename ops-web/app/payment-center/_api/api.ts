@@ -8,11 +8,15 @@ import type {
   CredentialIssued, OperatingSettings, ProfileRevisionDetail, RefundListRow, RequestLogDetail, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
+  AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
+  NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
 } from "./types";
 
 export type Q = Record<string, string | number | boolean | undefined>;
 /** 通用状态命令体（near-pay `Command`）；requestNo 由客户端按请求体生成 */
 export interface Cmd { expectedVersion: number; reason: string }
+/** 进件草稿命令：申请版本 + 草稿版本（near-pay OnboardingDraftCommand） */
+export interface DraftCmd { expectedVersion: number; expectedDraftVersion: number }
 
 export interface ChannelSave {
   expectedVersion: number; channelCode: string; name: string; channelType: string; adapterCode: string;
@@ -61,6 +65,24 @@ export interface PayCenterApi {
     detail(no: string): Promise<Detail<MerchantDetail>>;
     suspend(no: string, c: Cmd): Promise<ActionResult>;
     activate(no: string, c: Cmd): Promise<ActionResult>;
+    // P4 商户工作区
+    creationContext(): Promise<{ enabled: boolean }>;
+    create(body: { operatingEntityId: string; name: string }): Promise<MerchantCreation>;
+    testContext(): Promise<TestMerchantContext>;
+    createTest(body: { batchNo: string }): Promise<TestMerchantCreated>;
+    capability(no: string): Promise<CapabilityProgress>;
+    channels(no: string): Promise<MerchantChannels>;
+    policy(no: string): Promise<CollectionPolicyView>;
+    savePolicy(no: string, body: { expectedVersion: number; mode: string; productCodes: string[]; reason: string }): Promise<ActionResult>;
+    sourceEvents(no: string, q: Q): Promise<PayPage<SourceEvent>>;
+    assistedDraft(no: string): Promise<AssistedProfileView>;
+    saveAssisted(no: string, body: { expectedVersion: number; fields: Record<string, string | null> }): Promise<AssistedProfileView>;
+    submitAssisted(no: string, body: { expectedVersion: number }): Promise<AssistedProfileView>;
+    verifyLink(no: string, linkNo: string, body: { expectedVersion: number; result: "VERIFIED" | "MISMATCH"; reason: string }): Promise<ActionResult>;
+    confirm(no: string, body: { reason?: string }): Promise<MerchantConfirmResult>;
+    entityMaterials(no: string, revisionNo: string): Promise<EntityMaterials>;
+    entityFile(no: string, revisionNo: string, fileNo: string): Promise<Blob>;
+    entityRequestMore(no: string, revisionNo: string, body: { expectedVersion: number; reason: string; fields: string[]; documents: string[] }): Promise<unknown>;
   };
   stores: {
     list(q: Q): Promise<PayPage<StoreRow>>;
@@ -77,11 +99,34 @@ export interface PayCenterApi {
     create(body: { merchantNo: string; payChannel: string }): Promise<Detail<OnboardingDetail>>;
     submit(no: string, body: { expectedVersion: number; materialVersion: number; materials: OnboardingMaterials }): Promise<ActionResult>;
     review(no: string, body: { expectedVersion: number; decision: "APPROVE" | "REJECT" | "REQUEST_MORE"; reason: string; materialVersion: number }): Promise<ActionResult>;
-    dispatch(no: string, body: { expectedVersion: number; channelApplyNo: string; reason: string }): Promise<ActionResult>;
+    dispatch(no: string, body: { expectedVersion: number; channelApplyNo?: string | null; reason: string }): Promise<ActionResult>;
     refresh(no: string, c: Cmd): Promise<ActionResult>;
     cancel(no: string, c: Cmd): Promise<ActionResult>;
+    // P4 进件工作区
+    draft(no: string): Promise<OnboardingDraft>;
+    saveDraft(no: string, body: DraftCmd & { fields: Record<string, string | null> }): Promise<OnboardingDraft>;
+    confirmDraft(no: string, body: DraftCmd): Promise<OnboardingDraft>;
+    submitDraft(no: string, body: DraftCmd): Promise<OnboardingDraft>;
+    requestMoreFields(no: string, body: DraftCmd & { fields: string[]; reason: string }): Promise<OnboardingDraft>;
+    readiness(no: string): Promise<OnboardingReadiness>;
+    retryHandoff(no: string, c: Cmd): Promise<{ onboardingNo: string; version: number; candidateStatus: string | null }>;
+    /** 敏感字段封存：明文只走这一个口，换回 cipherRef 再写草稿（near-pay 不收幂等号） */
+    seal(no: string, body: { expectedVersion: number; fieldCode: string; secret: string }): Promise<{ fieldCode: string; cipherRef: string }>;
+    files(no: string): Promise<OnboardingFile[]>;
+    upload(no: string, fields: { slot: string; expectedVersion: number; expectedDraftVersion: number }, file: File): Promise<{ draft: OnboardingDraft; attachment: OnboardingFile }>;
+    file(no: string, fileNo: string): Promise<Blob>;
+    manualResult(no: string, body: { expectedVersion: number; result: string; signUrl?: string | null; channelMerchantId?: string | null; subMerchantId?: string | null; evidenceRef?: string | null; reason: string }): Promise<ActionResult>;
+    modifications(no: string): Promise<NewebpayModificationsView>;
+    createModification(no: string, body: { expectedVersion: number; changes: Record<string, string> }): Promise<NewebpayModification>;
+    dispatchModification(no: string, changeNo: string, c: Cmd): Promise<NewebpayModification>;
+    cancelModification(no: string, changeNo: string, c: Cmd): Promise<NewebpayModification>;
+  };
+  documents: {
+    recognize(file: File, documentType: DocumentType): Promise<RecognizeResult>;
   };
   approvals: {
+    /** 来源页的「提交审批」：冻结当前版本（subjectRevision = 版本 + 1），批与驳在审核待办 */
+    submit(body: { subjectType: string; subjectRef: string; subjectRevision: number; action: string; reason: string }): Promise<{ approvalNo: string }>;
     list(q: Q & { view?: ApprovalView }): Promise<PayPage<ApprovalRow>>;
     detail(no: string): Promise<ApprovalDetail>;
     review(no: string, body: { expectedVersion: number; decision: "APPROVE" | "REJECT" | "REQUEST_MORE"; reason: string; materialVersion: number }): Promise<unknown>;
@@ -131,7 +176,7 @@ export interface PayCenterApi {
     decide(merchantNo: string, revisionNo: string, decision: "approve" | "reject" | "request-more", c: Cmd): Promise<ActionResult>;
   };
   refunds: {
-    /** v1：不分页，最多 200 条，新的在前；页面在前端分页 */
+    /** 不分页，最多 200 条，新的在前；页面在前端分页（shop /ops/payments/refunds） */
     list(q: { status?: string; limit?: number }): Promise<RefundListRow[]>;
     review(payRefundNo: string, body: { approve: boolean; reason: string }): Promise<RefundListRow>;
   };
@@ -249,8 +294,28 @@ async function detailOf<T>(c: PayOpsClient, path: string): Promise<Detail<T>> {
   return { record: d.record, version: Number(d.version ?? 0), allowedActions: d.allowedActions ?? [], timeline: d.timeline ?? [] };
 }
 
-/** v1 客户端：near-pay 退款只有 /pay-ops/v1；信封 {code,msg,data} 由同一个解包逻辑处理 */
-export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): PayCenterApi {
+/**
+ * 退款端口：near-pay 的退款只有 /pay-ops/v1，而 nginx 对公网只转 /pay-ops/v2；
+ * 所以退款走 shop 后端已有的转发 /ops/payments/refunds（同一个运营会话、同一组码）。
+ */
+export interface RefundPort {
+  list(q: { status?: string; limit: number }): Promise<RefundListRow[]>;
+  review(payRefundNo: string, body: { approve: boolean; reason: string }): Promise<RefundListRow>;
+}
+
+/** 证照识别端口：shop 后端 `/ops/onboarding-documents/recognize`（不是 near-pay；结果只填表单，不落库） */
+export interface DocumentPort {
+  recognize(file: File, documentType: DocumentType): Promise<RecognizeResult>;
+}
+
+/** 走 shop 后端的那几个口 */
+export interface ShopPorts { refunds: RefundPort; documents: DocumentPort }
+
+const unset = () => Promise.reject(new Error("shop port not configured"));
+const NO_PORTS: ShopPorts = { refunds: { list: unset, review: unset }, documents: { recognize: unset } };
+
+export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts> = {}): PayCenterApi {
+  const { refunds, documents } = { ...NO_PORTS, ...ports };
   const crud = <Row, Save extends object>(base: string) => ({
     list: (q: Q) => c.page<Row>(base, q),
     detail: (id: string) => detailOf<Row>(c, `${base}/${e(id)}`),
@@ -277,6 +342,23 @@ export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): P
       detail: (no) => detailOf(c, `/merchants/${e(no)}`),
       suspend: (no, cmd) => c.command(`/merchants/${e(no)}/suspend`, { ...cmd }),
       activate: (no, cmd) => c.command(`/merchants/${e(no)}/activate`, { ...cmd }),
+      creationContext: () => c.get("/merchant-creations/context"),
+      create: (body) => c.command("/merchant-creations", { ...body }),
+      testContext: () => c.get("/test-merchants/context"),
+      createTest: (body) => c.command("/test-merchants", { ...body }),
+      capability: (no) => c.get(`/merchants/${e(no)}/capability-progress`),
+      channels: (no) => c.get(`/merchants/${e(no)}/channels`),
+      policy: (no) => c.get(`/merchants/${e(no)}/collection-policy`),
+      savePolicy: (no, body) => c.command(`/merchants/${e(no)}/collection-policy`, { ...body }, { method: "PUT" }),
+      sourceEvents: (no, q) => c.page(`/merchants/${e(no)}/source-events`, q),
+      assistedDraft: (no) => c.get(`/merchants/${e(no)}/assisted-profile/draft`),
+      saveAssisted: (no, body) => c.command(`/merchants/${e(no)}/assisted-profile/draft`, { ...body }, { method: "PUT" }),
+      submitAssisted: (no, body) => c.command(`/merchants/${e(no)}/assisted-profile/submit`, { ...body, fields: {} }),
+      verifyLink: (no, link, body) => c.command(`/merchants/${e(no)}/source-links/${e(link)}/verify`, { ...body }),
+      confirm: (no, body) => c.command(`/merchants/${e(no)}/confirm`, { ...body }),
+      entityMaterials: (no, rev) => c.get(`/merchants/${e(no)}/profile-revisions/${e(rev)}/entity-materials`),
+      entityFile: (no, rev, file) => c.blob(`/merchants/${e(no)}/profile-revisions/${e(rev)}/entity-materials/files/${e(file)}`, "application/octet-stream"),
+      entityRequestMore: (no, rev, body) => c.command(`/merchants/${e(no)}/profile-revisions/${e(rev)}/entity-materials/request-more`, { ...body }),
     },
     stores: {
       list: (q) => c.page("/stores", q),
@@ -296,8 +378,26 @@ export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): P
       dispatch: (no, body) => c.command(`/onboardings/${e(no)}/dispatch`, { ...body }),
       refresh: (no, cmd) => c.command(`/onboardings/${e(no)}/refresh`, { ...cmd }),
       cancel: (no, cmd) => c.command(`/onboardings/${e(no)}/cancel`, { ...cmd }),
+      draft: (no) => c.get(`/onboardings/${e(no)}/draft`),
+      saveDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft`, { ...body }, { method: "PUT" }),
+      confirmDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft/confirm`, { ...body, fields: {} }),
+      submitDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft/submit`, { ...body, fields: {} }),
+      requestMoreFields: (no, body) => c.command(`/onboardings/${e(no)}/draft/request-more`, { ...body }),
+      readiness: (no) => c.get(`/onboardings/${e(no)}/draft/readiness`),
+      retryHandoff: (no, cmd) => c.command(`/onboardings/${e(no)}/draft/handoff/retry`, { ...cmd }),
+      seal: (no, body) => c.command(`/onboardings/${e(no)}/newebpay-materials`, { ...body }, { idempotent: false }),
+      files: (no) => c.get(`/onboardings/${e(no)}/files`),
+      upload: (no, fields, file) => c.upload(`/onboardings/${e(no)}/files`, fields, file),
+      file: (no, fileNo) => c.blob(`/onboardings/${e(no)}/files/${e(fileNo)}`),
+      manualResult: (no, body) => c.command(`/onboardings/${e(no)}/manual-result`, { ...body }),
+      modifications: (no) => c.get(`/onboardings/${e(no)}/newebpay-modifications`),
+      createModification: (no, body) => c.command(`/onboardings/${e(no)}/newebpay-modifications`, { ...body }),
+      dispatchModification: (no, ch, cmd) => c.command(`/onboardings/${e(no)}/newebpay-modifications/${e(ch)}/dispatch`, { ...cmd }),
+      cancelModification: (no, ch, cmd) => c.command(`/onboardings/${e(no)}/newebpay-modifications/${e(ch)}/cancel`, { ...cmd }),
     },
+    documents: { recognize: (file, type) => documents.recognize(file, type) },
     approvals: {
+      submit: (body) => c.command("/approvals", { ...body }),
       list: (q) => c.page("/approvals", q),
       // 审批详情**不是** Detail 包装（near-pay 直接返回 ApprovalDetailDto）
       detail: (no) => c.get(`/approvals/${e(no)}`),
@@ -330,8 +430,8 @@ export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): P
       decide: (m, r, d, cmd) => c.command(`/merchants/${e(m)}/profile-revisions/${e(r)}/${d}`, { ...cmd }),
     },
     refunds: {
-      list: async (q) => (await v1.get<RefundListRow[] | null>("/refunds", { status: q.status, limit: q.limit ?? 200 })) ?? [],
-      review: (no, body) => v1.command(`/refunds/${e(no)}/review`, { ...body }, { idempotent: false }),
+      list: async (q) => (await refunds.list({ status: q.status, limit: q.limit ?? 200 })) ?? [],
+      review: (no, body) => refunds.review(no, body),
     },
     terminals: {
       ...crud<TerminalRow, TerminalSave>("/terminals"),
