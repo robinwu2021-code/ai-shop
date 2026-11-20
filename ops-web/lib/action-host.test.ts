@@ -147,7 +147,28 @@ describe("ListPage", () => {
     })));
     expect(host.textContent).toContain("支付订单");
     expect(host.querySelectorAll("tbody tr")).toHaveLength(2);
+    // 页面级操作只在工具栏，不进每一行（P3a 实机发现：行里出现了「新建」）
+    for (const tr of host.querySelectorAll("tbody tr")) {
+      expect([...tr.querySelectorAll("button")].map((b) => b.textContent)).not.toContain("新建");
+    }
     await click(byText("新建"));
     expect(document.body.textContent).toContain("create-body");
+  });
+
+  it("页面级操作只出现在工具栏，不进表格行", async () => {
+    await act(async () => root.render(h(ListPage<Row>, {
+      header: h("h1", null, "x"),
+      query: { data: { records: rows, total: 2 } },
+      page: 1, size: 20, onPage: () => {}, onSize: () => {},
+      columns: [{ header: "编号", cell: (r: Row) => r.id }],
+      rowKey: (r: Row) => r.id,
+      actions: [specs()[0]],
+      pageActions: [{ key: "create", label: "新建", kind: "drawer", title: () => "新建", render: () => h("p", null, "c") }],
+      allow: allowAll,
+    })));
+    for (const tr of host.querySelectorAll("tbody tr")) {
+      expect([...tr.querySelectorAll("button[data-row-action]")].map((b) => b.getAttribute("data-row-action"))).toEqual(["view"]);
+    }
+    expect([...host.querySelectorAll("button")].filter((b) => b.textContent === "新建")).toHaveLength(1);
   });
 });

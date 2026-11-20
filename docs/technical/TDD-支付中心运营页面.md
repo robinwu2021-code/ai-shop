@@ -1,6 +1,6 @@
 # TDD-支付中心运营页面
 
-状态：P0、P1 已实现并提交（bd35f1058）；P2 已实现（2026-11-20，未提交）；P1/P2 只对 mock 验证，真接口待联调；P3 待 near-pay 补接口
+状态：P0–P2 已提交（bd35f1058、8765add55）、菜单落地已提交（0a6fbec0a）；P3a 已实现（2026-11-20，未提交）；全部只对 mock 验证，真接口待联调；P3b / P3c 待 near-pay 补接口
 档位：1 · 依据：[TDD-支付中心菜单整合](TDD-支付中心菜单整合.md)（菜单、权限码、岗位）+ 用户 2026-11-20 页面要求
 创建：2026-11-20 · 最后更新：2026-11-20
 
@@ -301,4 +301,29 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 16. **退款列表前端分页**：v1 一次最多 200 笔且无总数，更早的只能按状态筛出来；页面说明里写明。near-pay 补 v2 分页列表后再换。
 17. **请求日志 / 渠道调用 / 回调的搜索框是精确查**：分别对应 near-pay 的 `requestId` / `bizNo` 参数，不是模糊搜索。
 18. **又登记 13 个 `pay:*` 码**（同偏差 10 的理由），累计 34 个。
+
+### P3a（2026-11-20，同一工作树与分支，未提交）
+
+**near-pay 侧**：接口由单独会话在 near-pay 仓库实现，提交 `81d222c0c`（分支 `claude/ops-v2-p3a-426611`，未推送、未开 PR），新增 5 个控制器与 29 条测试，契约 `docs/api/handbook/08-运营端P3a接口落地.md`。
+设计里有、本批未实现的（结算刷新 / 回执、出款查询 / 退回复核、提现发起、对账复核、费率发布 / 停用、费率方案、储值冻结与调账）页面不出入口。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `ops-web/app/payment-center/{attempts-recon,funds,assets-rates}-tabs.tsx` | 10 个页签：交易流水（查渠道结果）、对账差异（覆盖范围提示 + 认领 / 关闭）、资金流水（凭证分录）、结算记录（含本批出款）、提现申请（通过 / 驳回 / 撤销）、出款记录（登记回执）、储值账户 / 交易（只读）、渠道成本（新建 / 调价＝追加版本，含历史版本）、佣金规则（新建版本） |
+| 修改 | `ops-web/lib/pay-ops/{types,api,mock,center-tabs}.ts`、`app/payment-center/{page,copy,shared}.ts(x)` | P3a DTO、HTTP / mock 实现、10 个页签登记、中英文案 +205 条；`useInstanceCurrency` / `amt`：DTO 不带币种的金额用实例币种格式化，取不到时不写币种符号 |
+| 修改 | `ops-web/components/ui/{action-host,list-page}.tsx` | **修 P0 缺陷**：页面级操作（新建）曾出现在每一行的操作里；`RowActionButtons` 只出行操作 |
+| 修改 | `ops-web/lib/platform-nav.ts`、`platform-menu-aliases.json`、`i18n/nav-*.ts` | 支付中心加 交易流水（交易）与 费率 / 资金结算 / 对账 / 会员资产 四组 |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V685__ops_payment_center_p3a_menu.sql` | 10 个菜单点位；交易流水与支付订单同码，从 `OPS_ORDER__TAB_PAYMENTS` 继承，其余只给超管 |
+| 修改 | `backend/shop-base-auth/.../Perms.java`、`ops-web/lib/perm-map.ts`、`schema-test.sql` | 登记 14 个 P3a 码（累计 48 个）；测试库重生成（只多 V685 的 21 行） |
+| 测试 | `lib/action-host.test.ts`（+1）、`lib/pay-ops/api.test.ts`（+3）、`lib/payment-center-page.test.ts`（自动 +10）、菜单与动作点期望 | |
+
+验证：`tsc` 无输出；`vitest` 146 个文件 1360 条全过；后端 `FunctionPointPermAlignmentTest` 7/7、`SchemaDriftTest` 6/6；`Perms.java` 单独 `javac` 通过；`check-ops-orphan` 退出 0。
+新回归用例先红后绿（页面级操作不进表格行）。
+实机（本机 mock，超管）：菜单出现 10 项；对账差异显示「渠道账单尚未接入」提示，认领 → 关闭后离开待处理列表；提现「通过」后离开待审批列表；出款登记回执后变「已付款」；渠道成本详情可见已被取代的旧版本，调价后出现「待生效」新版本；修复后表格行内不再出现「新建」、最低手续费按实例币种显示（NT$）。**未连 near-pay 真接口**。
+
+**偏差说明（P3a）**
+
+19. **交易流水、资金流水各自成为菜单项**：菜单 TDD §2.2 原设计为「支付订单」「资金账户」的页签；资金账户（FI02）还要等 P3c 建表，交易流水需要独立筛选，所以先各占一项。
+20. **又登记 14 个 `pay:*` 码**，累计 48 个；只登记不授予，同偏差 10。
+21. **near-pay 分支未合并**：本页面按其分支上的契约实现，near-pay 合并、部署后才能联调。
 

@@ -14,7 +14,7 @@ import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
 import { APP_STATUSES, type AppGrant, type AppRow } from "@/lib/pay-ops/types";
 import { fmtTime, money } from "@/lib/utils";
-import { DetailLoader, MiniTable, csv, fromMinor, joinCsv, options, reasonField, toMinor, usePayCenterApi, useRefresh, useRun, useStatusMap, useTabList, usePc } from "./shared";
+import { DetailLoader, MiniTable, csv, fromMinor, joinCsv, options, reasonField, toMinor, usePayCenterApi, useRefresh, useRun, useStatusMap, useTabList, usePc, amt, useInstanceCurrency } from "./shared";
 import { SecretOnce } from "./secret-once";
 
 const NAME = "apps";
@@ -28,6 +28,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
   const envMap = useStatusMap("env", ["LIVE", "SANDBOX"], { SANDBOX: "info" });
   const cbMap = useStatusMap("cb", ["UNVERIFIED", "VERIFIED"], { VERIFIED: "success", UNVERIFIED: "warning" });
   const credMap = useStatusMap("cred", ["NONE", "PENDING", "ACTIVE", "REVOKED"], { ACTIVE: "success" });
+  const cur = useInstanceCurrency();
   const list = useTabList<AppRow, { status: string; environment: string }>(NAME, { status: "", environment: "" }, (api, q) => api.apps.list(q));
   const { api } = list;
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-apps", action, id } : null);
@@ -57,7 +58,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
                 { label: c.callbackStatus, value: <StatusBadge value={a.callbackStatus} map={cbMap} /> },
                 { label: c.ipWhitelist, value: a.ipWhitelist },
                 { label: c.rateLimit, value: a.rateLimitQps },
-                { label: c.dailyRefundLimit, value: money(a.dailyRefundLimitMinor) },
+                { label: c.dailyRefundLimit, value: amt(a.dailyRefundLimitMinor, cur) },
                 { label: c.lastAccess, value: a.lastAccessAt ? `${fmtTime(a.lastAccessAt)} · ${a.lastAccessOutcome ?? ""}` : "—" },
               ] },
               { title: c.sectionGrants, content: <MiniTable<AppGrant> rows={g.records} rowKey={(x) => x.storeNo} empty={c.emptyGrants} columns={[

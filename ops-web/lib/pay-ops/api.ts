@@ -2,6 +2,8 @@
 // 路径、查询参数、命令体与 near-pay /pay-ops/v2 一一对应（TDD-支付中心运营页面 §2.6，契约核对见 §6）。
 import type { PayOpsClient, PayPage } from "./client";
 import type {
+  AttemptListRow, ChannelCostRow, CommissionRuleRow, LedgerEntryRow, LedgerVoucher, PayoutRow, ReconDiffRow, SettlementRow,
+  StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
   AlertEventRow, AlertRuleRow, AppDetail, AppGrant, AppRow, ApprovalFlowRow, ChannelCallDetail, ChannelCallRow, ChannelCallbackDetail, ChannelCallbackRow,
   CredentialIssued, OperatingSettings, ProfileRevisionDetail, RefundListRow, RequestLogDetail, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
@@ -36,6 +38,8 @@ export interface TerminalSave {
 export interface AppCreate { name: string; purpose: string; ownerKind: string; merchantNo: string | null; environment?: string; scopes: string[]; notifyUrl: string; callbackDomains: string[]; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
 export interface AppUpdate { expectedVersion: number; name: string; purpose: string; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
 export interface AlertRuleSave { expectedVersion: number; name: string; metric: string; scopeType: string; scopeRef: string | null; operator: string; threshold: string; windowSeconds: number; minSampleCount: number; consecutiveBreaches: number; severity: string; notifyTargets: string[]; reason: string }
+
+export interface ChannelCostSave { reason: string; payChannel: string; payMethod?: string; legalForm?: string; market?: string; rateBps: number; minFeeMinor?: number; effectiveFrom: number }
 
 export interface PayCenterApi {
   source: "http" | "mock";
@@ -185,6 +189,56 @@ export interface PayCenterApi {
     get(): Promise<OperatingSettings>;
     save(body: { expectedVersion: number; defaultChannelCode: string; channelOrder: string[]; reason: string }): Promise<OperatingSettings>;
   };
+
+  // ── P3a ──
+  attempts: {
+    list(q: Q): Promise<PayPage<AttemptListRow>>;
+    detail(outTradeNo: string): Promise<Detail<AttemptListRow>>;
+    refresh(outTradeNo: string, c: Cmd): Promise<{ outTradeNo: string; payOrderNo: string | null; orderStatus: string; accepted: boolean }>;
+  };
+  ledger: {
+    list(q: Q): Promise<PayPage<LedgerEntryRow>>;
+    detail(entryNo: string): Promise<Detail<{ entry: LedgerEntryRow | null; voucher: LedgerVoucher }>>;
+  };
+  settlements: {
+    list(q: Q): Promise<PayPage<SettlementRow>>;
+    detail(no: string): Promise<Detail<{ settlement: SettlementRow; payouts: PayoutRow[] }>>;
+  };
+  withdrawals: {
+    list(q: Q): Promise<PayPage<WithdrawalRow>>;
+    detail(no: string): Promise<Detail<WithdrawalRow>>;
+    review(no: string, body: Cmd & { decision: "APPROVE" | "REJECT" }): Promise<ActionResult>;
+    cancel(no: string, c: Cmd): Promise<ActionResult>;
+  };
+  payouts: {
+    list(q: Q): Promise<PayPage<PayoutRow>>;
+    detail(no: string): Promise<Detail<{ payout: PayoutRow; settleNos: string[]; settleDocumentNos: string[] }>>;
+    receipt(no: string, body: Cmd & { result: "PAID" | "FAILED"; paymentRef: string | null }): Promise<ActionResult>;
+  };
+  reconDiffs: {
+    list(q: Q): Promise<PayPage<ReconDiffRow>>;
+    coverage(): Promise<{ channelBillConnected: boolean; note: string | null }>;
+    detail(no: string): Promise<Detail<{ difference: ReconDiffRow; claimedBy: string | null; claimedAt: number | null }>>;
+    claim(no: string, c: Cmd): Promise<ActionResult>;
+    close(no: string, body: Cmd & { outcome: "RESOLVED" | "IGNORED" }): Promise<ActionResult>;
+  };
+  storedValue: {
+    accounts(q: Q): Promise<PayPage<StoredValueAccountRow>>;
+    account(no: string): Promise<Detail<{ account: StoredValueAccountRow; recentTransactions: StoredValueTransactionRow[] }>>;
+    transactions(q: Q): Promise<PayPage<StoredValueTransactionRow>>;
+  };
+  channelCosts: {
+    list(q: Q): Promise<PayPage<ChannelCostRow>>;
+    detail(no: string): Promise<Detail<ChannelCostRow>>;
+    versions(no: string): Promise<ChannelCostRow[]>;
+    create(body: ChannelCostSave): Promise<Detail<ChannelCostRow>>;
+    revise(no: string, body: ChannelCostSave & { expectedVersion: number }): Promise<Detail<ChannelCostRow>>;
+  };
+  commissionRules: {
+    list(q: Q): Promise<PayPage<CommissionRuleRow>>;
+    detail(no: string): Promise<Detail<CommissionRuleRow>>;
+    create(body: { reason: string; businessMode: string; trafficSource: string; rateBps: number; effectiveFrom: number }): Promise<Detail<CommissionRuleRow>>;
+  };
 }
 
 const e = encodeURIComponent;
@@ -333,6 +387,55 @@ export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): P
     settings: {
       get: () => c.get("/settings"),
       save: (body) => c.command("/settings", { ...body }, { method: "PUT" }),
+    },
+    attempts: {
+      list: (q) => c.page("/attempts", q),
+      detail: (no) => detailOf(c, `/attempts/${e(no)}`),
+      refresh: (no, cmd) => c.command(`/attempts/${e(no)}/refresh`, { ...cmd }),
+    },
+    ledger: {
+      list: (q) => c.page("/ledger-entries", q),
+      detail: (no) => detailOf(c, `/ledger-entries/${e(no)}`),
+    },
+    settlements: {
+      list: (q) => c.page("/settlements", q),
+      detail: (no) => detailOf(c, `/settlements/${e(no)}`),
+    },
+    withdrawals: {
+      list: (q) => c.page("/withdrawals", q),
+      detail: (no) => detailOf(c, `/withdrawals/${e(no)}`),
+      review: (no, body) => c.command(`/withdrawals/${e(no)}/review`, { ...body }),
+      cancel: (no, cmd) => c.command(`/withdrawals/${e(no)}/cancel`, { ...cmd }),
+    },
+    payouts: {
+      list: (q) => c.page("/payouts", q),
+      detail: (no) => detailOf(c, `/payouts/${e(no)}`),
+      receipt: (no, body) => c.command(`/payouts/${e(no)}/receipt`, { ...body }),
+    },
+    reconDiffs: {
+      list: (q) => c.page("/reconciliation-differences", q),
+      coverage: () => c.get("/reconciliation-differences/coverage"),
+      detail: (no) => detailOf(c, `/reconciliation-differences/${e(no)}`),
+      claim: (no, cmd) => c.command(`/reconciliation-differences/${e(no)}/claim`, { ...cmd }),
+      close: (no, body) => c.command(`/reconciliation-differences/${e(no)}/close`, { ...body }),
+    },
+    storedValue: {
+      accounts: (q) => c.page("/stored-value/accounts", q),
+      account: (no) => detailOf(c, `/stored-value/accounts/${e(no)}`),
+      transactions: (q) => c.page("/stored-value/transactions", q),
+    },
+    channelCosts: {
+      list: (q) => c.page("/channel-costs", q),
+      detail: (no) => detailOf(c, `/channel-costs/${e(no)}`),
+      versions: async (no) => (await c.get<ChannelCostRow[] | null>(`/channel-costs/${e(no)}/versions`)) ?? [],
+      // 新建与调价都要 requestNo（客户端按请求体生成）；调价是追加新版本，不改原行
+      create: (body) => c.command("/channel-costs", { ...body }),
+      revise: (no, body) => c.command(`/channel-costs/${e(no)}`, { ...body }, { method: "PUT" }),
+    },
+    commissionRules: {
+      list: (q) => c.page("/commission-rules", q),
+      detail: (no) => detailOf(c, `/commission-rules/${e(no)}`),
+      create: (body) => c.command("/commission-rules", { ...body }),
     },
     dataScopes: {
       ...crud<DataScopeRow, ScopeSave>("/data-scopes"),

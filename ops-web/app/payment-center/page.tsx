@@ -32,6 +32,9 @@ import { AppsTab } from "./apps-tab";
 import { ChannelCallbacksTab, ChannelCallsTab, RequestLogsTab } from "./traces-tab";
 import { AlertEventsTab, AlertRulesTab } from "./alerts-tab";
 import { ApprovalFlowsTab, SettingsTab } from "./config-tabs";
+import { AttemptsTab, ReconDiffsTab } from "./attempts-recon-tabs";
+import { LedgerTab, PayoutsTab, SettlementsTab, WithdrawalsTab } from "./funds-tabs";
+import { ChannelCostsTab, CommissionRulesTab, SvAccountsTab, SvTransactionsTab } from "./assets-rates-tabs";
 
 export default function PaymentCenterPage() {
   return <Suspense fallback={null}><PaymentCenterInner /></Suspense>;
@@ -59,6 +62,16 @@ const TAB_COMPONENT: Record<PayCenterTabKey, React.ComponentType<{ header: React
   "alert-rules": AlertRulesTab,
   "approval-flows": ApprovalFlowsTab,
   settings: SettingsTab,
+  attempts: AttemptsTab,
+  "ledger-entries": LedgerTab,
+  settlements: SettlementsTab,
+  withdrawals: WithdrawalsTab,
+  payouts: PayoutsTab,
+  "recon-diffs": ReconDiffsTab,
+  "sv-accounts": SvAccountsTab,
+  "sv-transactions": SvTransactionsTab,
+  "channel-costs": ChannelCostsTab,
+  "commission-rules": CommissionRulesTab,
 };
 
 function PaymentCenterInner() {

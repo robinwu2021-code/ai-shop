@@ -223,6 +223,21 @@ public final class Perms {
     public static final String PAY_ALERT_EVENT_VIEW = "pay:alert-event:view";
     public static final String PAY_ALERT_EVENT_HANDLE = "pay:alert-event:handle";
     public static final String PAY_APPROVAL_FLOW_VIEW = "pay:approval-flow:view";
+    // P3a：交易流水、资金流水、结算、提现、出款、对账差异、储值、渠道成本、佣金（near-pay docs/api/handbook/08）
+    public static final String PAY_FUND_ACCOUNT_VIEW = "pay:fund-account:view";
+    public static final String PAY_SETTLEMENT_VIEW = "pay:settlement:view";
+    public static final String PAY_WITHDRAWAL_VIEW = "pay:withdrawal:view";
+    public static final String PAY_WITHDRAWAL_REVIEW = "pay:withdrawal:review";
+    public static final String PAY_WITHDRAWAL_MANAGE = "pay:withdrawal:manage";
+    public static final String PAY_PAYOUT_VIEW = "pay:payout:view";
+    public static final String PAY_PAYOUT_MANAGE = "pay:payout:manage";
+    public static final String PAY_RECON_DIFF_VIEW = "pay:recon-diff:view";
+    public static final String PAY_RECON_DIFF_MANAGE = "pay:recon-diff:manage";
+    public static final String PAY_STORED_VALUE_VIEW = "pay:stored-value:view";
+    public static final String PAY_CHANNEL_COST_VIEW = "pay:channel-cost:view";
+    public static final String PAY_CHANNEL_COST_MANAGE = "pay:channel-cost:manage";
+    public static final String PAY_FEE_PLAN_VIEW = "pay:fee-plan:view";
+    public static final String PAY_FEE_PLAN_MANAGE = "pay:fee-plan:manage";
     /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。

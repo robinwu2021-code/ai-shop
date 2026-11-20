@@ -180,8 +180,12 @@ export function useActionHost<T>({ actions, allow, getRowId, syncUrl }: UseActio
  * 表格操作列：最多 3 个直接按钮，其余（以及所有危险操作）进「更多」。
  * 第一个通常是「查看」—— 由声明顺序决定，这里不重排。
  */
-export function RowActionButtons<T>({ row, host, max = 3 }: { row: T; host: ActionHost<T>; max?: number }) {
-  const items = host.available(row);
+export function RowActionButtons<T>({ row, host, max = 3, only }: {
+  row: T; host: ActionHost<T>; max?: number;
+  /** 只出这些 key（行操作）。host 同时承载页面级操作（新建），不过滤的话它们会出现在每一行 */
+  only?: ReadonlySet<string>;
+}) {
+  const items = host.available(row).filter((a) => !only || only.has(a.key));
   if (!items.length) return null;
   const plain = items.filter((a) => !a.danger);
   const direct = plain.slice(0, max);

@@ -13,12 +13,15 @@ export type PayCenterTabKey =
   // P2
   | "merchant-changes" | "refunds" | "terminals" | "apps"
   | "request-logs" | "channel-calls" | "channel-callbacks" | "alert-events" | "alert-rules"
-  | "approval-flows" | "settings";
+  | "approval-flows" | "settings"
+  // P3a
+  | "attempts" | "ledger-entries" | "settlements" | "withdrawals" | "payouts" | "recon-diffs"
+  | "sv-accounts" | "sv-transactions" | "channel-costs" | "commission-rules";
 
 export interface PayCenterTab {
   key: PayCenterTabKey;
   perm: string;
-  group: "review" | "merchant" | "trade" | "channel" | "settings" | "ops" | "config";
+  group: "review" | "merchant" | "trade" | "channel" | "settings" | "ops" | "config" | "funds" | "recon" | "rates" | "assets";
   zh: string;
   en: string;
   /**
@@ -38,12 +41,22 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "orders", perm: "pay:order:view", group: "trade", zh: "支付订单", en: "Payments", workspace: "payments" },
   { key: "exceptions", perm: "pay:order:view", group: "trade", zh: "异常交易", en: "Exceptions", workspace: "payment-exceptions" },
   { key: "refunds", perm: "pay:refund:view", group: "trade", zh: "退款订单", en: "Refunds" },
+  { key: "attempts", perm: "pay:order:view", group: "trade", zh: "交易流水", en: "Transaction log" },
   { key: "channels", perm: "pay:channel:view", group: "channel", zh: "支付渠道", en: "Channels", workspace: "channels" },
   { key: "products", perm: "pay:product:view", group: "channel", zh: "支付产品", en: "Products" },
   // 收款接入的查看码：near-pay OpsCollectionEntryController 用 pay:collection-entry:view（2026-11-20 核对）
   { key: "access", perm: "pay:collection-entry:view", group: "channel", zh: "收款接入", en: "Collection entries" },
   { key: "terminals", perm: "pay:terminal:view", group: "channel", zh: "支付终端", en: "Terminals" },
   { key: "apps", perm: "pay:app:view", group: "channel", zh: "接入应用", en: "Open apps" },
+  { key: "channel-costs", perm: "pay:channel-cost:view", group: "rates", zh: "渠道成本", en: "Channel costs" },
+  { key: "commission-rules", perm: "pay:fee-plan:view", group: "rates", zh: "佣金规则", en: "Commission rules" },
+  { key: "ledger-entries", perm: "pay:fund-account:view", group: "funds", zh: "资金流水", en: "Ledger" },
+  { key: "settlements", perm: "pay:settlement:view", group: "funds", zh: "结算记录", en: "Settlements" },
+  { key: "withdrawals", perm: "pay:withdrawal:view", group: "funds", zh: "提现申请", en: "Withdrawals" },
+  { key: "payouts", perm: "pay:payout:view", group: "funds", zh: "出款记录", en: "Payouts" },
+  { key: "recon-diffs", perm: "pay:recon-diff:view", group: "recon", zh: "对账差异", en: "Recon differences" },
+  { key: "sv-accounts", perm: "pay:stored-value:view", group: "assets", zh: "储值账户", en: "Stored-value accounts" },
+  { key: "sv-transactions", perm: "pay:stored-value:view", group: "assets", zh: "储值交易", en: "Stored-value transactions" },
   { key: "data-scopes", perm: "pay:data-scope:view", group: "settings", zh: "数据范围", en: "Data scope" },
   { key: "approval-flows", perm: "pay:approval-flow:view", group: "config", zh: "审批流程", en: "Approval flows" },
   { key: "settings", perm: "pay:channel:view", group: "config", zh: "经营设置", en: "Operating settings" },
@@ -63,6 +76,10 @@ export const PAY_CENTER_GROUP_LABEL: Record<PayCenterTab["group"], { zh: string;
   settings: { zh: "平台设置 · 权限管理", en: "Settings · Access" },
   config: { zh: "平台设置 · 支付配置", en: "Settings · Payment config" },
   ops: { zh: "平台设置 · 支付运维", en: "Settings · Payment ops" },
+  funds: { zh: "资金结算", en: "Funds" },
+  recon: { zh: "对账", en: "Reconciliation" },
+  rates: { zh: "费率", en: "Rates" },
+  assets: { zh: "会员资产", en: "Member assets" },
 };
 
 /** 还等登记菜单点位的页签。2026-11-20 起菜单在本分支落地（V684 + platform-nav），已清空；以后新增页签先进这里。 */

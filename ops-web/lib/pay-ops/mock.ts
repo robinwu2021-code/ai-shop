@@ -3,6 +3,7 @@
 import { MockPayError, VersionedTable, mockDelay, pageOf } from "./mock-store";
 import type { Cmd, PayCenterApi } from "./api";
 import type {
+  AttemptListRow, ChannelCostRow, CommissionRuleRow, LedgerEntryRow, PayoutRow, ReconDiffRow, SettlementRow, StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
   AlertEventRow, AlertRuleRow, AppGrant, AppRow, ApprovalFlowRow, ChannelCallRow, ChannelCallbackRow, OperatingSettings, RefundListRow, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ChannelRow, DataScopeRow, Detail, EntryRow, ExceptionRow,
   MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow,
@@ -130,6 +131,37 @@ export function createMockPayCenterApi(): PayCenterApi {
   const alertRules = new VersionedTable<AlertRuleRow>([["渠道成功率过低", "CHANNEL_SUCCESS_RATE", "LT", "95", "P1"], ["回调失败过多", "CALLBACK_FAILURE", "GT", "10", "P2"], ["渠道延迟过高", "CHANNEL_LATENCY", "GT", "3000", "P3"]].map(([name, metric, op, th, sev], i) => ({ ruleNo: `AR${2001 + i}`, revisionNo: 1, name, metric, scopeType: "CHANNEL", scopeRef: null, operator: op, threshold: th, unit: ["PERCENT", "COUNT", "MILLISECOND"][i], windowSeconds: 300, minSampleCount: 20, consecutiveBreaches: 2, severity: sev, notifyTargets: ["ops-oncall"], status: i === 2 ? "DRAFT" : "PUBLISHED", enteredBy: "admin2", publishedBy: i === 2 ? null : "admin", publishedRevisionNo: i === 2 ? null : 1, version: 1 })), (r) => r.ruleNo);
   const flows: ApprovalFlowRow[] = [["AF101", "数据委托启用", "DATA_SCOPE_ENABLE", 1], ["AF102", "恢复商户", "PLATFORM_MERCHANT_RESUME", 2], ["AF103", "门店归属变更", "STORE_ASSOCIATION_CHANGE", 2]].map(([no, name, biz, n]) => ({ flowNo: no as string, revisionNo: 1, name: name as string, bizType: biz as string, market: "TW", nodes: Array.from({ length: n as number }, (_, k) => ({ nodeNo: k + 1, roleRef: k ? "FINANCE_LEAD" : "OPS_LEAD" })), sensitive: n === 2, leaseMinutes: 30, timeoutHours: 48, escalateAfterHours: 24, status: "PUBLISHED", version: 1 }));
   let settings: OperatingSettings = { market: "TW", currency: "TWD", currencyScale: 0, timezone: "Asia/Taipei", defaultChannelCode: "NEWEBPAY", channelOrder: ["NEWEBPAY", "LINEPAY", "JKOPAY"], version: 3, updatedAt: T0 - 72 * H, updatedBy: "admin" };
+
+
+  // ── P3a 数据 ──
+  const attempts: (AttemptListRow)[] = orders.filter((o) => o.payChannel).map((o, i) => ({
+    paymentNo: `PY${o.payOrderNo.slice(2)}`, direction: i % 9 === 8 ? "REFUND" : "PAY", outTradeNo: `OT${o.payOrderNo.slice(2)}`, tradeNo: o.status === "SUCCEEDED" ? `T${o.payOrderNo.slice(-4)}` : null,
+    payOrderNo: o.payOrderNo, merchantNo: o.merchantNo, storeNo: o.storeNo, storeName: o.storeName, payChannel: o.payChannel, payMethod: o.payMethod, payMerchantNo: "NWP7001",
+    amountMinor: o.amountMinor, currency: o.currency, channelAmountMinor: o.amountMinor, channelCurrency: o.currency, channelFeeMinor: Math.round(o.amountMinor * 0.028),
+    status: o.status === "SUCCEEDED" ? "SUCCESS" : ["AWAITING_PAYMENT", "AWAITING_CONFIRM", "AUTHORIZED"].includes(o.status) ? "PENDING" : o.status === "FAILED" ? "FAILED" : o.status === "CLOSED" ? "CLOSED" : "SUCCESS",
+    errCode: o.status === "FAILED" ? "CARD_DECLINED" : null, errMsg: o.status === "FAILED" ? "发卡行拒绝" : null, createdAt: o.createdAt, succeededAt: o.succeededAt, closedAt: o.closedAt, reconciledAt: null, version: 1,
+  }));
+  const ledger: LedgerEntryRow[] = attempts.filter((a) => a.status === "SUCCESS").slice(0, 12).flatMap((a, i) => [
+    { entryNo: `V${7700 + i}-1`, voucherNo: `V${7700 + i}`, voucherType: "PAYMENT", lineNo: 1, account: "1122-渠道应收", direction: "D" as const, amountMinor: a.amountMinor, currency: "TWD", payChannel: a.payChannel, market: "TW", fundsPath: "PLATFORM_SUB", payOrderNo: a.payOrderNo, merchantNo: a.merchantNo, storeNo: a.storeNo, bizDate: "2026-11-20", memo: null, reversalOfVoucherNo: null, createdAt: a.succeededAt ?? T0 },
+    { entryNo: `V${7700 + i}-2`, voucherNo: `V${7700 + i}`, voucherType: "PAYMENT", lineNo: 2, account: "2241-应付商户", direction: "C" as const, amountMinor: a.amountMinor, currency: "TWD", payChannel: a.payChannel, market: "TW", fundsPath: "PLATFORM_SUB", payOrderNo: a.payOrderNo, merchantNo: a.merchantNo, storeNo: a.storeNo, bizDate: "2026-11-20", memo: null, reversalOfVoucherNo: null, createdAt: a.succeededAt ?? T0 },
+  ]);
+  const settlements: SettlementRow[] = MERCHANTS.map(([no], i) => ({ settlementNo: `SB2026112${i + 1}`, merchantNo: no, payChannel: "NEWEBPAY", settleCycle: "T+1", currency: "TWD", periodFrom: T0 - 48 * H, periodTo: T0 - 24 * H, dueAt: T0 + 24 * H, releasedAt: i === 0 ? T0 : null, status: ["RELEASED", "RECONCILED", "BLOCKED", "COLLECTED"][i], billCount: 12 + i * 3, grossMinor: 52_000_00 + i * 1_500_00, netMinor: 50_544_00 + i * 1_458_00, reconScope: i % 2 ? "SELF_ONLY" : "BOTH", blockedReason: i === 2 ? "RECON_DIFF_PENDING" : null, decidedBy: null, decideRemark: null, createdAt: T0 - 24 * H, version: 1 }));
+  let payouts: PayoutRow[] = settlements.slice(0, 2).map((st, i) => ({ payoutNo: `PO-OUT-${3001 + i}`, batchNo: st.settlementNo, merchantNo: st.merchantNo, payMerchantNo: `NWP${7000 + i}`, accountName: `${MERCHANTS[i][1]}有限公司`, bankName: "台湾银行", bankBranch: "信义分行", accountNoMasked: "****5678", amountMinor: st.netMinor, billCount: st.billCount, currency: "TWD", status: i === 0 ? "PAID" : "EXPORTED", channel: "MANUAL", paymentRef: i === 0 ? "TWB-20261120-001" : null, bankFlowNo: null, exportedAt: T0 - H, paidAt: i === 0 ? T0 : null, paidBy: i === 0 ? "finance01" : null, matchedAt: null, failReason: null, createdAt: T0 - 2 * H, version: 1 }));
+  let withdrawals: WithdrawalRow[] = MERCHANTS.map(([no, name], i) => ({ withdrawalNo: `WD${5101 + i}`, merchantNo: no, merchantName: name, amountMinor: [3_000_00, 8_200_00, 1_500_00, 600_00][i], availableBalanceMinor: 12_000_00, bankAccountMasked: "台湾银行 ****5678", status: ["PENDING", "PENDING", "APPROVED", "FAILED"][i], appliedAt: T0 - i * 3 * H, decidedAt: i >= 2 ? T0 - H : null, decidedBy: i >= 2 ? "finance01" : null, remark: i === 3 ? "收款账户户名不符" : null, version: 1 }));
+  let reconDiffs: (ReconDiffRow & { claimedBy: string | null })[] = Array.from({ length: 7 }, (_, i) => ({ differenceNo: `RD${8801 + i}`, axis: i % 3 === 2 ? "REFUND" : "PAY", billDate: "2026-11-19", payChannel: CH[i % 3], diffType: ["AMOUNT_DIFF", "PLATFORM_ONLY", "REFUND_LATE_SUCCESS", "CHANNEL_ONLY"][i % 4], source: "SELF_CHECK", paymentNo: attempts[i]?.paymentNo ?? null, orderNo: attempts[i]?.payOrderNo ?? null, channelTxnNo: `CT${100 + i}`, channelAmountMinor: 3500 + i * 100, platformAmountMinor: 3500 + i * 100 - (i % 4 === 0 ? 100 : 0), diffMinor: i % 4 === 0 ? 100 : 0, status: i < 5 ? "PENDING" : i === 5 ? "RESOLVED" : "IGNORED", resolution: i === 5 ? "已补单" : null, note: "自查发现", recoveredOrderNo: null, createdAt: T0 - i * H, resolvedAt: i >= 5 ? T0 : null, resolvedBy: i >= 5 ? "finance01" : null, version: 1, claimedBy: i === 1 ? "finance01" : null }));
+  const svAccounts: StoredValueAccountRow[] = Array.from({ length: 9 }, (_, i) => ({ accountNo: `SVA${4401 + i}`, merchantNo: MERCHANTS[i % 4][0], storeNo: STORES[i % 5][0], issuerNo: `ISS${i % 2 + 1}`, customerNo: `C${30001 + i}`, userNoMasked: `****${1200 + i}`, currency: "TWD", status: i === 4 ? "FROZEN" : "ACTIVE", principalMinor: 2_000_00 + i * 500_00, bonusMinor: 200_00 + i * 20_00, heldPrincipalMinor: i === 4 ? 1_000_00 : 0, heldBonusMinor: 0, availableMinor: 2_200_00 + i * 520_00 - (i === 4 ? 1_000_00 : 0), accountSeq: 3 + i, createdAt: T0 - (30 + i) * 24 * H, updatedAt: T0 - i * H, version: 1 }));
+  const svTx: StoredValueTransactionRow[] = svAccounts.flatMap((a, i) => [
+    { transactionNo: `SVT${a.accountNo.slice(3)}1`, accountNo: a.accountNo, merchantNo: a.merchantNo, storeNo: a.storeNo, issuerNo: a.issuerNo, currency: "TWD", accountSeq: 1, bizType: "RECHARGE", bizNo: `RC${5000 + i}`, principalDeltaMinor: a.principalMinor + 500_00, bonusDeltaMinor: a.bonusMinor, afterPrincipalMinor: a.principalMinor + 500_00, afterBonusMinor: a.bonusMinor, occurredAt: a.createdAt, createdAt: a.createdAt },
+    { transactionNo: `SVT${a.accountNo.slice(3)}2`, accountNo: a.accountNo, merchantNo: a.merchantNo, storeNo: a.storeNo, issuerNo: a.issuerNo, currency: "TWD", accountSeq: 2, bizType: "CONSUME", bizNo: `SO${6000 + i}`, principalDeltaMinor: -500_00, bonusDeltaMinor: 0, afterPrincipalMinor: a.principalMinor, afterBonusMinor: a.bonusMinor, occurredAt: a.updatedAt, createdAt: a.updatedAt },
+  ]);
+  let costs: ChannelCostRow[] = [["NEWEBPAY", "CARD", 280, 0, "SUPERSEDED", -60], ["NEWEBPAY", "CARD", 260, 0, "ACTIVE", -10], ["NEWEBPAY", "TWQR", 150, 0, "ACTIVE", -30], ["LINEPAY", "LINE_PAY", 300, 500, "ACTIVE", -20], ["LINEPAY", "LINE_PAY", 280, 500, "SCHEDULED", 5]].map(([ch, pm, bps, min, st, d], i) => ({ costNo: `CR${9001 + i}`, payChannel: ch as string, payMethod: pm as string, legalForm: "*", market: "TW", rateBps: bps as number, minFeeMinor: min as number, effectiveFrom: T0 + (d as number) * 24 * H, status: st as string, remark: "渠道合同调价", createdAt: T0 + (d as number) * 24 * H - H, createdBy: "finance01", version: 1 }));
+  let commissions: CommissionRuleRow[] = [["SELF_OPERATED", "PLATFORM", 500, "ACTIVE"], ["MARKETPLACE", "PLATFORM", 800, "ACTIVE"], ["MARKETPLACE", "MERCHANT_OWNED", 300, "ACTIVE"]].map(([bm, ts, bps, st], i) => ({ ruleNo: `FR${7001 + i}`, businessMode: bm as string, trafficSource: ts as string, rateBps: bps as number, effectiveFrom: T0 - 90 * 24 * H, status: st as string, remark: null, createdAt: T0 - 91 * 24 * H, createdBy: "admin" }));
+  const costStatus = (rows: ChannelCostRow[]) => { /* 同维度：未到时间 SCHEDULED；已生效里最新 ACTIVE；其余 SUPERSEDED */
+    const now = Date.now(); const out = rows.map((r) => ({ ...r }));
+    const dims = new Map<string, ChannelCostRow[]>(); for (const r of out) { const k = [r.payChannel, r.payMethod, r.legalForm, r.market].join("|"); dims.set(k, [...(dims.get(k) ?? []), r]); }
+    for (const list of dims.values()) { const live = list.filter((r) => r.effectiveFrom <= now).sort((a, b) => b.effectiveFrom - a.effectiveFrom); for (const r of list) r.status = r.effectiveFrom > now ? "SCHEDULED" : r === live[0] ? "ACTIVE" : "SUPERSEDED"; }
+    return out;
+  };
 
   const cmdCheck = (c: Cmd) => reasonOf(c.reason);
   const setStatus = async <R extends { version: number; status: string }>(t: VersionedTable<R>, id: string, c: Cmd, from: string[], to: string) => {
@@ -354,6 +386,54 @@ export function createMockPayCenterApi(): PayCenterApi {
     settings: {
       get: () => run(() => settings),
       save: (b) => run(() => { reasonOf(b.reason); if (b.expectedVersion !== settings.version) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试"); settings = { ...settings, defaultChannelCode: b.defaultChannelCode, channelOrder: b.channelOrder, version: settings.version + 1, updatedAt: Date.now(), updatedBy: "admin" }; return settings; }),
+    },
+    attempts: {
+      list: (q) => pageOf(attempts, q, ["outTradeNo", "paymentNo", "payOrderNo"]),
+      detail: (no) => run(() => { const a = attempts.find((x) => x.outTradeNo === no); if (!a) throw new MockPayError("NOT_FOUND", "流水不存在"); return wrap(a, a.version, a.payOrderNo && ["INIT", "PENDING"].includes(a.status) ? ["refresh"] : []); }),
+      refresh: (no, c) => run(() => { cmdCheck(c); const a = attempts.find((x) => x.outTradeNo === no); if (!a) throw new MockPayError("NOT_FOUND", "流水不存在"); need(["INIT", "PENDING"].includes(a.status), "终态流水不需要查渠道结果"); return { outTradeNo: no, payOrderNo: a.payOrderNo, orderStatus: "AWAITING_CONFIRM", accepted: true }; }),
+    },
+    ledger: {
+      list: (q) => pageOf(ledger, q, ["voucherNo", "payOrderNo", "account"]),
+      detail: (no) => run(() => { const entry = ledger.find((l) => l.entryNo === no) ?? null; const vno = entry?.voucherNo ?? no; const lines = ledger.filter((l) => l.voucherNo === vno); if (!lines.length) throw new MockPayError("NOT_FOUND", "凭证不存在"); return wrap({ entry, voucher: { voucherNo: vno, voucherType: lines[0].voucherType, refType: "PAY_ORDER", sourceType: "PAYMENT", market: "TW", currency: "TWD", totalMinor: lines.filter((l) => l.direction === "D").reduce((n, l) => n + l.amountMinor, 0), bizDate: lines[0].bizDate, fundsPath: lines[0].fundsPath, operatorNo: null, memo: null, reversalOfVoucherNo: null, reversedByVoucherNos: [], createdAt: lines[0].createdAt, lines } }, 0); }),
+    },
+    settlements: {
+      list: (q) => pageOf(settlements, q, ["settlementNo", "merchantNo"]),
+      detail: (no) => run(() => { const st = settlements.find((x) => x.settlementNo === no); if (!st) throw new MockPayError("NOT_FOUND", "结算批次不存在"); return wrap({ settlement: st, payouts: payouts.filter((p) => p.batchNo === no) }, st.version); }),
+    },
+    withdrawals: {
+      list: (q) => pageOf(withdrawals, q, ["withdrawalNo", "merchantNo", "merchantName"]),
+      detail: (no) => run(() => { const w = withdrawals.find((x) => x.withdrawalNo === no); if (!w) throw new MockPayError("NOT_FOUND", "提现申请不存在"); return wrap(w, w.version, w.status === "PENDING" ? ["review", "cancel"] : w.status === "FAILED" ? ["review"] : []); }),
+      review: (no, b) => run(() => { cmdCheck(b); const w = withdrawals.find((x) => x.withdrawalNo === no)!; need(["PENDING", "FAILED"].includes(w.status), "当前状态不能审批"); if (w.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试"); if (b.decision === "APPROVE" && w.amountMinor > w.availableBalanceMinor) throw new MockPayError("WITHDRAW_OVER_BALANCE", "提现金额超过可提余额"); const st = b.decision === "APPROVE" ? "APPROVED" : "REJECTED"; withdrawals = withdrawals.map((x) => (x.withdrawalNo === no ? { ...x, status: st, decidedAt: Date.now(), decidedBy: "admin", remark: b.reason, version: x.version + 1 } : x)); return ok(no, st, w.version + 1); }),
+      cancel: (no, c) => run(() => { cmdCheck(c); const w = withdrawals.find((x) => x.withdrawalNo === no)!; need(w.status === "PENDING", "只能撤销待审批的申请"); withdrawals = withdrawals.map((x) => (x.withdrawalNo === no ? { ...x, status: "CANCELLED", remark: c.reason, version: x.version + 1 } : x)); return ok(no, "CANCELLED", w.version + 1); }),
+    },
+    payouts: {
+      list: (q) => pageOf(payouts, q, ["payoutNo", "batchNo", "merchantNo"]),
+      detail: (no) => run(() => { const p = payouts.find((x) => x.payoutNo === no); if (!p) throw new MockPayError("NOT_FOUND", "出款记录不存在"); return wrap({ payout: p, settleNos: [`ST-${p.batchNo}-1`], settleDocumentNos: [`SD-${p.batchNo}`] }, p.version, ["PENDING", "EXPORTED"].includes(p.status) ? ["receipt"] : []); }),
+      receipt: (no, b) => run(() => { cmdCheck(b); const p = payouts.find((x) => x.payoutNo === no)!; need(["PENDING", "EXPORTED"].includes(p.status), "当前状态不能登记回执"); if (b.result === "PAID") need(!!b.paymentRef, "已付须填付款凭证号"); const st = b.result; payouts = payouts.map((x) => (x.payoutNo === no ? { ...x, status: st, paymentRef: b.paymentRef, paidAt: st === "PAID" ? Date.now() : null, paidBy: st === "PAID" ? "admin" : null, failReason: st === "FAILED" ? b.reason : null, version: x.version + 1 } : x)); return ok(no, st, p.version + 1); }),
+    },
+    reconDiffs: {
+      list: (q) => pageOf(reconDiffs.map(({ claimedBy: _c, ...r }) => r), q, ["differenceNo", "paymentNo", "orderNo"]),
+      coverage: () => run(() => ({ channelBillConnected: false, note: "渠道账单尚未接入：当前只有平台自查，零差异不代表与渠道账平。" })),
+      detail: (no) => run(() => { const d = reconDiffs.find((x) => x.differenceNo === no); if (!d) throw new MockPayError("NOT_FOUND", "差异不存在"); const { claimedBy, ...difference } = d; const acts = d.status !== "PENDING" ? [] : !claimedBy ? ["claim", "close"] : claimedBy === "admin" ? ["close"] : []; return wrap({ difference, claimedBy, claimedAt: claimedBy ? T0 : null }, d.version, acts); }),
+      claim: (no, c) => run(() => { cmdCheck(c); const d = reconDiffs.find((x) => x.differenceNo === no)!; need(d.status === "PENDING", "差异已关闭"); need(!d.claimedBy || d.claimedBy === "admin", `已被 ${d.claimedBy} 认领`); reconDiffs = reconDiffs.map((x) => (x.differenceNo === no ? { ...x, claimedBy: "admin" } : x)); return ok(no, "PENDING", d.version); }),
+      close: (no, b) => run(() => { cmdCheck(b); const d = reconDiffs.find((x) => x.differenceNo === no)!; need(d.status === "PENDING", "差异已关闭"); need(!d.claimedBy || d.claimedBy === "admin", "被他人认领的差异只有认领人能关闭"); reconDiffs = reconDiffs.map((x) => (x.differenceNo === no ? { ...x, status: b.outcome, resolution: b.reason, resolvedAt: Date.now(), resolvedBy: "admin", version: x.version + 1 } : x)); return ok(no, b.outcome, d.version + 1); }),
+    },
+    storedValue: {
+      accounts: (q) => pageOf(svAccounts, q, ["accountNo", "customerNo"]),
+      account: (no) => run(() => { const a = svAccounts.find((x) => x.accountNo === no); if (!a) throw new MockPayError("NOT_FOUND", "账户不存在"); return wrap({ account: a, recentTransactions: svTx.filter((t) => t.accountNo === no).slice(0, 20) }, a.version); }),
+      transactions: (q) => pageOf(svTx, q, ["transactionNo", "accountNo", "bizNo"]),
+    },
+    channelCosts: {
+      list: (q) => pageOf(costStatus(costs).sort((a, b) => b.effectiveFrom - a.effectiveFrom), q, ["payChannel", "payMethod"]),
+      detail: (no) => run(() => { const r = costStatus(costs).find((x) => x.costNo === no); if (!r) throw new MockPayError("NOT_FOUND", "版本不存在"); return wrap(r, r.version ?? 1, r.status === "DISABLED" ? [] : ["revise"]); }),
+      versions: (no) => run(() => { const r = costs.find((x) => x.costNo === no)!; return costStatus(costs).filter((x) => x.payChannel === r.payChannel && x.payMethod === r.payMethod && x.legalForm === r.legalForm && x.market === r.market).sort((a, b) => b.effectiveFrom - a.effectiveFrom); }),
+      create: (b) => run(() => { reasonOf(b.reason); need(b.rateBps >= 0 && b.rateBps <= 10000, "费率须在 0–10000 万分比之间"); need(b.effectiveFrom >= Date.now() - 60_000, "生效时间不能早于现在"); const row: ChannelCostRow = { costNo: `CR${9001 + costs.length}`, payChannel: b.payChannel, payMethod: b.payMethod || "*", legalForm: b.legalForm || "*", market: b.market || "*", rateBps: b.rateBps, minFeeMinor: b.minFeeMinor ?? 0, effectiveFrom: b.effectiveFrom, status: "SCHEDULED", remark: b.reason, createdAt: Date.now(), createdBy: "admin", version: 1 }; costs = [...costs, row]; const r = costStatus(costs).find((x) => x.costNo === row.costNo)!; return wrap(r, 1, ["revise"]); }),
+      revise: (no, b) => run(() => { reasonOf(b.reason); const base = costs.find((x) => x.costNo === no); if (!base) throw new MockPayError("NOT_FOUND", "版本不存在"); if ((base.version ?? 1) !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试"); need(b.effectiveFrom >= Date.now() - 60_000, "生效时间不能早于现在"); const row: ChannelCostRow = { ...base, costNo: `CR${9001 + costs.length}`, rateBps: b.rateBps, minFeeMinor: b.minFeeMinor ?? base.minFeeMinor, effectiveFrom: b.effectiveFrom, remark: b.reason, createdAt: Date.now(), createdBy: "admin", version: 1 }; costs = [...costs, row]; const r = costStatus(costs).find((x) => x.costNo === row.costNo)!; return wrap(r, 1, ["revise"]); }),
+    },
+    commissionRules: {
+      list: (q) => pageOf(commissions, q, ["businessMode", "trafficSource"]),
+      detail: (no) => run(() => { const r = commissions.find((x) => x.ruleNo === no); if (!r) throw new MockPayError("NOT_FOUND", "规则不存在"); return wrap(r, 0); }),
+      create: (b) => run(() => { reasonOf(b.reason); need(b.rateBps >= 0 && b.rateBps <= 10000, "费率须在 0–10000 万分比之间"); const row: CommissionRuleRow = { ruleNo: `FR${7001 + commissions.length}`, businessMode: b.businessMode, trafficSource: b.trafficSource, rateBps: b.rateBps, effectiveFrom: b.effectiveFrom, status: b.effectiveFrom > Date.now() ? "SCHEDULED" : "ACTIVE", remark: b.reason, createdAt: Date.now(), createdBy: "admin" }; commissions = [...commissions, row]; return wrap(row, 0); }),
     },
     dataScopes: {
       list: (q) => pageOf(scopes.all(), q, ["scopeNo", "subjectNo"]),

@@ -13,6 +13,7 @@ import { usePayCenterApi } from "@/components/payment/pay-kit";
 import { useCopy } from "@/lib/use-copy";
 import { notify } from "@/lib/notify";
 import { PayOpsError, type PayPage } from "@/lib/pay-ops/client";
+import { money } from "@/lib/utils";
 import type { PayCenterApi } from "@/lib/pay-ops/api";
 import { PAY_CENTER_COPY, type PayCenterCopy } from "./copy";
 
@@ -102,6 +103,19 @@ export function DetailLoader<T>({ name, id, load, children }: {
  */
 export function MiniTable<T>({ rows, columns, rowKey, empty }: { rows: T[]; columns: Column<T>[]; rowKey: (r: T) => string; empty: string }) {
   return <DataTable compact rows={rows} columns={columns} rowKey={rowKey} empty={empty} />;
+}
+
+/**
+ * 实例币种：near-pay 一个实例一种币种（经营设置里的 currency）。有些 DTO（提现、对账差异、费率）不带币种，
+ * 用它格式化；取不到（无权看经营设置、接口失败）时退化为不带币种符号的数字 —— 宁可不写符号，也不默认成人民币。
+ */
+export function useInstanceCurrency(): string | undefined {
+  const api = usePayCenterApi();
+  const q = useQuery({ queryKey: [KEY, "instance-currency", api.source], queryFn: () => api.settings.get(), staleTime: 10 * 60_000, retry: false });
+  return q.data?.currency;
+}
+export function amt(minor: number, currency?: string): string {
+  return currency ? money(minor, currency) : (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ── 表单字段转换 ──

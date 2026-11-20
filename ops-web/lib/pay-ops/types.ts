@@ -183,3 +183,71 @@ export interface ApprovalFlowRow { flowNo: string; revisionNo: number; name: str
 
 // ── 经营设置 ──
 export interface OperatingSettings { market: string; currency: string; currencyScale: number; timezone: string; defaultChannelCode: string | null; channelOrder: string[]; version: number; updatedAt: number | null; updatedBy: string | null }
+
+// ════ P3a（near-pay 分支 claude/ops-v2-p3a-426611，契约 docs/api/handbook/08-运营端P3a接口落地.md） ════
+
+export const ATTEMPT_STATUSES = ["INIT", "PENDING", "SUCCESS", "FAILED", "CLOSED"] as const;
+export const ATTEMPT_DIRECTIONS = ["PAY", "REFUND", "SUBSIDY", "SUBSIDY_REVERSE", "PAYOUT"] as const;
+export interface AttemptListRow {
+  paymentNo: string; direction: string; outTradeNo: string; tradeNo: string | null; payOrderNo: string | null;
+  merchantNo: string | null; storeNo: string | null; storeName: string | null; payChannel: string | null; payMethod: string | null; payMerchantNo: string | null;
+  amountMinor: number; currency: string; channelAmountMinor: number | null; channelCurrency: string | null; channelFeeMinor: number | null;
+  status: string; errCode: string | null; errMsg: string | null; createdAt: number | null; succeededAt: number | null; closedAt: number | null; reconciledAt: number | null; version: number;
+}
+
+export interface LedgerEntryRow {
+  entryNo: string; voucherNo: string; voucherType: string; lineNo: number; account: string; direction: "D" | "C"; amountMinor: number; currency: string;
+  payChannel: string | null; market: string | null; fundsPath: string | null; payOrderNo: string | null; merchantNo: string | null; storeNo: string | null;
+  bizDate: string; memo: string | null; reversalOfVoucherNo: string | null; createdAt: number;
+}
+export interface LedgerVoucher {
+  voucherNo: string; voucherType: string; refType: string | null; sourceType: string | null; market: string | null; currency: string; totalMinor: number; bizDate: string;
+  fundsPath: string | null; operatorNo: string | null; memo: string | null; reversalOfVoucherNo: string | null; reversedByVoucherNos: string[]; createdAt: number; lines: LedgerEntryRow[];
+}
+
+export const SETTLEMENT_STATUSES = ["DRAFT", "COLLECTED", "RECONCILING", "BLOCKED", "RECONCILED", "RELEASED"] as const;
+export interface SettlementRow {
+  settlementNo: string; merchantNo: string; payChannel: string | null; settleCycle: string | null; currency: string; periodFrom: number | null; periodTo: number | null;
+  dueAt: number | null; releasedAt: number | null; status: string; billCount: number; grossMinor: number; netMinor: number; reconScope: "SELF_ONLY" | "BOTH" | string;
+  blockedReason: string | null; decidedBy: string | null; decideRemark: string | null; createdAt: number; version: number;
+}
+
+export const WITHDRAWAL_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED", "PAID", "FAILED"] as const;
+export interface WithdrawalRow {
+  withdrawalNo: string; merchantNo: string; merchantName: string | null; amountMinor: number; availableBalanceMinor: number; bankAccountMasked: string | null;
+  status: string; appliedAt: number; decidedAt: number | null; decidedBy: string | null; remark: string | null; version: number;
+}
+
+export const PAYOUT_STATUSES = ["PENDING", "EXPORTED", "PAID", "MATCHED", "FAILED"] as const;
+export interface PayoutRow {
+  payoutNo: string; batchNo: string; merchantNo: string; payMerchantNo: string | null; accountName: string | null; bankName: string | null; bankBranch: string | null;
+  accountNoMasked: string | null; amountMinor: number; billCount: number; currency: string; status: string; channel: "MANUAL" | "BANK_API" | string;
+  paymentRef: string | null; bankFlowNo: string | null; exportedAt: number | null; paidAt: number | null; paidBy: string | null; matchedAt: number | null; failReason: string | null; createdAt: number; version: number;
+}
+
+export const RECON_DIFF_STATUSES = ["PENDING", "RESOLVED", "IGNORED"] as const;
+export const RECON_DIFF_TYPES = ["CHANNEL_ONLY", "PLATFORM_ONLY", "AMOUNT_DIFF", "REFUND_ABNORMAL", "REFUND_LATE_SUCCESS", "REFUND_CLOSED"] as const;
+export interface ReconDiffRow {
+  differenceNo: string; axis: string; billDate: string | null; payChannel: string | null; diffType: string; source: "SELF_CHECK" | "CHANNEL_BILL" | string;
+  paymentNo: string | null; orderNo: string | null; channelTxnNo: string | null; channelAmountMinor: number | null; platformAmountMinor: number | null; diffMinor: number | null;
+  status: string; resolution: string | null; note: string | null; recoveredOrderNo: string | null; createdAt: number; resolvedAt: number | null; resolvedBy: string | null; version: number;
+}
+
+export interface StoredValueAccountRow {
+  accountNo: string; merchantNo: string; storeNo: string | null; issuerNo: string | null; customerNo: string | null; userNoMasked: string | null; currency: string;
+  status: "ACTIVE" | "FROZEN" | string; principalMinor: number; bonusMinor: number; heldPrincipalMinor: number; heldBonusMinor: number; availableMinor: number;
+  accountSeq: number; createdAt: number; updatedAt: number; version: number;
+}
+export interface StoredValueTransactionRow {
+  transactionNo: string; accountNo: string; merchantNo: string; storeNo: string | null; issuerNo: string | null; currency: string; accountSeq: number;
+  bizType: string; bizNo: string | null; principalDeltaMinor: number; bonusDeltaMinor: number; afterPrincipalMinor: number; afterBonusMinor: number; occurredAt: number; createdAt: number;
+}
+
+export const RATE_STATUSES = ["SCHEDULED", "ACTIVE", "SUPERSEDED", "DISABLED"] as const;
+export interface ChannelCostRow {
+  costNo: string; payChannel: string; payMethod: string; legalForm: string; market: string; rateBps: number; minFeeMinor: number; effectiveFrom: number;
+  status: string; remark: string | null; createdAt: number; createdBy: string | null; version?: number;
+}
+export interface CommissionRuleRow {
+  ruleNo: string; businessMode: string; trafficSource: string; rateBps: number; effectiveFrom: number; status: string; remark: string | null; createdAt: number | null; createdBy: string | null;
+}

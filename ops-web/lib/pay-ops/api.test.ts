@@ -106,3 +106,35 @@ describe("P2 映射", () => {
     expect(resolvePayOpsV1Base("/gw/pay")).toBe("/gw/pay");
   });
 });
+
+describe("P3a 映射（near-pay docs/api/handbook/08）", () => {
+  it("提现审批带 decision、出款回执带 result/paymentRef、对账关闭带 outcome，都有幂等号", async () => {
+    const { f, api } = httpApi({ resourceNo: "x", status: "OK", version: 2 });
+    await api.withdrawals.review("WD1", { expectedVersion: 1, reason: "核对无误", decision: "APPROVE" });
+    await api.payouts.receipt("PO1", { expectedVersion: 1, reason: "已转账", result: "PAID", paymentRef: "TWB-1" });
+    await api.reconDiffs.close("RD1", { expectedVersion: 1, reason: "已补单", outcome: "RESOLVED" });
+    expect(call(f, 0)).toMatchObject({ url: "/pay/withdrawals/WD1/review", method: "POST", body: { decision: "APPROVE", expectedVersion: 1 } });
+    expect(call(f, 1).body).toMatchObject({ result: "PAID", paymentRef: "TWB-1" });
+    expect(call(f, 2)).toMatchObject({ url: "/pay/reconciliation-differences/RD1/close", body: { outcome: "RESOLVED" } });
+    for (let i = 0; i < 3; i++) expect(call(f, i).body.requestNo).toMatch(/^ops-/);
+  });
+
+  it("渠道成本调价是 PUT 追加新版本；覆盖范围与版本列表走各自路径", async () => {
+    const { f, api } = httpApi({ record: { costNo: "CR2" }, version: 1 });
+    await api.channelCosts.revise("CR1", { expectedVersion: 3, reason: "合同调价", payChannel: "NEWEBPAY", rateBps: 250, effectiveFrom: 1 });
+    await api.reconDiffs.coverage();
+    await api.channelCosts.versions("CR1");
+    expect(call(f, 0)).toMatchObject({ url: "/pay/channel-costs/CR1", method: "PUT", body: { expectedVersion: 3, rateBps: 250 } });
+    expect(call(f, 1).url).toBe("/pay/reconciliation-differences/coverage");
+    expect(call(f, 2).url).toBe("/pay/channel-costs/CR1/versions");
+  });
+
+  it("mock：被他人认领的差异不能认领；提现超余额拒绝；渠道成本状态按维度计算", async () => {
+    const api = createMockPayCenterApi();
+    const diffs = (await api.reconDiffs.list({ page: 1, size: 20 })).records;
+    const claimedByOther = (await Promise.all(diffs.map((d) => api.reconDiffs.detail(d.differenceNo)))).find((d) => d.record.claimedBy && d.record.claimedBy !== "admin")!;
+    await expect(api.reconDiffs.claim(claimedByOther.record.difference.differenceNo, { expectedVersion: 1, reason: "认领" })).rejects.toBeTruthy();
+    const costs = (await api.channelCosts.list({ page: 1, size: 20 })).records.filter((x) => x.payChannel === "NEWEBPAY" && x.payMethod === "CARD");
+    expect(costs.map((x) => x.status).sort()).toEqual(["ACTIVE", "SUPERSEDED"]);
+  });
+});

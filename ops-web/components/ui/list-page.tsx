@@ -60,10 +60,11 @@ export function ListPage<T>(props: ListPageProps<T>) {
   const pageKeys = new Set((props.pageActions ?? []).map((a) => a.key));
   const pageButtons = host.available(null).filter((a) => pageKeys.has(a.key));
   const firstRowAction = props.actions[0]?.key;
+  const rowKeys = React.useMemo(() => new Set(props.actions.map((a) => a.key)), [props.actions]);
 
   const columns: Column<T>[] = [
     ...props.columns,
-    { header: t("common.actions"), align: "end", stickyEnd: true, cell: (row) => <RowActionButtons<T> row={row} host={host} /> },
+    { header: t("common.actions"), align: "end", stickyEnd: true, cell: (row) => <RowActionButtons<T> row={row} host={host} only={rowKeys} /> },
   ];
 
   return (

@@ -258,5 +258,105 @@
     "group": "支付运维",
     "ready": true,
     "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_ATTEMPTS",
+    "href": "/payment-center?tab=attempts",
+    "label": "交易流水",
+    "perm": "pay:order:view",
+    "group": "交易",
+    "ready": true,
+    "sourcePoint": "OPS_ORDER__TAB_PAYMENTS"
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_CHANNEL_COSTS",
+    "href": "/payment-center?tab=channel-costs",
+    "label": "渠道成本",
+    "perm": "pay:channel-cost:view",
+    "group": "费率",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_COMMISSION_RULES",
+    "href": "/payment-center?tab=commission-rules",
+    "label": "佣金规则",
+    "perm": "pay:fee-plan:view",
+    "group": "费率",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_LEDGER_ENTRIES",
+    "href": "/payment-center?tab=ledger-entries",
+    "label": "资金流水",
+    "perm": "pay:fund-account:view",
+    "group": "资金结算",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_SETTLEMENTS",
+    "href": "/payment-center?tab=settlements",
+    "label": "结算记录",
+    "perm": "pay:settlement:view",
+    "group": "资金结算",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_WITHDRAWALS",
+    "href": "/payment-center?tab=withdrawals",
+    "label": "提现申请",
+    "perm": "pay:withdrawal:view",
+    "group": "资金结算",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_PAYOUTS",
+    "href": "/payment-center?tab=payouts",
+    "label": "出款记录",
+    "perm": "pay:payout:view",
+    "group": "资金结算",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_RECON_DIFFS",
+    "href": "/payment-center?tab=recon-diffs",
+    "label": "对账差异",
+    "perm": "pay:recon-diff:view",
+    "group": "对账",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_SV_ACCOUNTS",
+    "href": "/payment-center?tab=sv-accounts",
+    "label": "储值账户",
+    "perm": "pay:stored-value:view",
+    "group": "会员资产",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_SV_TRANSACTIONS",
+    "href": "/payment-center?tab=sv-transactions",
+    "label": "储值交易",
+    "perm": "pay:stored-value:view",
+    "group": "会员资产",
+    "ready": true,
+    "sourcePoint": null
   }
 ]

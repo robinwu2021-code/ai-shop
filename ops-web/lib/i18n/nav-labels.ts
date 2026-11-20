@@ -14,6 +14,19 @@ import type { Locale } from "@/lib/stores/locale";
 /** label → { locale: 译文 }。zh 不入表（源串即中文）。 */
 const OVERLAY: Record<string, Record<string, string>> = {
   // 支付中心（TDD-支付中心菜单整合）
+  "交易流水": { en: "Transaction Log" },
+  "渠道成本": { en: "Channel Costs" },
+  "佣金规则": { en: "Commission Rules" },
+  "资金流水": { en: "Ledger" },
+  "结算记录": { en: "Settlements" },
+  "提现申请": { en: "Withdrawals" },
+  "出款记录": { en: "Payouts" },
+  "对账差异": { en: "Reconciliation Differences" },
+  "储值账户": { en: "Stored-value Accounts" },
+  "储值交易": { en: "Stored-value Transactions" },
+  "资金结算": { en: "Funds" },
+  "对账": { en: "Reconciliation" },
+  "会员资产": { en: "Member Assets" },
   "审核待办": { en: "Approvals" },
   "支付门店": { en: "Payment Stores" },
   "商户变更": { en: "Merchant Changes" },

@@ -48,8 +48,13 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
       children: [
         pc('approvals'),
         pick('/merchants?tab=payment', '支付商户'), pc('stores'), pick('/merchants?tab=payment-onboarding', '支付商户'), pc('merchant-changes'),
-        pick('/orders?tab=payments', '交易'), pick('/orders?tab=payment-exceptions', '交易'), pc('refunds'),
+        pick('/orders?tab=payments', '交易'), pick('/orders?tab=payment-exceptions', '交易'), pc('attempts'), pc('refunds'),
         pick('/merchants?tab=payment-channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
+        // P3a（V685）：费率 / 资金结算 / 对账 / 会员资产；P3b、P3c 的页面接口出来再进
+        pc('channel-costs'), pc('commission-rules'),
+        pc('ledger-entries'), pc('settlements'), pc('withdrawals'), pc('payouts'),
+        pc('recon-diffs'),
+        pc('sv-accounts'), pc('sv-transactions'),
       ] },
   ];
 }
