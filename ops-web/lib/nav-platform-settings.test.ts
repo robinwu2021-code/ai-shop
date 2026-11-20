@@ -81,6 +81,8 @@ describe("platform settings incremental migration", () => {
   });
 });
 
+const PAY_CENTER_ACTION_CODES = ["ALERT_EVENT_HANDLE", "ALERT_RULE_APPROVE", "ALERT_RULE_MANAGE", "APPROVAL_DISPATCH", "APPROVAL_REVIEW", "APP_APPROVE", "CHANNEL_COST_MANAGE", "CHANNEL_MANAGE", "COLLECTION_ENTRY_MANAGE", "COLLECTION_POLICY_MANAGE", "COLLECTION_POLICY_VIEW", "CREDENTIAL_MANAGE", "DATA_SCOPE_APPROVE", "DATA_SCOPE_MANAGE", "FEE_PLAN_MANAGE", "MERCHANT_APPROVE", "MERCHANT_MANAGE", "ONBOARDING_APPROVE", "ONBOARDING_MANAGE", "ORDER_COMPENSATE", "PAYOUT_MANAGE", "PRODUCT_MANAGE", "RECON_DIFF_MANAGE", "STORE_APPROVE", "STORE_MANAGE", "TERMINAL_MANAGE", "TERMINAL_VERIFY", "WITHDRAWAL_MANAGE", "WITHDRAWAL_REVIEW"];
+
 it("keeps generated ACTION ownership independent of settings display order", () => {
   const sql = execFileSync("node", ["scripts/gen-perm-seed.mjs"], { encoding: "utf8" });
   const owners: Record<string, string> = {};
@@ -88,7 +90,9 @@ it("keeps generated ACTION ownership independent of settings display order", () 
     const values = [...line.matchAll(/'([^']*)'/g)].map(m => m[1]);
     owners[values[0]] = values[1];
   }
-  expect(owners).toEqual({ ...actionOwnersBefore, ACT__MERCHANT_SELFOP_CREATE: "OPS_MERCHANT", ACT__MERCHANT_APPLY_ONBEHALF: "OPS_MERCHANT",
+  // 支付中心原生页（TDD-支付中心运营页面 P1/P2）新登记的 pay:* 码中、没有被菜单叶子用作查看码的那些，动作点都归 OPS_FINANCE（菜单 TDD §2.7 G1）
+  const payCenter = Object.fromEntries(PAY_CENTER_ACTION_CODES.map((c) => [`ACT__PAY_${c}`, "OPS_FINANCE"]));
+  expect(owners).toEqual({ ...actionOwnersBefore, ...payCenter, ACT__MERCHANT_SELFOP_CREATE: "OPS_MERCHANT", ACT__MERCHANT_APPLY_ONBEHALF: "OPS_MERCHANT",
     ACT__SYSTEM_API_RESOURCE_UPDATE: "OPS_IAM" });
 });
 

@@ -92,6 +92,7 @@ class FunctionPointPermAlignmentTest {
         Set<String> unimplemented = new TreeSet<>(registered);
         unimplemented.removeAll(permCodesUsedByEndpoints());
         unimplemented.removeAll(linkedRemoteWorkspacePermCodes());
+        unimplemented.removeAll(nativePaymentCenterPermCodes());
         unimplemented.removeAll(KNOWN_UNIMPLEMENTED.keySet());
 
         assertThat(unimplemented)
@@ -273,6 +274,37 @@ class FunctionPointPermAlignmentTest {
             if (workspace != null && menus.contains(new RemoteMenu(reference.href(), workspace.permission()))) {
                 out.add(workspace.permission());
             }
+        }
+        return out;
+    }
+
+    /**
+     * 支付中心原生页（TDD-支付中心运营页面、V684）：页面在运营端里直接调 near-pay `/pay-ops/v2`，
+     * 端点在 near-pay，不在本仓库。认定条件三者同时成立，缺一不算：
+     * ① 菜单点位 href = `/payment-center?tab=<key>`；② `center-tabs.ts` 登记了这个页签且权限码与点位一致；
+     * ③ `app/payment-center/page.tsx` 的 TAB_COMPONENT 真的渲染这个页签。
+     */
+    private Set<String> nativePaymentCenterPermCodes() throws IOException {
+        Path repository = Path.of("../..").toRealPath();
+        String tabs = withoutComments(Files.readString(repository.resolve("ops-web/lib/pay-ops/center-tabs.ts")));
+        Map<String, String> permOfTab = new TreeMap<>();
+        Matcher tab = Pattern.compile("\\{\\s*key:\\s*\"([a-z-]+)\",\\s*perm:\\s*\"([a-z][a-z0-9:_-]*)\"").matcher(tabs);
+        while (tab.find()) permOfTab.put(tab.group(1), tab.group(2));
+        assertThat(permOfTab).as("PAY_CENTER_TABS 未读到").isNotEmpty();
+        String page = withoutComments(Files.readString(repository.resolve("ops-web/app/payment-center/page.tsx")));
+        Matcher table = Pattern.compile("TAB_COMPONENT[^=]*=\\s*\\{(.*?)\\};", Pattern.DOTALL).matcher(page);
+        assertThat(table.find()).as("payment-center/page.tsx 的 TAB_COMPONENT 未读到").isTrue();
+        Set<String> rendered = new TreeSet<>();
+        Matcher key = Pattern.compile("\"?([a-z-]+)\"?:\\s*[A-Z]\\w*Tab\\b").matcher(table.group(1));
+        while (key.find()) rendered.add(key.group(1));
+        List<RemoteMenu> menus = jdbc.sql("""
+                SELECT href, perm_code FROM sys_function_point
+                 WHERE deleted=0 AND point_type='MENU' AND href LIKE '/payment-center?tab=%' AND perm_code IS NOT NULL
+                """).query((rs, row) -> new RemoteMenu(rs.getString("href"), rs.getString("perm_code"))).list();
+        Set<String> out = new TreeSet<>();
+        for (RemoteMenu menu : menus) {
+            String k = menu.href().substring("/payment-center?tab=".length());
+            if (rendered.contains(k) && menu.permission().equals(permOfTab.get(k))) out.add(menu.permission());
         }
         return out;
     }

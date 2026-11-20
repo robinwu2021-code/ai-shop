@@ -824,6 +824,7 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     const EXEMPT = [
       // 整块内容由外层 <ErrorState> 兜住（`if (error) return …`），行数据来自已到手的 data
       "app/communities/distribution-tab.tsx",
+      "app/payment-center/shared.tsx", // MiniTable：外层 DetailLoader 兜住加载与出错，行来自已取好的详情
       "app/communities/health-tab.tsx",
       // 详情子表：行数据取自父查询已选中的那一行，自己没有查询
       "app/finance/pay-channel-tab.tsx",
