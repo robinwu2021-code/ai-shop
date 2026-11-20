@@ -788,3 +788,11 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - **写 1 · 商户默认收款策略**：不限制 → 只允许 `NEWEBPAY_CARD_ONETIME`、`LINEPAY_TEST_ONLINE` → 复原为不限制，两次保存均成功（near-pay 审计带原因）。**过程中发现并修了 `FormDrawer` 不渲染多选**（多选字段退化成文本框；ops-web `34f660411`，测试先红后绿），v2 前端重发 `releases/gateway-e86b5ddc0`（只换静态文件，回退指回 `gateway-b4335120a`）。
 - **写 2 · 代商户创建进件**：查商户 → 渠道只列台湾、非测试的法币渠道（蓝新、LINE Pay；AE 的 PAYBY 不出现）→ 建 LINE Pay 进件 `OBBC1D76F1555048FB` → 详情只出「撤销申请 / 提交资料」（非蓝新不出蓝新资料抽屉）→ 撤销，状态 `CANCELLED`。留下一条已撤销进件记录。
 - 小问题（未修）：带 `?action=create` 直接打开时，「新建支付商户」要等 near-pay 可用性接口返回才出现，深链接被清掉。
+
+### 同日续：near-pay 认经营主体关联的法人主体（用户：「near-pay accepts legal entity」）
+
+- near-pay 第二个补丁包 `47f98b565b9b0487`（修复 `4c55f151a`，细节见 near-pay 发布记录）15:21 CST 上线。
+- **正式库改动与回退**：为测试，`mch_operating_entity` 中 `OE26111074KRRAD8Q5` 的 `legal_subject_no` 曾设为 `M261119TS0PN0XBK9`（15:22），随后发现该经营主体本来就已有支付商户 `PM70F51AF977C84528`（11-10 自助创建），关联没有必要，**已用回退语句复原**（`legal_subject_no=NULL`、`version=0`、`updated_at`/`updated_by` 回到创建时的值，已核对）。
+  **改动前的备份没有成功**：mysqldump `--where` 引号写错只导出了表结构（文件已改名 `before-oe-legal-subject-20261120.FAILED-structure-only.sql.gz`），而检查只数了行数没发现；改动前状态由 version=0（从未更新）推出，回退语句 `rollback-oe-legal-subject-20261120.sql` 在同目录。
+- **验证结果**：代建全链路通到最后一道检查——为 `OE26111074KRRAD8Q5` 代建得到「经营主体已有支付商户 PM70F51AF977C84528」（正确拒绝）。
+- **代填资料**：对 `PM70F51AF977C84528`（「NearGo科技测试收款商户-1110-01」，无来源关联）保存了一版草稿（法定名称、行业，版本 1），**未提交审核**；草稿没有删除接口，留在该测试商户上，不影响收款与审核。
