@@ -754,3 +754,9 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - 详情抽屉：测试门店 `ST261119BE70D8B9C9` 点「查看」开一层抽屉，基本信息与「同步问题 UNLINKED_ENTITY」正确；带 `?action=view&id=` 直接打开同样还原抽屉。
 - 写操作**没做**：测试门店在 near-pay 的 `allowedActions` 为空，测试主体 `M261119TS0PN0XBK9` 不在 near-pay 商户列表（未进件）；剩下能写的都是真实商户、真实支付单或会进生产审批队列的提交。
 - 观察：门店行上「收款策略」「变更归属」两个按钮不看 `allowedActions` 照样显示（测试门店为空也显示），提交会被后端拒；是否按 `allowedActions` 收起待定。
+
+### 同日续：P3a 接口上线 near-pay（用户：「把 P3a 挑到线上那条线」）
+
+- near-pay 分支 `release/nearpay-p3a-live-20261120`（`525207556` 线 + 线上已有的挑选提交 + P3a + 修复 `ca9954695`），jar `883bed5c45ce724f`，12:49 CST 上线；细节与核对见 near-pay `deploy/nearpay/prod/README.md` 同日两节。
+- 支付中心 31 个页签：**30 个正常**（P3a 十个现在都 200，交易流水 109、资金流水 40）；只剩**退款订单**（v1 接口公网不可达）。
+- 上线后发现并修了一处：储值交易 SQL 手写环境列被隔离边界拒（400），已修并加边界测试。
