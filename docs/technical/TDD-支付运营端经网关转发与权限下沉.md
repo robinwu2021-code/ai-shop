@@ -238,3 +238,33 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
   - `PayOpsPassThroughOffTest` 1 条：开关关时 404。
   - `OperatorIdentityEndpointTest` 4 条：凭据 403；四种无效会话 401；与 `/ops/auth/me` 一致且按前缀筛码；筛码规则。
   - 架构包与网关包全量回归。
+
+### 阶段 5–6 上线（2026-11-21 00:42–01:00 CST）
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-398f4a855.jar`（sha256 前缀 `72ee34016b9e9305`），标签 `gateway-payops-398f4a855`。包含 main 上 RobinWu 的 `7bb9bf944` 与 `6f72a56f1`：线上两次补丁换的 4 个收款类与本包 javap 逐条一致 | 复原 `run.sh.before-payops-398f4a855`、`ai-shop-all-v2.env.before-payops-398f4a855`，`./run.sh all restart`；旧包 `shop-app-b4335120a-biz-6f72a56f1.jar` 仍在 |
+| v2 环境文件 | 加 `SHOP_GATEWAY_OPS_IDENTITY_CALLER_TOKEN`（随机值，未显示）、`SHOP_GATEWAY_OPS_PAY_OPS_PROXY_ENABLED=true` | 同上 |
+| 运营端页面 | 166 `current → releases/gateway-398f4a855`（构建参数同上一版，另加 `NEXT_PUBLIC_PAY_OPS_API_BASE=/ops-shop-v2/ops/pay-ops/v2`） | `current` 指回 `releases/gateway-e86b5ddc0` |
+| near-pay | 166 `pay-svc.jar` 换为补丁包（sha256 前缀 `cf59cb8913a44168`）：线上包（`2f1d7927fa009d96`，= near-pay `origin/main` `8805ce759`，4 个相关类 javap 一致）只换 `AiShopOperatorClient`（新增 `$Cached`）、`AiShopOpsIdentityConfiguration`、`pay-guard` 内 `PayPermissionEvaluator`，其余条目逐字节保留 | 复原 `pay-svc.jar.before-opsid-20261121`、`cloud.properties.before-opsid-20261121`、`secret.properties.before-opsid-20261121`，`docker restart nearpay-prod` |
+| near-pay 配置 | `cloud.properties` 加 `identity-path=/internal/auth/v1/operator`、`cache-ttl=PT30S`、`permission-source=host+mapping`；凭据进 `secret.properties` | 同上 |
+
+中断：v2 重启两次（00:49:52–00:51:25、00:52:29–00:53:57），near-pay 重启一次（00:54:34–00:55:28）；重启窗口内 nginx 记到的 5xx 全部在窗口内。
+
+**线上测试（运营账号已登录的浏览器，经网关）**
+
+- 不带令牌：网关回 401（ai-shop 包体），near-pay 收不到；`/internal/auth/v1/operator` 公网 404，166 本机不带凭据 403。
+- 支付中心 33 个列表 / 字典接口经网关全部 200、业务码 0（含 P5 的转人工、渠道账户、适配器、支付方式）。
+- 商户列表经网关 12.7 s、直连 13.4 s，响应字节相同：慢在 near-pay 查询本身，网关无可见开销（门店、渠道账户列表同样约 17 s）。
+- 写：测试商户 `PM0E0F6CC8F7454D75` 收款策略，过期版本原样拿到 409 `VERSION_CONFLICT`；按原值保存成功（版本 1→2，内容仍为 `UNRESTRICTED`）。
+- near-pay 回调统一认证接口 5 次（全 200），同期经网关的支付请求四十余次：30 秒缓存生效；不再调 `/ops/auth/me`；`[ops-identity]` 拒绝 0 次。
+
+**未验证**：无支付权限账号在 near-pay 回 403（没有现成的低权限测试账号可登录）；进件附件预览（单测覆盖了文件流）；P5 新页面的写操作。
+
+**上线中发现、与本次无关的问题**
+
+1. near-pay → ai-shop `/internal/payment-results/merchant-collections`（收款结果推送）自 11-20 16:39（v1 切 v2）起几乎全部 403（823 次 403、6 次 200），near-pay 每分钟重试。待查：v2 上该内部入口的调用方凭据或来源地址校验（请求现在从 166 经 18081 转到 .80）。
+2. near-pay 日志持续 `Payment display rebuild deferred for projection 830/834`（上线前 40 分钟 3000 次）。
+3. 商户、门店、渠道账户列表在 near-pay 侧 13–17 秒。
+
+**下一步**：观察一周 `[ops-perm] mapping-only` 日志，无记录后 `permission-source=host`、隐藏 SY03（§7 阶段 6.4）。
