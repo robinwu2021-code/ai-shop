@@ -68,6 +68,22 @@ function InputForField({
   const cur = value[f.key];
   const disabled = isFieldDisabled(f, value, isEdit);
 
+  if (f.type === "multiselect") {
+    // csv：值是逗号串（"A,B"）；否则是数组。此前没有这个分支，multiselect 退化成文本框
+    const arr = f.csv ? csvToArray(cur) : ((cur as string[] | undefined) ?? []);
+    return (
+      <MultiSelect
+        className="w-full"
+        value={arr}
+        options={f.options ?? []}
+        disabled={disabled}
+        invalid={invalid}
+        onBlur={onBlur}
+        placeholder={f.placeholder}
+        onChange={(v) => set(f.csv ? arrayToCsv(v) : v)}
+      />
+    );
+  }
   if (f.type === "select") {
     return (
       <Select
