@@ -13,7 +13,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.inventory.client.InventoryClient;
+import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.shop.gateway.core.discovery.NacosDiscoveryConfiguration;
+import ai.neargo.shop.invbridge.InventoryReservationConfiguration;
 import ai.neargo.shop.gateway.core.discovery.NacosRegistrar;
 import ai.neargo.shop.gateway.core.discovery.NacosServiceLocator;
 import ai.neargo.shop.svc.ConfigServiceLocator;
@@ -114,6 +117,26 @@ class NacosDiscoveryTest {
         assertThat(failing.registered()).isFalse();
         failing.deregisterOnClose();
         verify(down, never()).deregisterInstance(anyString(), anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    void inventoryClientCanBeConfiguredByDiscoveryWithoutAFixedAddress() {
+        ApplicationContextRunner runner = new ApplicationContextRunner()
+                .withUserConfiguration(InventoryReservationConfiguration.class)
+                .withBean(ServiceLocator.class, () -> configured)
+                .withPropertyValues("shop.inventory.enabled=true");
+        runner.run(context -> assertThat(context).doesNotHaveBean(InventoryClient.class));
+        runner.withPropertyValues("shop.nacos.enabled=true",
+                "shop.nacos.discovery.services.inventory=inventory-svc")
+                .run(context -> assertThat(context).hasSingleBean(InventoryClient.class)
+                        .hasSingleBean(InventoryReservationClient.class));
+        runner.withPropertyValues("shop.nacos.enabled=true",
+                "shop.nacos.discovery.services.INVENTORY=inventory-svc")
+                .run(context -> assertThat(context).hasSingleBean(InventoryClient.class)
+                        .hasSingleBean(InventoryReservationClient.class));
+        runner.withPropertyValues("shop.inventory.service.base-url=http://127.0.0.1:18086")
+                .run(context -> assertThat(context).hasSingleBean(InventoryClient.class)
+                        .hasSingleBean(InventoryReservationClient.class));
     }
 
     @Configuration(proxyBeanMethods = false)

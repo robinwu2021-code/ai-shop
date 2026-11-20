@@ -194,10 +194,8 @@ public final class ExecutionStockRetentionSchemaVerifier {
         require(seen.equals(TABLES));
         Map<String, Map<String, Object>> triggers = new HashMap<>();
         for (var trigger : query(connection,
-                "SELECT TRIGGER_NAME,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_TIMING,ACTION_STATEMENT"
-                        + " FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?"
-                        + " AND EVENT_OBJECT_TABLE IN (?,?)", schema,
-                "inv_execution_retention_claim", "inv_execution_retention")) {
+                "CALL " + quoted(schema) + ".inv_execution_retention_trigger_metadata()")) {
+            require(schema.equals(text(trigger, "trigger_schema")));
             require(triggers.put(text(trigger, "trigger_name"), trigger) == null);
         }
         require(triggers.size() == contract.path("triggers").size());

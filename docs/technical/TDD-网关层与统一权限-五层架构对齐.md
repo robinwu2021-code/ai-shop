@@ -2228,6 +2228,17 @@ shop:
 
 **接入顺序：** 先 ai-shop（本节）；支付在 near-pay 仓库里登记自己之后，在 ai-shop 的名单里加 `PAY` 一行即可切到按 Nacos 发现，不用改代码。
 
+**库存调用接入（2026-11-20）**
+
+- AC31a：库存模块开启时，`shop.nacos.discovery.services.inventory=inventory-svc` 与 Nacos 总开关可单独装配库存客户端。每次发起请求均通过 `ServiceLocator` 解析 `INVENTORY`。
+- AC32a：有历史 `shop.inventory.service.base-url` 的调用方仍可按既有配置启动。发现不到地址时兼容历史固定地址，凭证、签名与账本写入方保持原契约。
+- 实施顺序：在 `InventoryReservationConfiguration` 接现有定位器，使用 `NacosDiscoveryTest` 验证纯发现装配与固定地址兼容，再以 UME 测试账本联验。
+- UME 预留确认的前置依赖：宿主低权限账号复用库存 V28 的留存元数据过程及原校验。迁移、账号授权与源码摘要沿用 2026-11-10 UME 库存部署记录 §6。
+
+自动化验证：`NacosDiscoveryTest` 6 项通过，覆盖 Nacos-only 与旧地址装配，其中配置名的 `inventory`、`INVENTORY` 均验证通过；`InventoryStandaloneCutoverE2ETest` 1 项通过；`RetentionMetadataPrivilegesNativeMysqlTest` 在 MySQL 9 执行 2 项通过，覆盖低权限读取、权限撤回与元数据漂移拒绝。
+
+UME 联验：以最新网关提交 `c92b384f9` 构建，部署到 `.166` 的 `ai-shop-rehearsal-nacos`，配置 `INVENTORY → inventory-svc`（`public / DEFAULT_GROUP`）。宿主日志确认通过 Nacos 取到 `192.168.3.80:18086`，环境未设置固定库存地址。合成业主 `UMEINVd0958bc9` 使用专用测试库 `inventory_ume_80`。采购入库 10，写入方翻到 SVC 后预留 3，V28 补齐后沿原预留确认且重放，结存 7；另单预留 2、取消并重放，结存仍为 7、预留 0。宿主开放库存接口查回结存和流水，测试库查回订单状态 `COMMITTED / RELEASED` 与两条预留命令。联验专用开放凭证已吊销。
+
 ### 2.25 C 端接入网关：只定位、不判权（2026-11-19）
 
 **做什么：** C 端（`/mp/**`）的入口也进网关的资源索引并写进 `sys_api_resource`（`end_code = mp`），
