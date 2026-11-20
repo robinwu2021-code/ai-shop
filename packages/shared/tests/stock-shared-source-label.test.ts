@@ -16,7 +16,7 @@ function sharedSourceMessage(file: string): string {
 
 function sharedSourceArguments(producer: string): string[] {
   const src = readFileSync(join(ROOT,
-    `backend/shop-app/src/main/java/ai/neargo/shop/invbridge/${producer}.java`), "utf8");
+    `backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/${producer}.java`), "utf8");
   // Accept the existing qualified call and normal imports; read both real producers.
   const calls = [...src.matchAll(/BizException\.of\(\s*(?:[\w.]*ErrorCode\.)STOCK_SHARED_SOURCE\s*,([^)]*)\)/g)];
   expect(calls, `${producer}: expected one shared-source exception producer`).toHaveLength(1);

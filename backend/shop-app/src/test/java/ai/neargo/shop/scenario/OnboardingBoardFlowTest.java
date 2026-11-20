@@ -141,6 +141,35 @@ class OnboardingBoardFlowTest {
         assertThat(archivedAtOf(admin, name)).as("archivedAt 恒 null 的话前端判不出它已归档").isNotNull();
     }
 
+    /**
+     * 列表分页挪进 SQL、只为当前页拼 VO 之后（正式库 758 家，此前全量拼一遍要 6 秒多），
+     * 按社区筛与总数仍要对：社区筛先换成商家号集合再交给 SQL。
+     */
+    @Test
+    @DisplayName("★ 商家列表按社区筛 + 分页：总数是筛后的总数，每页只回这一页")
+    void merchantListPagesInSqlWithCommunityFilter() throws Exception {
+        approveMerchant("18600127011", "分页社区店甲", "CM-ONB-PAGE");
+        approveMerchant("18600127012", "分页社区店乙", "CM-ONB-PAGE");
+        String admin = opsLogin("admin", "admin123");
+
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String page : java.util.List.of("1", "2")) {
+            JsonNode data = json.readTree(mvc().perform(get("/ops/merchants").header("Authorization", "Bearer " + admin)
+                            .param("communityNo", "CM-ONB-PAGE").param("page", page).param("size", "1"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("data");
+            assertThat(data.get("total").asLong()).isEqualTo(2);
+            assertThat(data.get("records")).hasSize(1);
+            assertThat(data.get("records").get(0).get("communityNos").toString()).contains("CM-ONB-PAGE");
+            seen.add(data.get("records").get(0).get("name").asString());
+        }
+        assertThat(seen).containsExactlyInAnyOrder("分页社区店甲", "分页社区店乙");
+
+        mvc().perform(get("/ops/merchants").header("Authorization", "Bearer " + admin)
+                        .param("communityNo", "CM-ONB-NOBODY"))
+                .andExpect(jsonPath("$.data.total").value(0))
+                .andExpect(jsonPath("$.data.records").isEmpty());
+    }
+
     private String merchantNoOf(String opsToken, String name) throws Exception {
         JsonNode r = merchantRow(opsToken, name, null);
         return r == null ? null : r.get("merchantNo").asString();

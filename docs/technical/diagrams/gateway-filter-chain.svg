@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 560" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="13">
+  <title>网关层通用过滤器链</title>
+  <desc>一个请求进入某一端出口后依次经过：路由匹配、令牌认证、B 端门店上下文、按路由判权，然后分两路——命中透传路由的由透传过滤器签名后转发到微服务并回写响应；其余的进入 Spring MVC 的本地入口，方法上的权限注解照常生效。蓝色是新增的三个通用过滤器，灰色是原样沿用的现有过滤器。微服务一侧由守卫验签。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1120" height="560" fill="#ffffff"/>
+  <text x="24" y="32" font-size="16" font-weight="600" fill="#0f172a">网关层通用过滤器链（每端一条 Spring Security 链，结构相同）</text>
+  <text x="24" y="52" fill="#64748b">蓝 = 新增的通用过滤器；灰 = 原样沿用的现有过滤器；粉 = 微服务进程</text>
+
+  <rect x="24" y="76" width="1072" height="230" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="40" y="98" font-weight="600" fill="#334155">某一端的 SecurityFilterChain（securityMatcher = /mp/** 或 /biz/** 或 /ops/**）</text>
+
+  <g>
+    <rect x="40" y="116" width="188" height="110" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+    <rect x="250" y="116" width="188" height="110" rx="6" fill="#e2e8f0" stroke="#64748b"/>
+    <rect x="460" y="116" width="188" height="110" rx="6" fill="#e2e8f0" stroke="#64748b"/>
+    <rect x="670" y="116" width="188" height="110" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+    <rect x="880" y="116" width="200" height="110" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  </g>
+  <g fill="#1e3a8a">
+    <text x="52" y="138" font-weight="600">① 路由匹配</text>
+    <text x="52" y="158" font-size="12">GatewayRouteFilter</text>
+    <text x="52" y="180" font-size="12">用路由表匹配 URL 与方法</text>
+    <text x="52" y="198" font-size="12">命中 → 路由放进请求属性</text>
+    <text x="52" y="216" font-size="12">未命中 → 视为本地入口</text>
+    <text x="682" y="138" font-weight="600">④ 按路由判权</text>
+    <text x="682" y="158" font-size="12">GatewayAuthorizationManager</text>
+    <text x="682" y="180" font-size="12">放行 / 需登录 / 需功能点</text>
+    <text x="682" y="198" font-size="12">功能点交给 PermChecker</text>
+    <text x="682" y="216" font-size="12">挂在 authorizeHttpRequests</text>
+    <text x="892" y="138" font-weight="600">⑤ 透传</text>
+    <text x="892" y="158" font-size="12">GatewayProxyFilter</text>
+    <text x="892" y="180" font-size="12">透传路由：转发并回写</text>
+    <text x="892" y="198" font-size="12">其余：放给后面的 MVC</text>
+    <text x="892" y="216" font-size="12">排在判权之后</text>
+  </g>
+  <g fill="#1e293b">
+    <text x="262" y="138" font-weight="600">② 令牌认证</text>
+    <text x="262" y="158" font-size="12">Consumer / Merchant /</text>
+    <text x="262" y="176" font-size="12">OperatorTokenAuthFilter</text>
+    <text x="262" y="198" font-size="12">查会话 → 登录人、数据域</text>
+    <text x="262" y="216" font-size="12">不改</text>
+    <text x="472" y="138" font-weight="600">③ 端专属上下文</text>
+    <text x="472" y="158" font-size="12">BizContextFilter（仅 B 端）</text>
+    <text x="472" y="176" font-size="12">ClientVersionGateFilter</text>
+    <text x="472" y="198" font-size="12">门店、角色、版本闸</text>
+    <text x="472" y="216" font-size="12">不改</text>
+  </g>
+  <g stroke="#475569" marker-end="url(#a)">
+    <line x1="228" y1="171" x2="248" y2="171"/><line x1="438" y1="171" x2="458" y2="171"/>
+    <line x1="648" y1="171" x2="668" y2="171"/><line x1="858" y1="171" x2="878" y2="171"/>
+  </g>
+  <text x="40" y="258" font-size="12" fill="#475569">路由表 GatewayRouteTable：各模块用 GatewayRouteProvider 声明；公共放行路径来自 shop.gateway.&lt;端&gt;.public-paths</text>
+  <text x="40" y="280" font-size="12" fill="#475569">判权失败、令牌过期的出口仍是现有的 ApiAuthEntryPoint，包体格式不变</text>
+
+  <!-- branches -->
+  <g stroke="#475569" marker-end="url(#a)" fill="none">
+    <path d="M930,226 L930,340 L300,340 L300,366"/>
+    <path d="M1030,226 L1030,366"/>
+  </g>
+  <text x="560" y="332" font-size="12" fill="#475569">未命中透传路由</text>
+  <text x="1040" y="332" font-size="12" fill="#475569">命中</text>
+
+  <rect x="24" y="368" width="560" height="168" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="40" y="390" font-weight="600" fill="#1e293b">本地入口（现有 1800 多个端点，不动）</text>
+  <text x="40" y="414" fill="#334155">DispatcherServlet → Controller</text>
+  <text x="40" y="436" fill="#334155">方法上的 @PreAuthorize("@perm…") 照常生效</text>
+  <text x="40" y="458" fill="#334155">返回值由 ApiResponseWrapper 包成统一包体</text>
+  <text x="40" y="486" font-size="12" fill="#475569">要组合多个域、裁剪字段的入口走这一路；</text>
+  <text x="40" y="504" font-size="12" fill="#475569">调微服务时经契约接口，出站签名自动加上。</text>
+
+  <rect x="620" y="368" width="250" height="168" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="636" y="390" font-weight="600" fill="#1e3a8a">透传（新增）</text>
+  <text x="636" y="414" fill="#1e3a8a" font-size="12">改写路径、筛选请求头</text>
+  <text x="636" y="434" fill="#1e3a8a" font-size="12">出站签名：进程凭据 +</text>
+  <text x="636" y="452" fill="#1e3a8a" font-size="12">操作人、范围、下游功能点</text>
+  <text x="636" y="476" fill="#1e3a8a" font-size="12">回写：包成统一包体；</text>
+  <text x="636" y="494" fill="#1e3a8a" font-size="12">下游错误映射成统一错误</text>
+
+  <rect x="900" y="368" width="196" height="168" rx="8" fill="#fdf2f8" stroke="#be185d"/>
+  <text x="916" y="390" font-weight="600" fill="#831843">微服务</text>
+  <text x="916" y="414" fill="#831843" font-size="12">svc-guard 验凭据与签名</text>
+  <text x="916" y="434" fill="#831843" font-size="12">/internal 入口</text>
+  <text x="916" y="454" fill="#831843" font-size="12">领域服务</text>
+  <line x1="870" y1="452" x2="898" y2="452" stroke="#475569" marker-end="url(#a)"/>
+</svg>

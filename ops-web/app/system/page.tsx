@@ -26,6 +26,7 @@ import { ServiceScopeTab } from "./service-scope-tab";
 import { StorageTab } from "./storage-tab";
 import { TestPhoneTab } from "./test-phone-tab";
 import { AppVersionTab } from "./app-version-tab";
+import { ApiResourceTab } from "./api-resource-tab";
 import { TestIdentitySection } from "./test-identity-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
 const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "storeIndustry", "authCode", "scope",
-  "testPhone", "appVersion"] as const;
+  "testPhone", "appVersion", "apiResource"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -295,6 +296,9 @@ function SystemInner() {
 
       {/* App 版本：看用 param:read（菜单），改最低版用单独的 app-version:update（已拍板 P5） */}
       {tab === "appVersion" && <AppVersionTab c={c} canWrite={allow("system:app-version:update")} />}
+
+      {/* 接口资源：看用 param:read（菜单），停用与恢复用单独的 api-resource:update（只有超管） */}
+      {tab === "apiResource" && <ApiResourceTab c={c} canWrite={allow("system:api-resource:update")} />}
 
       {tab === "flags" && (
         <>

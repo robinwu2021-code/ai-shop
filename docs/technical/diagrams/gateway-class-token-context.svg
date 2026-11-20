@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 930" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="12.5">
+  <title>网关层类图二：令牌管理、身份还原、上下文</title>
+  <desc>令牌存储是一个接口，有数据库、Redis、Ehcache、内存四个实现，由路由存储按令牌前缀分到三端各自的池；三端由 Realm 枚举区分。数据库实现使用会话档位、会话数据访问和身份加载接口。运营端的身份与权限码由两个解析接口现算并带缓存，B 端的门店上下文由身份解析接口算出。请求内的上下文有：登录人、门店上下文、请求来源信息、数据域，以及网关新增的请求交换对象；出站时由它们组成签名上下文。</desc>
+  <defs>
+    <marker id="tri" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#ffffff" stroke="#475569"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#475569" stroke-width="1.4"/></marker>
+  </defs>
+  <rect width="1200" height="930" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">网关层类图二：令牌管理、身份还原、上下文</text>
+  <text x="24" y="50" fill="#64748b" font-size="12">蓝 = 网关层新增；白 = 现有类；灰 = 框架自带；虚线框 = 预留、未实现。空心三角 = 继承或实现（虚线为实现接口）；箭头 = 使用</text>
+  <path d="M180.0,270 L180.0,245 L470.0,245 L470.0,205" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M425.0,270 L425.0,245 L530.0,245 L530.0,205" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M635.0,270 L635.0,245 L590.0,245 L590.0,205" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M845.0,270 L845.0,245 L650.0,245 L650.0,205" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M1050.0,270 L1050.0,245 L710.0,245 L710.0,205" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M132.0,270 L132.0,212.5 L132.0,212.5 L132.0,155" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M180.0,480 L180.0,468.0 L180.0,468.0 L180.0,456" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <text x="190" y="472" font-size="11" fill="#475569">读</text>
+  <path d="M425.0,321 L425.0,355.5 L425.0,355.5 L425.0,390" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M482.0,321 L482.0,365 L597.0,365 L597.0,390" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M501.0,321 L501.0,358 L816.0,358 L816.0,390" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M180.0,690 L180.0,667.5 L180.0,667.5 L180.0,645" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M455.0,690 L455.0,667.5 L455.0,667.5 L455.0,645" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M740.0,690 L740.0,667.5 L740.0,667.5 L740.0,645" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#tri)"/>
+  <path d="M1035.0,690 L1035.0,683.0 L1035.0,683.0 L1035.0,676" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M320,850.5 L305.0,850.5 L305.0,850.0 L290,850.0" fill="none" stroke="#475569" marker-end="url(#arr)"/>
+  <path d="M688.0,741 L688.0,775.5 L692.0,775.5 L692.0,810" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <text x="694.0" y="771.5" font-size="11" fill="#475569">产出</text>
+  <rect x="60" y="90" width="240" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="180.0" y="105" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="180.0" y="123" text-anchor="middle" font-weight="600" fill="#1e293b">TokenStores</text>
+  <line x1="60" y1="132" x2="300" y2="132" stroke="#64748b"/>
+  <text x="68" y="147" font-size="11" fill="#1e293b">+ of(realm): TokenStore</text>
+  <rect x="440" y="80" width="300" height="125" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="590.0" y="95" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="590.0" y="113" text-anchor="middle" font-weight="600" fill="#1e293b">TokenStore</text>
+  <line x1="440" y1="122" x2="740" y2="122" stroke="#64748b"/>
+  <text x="448" y="137" font-size="11" fill="#1e293b">+ issue(data): String</text>
+  <text x="448" y="152" font-size="11" fill="#1e293b">+ get(token): Optional&lt;SessionData&gt;</text>
+  <text x="448" y="167" font-size="11" fill="#1e293b">+ refresh(token, data)</text>
+  <text x="448" y="182" font-size="11" fill="#1e293b">+ revoke(token)</text>
+  <text x="448" y="197" font-size="11" fill="#1e293b">+ revokeUser(userNo): int</text>
+  <rect x="900" y="90" width="240" height="95" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="1020.0" y="105" text-anchor="middle" font-size="10.5" fill="#1e293b">«enum»</text>
+  <text x="1020.0" y="123" text-anchor="middle" font-weight="600" fill="#1e293b">Realm</text>
+  <line x1="900" y1="132" x2="1140" y2="132" stroke="#64748b"/>
+  <text x="908" y="147" font-size="11" fill="#1e293b">CONSUMER　ctk_</text>
+  <text x="908" y="162" font-size="11" fill="#1e293b">MERCHANT　btk_</text>
+  <text x="908" y="177" font-size="11" fill="#1e293b">OPERATOR　otk_</text>
+  <rect x="60" y="270" width="240" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="180.0" y="289" text-anchor="middle" font-weight="600" fill="#1e293b">RealmRoutingTokenStore</text>
+  <line x1="60" y1="298" x2="300" y2="298" stroke="#64748b"/>
+  <text x="68" y="313" font-size="11" fill="#1e293b">按令牌前缀分到各端的池</text>
+  <rect x="330" y="270" width="190" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="425.0" y="289" text-anchor="middle" font-weight="600" fill="#1e293b">DbTokenStore</text>
+  <line x1="330" y1="298" x2="520" y2="298" stroke="#64748b"/>
+  <text x="338" y="313" font-size="11" fill="#1e293b">只存令牌哈希</text>
+  <rect x="540" y="270" width="190" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="635.0" y="289" text-anchor="middle" font-weight="600" fill="#1e293b">RedisTokenStore</text>
+  <line x1="540" y1="298" x2="730" y2="298" stroke="#64748b"/>
+  <text x="548" y="313" font-size="11" fill="#1e293b">多实例共享</text>
+  <rect x="750" y="270" width="190" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="845.0" y="289" text-anchor="middle" font-weight="600" fill="#1e293b">EhcacheTokenStore</text>
+  <line x1="750" y1="298" x2="940" y2="298" stroke="#64748b"/>
+  <text x="758" y="313" font-size="11" fill="#1e293b">单实例</text>
+  <rect x="960" y="270" width="180" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="1050.0" y="289" text-anchor="middle" font-weight="600" fill="#1e293b">MemoryTokenStore</text>
+  <line x1="960" y1="298" x2="1140" y2="298" stroke="#64748b"/>
+  <text x="968" y="313" font-size="11" fill="#1e293b">测试用</text>
+  <rect x="60" y="390" width="240" height="66" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="180.0" y="409" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayEndProperties</text>
+  <line x1="60" y1="418" x2="300" y2="418" stroke="#3b82f6"/>
+  <text x="68" y="433" font-size="11" fill="#1e3a8a">session.store / ttl</text>
+  <text x="68" y="448" font-size="11" fill="#1e3a8a">datasource</text>
+  <rect x="60" y="480" width="240" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="180.0" y="499" text-anchor="middle" font-weight="600" fill="#1e293b">TokenStoreConfig</text>
+  <line x1="60" y1="508" x2="300" y2="508" stroke="#64748b"/>
+  <text x="68" y="523" font-size="11" fill="#1e293b">按各端配置选实现并装配</text>
+  <rect x="330" y="390" width="190" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="425.0" y="409" text-anchor="middle" font-weight="600" fill="#1e293b">SessionProfile</text>
+  <line x1="330" y1="418" x2="520" y2="418" stroke="#64748b"/>
+  <text x="338" y="433" font-size="11" fill="#1e293b">表名、前缀、有效期</text>
+  <rect x="540" y="390" width="190" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="635.0" y="409" text-anchor="middle" font-weight="600" fill="#1e293b">SessionDao</text>
+  <line x1="540" y1="418" x2="730" y2="418" stroke="#64748b"/>
+  <text x="548" y="433" font-size="11" fill="#1e293b">JdbcClient，三端同构</text>
+  <rect x="750" y="390" width="220" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="860.0" y="405" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="860.0" y="423" text-anchor="middle" font-weight="600" fill="#1e293b">IdentityLoader</text>
+  <line x1="750" y1="432" x2="970" y2="432" stroke="#64748b"/>
+  <text x="758" y="447" font-size="11" fill="#1e293b">+ load(userNo): Optional&lt;T&gt;</text>
+  <rect x="60" y="580" width="240" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="180.0" y="595" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="180.0" y="613" text-anchor="middle" font-weight="600" fill="#1e293b">LiveIdentityResolver</text>
+  <line x1="60" y1="622" x2="300" y2="622" stroke="#64748b"/>
+  <text x="68" y="637" font-size="11" fill="#1e293b">+ resolve(staffNo): Identity</text>
+  <rect x="330" y="580" width="250" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="455.0" y="595" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="455.0" y="613" text-anchor="middle" font-weight="600" fill="#1e293b">LivePermResolver</text>
+  <line x1="330" y1="622" x2="580" y2="622" stroke="#64748b"/>
+  <text x="338" y="637" font-size="11" fill="#1e293b">+ resolve(roles): List&lt;String&gt;</text>
+  <rect x="610" y="580" width="260" height="65" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="740.0" y="595" text-anchor="middle" font-size="10.5" fill="#1e293b">«interface»</text>
+  <text x="740.0" y="613" text-anchor="middle" font-weight="600" fill="#1e293b">BizIdentityResolver</text>
+  <line x1="610" y1="622" x2="870" y2="622" stroke="#64748b"/>
+  <text x="618" y="637" font-size="11" fill="#1e293b">+ resolve(userNo, storeNo): BizContext</text>
+  <rect x="60" y="690" width="240" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="180.0" y="709" text-anchor="middle" font-weight="600" fill="#1e293b">StaffIdentityResolver</text>
+  <line x1="60" y1="718" x2="300" y2="718" stroke="#64748b"/>
+  <text x="68" y="733" font-size="11" fill="#1e293b">快照缓存；改账号时 invalidate()</text>
+  <rect x="330" y="690" width="250" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="455.0" y="709" text-anchor="middle" font-weight="600" fill="#1e293b">RolePermResolver</text>
+  <line x1="330" y1="718" x2="580" y2="718" stroke="#64748b"/>
+  <text x="338" y="733" font-size="11" fill="#1e293b">角色 → 权限码整表快照，60 秒</text>
+  <rect x="610" y="690" width="260" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="740.0" y="709" text-anchor="middle" font-weight="600" fill="#1e293b">BizIdentityResolverImpl</text>
+  <line x1="610" y1="718" x2="870" y2="718" stroke="#64748b"/>
+  <text x="618" y="733" font-size="11" fill="#1e293b">角色 + 门店 → 当前门店的权限码</text>
+  <rect x="910" y="580" width="250" height="96" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1035.0" y="599" text-anchor="middle" font-weight="600" fill="#1e3a8a">GatewayExchange</text>
+  <line x1="910" y1="608" x2="1160" y2="608" stroke="#3b82f6"/>
+  <text x="918" y="623" font-size="11" fill="#1e3a8a">请求属性，逐请求一份</text>
+  <text x="918" y="638" font-size="11" fill="#1e3a8a">resource: ApiResource</text>
+  <text x="918" y="653" font-size="11" fill="#1e3a8a">passedPoints: Set&lt;String&gt;</text>
+  <text x="918" y="668" font-size="11" fill="#1e3a8a">requestId</text>
+  <rect x="910" y="690" width="250" height="95" rx="5" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1035.0" y="705" text-anchor="middle" font-size="10.5" fill="#1e3a8a">«record»</text>
+  <text x="1035.0" y="723" text-anchor="middle" font-weight="600" fill="#1e3a8a">SignedContext</text>
+  <line x1="910" y1="732" x2="1160" y2="732" stroke="#3b82f6"/>
+  <text x="918" y="747" font-size="11" fill="#1e3a8a">operator, realm, scope</text>
+  <text x="918" y="762" font-size="11" fill="#1e3a8a">points, requestId, ts, bodyDigest</text>
+  <text x="918" y="777" font-size="11" fill="#1e3a8a">由登录人、门店、交换对象组成</text>
+  <rect x="60" y="810" width="230" height="80" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="175.0" y="825" text-anchor="middle" font-size="10.5" fill="#1e293b">«record · 实现 neargo PermissionCarrier»</text>
+  <text x="175.0" y="843" text-anchor="middle" font-weight="600" fill="#1e293b">LoginUser</text>
+  <line x1="60" y1="852" x2="290" y2="852" stroke="#64748b"/>
+  <text x="68" y="867" font-size="11" fill="#1e293b">realm, subjectKind, userNo</text>
+  <text x="68" y="882" font-size="11" fill="#1e293b">roles, perms, dataScope</text>
+  <rect x="320" y="810" width="210" height="81" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="425.0" y="829" text-anchor="middle" font-weight="600" fill="#1e293b">SecurityUtils</text>
+  <line x1="320" y1="838" x2="530" y2="838" stroke="#64748b"/>
+  <text x="328" y="853" font-size="11" fill="#1e293b">+ currentUser()</text>
+  <text x="328" y="868" font-size="11" fill="#1e293b">+ currentToken()</text>
+  <text x="328" y="883" font-size="11" fill="#1e293b">读 SecurityContextHolder</text>
+  <rect x="560" y="810" width="220" height="95" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="670.0" y="825" text-anchor="middle" font-size="10.5" fill="#1e293b">«record»</text>
+  <text x="670.0" y="843" text-anchor="middle" font-weight="600" fill="#1e293b">BizContext</text>
+  <line x1="560" y1="852" x2="780" y2="852" stroke="#64748b"/>
+  <text x="568" y="867" font-size="11" fill="#1e293b">merchantNo，当前门店</text>
+  <text x="568" y="882" font-size="11" fill="#1e293b">+ can(code)</text>
+  <text x="568" y="897" font-size="11" fill="#1e293b">+ requireStoreNo()</text>
+  <rect x="810" y="810" width="180" height="51" rx="5" fill="#ffffff" stroke="#64748b"/>
+  <text x="900.0" y="829" text-anchor="middle" font-weight="600" fill="#1e293b">RequestMetaContext</text>
+  <line x1="810" y1="838" x2="990" y2="838" stroke="#64748b"/>
+  <text x="818" y="853" font-size="11" fill="#1e293b">ip, clientType, userAgent</text>
+  <rect x="1020" y="810" width="150" height="65" rx="5" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="1095.0" y="825" text-anchor="middle" font-size="10.5" fill="#475569">«neargo»</text>
+  <text x="1095.0" y="843" text-anchor="middle" font-weight="600" fill="#475569">DataScopeContext</text>
+  <line x1="1020" y1="852" x2="1170" y2="852" stroke="#94a3b8"/>
+  <text x="1028" y="867" font-size="11" fill="#475569">数据域</text>
+  <text x="60" y="560" font-size="12" fill="#334155" font-weight="600">身份还原与权限码（带本地缓存）</text>
+  <text x="60" y="790" font-size="12" fill="#334155" font-weight="600">请求内的上下文</text>
+</svg>

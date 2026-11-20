@@ -32,7 +32,7 @@
   │ scripts/automation/ticket.py 签票据
   ▼
 v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicketVerifier
-  payload = {realm: B|OPS, sub, exp, nonce}             ① 开关开着？（默认关：404）
+  payload = {realm: B|OPS|C, sub, exp, nonce}             ① 开关开着？（默认关：404）
                                                         ② 公钥验签
                                                         ③ exp 在 60 秒内、未过期
                                                         ④ nonce 没用过（用过即记，TTL 覆盖有效期）
@@ -58,8 +58,8 @@ v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicke
 
 | 字段 | 含义 | 校验 |
 |---|---|---|
-| `realm` | `B`（店主）或 `OPS`（运营） | 只认这两个 |
-| `sub` | B：`user_no`；OPS：`staff_no` | `realm:sub` 必须在白名单 |
+| `realm` | `B`（店主）、`OPS`（运营）或 `C`（消费者，2026-11-19 加） | 只认这三个 |
+| `sub` | B、C：`user_no`；OPS：`staff_no` | `realm:sub` 必须在白名单；同一个 `user_no` 要签 B 和 C 得各列一条 |
 | `exp` | 过期时刻（秒） | `now < exp ≤ now + 60`（签得太远的也拒：防止签一张一年有效的） |
 | `nonce` | 随机串 ≥ 16 字节 | 用过即记，60 秒内再来拒 |
 
@@ -85,6 +85,34 @@ v1.<payload>.<sig>  ──POST /common/auth/automation──▶  AutomationTicke
 - 本机脚本（`scripts/automation/`）：`keygen.py`（生成密钥对，私钥 0600、仓库外）、
   `ticket.py`（签票据，输出到 stdout 供管道使用）、`emulator-login.sh`、`ops.py`（换会话后调运营接口）。
   **票据与会话只在脚本进程里流转，不打印到终端。**
+
+### 4.5 消费者端（2026-11-19 追加）
+
+网关版本上线后三端都要能用测试账号从接口验证，而 C 端正常登录只有简讯验证码一条路，测试账号收不了简讯。
+所以票据多认一个 `realm = C`：换出与 C 端正常登录同构的 `ctk_` 会话（`LoginUser.consumer`）。
+账号必须已经存在于 `usr_account`，接口不替白名单建号；白名单仍按「端:账号」逐条列。没有新增端点、配置项或错误码。
+验收：C 票据换出 `ctk_`，能调要登录的 `/mp` 接口；拿它打 `/biz`、`/ops` 被拒；白名单里只有 `B:x` 时签不出 `C:x`。
+对应测试：`AutomationLoginFlowTest.consumerTicketGivesWorkingMpSession`、`AutomationTicketVerifierTest.malformedRejected`。
+
+### 4.6 钥按端分（2026-11-19 追加，用户：「各个端的用户不同，测试账号不同，密钥也不同」）
+
+三端的测试账号不同、签票据的人也不同，公钥按端配：
+
+| 配置项 | 含义 | 不配时 |
+|---|---|---|
+| `shop.auth.automation.public-key-ops`（`SHOP_AUTOMATION_PUBLIC_KEY_OPS`） | 运营端认的公钥 | 用通用的 `public-key` |
+| `shop.auth.automation.public-key-b`（`SHOP_AUTOMATION_PUBLIC_KEY_B`） | B 端认的公钥 | 同上 |
+| `shop.auth.automation.public-key-c`（`SHOP_AUTOMATION_PUBLIC_KEY_C`） | C 端认的公钥 | 同上 |
+
+每一项可以用逗号列多把（同一端有不止一个签票据的人时用）。通用的 `public-key` 保留，三项都不配时行为与原来完全相同。
+
+校验顺序不变（先验签，再看字段）：先用各端的钥验签名，得到「这张票据是哪些端的钥签的」，这时 payload 还一个字没信；
+然后才读 payload 里的端，它必须在那个集合里，否则以 `AUTOMATION_WRONG_KEY_FOR_REALM` 拒绝。
+所以运营端的私钥泄露，损失上限是运营端白名单里的账号，签不出店主或买家的会话。
+白名单里出现了某一端、而那一端一把钥都没有时拒绝启动。
+
+验收：各端用自己的钥能换到会话；拿别的端的钥签被拒；没单独配的端用通用的钥；被拒的票据不占 nonce。
+对应测试：`AutomationTicketVerifierTest.keysArePerRealm`。
 
 ## 五、验收标准
 

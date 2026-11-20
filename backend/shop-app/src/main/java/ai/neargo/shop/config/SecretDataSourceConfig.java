@@ -66,14 +66,20 @@ public class SecretDataSourceConfig {
             @Value("${spring.datasource.url}") String url,
             @Value("${spring.datasource.username}") String username,
             @Value("${spring.datasource.password}") String password,
-            @Value("${spring.datasource.driver-class-name}") String driver) {
+            @Value("${spring.datasource.driver-class-name}") String driver,
+            @Value("${shop.secret.pool.max-size:4}") int maxSize,
+            @Value("${shop.secret.pool.min-idle:-1}") int minIdle) {
         HikariDataSource ds = new HikariDataSource();
         ds.setJdbcUrl(url);
         ds.setUsername(username);
         ds.setPassword(password);
         ds.setDriverClassName(driver);
         // 密钥读写量很小（登记、启用、轮换、偶尔解一次材料），给 4 足够 —— 与平台池共享同一个库的连接上限
-        ds.setMaximumPoolSize(4);
+        // 大小可配（shop.secret.pool.max-size / .min-idle）；不配就是 4，空闲连接数跟着上限（Hikari 的默认，即启动后占满）
+        ds.setMaximumPoolSize(maxSize);
+        if (minIdle >= 0) {
+            ds.setMinimumIdle(Math.min(minIdle, maxSize));
+        }
         ds.setPoolName("secret-pool");
         return ds;
     }

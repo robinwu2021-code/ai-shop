@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 720" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="12.5">
+  <title>运营端网关：资源索引的建立与逐请求检查</title>
+  <desc>上半部分是启动时：扫描本进程全部运营端入口及其权限注解，加上各微服务声明的透传路由，合成一张资源索引；索引放进本地内存，并同步一份到运营端权限库的接口资源表。下半部分是每个请求：先用方法和地址在索引里定位，得到它在本地还是在哪个微服务、需要什么权限；再从会话与角色权限缓存取出登录人的权限码集合，在内存里比对；不通过直接返回，通过后本地的进入入口方法，微服务的签名转发。运行中只有三样东西来自数据库缓存：角色到权限码、员工身份、链接的停用开关。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1140" height="720" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">运营端网关：资源索引的建立与逐请求检查</text>
+  <text x="24" y="50" fill="#64748b">蓝 = 新增；白 = 现有；黄 = 数据库；绿 = 本地缓存</text>
+
+  <!-- ===== startup ===== -->
+  <rect x="24" y="66" width="1092" height="250" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="40" y="88" font-weight="600" fill="#334155">一、启动时：建索引</text>
+
+  <rect x="40" y="104" width="250" height="84" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="52" y="124" font-weight="600" fill="#1e293b">本进程的入口</text>
+  <text x="52" y="143" fill="#475569" font-size="11.5">Spring MVC 已登记的全部处理方法</text>
+  <text x="52" y="160" fill="#475569" font-size="11.5">取出 /ops 与 /pay-ops 下的</text>
+  <text x="52" y="177" fill="#475569" font-size="11.5">方法 + 地址模式 + @PreAuthorize</text>
+
+  <rect x="40" y="204" width="250" height="84" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="52" y="224" font-weight="600" fill="#1e293b">微服务的透传路由</text>
+  <text x="52" y="243" fill="#475569" font-size="11.5">各集成用 GatewayRouteProvider 声明</text>
+  <text x="52" y="260" fill="#475569" font-size="11.5">方法 + 地址模式 + 功能点</text>
+  <text x="52" y="277" fill="#475569" font-size="11.5">+ 目标服务与内部地址</text>
+
+  <rect x="340" y="134" width="270" height="124" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="352" y="154" font-weight="600" fill="#1e3a8a">ResourceIndexBuilder</text>
+  <text x="352" y="174" fill="#1e3a8a" font-size="11.5">把权限表达式解析成「码的与或式」</text>
+  <text x="352" y="191" fill="#1e3a8a" font-size="11.5">解析不了的标成「留给方法判」</text>
+  <text x="352" y="208" fill="#1e3a8a" font-size="11.5">没有注解的：公开或只需登录</text>
+  <text x="352" y="225" fill="#1e3a8a" font-size="11.5">检查：同一地址不能既在本地又在微服务</text>
+  <text x="352" y="242" fill="#1e3a8a" font-size="11.5">检查：用到的码都在功能点登记里</text>
+
+  <rect x="670" y="104" width="200" height="84" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="682" y="124" font-weight="600" fill="#14532d">本地内存里的资源索引</text>
+  <text x="682" y="143" fill="#14532d" font-size="11.5">每行：方法、地址模式、位置、</text>
+  <text x="682" y="160" fill="#14532d" font-size="11.5">放行方式、权限与或式</text>
+  <text x="682" y="177" fill="#14532d" font-size="11.5">启动后不变</text>
+
+  <path d="M920,214 v54 a70,10 0 0 0 140,0 v-54 a70,10 0 0 0 -140,0 a70,10 0 0 0 140,0" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="990" y="244" text-anchor="middle" fill="#713f12" font-weight="600">sys_api_resource</text>
+  <text x="990" y="262" text-anchor="middle" fill="#713f12" font-size="11.5">运营端权限库</text>
+  <text x="884" y="300" fill="#713f12" font-size="11.5">用途：角色 × 链接对照、审计、停用开关</text>
+
+  <g stroke="#475569" marker-end="url(#a)" fill="none">
+    <line x1="290" y1="146" x2="338" y2="176"/>
+    <line x1="290" y1="246" x2="338" y2="216"/>
+    <line x1="610" y1="176" x2="668" y2="146"/>
+    <path d="M610,216 L800,216 L800,244 L918,244"/>
+  </g>
+  <text x="700" y="210" fill="#475569" font-size="11.5">同步一份（只增改，不删）</text>
+
+  <!-- ===== per request ===== -->
+  <rect x="24" y="334" width="1092" height="366" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="40" y="356" font-weight="600" fill="#334155">二、每个请求：全部在内存里完成</text>
+
+  <g>
+    <rect x="40" y="372" width="196" height="104" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+    <rect x="256" y="372" width="196" height="104" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+    <rect x="472" y="372" width="212" height="104" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+    <rect x="704" y="372" width="196" height="104" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  </g>
+  <g fill="#1e3a8a">
+    <text x="52" y="392" font-weight="600">① 定位</text>
+    <text x="52" y="411" font-size="11.5">用方法 + 地址查索引</text>
+    <text x="52" y="428" font-size="11.5">查不到 → 404</text>
+    <text x="52" y="445" font-size="11.5">已停用 → 拒绝</text>
+    <text x="52" y="462" font-size="11.5">得到：位置 + 权限式</text>
+    <text x="484" y="392" font-weight="600">③ 提前判权</text>
+    <text x="484" y="411" font-size="11.5">公开：放行</text>
+    <text x="484" y="428" font-size="11.5">只需登录：有登录人即可</text>
+    <text x="484" y="445" font-size="11.5">需功能点：权限式对权限码集合</text>
+    <text x="484" y="462" font-size="11.5">不过 → 401 / 403，到此为止</text>
+    <text x="716" y="392" font-weight="600">④ 按位置分发</text>
+    <text x="716" y="411" font-size="11.5">本地 → Spring MVC 入口方法</text>
+    <text x="716" y="428" font-size="11.5">（方法上的注解照常再判）</text>
+    <text x="716" y="445" font-size="11.5">微服务 → 签名后转发</text>
+  </g>
+  <g fill="#1e293b">
+    <text x="268" y="392" font-weight="600">② 认证</text>
+    <text x="268" y="411" font-size="11.5">OperatorTokenAuthFilter</text>
+    <text x="268" y="428" font-size="11.5">令牌 → 会话 → 员工身份</text>
+    <text x="268" y="445" font-size="11.5">角色 → 权限码集合</text>
+    <text x="268" y="462" font-size="11.5">超级管理员是通配</text>
+  </g>
+  <g stroke="#475569" marker-end="url(#a)">
+    <line x1="236" y1="424" x2="254" y2="424"/><line x1="452" y1="424" x2="470" y2="424"/>
+    <line x1="684" y1="424" x2="702" y2="424"/>
+  </g>
+  <rect x="920" y="372" width="180" height="44" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="932" y="399" fill="#1e293b">本地入口（Controller）</text>
+  <rect x="920" y="432" width="180" height="44" rx="6" fill="#fdf2f8" stroke="#be185d"/>
+  <text x="932" y="459" fill="#831843">微服务 /internal 入口</text>
+  <g stroke="#475569" marker-end="url(#a)">
+    <line x1="900" y1="410" x2="918" y2="396"/><line x1="900" y1="440" x2="918" y2="452"/>
+  </g>
+
+  <!-- caches feeding -->
+  <g fill="#dcfce7" stroke="#16a34a">
+    <rect x="40" y="520" width="196" height="70" rx="6"/>
+    <rect x="256" y="520" width="196" height="70" rx="6"/>
+    <rect x="472" y="520" width="212" height="70" rx="6"/>
+  </g>
+  <g fill="#14532d">
+    <text x="52" y="540" font-weight="600">资源索引 + 停用开关</text>
+    <text x="52" y="559" font-size="11.5">索引：启动时建，不变</text>
+    <text x="52" y="576" font-size="11.5">开关：从库读，60 秒快照</text>
+    <text x="268" y="540" font-weight="600">会话与员工身份（现有）</text>
+    <text x="268" y="559" font-size="11.5">StaffIdentityResolver</text>
+    <text x="268" y="576" font-size="11.5">改账号时本实例立即失效</text>
+    <text x="484" y="540" font-weight="600">角色 → 权限码（现有）</text>
+    <text x="484" y="559" font-size="11.5">RolePermResolver：整表快照</text>
+    <text x="484" y="576" font-size="11.5">60 秒；改权限时本实例立即失效</text>
+  </g>
+  <g stroke="#16a34a" marker-end="url(#a)">
+    <line x1="138" y1="520" x2="138" y2="478"/><line x1="354" y1="520" x2="354" y2="478"/>
+    <line x1="578" y1="520" x2="578" y2="478"/>
+  </g>
+
+  <path d="M40,626 v36 a70,10 0 0 0 140,0 v-36 a70,10 0 0 0 -140,0 a70,10 0 0 0 140,0" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="110" y="656" text-anchor="middle" fill="#713f12" font-size="11.5">sys_api_resource.status</text>
+  <path d="M256,626 v36 a98,10 0 0 0 196,0 v-36 a98,10 0 0 0 -196,0 a98,10 0 0 0 196,0" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="354" y="656" text-anchor="middle" fill="#713f12" font-size="11.5">ops_session、sys_ops_staff</text>
+  <path d="M472,626 v36 a106,10 0 0 0 212,0 v-36 a106,10 0 0 0 -212,0 a106,10 0 0 0 212,0" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="578" y="656" text-anchor="middle" fill="#713f12" font-size="11.5">sys_role_point、sys_function_point</text>
+  <g stroke="#ca8a04" marker-end="url(#a)">
+    <line x1="110" y1="616" x2="110" y2="592"/><line x1="354" y1="616" x2="354" y2="592"/>
+    <line x1="578" y1="616" x2="578" y2="592"/>
+  </g>
+  <text x="716" y="548" fill="#475569" font-size="11.5">正常请求不查库：</text>
+  <text x="716" y="566" fill="#475569" font-size="11.5">三份缓存都命中时，定位与判权</text>
+  <text x="716" y="584" fill="#475569" font-size="11.5">只是内存里的查表与集合比对。</text>
+  <text x="716" y="620" fill="#475569" font-size="11.5">权限式的来源始终是本实例自己的代码，</text>
+  <text x="716" y="638" fill="#475569" font-size="11.5">不从库里读回：滚动发布时两个版本</text>
+  <text x="716" y="656" fill="#475569" font-size="11.5">各用各的索引，不会互相覆盖。</text>
+</svg>

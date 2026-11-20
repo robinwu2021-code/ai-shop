@@ -78,7 +78,7 @@ export function verifiedClasspath(kind, module, resolved) {
   const entries = resolved.trim().split(':');
   assert(entries.every(entry => entry.startsWith('/') && !entry.includes('\n')), 'invalid resolved child classpath');
   const forbidden = kind === 'standalone' ? ['beauty-core', 'beauty-server']
-    : kind === 'server' ? ['shop-app', 'shop-core', 'shop-merchant', 'beauty-web'] : [];
+    : kind === 'server' ? ['shop-app', 'shop-gateway', 'shop-core', 'shop-merchant', 'beauty-web'] : [];
   assert(!entries.some(entry => forbidden.some(name => entry.includes('/' + name + '-')
     || entry.includes('/' + name + '/'))), 'forbidden owner in child classpath');
   return [join(module, 'target/test-classes'), join(module, 'target/classes'), ...entries].join(':');

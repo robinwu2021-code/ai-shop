@@ -159,6 +159,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   "存储管理": { en: "Storage" },
   "测试账号": { en: "Test Accounts" },
   "应用版本": { en: "App Versions" },
+  "接口资源": { en: "API Endpoints" },
   "门店行业": { en: "Store Industries" },
   "行业准入": { en: "Industry Access" },
   "经营授权": { en: "Licenses" },

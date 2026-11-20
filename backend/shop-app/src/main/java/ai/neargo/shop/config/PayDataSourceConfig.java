@@ -78,7 +78,9 @@ public class PayDataSourceConfig {
             @Value("${spring.datasource.url}") String url,
             @Value("${spring.datasource.username}") String username,
             @Value("${spring.datasource.password}") String password,
-            @Value("${spring.datasource.driver-class-name}") String driver) {
+            @Value("${spring.datasource.driver-class-name}") String driver,
+            @Value("${shop.pay.pool.max-size:8}") int maxSize,
+            @Value("${shop.pay.pool.min-idle:-1}") int minIdle) {
         HikariDataSource ds = new HikariDataSource();
         ds.setJdbcUrl(url);
         ds.setUsername(username);
@@ -89,7 +91,11 @@ public class PayDataSourceConfig {
          * 而它与平台池**共享同一个库的连接上限**。给大了是从业务那边抢连接，
          * 症状是高峰期下单变慢，而原因指向一个刚刚才加上的池子。
          */
-        ds.setMaximumPoolSize(8);
+        // 大小可配（shop.pay.pool.max-size / .min-idle）；不配就是 8，空闲连接数跟着上限（Hikari 的默认，即启动后占满）
+        ds.setMaximumPoolSize(maxSize);
+        if (minIdle >= 0) {
+            ds.setMinimumIdle(Math.min(minIdle, maxSize));
+        }
         ds.setPoolName("pay-pool");
         return ds;
     }

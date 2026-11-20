@@ -122,8 +122,10 @@ class AutomationTicketVerifierTest {
     void malformedRejected() {
         rejected("garbage", "AUTOMATION_MALFORMED");
         rejected("v2.a.b", "AUTOMATION_MALFORMED");
-        rejected(ticket(KEYS.getPrivate(), payload("C", "U1", NOW + 60, "nonce-gggggggggggg1")),
+        rejected(ticket(KEYS.getPrivate(), payload("X", "U1", NOW + 60, "nonce-gggggggggggg1")),
                 "AUTOMATION_BAD_REALM");
+        // C 是认识的端（消费者），但白名单按「端:账号」记：只列了 B:U1，C:U1 签不出来
+        rejected(ok("C", "U1", "nonce-gggggggggggg2"), "AUTOMATION_NOT_ALLOWED");
         rejected(ticket(KEYS.getPrivate(), payload("B", "U1", NOW + 60, "short")), "AUTOMATION_MALFORMED");
     }
 
@@ -141,5 +143,39 @@ class AutomationTicketVerifierTest {
                 .hasMessageContaining("SUBJECTS");
         assertThatThrownBy(() -> new AutomationTicketVerifier(true, "bm90LWEta2V5", "B:U1", CLOCK))
                 .hasMessageContaining("Ed25519");
+    }
+
+    @Test
+    @DisplayName("★★★ 钥按端分：运营端的钥签不出店主的票据；没单独配的端用通用的那一把；一端可以认多把")
+    void keysArePerRealm() throws Exception {
+        KeyPair opsKey = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        KeyPair extraB = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        var perRealm = java.util.Map.of(
+                AutomationTicketVerifier.TicketRealm.OPS, pub(opsKey),
+                AutomationTicketVerifier.TicketRealm.B, pub(KEYS) + "," + pub(extraB));
+        var v = new AutomationTicketVerifier(true, pub(KEYS), perRealm, "B:U1, OPS:STF1, C:U1", CLOCK);
+
+        // 各端用自己的钥：通过
+        assertThat(v.verify(ticket(opsKey.getPrivate(), payload("OPS", "STF1", NOW + 30, "nonce-perrealm-00001"))).subject())
+                .isEqualTo("STF1");
+        assertThat(v.verify(ticket(extraB.getPrivate(), payload("B", "U1", NOW + 30, "nonce-perrealm-00002"))).subject())
+                .isEqualTo("U1");
+        // C 没有单独配：用通用的那一把
+        assertThat(v.verify(ticket(KEYS.getPrivate(), payload("C", "U1", NOW + 30, "nonce-perrealm-00003"))).subject())
+                .isEqualTo("U1");
+
+        // 拿别的端的钥签：签名是真的，但不认
+        assertThatThrownBy(() -> v.verify(ticket(opsKey.getPrivate(), payload("B", "U1", NOW + 30, "nonce-perrealm-00004"))))
+                .isInstanceOf(AutomationTicketVerifier.Rejected.class).hasMessage("AUTOMATION_WRONG_KEY_FOR_REALM");
+        assertThatThrownBy(() -> v.verify(ticket(KEYS.getPrivate(), payload("OPS", "STF1", NOW + 30, "nonce-perrealm-00005"))))
+                .isInstanceOf(AutomationTicketVerifier.Rejected.class).hasMessage("AUTOMATION_WRONG_KEY_FOR_REALM");
+        // 被拒的票据不占 nonce：同一个 nonce 换对的钥还能用
+        assertThat(v.verify(ticket(KEYS.getPrivate(), payload("B", "U1", NOW + 30, "nonce-perrealm-00004"))).subject())
+                .isEqualTo("U1");
+
+        // 白名单里有运营端，而运营端一把钥都没有：拒绝启动
+        assertThatThrownBy(() -> new AutomationTicketVerifier(true, "",
+                java.util.Map.of(AutomationTicketVerifier.TicketRealm.B, pub(KEYS)), "B:U1, OPS:STF1", CLOCK))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("OPS");
     }
 }

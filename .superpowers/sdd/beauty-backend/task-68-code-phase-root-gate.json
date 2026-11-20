@@ -89,7 +89,7 @@
       "sha256": "5280a79001b8338e7ca9827bdf7d9b3aba8295405077aaf61018f56b4e57c48a"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
       "sha256": "fb2c388ccccc4325f6a9cd590c4bdc45e5c0d4dd87ced5ac3ab94e7259de851c"
     },
     {

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 /**
  * 库存服务的统一客户端（TDD §2.23）：电商与 ShareHub 两种宿主、两种凭证用同一个类。
@@ -60,8 +61,19 @@ public final class InventoryClient {
     public static InventoryClient create(Supplier<Optional<String>> baseUrl, String appKey, String appSecret,
                                          Duration connectTimeout, Duration readTimeout, int breakerThreshold,
                                          Duration breakerOpenFor, String configPrefix) {
+        return create(baseUrl, appKey, appSecret, connectTimeout, readTimeout, breakerThreshold, breakerOpenFor,
+                configPrefix, List.of());
+    }
+
+    /**
+     * 同上，另在凭证之后挂调用方自己的拦截器（如网关的签名上下文）。拦截器只加头，不改请求。
+     */
+    public static InventoryClient create(Supplier<Optional<String>> baseUrl, String appKey, String appSecret,
+                                         Duration connectTimeout, Duration readTimeout, int breakerThreshold,
+                                         Duration breakerOpenFor, String configPrefix,
+                                         List<ClientHttpRequestInterceptor> interceptors) {
         ServiceClientSpec spec = InventoryReservationClient.spec(baseUrl, appKey, appSecret, connectTimeout,
-                readTimeout, configPrefix);
+                readTimeout, configPrefix).withInterceptors(interceptors == null ? List.of() : interceptors);
         return new InventoryClient(ServiceClients.create(InventoryHostApi.class, spec),
                 InventoryReservationClient.create(spec,
                         new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC())));

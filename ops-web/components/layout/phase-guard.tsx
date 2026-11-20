@@ -4,8 +4,9 @@
 // 集中在 AppShell 的 main 内，避免逐页包裹。可访问则透传 children。
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Lock } from "lucide-react";
-import { routeLockedPhase } from "@/lib/nav";
+import { Lock, ShieldOff } from "lucide-react";
+import { routeDenied, routeLockedPhase } from "@/lib/nav";
+import { useServerMenu } from "@/lib/stores/server-menu";
 import { PHASE_KEY, CURRENT_PHASE } from "@/lib/phase";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -15,6 +16,28 @@ export function PhaseGuard({ children }: { children: React.ReactNode }) {
   const sp = useSearchParams();
   const perms = useAuth((s) => s.perms);
   const { t } = useI18n();
+
+  const serverHrefs = useServerMenu((s) => s.hrefSet);
+  const loaded = useServerMenu((s) => s.loaded);
+
+  // 菜单外的页面直接打开：说清楚是没权限，而不是让页面的接口一个个被网关拒成一片空白
+  if (loaded && routeDenied(pathname, sp.get("tab"), sp.get("view"), serverHrefs, perms)) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+        <div className="mb-4 flex size-14 items-center justify-center rounded-sheet bg-primary/8 text-primary-ink">
+          <ShieldOff className="size-6" />
+        </div>
+        <div className="mb-1 txt-title">{t("phase.deniedTitle")}</div>
+        <p className="max-w-md txt-body text-muted-foreground">{t("phase.deniedDesc")}</p>
+        <Link
+          href="/"
+          className="focus-ring mt-5 rounded-field bg-secondary px-4 py-2 txt-strong text-foreground transition-colors hover:bg-accent"
+        >
+          {t("phase.backHome")}
+        </Link>
+      </div>
+    );
+  }
 
   const locked = routeLockedPhase(pathname, sp.get("tab"), sp.get("view"), perms);
   if (!locked) return <>{children}</>;

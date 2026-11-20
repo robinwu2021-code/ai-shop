@@ -2399,6 +2399,7 @@ CREATE TABLE IF NOT EXISTS sys_function_point
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     ui_kind VARCHAR(16) NOT NULL DEFAULT 'MENU',
     gated_by VARCHAR(64) NULL,
+    module_code VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_point UNIQUE (point_code)
 );
@@ -13137,6 +13138,39 @@ CREATE TABLE IF NOT EXISTS usr_account_change_log
     deleted TINYINT NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS sys_api_resource
+(
+    id          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    end_code    VARCHAR(16)  NOT NULL,
+    method      VARCHAR(8)   NOT NULL,
+    pattern     VARCHAR(255) NOT NULL,
+    source      VARCHAR(16)  NOT NULL DEFAULT 'SCAN',
+    location    VARCHAR(64)  NOT NULL DEFAULT 'LOCAL',
+    target_path VARCHAR(255) NULL,
+    access      VARCHAR(16)  NOT NULL,
+    rule_text   VARCHAR(1000) NULL,
+    handler     VARCHAR(500) NULL,
+    status      VARCHAR(16)  NOT NULL DEFAULT 'ENABLED',
+    stale       TINYINT      NOT NULL DEFAULT 0,
+    app_version VARCHAR(64)  NULL,
+    updated_by  VARCHAR(64)  NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    adjusted_access VARCHAR(16)   NULL,
+    adjusted_rule   VARCHAR(1000) NULL,
+    adjusted_by     VARCHAR(64)   NULL,
+    adjusted_at     DATETIME      NULL,
+    CONSTRAINT uk_api_resource UNIQUE (end_code, method, pattern)
+);
+
+CREATE TABLE IF NOT EXISTS sys_api_resource_point
+(
+    id          BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    resource_id BIGINT      NOT NULL,
+    perm_code   VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_api_resource_point UNIQUE (resource_id, perm_code)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -20534,6 +20568,27 @@ WHERE NOT EXISTS (
     WHERE channel_type = 'SMS' AND provider = 'MITAKE'
       AND scope = 'PLATFORM' AND owner_no = ''
 );
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS_IAM', '接口资源', '系统维护', '/system?tab=apiResource', 'system:param:read', 'system:param:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', NULL, 260, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'TECH_OPS', 'OPS_SYSTEM__TAB_APIRESOURCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='OPS_SYSTEM__TAB_APIRESOURCE');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS_IAM', 'system:api-resource:update', '页面内操作', NULL, 'system:api-resource:update', 'system:api-resource:update', 'IMPLEMENTED', 1, NULL, 'ACTION', NULL, 923, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__SYSTEM_API_RESOURCE_UPDATE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_API_RESOURCE_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_API_RESOURCE_UPDATE');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'ACT__MERCHANT_MERCHANT_READ','OPS_MERCHANT','merchant:merchant:read','仅后端',NULL,NULL,'merchant:merchant:read','IMPLEMENTED',0,NULL,'ACTION',931,NOW(),NOW()
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='ACT__MERCHANT_MERCHANT_READ');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__MERCHANT_MERCHANT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__MERCHANT_MERCHANT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'GOODS_OPS','ACT__MERCHANT_MERCHANT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='GOODS_OPS' AND point_code='ACT__MERCHANT_MERCHANT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','ACT__SYSTEM_PARAM_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='ACT__SYSTEM_PARAM_READ' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -762,7 +762,7 @@ const m2cOwners = Object.freeze([
   ['backend/shop-base', 'main', 'ai.neargo.shop.spi.marketing.CounterCampaignContract']
 ]);
 const m2cB2Sources = Object.freeze([
-  'backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java',
+  'backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java',
   'backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java',
   'backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java',
   'backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java',

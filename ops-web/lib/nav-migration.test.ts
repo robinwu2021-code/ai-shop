@@ -9,6 +9,10 @@ const v658 = read('V658__ops_menu_matrix_consolidation.sql');
 const v668 = read('V668__ops_platform_settings_navigation.sql');
 const v669 = read('V669__ops_platform_mall_navigation.sql');
 const v670 = read('V670__ops_platform_purchase_reporting.sql');
+const v680 = read('V680__api_resource_perm_and_menu.sql');
+/** V680 用 INSERT…SELECT 加了一个菜单点：[点码, 功能码, 名称, 分组, 排序]。 */
+const v680Menu = v680.match(/SELECT '(OPS_[^']+)', '([^']+)', '([^']+)', '([^']+)',.*'MENU', NULL, (\d+),/)!;
+const API_RESOURCE_HREF = '/system?tab=apiResource';
 const REPORTING_HREFS = new Set(['/mall?tab=global-orders', '/mall?tab=global-claims', '/mall?tab=cash-summary', '/mall?tab=cash-details']);
 const NO_GRANT_OR_GATE = /\b(?:perm_code|ui_perm_code|backend_status|ui_ready|gated_by)\s*=/i;
 
@@ -48,6 +52,7 @@ it('V658 leaves every role grant, permission and gate in place except merging th
 
 it('the database menu after all navigation migrations matches nav.ts point by point', () => {
   const moves = menuMoves(v657, v658, v668, v669, v670);
+  moves.set(v680Menu[1], [v680Menu[2], v680Menu[3]]);
   for (const name of ['V665__ops_admission_entry_consolidation.sql','V667__ops_unified_admission_management.sql']) {
     const sql=read(name);
     for (const statement of sql.split(';')) {
@@ -95,6 +100,7 @@ it('V668 settings group and sort match every settings leaf', () => {
     const match = line.match(/group_name='([^']+)',sort=(\d+),.*WHERE point_code='([^']+)'/);
     if (match) details.set(match[3], { group: match[1], sort: Number(match[2]) });
   }
+  details.set(v680Menu[1], { group: v680Menu[4], sort: Number(v680Menu[5]) });
   for (const [i, leaf] of NAV.find(s => s.key === 'iam')!.children!.entries()) {
     const point = POINT_CODES[`OPS_IAM\t${leaf.href}`] ?? POINT_CODES[leaf.href];
     expect(details.get(point), leaf.href).toEqual({ group: leaf.group, sort: (i + 1) * 10 });
@@ -142,7 +148,7 @@ it('V670 adds exactly four reporting menus and grants only SUPER_ADMIN without a
 
 it('retains every frozen point identity from the original151 leaves', () => {
   expect(Object.keys(frozenBefore)).toHaveLength(151);
-  expect(Object.keys(POINT_CODES)).toHaveLength(155);
+  expect(Object.keys(POINT_CODES)).toHaveLength(156);
   for (const [href, code] of Object.entries(frozenBefore)) expect(POINT_CODES[href], href).toBe(code);
-  expect(Object.keys(POINT_CODES).filter(href => !(href in frozenBefore)).sort()).toEqual([...REPORTING_HREFS].sort());
+  expect(Object.keys(POINT_CODES).filter(href => !(href in frozenBefore)).sort()).toEqual([...REPORTING_HREFS, API_RESOURCE_HREF].sort());
 });

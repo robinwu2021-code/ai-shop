@@ -62,7 +62,7 @@ public class BizPayRefundController {
                 req.amountMinor(), req.reason())));
     }
 
-    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_REFUND + "') or @perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.PAY_REFUND + "','" + BizPerms.PAY_STATEMENT + "')")
     @GetMapping
     public List<RefundView> recent() {
         Long storeId = ctx.storeId();

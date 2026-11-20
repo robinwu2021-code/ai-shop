@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1224 个接口**：后端已实现 971（79%）· 前端在调 1051
+**合计 1228 个接口**：后端已实现 975（79%）· 前端在调 1055
 
 ---
 
@@ -1167,7 +1167,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **609** 个接口 ｜ 后端已实现 **464**（76%）｜ 前端在调 **438**
+共 **613** 个接口 ｜ 后端已实现 **468**（76%）｜ 前端在调 **442**
 
 ### aftersale（5）
 
@@ -1863,10 +1863,14 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（40）
+### system（44）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/api-resources` | 分页列表 | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/api-resources/{id}/rule` | 在库里调整一条本系统入口的权限规则，返回改后的那一行 | — | `ApiResource` | — | ✅ | ✅ |
+| POST | `/ops/api-resources/{id}/status` | 停用或恢复一条链接，返回改后的那一行 | — | `ApiResource` | — | ✅ | ✅ |
+| GET | `/ops/api-resources/summary` | 各类条数，以及当前部署的提前判权档位与转发开关 */ | — | `ApiResourceSummary` | — | ✅ | ✅ |
 | GET | `/ops/app-versions` | 每个平台一行，没配过的也列出来（revision=0） */ | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/app-versions/{appCode}/{platform}` | 改一行 | — | `AppVersionPolicy` | — | ✅ | ✅ |
 | GET | `/ops/appearance` | getAppearance | — | `AppearanceConfig` | — | ✅ | ✅ |

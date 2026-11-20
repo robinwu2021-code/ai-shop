@@ -145,6 +145,10 @@ class OpsPermConfigFlowTest {
                 "SELECT point_code FROM sys_function_point WHERE gated_by IS NOT NULL AND gated_by <> ''",
                 String.class));
 
+        java.util.Set<String> absentModule = new java.util.HashSet<>(jdbc.queryForList(
+                "SELECT point_code FROM sys_function_point WHERE module_code IN ('commerce','print','job','inventory')"
+                        + " AND backend_status = 'IMPLEMENTED'", String.class));
+
         int notImpl = 0;
         for (JsonNode f : json.readTree(body).get("data")) {
             for (JsonNode p : f.get("points")) {
@@ -152,6 +156,10 @@ class OpsPermConfigFlowTest {
                     continue;
                 }
                 if (gated.contains(p.get("pointCode").asString())) {
+                    continue;
+                }
+                // 第三种来源（TDD-网关层与统一权限 §2.6）：实现了、但这套部署没装它所在的模块。permCode 同样是真的
+                if (absentModule.contains(p.get("pointCode").asString())) {
                     continue;
                 }
                 notImpl++;

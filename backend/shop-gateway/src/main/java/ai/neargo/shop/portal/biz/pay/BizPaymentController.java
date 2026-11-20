@@ -1,0 +1,269 @@
+package ai.neargo.shop.portal.biz.pay;
+
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
+import ai.neargo.shop.pay.client.PayBizInternalApi;
+import ai.neargo.shop.pay.client.PayBizInternalApi.StoreMethods;
+import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
+import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
+import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
+import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
+import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
+import ai.neargo.shop.pay.openapp.service.AppGrantService.GrantView;
+import ai.neargo.shop.payclient.BizPaymentAppService;
+import ai.neargo.shop.payclient.PaymentReadRouter;
+import java.util.List;
+import java.util.Set;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 商家端支付（开发计划 M5a.5）：b-app 的收款、退款、流水、收款码、授权第三方只调这里 —— 商家会话 + {@code BizPerms.PAY_*}
+ * （与其它商家端同一套账号体系），门店只取 {@link BizContext} 的当前门店（请求头 {@code X-Store-No}，已按授权校验过；F02），
+ * 再经 {@link BizPaymentAppService} 调支付。取代直连支付的 {@code /biz/pay}（过渡一个版本后删，M5a.6）。权限码与原端点逐个对应。
+ */
+@Profile("api")
+@RestController
+public class BizPaymentController {
+
+    private final BizPaymentAppService app;
+    private final PaymentReadRouter reads;
+
+    public BizPaymentController(BizPaymentAppService app, PaymentReadRouter reads) {
+        this.app = app;
+        this.reads = reads;
+    }
+
+    public record GrantReq(String appNo, Set<String> actions) {
+    }
+
+    /** @param bizNo 业务单号（可空）：餐饮结算单、美业工单等，供业务单收款汇总（TDD-业务单收款汇总 AC8） */
+    public record CollectReq(Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
+    }
+
+    public record VoidLinkReq(String reason) {
+    }
+
+    /** @param enabledProductCodes 要开启的产品码（门店至少保留一种）；expectedVersion 取读到的 version */
+    public record StoreMethodReq(@NotBlank @Size(max = 48) String requestNo, @NotNull @Min(0) Long expectedVersion,
+                                 @NotNull @Size(min = 1, max = 64) List<@NotBlank String> enabledProductCodes) {
+    }
+
+    public record MethodChoiceReq(@NotBlank @Size(max = 32) String paymentMethodCode, @NotNull Boolean test) {}
+
+    public record MethodPreferencesReq(@NotBlank @Size(max = 48) String requestNo, @NotNull @Min(0) Long expectedVersion,
+            @NotBlank @Size(min = 64, max = 64) String eligibilityRevision, @NotBlank @Size(max = 16) String mode,
+            @NotNull @Size(max = 64) List<@NotNull @Valid MethodChoiceReq> enabledMethods) {}
+
+    public record QrReq(String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
+    }
+
+    /** @param outRefundNo 可不传（每次点击各算一笔）；传了就按它幂等 —— 端上防连点时带同一个 */
+    public record RefundReq(String payOrderNo, Long amountMinor, String reason, String outRefundNo) {
+    }
+
+    // ---- 授权第三方代本店操作（F44） ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_APP_GRANT + "')")
+    @GetMapping("/biz/payment/app-grant")
+    public List<GrantView> grants() {
+        return app.grants(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_APP_GRANT + "')")
+    @PostMapping("/biz/payment/app-grant")
+    public GrantView grant(@RequestBody GrantReq req) {
+        return app.grant(BizContext.requireStoreNo(), req.appNo(), req.actions());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_APP_GRANT + "')")
+    @DeleteMapping("/biz/payment/app-grant/{id}")
+    public void revokeGrant(@PathVariable Long id) {
+        app.revokeGrant(BizContext.requireStoreNo(), id);
+    }
+
+    // ---- 代客收款（F42）：出一张动态收款码（收银台链接，顾客扫了付） ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/collection")
+    public CollectView collect(@RequestBody CollectReq req) {
+        return app.collect(BizContext.requireStoreNo(), req.amountMinor(), req.subject(), req.expireMinutes(),
+                req.bizNo());
+    }
+
+    // ---- 本店静态收款码（F45） ----
+
+    /** 门店付款方式（TDD-门店付款方式-App设置）：只有主体属主可读写，门店取当前门店 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @GetMapping("/biz/payment/store-method")
+    public StoreMethods storeMethods() {
+        return app.storeMethods(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @PutMapping("/biz/payment/store-method")
+    public StoreMethods saveStoreMethods(@Valid @RequestBody StoreMethodReq req) {
+        return app.saveStoreMethods(BizContext.requireStoreNo(), req.requestNo(), req.expectedVersion(), req.enabledProductCodes());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @GetMapping("/biz/payment/store-method-preference")
+    public PayBizInternalApi.MethodPreferences methodPreferences() {
+        return app.methodPreferences(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STORE_METHOD + "')")
+    @PutMapping("/biz/payment/store-method-preference")
+    public PayBizInternalApi.MethodPreferences saveMethodPreferences(@Valid @RequestBody MethodPreferencesReq req) {
+        var choices = req.enabledMethods().stream()
+                .map(choice -> new PayBizInternalApi.MethodChoice(choice.paymentMethodCode(), choice.test())).toList();
+        return app.saveMethodPreferences(BizContext.requireStoreNo(), req.requestNo(), req.expectedVersion(),
+                req.eligibilityRevision(), req.mode(), choices);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_QR + "')")
+    @GetMapping("/biz/payment/qr-code")
+    public List<QrView> qrCodes() {
+        return app.qrCodes(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_QR + "')")
+    @PostMapping("/biz/payment/qr-code")
+    public QrView createQrCode(@RequestBody QrReq req) {
+        return app.createQrCode(BizContext.requireStoreNo(), req.kind(), req.tableRef(), req.singleLimitMinor(),
+                req.dailyLimitMinor());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_QR + "')")
+    @PutMapping("/biz/payment/qr-code/{qrCode}/disabled")
+    public void disableQrCode(@PathVariable String qrCode) {
+        app.disableQrCode(BizContext.requireStoreNo(), qrCode);
+    }
+
+    // ---- 原路退款（F40）：与开放 API 同一条退款单流程；命中复核时状态是「待平台复核」 ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_REFUND + "')")
+    @PostMapping("/biz/payment/refund")
+    public RefundView requestRefund(@RequestBody RefundReq req) {
+        return app.requestRefund(BizContext.requireStoreNo(), req.payOrderNo(), req.amountMinor(), req.reason(),
+                req.outRefundNo());
+    }
+
+    @PreAuthorize("@perm.canAnyBiz('" + BizPerms.PAY_REFUND + "','" + BizPerms.PAY_STATEMENT + "')")
+    @GetMapping("/biz/payment/refund")
+    public List<RefundView> refunds() {
+        return app.refunds(BizContext.requireStoreNo());
+    }
+
+    // ---- 本店收款日流水（F43）。day 不传 = 门店市场的「今天」 ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @GetMapping("/biz/payment/statement")
+    public DailyStatement statement(@RequestParam(required = false) String day) {
+        return app.statement(BizContext.requireStoreNo(), day);
+    }
+
+    // ---- 「收款」Tab：本店支付订单（TDD-B端收款订单与商城接口对齐 P1）。日期是门店市场的 yyyy-MM-dd，不传 = 今天 ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders")
+    public PaymentPage paymentOrders(@RequestParam(required = false) String from,
+                                     @RequestParam(required = false) String to,
+                                     @RequestParam(required = false) List<String> source,
+                                     @RequestParam(required = false) List<String> channel,
+                                     @RequestParam(required = false) List<String> status,
+                                     @RequestParam(required = false) Long amountMin,
+                                     @RequestParam(required = false) Long amountMax,
+                                     @RequestParam(required = false) String q,
+                                     @RequestParam(required = false) String cursor,
+                                     @RequestParam(required = false) Integer size,
+                                     @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.orders(environment,
+                new PaymentQuery(from, to, source, channel, status, amountMin, amountMax, q, cursor, size));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @GetMapping("/biz/payment/orders/summary")
+    public Summary paymentSummary(@RequestParam(required = false) String from,
+                                  @RequestParam(required = false) String to,
+                                  @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.summary(environment, from, to);
+    }
+
+    /** 顾客说「我付了」：传 tradeNoSuffix（≥6 位）按交易号找；否则按 amountMinor + within（10m / 1h / today） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/lookup")
+    public Lookup paymentLookup(@RequestParam(required = false) Long amountMinor,
+                                @RequestParam(required = false) String within,
+                                @RequestParam(required = false) String tradeNoSuffix,
+                                @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.lookup(environment, amountMinor, within, tradeNoSuffix);
+    }
+
+    /** 本店是否已开通收款（有生效的收款商户绑定）及已开通的渠道：「收款」Tab 据此决定给列表还是给开通入口 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/collect-status")
+    public CollectStatus collectStatus(@RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.status(environment);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/{payOrderNo}")
+    public Detail paymentDetail(@PathVariable String payOrderNo,
+            @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.detail(environment, payOrderNo);
+    }
+
+    /** 待确认的单「立即查询结果」：向渠道查单补账，返回查后的详情 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @PostMapping("/biz/payment/orders/{payOrderNo}/query")
+    public Detail paymentRefresh(@PathVariable String payOrderNo) {
+        return app.paymentRefresh(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    // ---- 门店收银台：付款链接记录、再次分享、作废（TDD-门店收银台与付款链接 L3–L5） ----
+
+    /** 本店付款链接，按创建时间倒序；status = PENDING / PAID / EXPIRED / VOIDED，不传 = 全部 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/links")
+    public LinkPage paymentLinks(@RequestParam(required = false) String status,
+                                 @RequestParam(required = false) String cursor,
+                                 @RequestParam(required = false) Integer size) {
+        return app.paymentLinks(BizContext.requireStoreNo(), status, cursor, size);
+    }
+
+    /** 再次分享：同一张支付单换发新令牌，旧链接作废；只允许待付款 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/reissue")
+    public CollectView reissueLink(@PathVariable String payOrderNo) {
+        return app.reissueLink(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    /** 作废：先查单再关单；关前查到已付返回 status=PAID（不作废，要退走退款） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/void")
+    public LinkRow voidLink(@PathVariable String payOrderNo, @RequestBody(required = false) VoidLinkReq req) {
+        return app.voidLink(BizContext.requireStoreNo(), payOrderNo, req == null ? null : req.reason());
+    }
+}

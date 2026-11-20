@@ -13,7 +13,8 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
-import ai.neargo.shop.config.SecurityConfig;
+import ai.neargo.shop.config.PayPortalSecurityConfig;
+import ai.neargo.shop.gateway.GatewaySecurityConfiguration;
 import ai.neargo.shop.pay.api.guard.core.EntryGuard;
 import ai.neargo.shop.pay.api.guard.core.GuardFilter;
 import ai.neargo.shop.pay.api.guard.core.GuardFilters;
@@ -113,7 +114,8 @@ class PayBizOnboardingHttpTest {
                     "http://127.0.0.1:" + upstream.getAddress().getPort())));
     context.register(
         Web.class,
-        SecurityConfig.class,
+        GatewaySecurityConfiguration.class,
+        PayPortalSecurityConfig.class,
         PayBizOnboardingConfiguration.class,
         BizPaySessionController.class,
         BizPayOnboardingController.class,

@@ -57,6 +57,8 @@ export const en: Messages = {
     p3: "Phase 3 (P2)",
     suffix: "phase feature",
     lockedTitle: "Not available yet",
+    deniedTitle: "No access to this page",
+    deniedDesc: "Your role does not include this page. Ask an administrator to grant it under Roles & permissions.",
     lockedDesc: "“{feature}” ships in {phase}; the system is currently on {current}.",
     backHome: "Back to dashboard",
   },

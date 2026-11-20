@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 760" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="13">
+  <title>ai-shop 五层架构与网关层</title>
+  <desc>自上而下：三个终端经 nginx 进入网关层的三个出口模块（C 端 /mp、B 端 /biz、运营端 /ops），出口模块内完成认证、鉴权与功能点登记聚合；其下依次是业务层（餐饮、服务业）、基础业务层（零售）、基础能力层；最右一列是外部依赖服务（支付、库存、工单/工作流、appops），只能经契约与桥接访问。依赖只允许向下，外部服务不反向依赖 ai-shop。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1120" height="760" fill="#ffffff"/>
+  <text x="24" y="32" font-size="16" font-weight="600" fill="#0f172a">ai-shop 五层架构 · 网关层是三个出口模块</text>
+  <text x="24" y="52" fill="#64748b">箭头 = 允许的依赖方向（只向下）；虚线框 = 仓库里目前没有对应物；右列 = 进程外服务</text>
+
+  <!-- terminals -->
+  <g fill="#f1f5f9" stroke="#94a3b8">
+    <rect x="60" y="72" width="200" height="40" rx="6"/>
+    <rect x="300" y="72" width="200" height="40" rx="6"/>
+    <rect x="540" y="72" width="200" height="40" rx="6"/>
+  </g>
+  <g fill="#334155" text-anchor="middle">
+    <text x="160" y="97">C 端 c-app</text>
+    <text x="400" y="97">B 端 b-app / 商户 App</text>
+    <text x="640" y="97">运营端 ops-web</text>
+  </g>
+  <rect x="60" y="130" width="680" height="28" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="400" y="149" text-anchor="middle" fill="#334155">nginx：唯一对外入口 · 按前缀转发 · /internal 仅本机 · /ops 限内网</text>
+  <g stroke="#475569" marker-end="url(#a)">
+    <line x1="160" y1="112" x2="160" y2="128"/><line x1="400" y1="112" x2="400" y2="128"/><line x1="640" y1="112" x2="640" y2="128"/>
+    <line x1="160" y1="158" x2="160" y2="200"/><line x1="400" y1="158" x2="400" y2="200"/><line x1="640" y1="158" x2="640" y2="200"/>
+  </g>
+
+  <!-- L1 gateway -->
+  <rect x="24" y="176" width="756" height="150" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="40" y="196" font-weight="600" fill="#1e3a8a">① 网关层</text>
+  <g fill="#dbeafe" stroke="#3b82f6">
+    <rect x="60" y="204" width="200" height="62" rx="6"/>
+    <rect x="300" y="204" width="200" height="62" rx="6"/>
+    <rect x="540" y="204" width="200" height="62" rx="6"/>
+  </g>
+  <g fill="#1e3a8a" text-anchor="middle">
+    <text x="160" y="226" font-weight="600">出口 · C 端  /mp</text>
+    <text x="160" y="246" font-size="12">consumerChain · ctk_</text>
+    <text x="400" y="226" font-weight="600">出口 · B 端  /biz</text>
+    <text x="400" y="246" font-size="12">merchantChain · btk_ · 门店上下文</text>
+    <text x="640" y="226" font-weight="600">出口 · 运营端  /ops</text>
+    <text x="640" y="246" font-size="12">operatorChain · otk_ · 菜单</text>
+  </g>
+  <rect x="60" y="276" width="680" height="38" rx="6" fill="#ffffff" stroke="#3b82f6"/>
+  <text x="400" y="300" text-anchor="middle" fill="#1e3a8a">出口公共：Spring Security 认证 · 统一鉴权 PermChecker · 功能点登记聚合 · 下游身份签名</text>
+
+  <!-- L2 business -->
+  <rect x="24" y="346" width="756" height="84" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="40" y="366" font-weight="600" fill="#78350f">② 业务层（行业）</text>
+  <g fill="#fde68a" stroke="#d97706">
+    <rect x="60" y="376" width="320" height="42" rx="6"/>
+    <rect x="420" y="376" width="320" height="42" rx="6"/>
+  </g>
+  <g fill="#78350f" text-anchor="middle">
+    <text x="220" y="402">餐饮  shop-industry-food</text>
+    <text x="580" y="402">服务业  shop-industry-beauty</text>
+  </g>
+
+  <!-- L3 base business -->
+  <rect x="24" y="450" width="756" height="84" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="40" y="470" font-weight="600" fill="#14532d">③ 基础业务层（零售）</text>
+  <g fill="#bbf7d0" stroke="#16a34a">
+    <rect x="60" y="480" width="210" height="42" rx="6"/>
+    <rect x="290" y="480" width="210" height="42" rx="6"/>
+    <rect x="520" y="480" width="220" height="42" rx="6"/>
+  </g>
+  <g fill="#14532d" text-anchor="middle">
+    <text x="165" y="506">shop-core 商品交易会员营销</text>
+    <text x="395" y="506">shop-merchant 主体门店角色</text>
+    <text x="630" y="506">商城与桥接 commerce · *bridge</text>
+  </g>
+
+  <!-- L4 capability -->
+  <rect x="24" y="554" width="756" height="84" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="40" y="574" font-weight="600" fill="#1e293b">④ 基础能力层</text>
+  <g fill="#e2e8f0" stroke="#64748b">
+    <rect x="60" y="584" width="210" height="42" rx="6"/>
+    <rect x="290" y="584" width="210" height="42" rx="6"/>
+    <rect x="520" y="584" width="220" height="42" rx="6"/>
+  </g>
+  <g fill="#1e293b" text-anchor="middle">
+    <text x="165" y="610">鉴权与会话 base-auth · auth-store</text>
+    <text x="395" y="610">公共与持久化 base · store-mybatis</text>
+    <text x="630" y="610">通知 打印 物流 调度 密钥 通道</text>
+  </g>
+
+  <g stroke="#475569" marker-end="url(#a)">
+    <line x1="400" y1="326" x2="400" y2="344"/>
+    <line x1="400" y1="430" x2="400" y2="448"/>
+    <line x1="400" y1="534" x2="400" y2="552"/>
+  </g>
+
+  <!-- L5 external -->
+  <rect x="840" y="176" width="256" height="462" rx="8" fill="#fdf2f8" stroke="#be185d"/>
+  <text x="856" y="196" font-weight="600" fill="#831843">⑤ 外部依赖服务</text>
+  <g fill="#fce7f3" stroke="#be185d">
+    <rect x="860" y="212" width="216" height="58" rx="6"/>
+    <rect x="860" y="286" width="216" height="58" rx="6"/>
+  </g>
+  <g fill="#ffffff" stroke="#be185d" stroke-dasharray="5 4">
+    <rect x="860" y="360" width="216" height="58" rx="6"/>
+    <rect x="860" y="434" width="216" height="58" rx="6"/>
+  </g>
+  <g fill="#831843">
+    <text x="872" y="236" font-weight="600">支付</text>
+    <text x="872" y="256" font-size="12">pay-svc / near-pay</text>
+    <text x="872" y="310" font-weight="600">库存</text>
+    <text x="872" y="330" font-size="12">inventory-svc</text>
+    <text x="872" y="384" font-weight="600">工单 / 工作流</text>
+    <text x="872" y="404" font-size="12">仓库内暂无对应物</text>
+    <text x="872" y="458" font-weight="600">appops</text>
+    <text x="872" y="478" font-size="12">仓库内暂无对应物</text>
+  </g>
+  <text x="860" y="524" font-size="12" fill="#831843">只经「契约 + 桥接」访问：</text>
+  <text x="860" y="544" font-size="12" fill="#831843">契约接口放 spi / *-api，</text>
+  <text x="860" y="564" font-size="12" fill="#831843">远程实现放 bridge / channel。</text>
+  <text x="860" y="592" font-size="12" fill="#831843">外部服务不反向依赖 ai-shop，</text>
+  <text x="860" y="612" font-size="12" fill="#831843">也不自己认终端用户。</text>
+
+  <g stroke="#475569" marker-end="url(#a)">
+    <path d="M780,400 L838,400" fill="none"/>
+    <path d="M780,500 L838,500" fill="none"/>
+  </g>
+  <text x="786" y="392" font-size="11" fill="#475569">契约</text>
+  <text x="786" y="492" font-size="11" fill="#475569">契约</text>
+
+  <!-- footer rules -->
+  <text x="24" y="672" fill="#334155" font-weight="600">三条贯穿规则</text>
+  <text x="24" y="694" fill="#475569">1. 终端的 HTTP 入口只出现在网关层；认证与鉴权在这里做一次，下游不再认终端用户。</text>
+  <text x="24" y="714" fill="#475569">2. 每个被装配的模块登记自己的功能点；没装配的模块，它的菜单与权限点不存在。</text>
+  <text x="24" y="734" fill="#475569">3. 网关层调外部服务时，带进程凭据与签名上下文（操作人、主体与门店、已判定的下游功能点）。</text>
+</svg>

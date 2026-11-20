@@ -11,7 +11,7 @@ test('native inventory SQL includes tombstones and counts orphan history through
     const query=input => execFileSync('docker',['exec','-i',name,'mysql','-uroot','--batch','--raw','--skip-column-names',
         'sourceinventory'],{input,encoding:'utf8',stdio:['pipe','pipe','pipe']}).trim();
     const schema=readFileSync(new URL('../../backend/shop-app/src/test/resources/schema-test.sql',import.meta.url),'utf8');
-    const mapper=readFileSync(new URL('../../backend/shop-app/src/main/java/ai/neargo/shop/paybridge/mapper/LegacyCouponFenceMapper.java',
+    const mapper=readFileSync(new URL('../../backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/mapper/LegacyCouponFenceMapper.java',
         import.meta.url),'utf8');
     docker(['run','--detach','--name',name,'--network','none','--tmpfs','/var/lib/mysql',
         '--env','MYSQL_ALLOW_EMPTY_PASSWORD=yes','--env','MYSQL_DATABASE=sourceinventory','mysql:9.7.2']);

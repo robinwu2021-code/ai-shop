@@ -37,12 +37,8 @@ final class TokenStoreSelection {
 
     /** 这一端用哪种存储。按端的值优先，没配就用全局值。 */
     static String kindOf(Environment env, Realm realm) {
-        String per = env.getProperty(BY_REALM + realm.name().toLowerCase());
-        if (per != null && !per.isBlank()) {
-            return per.trim();
-        }
-        // 与 TokenStoreConfig 的 matchIfMissing=true 保持一致：默认 memory
-        return env.getProperty(GLOBAL, "memory").trim();
+        // 读法收在网关一处（SessionStoreKinds）：隔离校验与这里用同一份判断；默认仍是 memory
+        return ai.neargo.shop.gateway.core.end.SessionStoreKinds.kindOf(env, realm);
     }
 
     static Map<Realm, String> all(Environment env) {

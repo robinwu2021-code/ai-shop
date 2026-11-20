@@ -94,4 +94,36 @@ class ManagementAccountRoutePolicyTest {
         assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, member.lane());
         assertEquals("S1", member.pathStore());
     }
+
+    @Test
+    void storedValueGovernanceUsesAccountLaneAndUnlistedOnesStayDenied() {
+        // 2026-11-19 对新模型门店开放储值治理：逐条登记，进账户通道（不要求选门店）
+        for (String endpoint : List.of(
+                "GET /biz/management/brands/B1/stored-value/activities",
+                "POST /biz/management/brands/B1/stored-value/activities",
+                "PUT /biz/management/brands/B1/stored-value/activities/A1/draft",
+                "POST /biz/management/brands/B1/stored-value/issuer/activation",
+                "POST /biz/management/entities/E1/stored-value/financial-permissions",
+                "GET /biz/management/stored-value/settlement-bills",
+                "POST /biz/management/stored-value/settlement-bills/BILL1/payments",
+                "POST /biz/management/stored-value/settlement-payments/P1/voids",
+                "GET /biz/management/stores/S1/stored-value/issuer",
+                "POST /biz/management/stores/S1/stored-value/financial-brand-changes")) {
+            String[] parts = endpoint.split(" ");
+            var route = policy.match(parts[0], parts[1]);
+            assertEquals(CommerceRoutePolicy.Lane.ACCOUNT, route.lane(), endpoint);
+            assertNull(route.pathStore(), endpoint);
+        }
+        // 没有列出来的储值管理入口、以及列出来的入口换一个方法，仍然关闭
+        for (String endpoint : List.of(
+                "POST /biz/management/stored-value/migration-manifests",
+                "POST /biz/management/stored-value/migration-manifests/M1/map",
+                "GET /biz/management/stored-value/issuers/I1",
+                "DELETE /biz/management/stored-value/settlement-bills/BILL1",
+                "GET /biz/management/brands/B1/stored-value/unknown",
+                "PUT /biz/management/stored-value/settlement-bills")) {
+            String[] parts = endpoint.split(" ");
+            assertEquals(CommerceRoutePolicy.Lane.DENY, policy.match(parts[0], parts[1]).lane(), endpoint);
+        }
+    }
 }

@@ -50,6 +50,8 @@ export const zhTW: Messages = {
     p3: "P2 增強",
     suffix: "階段功能",
     lockedTitle: "功能尚未開放",
+    deniedTitle: "沒有這個頁面的權限",
+    deniedDesc: "你的角色沒有開放這一頁。需要的話請聯絡管理員在「角色權限」裡授予。",
     lockedDesc: "「{feature}」將於 {phase} 開放，系統當前處於 {current}。",
     backHome: "返回工作臺",
   },

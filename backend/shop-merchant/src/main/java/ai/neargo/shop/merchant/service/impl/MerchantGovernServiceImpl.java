@@ -176,19 +176,25 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
          * ★ **接数据域**（批②）：配了 merchant 域的运营只看得到那一家。
          * 没配的会话是 ALL（空 = 不限定），超管恒 ALL —— 存量账号零变化。
          */
-        List<MchEntity> rows = merchantMapper.selectList(w);
-        List<MerchantProfileVO> all = rows.stream()
-                .map(this::toVO)
-                // 社区筛在内存里做：一家店服务多个社区，SQL 侧要 join 一张多对多表，
-                // 而商家总数是几百这个量级 —— 为此写一条 join 不划算
-                .filter(v -> communityNo == null || communityNo.isBlank()
-                        || v.communityNos().contains(communityNo))
-                .toList();
-        // 社区筛在内存里做，分页也只能跟着在内存里切 —— 否则页码会跳
-        long from = Math.max(0, (page - 1) * size);
-        List<MerchantProfileVO> pageRows = from >= all.size() ? List.of()
-                : all.subList((int) from, (int) Math.min(all.size(), from + size));
-        return ai.neargo.shop.common.PageData.of(pageRows, all.size(), page, size);
+        /*
+         * 社区筛先换成商家号集合再交给 SQL，分页也在 SQL 里做，**只为当前页拼 VO**。
+         * 此前把全部商家都拼一遍再在内存里切页：每家拼 VO 要 5 次查询，正式库 758 家 ≈ 3800 次，
+         * 列表一次 6 秒多（v2 页面验证，2026-11-20）。
+         */
+        if (communityNo != null && !communityNo.isBlank()) {
+            List<String> inCommunity = DataScopeContext.executeWithoutScope(() ->
+                            communityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
+                                    .eq(MchEntityCommunity::getCommunityNo, communityNo)))
+                    .stream().map(MchEntityCommunity::getEntityNo).distinct().toList();
+            if (inCommunity.isEmpty()) {
+                return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
+            }
+            w.in(MchEntity::getEntityNo, inCommunity);
+        }
+        var result = merchantMapper.selectPage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(Math.max(1, page), size), w);
+        List<MerchantProfileVO> pageRows = result.getRecords().stream().map(this::toVO).toList();
+        return ai.neargo.shop.common.PageData.of(pageRows, result.getTotal(), page, size);
     }
 
     @Override

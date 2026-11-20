@@ -41,7 +41,7 @@ class PaymentLedgerCoverageTest {
     private static final Path BACKEND = Paths.get(System.getProperty("user.dir")).getParent();
 
     /** 扫这些模块的 main 源码 */
-    private static final List<String> MODULES = List.of("shop-core", "shop-app");
+    private static final List<String> MODULES = List.of("shop-core", "shop-app", "shop-gateway");
 
     /**
      * 判据故意用 {@code orderService.markPaid(} 而不是光秃秃的 {@code .markPaid(}。

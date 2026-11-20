@@ -71,7 +71,9 @@
         <module>logistics</module>
         <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->
         <module>shop-notify</module>
-        <!-- 启动模块：portal(三端 Controller) + config + 装配 -->
+        <!-- 网关层：三端出口 + 连接外部服务的桥接（ADR-060；自 shop-app 拆出） -->
+        <module>shop-gateway</module>
+        <!-- 启动模块：config + 机器入口 portal.internal + 装配 -->
         <module>shop-app</module>
     </modules>
 
@@ -119,6 +121,12 @@
                 <groupId>cloud.tianai.captcha</groupId>
                 <artifactId>tianai-captcha</artifactId>
                 <version>1.5.6</version>
+            </dependency>
+            <!-- 服务注册与发现：Nacos 原生客户端（ADR-062）。版本与 192.168.3.80 上的服务端一致 -->
+            <dependency>
+                <groupId>com.alibaba.nacos</groupId>
+                <artifactId>nacos-client</artifactId>
+                <version>3.3.0</version>
             </dependency>
             <dependency>
                 <groupId>ai.neargo.inventory</groupId>
