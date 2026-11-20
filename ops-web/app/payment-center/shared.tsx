@@ -9,12 +9,12 @@ import { ErrorState, Skeleton } from "@/components/ui/misc";
 import type { StatusMap } from "@/components/ui/status-badge";
 import type { BadgeTone } from "@/components/ui/badge";
 import type { FieldDef } from "@/components/ui/form-drawer";
-import { usePayCenterApi } from "@/components/payment/pay-kit";
+import { usePayCenterApi } from "@/app/payment-center/_kit/pay-kit";
 import { useCopy } from "@/lib/use-copy";
 import { notify } from "@/lib/notify";
-import { PayOpsError, type PayPage } from "@/lib/pay-ops/client";
+import { PayOpsError, type PayPage } from "@/app/payment-center/_api/client";
 import { money } from "@/lib/utils";
-import type { PayCenterApi } from "@/lib/pay-ops/api";
+import type { PayCenterApi } from "@/app/payment-center/_api/api";
 import { PAY_CENTER_COPY, type PayCenterCopy } from "./copy";
 
 export type C = PayCenterCopy;

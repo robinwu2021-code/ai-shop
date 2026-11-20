@@ -75,17 +75,14 @@ describe("mock 与 near-pay 同口径", () => {
 });
 
 describe("P2 映射", () => {
-  it("退款走 v1：路径、{code,msg,data} 信封、复核体无幂等号", async () => {
-    const f = vi.fn(async () => new Response(JSON.stringify({ code: 0, msg: "ok", data: [{ payRefundNo: "R1" }] }), { status: 200 }));
+  it("退款走 shop 后端 /ops/payments/refunds（near-pay v1 对公网不可达）：列表与复核原样转给退款端口", async () => {
     const v2 = createPayOpsClient({ baseUrl: "/pay/v2", fetcher: vi.fn() as unknown as typeof fetch });
-    const v1 = createPayOpsClient({ baseUrl: "/pay/v1", fetcher: f as unknown as typeof fetch });
-    const api = createHttpPayCenterApi(v2, v1);
+    const port = { list: vi.fn(async () => [{ payRefundNo: "R1" }]), review: vi.fn(async () => ({ payRefundNo: "R1" })) };
+    const api = createHttpPayCenterApi(v2, { refunds: port as never });
     expect(await api.refunds.list({ status: "PENDING_REVIEW" })).toEqual([{ payRefundNo: "R1" }]);
-    expect(call(f).url).toBe("/pay/v1/refunds?status=PENDING_REVIEW&limit=200");
+    expect(port.list).toHaveBeenCalledWith({ status: "PENDING_REVIEW", limit: 200 });
     await api.refunds.review("R1", { approve: true, reason: "核对无误" });
-    expect(call(f, 1)).toEqual({ url: "/pay/v1/refunds/R1/review", method: "POST", body: { approve: true, reason: "核对无误" } });
-    const bad = createHttpPayCenterApi(v2, createPayOpsClient({ baseUrl: "/pay/v1", fetcher: (async () => new Response(JSON.stringify({ code: 40003, msg: "申请人不能复核自己的退款" }), { status: 200 })) as unknown as typeof fetch }));
-    await expect(bad.refunds.review("R1", { approve: true, reason: "x" })).rejects.toMatchObject({ message: "申请人不能复核自己的退款" });
+    expect(port.review).toHaveBeenCalledWith("R1", { approve: true, reason: "核对无误" });
   });
 
   it("签发密钥、生成激活码、挂失不带幂等号；商户变更固定 profileStatus=SUBMITTED", async () => {
@@ -100,11 +97,6 @@ describe("P2 映射", () => {
     expect(call(f, 3).url).toBe("/pay/merchants?page=1&size=20&profileStatus=SUBMITTED");
   });
 
-  it("v1 基础路径由 v2 推出", async () => {
-    const { resolvePayOpsV1Base } = await import("./client");
-    expect(resolvePayOpsV1Base("/oms-api/pay-ops/v2")).toBe("/oms-api/pay-ops/v1");
-    expect(resolvePayOpsV1Base("/gw/pay")).toBe("/gw/pay");
-  });
 });
 
 describe("P3a 映射（near-pay docs/api/handbook/08）", () => {
@@ -136,5 +128,51 @@ describe("P3a 映射（near-pay docs/api/handbook/08）", () => {
     await expect(api.reconDiffs.claim(claimedByOther.record.difference.differenceNo, { expectedVersion: 1, reason: "认领" })).rejects.toBeTruthy();
     const costs = (await api.channelCosts.list({ page: 1, size: 20 })).records.filter((x) => x.payChannel === "NEWEBPAY" && x.payMethod === "CARD");
     expect(costs.map((x) => x.status).sort()).toEqual(["ACTIVE", "SUPERSEDED"]);
+  });
+});
+
+describe("P4 映射（商户与进件工作区，near-pay /pay-ops/v2）", () => {
+  it("代填资料：草稿 PUT 带 requestNo 与版本；提交固定 fields={}", async () => {
+    const { f, api } = httpApi({ version: 1, state: "EDITING", profile: {}, filledFields: [], revisionNo: null });
+    await api.merchants.saveAssisted("PM1", { expectedVersion: 0, fields: { legalName: "台北早餐" } });
+    await api.merchants.submitAssisted("PM1", { expectedVersion: 1 });
+    expect(call(f, 0)).toMatchObject({ url: "/pay/merchants/PM1/assisted-profile/draft", method: "PUT", body: { expectedVersion: 0, fields: { legalName: "台北早餐" } } });
+    expect((call(f, 0).body as { requestNo?: string }).requestNo).toMatch(/^ops-/);
+    expect(call(f, 1)).toMatchObject({ url: "/pay/merchants/PM1/assisted-profile/submit", method: "POST", body: { expectedVersion: 1, fields: {} } });
+  });
+
+  it("新建商户、收款策略 PUT、核验关联、提交审批", async () => {
+    const { f, api } = httpApi({});
+    await api.merchants.create({ operatingEntityId: "EN1", name: "台北早餐" });
+    await api.merchants.savePolicy("PM1", { expectedVersion: 2, mode: "CUSTOM", productCodes: ["P1"], reason: "r" });
+    await api.merchants.verifyLink("PM1", "SL1", { expectedVersion: 1, result: "VERIFIED", reason: "r" });
+    await api.approvals.submit({ subjectType: "PLATFORM_MERCHANT_RESUME", subjectRef: "PM1", subjectRevision: 3, action: "RESUME", reason: "r" });
+    expect(call(f, 0)).toMatchObject({ url: "/pay/merchant-creations", method: "POST", body: { operatingEntityId: "EN1", name: "台北早餐" } });
+    expect(call(f, 1)).toMatchObject({ url: "/pay/merchants/PM1/collection-policy", method: "PUT" });
+    expect(call(f, 2).url).toBe("/pay/merchants/PM1/source-links/SL1/verify");
+    expect(call(f, 3)).toMatchObject({ url: "/pay/approvals", body: { subjectType: "PLATFORM_MERCHANT_RESUME", subjectRef: "PM1", subjectRevision: 3, action: "RESUME" } });
+  });
+
+  it("进件草稿：PUT 草稿；确认与提交固定 fields={}；封存不带 requestNo（near-pay 不收）", async () => {
+    const { f, api } = httpApi({});
+    await api.onboardings.saveDraft("O1", { expectedVersion: 2, expectedDraftVersion: 5, fields: { CONTACT_NAME: "王" } });
+    await api.onboardings.confirmDraft("O1", { expectedVersion: 2, expectedDraftVersion: 6 });
+    await api.onboardings.submitDraft("O1", { expectedVersion: 2, expectedDraftVersion: 7 });
+    await api.onboardings.seal("O1", { expectedVersion: 2, fieldCode: "BankAccount", secret: "0012345678" });
+    expect(call(f, 0)).toMatchObject({ url: "/pay/onboardings/O1/draft", method: "PUT", body: { expectedDraftVersion: 5, fields: { CONTACT_NAME: "王" } } });
+    expect(call(f, 1)).toMatchObject({ url: "/pay/onboardings/O1/draft/confirm", body: { fields: {} } });
+    expect(call(f, 2)).toMatchObject({ url: "/pay/onboardings/O1/draft/submit", body: { fields: {} } });
+    expect(call(f, 3)).toEqual({ url: "/pay/onboardings/O1/newebpay-materials", method: "POST", body: { expectedVersion: 2, fieldCode: "BankAccount", secret: "0012345678" } });
+  });
+
+  it("mock：代填资料首存必须有法定名称；进件附件写进草稿、确认前要必填齐", async () => {
+    const api = createMockPayCenterApi();
+    await expect(api.merchants.saveAssisted("PM1001", { expectedVersion: 0, fields: { industry: "餐饮" } })).rejects.toBeTruthy();
+    const ob = "OB4001";
+    const d0 = await api.onboardings.draft(ob);
+    await expect(api.onboardings.confirmDraft(ob, { expectedVersion: d0.expectedVersion, expectedDraftVersion: d0.draftVersion })).rejects.toBeTruthy();
+    const up = await api.onboardings.upload(ob, { slot: "LICENSE_1", expectedVersion: d0.expectedVersion, expectedDraftVersion: d0.draftVersion }, new File(["%PDF-"], "a.pdf", { type: "application/pdf" }));
+    expect(up.draft.filledFields).toContain("LICENSE_1");
+    expect(up.draft.missing).not.toContain("LICENSE_1");
   });
 });

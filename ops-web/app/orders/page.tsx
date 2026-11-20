@@ -40,12 +40,12 @@ import { PagedTable } from "@/components/ui/paged-table";
 import { IdCell } from "@/components/ui/misc";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 异常单与代客操作各自成块，与其它 tab 只共用文案表 —— 拆出去，页面才不会长到读不动
-import { PaymentOpsEntry } from "@/components/payment-ops-entry";
+import { useLegacyPayTabRedirect } from "@/app/payment-center/module";
 import { ExceptionTab } from "./exception-tab";
 import { ProxyTab } from "./proxy-tab";
 
 type Copy = ReturnType<typeof useCopy<(typeof ORDERS_COPY)["zh"]>>;
-const TAB_KEYS = ["search", "exception", "proxy", "pay", "repair", "close", "payments", "payment-exceptions"] as const;
+const TAB_KEYS = ["search", "exception", "proxy", "pay", "repair", "close"] as const;
 
 /** 差异类型 → 徽标。三类的处置方式不同，颜色也要能一眼分开。 */
 const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
@@ -90,6 +90,7 @@ function OrdersInner() {
    * 只是此前没有任何地方发它，是个死参数。
    */
   const sp = useSearchParams();
+  useLegacyPayTabRedirect("/orders"); // 支付订单、支付异常已移到支付中心（V686）
   const [storeCleared, setStoreCleared] = useState(false);
   const storeNo = storeCleared ? "" : (sp.get("storeNo") ?? "");
   const { page, setPage, size, setSize } = usePaging();
@@ -224,8 +225,6 @@ function OrdersInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} desc={c.desc} />
 
-      {tab === "payments" && <PaymentOpsEntry workspace="payments" />}
-      {tab === "payment-exceptions" && <PaymentOpsEntry workspace="payment-exceptions" />}
       {tab === "exception" && (
         <>
           {!canModify && <ReadOnlyNotice what={c.exceptionReadOnlyWhat} perm="order:order:modify" className="mb-3" />}

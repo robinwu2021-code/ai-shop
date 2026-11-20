@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PAY_CENTER_TABS } from "@/lib/pay-ops/center-tabs";
+import { PAY_CENTER_TABS } from "@/app/payment-center/module";
 
 let tab = "orders";
 const replace = vi.fn((href: string) => { tab = new URL(href, "http://x").searchParams.get("tab") ?? ""; });

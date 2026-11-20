@@ -7,8 +7,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell } from "@/components/payment/pay-kit";
-import { PROFILE_STATUSES, type MerchantRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell } from "@/app/payment-center/_kit/pay-kit";
+import { PROFILE_STATUSES, type MerchantRow } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, useRun, useStatusMap, useTabList, usePc } from "./shared";
 

@@ -13,7 +13,7 @@ import { toTraditional } from "@/lib/i18n/zh-tw";
 import { useCopy } from "@/lib/use-copy";
 import { usePageTab } from "@/lib/use-page-tab";
 import { useRouter } from "next/navigation";
-import { PAY_CENTER_GROUP_LABEL, PAY_CENTER_TABS, payCenterHref, type PayCenterTabKey } from "@/lib/pay-ops/center-tabs";
+import { PAY_CENTER_GROUP_LABEL, PAY_CENTER_TABS, payCenterHref, type PayCenterTabKey } from "@/app/payment-center/module";
 import { PAY_CENTER_COPY } from "./copy";
 import { OrdersTab } from "./orders-tab";
 import { ExceptionsTab } from "./exceptions-tab";

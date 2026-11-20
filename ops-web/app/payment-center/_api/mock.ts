@@ -6,7 +6,7 @@ import type {
   AttemptListRow, ChannelCostRow, CommissionRuleRow, LedgerEntryRow, PayoutRow, ReconDiffRow, SettlementRow, StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
   AlertEventRow, AlertRuleRow, AppGrant, AppRow, ApprovalFlowRow, ChannelCallRow, ChannelCallbackRow, OperatingSettings, RefundListRow, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ChannelRow, DataScopeRow, Detail, EntryRow, ExceptionRow,
-  MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow,
+  MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow, NewebpayModification, OnboardingDraft,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -57,6 +57,34 @@ export function createMockPayCenterApi(): PayCenterApi {
       syncedAt: T0 - i * H, version: 1, pendingChange: null,
     })), (r) => r.storeNo);
   const policies = new Map<string, { mode: string; productCodes: string[]; version: number }>();
+  // P4：商户默认收款策略、代填资料、主体资料、进件草稿与附件、蓝新修改
+  const merchantPolicies = new Map<string, { mode: string; productCodes: string[]; version: number }>();
+  const assisted = new Map<string, { version: number; state: string; values: Record<string, string>; revisionNo: string | null }>();
+  const mask = (k: string, v: string) => (["registrationNo", "contactPhone"].includes(k) ? `****${v.slice(-4)}` : k === "representativeName" ? `${v.slice(0, 1)}*` : v);
+  const drafts = new Map<string, { draftVersion: number; state: "EDITING" | "CONFIRMED" | "FROZEN"; values: Record<string, string>; supplementFields: string[]; supplementReason: string | null; confirmedBy: string | null }>();
+  const draftOf = (no: string) => { let d = drafts.get(no); if (!d) { d = { draftVersion: 0, state: "EDITING", values: {}, supplementFields: [], supplementReason: null, confirmedBy: null }; drafts.set(no, d); } return d; };
+  const REQUIRED_PLATFORM = ["LEGAL_FORM", "CONTACT_NAME", "CONTACT_PHONE", "SETTLE_ACCOUNT_TYPE", "SETTLE_ACCOUNT"];
+  const files = new Map<string, Map<string, { fileNo: string; contentType: string; byteLength: number; blob: Blob }>>();
+  const modifications = new Map<string, NewebpayModification[]>();
+  let sealSeq = 1;
+  let fileSeq = 1;
+  const draftView = (no: string): OnboardingDraft => {
+    const o = onboardings.get(no); const d = draftOf(no);
+    const editable = (o.status === "DRAFT" && ["NONE", "NEED_MORE", "REJECTED"].includes(o.reviewStatus)) || o.status === "REJECTED";
+    const filled = Object.keys(d.values).filter((k) => d.values[k]);
+    const hasLicense = filled.some((k) => k.startsWith("LICENSE_"));
+    const missing = [...REQUIRED_PLATFORM.filter((k) => !d.values[k]), ...(hasLicense ? [] : ["LICENSE_1"])];
+    const plain = Object.fromEntries(Object.entries(d.values).filter(([k, v]) => !v.startsWith("cipher:") && !v.startsWith("file:") && !k.startsWith("LICENSE_")));
+    return { onboardingNo: no, expectedVersion: o.version, draftVersion: d.draftVersion, state: editable ? d.state : "FROZEN", fields: plain, filledFields: filled, missing, editable,
+      fileUploadAvailable: true, supplementFields: d.supplementFields, supplementReason: d.supplementReason, confirmedBy: d.confirmedBy, confirmedAt: d.confirmedBy ? Date.now() : null,
+      confirmationMode: d.confirmedBy ? "OPS_ASSISTED" : null, supplementHistory: [], differences: [], channelMissing: [], channelIssues: [], schemaVersion: "NEWEBPAY_NDNA_1_1_1", representativeType: null };
+  };
+  const checkDraft = (no: string, b: { expectedVersion: number; expectedDraftVersion: number }) => {
+    const o = onboardings.get(no); const d = draftOf(no);
+    if (o.version !== b.expectedVersion || d.draftVersion !== b.expectedDraftVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+    need(draftView(no).editable, "当前状态不能修改资料");
+    return d;
+  };
   const onboardings = new VersionedTable<OnboardingRow>(MERCHANTS.map(([no, name], i) => ({
     onboardingNo: `OB${4001 + i}`, merchantNo: no, merchantName: name, payChannel: i % 2 ? "LINEPAY" : "NEWEBPAY", submitMode: i % 2 ? "API" : "MANUAL",
     materialVersion: i === 0 ? 0 : 1, reviewStatus: ["NONE", "PENDING", "APPROVED", "NEED_MORE"][i], status: ["DRAFT", "SUBMITTED", "CHANNEL_REVIEW", "SUBMITTED"][i],
@@ -218,6 +246,79 @@ export function createMockPayCenterApi(): PayCenterApi {
       }),
       suspend: (no, c) => run(() => setStatus(merchants, no, c, ["ACTIVE"], "SUSPENDED")),
       activate: (no, c) => run(() => setStatus(merchants, no, c, ["SUSPENDED"], "ACTIVE")),
+      creationContext: () => run(() => ({ enabled: true })),
+      create: (b) => run(async () => {
+        need(/^[A-Za-z0-9_-]{1,64}$/.test(b.operatingEntityId), "经营主体号格式不对");
+        need(!merchants.all().some((m) => m.entityNo === b.operatingEntityId), "该经营主体已有支付商户");
+        const no = `PM${2001 + merchants.all().length}`;
+        await merchants.insert({ merchantNo: no, displayName: b.name, sourceSystem: null, entityNo: b.operatingEntityId, entityName: b.name, market: "TW", profileStatus: "NONE", verifyStatus: "PENDING", duplicateSuspect: false, payMerchantNos: null, storeCount: 0, status: "ACTIVE", statusReason: null, createdAt: Date.now(), version: 1 });
+        return { merchantNo: no, operatingEntityId: b.operatingEntityId, name: b.name, market: "TW", status: "ACTIVE" };
+      }),
+      testContext: () => run(() => ({ enabled: true, market: "TW" })),
+      createTest: (b) => run(async () => {
+        need(/^[A-Za-z0-9_-]{1,48}$/.test(b.batchNo), "批次号只能是字母、数字、下划线、短横线（1–48 位）");
+        const no = `PMT${b.batchNo}`;
+        if (!merchants.find(no)) await merchants.insert({ merchantNo: no, displayName: `[TEST] 蓝新进件-${b.batchNo}`, sourceSystem: null, entityNo: null, entityName: null, market: "TW", profileStatus: "SUBMITTED", verifyStatus: "PENDING", duplicateSuspect: false, payMerchantNos: null, storeCount: 0, status: "ACTIVE", statusReason: null, createdAt: Date.now(), version: 1 });
+        return { merchantNo: no, displayName: `[TEST] 蓝新进件-${b.batchNo}`, market: "TW", synthetic: true };
+      }),
+      capability: (no) => run(() => {
+        const ob = onboardings.all().find((o) => o.merchantNo === no);
+        return { merchantNo: no, items: [
+          { capability: "FIAT", stage: "S1", available: ob?.status === "APPROVED", applicationNo: ob?.onboardingNo ?? null, status: ob?.status ?? null, reviewStatus: ob?.reviewStatus ?? null, note: null, entry: "ME03" },
+          { capability: "STORED_VALUE", stage: "S4", available: false, applicationNo: null, status: null, reviewStatus: null, note: "第四阶段开放", entry: null },
+          { capability: "POINTS", stage: "S4", available: false, applicationNo: null, status: null, reviewStatus: null, note: "第四阶段开放", entry: null },
+          { capability: "CRYPTO", stage: "SX", available: false, applicationNo: null, status: null, reviewStatus: null, note: "暂不开放", entry: null },
+        ] };
+      }),
+      channels: (no) => run(() => {
+        const m = merchants.get(no);
+        const rows = [
+          ...(m.payMerchantNos ?? []).map((pm) => ({ payChannel: "NEWEBPAY", channelName: "蓝新金流", test: false, stage: "OPEN", payMerchantNo: pm, channelMerchantId: "****0091", accountStatus: "ENABLED", verificationStatus: "VERIFIED", boundStoreCount: m.storeCount, products: [{ productCode: "NEWEBPAY_CREDIT", productName: "信用卡", status: "ENABLED" }], onboardingNo: null, onboardingStatus: null, reviewStatus: null, reason: null })),
+          ...onboardings.all().filter((o) => o.merchantNo === no && !["APPROVED", "CANCELLED"].includes(o.status)).map((o) => ({ payChannel: o.payChannel, channelName: o.payChannel, test: false, stage: "APPLYING", payMerchantNo: null, channelMerchantId: null, accountStatus: null, verificationStatus: null, boundStoreCount: 0, products: [], onboardingNo: o.onboardingNo, onboardingStatus: o.status, reviewStatus: o.reviewStatus, reason: o.rejectReason })),
+        ];
+        return { merchantNo: no, rows, channels: channels.all().map((ch) => ({ payChannel: ch.channelCode, channelName: ch.name, onlineApplication: ch.channelCode === "NEWEBPAY" })) };
+      }),
+      policy: (no) => run(() => { const p = merchantPolicies.get(no) ?? { mode: "UNRESTRICTED", productCodes: [], version: 0 }; return { ownerType: "MERCHANT", ownerRef: no, mode: p.mode, productCodes: p.productCodes, version: p.version, merchantMode: null, merchantProductCodes: [] }; }),
+      savePolicy: (no, b) => run(() => {
+        reasonOf(b.reason);
+        const cur = merchantPolicies.get(no) ?? { mode: "UNRESTRICTED", productCodes: [], version: 0 };
+        if (cur.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+        need(b.mode !== "CUSTOM" || b.productCodes.length > 0, "自定义模式至少选一个产品");
+        merchantPolicies.set(no, { mode: b.mode, productCodes: b.mode === "CUSTOM" ? b.productCodes : [], version: cur.version + 1 });
+        return ok(no, b.mode, cur.version + 1);
+      }),
+      sourceEvents: (no, q) => pageOf([{ eventNo: `SE${no}-1`, eventType: "ENTITY_UPDATED", sourceSystem: "AI_SHOP", externalEntityId: merchants.get(no).entityNo, summary: "主体名称更新", occurredAt: T0 - 5 * H, createdAt: T0 - 5 * H }], q, []),
+      assistedDraft: (no) => run(() => {
+        need(!merchants.get(no).sourceSystem, "该商户的资料由来源系统维护，不能代填");
+        const a = assisted.get(no) ?? { version: 0, state: "EDITING", values: {}, revisionNo: null };
+        return { version: a.version, state: a.state, profile: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [k, mask(k, v)])), filledFields: Object.keys(a.values), revisionNo: a.revisionNo };
+      }),
+      saveAssisted: (no, b) => run(() => {
+        need(merchants.get(no).status === "ACTIVE", "只有正常状态的商户能代填资料");
+        const a = assisted.get(no) ?? { version: 0, state: "EDITING", values: {}, revisionNo: null };
+        if (a.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+        const next = { ...a.values };
+        for (const [k, v] of Object.entries(b.fields)) { if (v == null || v === "") delete next[k]; else next[k] = v; }
+        need(a.version > 0 || !!next.legalName, "第一次保存必须填写法定名称");
+        const saved = { version: a.version + 1, state: "EDITING", values: next, revisionNo: a.revisionNo };
+        assisted.set(no, saved);
+        return { version: saved.version, state: saved.state, profile: Object.fromEntries(Object.entries(next).map(([k, v]) => [k, mask(k, v)])), filledFields: Object.keys(next), revisionNo: saved.revisionNo };
+      }),
+      submitAssisted: (no, b) => run(async () => {
+        const a = assisted.get(no);
+        need(!!a && a.version > 0, "请先保存资料草稿");
+        need(a!.state !== "SUBMITTED", "资料已提交审核");
+        if (a!.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+        const rev = `PR${no}-A${a!.version}`;
+        assisted.set(no, { ...a!, state: "SUBMITTED", revisionNo: rev });
+        await merchants.update(no, { profileStatus: "SUBMITTED" });
+        return { version: a!.version, state: "SUBMITTED", profile: {}, filledFields: Object.keys(a!.values), revisionNo: rev };
+      }),
+      verifyLink: (no, link, b) => run(async () => { reasonOf(b.reason); const r = await merchants.update(no, { verifyStatus: b.result }); return ok(link, b.result, r.version); }),
+      confirm: (no) => run(async () => { await merchants.update(no, { verifyStatus: "VERIFIED", profileStatus: "APPROVED" }); return { verifiedLinks: [`SL${no}`], approvedRevisions: [`PR${no}-1`] }; }),
+      entityMaterials: (no) => run(() => ({ version: 1, fields: { legalForm: "COMPANY", companyName: `${merchants.get(no).displayName}有限公司`, taxNo: "24536806", representativeName: "王小明", bankCode: "812", bankAccount: "00123456789012" }, documents: { REGISTRATION: "file:entity-profile/0123456789abcdef0123456789abcdef", BANK_COVER: "file:entity-profile/fedcba9876543210fedcba9876543210" }, submittedRevision: 1 })),
+      entityFile: () => run(() => new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], { type: "application/pdf" })),
+      entityRequestMore: (no, rev, b) => run(async () => { reasonOf(b.reason); need(b.fields.length + b.documents.length > 0, "至少勾一项要补的资料"); await merchants.update(no, { profileStatus: "NEED_MORE" }); return { revision: rev, reviewStatus: "NEED_MORE" }; }),
     },
     stores: {
       list: (q) => pageOf(stores.all(), { ...q, syncIssue: undefined }, ["storeNo", "storeName", "merchantName"]),
@@ -263,8 +364,86 @@ export function createMockPayCenterApi(): PayCenterApi {
       dispatch: (no, b) => run(async () => { reasonOf(b.reason); need(onboardings.get(no).reviewStatus === "APPROVED", "平台审核通过后才能送件"); const r = await onboardings.update(no, { status: "CHANNEL_REVIEW", channelApplyNo: b.channelApplyNo, updatedAt: Date.now() }, b.expectedVersion); return ok(no, r.status, r.version); }),
       refresh: (no, c) => run(async () => { cmdCheck(c); const r = await onboardings.update(no, { updatedAt: Date.now() }, c.expectedVersion); return ok(no, r.status, r.version); }),
       cancel: (no, c) => run(() => setStatus(onboardings, no, c, ["DRAFT", "SUBMITTED"], "CANCELLED")),
+      draft: (no) => run(() => draftView(no)),
+      saveDraft: (no, b) => run(() => {
+        const d = checkDraft(no, b);
+        for (const [k, v] of Object.entries(b.fields)) {
+          if (["CONTACT_PHONE", "SETTLE_ACCOUNT"].includes(k) && v && !v.startsWith("cipher:")) throw new MockPayError("VALIDATION_ERROR", `${k} 必须先封存`);
+          if (v == null || v === "") delete d.values[k]; else d.values[k] = v;
+        }
+        d.draftVersion += 1; d.state = "EDITING"; d.confirmedBy = null;
+        return draftView(no);
+      }),
+      confirmDraft: (no, b) => run(() => { const d = checkDraft(no, b); need(draftView(no).missing.length === 0, "还有必填资料没填"); d.state = "CONFIRMED"; d.confirmedBy = "admin"; d.draftVersion += 1; return draftView(no); }),
+      submitDraft: (no, b) => run(async () => {
+        const d = checkDraft(no, b); need(d.state === "CONFIRMED", "资料确认后才能提交");
+        const o = onboardings.get(no);
+        await onboardings.update(no, { reviewStatus: "PENDING", materialVersion: o.materialVersion + 1, rejectReason: null, updatedAt: Date.now() });
+        d.state = "FROZEN"; d.draftVersion += 1; d.supplementFields = []; d.supplementReason = null;
+        return draftView(no);
+      }),
+      requestMoreFields: (no, b) => run(async () => {
+        reasonOf(b.reason); need(b.fields.length > 0 && b.fields.length < 50, "勾选 1–49 个字段");
+        const o = onboardings.get(no); need(o.reviewStatus === "PENDING", "不在待审核状态");
+        const d = draftOf(no); if (d.draftVersion !== b.expectedDraftVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+        await onboardings.update(no, { reviewStatus: "NEED_MORE", rejectReason: b.reason, updatedAt: Date.now() }, b.expectedVersion);
+        d.supplementFields = b.fields; d.supplementReason = b.reason; d.state = "EDITING"; d.draftVersion += 1;
+        return draftView(no);
+      }),
+      readiness: (no) => run(() => { const o = onboardings.get(no); const done = o.status === "APPROVED"; return { receiptStage: done ? "IMPORTED" : "NOT_RECEIVED", candidateStage: done ? "ACCEPTED" : null, payMerchantNo: done ? `NWP${o.onboardingNo.slice(-4)}` : null, accountStatus: done ? "ENABLED" : "NONE", verificationStatus: done ? "VERIFIED" : "NONE", credentialStatus: done ? "ACTIVE" : "NONE", openProductCount: done ? 2 : 0, storeReadinessEvaluated: done, channelReady: true }; }),
+      retryHandoff: (no, c) => run(async () => { cmdCheck(c); need(onboardings.get(no).status === "APPROVED", "只有已通过的进件能重试交接"); const r = await onboardings.update(no, {}, c.expectedVersion); return { onboardingNo: no, version: r.version, candidateStatus: "ACCEPTED" }; }),
+      seal: (no, b) => run(() => { need(onboardings.get(no).version === b.expectedVersion, "记录已被他人修改，请刷新后重试"); need(!!b.secret && b.secret.length <= 512, "敏感值 1–512 字"); return { fieldCode: b.fieldCode, cipherRef: `cipher:newebpay/${(sealSeq++).toString().padStart(6, "0")}` }; }),
+      files: (no) => run(() => [...(files.get(no)?.entries() ?? [])].map(([slot, f]) => ({ slot, fileNo: f.fileNo, contentType: f.contentType, byteLength: f.byteLength, expiresAt: Date.now() + 7 * 24 * H, pinned: false, expired: false, legacy: false }))),
+      upload: (no, f, file) => run(async () => {
+        need(/^LICENSE_(10|[1-9])$/.test(f.slot), "附件槽位不对");
+        need(file.size > 0 && file.size <= 5 * 1024 * 1024, "附件 1 字节到 5 MiB");
+        need(/\.(png|jpe?g|pdf)$/i.test(file.name), "只收 PNG、JPEG、PDF");
+        const d = checkDraft(no, f);
+        const fileNo = (fileSeq++).toString(16).padStart(32, "0");
+        const m = files.get(no) ?? new Map(); m.set(f.slot, { fileNo, contentType: file.type || "application/octet-stream", byteLength: file.size, blob: file }); files.set(no, m);
+        d.values[f.slot] = `file:onboarding/${fileNo}`; d.draftVersion += 1; d.state = "EDITING"; d.confirmedBy = null;
+        return { draft: draftView(no), attachment: { slot: f.slot, fileNo, contentType: file.type, byteLength: file.size, expiresAt: Date.now() + 7 * 24 * H, pinned: false, expired: false, legacy: false } };
+      }),
+      file: (no, fileNo) => run(() => { const f = [...(files.get(no)?.values() ?? [])].find((x) => x.fileNo === fileNo); if (!f) throw new MockPayError("NOT_FOUND", "附件不存在"); return f.blob; }),
+      manualResult: (no, b) => run(async () => {
+        reasonOf(b.reason); const o = onboardings.get(no); need(o.submitMode === "MANUAL" && ["CHANNEL_REVIEW", "NEED_SIGN"].includes(o.status), "只有人工送件、渠道审核中的进件能登记结果");
+        if (b.result === "NEED_SIGN") need(/^https:\/\//.test(b.signUrl ?? ""), "签约链接必须是 https");
+        if (b.result === "APPROVED") need(!!b.channelMerchantId && /^file:/.test(b.evidenceRef ?? ""), "登记通过要填渠道商户号与凭证引用（file:）");
+        const r = await onboardings.update(no, { status: b.result, signUrl: b.result === "NEED_SIGN" ? b.signUrl ?? null : o.signUrl, rejectReason: b.result === "REJECTED" ? b.reason : null, candidateStatus: b.result === "APPROVED" ? "PENDING" : null, updatedAt: Date.now() }, b.expectedVersion);
+        return ok(no, r.status, r.version);
+      }),
+      modifications: (no) => run(() => {
+        need(onboardings.get(no).payChannel === "NEWEBPAY", "只有蓝新进件能改商户资料");
+        return { legalForm: "COMPANY", fields: [{ code: "MerchantName", label: "商店中文名称", maxLength: 20, options: null }, { code: "MerchantEmail", label: "商店客服信箱", maxLength: 300, options: null }, { code: "BankAccount", label: "结算银行账号", maxLength: 30, options: null }], requests: modifications.get(no) ?? [] };
+      }),
+      createModification: (no, b) => run(() => {
+        const list = modifications.get(no) ?? [];
+        need(!list.some((m) => ["PENDING", "APPROVED", "SENDING", "UNKNOWN"].includes(m.status)), "已有未完成的修改申请");
+        need(Object.keys(b.changes).length > 0, "至少改一个字段");
+        const m: NewebpayModification = { changeNo: `NM${no.slice(-4)}${list.length + 1}`, status: "PENDING", fieldCodes: Object.keys(b.changes), maskedChanges: Object.fromEntries(Object.entries(b.changes).map(([k, v]) => [k, k === "BankAccount" ? `****${v.slice(-4)}` : v])), approvalNo: null, resultCode: null, version: 1 };
+        modifications.set(no, [m, ...list]); return m;
+      }),
+      dispatchModification: (no, ch, c) => run(() => { cmdCheck(c); const list = modifications.get(no) ?? []; const m = list.find((x) => x.changeNo === ch); need(m?.status === "APPROVED", "审批通过后才能发送"); m!.status = "ACCEPTED"; m!.version += 1; return m!; }),
+      cancelModification: (no, ch, c) => run(() => { cmdCheck(c); const list = modifications.get(no) ?? []; const m = list.find((x) => x.changeNo === ch); need(!!m && ["PENDING", "APPROVED"].includes(m.status), "只能取消未发送的修改"); m!.status = "CANCELLED"; m!.version += 1; return m!; }),
+    },
+    documents: {
+      recognize: (file, documentType) => run(() => {
+        need(file.size <= 12 * 1024 * 1024, "证件文件不能超过 12 MiB");
+        const fields: Record<string, string | null> = documentType === "REGISTRATION" ? { name: "台北早餐有限公司", taxNo: "24536806", registeredAddress: "台北市信义区松仁路 100 号", incorporationDate: "2019-05-01", capitalAmount: "5000000", representativeName: "王小明" }
+          : documentType === "BANK_COVER" ? { bankCode: "812", branchCode: "0123", accountName: "台北早餐有限公司", bankAccount: "00123456789012" }
+          : { name: "王小明", identityNo: "A123456789", birthDate: "1985-03-02", issueDate: "2018-07-01", issuePlace: "北市", idIssueType: "换发" };
+        return { recognized: true, documentType, fields, confidence: 0.92 };
+      }),
     },
     approvals: {
+      submit: (b) => run(async () => {
+        reasonOf(b.reason);
+        const no = `AP${5001 + approvals.all().length}`;
+        await approvals.insert({ approvalNo: no, bizType: b.subjectType, action: b.action, resourceNo: b.subjectRef, subjectTitle: `${b.subjectType} ${b.subjectRef}`, applicantNo: "admin",
+          nodeNo: 1, assigneeNo: null, materialVersion: b.subjectRevision, status: "PENDING_FIRST", executionStatus: "NOT_STARTED", expiresAt: Date.now() + 48 * H, escalated: false, createdAt: Date.now(), version: 1,
+          taskNo: `TK${5001 + approvals.all().length}`, taskVersion: 1, taskStatus: "READY" });
+        return { approvalNo: no };
+      }),
       list: (q) => {
         const view = (q.view as string) ?? "CANDIDATE";
         const rows = approvals.all().filter((a) => view === "ALL" ? true : view === "MINE" ? a.applicantNo === "admin" : view === "CLAIMED" ? a.taskStatus === "CLAIMED" && a.assigneeNo === "admin" : a.taskStatus === "READY");

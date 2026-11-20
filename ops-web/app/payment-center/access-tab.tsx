@@ -11,9 +11,9 @@ import { ActionForm } from "@/components/ui/action-form";
 import type { FieldDef } from "@/components/ui/form-drawer";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
-import type { EntrySave } from "@/lib/pay-ops/api";
-import { ACCESS_METHODS, type EntryRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import type { EntrySave } from "@/app/payment-center/_api/api";
+import { ACCESS_METHODS, type EntryRow } from "@/app/payment-center/_api/types";
 import { csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, yesNo, type C } from "./shared";
 
 const NAME = "access";

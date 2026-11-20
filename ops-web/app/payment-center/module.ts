@@ -1,9 +1,14 @@
-// 支付中心（/payment-center）的页签登记（TDD-支付中心运营页面 P1；菜单口径见 TDD-支付中心菜单整合 §2.2）。
+"use client";
+
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+// 支付中心模块（/payment-center）对外唯一的入口：页签登记与路由（TDD-支付中心运营页面 §模块边界）。
 //
-// 页签名字本该回 nav.ts 取（useNavTabs）。但支付中心的菜单点位由统一网关落库（菜单 TDD G1/G4），
-// 在那之前 nav.ts 里还没有这些叶子 —— 所以这里先自带三语名字，并在 PENDING_MENU 里**显式列出**
-// 「还等网关登记」的页签。nav.test.ts 守着：每个页签要么已有菜单叶子，要么在这张清单上；
-// 网关登记完一条，就从清单删一条，清空为止。
+// 支付中心是独立模块：全部页面、接口客户端（_api/）、组件（_kit/）都在 app/payment-center/ 下；
+// 模块外只许 import 这个文件，模块内不 import 其它业务页（payment-center-module.test.ts 守着）。
+// 菜单点位全部在库里（V671 的 5 个既有入口由 V686 改到 /payment-center，其余 V684/V685），
+// 权限码都是 pay:*，网关按前缀归到 pay 模块。PENDING_MENU 列「还没登记菜单点位」的页签，nav.test.ts 守着。
 
 export type PayCenterTabKey =
   | "approvals" | "merchants" | "stores" | "onboardings"
@@ -24,25 +29,20 @@ export interface PayCenterTab {
   group: "review" | "merchant" | "trade" | "channel" | "settings" | "ops" | "config" | "funds" | "recon" | "rates" | "assets";
   zh: string;
   en: string;
-  /**
-   * 首期仍经 /oms 过渡入口的既有菜单项（PaymentOpsEntry 的 workspace 名），开关打开后改跳这里。
-   * 这 5 个页签在菜单上用的是 V671 的原 href（point_code 与授权不变），见 legacyMenuHref。
-   */
-  workspace?: "channels" | "merchants" | "onboarding" | "payments" | "payment-exceptions";
 }
 
 /** 顺序 = 菜单 TDD §2.2 的分组与组内顺序 */
 export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "approvals", perm: "pay:approval:view", group: "review", zh: "审核待办", en: "Approvals" },
-  { key: "merchants", perm: "pay:merchant:view", group: "merchant", zh: "商户档案", en: "Merchants", workspace: "merchants" },
+  { key: "merchants", perm: "pay:merchant:view", group: "merchant", zh: "商户档案", en: "Merchants" },
   { key: "stores", perm: "pay:store:view", group: "merchant", zh: "支付门店", en: "Stores" },
   { key: "merchant-changes", perm: "pay:merchant:view", group: "merchant", zh: "商户变更", en: "Merchant changes" },
-  { key: "onboardings", perm: "pay:onboarding:view", group: "merchant", zh: "渠道进件", en: "Onboarding", workspace: "onboarding" },
-  { key: "orders", perm: "pay:order:view", group: "trade", zh: "支付订单", en: "Payments", workspace: "payments" },
-  { key: "exceptions", perm: "pay:order:view", group: "trade", zh: "异常交易", en: "Exceptions", workspace: "payment-exceptions" },
+  { key: "onboardings", perm: "pay:onboarding:view", group: "merchant", zh: "渠道进件", en: "Onboarding" },
+  { key: "orders", perm: "pay:order:view", group: "trade", zh: "支付订单", en: "Payments" },
+  { key: "exceptions", perm: "pay:order:view", group: "trade", zh: "异常交易", en: "Exceptions" },
   { key: "refunds", perm: "pay:refund:view", group: "trade", zh: "退款订单", en: "Refunds" },
   { key: "attempts", perm: "pay:order:view", group: "trade", zh: "交易流水", en: "Transaction log" },
-  { key: "channels", perm: "pay:channel:view", group: "channel", zh: "支付渠道", en: "Channels", workspace: "channels" },
+  { key: "channels", perm: "pay:channel:view", group: "channel", zh: "支付渠道", en: "Channels" },
   { key: "products", perm: "pay:product:view", group: "channel", zh: "支付产品", en: "Products" },
   // 收款接入的查看码：near-pay OpsCollectionEntryController 用 pay:collection-entry:view（2026-11-20 核对）
   { key: "access", perm: "pay:collection-entry:view", group: "channel", zh: "收款接入", en: "Collection entries" },
@@ -86,22 +86,25 @@ export const PAY_CENTER_GROUP_LABEL: Record<PayCenterTab["group"], { zh: string;
 export const PENDING_MENU: readonly PayCenterTabKey[] = [];
 
 /**
- * 原生页开关：打开后，既有菜单项（/merchants?tab=payment 等）由跳 /oms 改为进 /payment-center。
- * 默认关 —— 原生页连真接口的鉴权（near-pay 是否认 shop 令牌）验证之前，不改变线上行为。
+ * 旧书签：商户、订单模块原来挂支付页签的地址（V671 的 href），打开时转到支付中心对应页签。
+ * 菜单已不再指向它们（V686）。
  */
-/** 既有 5 个入口在菜单上的原 href（V671），其余页签的菜单 href 就是 /payment-center?tab= */
-export const LEGACY_MENU_HREF: Partial<Record<PayCenterTabKey, string>> = {
-  merchants: "/merchants?tab=payment",
-  onboardings: "/merchants?tab=payment-onboarding",
-  orders: "/orders?tab=payments",
-  exceptions: "/orders?tab=payment-exceptions",
-  channels: "/merchants?tab=payment-channels",
+export const LEGACY_TAB_REDIRECT: Readonly<Record<"/merchants" | "/orders", Readonly<Record<string, PayCenterTabKey>>>> = {
+  "/merchants": { payment: "merchants", "payment-onboarding": "onboardings", "payment-channels": "channels" },
+  "/orders": { payments: "orders", "payment-exceptions": "exceptions" },
 };
 
-export function payNativePagesEnabled(value = process.env.NEXT_PUBLIC_PAY_NATIVE_PAGES): boolean {
-  return value === "1" || value === "true";
+/** 商户、订单页调用：旧书签带着支付页签进来时转到支付中心。 */
+export function useLegacyPayTabRedirect(path: keyof typeof LEGACY_TAB_REDIRECT): void {
+  const router = useRouter();
+  const search = useSearchParams();
+  useEffect(() => {
+    const moved = LEGACY_TAB_REDIRECT[path][search.get("tab") ?? ""];
+    if (moved) router.replace(payCenterHref(moved));
+  }, [path, router, search]);
 }
 
-export function payCenterHref(key: PayCenterTabKey): string {
-  return `/payment-center/?tab=${key}`;
+export function payCenterHref(key: PayCenterTabKey, params?: Record<string, string>): string {
+  const extra = params ? Object.entries(params).map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("") : "";
+  return `/payment-center/?tab=${key}${extra}`;
 }

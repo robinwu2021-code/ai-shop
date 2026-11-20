@@ -28,9 +28,11 @@ describe("支付资料登记与回查",()=>{
   expect(toApplyForm({legalName:" Test company ",registrationNo:" TESTONLY ",representativeName:" ",contactPhone:""})).toEqual({legalName:"Test company",registrationNo:"TESTONLY",representativeName:undefined,contactPhone:undefined,registeredAddress:undefined});
   expect(PAY_APPLY_PERM).toBe("merchant:merchant:pay-apply");
  });
- it("reads actual profile approval and links to the payment operations console",async()=>{
+ it("reads actual profile approval and links into the payment center (no jump to the near-pay console)",async()=>{
   await mount();expect(calls.status).toHaveBeenCalledWith("M1");expect(host.textContent).toContain("APPROVED");
-  const link=host.querySelector("a")!;expect(link.href).toBe(approved.merchantOpsUrl);expect(link.rel).toBe("noopener noreferrer");
+  const links=[...host.querySelectorAll("a")].map(a=>a.getAttribute("href"));
+  expect(links).toEqual(["/payment-center?tab=merchants&action=view&id=PM-test","/payment-center?tab=onboardings"]);
+  expect(links.some(h=>h?.includes("pay.example"))).toBe(false);
  });
  it("makes no payment read or submission without permission",async()=>{
   calls.allowed=false;await mount();expect(host.textContent).toBe("");expect(calls.status).not.toHaveBeenCalled();expect(calls.apply).not.toHaveBeenCalled();

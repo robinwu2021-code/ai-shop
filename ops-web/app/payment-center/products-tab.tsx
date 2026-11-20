@@ -11,9 +11,9 @@ import { ActionForm } from "@/components/ui/action-form";
 import { Notice } from "@/components/ui/notice";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, useDraftOperator } from "@/components/payment/pay-kit";
-import type { ProductSave } from "@/lib/pay-ops/api";
-import { ACCESS_METHODS, PAYMENT_METHODS, REFUND_MODES, TRADE_MODES, type CurrencyLimit, type ProductAccess, type ProductRow } from "@/lib/pay-ops/types";
+import { PayListPage, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import type { ProductSave } from "@/app/payment-center/_api/api";
+import { ACCESS_METHODS, PAYMENT_METHODS, REFUND_MODES, TRADE_MODES, type CurrencyLimit, type ProductAccess, type ProductRow } from "@/app/payment-center/_api/types";
 import { fmtTime, money } from "@/lib/utils";
 import { DetailLoader, MiniTable, options, reasonField, toMinor, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
 

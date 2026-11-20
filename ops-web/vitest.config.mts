@@ -4,7 +4,7 @@ import path from "node:path";
 // lib纯函数默认node；页面挂载场景在测试文件内显式启用happy-dom。
 export default defineConfig({
   test: {
-    include: ["lib/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "app/payment-center/**/*.test.ts"],
     environment: "node",
   },
   resolve: {

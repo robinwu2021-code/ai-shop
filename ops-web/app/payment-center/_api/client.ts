@@ -34,10 +34,6 @@ export function resolvePayOpsBase(configured = process.env.NEXT_PUBLIC_PAY_OPS_A
   return value.replace(/\/+$/, "");
 }
 
-/** v1 基础路径：把 v2 前缀的末段换成 v1（near-pay 退款只有 /pay-ops/v1）。不以 /v2 结尾时原样返回，由调用方自己配。 */
-export function resolvePayOpsV1Base(configured = process.env.NEXT_PUBLIC_PAY_OPS_API_BASE): string {
-  return resolvePayOpsBase(configured).replace(/\/v2$/, "/v1");
-}
 
 export interface PayOpsClientOptions {
   baseUrl?: string;
@@ -58,6 +54,13 @@ export interface PayOpsClient {
   page<T>(path: string, query?: Record<string, unknown>): Promise<PayPage<T>>;
   detail<T>(path: string): Promise<PayDetail<T>>;
   command<T = unknown>(path: string, body?: CommandBody, opts?: { method?: "POST" | "PUT"; idempotent?: boolean }): Promise<T>;
+  /**
+   * multipart 上传（进件附件）：表单字段原样带上，另加 requestNo —— 由路径、字段与文件指纹（名、大小、修改时间）决定，
+   * 超时重传是同一个号；near-pay 另按内容摘要去重。
+   */
+  upload<T = unknown>(path: string, fields: Record<string, string | number>, file: File): Promise<T>;
+  /** 取文件（附件、证件）：返回 Blob，调用方用 object URL 预览并负责 revoke。 */
+  blob(path: string, accept?: string): Promise<Blob>;
 }
 
 /** 幂等号：同一路径 + 同一请求体 → 同一个号（键序无关）。 */
@@ -83,7 +86,7 @@ export function createPayOpsClient(opts: PayOpsClientOptions = {}): PayOpsClient
   const fetcher = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const timeoutMs = opts.timeoutMs ?? 15000;
 
-  async function request<T>(path: string, init: { method?: string; query?: Record<string, unknown>; body?: unknown } = {}): Promise<T> {
+  async function request<T>(path: string, init: { method?: string; query?: Record<string, unknown>; body?: unknown; form?: FormData; accept?: string; raw?: boolean } = {}): Promise<T> {
     if (!path.startsWith("/")) throw new Error(`路径必须以 / 开头：${path}`);
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(init.query ?? {})) if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
@@ -97,18 +100,19 @@ export function createPayOpsClient(opts: PayOpsClientOptions = {}): PayOpsClient
         cache: "no-store",
         signal: controller.signal,
         headers: {
-          Accept: "application/json",
+          Accept: init.accept ?? "application/json",
           ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(opts.locale ? { "Accept-Language": opts.locale() } : {}),
         },
-        ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+        ...(init.form ? { body: init.form } : init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null) as { message?: string; reasonCode?: string; requestId?: string } | null;
         throw new PayOpsError(err?.message || `支付服务请求失败（HTTP ${res.status}）`, { status: res.status, reasonCode: err?.reasonCode, requestId: err?.requestId });
       }
       if (res.status === 204) return undefined as T;
+      if (init.raw) return (await res.blob()) as T;
       const value: unknown = await res.json();
       if (isEnvelope(value)) {
         const ok = value.code === 0 || value.code === "0" || value.code === 200 || value.code === "200";
@@ -137,5 +141,14 @@ export function createPayOpsClient(opts: PayOpsClientOptions = {}): PayOpsClient
     },
     command: (path, body = {}, opts = {}) =>
       request(path, { method: opts.method ?? "POST", body: opts.idempotent === false ? body : { requestNo: requestNoFor(path, body), ...body } }),
+    upload: (path, fields, file) => {
+      const form = new FormData();
+      const requestNo = requestNoFor(path, { ...fields, file: `${file.name}:${file.size}:${file.lastModified}` });
+      form.append("requestNo", requestNo);
+      for (const [k, v] of Object.entries(fields)) form.append(k, String(v));
+      form.append("file", file, file.name);
+      return request(path, { method: "POST", form });
+    },
+    blob: (path, accept = "image/png,image/jpeg,application/pdf") => request<Blob>(path, { accept, raw: true }),
   };
 }

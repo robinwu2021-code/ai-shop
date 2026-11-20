@@ -11,13 +11,17 @@ import { ActionForm } from "@/components/ui/action-form";
 import { Notice } from "@/components/ui/notice";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
-import { ONBOARDING_STATUSES, REVIEW_STATUSES, type OnboardingRow, type OnboardingVersion } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import { ONBOARDING_STATUSES, REVIEW_STATUSES, type OnboardingRow, type OnboardingVersion } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, csv, reasonField, useRun, useStatusMap, useTabList, usePc } from "./shared";
-import { WorkspaceHint } from "./merchants-tab";
+import { onboardingCan, onboardingExtraSections, useOnboardingPageActions, useOnboardingRowActions, useOws } from "./onboarding-workspace";
+import { usesDraft } from "@/app/payment-center/_api/onboarding-draft";
 
 const NAME = "onboardings";
+/** 详情底栏：按可见与权限再过滤（onboardingCan / draftEditable），这里只定顺序 */
+const DETAIL_ACTIONS = ["cancel", "platform", "nwp-identity", "nwp-contact", "nwp-store", "nwp-settlement", "nwp-ops", "attachments", "recognize", "confirmDraft", "submitDraft",
+  "submit", "submitReview", "review", "requestFields", "dispatch", "manualResult", "refresh", "retryHandoff", "modifications"];
 
 export function OnboardingsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
@@ -28,6 +32,8 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
   const list = useTabList<OnboardingRow, { status: string; reviewStatus: string }>(NAME, { status: "", reviewStatus: "" }, (api, q) => api.onboardings.list(q));
   const { api } = list;
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-onboardings", action, id } : null);
+  const ow = useOws();
+  const workspace = useOnboardingRowActions(api, run);
 
   const actions: ActionSpec<OnboardingRow>[] = [
     {
@@ -57,8 +63,9 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
                     { header: c.submittedBy, cell: (r) => r.submittedBy ?? "—" },
                     { header: c.submittedAt, cell: (r) => fmtTime(r.submittedAt) },
                   ]} /> },
+                  ...onboardingExtraSections(api, d, c, ow),
                 ]}
-                actions={<DetailActions ctx={ctx} keys={d.allowedActions.filter((a) => a !== "manualResult" && a !== "retryHandoff")} />}
+                actions={<DetailActions ctx={ctx} keys={DETAIL_ACTIONS} />}
               />
             );
           }}
@@ -66,11 +73,11 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
       ),
     },
     {
+      // 非蓝新渠道仍一次提交材料；蓝新开了草稿后 near-pay 拒绝直接提交，走草稿操作（onboarding-workspace.tsx）
       key: "submit", label: c.submitMaterials, kind: "drawer", perm: "pay:onboarding:manage", title: () => c.submitMaterialsTitle,
-      visible: (r) => !!r && (r.status === "DRAFT" || r.reviewStatus === "NEED_MORE"),
+      visible: (r) => onboardingCan(r, "submit") && !!r && !usesDraft(r),
       render: (ctx) => (
         <>
-          <Notice tone="info" className="mb-4">{c.submitMaterialsNote}</Notice>
           <ActionForm
           notify={false}
             fields={[
@@ -94,66 +101,20 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
       ),
     },
     {
-      key: "review", label: c.reviewOnboarding, kind: "drawer", perm: "pay:onboarding:approve", title: () => c.reviewOnboardingTitle,
-      visible: (r) => r?.reviewStatus === "PENDING",
-      render: (ctx) => (
-        <ActionForm
-          notify={false}
-          fields={[
-            { key: "decision", label: c.decision, type: "select", required: true, options: [
-              { value: "", label: "—" }, { value: "APPROVE", label: c.decisionApprove }, { value: "REJECT", label: c.decisionReject }, { value: "REQUEST_MORE", label: c.decisionMore },
-            ] },
-            reasonField(c),
-          ]}
-          initial={{ decision: "", reason: "" }}
-          draft={draft("review", ctx.row!.onboardingNo)}
-          baseVersion={ctx.row!.version}
-          onSubmit={(v) => run(() => api.onboardings.review(ctx.row!.onboardingNo, { expectedVersion: ctx.row!.version, decision: v.decision as "APPROVE", reason: String(v.reason), materialVersion: ctx.row!.materialVersion }))}
-          onDone={ctx.back ?? ctx.close}
-        />
-      ),
-    },
-    {
-      key: "dispatch", label: c.dispatch, kind: "drawer", perm: "pay:onboarding:manage", title: () => c.dispatchTitle,
-      visible: (r) => r?.reviewStatus === "APPROVED" && r.status === "SUBMITTED",
-      render: (ctx) => (
-        <ActionForm
-          notify={false}
-          fields={[{ key: "channelApplyNo", label: c.channelApplyNo, required: true, maxLength: 64 }, reasonField(c)]}
-          initial={{ channelApplyNo: "", reason: "" }}
-          draft={draft("dispatch", ctx.row!.onboardingNo)}
-          baseVersion={ctx.row!.version}
-          onSubmit={(v) => run(() => api.onboardings.dispatch(ctx.row!.onboardingNo, { expectedVersion: ctx.row!.version, channelApplyNo: String(v.channelApplyNo), reason: String(v.reason) }))}
-          onDone={ctx.back ?? ctx.close}
-        />
-      ),
-    },
-    {
-      key: "refresh", label: c.refresh, kind: "confirm", perm: "pay:onboarding:manage", visible: (r) => r?.status === "CHANNEL_REVIEW",
+      key: "refresh", label: c.refresh, kind: "confirm", perm: "pay:onboarding:manage", visible: (r) => onboardingCan(r, "refresh"),
       confirm: () => ({ title: c.refreshTitle }),
       run: (r) => run(() => api.onboardings.refresh(r!.onboardingNo, { expectedVersion: r!.version, reason: c.refresh })),
     },
     {
       key: "cancel", label: c.cancelOnboarding, kind: "dialog", perm: "pay:onboarding:manage", danger: true,
-      visible: (r) => !!r && ["DRAFT", "SUBMITTED"].includes(r.status),
+      visible: (r) => onboardingCan(r, "cancel"),
       confirm: () => ({ title: c.cancelOnboardingTitle, danger: true, reasonHint: c.reasonHint }),
       run: (r, reason) => run(() => api.onboardings.cancel(r!.onboardingNo, { expectedVersion: r!.version, reason })),
     },
   ];
 
-  const pageActions: ActionSpec<OnboardingRow>[] = [{
-    key: "create", label: c.createOnboarding, kind: "drawer", perm: "pay:onboarding:manage", title: () => c.createOnboardingTitle,
-    render: (ctx) => (
-      <ActionForm
-          notify={false}
-        fields={[{ key: "merchantNo", label: c.merchantNo, required: true, maxLength: 64 }, { key: "payChannel", label: c.payChannelField, required: true, maxLength: 32 }]}
-        initial={{ merchantNo: "", payChannel: "" }}
-        draft={draft("create")}
-        onSubmit={(v) => run(() => api.onboardings.create({ merchantNo: String(v.merchantNo).trim(), payChannel: String(v.payChannel).trim().toUpperCase() }))}
-        onDone={ctx.close}
-      />
-    ),
-  }];
+  const pageActions = useOnboardingPageActions(api, run);
+
 
   const columns: Column<OnboardingRow>[] = [
     { header: c.onboardingNo, cell: (r) => <PayRefCell value={r.onboardingNo} /> },
@@ -168,7 +129,6 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
     <PayListPage<OnboardingRow>
       header={header}
       help={c.onboardingsDesc}
-      notice={<WorkspaceHint label={c.submitMaterialsNote} button={c.oms} perm="pay:onboarding:manage" workspace="onboarding" />}
       search={list.keyword}
       onSearch={list.setKeyword}
       searchPlaceholder={c.onboardingsSearch}
@@ -183,7 +143,7 @@ export function OnboardingsTab({ header }: { header: React.ReactNode }) {
       onSize={list.setSize}
       columns={columns}
       rowKey={(r) => r.onboardingNo}
-      actions={actions}
+      actions={[...actions, ...workspace]}
       empty={c.emptyOnboardings}
       pageActions={pageActions}
       resolve={(id) => api.onboardings.detail(id).then((d) => d.record.onboarding)}

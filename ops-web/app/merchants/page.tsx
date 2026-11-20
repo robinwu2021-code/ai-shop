@@ -28,7 +28,7 @@ import { ChainTab } from "./chain-tab";
 import { MerchantChainLine } from "./chain-line";
 import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
-import { PaymentOpsEntry } from "@/components/payment-ops-entry";
+import { useLegacyPayTabRedirect } from "@/app/payment-center/module";
 import { OnboardingTab } from "./onboarding-tab";
 import { OnBehalfTab } from "./on-behalf-tab";
 import { QualificationTab } from "./qualification-tab";
@@ -56,7 +56,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "payment", "payment-channels", "payment-onboarding", "onboarding", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -68,6 +68,7 @@ export default function MerchantsPage() {
 function MerchantsInner() {
   const c = useCopy(MERCHANTS_COPY);
   const router=useRouter();const search=useSearchParams();
+  useLegacyPayTabRedirect("/merchants"); // 支付商户、渠道进件、支付渠道已移到支付中心（V686）
   useEffect(()=>{if(["on-behalf","self-operated"].includes(search.get("tab")??"")){const next=new URLSearchParams(search.toString());if(next.get("tab")==="self-operated")next.set("type","SELF_OPERATED");next.delete("tab");router.replace("/merchants"+(next.size?"?"+next.toString():""));}},[router,search]);
   const tabs = useNavTabs("/merchants", TAB_KEYS);
   const tierOptions = TIER_OPTIONS(c);
@@ -268,10 +269,7 @@ function MerchantsInner() {
       {tab === "admission" && <AdmissionTab c={c} />}
       {tab === "qualifications" && <QualificationTab c={c} />}
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
-      {tab === "payment-channels" && <PaymentOpsEntry workspace="channels" />}
-      {tab === "payment" && <PaymentOpsEntry workspace="merchants" />}
-      {tab === "payment-onboarding" && <PaymentOpsEntry workspace="onboarding" />}
-      {tab === "onboarding" && <><PaymentOpsEntry workspace="onboarding" /><OnboardingTab c={c} /></>}
+      {tab === "onboarding" && <OnboardingTab c={c} />}
 
 
       {tab === "ban" && (

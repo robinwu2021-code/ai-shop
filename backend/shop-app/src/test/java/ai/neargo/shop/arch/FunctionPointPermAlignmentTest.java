@@ -85,19 +85,18 @@ class FunctionPointPermAlignmentTest {
 
     @Test
     @DisplayName("★★★ 登记的功能点须有本地端点或已接线的跨系统菜单工作区")
-    void everyRegisteredPointHasAnEndpointOrLinkedRemoteWorkspace() throws IOException {
+    void everyRegisteredPointHasAnEndpointOrNativePaymentPage() throws IOException {
         Set<String> registered = registeredPermCodes();
         assertThat(registered).as("一条功能点都没读到 —— 测试库没跑迁移？").isNotEmpty();
 
         Set<String> unimplemented = new TreeSet<>(registered);
         unimplemented.removeAll(permCodesUsedByEndpoints());
-        unimplemented.removeAll(linkedRemoteWorkspacePermCodes());
         unimplemented.removeAll(nativePaymentCenterPermCodes());
         unimplemented.removeAll(KNOWN_UNIMPLEMENTED.keySet());
 
         assertThat(unimplemented)
                 .as("这些权限码登记成了功能点，运营能在界面上勾选、能授权，"
-                        + "但既无本地端点，也未接线到跨系统菜单工作区。\n"
+                        + "但既无本地端点，也不是支付中心原生页签（2026-11-20 起支付入口不再跳 near-pay 工作区，V686）。\n"
                         + "要么实现，要么把功能点下线 —— 留着等于让界面承诺一个做不到的事：")
                 .isEmpty();
     }
@@ -229,54 +228,6 @@ class FunctionPointPermAlignmentTest {
     }
 
     private record RemoteMenu(String href, String permission) {}
-    private record Workspace(String path, String permission) {}
-    private record PageReference(String href, String workspace) {}
-
-    /** V671 links payment menus to the existing payment application, not shop backend handlers. */
-    private Set<String> linkedRemoteWorkspacePermCodes() throws IOException {
-        Path repository = Path.of("../..").toRealPath();
-        String bridge = withoutComments(Files.readString(repository.resolve("ops-web/lib/auth/ops-bridge.ts")));
-        Matcher declarations = Pattern.compile(
-                "export const PAYMENT_WORKSPACES = \\{(.*?)\\} as const;", Pattern.DOTALL).matcher(bridge);
-        assertThat(declarations.find()).as("PAYMENT_WORKSPACES 导航合同未读到").isTrue();
-        Map<String, Workspace> workspaces = new TreeMap<>();
-        Matcher entry = Pattern.compile(
-                "[\\\"]?([a-z-]+)[\\\"]?:\\s*\\{\\s*path:\\s*\\\"(/[^\\\"]+)\\\",\\s*permission:\\s*\\\"([^\\\"]+)\\\"\\s*\\}")
-                .matcher(declarations.group(1));
-        while (entry.find()) workspaces.put(entry.group(1), new Workspace(entry.group(2), entry.group(3)));
-        assertThat(workspaces).as("跨系统工作区没有可解析的路由和权限").isNotEmpty();
-        List<PageReference> references = new ArrayList<>();
-        Path app = repository.resolve("ops-web/app");
-        try (Stream<Path> pages = Files.walk(app)) {
-            for (Path page : pages.filter(path -> path.getFileName().toString().equals("page.tsx")).toList()) {
-                String source = withoutComments(Files.readString(page));
-                if (!source.contains("import { PaymentOpsEntry } from \"@/components/payment-ops-entry\"")) continue;
-                String route = "/" + app.relativize(page.getParent()).toString();
-                Matcher usage = Pattern.compile(
-                        "tab\\s*===\\s*\"([^\"]+)\"\\s*&&\\s*(?:<>\\s*)?<PaymentOpsEntry\\s+workspace=\"([^\"]+)\"")
-                        .matcher(source);
-                while (usage.find()) references.add(new PageReference(route + "?tab=" + usage.group(1), usage.group(2)));
-            }
-        }
-        assertThat(references).as("跨系统工作区没有实际页面引用").isNotEmpty();
-        List<RemoteMenu> menus = jdbc.sql("""
-                SELECT href, perm_code FROM sys_function_point
-                 WHERE deleted=0 AND point_type='MENU' AND href IS NOT NULL AND perm_code IS NOT NULL
-                """).query((rs, row) -> new RemoteMenu(rs.getString("href"), rs.getString("perm_code"))).list();
-        return linkedRemoteWorkspacePermCodes(menus, workspaces, references);
-    }
-
-    private static Set<String> linkedRemoteWorkspacePermCodes(List<RemoteMenu> menus,
-            Map<String, Workspace> workspaces, List<PageReference> references) {
-        Set<String> out = new TreeSet<>();
-        for (PageReference reference : references) {
-            Workspace workspace = workspaces.get(reference.workspace());
-            if (workspace != null && menus.contains(new RemoteMenu(reference.href(), workspace.permission()))) {
-                out.add(workspace.permission());
-            }
-        }
-        return out;
-    }
 
     /**
      * 支付中心原生页（TDD-支付中心运营页面、V684）：页面在运营端里直接调 near-pay `/pay-ops/v2`，
@@ -286,7 +237,7 @@ class FunctionPointPermAlignmentTest {
      */
     private Set<String> nativePaymentCenterPermCodes() throws IOException {
         Path repository = Path.of("../..").toRealPath();
-        String tabs = withoutComments(Files.readString(repository.resolve("ops-web/lib/pay-ops/center-tabs.ts")));
+        String tabs = withoutComments(Files.readString(repository.resolve("ops-web/app/payment-center/module.ts")));
         Map<String, String> permOfTab = new TreeMap<>();
         Matcher tab = Pattern.compile("\\{\\s*key:\\s*\"([a-z-]+)\",\\s*perm:\\s*\"([a-z][a-z0-9:_-]*)\"").matcher(tabs);
         while (tab.find()) permOfTab.put(tab.group(1), tab.group(2));
@@ -314,20 +265,6 @@ class FunctionPointPermAlignmentTest {
                 .replaceAll(match -> match.group().startsWith("/") ? " " : Matcher.quoteReplacement(match.group()));
     }
 
-    @Test
-    void remoteMenuRequiresMatchingPageReferencePermissionAndHref() {
-        var menu = new RemoteMenu("/merchants?tab=payment", "pay:merchant:view");
-        var workspace = new Workspace("/merchants", "pay:merchant:view");
-        var reference = new PageReference(menu.href(), "merchants");
-        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace), List.of(reference)))
-                .containsExactly("pay:merchant:view");
-        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace), List.of())).isEmpty();
-        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of(), List.of(reference))).isEmpty();
-        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu),
-                Map.of("merchants", new Workspace("/merchants", "pay:onboarding:view")), List.of(reference))).isEmpty();
-        assertThat(linkedRemoteWorkspacePermCodes(List.of(menu), Map.of("merchants", workspace),
-                List.of(new PageReference("/merchants?tab=onboarding", "merchants")))).isEmpty();
-    }
 
     /** {@code Perms} 的常量名 → 字面量。 */
     private static Map<String, String> permLiterals() throws IOException {

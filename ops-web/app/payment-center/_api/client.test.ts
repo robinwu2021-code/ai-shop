@@ -63,4 +63,29 @@ describe("createPayOpsClient", () => {
     expect(f.mock.calls[4][1]!.method).toBe("PUT");
     expect(requestNoFor("/a", { v: 1 })).toMatch(/^ops-[0-9a-z]+$/);
   });
+
+  it("上传：multipart 带表单字段与 requestNo（同文件同字段同号），不设 JSON 头；解信封", async () => {
+    const f = fakeFetch(200, { code: 0, data: { draft: { draftVersion: 2 } } });
+    const c = createPayOpsClient({ baseUrl: "/x", fetcher: f as unknown as typeof fetch, getToken: () => "t" });
+    const file = new File([new Uint8Array([0x89, 0x50])], "a.png", { type: "image/png", lastModified: 1 });
+    expect(await c.upload("/onboardings/O1/files", { slot: "LICENSE_1", expectedVersion: 3, expectedDraftVersion: 1 }, file)).toEqual({ draft: { draftVersion: 2 } });
+    await c.upload("/onboardings/O1/files", { slot: "LICENSE_1", expectedVersion: 3, expectedDraftVersion: 1 }, file);
+    const [url, init] = f.mock.calls[0];
+    expect(url).toBe("/x/onboardings/O1/files");
+    const form = init!.body as FormData;
+    expect([form.get("slot"), form.get("expectedVersion"), form.get("expectedDraftVersion")]).toEqual(["LICENSE_1", "3", "1"]);
+    expect((form.get("file") as File).name).toBe("a.png");
+    expect(form.get("requestNo")).toBe((f.mock.calls[1][1]!.body as FormData).get("requestNo"));
+    expect((init!.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+  });
+
+  it("取文件：返回 Blob，Accept 只要图片与 PDF；失败照常抛 PayOpsError", async () => {
+    const f = vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "Content-Type": "application/pdf" } }));
+    const c = createPayOpsClient({ baseUrl: "/x", fetcher: f as unknown as typeof fetch });
+    const b = await c.blob("/onboardings/O1/files/abc");
+    expect(b.size).toBe(3);
+    expect(((f.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>).Accept).toBe("image/png,image/jpeg,application/pdf");
+    const bad = createPayOpsClient({ baseUrl: "/x", fetcher: fakeFetch(409, { reasonCode: "STATE_CONFLICT", message: "附件已过期" }) as unknown as typeof fetch });
+    await expect(bad.blob("/f")).rejects.toMatchObject({ message: "附件已过期", reasonCode: "STATE_CONFLICT" });
+  });
 });

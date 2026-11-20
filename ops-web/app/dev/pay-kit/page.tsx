@@ -15,8 +15,8 @@ import { MaskedValue } from "@/components/ui/masked-value";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
 import type { FieldDef } from "@/components/ui/form-drawer";
-import { ApprovalSubmitNotice, PayListPage, PayRefCell, useDraftOperator, usePayOrderStatusMap } from "@/components/payment/pay-kit";
-import { createDemoOrder, getDemoOrder, listDemoOrders, updateDemoOrder, type DemoOrder } from "@/lib/pay-ops/demo-orders";
+import { ApprovalSubmitNotice, PayListPage, PayRefCell, useDraftOperator, usePayOrderStatusMap } from "@/app/payment-center/_kit/pay-kit";
+import { createDemoOrder, getDemoOrder, listDemoOrders, updateDemoOrder, type DemoOrder } from "@/app/payment-center/_api/demo-orders";
 import { money, fmtTime } from "@/lib/utils";
 
 const PAGE = "dev-pay-kit";

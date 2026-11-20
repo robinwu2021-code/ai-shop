@@ -11,8 +11,8 @@ import { Notice } from "@/components/ui/notice";
 import type { FieldDef } from "@/components/ui/form-drawer";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
-import { PayListPage, PayRefCell, useDraftOperator } from "@/components/payment/pay-kit";
-import { RATE_STATUSES, type ChannelCostRow, type CommissionRuleRow, type StoredValueAccountRow, type StoredValueTransactionRow } from "@/lib/pay-ops/types";
+import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
+import { RATE_STATUSES, type ChannelCostRow, type CommissionRuleRow, type StoredValueAccountRow, type StoredValueTransactionRow } from "@/app/payment-center/_api/types";
 import { fmtTime, money } from "@/lib/utils";
 import { DetailLoader, MiniTable, datetimePattern, parseLocalDateTime, reasonField, toMinor, useRun, useStatusMap, useTabList, usePc, usePayCenterApi, type C, amt, useInstanceCurrency } from "./shared";
 
