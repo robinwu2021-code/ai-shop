@@ -21,20 +21,36 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
   };
   const settings = nav.find(s => s.key === 'iam')!;
   const mall = nav.find(s => s.key === 'commerce')!;
+  const pc = (key: string) => pick(`/payment-center?tab=${key}`);
+  const settingsRest = (settings.children ?? []).filter(l => l.group !== '基础配置');
+  const lastAccess = settingsRest.map(l => l.group).lastIndexOf('权限管理');
+  /*
+   * 支付中心（TDD-支付中心菜单整合 §2.2，2026-11-20 起在本分支落地，原定交网关的 G4）：
+   * 「商户管理」改名「支付中心」，收全部支付业务；订单中心只留经营订单；平台设置的支付渠道移走，
+   * 加数据范围（权限管理）、支付配置、支付运维两组。V671 的 5 个既有入口 point_code / href 不变，只换分组。
+   * 还没原生化的页面不进菜单（P3 隐藏，不灰显）。
+   */
   return [
     { ...settings, label: '平台设置', pinBottom: false, children: [
       ...(settings.children ?? []).filter(l => l.group === '基础配置'),
-      pick('/merchants?tab=payment-channels'), pick('/finance?tab=pay-channels', '渠道费率'),
-      ...(settings.children ?? []).filter(l => l.group !== '基础配置'),
+      pick('/finance?tab=pay-channels', '渠道费率'),
+      ...settingsRest.slice(0, lastAccess + 1), pc('data-scopes'), ...settingsRest.slice(lastAccess + 1),
+      pc('approval-flows'), pc('settings'),
+      pc('alert-events'), pc('alert-rules'), pc('channel-calls'), pc('channel-callbacks'), pc('request-logs'),
     ] },
     { ...mall, label: '平台商城', pinBottom: false },
     { key: 'customers', label: '客户管理', icon: 'Users', modules: ['dashboard', 'customer', 'member', 'merchant'], href: '/customers?tab=overview', match: ['/customers'],
       children: aliases.filter(l => l.href.startsWith('/customers')) },
-    { key: 'paymentMerchant', label: '商户管理', icon: 'Landmark', modules: ['pay'], href: '/merchants?tab=payment', match: [],
-      children: [pick('/merchants?tab=payment'), pick('/merchants?tab=payment-onboarding')] },
-    { key: 'orders', label: '订单中心', icon: 'ReceiptText', modules: ['order', 'aftersale', 'pay'], href: '/orders', match: ['/orders', '/after-sales'],
-      children: [pick('/orders', '经营订单'), pick('/orders?tab=exception', '经营订单'), pick('/after-sales', '经营订单'),
-        pick('/orders?tab=payments'), pick('/orders?tab=payment-exceptions')] },
+    { key: 'orders', label: '订单中心', icon: 'ReceiptText', modules: ['order', 'aftersale'], href: '/orders', match: ['/orders', '/after-sales'],
+      children: [pick('/orders', '经营订单'), pick('/orders?tab=exception', '经营订单'), pick('/after-sales', '经营订单')] },
+    // key 沿用 paymentMerchant：菜单顺序与个人偏好按 key 存，改 key 会让已有设置失效
+    { key: 'paymentMerchant', label: '支付中心', icon: 'Landmark', modules: ['pay'], href: '/payment-center', match: ['/payment-center'],
+      children: [
+        pc('approvals'),
+        pick('/merchants?tab=payment', '支付商户'), pc('stores'), pick('/merchants?tab=payment-onboarding', '支付商户'), pc('merchant-changes'),
+        pick('/orders?tab=payments', '交易'), pick('/orders?tab=payment-exceptions', '交易'), pc('refunds'),
+        pick('/merchants?tab=payment-channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
+      ] },
   ];
 }
 

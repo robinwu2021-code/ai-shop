@@ -77,10 +77,7 @@ describe("platform settings incremental migration", () => {
   });
 });
 
-const PAY_CENTER_ACTION_CODES = ["APPROVAL_DISPATCH", "APPROVAL_REVIEW", "APPROVAL_VIEW", "CHANNEL_MANAGE", "COLLECTION_ENTRY_MANAGE", "COLLECTION_ENTRY_VIEW", "COLLECTION_POLICY_MANAGE", "COLLECTION_POLICY_VIEW", "DATA_SCOPE_APPROVE", "DATA_SCOPE_MANAGE", "DATA_SCOPE_VIEW", "MERCHANT_APPROVE", "MERCHANT_MANAGE", "ONBOARDING_APPROVE", "ONBOARDING_MANAGE", "ORDER_COMPENSATE", "PRODUCT_MANAGE", "PRODUCT_VIEW", "STORE_APPROVE", "STORE_MANAGE", "STORE_VIEW",
-  // P2
-  "TERMINAL_VIEW", "TERMINAL_MANAGE", "TERMINAL_VERIFY", "APP_VIEW", "APP_APPROVE", "CREDENTIAL_MANAGE", "TRACE_VIEW", "ALERT_RULE_VIEW", "ALERT_RULE_MANAGE", "ALERT_RULE_APPROVE", "ALERT_EVENT_VIEW", "ALERT_EVENT_HANDLE", "APPROVAL_FLOW_VIEW",
-];
+const PAY_CENTER_ACTION_CODES = ["ALERT_EVENT_HANDLE", "ALERT_RULE_APPROVE", "ALERT_RULE_MANAGE", "APPROVAL_DISPATCH", "APPROVAL_REVIEW", "APP_APPROVE", "CHANNEL_MANAGE", "COLLECTION_ENTRY_MANAGE", "COLLECTION_POLICY_MANAGE", "COLLECTION_POLICY_VIEW", "CREDENTIAL_MANAGE", "DATA_SCOPE_APPROVE", "DATA_SCOPE_MANAGE", "MERCHANT_APPROVE", "MERCHANT_MANAGE", "ONBOARDING_APPROVE", "ONBOARDING_MANAGE", "ORDER_COMPENSATE", "PRODUCT_MANAGE", "STORE_APPROVE", "STORE_MANAGE", "TERMINAL_MANAGE", "TERMINAL_VERIFY"];
 
 it("keeps generated ACTION ownership independent of settings display order", () => {
   const sql = execFileSync("node", ["scripts/gen-perm-seed.mjs"], { encoding: "utf8" });
@@ -89,7 +86,7 @@ it("keeps generated ACTION ownership independent of settings display order", () 
     const values = [...line.matchAll(/'([^']*)'/g)].map(m => m[1]);
     owners[values[0]] = values[1];
   }
-  // 支付中心原生页（TDD-支付中心运营页面 P1/P2）新登记的 34 个 pay:* 码，动作点都归 OPS_FINANCE（菜单 TDD §2.7 G1）
+  // 支付中心原生页（TDD-支付中心运营页面 P1/P2）新登记的 pay:* 码中、没有被菜单叶子用作查看码的那些，动作点都归 OPS_FINANCE（菜单 TDD §2.7 G1）
   const payCenter = Object.fromEntries(PAY_CENTER_ACTION_CODES.map((c) => [`ACT__PAY_${c}`, "OPS_FINANCE"]));
   expect(owners).toEqual({ ...actionOwnersBefore, ...payCenter, ACT__MERCHANT_SELFOP_CREATE: "OPS_MERCHANT", ACT__MERCHANT_APPLY_ONBEHALF: "OPS_MERCHANT" });
 });

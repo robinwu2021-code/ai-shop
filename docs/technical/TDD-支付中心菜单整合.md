@@ -1,6 +1,6 @@
 # TDD-支付中心菜单整合
 
-状态：已确认（菜单目标与映射，用户 2026-11-20 确认；同日两次修订：①页面合并 + 待建隐藏；②按岗位与权限级别重拆，单页不聚合过多功能）；**实施交统一网关执行**，本文不单独落代码与迁移
+状态：**菜单与点位已在分支 `feat/ops-pay-center-menu` 落地（2026-11-20，用户要求不再等网关；见 §6）**；已确认（菜单目标与映射，用户 2026-11-20 确认；同日两次修订：①页面合并 + 待建隐藏；②按岗位与权限级别重拆，单页不聚合过多功能）；**实施交统一网关执行**，本文不单独落代码与迁移
 档位：1 · 依据：用户 2026-11-20 口头需求（下列 AC 已在会话中逐项确认）
 前序：[平台运营五目录收敛与验收](TDD-平台运营五目录收敛与验收.md)
 执行方：[网关层与统一权限-五层架构对齐](TDD-网关层与统一权限-五层架构对齐.md)（ADR-060 / ADR-061；分支 `feat/gateway-layer-20261118`）
@@ -87,7 +87,7 @@
 | | 黑白名单 | — | RC02 | pay:risk-list:view | RISK | ○ |
 | 支付中心 · 合规争议 | 争议案件 | — | RC07 | pay:dispute:view | CS、RISK | ○ |
 | | 合规审查 | 审查 / 合规事件 | RC05 / RC06 | pay:compliance:view | RISK（另设合规岗时迁给该岗） | ○ |
-| 支付中心 · 会员资产 | 积分 | 积分账户 / 积分流水 | TR04 / TR05 | pay:member:view ★ | CS、FINANCE | ○ |
+| 支付中心 · 会员资产 | 积分 | 积分账户 / 积分流水 | TR04 / TR05 | 沿用 shop 积分页的码（`finance:settle:read`） | CS、FINANCE | ● 链到 shop `/points/accounts`、`/points/transactions`（2026-11-20 用户定；near-pay S4 新模型出来再议） |
 | | 储值 | 储值账户 / 储值交易 | TR06 / TR07 | pay:stored-value:view | CS、FINANCE | ○ |
 | 平台设置 · 权限管理 | 数据范围 | — | SY04 | pay:data-scope:view ★ | SUPER_ADMIN | ● |
 | 平台设置 · 支付配置 | 经营设置 | — | OP01 | pay:region:view | SUPER_ADMIN | ○ |
@@ -96,7 +96,7 @@
 | | 渠道调用 | — | SY07 | pay:trace:view ★ | TECH_OPS | ○ |
 | | 异步任务 | — | SY08 | pay:job:view | TECH_OPS | ○ |
 | | 请求日志 | — | SY06 | pay:log:view（shop 已有码） | TECH_OPS | ○ |
-| | 测试渠道 | — | MP01 | pay:mockpay:view | TECH_OPS（仅测试实例开放） | ○ |
+| | 测试渠道 | — | MP01 | pay:mockpay:view | TECH_OPS（仅测试实例开放） | ● 打开支付端工作区 `/oms/ops/mockpay`，保留 mockpay 自己的登录（2026-11-20 用户定） |
 | — 不新增 | — | 角色权限 / 审计日志 | SY03 / SY09 | — | — | 并入 shop 同名页 |
 
 **规模**
@@ -182,3 +182,30 @@
 | 实机 | 超管、客服、财务各登一次：菜单截图与 §2.3 对得上；点进各项打开对应支付页 | | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
+
+## §6 对账二 · 设计 → 实现
+
+### 菜单与点位落地（2026-11-20，用户要求在本分支改，不再等网关的 G1/G4）
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `ops-web/lib/platform-nav.ts` | 一级顺序改为 平台设置 / 平台商城 / 客户管理 / 订单中心 / 支付中心；「商户管理」改名「支付中心」（key 沿用 `paymentMerchant`，保住按 key 存的菜单顺序与个人偏好），分组 审批 / 支付商户 / 交易 / 渠道接入；订单中心只留经营订单；平台设置移走支付渠道、加数据范围（权限管理）与 支付配置、支付运维 两组 |
+| 修改 | `ops-web/lib/platform-menu-aliases.json` | +16 个别名（`/payment-center?tab=<页签>`，function `OPS_FINANCE`，point_code `OPS_FINANCE__PAYCENTER_<页签>`） |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V684__ops_payment_center_menu.sql` | 16 个 MENU 功能点 + 授权：SUPER_ADMIN 全部；按运营页面 TDD §2.6 / 同码继承（支付门店、商户变更 ← `OPS_MERCHANT__TAB_PAYMENT`；审核待办 ← `OPS_MERCHANT__TAB_PAYMENT_ONBOARDING`；支付产品、收款接入、经营设置 ← `OPS_IAM__TAB_PAYMENT_CHANNELS`；退款订单 ← `OPS_FINANCE__PAY_REFUNDS`）；其余只给超管。只新增，不改已有行 |
+| 修改 | `backend/shop-app/src/test/resources/schema-test.sql` | `gen-test-schema.py` 重生成，只多了 V684 的 39 行 |
+| 修改 | `ops-web/lib/i18n/nav-labels.ts`、`nav-zh-TW.ts` | 新菜单名与分组名的英文 / 繁体 |
+| 修改 | `ops-web/lib/pay-ops/center-tabs.ts` | `PENDING_MENU` 清空；`LEGACY_MENU_HREF` 记下 5 个既有入口的原 href |
+| 修改 | `ops-web/lib/{platform-nav,nav,nav-platform-settings,use-page-tab}.test.ts` | 期望改成新结构：根顺序、支付中心叶子与分组、平台设置、各岗位可见根（财务多出支付中心：支付订单、支付异常、退款订单）、页签按根分区；种子授权测试同时读 V671 与 V684，并收紧「授给谁」的匹配 |
+
+| 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/FunctionPointPermAlignmentTest.java` | 「登记的功能点须有本地端点或已接线的跨系统工作区」加一类认定：支付中心原生页（端点在 near-pay）。三条同时成立才算：点位 href = `/payment-center?tab=<key>`、`center-tabs.ts` 登记该页签且权限码一致、`page.tsx` 的 `TAB_COMPONENT` 真的渲染它 |
+
+**验证**：ops-web `tsc` 无输出、`vitest` 146 个文件 1346 条全过；后端 `FunctionPointPermAlignmentTest` 7/7、`SchemaDriftTest` 6/6；共享包 `nav-function-point.test.ts` 2/2；`check-ops-orphan` 退出 0。
+消融：从 `page.tsx` 去掉终端页签 → 对齐测试报出 `pay:terminal:view`。
+实机（本机 mock，超管）：一级目录依次为 平台设置 / 平台商城 / 客户管理 / 订单中心 / 支付中心；支付中心面板 4 组 13 项、当前页高亮正确；平台设置无支付渠道、权限管理下有数据范围、末尾有支付配置与支付运维两组；订单中心只剩经营订单 3 项。
+
+**偏差说明**
+1. **点位落在 shop 主迁移目录（V684），不经网关的种子**：网关分支尚未开始 G1/G4。迁移号 V679–V683 已被其它未合并分支占用，**合并前须再核迁移号与顺序**；网关接手后以这批点位为基础，不重复建。
+2. **渠道调用 / 回调、告警事件 / 规则在菜单上各是两项**：§2.2 设计为「一个菜单项两个页签」，现阶段每个页签就是一个菜单叶子。
+3. **积分账户 / 流水、测试渠道还没进菜单**：已定链到 shop 积分页与 `/oms/ops/mockpay`，但跨根链接（积分页属另一业务域、测试渠道是外部工作区）的高亮与返回需单独处理，下一步做。
+4. **界面清单（`ui-catalog.json`）看不到支付中心**：`gen-ui-catalog.py` 只读 `nav.ts`，不读菜单投影与别名表；要让清单收录支付中心需改生成器。
+

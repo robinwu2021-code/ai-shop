@@ -21,7 +21,10 @@ export interface PayCenterTab {
   group: "review" | "merchant" | "trade" | "channel" | "settings" | "ops" | "config";
   zh: string;
   en: string;
-  /** 首期仍经 /oms 过渡入口的既有菜单项（PaymentOpsEntry 的 workspace 名），开关打开后改跳这里 */
+  /**
+   * 首期仍经 /oms 过渡入口的既有菜单项（PaymentOpsEntry 的 workspace 名），开关打开后改跳这里。
+   * 这 5 个页签在菜单上用的是 V671 的原 href（point_code 与授权不变），见 legacyMenuHref。
+   */
   workspace?: "channels" | "merchants" | "onboarding" | "payments" | "payment-exceptions";
 }
 
@@ -62,16 +65,22 @@ export const PAY_CENTER_GROUP_LABEL: Record<PayCenterTab["group"], { zh: string;
   ops: { zh: "平台设置 · 支付运维", en: "Settings · Payment ops" },
 };
 
-/** 还等统一网关登记菜单点位（菜单 TDD G1/G4）的页签。登记一条删一条。 */
-export const PENDING_MENU: readonly PayCenterTabKey[] = [
-  "approvals", "merchants", "stores", "onboardings", "orders", "exceptions", "channels", "products", "access", "data-scopes",
-  "merchant-changes", "refunds", "terminals", "apps", "request-logs", "channel-calls", "channel-callbacks", "alert-events", "alert-rules", "approval-flows", "settings",
-];
+/** 还等登记菜单点位的页签。2026-11-20 起菜单在本分支落地（V684 + platform-nav），已清空；以后新增页签先进这里。 */
+export const PENDING_MENU: readonly PayCenterTabKey[] = [];
 
 /**
  * 原生页开关：打开后，既有菜单项（/merchants?tab=payment 等）由跳 /oms 改为进 /payment-center。
  * 默认关 —— 原生页连真接口的鉴权（near-pay 是否认 shop 令牌）验证之前，不改变线上行为。
  */
+/** 既有 5 个入口在菜单上的原 href（V671），其余页签的菜单 href 就是 /payment-center?tab= */
+export const LEGACY_MENU_HREF: Partial<Record<PayCenterTabKey, string>> = {
+  merchants: "/merchants?tab=payment",
+  onboardings: "/merchants?tab=payment-onboarding",
+  orders: "/orders?tab=payments",
+  exceptions: "/orders?tab=payment-exceptions",
+  channels: "/merchants?tab=payment-channels",
+};
+
 export function payNativePagesEnabled(value = process.env.NEXT_PUBLIC_PAY_NATIVE_PAGES): boolean {
   return value === "1" || value === "true";
 }

@@ -1,4 +1,4 @@
-import { platformCatalog, PLATFORM_MENU_ALIASES } from "./platform-nav";
+import { platformCatalog, platformNav, PLATFORM_MENU_ALIASES } from "./platform-nav";
 // 导航结构单测。这里锁的是**结构约束**，不是文案：
 // 文案会随产品走，结构一破（分组不相邻、href 重复、模块与权限码对不上）界面就会出错。
 import { describe, expect, it } from "vitest";
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
 import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
-import { PAY_CENTER_TABS, PENDING_MENU } from "./pay-ops/center-tabs";
+import { LEGACY_MENU_HREF, PAY_CENTER_TABS, PENDING_MENU } from "./pay-ops/center-tabs";
 import { permsOf, ROLE_LABEL } from "./permissions";
 import { UI_PERM_MAP } from "./perm-map";
 import { pointsLegacyServerMenuHref } from "./points-ops-routes";
@@ -592,7 +592,9 @@ describe("路由归属与面包屑", () => {
      * （已登记却还挂在清单上同样红 —— 清单只许变短，不许当成永久豁免）。
      */
     const keys = PAY_CENTER_TABS.map((t) => t.key);
-    const registered = new Set(navTabs("/payment-center", keys, platformCatalog()).filter((t) => t.label).map((t) => t.key));
+    // 既有 5 个入口在菜单上用 V671 的原 href（开关打开后跳到原生页），其余用 /payment-center?tab=
+    const menuHrefs = new Set(platformNav().flatMap((sec) => (sec.children ?? []).map((l) => l.href)));
+    const registered = new Set(keys.filter((k) => menuHrefs.has(LEGACY_MENU_HREF[k] ?? `/payment-center?tab=${k}`)));
     const lost = keys.filter((k) => !registered.has(k) && !PENDING_MENU.includes(k));
     const stale = PENDING_MENU.filter((k) => registered.has(k));
     expect(lost, "这些支付中心页签既没有菜单叶子，也不在 PENDING_MENU：").toEqual([]);
