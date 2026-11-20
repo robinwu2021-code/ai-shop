@@ -42,6 +42,11 @@ export type FieldDef = ValidatableField & {
   csv?: boolean;
   /** 字段下方灰色说明。 */
   help?: string;
+  /**
+   * 敏感字段（银行账号、密钥、证件号、凭据）：不进本地草稿、不进日志。
+   * 见 `lib/draft.ts` 与 TDD-支付中心运营页面 §2.4。
+   */
+  sensitive?: boolean;
 };
 
 type FormValue = FormValues;

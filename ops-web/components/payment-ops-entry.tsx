@@ -1,11 +1,14 @@
 "use client";
 
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { HelpNote } from "@/components/ui/help-note";
 import { useAuth } from "@/lib/auth";
 import { PAYMENT_WORKSPACES, paymentWorkspaceHref, shareOpsToken, type PaymentWorkspace } from "@/lib/auth/ops-bridge";
 import { useCan } from "@/lib/use-can";
 import { useI18n } from "@/lib/i18n";
+import { useRouter } from "next/navigation";
+import { PAY_CENTER_TABS, payCenterHref, payNativePagesEnabled } from "@/lib/pay-ops/center-tabs";
 
 const COPY = {
   zh: {
@@ -36,12 +39,17 @@ const COPY = {
 
 /** Reuses the live payment workspace; the destination revalidates session and data scope. */
 export function PaymentOpsEntry({ workspace }: { workspace: PaymentWorkspace }) {
+  // 原生页开关打开时，既有菜单项改进 /payment-center（TDD-支付中心运营页面 P1）；关着保持跳 /oms
+  const native = payNativePagesEnabled() ? PAY_CENTER_TABS.find((t) => t.workspace === workspace) : undefined;
+  const router = useRouter();
+  React.useEffect(() => { if (native) router.replace(payCenterHref(native.key)); }, [native, router]);
   const { locale } = useI18n();
   const c = COPY[locale];
   const allow = useCan();
   const token = useAuth((s) => s.token);
   const [title, description, action] = c[workspace];
   const permitted = allow(PAYMENT_WORKSPACES[workspace].permission);
+  if (native) return null;
   return <section className="mb-4 space-y-3" aria-label={title}>
     <HelpNote>{description}</HelpNote>
     {permitted ? <Button onClick={() => {

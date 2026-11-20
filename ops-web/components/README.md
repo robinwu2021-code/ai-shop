@@ -65,6 +65,12 @@
 | `Tree` | `ui/tree.tsx` | 层级树（类目树 / 权限树），可勾选（半选态复用 `Checkbox` 原语） |
 | `Timeline` | `ui/timeline.tsx` | 审计时间线（时间 + 操作人 + 前后值 + 说明） |
 | `Toaster` | `ui/toaster.tsx` | |
+| `ListPage` | `ui/list-page.tsx` | **列表页骨架**：标题 + 说明 + `Toolbar`（筛选、页面级操作、「我的草稿」）+ `PagedTable` + 操作列 + 抽屉/弹框挂载点。页面只写列、筛选与 `ActionSpec`。支付中心起步，见 TDD-支付中心运营页面 |
+| `ActionSpec` / `useActionHost` / `RowActionButtons` / `validateActions` | `ui/action-host.tsx` | 操作的声明与承载。载体只有 drawer / dialog（填理由）/ confirm 三种；**抽屉只有一个槽位**（再开是替换，`switchTo` 可返回），弹框可叠在抽屉上；打开的抽屉同步到 `?action=&id=`。判权函数由业务层传入 |
+| `DetailBody` / `DetailActions` | `ui/detail-drawer.tsx` | 只读详情（抽屉内容）+ 底栏操作按钮（按 `ctx.available()` 过滤）。详情里不放表单控件 |
+| `ActionForm` | `ui/action-form.tsx` | 单一任务的编辑面板（抽屉内容）：`FormDrawer inDrawer` + 本地草稿 + 提交态。`FieldDef.sensitive` 的字段不进草稿 |
+| `DraftNotice` | `ui/draft-notice.tsx` | 草稿提示：已恢复（可放弃）/ 基于旧版本（冲突）/ 浏览器存不了 |
+| `MaskedValue` / `maskValue` | `ui/masked-value.tsx` | 敏感值掩码（露后 4 位），有权可「显示」并回调记审计 |
 
 ## 业务件（domain）
 
@@ -93,6 +99,7 @@
 | `SystemSwitcher` / `fetchPaymentAccess` | `layout/system-switcher.tsx` | 顶栏系统切换：平台运营 ⇄ 支付运营；「支付运营」按支付端 `/me/access` 显隐，两端同源共用令牌、跳过去即已登录（TDD-ops-统一登录与系统切换） |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
 | `ChangePasswordButton` | `layout/change-password.tsx` | 顶栏「修改密码」：旧密码 + 新密码两次，调 `POST /ops/staffs/me/password`。旧密码错后端回 10401（业务码），这里说成「当前密码不正确」而不是登录过期；成功后后端吊销全部会话，所以随即登出回登录页 |
+| `PayListPage` / `usePayOps` / `usePayCenterApi` / `useDraftOperator` / `usePayOrderStatusMap` / `PayRefCell` / `ApprovalSubmitNotice` | `payment/pay-kit.tsx` | 支付中心业务件：`ListPage` + 当前账号判权与草稿操作人；near-pay `/pay-ops/v2` 客户端（`lib/pay-ops/client.ts`）；编号复制；审批提示 |
 
 ### `components/status.tsx` 的归位
 
@@ -169,6 +176,7 @@
 | `useReportingIdentity()` | `lib/use-reporting-identity.ts` | 给报表查询缓存附加当前身份与数据范围，避免账号切换时复用旧结果 |
 | `useCan()` | `lib/use-can.ts` | 权限判定（`can` / `canModule` / `scopeOf` 的 React 侧入口） |
 | `useOpsStream(event, onData)` | `lib/use-ops-stream.ts` | 订阅服务端推送。**整页共用一条连接**（内部引用计数）—— 每个组件各开一条的话，后端看到的在线数是「打开的组件数」而不是「打开的人数」，而那个数会拿去判负载 |
+| `useDraft({ ref, initial, sensitiveKeys, baseVersion })` | `lib/use-draft.ts` | 抽屉编辑的本地草稿：防抖落盘、卸载与页面隐藏时立即落盘、恢复与冲突识别、提交后清除。存储层 `lib/draft.ts`（键带操作人、7 天过期、敏感字段剔除） |
 
 这四个都有守卫盯着（`lib/design-tokens.test.ts`），绕开就会红。
 
@@ -257,6 +265,8 @@ onRetry / total 五项，`onSize` 是必填 —— 这几项此前靠各页手�
 | 一列**动作**（编辑/停用/归档） | `DropdownMenu` / `RowActions` | 方向键 + typeahead 由 Radix 保证 |
 | 任意可交互内容（筛选面板、迷你表单、二维码） | `Popover` | 顺手看一眼 / 改一下，**不遮挡列表上下文** |
 | 成体系的一件事，有标题与底部动作条 | `Drawer` / `ConfirmDialog` | 进去做一件事 |
+
+**抽屉不叠层。** 抽屉里要编辑就原地替换内容（`ActionHost` 的 `switchTo`，或 `FormDrawer inDrawer`），要确认 / 填理由就叠一个弹框。开发态在打开的抽屉里再渲染 `Drawer` 会 `console.error`（`[Drawer] nested`），`lib/action-host.test.ts` 据此断言。
 
 一句话判据：**Popover 是「顺手改一下」，Drawer 是「进去做一件事」。**
 

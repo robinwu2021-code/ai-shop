@@ -183,6 +183,32 @@ public final class Perms {
      */
     public static final String PAY_APP_MANAGE = "pay:app:manage";
     public static final String PAY_APP_CREDENTIAL_REVOKE = "pay:app-credential:revoke";
+    /*
+     * 支付中心原生页（TDD-支付中心运营页面 P1）：与 near-pay /pay-ops/v2 守卫同名的码。
+     * near-pay 按宿主下发的 perms 判权（AiShopOpsSessionFilter → /ops/auth/me），所以码名必须一字不差。
+     * 这里只登记；角色授予由统一网关的权限种子落库（TDD-支付中心菜单整合 G2/G3）。
+     */
+    public static final String PAY_STORE_VIEW = "pay:store:view";
+    public static final String PAY_STORE_MANAGE = "pay:store:manage";
+    public static final String PAY_STORE_APPROVE = "pay:store:approve";
+    public static final String PAY_COLLECTION_POLICY_VIEW = "pay:collection-policy:view";
+    public static final String PAY_COLLECTION_POLICY_MANAGE = "pay:collection-policy:manage";
+    public static final String PAY_MERCHANT_MANAGE = "pay:merchant:manage";
+    public static final String PAY_MERCHANT_APPROVE = "pay:merchant:approve";
+    public static final String PAY_ONBOARDING_MANAGE = "pay:onboarding:manage";
+    public static final String PAY_ONBOARDING_APPROVE = "pay:onboarding:approve";
+    public static final String PAY_ORDER_COMPENSATE = "pay:order:compensate";
+    public static final String PAY_APPROVAL_VIEW = "pay:approval:view";
+    public static final String PAY_APPROVAL_REVIEW = "pay:approval:review";
+    public static final String PAY_APPROVAL_DISPATCH = "pay:approval:dispatch";
+    public static final String PAY_CHANNEL_MANAGE = "pay:channel:manage";
+    public static final String PAY_PRODUCT_VIEW = "pay:product:view";
+    public static final String PAY_PRODUCT_MANAGE = "pay:product:manage";
+    public static final String PAY_COLLECTION_ENTRY_VIEW = "pay:collection-entry:view";
+    public static final String PAY_COLLECTION_ENTRY_MANAGE = "pay:collection-entry:manage";
+    public static final String PAY_DATA_SCOPE_VIEW = "pay:data-scope:view";
+    public static final String PAY_DATA_SCOPE_MANAGE = "pay:data-scope:manage";
+    public static final String PAY_DATA_SCOPE_APPROVE = "pay:data-scope:approve";
     /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。

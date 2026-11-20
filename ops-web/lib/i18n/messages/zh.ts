@@ -276,6 +276,29 @@ export const zh = {
     MERCHANT_OWNED: "商家自带",
     PLATFORM: "平台流量",
   },
+  actionKit: {
+    draftRestored: "已恢复 {time} 的草稿",
+    draftDiscard: "放弃草稿",
+    draftConflict: "这条记录在你编辑后被修改过，草稿基于旧版本，请核对后再提交",
+    draftUnavailable: "当前浏览器无法保存草稿，关闭前请先提交",
+    draftKept: "草稿已保存，可稍后继续",
+    myDrafts: "我的草稿",
+    myDraftsCount: "我的草稿 ({n})",
+    myDraftsEmpty: "没有未提交的草稿",
+    newRecord: "新建",
+    backToDetail: "返回详情",
+    reveal: "显示",
+    hide: "隐藏",
+    submitFailed: "提交失败：{msg}",
+  },
+  payKit: {
+    approvalRequired: "这项修改需要审批，提交后由审核人在「审核待办」处理",
+    approvalSubmitted: "已提交审批",
+    goApprovals: "去审核待办",
+    copied: "已复制",
+    copy: "复制",
+    orderStatus: { CREATED: "待支付", PAYING: "支付中", PAID: "已支付", CLOSED: "已关闭", FAILED: "支付失败", REFUNDED: "已退款" },
+  },
 };
 
 export type Messages = typeof zh;
