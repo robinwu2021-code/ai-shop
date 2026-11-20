@@ -777,3 +777,5 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
   真正原因两层：① 代建支付商户要的是**经营主体**（`mch_operating_entity`），测试主体 `M261119TS0PN0XBK9` 是直接写库建的，没有经营主体（正式库只有一个经营主体 `OE26111074KRRAD8Q5`「NearGo科技测试主体-1110-01」）；
   ② 用它再试仍被拒：near-pay `AiShopBizIdentityClient.forOperator` 把**运营端**接口 `/ops/customers/operating-entities/{id}` 发到 `near-pay.biz.ai-shop.base-url=http://127.0.0.1:18082`（ai-shop api 实例，没有 `/ops/**`，回 404），被翻译成「经营主体不在运营授权范围」。
   ai-shop 运营端（v1 18081 与 v2）用同一令牌查该经营主体都返回正常且含 `PAYMENT_MERCHANT_CREATE`。**生产上代建支付商户对所有人都不可用**（含旧 /oms 页），要 near-pay 改用 `near-pay.ops.ai-shop.base-url`（18081）并发版。两次尝试均被拒，正式数据无改动。
+- **已修（14:58 CST）**：near-pay 补丁包 `8faa039450c0bb94`（线上 `79c47ed` + 换 2 个类，修复在 near-pay `fix/forop-ops-base-20261120` `186728a2a`，细节见 near-pay `deploy/nearpay/prod/README.md`）。
+  复测为 `OE26111074KRRAD8Q5` 代建：越过了经营主体核验，停在业务校验「经营主体尚未关联门店，须先建门店并同步到支付侧」——正式库唯一的经营主体没有门店，要继续测需先给它建门店并同步支付侧（属新建生产数据，待用户定）。
