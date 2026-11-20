@@ -34,6 +34,11 @@ export function resolvePayOpsBase(configured = process.env.NEXT_PUBLIC_PAY_OPS_A
   return value.replace(/\/+$/, "");
 }
 
+/** v1 基础路径：把 v2 前缀的末段换成 v1（near-pay 退款只有 /pay-ops/v1）。不以 /v2 结尾时原样返回，由调用方自己配。 */
+export function resolvePayOpsV1Base(configured = process.env.NEXT_PUBLIC_PAY_OPS_API_BASE): string {
+  return resolvePayOpsBase(configured).replace(/\/v2$/, "/v1");
+}
+
 export interface PayOpsClientOptions {
   baseUrl?: string;
   fetcher?: typeof fetch;

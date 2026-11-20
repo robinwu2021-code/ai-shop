@@ -2,6 +2,8 @@
 // 路径、查询参数、命令体与 near-pay /pay-ops/v2 一一对应（TDD-支付中心运营页面 §2.6，契约核对见 §6）。
 import type { PayOpsClient, PayPage } from "./client";
 import type {
+  AlertEventRow, AlertRuleRow, AppDetail, AppGrant, AppRow, ApprovalFlowRow, ChannelCallDetail, ChannelCallRow, ChannelCallbackDetail, ChannelCallbackRow,
+  CredentialIssued, OperatingSettings, ProfileRevisionDetail, RefundListRow, RequestLogDetail, RequestLogRow, TerminalRow,
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
 } from "./types";
@@ -25,6 +27,15 @@ export interface ScopeSave {
   fundsAccess: string; expiresAt: number; reason: string;
 }
 export interface OnboardingMaterials { legalForm: string; contactName: string; contactPhone: string; licenses: string[]; settleAccountType: string; settleAccount: string }
+
+
+export interface TerminalSave {
+  expectedVersion: number; reason: string; name: string; merchantNo: string; storeNo: string; payChannel: string; payMerchantNo: string;
+  channelTerminalNo: string; serialNo: string; model: string; connectionMode: string; productCodes: string[]; receiptName: string; remark: string; dailyRefundLimitMinor: number;
+}
+export interface AppCreate { name: string; purpose: string; ownerKind: string; merchantNo: string | null; environment?: string; scopes: string[]; notifyUrl: string; callbackDomains: string[]; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
+export interface AppUpdate { expectedVersion: number; name: string; purpose: string; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
+export interface AlertRuleSave { expectedVersion: number; name: string; metric: string; scopeType: string; scopeRef: string | null; operator: string; threshold: string; windowSeconds: number; minSampleCount: number; consecutiveBreaches: number; severity: string; notifyTargets: string[]; reason: string }
 
 export interface PayCenterApi {
   source: "http" | "mock";
@@ -109,6 +120,71 @@ export interface PayCenterApi {
     enable(no: string, c: Cmd): Promise<ActionResult>;
     revoke(no: string, c: Cmd): Promise<ActionResult>;
   };
+
+  merchantChanges: {
+    list(q: Q): Promise<PayPage<MerchantRow>>;
+    revision(merchantNo: string, revisionNo: string): Promise<Detail<ProfileRevisionDetail>>;
+    decide(merchantNo: string, revisionNo: string, decision: "approve" | "reject" | "request-more", c: Cmd): Promise<ActionResult>;
+  };
+  refunds: {
+    /** v1：不分页，最多 200 条，新的在前；页面在前端分页 */
+    list(q: { status?: string; limit?: number }): Promise<RefundListRow[]>;
+    review(payRefundNo: string, body: { approve: boolean; reason: string }): Promise<RefundListRow>;
+  };
+  terminals: {
+    list(q: Q): Promise<PayPage<TerminalRow>>;
+    detail(no: string): Promise<Detail<TerminalRow>>;
+    create(body: TerminalSave): Promise<Detail<TerminalRow>>;
+    update(no: string, body: TerminalSave): Promise<ActionResult>;
+    verify(no: string, body: Cmd & { evidenceRef: string }): Promise<ActionResult>;
+    enable(no: string, c: Cmd): Promise<ActionResult>;
+    disable(no: string, c: Cmd): Promise<ActionResult>;
+    activationCode(no: string): Promise<{ activationCode: string }>;
+    lost(no: string): Promise<unknown>;
+    retire(no: string, c: Cmd): Promise<unknown>;
+  };
+  apps: {
+    list(q: Q): Promise<PayPage<AppRow>>;
+    detail(no: string): Promise<Detail<AppDetail>>;
+    grants(no: string): Promise<PayPage<AppGrant>>;
+    create(body: AppCreate): Promise<Detail<AppDetail>>;
+    update(no: string, body: AppUpdate): Promise<ActionResult>;
+    scopes(no: string, body: Cmd & { scopes: string[] }): Promise<ActionResult>;
+    callback(no: string, body: Cmd & { notifyUrl: string; callbackDomains: string[] }): Promise<ActionResult>;
+    verifyCallback(no: string, body: Cmd & { evidenceRef: string }): Promise<ActionResult>;
+    command(no: string, action: "enable" | "resume" | "suspend" | "revoke", c: Cmd): Promise<ActionResult>;
+    issueCredential(no: string, body: { credentialType: "APP_SECRET" | "APP_DATA_KEY"; reason: string }): Promise<CredentialIssued>;
+  };
+  traces: {
+    requestLogs(q: Q): Promise<PayPage<RequestLogRow>>;
+    requestLog(id: string): Promise<RequestLogDetail>;
+    calls(q: Q): Promise<PayPage<ChannelCallRow>>;
+    call(no: string): Promise<ChannelCallDetail>;
+    callbacks(q: Q): Promise<PayPage<ChannelCallbackRow>>;
+    callback(no: string): Promise<ChannelCallbackDetail>;
+  };
+  alerts: {
+    events(q: Q): Promise<PayPage<AlertEventRow>>;
+    event(no: string): Promise<Detail<AlertEventRow>>;
+    claim(no: string, c: Cmd): Promise<ActionResult>;
+    assign(no: string, body: Cmd & { assigneeNo: string }): Promise<ActionResult>;
+    resolve(no: string, body: Cmd & { resolution: string; relatedRef: string | null }): Promise<ActionResult>;
+    close(no: string, c: Cmd): Promise<ActionResult>;
+    rules(q: Q): Promise<PayPage<AlertRuleRow>>;
+    rule(no: string): Promise<Detail<AlertRuleRow> & { revisions: AlertRuleRow[] }>;
+    createRule(body: AlertRuleSave): Promise<unknown>;
+    updateRule(no: string, body: AlertRuleSave): Promise<ActionResult>;
+    enableRule(no: string, c: Cmd): Promise<ActionResult>;
+    disableRule(no: string, c: Cmd): Promise<ActionResult>;
+  };
+  approvalFlows: {
+    list(q: Q): Promise<PayPage<ApprovalFlowRow>>;
+    detail(no: string): Promise<{ record: ApprovalFlowRow; revisions: ApprovalFlowRow[] }>;
+  };
+  settings: {
+    get(): Promise<OperatingSettings>;
+    save(body: { expectedVersion: number; defaultChannelCode: string; channelOrder: string[]; reason: string }): Promise<OperatingSettings>;
+  };
 }
 
 const e = encodeURIComponent;
@@ -119,7 +195,8 @@ async function detailOf<T>(c: PayOpsClient, path: string): Promise<Detail<T>> {
   return { record: d.record, version: Number(d.version ?? 0), allowedActions: d.allowedActions ?? [], timeline: d.timeline ?? [] };
 }
 
-export function createHttpPayCenterApi(c: PayOpsClient): PayCenterApi {
+/** v1 客户端：near-pay 退款只有 /pay-ops/v1；信封 {code,msg,data} 由同一个解包逻辑处理 */
+export function createHttpPayCenterApi(c: PayOpsClient, v1: PayOpsClient = c): PayCenterApi {
   const crud = <Row, Save extends object>(base: string) => ({
     list: (q: Q) => c.page<Row>(base, q),
     detail: (id: string) => detailOf<Row>(c, `${base}/${e(id)}`),
@@ -192,6 +269,70 @@ export function createHttpPayCenterApi(c: PayOpsClient): PayCenterApi {
       ...crud<EntryRow, EntrySave>("/collection-entries"),
       enable: (no, cmd) => c.command(`/collection-entries/${e(no)}/enable`, { ...cmd }),
       disable: (no, cmd) => c.command(`/collection-entries/${e(no)}/disable`, { ...cmd }),
+    },
+    merchantChanges: {
+      list: (q) => c.page("/merchants", { ...q, profileStatus: "SUBMITTED" }),
+      revision: (m, r) => detailOf(c, `/merchants/${e(m)}/profile-revisions/${e(r)}`),
+      decide: (m, r, d, cmd) => c.command(`/merchants/${e(m)}/profile-revisions/${e(r)}/${d}`, { ...cmd }),
+    },
+    refunds: {
+      list: async (q) => (await v1.get<RefundListRow[] | null>("/refunds", { status: q.status, limit: q.limit ?? 200 })) ?? [],
+      review: (no, body) => v1.command(`/refunds/${e(no)}/review`, { ...body }, { idempotent: false }),
+    },
+    terminals: {
+      ...crud<TerminalRow, TerminalSave>("/terminals"),
+      verify: (no, body) => c.command(`/terminals/${e(no)}/verify`, { ...body }),
+      enable: (no, cmd) => c.command(`/terminals/${e(no)}/enable`, { ...cmd }),
+      disable: (no, cmd) => c.command(`/terminals/${e(no)}/disable`, { ...cmd }),
+      activationCode: (no) => c.command(`/terminals/${e(no)}/activation-codes`, undefined, { idempotent: false }),
+      lost: (no) => c.command(`/terminals/${e(no)}/lost`, undefined, { idempotent: false }),
+      retire: (no, cmd) => c.command(`/terminals/${e(no)}/retire`, { ...cmd }),
+    },
+    apps: {
+      list: (q) => c.page("/apps", q),
+      detail: (no) => detailOf(c, `/apps/${e(no)}`),
+      grants: (no) => c.page(`/apps/${e(no)}/grants`, { page: 1, size: 100 }),
+      create: (body) => c.command("/apps", { ...body }),
+      update: (no, body) => c.command(`/apps/${e(no)}`, { ...body }, { method: "PUT" }),
+      scopes: (no, body) => c.command(`/apps/${e(no)}/scopes`, { ...body }, { method: "PUT" }),
+      callback: (no, body) => c.command(`/apps/${e(no)}/callback`, { ...body }, { method: "PUT" }),
+      verifyCallback: (no, body) => c.command(`/apps/${e(no)}/callback/verify`, { ...body }),
+      command: (no, action, cmd) => c.command(`/apps/${e(no)}/${action}`, { ...cmd }),
+      // 签发没有幂等号与版本（near-pay OpsCredentialController）；明文只在这次响应里出现
+      issueCredential: (no, body) => c.command(`/apps/${e(no)}/credentials`, { ...body }, { idempotent: false }),
+    },
+    traces: {
+      requestLogs: (q) => c.page("/request-logs", q),
+      requestLog: (id) => c.get(`/request-logs/${e(id)}`),
+      calls: (q) => c.page("/channel-calls", q),
+      call: (no) => c.get(`/channel-calls/${e(no)}`),
+      callbacks: (q) => c.page("/channel-callbacks", q),
+      callback: (no) => c.get(`/channel-callbacks/${e(no)}`),
+    },
+    alerts: {
+      events: (q) => c.page("/alert-events", q),
+      event: (no) => detailOf(c, `/alert-events/${e(no)}`),
+      claim: (no, cmd) => c.command(`/alert-events/${e(no)}/claim`, { ...cmd }),
+      assign: (no, body) => c.command(`/alert-events/${e(no)}/assign`, { ...body }),
+      resolve: (no, body) => c.command(`/alert-events/${e(no)}/resolve`, { ...body }),
+      close: (no, cmd) => c.command(`/alert-events/${e(no)}/close`, { ...cmd }),
+      rules: (q) => c.page("/alert-rules", q),
+      rule: async (no) => {
+        const d = await c.get<Detail<AlertRuleRow> & { revisions?: AlertRuleRow[] }>(`/alert-rules/${e(no)}`);
+        return { ...d, version: Number(d.version ?? 0), allowedActions: d.allowedActions ?? [], timeline: d.timeline ?? [], revisions: d.revisions ?? [] };
+      },
+      createRule: (body) => c.command("/alert-rules", { ...body }),
+      updateRule: (no, body) => c.command(`/alert-rules/${e(no)}`, { ...body }, { method: "PUT" }),
+      enableRule: (no, cmd) => c.command(`/alert-rules/${e(no)}/enable`, { ...cmd }),
+      disableRule: (no, cmd) => c.command(`/alert-rules/${e(no)}/disable`, { ...cmd }),
+    },
+    approvalFlows: {
+      list: (q) => c.page("/approval-flows", q),
+      detail: async (no) => { const d = await c.get<{ record: ApprovalFlowRow; revisions?: ApprovalFlowRow[] }>(`/approval-flows/${e(no)}`); return { record: d.record, revisions: d.revisions ?? [] }; },
+    },
+    settings: {
+      get: () => c.get("/settings"),
+      save: (body) => c.command("/settings", { ...body }, { method: "PUT" }),
     },
     dataScopes: {
       ...crud<DataScopeRow, ScopeSave>("/data-scopes"),

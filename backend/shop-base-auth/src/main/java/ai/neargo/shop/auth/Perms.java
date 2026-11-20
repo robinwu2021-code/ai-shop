@@ -209,6 +209,20 @@ public final class Perms {
     public static final String PAY_DATA_SCOPE_VIEW = "pay:data-scope:view";
     public static final String PAY_DATA_SCOPE_MANAGE = "pay:data-scope:manage";
     public static final String PAY_DATA_SCOPE_APPROVE = "pay:data-scope:approve";
+    // P2：终端、接入应用、追踪、告警、审批流程
+    public static final String PAY_TERMINAL_VIEW = "pay:terminal:view";
+    public static final String PAY_TERMINAL_MANAGE = "pay:terminal:manage";
+    public static final String PAY_TERMINAL_VERIFY = "pay:terminal:verify";
+    public static final String PAY_APP_VIEW = "pay:app:view";
+    public static final String PAY_APP_APPROVE = "pay:app:approve";
+    public static final String PAY_CREDENTIAL_MANAGE = "pay:credential:manage";
+    public static final String PAY_TRACE_VIEW = "pay:trace:view";
+    public static final String PAY_ALERT_RULE_VIEW = "pay:alert-rule:view";
+    public static final String PAY_ALERT_RULE_MANAGE = "pay:alert-rule:manage";
+    public static final String PAY_ALERT_RULE_APPROVE = "pay:alert-rule:approve";
+    public static final String PAY_ALERT_EVENT_VIEW = "pay:alert-event:view";
+    public static final String PAY_ALERT_EVENT_HANDLE = "pay:alert-event:handle";
+    public static final String PAY_APPROVAL_FLOW_VIEW = "pay:approval-flow:view";
     /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。

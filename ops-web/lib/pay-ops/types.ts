@@ -36,6 +36,8 @@ export interface MerchantRow {
   market: string | null; profileStatus: string; verifyStatus: string; duplicateSuspect: boolean;
   payMerchantNos: string[] | null; storeCount: number; status: (typeof MERCHANT_STATUSES)[number]; statusReason: string | null;
   createdAt: number; version: number;
+  /** 最新一版资料（商户变更页审的就是它） */
+  latestProfile?: ProfileSummary | null;
 }
 export interface SourceLink { linkNo: string; sourceSystem: string; sourceScope: string | null; externalEntityId: string; entityName: string | null; verifyStatus: string; verifiedBy: string | null; verifiedAt: number | null; version: number }
 export interface ProfileRevision { revisionNo: string; revision: number; purpose: string; reviewStatus: string; submittedBy: string | null; submittedAt: number; reviewedBy: string | null; reviewedAt: number | null; reviewReason: string | null; version: number }
@@ -115,3 +117,69 @@ export interface DataScopeRow {
   fundsAccess: "NONE" | "MASKED_READ"; expiresAt: number; status: "DRAFT" | "ACTIVE" | "REVOKED" | "EXPIRED";
   reason: string | null; enteredBy: string | null; enabledBy: string | null; revokedAt: number | null;
 }
+
+// ════ P2（2026-11-20 核对 near-pay 源码） ════
+
+// ── 商户变更：列表复用 MerchantRow（profileStatus=SUBMITTED），审 latestProfile ──
+export interface ProfileSummary { revisionNo: string; revision: number; purpose: string; reviewStatus: string }
+export interface ProfileRevisionDetail extends ProfileRevision { market: string | null; profile: Record<string, string>; materials: { kind: string; ref: string; purpose: string }[] }
+
+// ── 退款（v1）──
+export const REFUND_STATUSES = ["REQUESTED", "PENDING_REVIEW", "PENDING_SECOND_REVIEW", "APPROVED", "DISPATCHED", "SUCCEEDED", "FAILED", "REJECTED", "OFFLINE_PENDING_PROOF"] as const;
+export interface RefundListRow { payRefundNo: string; payOrderNo: string; amountMinor: number; currency: string; status: string; reason: string | null; requestedBy: string | null; sourceType: string | null; hitReasons: string | null; createdAt: number | null }
+
+// ── 支付终端 ──
+export const TERMINAL_CONFIG_STATUSES = ["DRAFT", "ENABLED", "DISABLED"] as const;
+export const DEVICE_STATUSES = ["REGISTERED", "ACTIVE", "LOST", "RETIRED"] as const;
+export const CONNECTION_MODES = ["STANDALONE", "ECR"] as const;
+export interface TerminalRow {
+  terminalNo: string; name: string; merchantNo: string; storeNo: string; payChannel: string; payMerchantNo: string | null; channelTerminalNo: string | null;
+  serialNo: string; model: string | null; connectionMode: string; productCodes: string[]; receiptName: string | null; remark: string | null; dailyRefundLimitMinor: number;
+  market: string | null; currency: string | null; configurationStatus: string; verificationStatus: string; configuredBy: string | null; verifiedBy: string | null;
+  evidenceRef: string | null; deviceStatus: string; credentialRef: string | null; statusReason: string | null; version: number;
+  configurationEligibility: { canEnable: boolean; reasons: string[] } | null;
+  readiness: { ready: boolean; canReceivePayments: boolean; reasons: string[] } | null;
+}
+
+// ── 接入应用 ──
+export const APP_STATUSES = ["DRAFT", "ACTIVE", "SUSPENDED", "REVOKED"] as const;
+export interface AppRow {
+  appNo: string; name: string; purpose: string | null; ownerKind: "MERCHANT" | "PLATFORM"; merchantNo: string | null; environment: "LIVE" | "SANDBOX";
+  scopes: string[]; notifyUrl: string | null; callbackDomains: string[]; callbackStatus: string; ipWhitelist: string | null; rateLimitQps: number;
+  dailyRefundLimitMinor: number; credentialStatus: string; grantCount: number; status: string; lastAccessAt: number | null; lastAccessOutcome: string | null; version: number;
+}
+export interface AppDetail { app: AppRow; registeredBy: string | null; callbackSetBy: string | null; callbackVerifiedBy: string | null; callbackEvidenceRef: string | null; statusReason: string | null; enableApprovalNo: string | null }
+export interface AppGrant { appNo: string; storeNo: string; merchantNo: string; actions: string[]; status: string; grantedBy: string | null; grantedAt: number | null; version: number }
+export interface CredentialIssued { keyId: number; versionIndex: number; serial: string; secret: string; fingerprint: string; status: string }
+
+// ── 请求日志 / 渠道调用 / 回调 ──
+export interface RequestLogRow { requestId: string; entry: string; appNo: string | null; method: string; path: string; httpStatus: number | null; businessCode: string | null; latencyMs: number | null; authResult: string; occurredAt: number }
+export interface ChannelCallRow { callNo: string; attempt: number; payChannel: string; payMerchantNo: string | null; action: string; api: string | null; bizNo: string | null; requestId: string | null; resultCode: string | null; latencyMs: number | null; status: string; transport: string; occurredAt: number }
+export interface ChannelCallbackRow { callbackNo: string; payChannel: string; notifyType: string; requestId: string | null; verifyResult: string; outcome: string; bizNo: string | null; channelTradeNo: string | null; occurredAt: number }
+export interface RequestLogDetail { record: RequestLogRow; requestMasked: string | null; responseMasked: string | null; sourceType: string | null; operatorNo: string | null; idempotencyKey: string | null; calls: ChannelCallRow[]; callbacks: ChannelCallbackRow[] }
+export interface ChannelCallDetail { callNo: string; attempts: { record: ChannelCallRow; httpMethod: string | null; urlPath: string | null; httpStatus: number | null; requestMasked: string | null; responseMasked: string | null; errorMessage: string | null; breakerState: string | null }[]; callbacks: ChannelCallbackRow[] }
+export interface ChannelCallbackDetail { record: ChannelCallbackRow; headersMasked: string | null; bodyMasked: string | null; outcomeReason: string | null; ackBody: string | null }
+
+// ── 监控告警 ──
+export const ALERT_EVENT_STATUSES = ["OPEN", "CLAIMED", "RESOLVED", "CLOSED"] as const;
+export const ALERT_RULE_STATUSES = ["DRAFT", "PUBLISHED", "RETIRED"] as const;
+export const ALERT_SEVERITIES = ["P1", "P2", "P3"] as const;
+export const ALERT_OPERATORS = ["GT", "GTE", "LT", "LTE"] as const;
+export const ALERT_RESOLUTIONS = ["FIXED", "EXTERNAL", "FALSE_POSITIVE", "ACCEPTED_RISK", "DUPLICATE"] as const;
+export const ALERT_METRICS = ["CHANNEL_SUCCESS_RATE", "CHANNEL_LATENCY", "CALLBACK_FAILURE", "NOTIFY_FAILURE", "BALANCE_ANOMALY", "CREDENTIAL_EXPIRY"] as const;
+export interface AlertEventRow {
+  eventNo: string; ruleNo: string; ruleRevisionNo: number; metric: string; severity: string; scopeType: string; scopeRef: string | null;
+  observedValue: string; threshold: string; operator: string; triggerCount: number; firstTriggeredAt: number; firedAt: number;
+  assigneeNo: string | null; resolution: string | null; resolutionNote: string | null; relatedRef: string | null; status: string; version: number;
+}
+export interface AlertRuleRow {
+  ruleNo: string; revisionNo: number; name: string; metric: string; scopeType: string; scopeRef: string | null; operator: string; threshold: string; unit: string | null;
+  windowSeconds: number; minSampleCount: number; consecutiveBreaches: number; severity: string; notifyTargets: string[]; status: string;
+  enteredBy: string | null; publishedBy: string | null; publishedRevisionNo: number | null; version: number;
+}
+
+// ── 审批流程（只读）──
+export interface ApprovalFlowRow { flowNo: string; revisionNo: number; name: string; bizType: string; market: string | null; nodes: { nodeNo: number; roleRef: string }[]; sensitive: boolean; leaseMinutes: number; timeoutHours: number; escalateAfterHours: number; status: string; version: number }
+
+// ── 经营设置 ──
+export interface OperatingSettings { market: string; currency: string; currencyScale: number; timezone: string; defaultChannelCode: string | null; channelOrder: string[]; version: number; updatedAt: number | null; updatedBy: string | null }

@@ -73,3 +73,36 @@ describe("mock 与 near-pay 同口径", () => {
     await expect(api.dataScopes.create({ expectedVersion: 1, scopeType: "USER", subjectNo: "u", marketSet: ["TW"], entityNos: ["*"], storeNos: [], fundsAccess: "NONE", expiresAt: Date.now() + 1e9, reason: "x" })).rejects.toBeTruthy();
   });
 });
+
+describe("P2 映射", () => {
+  it("退款走 v1：路径、{code,msg,data} 信封、复核体无幂等号", async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ code: 0, msg: "ok", data: [{ payRefundNo: "R1" }] }), { status: 200 }));
+    const v2 = createPayOpsClient({ baseUrl: "/pay/v2", fetcher: vi.fn() as unknown as typeof fetch });
+    const v1 = createPayOpsClient({ baseUrl: "/pay/v1", fetcher: f as unknown as typeof fetch });
+    const api = createHttpPayCenterApi(v2, v1);
+    expect(await api.refunds.list({ status: "PENDING_REVIEW" })).toEqual([{ payRefundNo: "R1" }]);
+    expect(call(f).url).toBe("/pay/v1/refunds?status=PENDING_REVIEW&limit=200");
+    await api.refunds.review("R1", { approve: true, reason: "核对无误" });
+    expect(call(f, 1)).toEqual({ url: "/pay/v1/refunds/R1/review", method: "POST", body: { approve: true, reason: "核对无误" } });
+    const bad = createHttpPayCenterApi(v2, createPayOpsClient({ baseUrl: "/pay/v1", fetcher: (async () => new Response(JSON.stringify({ code: 40003, msg: "申请人不能复核自己的退款" }), { status: 200 })) as unknown as typeof fetch }));
+    await expect(bad.refunds.review("R1", { approve: true, reason: "x" })).rejects.toMatchObject({ message: "申请人不能复核自己的退款" });
+  });
+
+  it("签发密钥、生成激活码、挂失不带幂等号；商户变更固定 profileStatus=SUBMITTED", async () => {
+    const { f, api } = httpApi({ records: [], total: 0 });
+    await api.apps.issueCredential("A1", { credentialType: "APP_SECRET", reason: "x" });
+    await api.terminals.activationCode("T1");
+    await api.terminals.lost("T1");
+    await api.merchantChanges.list({ page: 1, size: 20 });
+    expect(call(f, 0)).toEqual({ url: "/pay/apps/A1/credentials", method: "POST", body: { credentialType: "APP_SECRET", reason: "x" } });
+    expect(call(f, 1).body).toEqual({});
+    expect(call(f, 2).url).toBe("/pay/terminals/T1/lost");
+    expect(call(f, 3).url).toBe("/pay/merchants?page=1&size=20&profileStatus=SUBMITTED");
+  });
+
+  it("v1 基础路径由 v2 推出", async () => {
+    const { resolvePayOpsV1Base } = await import("./client");
+    expect(resolvePayOpsV1Base("/oms-api/pay-ops/v2")).toBe("/oms-api/pay-ops/v1");
+    expect(resolvePayOpsV1Base("/gw/pay")).toBe("/gw/pay");
+  });
+});

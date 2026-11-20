@@ -25,6 +25,13 @@ import { ChannelsTab } from "./channels-tab";
 import { ProductsTab } from "./products-tab";
 import { AccessTab } from "./access-tab";
 import { DataScopesTab } from "./data-scopes-tab";
+import { MerchantChangesTab } from "./merchant-changes-tab";
+import { RefundsTab } from "./refunds-tab";
+import { TerminalsTab } from "./terminals-tab";
+import { AppsTab } from "./apps-tab";
+import { ChannelCallbacksTab, ChannelCallsTab, RequestLogsTab } from "./traces-tab";
+import { AlertEventsTab, AlertRulesTab } from "./alerts-tab";
+import { ApprovalFlowsTab, SettingsTab } from "./config-tabs";
 
 export default function PaymentCenterPage() {
   return <Suspense fallback={null}><PaymentCenterInner /></Suspense>;
@@ -41,6 +48,17 @@ const TAB_COMPONENT: Record<PayCenterTabKey, React.ComponentType<{ header: React
   products: ProductsTab,
   access: AccessTab,
   "data-scopes": DataScopesTab,
+  "merchant-changes": MerchantChangesTab,
+  refunds: RefundsTab,
+  terminals: TerminalsTab,
+  apps: AppsTab,
+  "request-logs": RequestLogsTab,
+  "channel-calls": ChannelCallsTab,
+  "channel-callbacks": ChannelCallbacksTab,
+  "alert-events": AlertEventsTab,
+  "alert-rules": AlertRulesTab,
+  "approval-flows": ApprovalFlowsTab,
+  settings: SettingsTab,
 };
 
 function PaymentCenterInner() {

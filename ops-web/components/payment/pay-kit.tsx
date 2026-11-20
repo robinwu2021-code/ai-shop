@@ -13,7 +13,7 @@ import { useCan } from "@/lib/use-can";
 import { useI18n } from "@/lib/i18n";
 import { notify } from "@/lib/notify";
 import { useLocaleStore } from "@/lib/stores/locale";
-import { createPayOpsClient, type PayOpsClient } from "@/lib/pay-ops/client";
+import { createPayOpsClient, resolvePayOpsV1Base, type PayOpsClient } from "@/lib/pay-ops/client";
 import { createHttpPayCenterApi, isPayMock, type PayCenterApi } from "@/lib/pay-ops/api";
 import { createMockPayCenterApi } from "@/lib/pay-ops/mock";
 
@@ -53,7 +53,8 @@ export function usePayCenterApi(): PayCenterApi {
   const client = usePayOps();
   return React.useMemo(() => {
     if (isPayMock()) return (mockApi ??= createMockPayCenterApi());
-    return createHttpPayCenterApi(client);
+    const v1 = createPayOpsClient({ baseUrl: resolvePayOpsV1Base(), getToken: () => useAuth.getState().token, locale: () => useLocaleStore.getState().locale });
+    return createHttpPayCenterApi(client, v1);
   }, [client]);
 }
 
