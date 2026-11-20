@@ -86,7 +86,7 @@ export interface ApprovalDetail { record: ApprovalRecord; subjectTitle: string |
 export interface ChannelEndpoint { environment: "SANDBOX" | "PRODUCTION"; baseUrl: string; callbackStyle: "PATH" | "QUERY" | null; enabled?: boolean | null }
 export interface ChannelRow {
   channelCode: string; name: string; channelType: "FIAT" | "CRYPTO"; adapterCode: string; platformCredentialKeyId: number | null;
-  status: "ENABLED" | "DISABLED"; sortNo: number; enabledProductCount: number; endpoints: ChannelEndpoint[];
+  status: "ENABLED" | "DISABLED" | "PENDING"; sortNo: number; enabledProductCount: number; endpoints: ChannelEndpoint[];
   version: number; updatedAt: number | null; updatedBy: string | null; market: string | null; testChannel: boolean;
 }
 
@@ -305,3 +305,51 @@ export const MANUAL_RESULTS = ["NEED_SIGN", "APPROVED", "REJECTED"] as const;
 export const MODIFICATION_STATUSES = ["PENDING", "APPROVED", "SENDING", "ACCEPTED", "REJECTED", "UNKNOWN", "CANCELLED"] as const;
 export interface NewebpayModification { changeNo: string; status: string; fieldCodes: string[]; maskedChanges: Record<string, string>; approvalNo: string | null; resultCode: string | null; version: number }
 export interface NewebpayModificationsView { legalForm: string | null; fields: { code: string; label: string; maxLength: number; options: Record<string, string> | null }[]; requests: NewebpayModification[] }
+
+// ── P5 渠道账户与门店绑定（near-pay OpsChannelAccountDtos，TDD §2.11）──
+export const ACCOUNT_STATUSES = ["UNVERIFIED", "ACTIVE", "REFUND_ONLY", "SUSPENDED", "CLOSED"] as const;
+export const VERIFICATION_STATUSES = ["PENDING", "VERIFIED", "REJECTED"] as const;
+export const FUNDS_PATHS = ["DIRECT", "AGGREGATED"] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+export type FundsPath = (typeof FUNDS_PATHS)[number];
+export type AccountMode = "MERCHANT_OWN" | "SERVICE_PROVIDER" | "PLATFORM_SUB";
+export interface ChannelAccountRow {
+  payMerchantNo: string; ownerType: "MERCHANT" | "PLATFORM"; merchantNo: string | null; merchantName: string | null; payChannel: string; market: string; currency: string;
+  channelMerchantId: string; subMerchantId: string | null; accountMode: AccountMode; fundsPath: FundsPath; parentPayMerchantNo: string | null;
+  source: "ONBOARDING" | "MANUAL" | "LEGACY"; onboardingNo: string | null; evidenceRef: string | null; verificationStatus: VerificationStatus; status: AccountStatus;
+  credentialKeyId: number | null; boundStoreCount: number; updatedAt: number; version: number;
+}
+export interface AccountProduct { productCode: string; productName: string; status: "OPEN" | "CLOSED"; source: "CHANNEL_RECEIPT" | "OPS_CONFIRMED"; evidenceRef: string | null; openedBy: string | null; openedAt: number | null }
+export interface AccountStatusLog { fromStatus: string; toStatus: string; reason: string; approvalNo: string | null; operatorNo: string; changedAt: number }
+export interface ChannelAccountDetail {
+  account: ChannelAccountRow; verifiedBy: string | null; verifiedAt: number | null; verifyApprovalNo: string | null; verifyReason: string | null; registeredBy: string | null;
+  products: AccountProduct[]; credentialVersion: number | null; settleCycle: string | null; poolAccountRef: string | null; maxSplitRate: number | null; statusLogs: AccountStatusLog[];
+}
+export interface ChannelAccountRegister {
+  ownerType: "MERCHANT"; merchantNo: string; payChannel: string; channelMerchantId: string; subMerchantId?: string | null;
+  accountMode: AccountMode; fundsPath: FundsPath; evidenceRef: string; reason: string;
+}
+/** 密钥只随请求发出、不回显：蓝新 hashKey+hashIv；LINE Pay / 街口 / MockPay secret；PayBy secret（私钥 PEM）+ publicMaterial */
+export interface ChannelKeyEntry { secret?: string; hashKey?: string; hashIv?: string; publicMaterial?: string; reason: string }
+export interface StoreBinding {
+  bindingNo: string; storeNo: string; merchantNo: string | null; payChannel: string; payMerchantNo: string; status: "ACTIVE" | "INACTIVE"; reason: string; approvalNo: string | null;
+  boundBy: string; effectiveFrom: number; effectiveTo: number | null; endedReason: string | null; pendingTargetPayMerchantNo: string | null; pendingReason: string | null; version: number;
+}
+export interface BindingImpact {
+  bindingNo: string; currentPayMerchantNo: string; targetPayMerchantNo: string; targetBindable: boolean; blockedReason: string | null;
+  productsKept: string[]; productsLost: string[]; productsGained: string[]; inflightPayments: "NONE" | "SOME" | "UNKNOWN";
+}
+export const CLAIM_STATES = ["DRAFT", "PENDING_VERIFY", "LINKED", "REJECTED"] as const;
+export interface ClaimFile { fileNo: string; contentType: string; byteLength: number; expiresAt: number; pinned: boolean; expired: boolean }
+export interface ChannelAccountClaim {
+  claimNo: string; requestNo: string; merchantNo: string; payChannel: string; channelMerchantMasked: string; state: (typeof CLAIM_STATES)[number];
+  version: number; files: ClaimFile[]; reason: string | null; payMerchantNo: string | null; accountVerificationStatus: string | null; accountStatus: string | null;
+  channelMerchantId?: string; subMerchantId?: string | null;
+}
+export interface ClaimResolve { expectedVersion: number; result: "LINKED" | "REJECTED"; payMerchantNo?: string; expectedAccountVersion?: number; reason: string }
+/** 转人工（near-pay EscalatedRow：订单 + 跟进记录） */
+export interface FollowupRow { id: number; operation: string; payChannel: string; status: string; recoveryPath: string | null; attempts: number; nextAt: number | null; lastResult: string | null; resolvedAt: number | null; createdAt: number | null; payOrderNo: string }
+export interface EscalatedRow { order: OrderRow; followup: FollowupRow }
+export interface AdapterRow { adapterCode: string; channelType: string; operations: string[]; accountModes: string[]; channelMethods: string[]; tradeModes: string[] }
+export interface PaymentMethodRow { code: string; name: string; category: string }

@@ -99,6 +99,25 @@ describe("useActionHost", () => {
     expect(document.body.textContent).toContain("detail-2");
   });
 
+  it("操作的可见性还在加载（pending）时，等它就绪再还原，不清地址栏", async () => {
+    window.history.replaceState(null, "", "/payment-center/merchants?action=create");
+    let ready = false;
+    const late = (): ActionSpec<Row>[] => [{ key: "create", label: "新建", kind: "drawer", pending: () => !ready, visible: () => ready,
+      render: () => h("p", null, "create-body") }];
+    function Late() {
+      const api = useActionHost<Row>({ actions: late(), allow: allowAll, getRowId: (r) => r.id, syncUrl: { resolve: () => null } });
+      return h("div", null, api.node);
+    }
+    await act(async () => root.render(h(Late)));
+    await act(async () => { await Promise.resolve(); });
+    expect(window.location.search).toBe("?action=create");
+    expect(drawers()).toHaveLength(0);
+    ready = true;
+    await act(async () => root.render(h(Late)));
+    await act(async () => { await Promise.resolve(); });
+    expect(document.body.textContent).toContain("create-body");
+  });
+
   it("地址栏里的操作无权时不还原", async () => {
     window.history.replaceState(null, "", "/payment-center/orders?action=edit&id=1");
     await act(async () => root.render(h(Harness, { allow: (p) => p !== "pay:order:manage" })));

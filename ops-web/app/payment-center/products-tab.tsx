@@ -4,6 +4,7 @@
 // 页面级：新增产品（抽屉，一个接入方式 + 一条币种限额起步，账户模式默认平台子商户；多条与账户模式的调整暂在支付端工作区
 // —— 再加字段就超过一个抽屉的量，要拆成多个操作，P2 再做）。
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
@@ -34,6 +35,9 @@ export function ProductsTab({ header }: { header: React.ReactNode }) {
   const refundMap = useStatusMap("refund", REFUND_MODES);
   const list = useTabList<ProductRow, { status: string; paymentMethod: string }>(NAME, { status: "", paymentMethod: "" }, (api, q) => api.products.list(q));
   const { api } = list;
+  /** 支付方式下拉取 near-pay `/payment-methods`（带名称）；取不到时退回内置清单 */
+  const methods = useQuery({ queryKey: ["pay-center", NAME, "payment-methods", api.source], queryFn: () => api.products.paymentMethods(), retry: false, staleTime: 10 * 60_000 });
+  const methodOptions = methods.data?.length ? methods.data.map((m) => ({ value: m.code, label: `${m.name} · ${m.code}` })) : options(PAYMENT_METHODS, plain);
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-products", action, id } : null);
   const pmOptions = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, { label: m, tone: "muted" as const }]));
 
@@ -126,7 +130,7 @@ export function ProductsTab({ header }: { header: React.ReactNode }) {
           { key: "channelCode", label: c.channelCode, required: true, maxLength: 32 },
           { key: "displayName", label: c.displayName, required: true, maxLength: 128 },
           { key: "tradeMode", label: c.tradeMode, type: "select", required: true, options: [{ value: "", label: "—" }, ...options(TRADE_MODES, plain)] },
-          { key: "paymentMethods", label: c.paymentMethods, type: "multiselect", required: true, options: options(PAYMENT_METHODS, plain) },
+          { key: "paymentMethods", label: c.paymentMethods, type: "multiselect", required: true, options: methodOptions },
           { key: "accessMethod", label: c.accessMethod, type: "select", required: true, options: [{ value: "", label: "—" }, ...options(ACCESS_METHODS, plain)] },
           { key: "channelMethod", label: c.channelMethod, required: true, maxLength: 32 },
           { key: "currency", label: c.currency, required: true, pattern: { re: "^[A-Z]{3}$", msg: "TWD" } },

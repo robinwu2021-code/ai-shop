@@ -238,6 +238,30 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 
 **分步**：① 客户端补上传（multipart）与文件下载（blob）、接口与 mock；② 商户档案；③ 渠道进件；④ 删 `WorkspaceHint` 与 `paymentWorkspaceHref`，商户详情「支付服务」块的跳转改进支付中心；⑤ 测试、守卫、浏览器、提交。
 
+### 2.11 P5 补齐 near-pay 线上页面的剩余操作（2026-11-20 用户：「继续完成剩余的任务，web页面对接支付运营接口」）
+
+**依据**：near-pay `develop/s1`（`fa708146c`）ops-web 线上版 `LIVE_PAGE_CODES` 的 10 个页面实际调用的 `/pay-ops/v2` 端点，与本模块 `_api/api.ts` 逐条比对（脚本比对，宽匹配路径参数）。
+near-pay 有 322 个运营端点；本模块已调 133 个；未调的里 99 个连 near-pay 自己的页面也不调（纯接口），不算缺口。线上页面里还缺的是下面这些。
+P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-detail.tsx` 的旧适配器，**不是**商户「渠道」页签的渠道账户与门店「渠道绑定」页签 —— 那两处在线上版可达，P4 漏了。
+
+| 位置 | 操作 | 端点 | 码 |
+|---|---|---|---|
+| 商户 · 行操作「渠道账户」（抽屉，列表 ↔ 账户详情在抽屉内切换，不嵌套抽屉） | 列表（渠道、MID、核验、状态、绑定门店数）、手工登记（待核验） | `GET/POST /channel-accounts` | `pay:channel-account:view` / `manage` |
+| | 账户详情：资料、开通产品、渠道凭证、关联门店、结算配置（只读）、操作记录 | `GET /channel-accounts/{no}`、`/bindings`；产品目录 `GET /products?channelCode=` | view |
+| | 提交核验审批 · 驳回核验 · 启用 · 仅退款 · 停用 · 提交恢复审批 | `POST /approvals`（`CHANNEL_ACCOUNT_VERIFY` / `_RESUME`）、`…/verify`、`/activate`、`/refund-only`、`/suspend` | manage；驳回 `approve` |
+| | 开通产品（证明引用 + 理由 + 勾选已核对）· 关闭产品 | `POST …/products/{code}/open`、`/close` | manage |
+| | 绑定凭据（keyId）· 录入 / 轮换密钥（蓝新 HashKey+HashIV；LINE Pay / 街口 / MockPay secret；PayBy 私钥+公钥；不回显） | `PUT …/credential`、`POST …/migration-credential` | manage |
+| | 商户号认领：列表、证明预览、关联既有账户 · 拒绝 · 带入登记表（实例未开放时 404 → 一行说明） | `GET /channel-account-claims`、`/{no}`、`/files/{file}`、`POST /{no}/resolve` | view / manage |
+| 门店 · 行操作「渠道绑定」（抽屉） | 当前与历史绑定；绑定本商户已核验账户（同门店同渠道一条生效）；解绑 | `GET/POST /stores/{no}/bindings`、`…/{b}/unbind` | `pay:store-binding:view` / `manage` |
+| | 换绑：选目标 → 影响预览 → 登记 → 提交换绑审批 / 撤回登记 | `GET …/rebind-impact`、`POST …/rebind-request`、`/withdraw`、`POST /approvals`（`STORE_BINDING_REBIND`） | manage |
+| 异常交易 | 「转人工」视图（门店筛选、跟进记录） | `GET /payment-escalations` | `pay:order:view` |
+| 支付渠道 | 标为待开通（理由弹框）；新建 / 编辑时适配器改为下拉 | `POST /channels/{code}/pending`、`GET /adapters` | `pay:channel:manage` / view |
+| 支付产品 | 新建 / 编辑时支付方式改为下拉 | `GET /payment-methods` | `pay:product:view` |
+
+- **契约变更**：只新增权限码（`Perms.java`、`ops-web/lib/perm-map.ts` 各 6 个：`pay:channel-account:view|manage|approve`、`pay:store-binding:view|manage|approve`），无端点、库表、迁移。码与 near-pay 控制器 `@payPerm.can` 同名。
+- **不移植**：near-pay 的「恢复上次操作 / 查询原回执」（`/commands/{key}`、`/merchant-creations/by-request`、`…/operations/{requestNo}`）—— 本模块幂等号由路径 + 请求体决定，原样重发即同号，同 §2.10 口径；直接调换绑执行 `…/rebind` 不做（执行在审批通过后由审核待办触发）。
+- **分步**：① 类型、接口、mock 与接口测试；② 渠道账户抽屉（含认领、产品、凭证）；③ 门店绑定抽屉；④ 转人工、待开通、两个下拉；⑤ 权限码、生成物、守卫、提交。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。
@@ -407,3 +431,14 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 **2026-11-20 发布前调整（用户：「先不执行 V686，v2 前端兼容旧地址」）**：发现 V686 会让共用正式库的 v1 运营端这 5 项失效。V686 移出 Flyway 目录改为 `docs/technical/pending-sql/`；
 `app/payment-center/module.ts` 加 `LEGACY_MENU_HREFS` 与 `normalizeLegacyPaymentMenu`，`lib/stores/server-menu.ts` 读菜单时调用（`module.test.ts` 2 条，先红后绿）；
 `FunctionPointPermAlignmentTest` 从 `module.ts` 解析同一张映射，库里旧地址的点位也算原生支付页签。前端 1376 条、后端四个测试类 49 条通过。
+
+### P5 · 补齐 near-pay 线上页面的剩余操作（2026-11-20，分支 `feat/ops-pay-center-menu`）
+
+- **比对口径**：near-pay `develop/s1` `fa708146c`，322 个运营端点；本模块原调 133 个；余下 189 个里 99 个连 near-pay 自己的页面也不调；线上版 10 个页面实际调、本模块未调的 35 个落在 §2.11 的表里，全部补上（「恢复上次操作」类 3 个按 §2.11 不移植）。
+- **新文件**：`channel-accounts.tsx`（渠道账户抽屉：列表 / 登记 / 认领 / 账户详情 6 页签 / 产品开通 / 密钥录入；门店绑定抽屉）、`channel-accounts-copy.ts`、`channel-accounts.test.ts`。
+- **改动**：`_api/types.ts`、`_api/api.ts`（`channelAccounts`、`storeBindings`、`claims` 三个端口；`exceptions.escalations`、`channels.pending/adapters`、`products.paymentMethods`）、`_api/mock.ts`（PM1001 蓝新可收款 + LINE Pay 待核验、PM1003 蓝新仅退款、两条门店绑定、一张认领单）；商户「渠道账户」、门店「渠道绑定」行操作；异常交易页面操作「转人工」；渠道「标为待开通」与适配器下拉；产品支付方式下拉。
+- **偏差**：
+  1. 渠道启用 / 停用的可见条件改为「不是目标状态」（near-pay 允许从待开通直接启用或停用），原来只认 DISABLED / ENABLED。
+  2. 动作码（`ACT__PAY_CHANNEL_ACCOUNT_*`、`ACT__PAY_STORE_BINDING_*`）与 P1–P3 的 `pay:*` 动作码一样**不出迁移**：只进生成器产出（`nav-platform-settings.test.ts` 的支付中心清单），超管不受影响；按岗位授权时再一并落库。
+  3. 异常交易页不同步地址栏，「转人工」没有深链接（与该页其它操作一致）。
+- **验证**：ops-web 1384 条、packages/shared 731 条（另有 `entity-alignment`、`i18n-backend-enum-keys` 两个套件在本工作树加载即报错，HEAD 原样，非本次）、`tsc` 通过；后端 `FunctionPointPermAlignmentTest`、`OpsEndpointPermTest`、`BizEndpointPermTest`、`BizRoleSeedTest` 通过；mock 浏览器走查：LINE Pay 待核验账户录入密钥一次到可收款（凭据 v1、按钮切到仅退款 / 停用）、门店绑定蓝新账户后出现换绑与解绑、转人工列表、适配器下拉与待开通操作。**未在正式 near-pay 上验证**（写操作要等测试商户与用户确认）。

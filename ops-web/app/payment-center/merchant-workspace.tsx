@@ -46,6 +46,7 @@ export function useMerchantPageActions(api: PayCenterApi, run: <R>(fn: () => Pro
     {
       key: "create", label: m.createMerchant, kind: "drawer", perm: "pay:merchant:manage", title: () => m.createMerchantTitle,
       visible: () => creation.data?.enabled === true,
+      pending: () => canManage && creation.isPending,
       render: (ctx) => (
         <>
           <Notice tone="info" className="mb-4">{m.createMerchantNote}</Notice>
@@ -69,6 +70,7 @@ export function useMerchantPageActions(api: PayCenterApi, run: <R>(fn: () => Pro
     {
       key: "createTest", label: m.createTest, kind: "drawer", perm: "pay:merchant:manage", title: () => m.createTestTitle,
       visible: () => test.data?.enabled === true,
+      pending: () => canManage && test.isPending,
       render: (ctx) => (
         <>
           <Notice tone="warning" className="mb-4">{m.createTestNote}</Notice>
