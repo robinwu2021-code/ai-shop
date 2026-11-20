@@ -23,6 +23,8 @@ import java.util.Set;
 @Validated
 @ConfigurationProperties("shop.payment-collections")
 public class PaymentCollectionProperties {
+    private static final String CANONICAL_SOURCE = "(SANDBOX|PRODUCTION):[A-Za-z0-9_-]{1,64}:[1-9][0-9]{0,18}";
+
     private boolean enabled;
 
     /** Legacy single environment; {@link #secret} is its key. Superseded by {@link #environments}. */
@@ -44,8 +46,10 @@ public class PaymentCollectionProperties {
     private String cursorSecret;
 
     /** Allowlisted environment:tenantNo:payAppId combinations for canonical checkout IDs. */
-    private Set<@Pattern(regexp = "(SANDBOX|PRODUCTION):[A-Za-z0-9_-]{1,64}:[1-9][0-9]{0,18}") String>
-            canonicalCheckoutSources = new LinkedHashSet<>();
+    private Set<@Pattern(regexp = CANONICAL_SOURCE) String> canonicalCheckoutSources = new LinkedHashSet<>();
+
+    /** Separately allowlisted environment:tenantNo:payAppId combinations for dynamic payment links. */
+    private Set<@Pattern(regexp = CANONICAL_SOURCE) String> canonicalBizCollectSources = new LinkedHashSet<>();
 
     @Min(100)
     private long pollMs = 1000;

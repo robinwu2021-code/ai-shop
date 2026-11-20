@@ -124,11 +124,9 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
     }
 
     private Map<String, Object> canonicalStore(String environment, PaymentCollectionFact fact) {
-        if (!"CHECKOUT_QR".equals(fact.bizType()) || !"CHECKOUT".equals(fact.sourceType())
-                || !Objects.equals(fact.payAppId(), fact.sourceId())
+        if (!Objects.equals(fact.payAppId(), fact.sourceId())
                 || fact.tenantNo() == null || fact.entityNo() == null
-                || !properties.getCanonicalCheckoutSources().contains(
-                        environment + ":" + fact.tenantNo() + ":" + fact.payAppId())) {
+                || !canonicalSourceAllowed(environment, fact)) {
             throw untrustedStore();
         }
         var stores = jdbc.queryForList("""
@@ -154,6 +152,14 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                 environment, fact.payAppId(), fact.sourceType(), fact.sourceId(), fact.storeId());
         if (bindings.contains(Boolean.FALSE)) throw untrustedStore();
         return store;
+    }
+
+    private boolean canonicalSourceAllowed(String environment, PaymentCollectionFact fact) {
+        String source = environment + ":" + fact.tenantNo() + ":" + fact.payAppId();
+        return ("CHECKOUT".equals(fact.sourceType()) && "CHECKOUT_QR".equals(fact.bizType())
+                && properties.getCanonicalCheckoutSources().contains(source))
+                || ("BIZ".equals(fact.sourceType()) && "BIZ_COLLECT".equals(fact.bizType())
+                && properties.getCanonicalBizCollectSources().contains(source));
     }
 
     private static ResponseStatusException untrustedStore() {
