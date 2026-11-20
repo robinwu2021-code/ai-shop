@@ -40,7 +40,7 @@
 ### 2.1 契约变更
 
 - **端点**：ops-web 新增对 near-pay `/pay-ops/v2/*` 的调用。**第一步**沿用今天 near-pay 运营端已在用的同源路径与共享会话（不新增对外暴露）；**网关代理（菜单 TDD G6）就绪后**只改客户端的基础路径配置切过去，页面不动。
-- **库表**：无新表。菜单点位：V684/V685 新增；**V686 把 V671 的 5 个既有支付入口的 href 改到 `/payment-center?tab=`**（point_code、权限码、授权不动，§2.9）。
+- **库表**：无新表。菜单点位：V684/V685 新增。V671 的 5 个既有支付入口改址的 SQL（原 V686）**暂不执行**，放在 `docs/technical/pending-sql/ops_payment_center_own_module.sql`：v1 与 v2 共用正式库菜单表，v1 前端没有支付中心页；先由 v2 前端把旧地址映射到支付中心（§2.9），v1 下线后再按空闲迁移号执行。
 - **权限码**：用菜单 TDD §2.2 的查看码；各页维护码随页面移植登记（经网关 G2）。
 - **i18n**：每页的标题、列名、操作名、状态名、提示三语（简 / 繁 / 英）。
 - **配置项**：`NEXT_PUBLIC_PAY_OPS_API_BASE`（默认同源 `/oms-api/pay-ops/v2`，网关就绪后改为网关代理前缀）。
@@ -195,7 +195,7 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 
 | 层 | 规则 | 守卫 |
 |---|---|---|
-| 菜单 | 支付相关的菜单点位全部指向 `/payment-center?tab=`：V684/V685 新增的，加 V686 改址的 5 个（商户列表、渠道进件、支付渠道、支付订单、支付异常）。商户、订单模块不再挂支付页签；旧书签由 `useLegacyPayTabRedirect` 转到新页签 | `platform-nav.test`、`use-page-tab.test`（页面再列旧页签键会因「没有对应叶子」报错） |
+| 菜单 | 支付相关的菜单全部进 `/payment-center?tab=`：V684/V685 新增的直接是新地址；V671 的 5 个（商户列表、渠道进件、支付渠道、支付订单、支付异常）库里仍是旧地址，前端读菜单时由 `normalizeLegacyPaymentMenu`（`LEGACY_MENU_HREFS`）换成支付中心页签，改址 SQL 待 v1 下线后执行。商户、订单模块不再挂支付页签；旧书签由 `useLegacyPayTabRedirect` 转到新页签 | `platform-nav.test`、`use-page-tab.test`（页面再列旧页签键会因「没有对应叶子」报错） |
 | 代码 | 页面、接口客户端（`_api/`，原 `lib/pay-ops`）、组件（`_kit/`，原 `components/payment`）全在 `app/payment-center/`；模块外只许 import `app/payment-center/module.ts`（页签登记、旧书签转发）；模块内不 import 其它业务页 | `lib/payment-center-module.test.ts` 三条：对外只经 module、对内不引业务页、不再跳 `/oms` |
 | 网关 | 支付中心全部菜单点位的权限码都是 `pay:*`，`ModuleOwnership` 按前缀归 `pay` 模块；pay 没装配时菜单接口不下发 | 网关既有的 `FunctionModuleSync` |
 
@@ -403,3 +403,7 @@ P3 的 22 项在 near-pay 都**没有运营接口**，但缺口差别很大。ne
 **偏差**
 22. 「恢复上次操作 / 核查原请求」按钮不做：本模块幂等号由请求内容决定，原样重发即同号去重。
 23. 页面顶部「系统切换」里跳 near-pay 运营端的入口保留：near-pay 还有渠道账户、密钥等工作区没进支付中心。
+
+**2026-11-20 发布前调整（用户：「先不执行 V686，v2 前端兼容旧地址」）**：发现 V686 会让共用正式库的 v1 运营端这 5 项失效。V686 移出 Flyway 目录改为 `docs/technical/pending-sql/`；
+`app/payment-center/module.ts` 加 `LEGACY_MENU_HREFS` 与 `normalizeLegacyPaymentMenu`，`lib/stores/server-menu.ts` 读菜单时调用（`module.test.ts` 2 条，先红后绿）；
+`FunctionPointPermAlignmentTest` 从 `module.ts` 解析同一张映射，库里旧地址的点位也算原生支付页签。前端 1376 条、后端四个测试类 49 条通过。

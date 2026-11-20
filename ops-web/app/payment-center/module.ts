@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { MenuFunction } from "@/lib/types";
 
 // 支付中心模块（/payment-center）对外唯一的入口：页签登记与路由（TDD-支付中心运营页面 §模块边界）。
 //
@@ -93,6 +94,22 @@ export const LEGACY_TAB_REDIRECT: Readonly<Record<"/merchants" | "/orders", Read
   "/merchants": { payment: "merchants", "payment-onboarding": "onboardings", "payment-channels": "channels" },
   "/orders": { payments: "orders", "payment-exceptions": "exceptions" },
 };
+
+/**
+ * 库里还没改址的旧菜单地址 → 支付中心页签。V686（改 href）暂不在正式库执行：v1 运营端与 v2 共用菜单表，
+ * v1 前端没有支付中心页，改了 v1 这 5 项会失效（2026-11-20 用户定：先兼容，v1 下线后再执行）。
+ * 服务端菜单进前端时按这张表换成新地址；V686 执行后库里就是新地址，这张表自然不再命中。
+ */
+export const LEGACY_MENU_HREFS: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(LEGACY_TAB_REDIRECT).flatMap(([path, tabs]) => Object.entries(tabs).map(([tab, key]) => [`${path}?tab=${tab}`, `/payment-center?tab=${key}`])),
+);
+
+/** 服务端菜单（/ops/menu）里的旧支付地址换成支付中心页签；不改入参。 */
+export function normalizeLegacyPaymentMenu(functions: MenuFunction[]): MenuFunction[] {
+  return functions.map((fn) => (fn.points?.some((p) => p.href && LEGACY_MENU_HREFS[p.href])
+    ? { ...fn, points: fn.points.map((p) => (p.href && LEGACY_MENU_HREFS[p.href] ? { ...p, href: LEGACY_MENU_HREFS[p.href] } : p)) }
+    : fn));
+}
 
 /** 商户、订单页调用：旧书签带着支付页签进来时转到支付中心。 */
 export function useLegacyPayTabRedirect(path: keyof typeof LEGACY_TAB_REDIRECT): void {
