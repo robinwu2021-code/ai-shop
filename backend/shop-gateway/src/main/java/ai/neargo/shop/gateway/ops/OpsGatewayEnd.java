@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /** 运营端出口（{@code /ops/**}）：全部需要登录 + RBAC。仅 ops 部署装配，且 ops 只在内网可达。 */
@@ -38,7 +39,13 @@ public class OpsGatewayEnd extends AbstractGatewayEnd {
 
     @Bean
     @Order(3)
-    SecurityFilterChain operatorChain(HttpSecurity http, SpringSecurityAdapter adapter) throws Exception {
+    SecurityFilterChain operatorChain(HttpSecurity http, SpringSecurityAdapter adapter,
+                                      ObjectProvider<PayOpsPassThrough> payOps) throws Exception {
+        // 支付运营接口透传：放在授权之后，走到它的都已登录；开关关时没有这个 bean（TDD-支付运营端经网关转发与权限下沉 §2.3）
+        PayOpsPassThrough passThrough = payOps.getIfAvailable();
+        if (passThrough != null) {
+            http.addFilterAfter(passThrough.filter(), AuthorizationFilter.class);
+        }
         return adapter.install(http, spec());
     }
 

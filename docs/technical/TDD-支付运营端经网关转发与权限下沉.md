@@ -215,3 +215,26 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 | 7.1 | ADR-060 增补修订说明（支付运营端：网关只认证、权限在支付服务内判） |
 | 7.2 | near-pay `/oms` 停用后，删 166 nginx 的 `/oms-api/pay-ops/v2/` 直连（运维，先备份） |
 | 7.3 | 更新交接文档与本 TDD §6 实现记录 |
+
+## §8 实现记录
+
+### 阶段 0–2（2026-11-20，分支 `feat/pay-ops-gateway-passthrough`，工作树 `~/work/ai-shop-payops`）
+
+- **新增**：
+  - `gateway.core.proxy.PassThroughInvoker`：透传型转发，继承 `AbstractServiceInvoker`。`route()` 造路由，`supports()` 只认它造的路由，因此不会被提前判权的调用列表误选。
+  - `gateway.ops.PayOpsPassThrough`：前缀 `/ops/pay-ops/v2`，开关配置写在内部类里。
+  - `portal.internal.OperatorIdentityEndpoint`：统一认证接口。
+- **改动**：
+  - `OpsGatewayEnd.operatorChain`：开关开时，把透传过滤器加到 `AuthorizationFilter` 之后。
+  - 前端 `client.test.ts` 加了网关基址用例；`.env.local.example` 写明 v2 的取值。
+- **偏差**：
+  1. 统一认证接口放在 `ai.neargo.shop.portal.internal`（网关模块内），没有放 `gateway.ops`。原因是 `CommonPackageIsolationTest` 规定 `/internal` 端点只能在这个包，否则会被统一包体包住而不报错。
+  2. 进程凭据用单独的配置 `shop.gateway.ops.identity.caller-token`，没有复用 `shop.services.internal-token`。后者是 ai-shop 调别人时出示的凭据，前者是别人调 ai-shop 时要出示的，方向相反，不该共用一个值。
+  3. 接口内部复用 `OpsService.me()`：按与运营端认证链相同的口径取实时角色，临时放进安全上下文后调用。这样它与 `/ops/auth/me` 对同一个人逐字段一致，有测试钉住。
+  4. 本机没有同源反代：`next.config` 没有配 rewrites，所以本机联调用桩服务的集成测试代替浏览器走查。真实 near-pay 的端到端要到阶段 5 在 v2 上验证。
+- **测试**：
+  - `PassThroughInvokerTest` 5 条：原样转发、409 原样回、multipart 与文件流、连不上回 502、只接手透传路由。
+  - `PayOpsPassThroughTest` 3 条：未登录 401 且下游收不到；已登录、无任何支付码也照样转发并带原令牌；前缀之外的地址不受影响。
+  - `PayOpsPassThroughOffTest` 1 条：开关关时 404。
+  - `OperatorIdentityEndpointTest` 4 条：凭据 403；四种无效会话 401；与 `/ops/auth/me` 一致且按前缀筛码；筛码规则。
+  - 架构包与网关包全量回归。

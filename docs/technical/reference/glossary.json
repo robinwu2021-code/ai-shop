@@ -57609,6 +57609,14 @@
       "module": "shop-gateway"
     },
     {
+      "host": "PayOpsPassThrough",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/ops/pay-ops/v2\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
       "host": "InvMirrorEvent",
       "name": "ALL",
       "type": "Set<String>",

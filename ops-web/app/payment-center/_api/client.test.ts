@@ -12,6 +12,17 @@ describe("resolvePayOpsBase", () => {
     expect(() => resolvePayOpsBase("https://evil.example/pay")).toThrow();
     expect(() => resolvePayOpsBase("//evil.example/pay")).toThrow();
   });
+
+  it("经网关透传：v2 运营端的网关路径可用，请求落在网关前缀下（TDD-支付运营端经网关转发与权限下沉 §2.6）", async () => {
+    expect(resolvePayOpsBase("/ops-shop-v2/ops/pay-ops/v2")).toBe("/ops-shop-v2/ops/pay-ops/v2");
+    const calls: string[] = [];
+    const client = createPayOpsClient({
+      baseUrl: resolvePayOpsBase("/ops-shop-v2/ops/pay-ops/v2"), getToken: () => "ops_token",
+      fetcher: (async (url: string, init?: RequestInit) => { calls.push(`${url} ${(init?.headers as Record<string, string>).Authorization}`); return new Response(JSON.stringify({ code: 0, data: { records: [], total: 0 } })); }) as unknown as typeof fetch,
+    });
+    await client.page("/merchants", { page: 1 });
+    expect(calls).toEqual(["/ops-shop-v2/ops/pay-ops/v2/merchants?page=1 Bearer ops_token"]);
+  });
 });
 
 describe("createPayOpsClient", () => {
