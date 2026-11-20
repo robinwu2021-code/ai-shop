@@ -40,6 +40,8 @@ export interface ActionSpec<T> {
   perm?: string;
   /** 按对象状态决定是否出现（如只有「开启」状态可关闭）。 */
   visible?: (row: T | null) => boolean;
+  /** 决定 visible 的数据还在加载：地址栏深链接（?action=）等它就绪再还原，不当成「无权」清掉。 */
+  pending?: () => boolean;
   /** 危险操作：在「更多」里置底并以红色显示。 */
   danger?: boolean;
   // ── drawer ──
@@ -128,15 +130,16 @@ export function useActionHost<T>({ actions, allow, getRowId, syncUrl }: UseActio
 
   const close = React.useCallback(() => setDrawer(null), [setDrawer]);
 
-  // 进页时按地址栏还原（只做一次）。无权、找不到对象都静默不开。
+  // 进页时按地址栏还原（只做一次）。无权、找不到对象都静默不开；操作还在加载（pending）就等下一轮。
   const restored = React.useRef(false);
   React.useEffect(() => {
     if (restored.current || !syncUrl || typeof window === "undefined") return;
-    restored.current = true;
     const params = new URLSearchParams(window.location.search);
     const key = params.get(PARAM_ACTION);
-    if (!key) return;
+    if (!key) { restored.current = true; return; }
     const a = byKey.get(key);
+    if (a?.pending?.()) return;
+    restored.current = true;
     if (!a || a.kind !== "drawer") { writeUrl(null, null); return; }
     const id = params.get(PARAM_ID);
     void Promise.resolve(id ? syncUrl.resolve(id) : null).then((row) => {
