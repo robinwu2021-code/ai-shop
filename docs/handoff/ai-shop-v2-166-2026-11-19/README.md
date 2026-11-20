@@ -779,3 +779,12 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
   ai-shop 运营端（v1 18081 与 v2）用同一令牌查该经营主体都返回正常且含 `PAYMENT_MERCHANT_CREATE`。**生产上代建支付商户对所有人都不可用**（含旧 /oms 页），要 near-pay 改用 `near-pay.ops.ai-shop.base-url`（18081）并发版。两次尝试均被拒，正式数据无改动。
 - **已修（14:58 CST）**：near-pay 补丁包 `8faa039450c0bb94`（线上 `79c47ed` + 换 2 个类，修复在 near-pay `fix/forop-ops-base-20261120` `186728a2a`，细节见 near-pay `deploy/nearpay/prod/README.md`）。
   复测为 `OE26111074KRRAD8Q5` 代建：越过了经营主体核验，停在业务校验「经营主体尚未关联门店，须先建门店并同步到支付侧」——正式库唯一的经营主体没有门店，要继续测需先给它建门店并同步支付侧（属新建生产数据，待用户定）。
+
+### 同日续：用 Oscar 门店做写操作验证（用户：「先用 oscar 这个门店进行测试」）
+
+- **对象**：ai-shop 门店 `STUME12494685770267754496`「創科業務收款Oscar」（0 笔支付单），在 near-pay 归属测试商户 `PM0E0F6CC8F7454D75`「TEST ONLY 創科系統有限公司 UME166」（已开 7 个渠道，资料由来源维护，代填资料按设计 409 不出现）。
+- **给经营主体建门店没有做**：near-pay 代建要求门店投影的主体号 = 经营主体号（OE…），ai-shop 同步门店发的是法人主体号（`NearPayStoreProfile.entityRef = store.entityNo`，M…），正式库没有任何门店挂在经营主体下——两边口径对不上，任何经营主体都过不了这条前置，造数据会不一致。待定口径。
+- **只读**：蓝新进件 `OBE78BAA12886B4AA6` 详情（资料已冻结、代确认人、渠道缺项中文名、开户交接进度、底栏 撤销 / 附件 / 送件 与状态表一致），附件列表（冻结时无上传按钮，`LICENSE_1` 取回为 PDF 下载链接）。送件未点。
+- **写 1 · 商户默认收款策略**：不限制 → 只允许 `NEWEBPAY_CARD_ONETIME`、`LINEPAY_TEST_ONLINE` → 复原为不限制，两次保存均成功（near-pay 审计带原因）。**过程中发现并修了 `FormDrawer` 不渲染多选**（多选字段退化成文本框；ops-web `34f660411`，测试先红后绿），v2 前端重发 `releases/gateway-e86b5ddc0`（只换静态文件，回退指回 `gateway-b4335120a`）。
+- **写 2 · 代商户创建进件**：查商户 → 渠道只列台湾、非测试的法币渠道（蓝新、LINE Pay；AE 的 PAYBY 不出现）→ 建 LINE Pay 进件 `OBBC1D76F1555048FB` → 详情只出「撤销申请 / 提交资料」（非蓝新不出蓝新资料抽屉）→ 撤销，状态 `CANCELLED`。留下一条已撤销进件记录。
+- 小问题（未修）：带 `?action=create` 直接打开时，「新建支付商户」要等 near-pay 可用性接口返回才出现，深链接被清掉。
