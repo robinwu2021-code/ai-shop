@@ -796,3 +796,20 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
   **改动前的备份没有成功**：mysqldump `--where` 引号写错只导出了表结构（文件已改名 `before-oe-legal-subject-20261120.FAILED-structure-only.sql.gz`），而检查只数了行数没发现；改动前状态由 version=0（从未更新）推出，回退语句 `rollback-oe-legal-subject-20261120.sql` 在同目录。
 - **验证结果**：代建全链路通到最后一道检查——为 `OE26111074KRRAD8Q5` 代建得到「经营主体已有支付商户 PM70F51AF977C84528」（正确拒绝）。
 - **代填资料**：对 `PM70F51AF977C84528`（「NearGo科技测试收款商户-1110-01」，无来源关联）保存了一版草稿（法定名称、行业，版本 1），**未提交审核**；草稿没有删除接口，留在该测试商户上，不影响收款与审核。
+
+## 2026-11-20 16:38 停用 v1，全部切到 v2（用户：「停掉 v1，保留 v2，以后都在 v2 上测试」「ai-shop 也是一个实例，如果两个就是错误的」）
+
+| 步 | 做了什么 | 回退 |
+|---|---|---|
+| 备份 | 166：`nearshop.umeshop.ai.conf`、`twpay.umeshop.ai.conf`、`snippets/ai-shop-media.locations.conf` 各存 `.before-20261120-v1off`；.80：`ai-shop-all-v2.env`、`run.sh` 各存 `.before-20261120-v1off` | — |
+| v2 配置 | `SHOP_NEARPAY_STORE_SYNC_ENABLED=true`（原由 v1 运营实例负责）；主库池 `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE` 4→16、`MINIMUM_IDLE` 1→4；v1 `shared-uploads`（30 个文件）拷到 .80 `uploads` | 复原 env 备份后 `./run.sh all restart` |
+| .80 本机转发 | 容器 `nearpay-fwd`（busybox nc，`--network host`，`--restart unless-stopped`，32m）：`127.0.0.1:18093 → 192.168.3.166:18093`，让 `NEARPAY_BIZ_ORIGIN=http://127.0.0.1:18093`（只收 https 或回环）可用 | `runtime/d rm -f nearpay-fwd` |
+| 重启 v2 | 88 秒起好，无新错误 | — |
+| 停 v1 | 166 `docker update --restart=no` 后 `docker stop ai-shop-ops ai-shop-api`（容器保留） | `docker update --restart=unless-stopped … && docker start ai-shop-ops ai-shop-api` |
+| nginx | 新增 `conf.d/ai-shop-v1-to-v2.conf`：`127.0.0.1:18081`、`:18082` 都转 `192.168.3.80:18180`（关缓冲、3600 秒，透传 X-Forwarded-*）——现有站点路由与 near-pay 的两个 ai-shop 地址都不用改；两个站点的 `/ops-shop/` 改为 302 到 `/ops-shop-v2/` | 删该文件、两个站点配置复原备份、reload，再启动 v1 |
+
+- 时间线：16:38:07 开始，16:38:27 v1 停，16:38:28 nginx 生效；商家 App 中断约 21 秒（期间 1 个 502）。
+- 验证：`/shop-api/common/master-data` 200、`/shop-api/biz/auth/session` 401（未登录）、app/version 200（nearshop / tw.neargo / twpay 三域）；`/ops-shop/` → 302 `/ops-shop-v2/`；near-pay `/oms-api/auth/me`、`/oms-api/pay-ops/v2/me/access`、订单列表经 v2 正常；切换后商家 App 185 个请求全 200。
+- **代建支付商户**：near-pay 打 18082 现在就是 v2 单实例，越过了 ai-shop 核验（修复一不再需要）；停在门店前置「经营主体尚未关联门店」——要靠 near-pay 修复二 `4c55f151a`，当前线上 V131 包没有。
+- 发现：v2 对不带签名的付款凭证图（`/media/…/mallpay/…jpg`）返回 404 时报 `ClassCastException ApiResult → Resource`（日志 ERROR，两次都是验证请求触发），待修。
+- 连接数：v1 停后空出约 60；v2 池上限 16。以后只在 v2 测试。
