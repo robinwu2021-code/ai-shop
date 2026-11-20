@@ -135,11 +135,27 @@ function navLeaves() {
   return [...src.matchAll(/\{\s*href:\s*"([^"]+)",\s*label:/g)].map((m) => m[1]).concat(aliases.map(a => a.href));
 }
 
+/**
+ * 库里还没改址的旧支付菜单 → 支付中心页签（ops-web/app/payment-center/module.ts 的 LEGACY_TAB_REDIRECT）。
+ * 改 href 的原 V686 暂缓在 docs/technical/pending-sql/，前端进菜单时按这张表换址；
+ * 那条 SQL 执行并删掉这张表后，这里解析为空，守卫回到只看迁移。
+ */
+function legacyPaymentMenuHrefs(): Record<string, string> {
+  const src = readFileSync(join(ROOT, "ops-web/app/payment-center/module.ts"), "utf8");
+  const block = /LEGACY_TAB_REDIRECT[^=]*=\s*\{([\s\S]*?)\n\};/.exec(src)?.[1] ?? "";
+  const out: Record<string, string> = {};
+  for (const m of block.matchAll(/"(\/[a-z-]+)":\s*\{([^}]*)\}/g)) {
+    for (const t of m[2]!.matchAll(/"?([a-z-]+)"?:\s*"([a-z-]+)"/g)) out[`${m[1]}?tab=${t[1]}`] = `/payment-center?tab=${t[2]}`;
+  }
+  return out;
+}
+
 describe("菜单 ↔ 功能点", () => {
   it("★★★ nav 的每个叶子在库里都有功能点，反之亦然", () => {
     const nav = new Set(navLeaves());
+    const legacy = legacyPaymentMenuHrefs();
     const seeded = new Set(
-      seededPoints().filter((p) => p.type === "MENU" && p.href).map((p) => p.href!),
+      seededPoints().filter((p) => p.type === "MENU" && p.href).map((p) => legacy[p.href!] ?? p.href!),
     );
     expect(seeded.size, "一个功能点都没解析到，迁移里的 INSERT 列序变了？").toBeGreaterThan(50);
 

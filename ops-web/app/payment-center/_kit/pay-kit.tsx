@@ -102,7 +102,7 @@ export function PayRefCell({ value, href }: { value: string | null | undefined; 
   if (!value) return <span className="text-muted-foreground">—</span>;
   return (
     <span className="inline-flex items-center gap-1 font-mono txt-caption" onClick={(e) => e.stopPropagation()}>
-      {href ? <Link href={href} className="text-primary-ink hover:underline">{value}</Link> : value}
+      {href ? <Link href={href} className="text-primary-ink hover:underline focus-ring">{value}</Link> : value}
       <button
         type="button"
         aria-label={t("payKit.copy")}
@@ -122,7 +122,7 @@ export function ApprovalSubmitNotice({ approvalsHref }: { approvalsHref?: string
   return (
     <Notice tone="info" className="mb-4">
       <span>{t("payKit.approvalRequired")}</span>
-      {approvalsHref && <Link href={approvalsHref} className="ms-2 text-primary-ink hover:underline">{t("payKit.goApprovals")}</Link>}
+      {approvalsHref && <Link href={approvalsHref} className="ms-2 text-primary-ink hover:underline focus-ring">{t("payKit.goApprovals")}</Link>}
     </Notice>
   );
 }

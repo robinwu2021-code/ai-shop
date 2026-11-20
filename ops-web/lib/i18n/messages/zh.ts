@@ -280,7 +280,7 @@ export const zh = {
     draftRestored: "已恢复 {time} 的草稿",
     draftDiscard: "放弃草稿",
     draftConflict: "这条记录在你编辑后被修改过，草稿基于旧版本，请核对后再提交",
-    draftUnavailable: "当前浏览器无法保存草稿，关闭前请先提交",
+    draftUnavailable: "浏览器无法存草稿，关闭前请先提交",
     draftKept: "草稿已保存，可稍后继续",
     myDrafts: "我的草稿",
     myDraftsCount: "我的草稿 ({n})",

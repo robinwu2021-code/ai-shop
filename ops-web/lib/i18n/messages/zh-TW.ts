@@ -282,7 +282,7 @@ export const zhTW: Messages = {
     draftRestored: "已恢復 {time} 的草稿",
     draftDiscard: "放棄草稿",
     draftConflict: "這筆記錄在你編輯後被修改過，草稿基於舊版本，請核對後再提交",
-    draftUnavailable: "目前瀏覽器無法儲存草稿，關閉前請先提交",
+    draftUnavailable: "瀏覽器無法存草稿，關閉前請先提交",
     draftKept: "草稿已儲存，可稍後繼續",
     myDrafts: "我的草稿",
     myDraftsCount: "我的草稿 ({n})",
