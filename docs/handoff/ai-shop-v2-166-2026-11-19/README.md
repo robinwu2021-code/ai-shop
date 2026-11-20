@@ -813,3 +813,10 @@ ssh -F ~/work/env/ume/ssh.config -J ume-jump -i ~/work/ume/ume-id_rsa \
 - **代建支付商户**：near-pay 打 18082 现在就是 v2 单实例，越过了 ai-shop 核验（修复一不再需要）；停在门店前置「经营主体尚未关联门店」——要靠 near-pay 修复二 `4c55f151a`，当前线上 V131 包没有。
 - 发现：v2 对不带签名的付款凭证图（`/media/…/mallpay/…jpg`）返回 404 时报 `ClassCastException ApiResult → Resource`（日志 ERROR，两次都是验证请求触发），待修。
 - 连接数：v1 停后空出约 60；v2 池上限 16。以后只在 v2 测试。
+
+### 同日续：near-pay 修复二合进 develop/s1（用户：「在这里合并并重新提交」）
+
+- RobinWu 推送了 `develop/s1` `8b70706e8`（= 15:57 上线的 V131）。核对：在它上面构建的 pay-svc 与全部 `pay-*` 模块与线上 V131 包字节码完全一致（ai-shop 共享库 `shop-base*`、`svc-client` 等因本机 Maven 仓库版本不同而有差异——**在本机整包构建会换掉线上的 ai-shop 公共代码，不要用本机整包发 near-pay**）。
+- 修复二（门店 / 已有商户按经营主体关联的法人主体号也算）摘到其上为 `824f32ca7`（不带修复一：ai-shop 已是单实例，near-pay 两个地址都落到 v2），测试通过；分支 `release/nearpay-v131-fix2-20261120` 已推送；**已合进并推送 `develop/s1`：`fa708146c`**。
+- 17:39 RobinWu 又发了 V132（源码 `59c575bd`，未推送，166 `releases/collection-59c575bd-rollback` 留有 V131 回退包），所以原定的 V131 补丁没有发。V132 上同样只换 4 个类的补丁包 `d341ad0abcee8bf3` 已备好未发。
+- **待办**：RobinWu 把 `59c575bd` 推上来并合入 `develop/s1`（含 `fa708146c`）后整包发布，代建支付商户即可用；在那之前代建停在门店前置检查。
