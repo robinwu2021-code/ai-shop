@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="230" viewBox="0 0 940 230" role="img" aria-labelledby="title description">
+  <title id="title">台灣電子發票開立與列印</title>
+  <desc id="description">訂單或 POS 將發票需求交給發票服務，發票服務依營業人和門店呼叫對應的加值中心，並將確認後的列印資料交給列印域或 POS。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#315b73"/>
+    </marker>
+  </defs>
+  <rect width="940" height="230" rx="16" fill="#f5f8fc"/>
+  <g fill="#fff" stroke="#7f9cb0" stroke-width="1.5">
+    <rect x="26" y="75" width="196" height="78" rx="10"/>
+    <rect x="322" y="75" width="240" height="78" rx="10"/>
+    <rect x="680" y="24" width="233" height="74" rx="10"/>
+    <rect x="680" y="132" width="233" height="74" rx="10"/>
+  </g>
+  <g fill="none" stroke="#315b73" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M222 114 H322"/>
+    <path d="M562 102 H611 V61 H680"/>
+    <path d="M562 127 H611 V169 H680"/>
+  </g>
+  <g fill="#143449" font-family="system-ui, sans-serif" text-anchor="middle">
+    <text x="124" y="106" font-size="18" font-weight="600">訂單／POS</text>
+    <text x="124" y="132" font-size="14">結算與發票需求</text>
+    <text x="442" y="106" font-size="18" font-weight="600">發票服務</text>
+    <text x="442" y="132" font-size="14">保存原件與廠商綁定</text>
+    <text x="796" y="55" font-size="18" font-weight="600">加值服務商</text>
+    <text x="796" y="80" font-size="14">鯨躍、綠界及其他廠商</text>
+    <text x="796" y="162" font-size="18" font-weight="600">列印域／POS</text>
+    <text x="796" y="187" font-size="14">證明聯、明細與出紙回報</text>
+  </g>
+</svg>
