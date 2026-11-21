@@ -39,6 +39,7 @@ public class TwEguiRegime implements InvoiceRegime {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final DateTimeFormatter SHOWN = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DAY = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter DAY_SHOWN = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public String code() {
@@ -135,6 +136,55 @@ public class TwEguiRegime implements InvoiceRegime {
             out.put("qrLeft", qr.left());
             out.put("qrRight", qr.right());
         }
+        return out;
+    }
+
+    public Map<String, Object> detail(IvcInvoice inv) {
+        var out = new LinkedHashMap<String, Object>();
+        out.put("title", "交易明細");
+        out.put("timezone", TwPeriods.TAIPEI.getId());
+        out.put("sellerName", inv.getSellerName());
+        out.put("sellerTaxId", inv.getSellerTaxId());
+        out.put("fiscalNumber", inv.getFiscalNumber().substring(0, 2) + "-" + inv.getFiscalNumber().substring(2));
+        out.put("periodLabel", TwPeriods.label(inv.getPeriodCode()));
+        out.put("issuedAt", SHOWN.format(TwPeriods.local(inv.getIssuedAt().toInstant(ZoneOffset.UTC))));
+        out.put("total", Long.toString(dollars(inv.getTotalMinor())));
+        if ("B2B".equals(inv.getBuyerType())) {
+            out.put("buyerTaxId", inv.getBuyerTaxId());
+            out.put("sales", Long.toString(dollars(inv.getSalesMinor())));
+            out.put("tax", Long.toString(dollars(inv.getTaxMinor())));
+        }
+        out.put("keepNote", keepNote(inv));
+        return out;
+    }
+
+    /** 这张发票去了哪：顾客拿着明细要知道该去哪里找发票。 */
+    static String keepNote(IvcInvoice inv) {
+        if (inv.getDonateCode() != null) return "發票已捐贈：愛心碼 " + inv.getDonateCode();
+        if (inv.getCarrierType() != null) return switch (inv.getCarrierType()) {
+            case TwBuyerRules.MOBILE -> "發票已存入手機條碼載具 " + inv.getCarrierId();
+            case TwBuyerRules.CITIZEN -> "發票已存入自然人憑證載具";
+            default -> "發票已存入會員載具";
+        };
+        return "本明細非發票，請收執電子發票證明聯";
+    }
+
+    public Map<String, Object> allowanceProof(IvcInvoice inv, IvcAllowance a) {
+        var out = new LinkedHashMap<String, Object>();
+        out.put("title", "營業人銷貨退回、進貨退出或折讓證明單");
+        out.put("timezone", TwPeriods.TAIPEI.getId());
+        out.put("sellerName", inv.getSellerName());
+        out.put("sellerTaxId", inv.getSellerTaxId());
+        if (inv.getBuyerTaxId() != null) out.put("buyerTaxId", inv.getBuyerTaxId());
+        out.put("allowanceNo", a.getAllowanceNo());
+        out.put("allowanceDate", DAY_SHOWN.format(TwPeriods.local(a.getCreatedAt().toInstant(ZoneOffset.UTC))));
+        out.put("originalNumber", inv.getFiscalNumber().substring(0, 2) + "-" + inv.getFiscalNumber().substring(2));
+        out.put("originalDate", DAY_SHOWN.format(TwPeriods.local(inv.getIssuedAt().toInstant(ZoneOffset.UTC))));
+        out.put("reason", a.getReason());
+        out.put("net", Long.toString(dollars(a.getAmountMinor() - a.getTaxMinor())));
+        out.put("tax", Long.toString(dollars(a.getTaxMinor())));
+        out.put("total", Long.toString(dollars(a.getAmountMinor())));
+        out.put("signature", "買受人簽收：＿＿＿＿＿＿＿＿");
         return out;
     }
 

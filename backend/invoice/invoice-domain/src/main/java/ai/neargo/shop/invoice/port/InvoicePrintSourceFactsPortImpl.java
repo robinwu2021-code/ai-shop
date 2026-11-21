@@ -1,6 +1,8 @@
 package ai.neargo.shop.invoice.port;
 
+import ai.neargo.shop.invoice.entity.IvcAllowance;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
+import ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.print.api.FrozenJson;
 import ai.neargo.shop.print.api.GuardDecision;
@@ -18,108 +20,210 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * 证明联的打印来源（打印中心场景 {@code INVOICE_PROOF}，来源类型 {@code INVOICE}）。
+ * 发票的三种打印件交给共享打印中心（TDD-发票模块 §9）：
  *
- * <p>事实就是发票本身：开立时已把证明联内容冻结在 {@code ivc_invoice.proof_snapshot}，这里只读不重算。
- * 存载具 / 捐赠（{@code print_mark=N}）或缺 QR 密钥时返回 BLOCKED 并给出原因，不出一张不合规的证明联；
- * 已作废的发票不允许再出纸。补印走打印中心的 REPRINT，版面由打印中心标「补印」并留原因与操作人。
+ * <ul>
+ *   <li>{@code INVOICE / INVOICE_PROOF} 电子发票证明联 —— 法定凭证，只在应印时（未存载具、未捐赠）可出；正本只出一次，再出走补印；
+ *   <li>{@code INVOICE / INVOICE_DETAIL} 交易明细 —— 每张发票都有；存载具 / 捐赠时它就是顾客手上的收据；
+ *   <li>{@code INVOICE_ALLOWANCE / INVOICE_ALLOWANCE} 折让证明单 —— 每笔折让一张，留买受人签收。
+ * </ul>
+ *
+ * <p>事实都是开立 / 折让当下冻结的快照（{@code proof_snapshot} / {@code detail_snapshot} / {@code print_snapshot}），
+ * 这里只读不重算。已作废的发票：证明联与明细都不再出纸。
  */
 @Component
 public class InvoicePrintSourceFactsPortImpl implements PrintSourceFactsPort {
 
     public static final String TYPE = "INVOICE";
     public static final String SCENE = "INVOICE_PROOF";
+    public static final String DETAIL_SCENE = "INVOICE_DETAIL";
+    public static final String ALLOWANCE_TYPE = "INVOICE_ALLOWANCE";
+    public static final String ALLOWANCE_SCENE = "INVOICE_ALLOWANCE";
 
     private final InvoiceMapper invoices;
+    private final AllowanceMapper allowances;
 
-    public InvoicePrintSourceFactsPortImpl(InvoiceMapper invoices) {
+    public InvoicePrintSourceFactsPortImpl(InvoiceMapper invoices, AllowanceMapper allowances) {
         this.invoices = invoices;
+        this.allowances = allowances;
     }
 
     @Override
     public Set<String> sourceTypes() {
-        return Set.of(TYPE);
+        return Set.of(TYPE, ALLOWANCE_TYPE);
     }
 
     @Override
     public Set<String> scenes() {
-        return Set.of(SCENE);
+        return Set.of(SCENE, DETAIL_SCENE, ALLOWANCE_SCENE);
+    }
+
+    /** 证明联的事实身份；开立后发 {@code BusinessPrintFactReady} 也用它。 */
+    public static PrintFactRef ref(IvcInvoice inv) {
+        return new PrintFactRef(inv.getTenantNo(), inv.getEntityNo(), inv.getStoreNo(), TYPE, inv.getInvoiceNo(),
+                "1", SCENE, inv.getProofSnapshotHash());
+    }
+
+    public static PrintFactRef detailRef(IvcInvoice inv) {
+        return new PrintFactRef(inv.getTenantNo(), inv.getEntityNo(), inv.getStoreNo(), TYPE, inv.getInvoiceNo(),
+                "1", DETAIL_SCENE, inv.getDetailSnapshotHash());
+    }
+
+    public static PrintFactRef ref(IvcInvoice inv, IvcAllowance a) {
+        return new PrintFactRef(inv.getTenantNo(), inv.getEntityNo(), inv.getStoreNo(), ALLOWANCE_TYPE,
+                a.getAllowanceNo(), "1", ALLOWANCE_SCENE, a.getPrintSnapshotHash());
     }
 
     @Override
     public List<PrintFactRef> referencesByOrder(PrintScope scope, String orderNo) {
-        return invoices.selectList(scoped(scope).and(w -> w.eq("invoice_no", orderNo).or().eq("source_no", orderNo))
-                .orderByAsc("id").last("LIMIT 101")).stream().map(InvoicePrintSourceFactsPortImpl::ref).toList();
+        var out = new ArrayList<PrintFactRef>();
+        for (var inv : invoices.selectList(scoped(scope).and(w -> w.eq("invoice_no", orderNo).or()
+                .eq("source_no", orderNo).or().eq("fiscal_number", orderNo)).orderByAsc("id").last("LIMIT 51"))) {
+            out.addAll(invoiceRefs(inv));
+            for (var a : allowancesOf(inv)) out.add(ref(inv, a));
+        }
+        return out;
     }
 
     @Override
     public PrintFactRef resolveReference(PrintSourceReference r, PrintScope scope) {
-        if (!TYPE.equals(r.type()) || !SCENE.equals(r.scene())) throw new PrintFailure("print.sourceMismatch");
-        var inv = invoices.selectOne(scoped(scope).eq("invoice_no", r.factNo() == null ? r.no() : r.factNo()));
+        if (ALLOWANCE_TYPE.equals(r.type()) && ALLOWANCE_SCENE.equals(r.scene())) {
+            var a = allowance(scope, r.factNo() == null ? r.no() : r.factNo());
+            var inv = a == null ? null : invoice(scope, a.getInvoiceNo());
+            if (inv == null || !(Objects.equals(r.no(), a.getAllowanceNo())
+                    || Objects.equals(r.no(), inv.getInvoiceNo())))
+                throw new PrintFailure("print.factNotFound");
+            return ref(inv, a);
+        }
+        if (!TYPE.equals(r.type()) || !(SCENE.equals(r.scene()) || DETAIL_SCENE.equals(r.scene())))
+            throw new PrintFailure("print.sourceMismatch");
+        var inv = invoice(scope, r.factNo() == null ? r.no() : r.factNo());
         if (inv == null || !(Objects.equals(r.no(), inv.getInvoiceNo()) || Objects.equals(r.no(), inv.getSourceNo())))
             throw new PrintFailure("print.factNotFound");
-        return ref(inv);
+        return SCENE.equals(r.scene()) ? ref(inv) : detailRef(inv);
     }
 
     @Override
     public PrintFact snapshot(PrintFactRef r) {
-        var inv = invoices.selectOne(scoped(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()))
-                .eq("invoice_no", r.factNo()));
-        if (inv == null || !ref(inv).equals(r)) throw new PrintFailure("print.factNotFound");
+        var scope = new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo());
+        if (ALLOWANCE_TYPE.equals(r.sourceType())) {
+            var a = allowance(scope, r.factNo());
+            var inv = a == null ? null : invoice(scope, a.getInvoiceNo());
+            if (inv == null || a.getPrintSnapshot() == null || !ref(inv, a).equals(r))
+                throw new PrintFailure("print.factNotFound");
+            return fact(r, a.getAllowanceNo(), a.getCreatedAt(), a.getPrintSnapshot(), a.getPrintSnapshotHash(), null);
+        }
+        var inv = invoice(scope, r.factNo());
+        if (inv == null) throw new PrintFailure("print.factNotFound");
+        if (DETAIL_SCENE.equals(r.scene())) {
+            if (inv.getDetailSnapshot() == null || !detailRef(inv).equals(r))
+                throw new PrintFailure("print.factNotFound");
+            return fact(r, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getDetailSnapshot(),
+                    inv.getDetailSnapshotHash(), null);
+        }
+        if (!ref(inv).equals(r)) throw new PrintFailure("print.factNotFound");
         String block = "N".equals(inv.getPrintMark()) ? "invoice.proofNotPrintable"
                 : !inv.getProofSnapshot().contains("\"qrLeft\"") ? "invoice.qrKeyMissing" : null;
-        return new PrintFact(r, null, null, "INVOICE_ISSUED", inv.getInvoiceNo(),
-                inv.getIssuedAt().toInstant(ZoneOffset.UTC), 1,
-                new FrozenJson(inv.getProofSnapshot(), inv.getProofSnapshotHash()),
-                block == null ? Printability.READY : Printability.BLOCKED, block,
+        return fact(r, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getProofSnapshot(), inv.getProofSnapshotHash(),
+                block);
+    }
+
+    private static PrintFact fact(PrintFactRef r, String instance, LocalDateTime at, String snapshot, String hash,
+            String block) {
+        String trigger = ALLOWANCE_TYPE.equals(r.sourceType()) ? "INVOICE_ALLOWANCE_ISSUED" : "INVOICE_ISSUED";
+        return new PrintFact(r, null, null, trigger, instance, at.toInstant(ZoneOffset.UTC), 1,
+                new FrozenJson(snapshot, hash), block == null ? Printability.READY : Printability.BLOCKED, block,
                 block == null ? List.of() : List.of(block));
     }
 
     @Override
     public PrintFactPage scan(PrintFactCursor c, int limit) {
-        if (!TYPE.equals(c.sourceKind()) || limit < 1 || limit > 500 || c.from() == null || c.to() == null
-                || c.from().isAfter(c.to())) throw new PrintFailure("print.invalidScan");
-        var q = scoped(c.scope()).eq("print_mark", "Y")
-                .ge("created_at", utc(c.from())).le("created_at", utc(c.to()));
-        if (c.watermarkAt() != null)
-            q.and(w -> w.gt("created_at", utc(c.watermarkAt()))
-                    .or(x -> x.eq("created_at", utc(c.watermarkAt())).gt("invoice_no", c.watermarkNo())));
-        var found = invoices.selectList(q.orderByAsc("created_at", "invoice_no").last("LIMIT " + limit));
-        var last = found.isEmpty() ? null : found.getLast();
-        var next = last == null ? c : new PrintFactCursor(c.scope(), c.sourceKind(), c.from(), c.to(),
-                last.getCreatedAt().toInstant(ZoneOffset.UTC), last.getInvoiceNo());
-        return new PrintFactPage(found.stream().map(InvoicePrintSourceFactsPortImpl::ref).toList(), next,
-                found.size() == limit);
+        if (!sourceTypes().contains(c.sourceKind()) || limit < 1 || limit > 500 || c.from() == null
+                || c.to() == null || c.from().isAfter(c.to())) throw new PrintFailure("print.invalidScan");
+        var refs = new ArrayList<PrintFactRef>();
+        Instant lastAt = null;
+        String lastNo = null;
+        int found;
+        if (ALLOWANCE_TYPE.equals(c.sourceKind())) {
+            var q = new QueryWrapper<IvcAllowance>().eq("tenant_no", c.scope().tenantNo())
+                    .eq("entity_no", c.scope().entityNo()).eq("store_no", c.scope().storeNo())
+                    .ge("created_at", utc(c.from())).le("created_at", utc(c.to()));
+            if (c.watermarkAt() != null)
+                q.and(w -> w.gt("created_at", utc(c.watermarkAt()))
+                        .or(x -> x.eq("created_at", utc(c.watermarkAt())).gt("allowance_no", c.watermarkNo())));
+            var rows = allowances.selectList(q.orderByAsc("created_at", "allowance_no").last("LIMIT " + limit));
+            for (var a : rows) {
+                var inv = invoice(c.scope(), a.getInvoiceNo());
+                if (inv != null && a.getPrintSnapshot() != null) refs.add(ref(inv, a));
+                lastAt = a.getCreatedAt().toInstant(ZoneOffset.UTC);
+                lastNo = a.getAllowanceNo();
+            }
+            found = rows.size();
+        } else {
+            var q = scoped(c.scope()).ge("created_at", utc(c.from())).le("created_at", utc(c.to()));
+            if (c.watermarkAt() != null)
+                q.and(w -> w.gt("created_at", utc(c.watermarkAt()))
+                        .or(x -> x.eq("created_at", utc(c.watermarkAt())).gt("invoice_no", c.watermarkNo())));
+            var rows = invoices.selectList(q.orderByAsc("created_at", "invoice_no").last("LIMIT " + limit));
+            for (var inv : rows) {
+                refs.addAll(invoiceRefs(inv));
+                lastAt = inv.getCreatedAt().toInstant(ZoneOffset.UTC);
+                lastNo = inv.getInvoiceNo();
+            }
+            found = rows.size();
+        }
+        var next = lastAt == null ? c
+                : new PrintFactCursor(c.scope(), c.sourceKind(), c.from(), c.to(), lastAt, lastNo);
+        return new PrintFactPage(refs, next, found == limit);
     }
 
     @Override
     public PrintExecutionGuard executionGuard(PrintFactRef r) {
         var fact = snapshot(r);
-        var inv = invoices.selectOne(scoped(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()))
-                .eq("invoice_no", r.factNo()));
-        if ("VOIDED".equals(inv.getStatus()))
-            return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION, r.bizRevision(), true,
-                    "INVOICE_VOIDED");
+        if (TYPE.equals(r.sourceType())) {
+            var inv = invoice(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()), r.factNo());
+            if ("VOIDED".equals(inv.getStatus()))
+                return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION, r.bizRevision(),
+                        true, "INVOICE_VOIDED");
+        }
         boolean ready = fact.printability() == Printability.READY;
-        return new PrintExecutionGuard(ready, ready ? GuardDecision.ALLOW_HISTORICAL_RECEIPT : GuardDecision.HOLD_UNKNOWN,
-                r.bizRevision(), false, "IMMUTABLE_INVOICE_PROOF");
+        return new PrintExecutionGuard(ready,
+                ready ? GuardDecision.ALLOW_HISTORICAL_RECEIPT : GuardDecision.HOLD_UNKNOWN, r.bizRevision(), false,
+                "IMMUTABLE_INVOICE_DOCUMENT");
+    }
+
+    /** 一张发票能出的件：应印时有证明联；有明细快照就有交易明细。 */
+    private static List<PrintFactRef> invoiceRefs(IvcInvoice inv) {
+        var out = new ArrayList<PrintFactRef>();
+        if ("Y".equals(inv.getPrintMark())) out.add(ref(inv));
+        if (inv.getDetailSnapshot() != null) out.add(detailRef(inv));
+        return out;
+    }
+
+    private List<IvcAllowance> allowancesOf(IvcInvoice inv) {
+        return allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())
+                .eq("invoice_no", inv.getInvoiceNo()).isNotNull("print_snapshot").orderByAsc("id"));
+    }
+
+    private IvcInvoice invoice(PrintScope scope, String invoiceNo) {
+        return invoices.selectOne(scoped(scope).eq("invoice_no", invoiceNo));
+    }
+
+    private IvcAllowance allowance(PrintScope scope, String allowanceNo) {
+        return allowances.selectOne(new QueryWrapper<IvcAllowance>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("allowance_no", allowanceNo));
     }
 
     private static QueryWrapper<IvcInvoice> scoped(PrintScope s) {
         return new QueryWrapper<IvcInvoice>().eq("tenant_no", s.tenantNo()).eq("entity_no", s.entityNo())
                 .eq("store_no", s.storeNo());
-    }
-
-    /** 证明联打印事实的身份；开立后发 {@code BusinessPrintFactReady} 也用它。 */
-    public static PrintFactRef ref(IvcInvoice inv) {
-        return new PrintFactRef(inv.getTenantNo(), inv.getEntityNo(), inv.getStoreNo(), TYPE, inv.getInvoiceNo(),
-                "1", SCENE, inv.getProofSnapshotHash());
     }
 
     private static LocalDateTime utc(Instant at) {

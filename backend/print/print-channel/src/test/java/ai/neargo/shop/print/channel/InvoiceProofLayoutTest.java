@@ -1,10 +1,23 @@
 package ai.neargo.shop.print.channel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ai.neargo.shop.print.api.PdfOutputProfile;
+import ai.neargo.shop.print.api.PrintDocument;
+import ai.neargo.shop.print.api.PrintFact;
+import ai.neargo.shop.print.api.PrintFactRef;
+import ai.neargo.shop.print.api.PrintJobKind;
+import ai.neargo.shop.print.api.PrintLayout;
+import ai.neargo.shop.print.api.Printability;
+import ai.neargo.shop.print.api.ResolvedTemplate;
+import ai.neargo.shop.print.api.SystemPrintSlots;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import ai.neargo.shop.print.api.PrintDrawing;
 import ai.neargo.shop.print.api.PrintFailure;
 import org.apache.pdfbox.Loader;
@@ -47,5 +60,44 @@ class InvoiceProofLayoutTest {
         var failure = assertThrows(PrintFailure.class, () -> ReceiptSoftwareAcceptanceTest.compiler
                 .validateTemplate("INVOICE_PROOF", json.freeze(content).canonicalJson()));
         assertEquals("print.mandatoryPrintFieldMissing", failure.key());
+    }
+
+    @Test
+    void reprintOfTheProofCarriesAVisibleBuYinMarkButTheOriginalDoesNot() {
+        var original = base.layout("INVOICE_PROOF", 58);
+        assertTrue(texts(original).stream().noneMatch("補印"::equals));
+        var s = ReceiptSoftwareAcceptanceTest.scenes.require("INVOICE_PROOF");
+        var json = ReceiptSoftwareAcceptanceTest.json;
+        var payload = json.freeze(s.example());
+        var ref = new PrintFactRef("T1", "E1", "S1", "INVOICE", "SAMPLE", "1", "INVOICE_PROOF", payload.sha256());
+        var fact = new PrintFact(ref, null, null, "SAMPLE", "SAMPLE", Instant.parse("2026-11-21T06:00:00Z"), 1,
+                payload, Printability.READY, null, List.of());
+        var t = s.templates().get("STANDARD_58");
+        var doc = ReceiptSoftwareAcceptanceTest.compiler.compile(fact,
+                new ResolvedTemplate(null, null, t.path("definitionKey").asText(), 1, "INVOICE_PROOF", "STANDARD_58",
+                        json.freeze(t.path("content")), json.freeze(Map.of())),
+                new SystemPrintSlots("TEST001", PrintJobKind.INITIAL, 1, Instant.parse("2026-11-21T06:00:00Z"), null,
+                        null, Set.of(), null));
+        // 补印复用原文档、只换系统槽位 —— 与 PrintReprintServiceImpl 的做法一致
+        var reprint = new PrintDocument(doc.documentKey(), doc.scene(), doc.payloadSchemaVersion(), doc.businessData(),
+                new SystemPrintSlots("TEST002", PrintJobKind.REPRINT, 2, Instant.parse("2026-11-21T07:00:00Z"),
+                        "TEST001", "卡紙", Set.of(), null),
+                doc.requiredDataScopes());
+        var layout = ReceiptSoftwareAcceptanceTest.layoutEngine.layout(reprint,
+                ReceiptSoftwareAcceptanceTest.profiles.require("ROLL58", "1"));
+        assertTrue(texts(layout).contains("補印"));
+    }
+
+    @Test
+    void onlyTheProofRefusesExtraCopies() {
+        var scenes = ReceiptSoftwareAcceptanceTest.scenes;
+        assertFalse(scenes.extraCopiesAllowed("INVOICE_PROOF"));
+        assertTrue(scenes.extraCopiesAllowed("INVOICE_DETAIL"));
+        assertTrue(scenes.extraCopiesAllowed("ORDER_PAID"));
+    }
+
+    private static List<String> texts(PrintLayout layout) {
+        return layout.pages().stream().flatMap(p -> p.drawings().stream())
+                .filter(PrintDrawing.TextRun.class::isInstance).map(d -> ((PrintDrawing.TextRun) d).text()).toList();
     }
 }

@@ -175,9 +175,21 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                                         data,
                                         "timezone",
                                         data.path("store").path("timezone").asText())
-                                : Map.of("rows", rows, "mandatoryNotice", notice)),
+                                : reprintNotice(scene.definition(), Map.of("rows", rows, "mandatoryNotice", notice))),
                 slots,
                 scopes);
+    }
+
+    /**
+     * 场景声明了补印标记（发票证明联：「補印」）时随文档冻结：补印复用原文档、只换系统槽位，
+     * 所以标记必须在文档里，由版面在 REPRINT 时画出来。
+     */
+    private static Map<String, Object> reprintNotice(JsonNode scene, Map<String, Object> data) {
+        String notice = scene.path("reprintNotice").asText();
+        if (notice.isBlank()) return data;
+        var out = new HashMap<String, Object>(data);
+        out.put("reprintNotice", notice);
+        return out;
     }
 
     public void validateTemplate(String scene, String content) {

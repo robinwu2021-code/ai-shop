@@ -49,6 +49,14 @@ public final class PrintSceneRegistry {
         return s;
     }
 
+    /**
+     * 场景是否允许「加印」（EXTRA，另出一份同样的件）。法定凭证（发票证明联）正本只能有一份，
+     * 再出必须走补印并标明 —— 由场景目录的 {@code extraCopiesAllowed: false} 声明，默认允许。
+     */
+    public boolean extraCopiesAllowed(String scene) {
+        return require(scene).definition().path("extraCopiesAllowed").asBoolean(true);
+    }
+
     public Collection<SceneDefinition> all() {
         return scenes.values();
     }

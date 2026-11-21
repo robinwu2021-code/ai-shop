@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import ai.neargo.secret.api.KeyOwner;
@@ -18,6 +20,7 @@ import ai.neargo.secret.api.SecretRef;
 import ai.neargo.secret.api.SecretVault;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceChoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
@@ -37,6 +40,8 @@ import ai.neargo.shop.invoice.regime.tw.TwEguiRegime;
 import ai.neargo.shop.invoice.regime.tw.TwPeriods;
 import ai.neargo.shop.print.api.BusinessPrintFactReady;
 import ai.neargo.shop.print.api.GuardDecision;
+import ai.neargo.shop.print.api.PrintScope;
+import ai.neargo.shop.print.api.PrintSourceReference;
 import ai.neargo.shop.print.api.Printability;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import ai.neargo.shop.spi.invoice.InvoicePort.InvoiceReceipt;
@@ -218,7 +223,7 @@ class InvoiceServiceMysqlTest {
         assertTrue(json.contains("\"barcode\":\"" + period + r.fiscalNumber() + r.randomCode() + "\""));
         assertTrue(json.contains("\"qrLeft\":\"" + r.fiscalNumber()));
         assertTrue(json.contains("\"periodLabel\":\"" + TwPeriods.label(period) + "\""));
-        verify(events).publish(any(BusinessPrintFactReady.class));
+        verify(events, times(2)).publish(any(BusinessPrintFactReady.class));
         assertEquals(GuardDecision.ALLOW_HISTORICAL_RECEIPT, printSource.executionGuard(ref).decision());
     }
 
@@ -227,7 +232,10 @@ class InvoiceServiceMysqlTest {
         sources.paid("SO1", 1_000);
         var r = invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer(null, null, "3J0002", "/ABC+123", null));
         assertFalse(r.printMark());
-        verify(events, never()).publish(any(BusinessPrintFactReady.class));
+        // 不出证明联，只唤醒交易明细（顾客手上的收据）
+        verify(events, times(1)).publish(any(BusinessPrintFactReady.class));
+        verify(events).publish(argThat((DomainEvent e) -> e instanceof BusinessPrintFactReady ready
+                && InvoicePrintSourceFactsPortImpl.DETAIL_SCENE.equals(ready.factRef().scene())));
         var fact = printSource.snapshot(InvoicePrintSourceFactsPortImpl.ref(row(r.invoiceNo())));
         assertEquals(Printability.BLOCKED, fact.printability());
         assertEquals("invoice.proofNotPrintable", fact.blockCode());
@@ -417,6 +425,58 @@ class InvoiceServiceMysqlTest {
                 new InvoiceChoiceReq("ORD1", "CONSUMER", null, null, null, null, null)));
     }
 
+    // ---------------------------------------------------------------- 打印（§9）
+
+    @Test
+    void ac25EveryInvoiceHasAFrozenDetailSlipAndCarrierOnesSayWhereTheInvoiceWent() {
+        sources.paid("SO1", 105_000);
+        var paper = issue("SO1");
+        var inv = row(paper.invoiceNo());
+        var detail = printSource.snapshot(InvoicePrintSourceFactsPortImpl.detailRef(inv));
+        assertEquals(Printability.READY, detail.printability());
+        String json = detail.immutablePayload().canonicalJson();
+        assertTrue(json.contains("\"unitPrice\":\"1049\""), json);
+        assertTrue(json.contains("本明細非發票"), json);
+        verify(events, times(2)).publish(any(BusinessPrintFactReady.class));
+
+        clearInvocations(events);
+        sources.paid("SO2", 1_000);
+        var carrier = invoices.issue(SCOPE, "SUB_ORDER", "SO2", new Buyer(null, null, "3J0002", "/ABC+123", null));
+        var carrierRow = row(carrier.invoiceNo());
+        assertTrue(printSource.snapshot(InvoicePrintSourceFactsPortImpl.detailRef(carrierRow)).immutablePayload()
+                .canonicalJson().contains("發票已存入手機條碼載具 /ABC+123"));
+        verify(events, times(1)).publish(any(BusinessPrintFactReady.class));
+        var refs = printSource.referencesByOrder(new PrintScope("T1", "E1", "S1"), "SO2");
+        assertEquals(List.of("INVOICE_DETAIL"), refs.stream().map(r -> r.scene()).toList(),
+                "no proof for a carrier invoice, only the detail slip");
+    }
+
+    @Test
+    void ac26AllowanceProofIsFrozenPrintableAndVoidStopsTheInvoiceDocuments() {
+        sources.paid("SO1", 105_000);
+        var r = issue("SO1");
+        clearInvocations(events);
+        var after = invoices.allowance(SCOPE, r.invoiceNo(), 45_000, "退一碗牛肉麵");
+        String allowanceNo = after.allowances().getFirst().allowanceNo();
+        verify(events).publish(any(BusinessPrintFactReady.class));
+        var ref = printSource.resolveReference(new PrintSourceReference("INVOICE_ALLOWANCE", allowanceNo, allowanceNo,
+                "1", "INVOICE_ALLOWANCE"), new PrintScope("T1", "E1", "S1"));
+        String json = printSource.snapshot(ref).immutablePayload().canonicalJson();
+        assertTrue(json.contains("\"originalNumber\":\"" + r.fiscalNumber().substring(0, 2) + "-"), json);
+        assertTrue(json.contains("\"total\":\"450\""), json);
+        assertTrue(json.contains("買受人簽收"), json);
+        assertEquals(List.of("INVOICE_PROOF", "INVOICE_DETAIL", "INVOICE_ALLOWANCE"),
+                printSource.referencesByOrder(new PrintScope("T1", "E1", "S1"), r.invoiceNo()).stream()
+                        .map(x -> x.scene()).toList());
+
+        sources.paid("SO2", 1_000);
+        var other = issue("SO2");
+        invoices.voidInvoice(SCOPE, other.invoiceNo(), "開錯");
+        var voided = row(other.invoiceNo());
+        assertEquals(GuardDecision.CANCEL_UNSUBMITTED_EXECUTION,
+                printSource.executionGuard(InvoicePrintSourceFactsPortImpl.detailRef(voided)).decision());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private InvoiceReceipt issue(String sourceNo) {
@@ -493,7 +553,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(3, applied);
+            assertEquals(4, applied);
             return ds;
         }
     }

@@ -932,6 +932,105 @@
         "warnings": []
       },
       "currency": "TWD"
+    },
+    {
+      "scene": "INVOICE_DETAIL",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例營業人",
+        "timezone": "Asia/Taipei"
+      },
+      "source": {
+        "type": "INVOICE",
+        "no": "IVC-EXAMPLE",
+        "factNo": "IVC-EXAMPLE",
+        "revision": "1",
+        "occurredAt": "2026-11-21T06:00:00Z"
+      },
+      "fields": {
+        "title": "交易明細",
+        "fiscalNumber": "AB-12345678",
+        "periodLabel": "115年11-12月",
+        "issuedAt": "2026-11-21 14:00:00",
+        "sellerTaxId": "12345675",
+        "totalAmount": {
+          "minor": "105000",
+          "currency": "TWD",
+          "scale": 2
+        },
+        "keepNote": "發票已存入手機條碼載具 /ABC+123"
+      },
+      "lines": [
+        {
+          "title": "招牌牛肉麵",
+          "quantity": "2",
+          "unitPrice": "450",
+          "lineAmount": {
+            "minor": "90000",
+            "currency": "TWD",
+            "scale": 2
+          }
+        },
+        {
+          "title": "燙青菜",
+          "quantity": "1",
+          "unitPrice": "150",
+          "lineAmount": {
+            "minor": "15000",
+            "currency": "TWD",
+            "scale": 2
+          }
+        }
+      ],
+      "system": {
+        "ticketNo": "PJ-INVOICE_DETAIL",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-11-21T06:00:00Z",
+        "warnings": []
+      },
+      "currency": "TWD"
+    },
+    {
+      "scene": "INVOICE_ALLOWANCE",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例營業人",
+        "timezone": "Asia/Taipei"
+      },
+      "source": {
+        "type": "INVOICE_ALLOWANCE",
+        "no": "IVA-EXAMPLE",
+        "factNo": "IVA-EXAMPLE",
+        "revision": "1",
+        "occurredAt": "2026-11-22T06:00:00Z"
+      },
+      "fields": {
+        "title": "營業人銷貨退回、進貨退出或折讓證明單",
+        "sellerTaxId": "12345675",
+        "allowanceNo": "IVA-EXAMPLE",
+        "allowanceDate": "2026-11-22",
+        "originalNumber": "AB-12345678",
+        "originalDate": "2026-11-21",
+        "reason": "退一碗牛肉麵",
+        "net": "429",
+        "tax": "21",
+        "total": "450",
+        "signature": "買受人簽收：＿＿＿＿＿＿＿＿",
+        "totalAmount": {
+          "minor": "105000",
+          "currency": "TWD",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-INVOICE_ALLOWANCE",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-11-21T06:00:00Z",
+        "warnings": []
+      },
+      "currency": "TWD"
     }
   ]
 }

@@ -25,6 +25,9 @@ public class IvcAllowance {
     private Long amountMinor;
     private Long taxMinor;
     private String reason;
+    /** 折让证明单冻结内容（V4） */
+    private String printSnapshot;
+    private String printSnapshotHash;
     private String createdBy;
     private LocalDateTime createdAt;
 }

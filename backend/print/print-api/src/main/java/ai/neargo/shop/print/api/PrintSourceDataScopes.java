@@ -4,7 +4,7 @@ import java.util.Set;
 public final class PrintSourceDataScopes {
     private PrintSourceDataScopes() {}
     public static Set<String> requiredForScene(String scene) {
-        return required(switch(scene) { case "REFUND_RECEIPT" -> "REFUND"; case "RECHARGE_RECEIPT" -> "RECHARGE"; case "INVOICE_PROOF" -> "INVOICE"; default -> "SUB_ORDER"; });
+        return required(switch(scene) { case "REFUND_RECEIPT" -> "REFUND"; case "RECHARGE_RECEIPT" -> "RECHARGE"; case "INVOICE_PROOF", "INVOICE_DETAIL" -> "INVOICE"; case "INVOICE_ALLOWANCE" -> "INVOICE_ALLOWANCE"; default -> "SUB_ORDER"; });
     }
     public static boolean hasAnySource(Set<String> scopes) {
         return scopes.contains("SOURCE_ORDER_READ") || scopes.contains("SOURCE_REFUND_READ") || scopes.contains("SOURCE_RECHARGE_READ")
@@ -14,7 +14,7 @@ public final class PrintSourceDataScopes {
         return switch(sourceType) {
             case "RECHARGE" -> Set.of("SOURCE_RECHARGE_READ");
             case "REFUND" -> Set.of("SOURCE_REFUND_READ");
-            case "INVOICE" -> Set.of("SOURCE_INVOICE_READ");
+            case "INVOICE", "INVOICE_ALLOWANCE" -> Set.of("SOURCE_INVOICE_READ");
             default -> Set.of("SOURCE_ORDER_READ");
         };
     }

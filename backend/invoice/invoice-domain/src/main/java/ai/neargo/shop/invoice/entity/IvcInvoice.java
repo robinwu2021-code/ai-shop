@@ -64,6 +64,9 @@ public class IvcInvoice {
     private String voidedBy;
     private String proofSnapshot;
     private String proofSnapshotHash;
+    /** 交易明细冻结内容（V4） */
+    private String detailSnapshot;
+    private String detailSnapshotHash;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -38,6 +38,7 @@ import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -193,14 +194,21 @@ public class InvoiceServiceImpl implements InvoiceService {
             row.setTaxType(l.taxType());
             rows.add(row);
         }
-        var proof = regime.proof(inv, rows, qrKey(profile));
-        inv.setProofSnapshot(printPayload(inv, rows, proof));
+        var occurred = inv.getIssuedAt().toInstant(ZoneOffset.UTC);
+        inv.setProofSnapshot(printPayload(InvoicePrintSourceFactsPortImpl.SCENE, InvoicePrintSourceFactsPortImpl.TYPE,
+                inv.getInvoiceNo(), occurred, inv, regime.proof(inv, rows, qrKey(profile)), proofLines(inv, rows)));
         inv.setProofSnapshotHash(PrintHashes.sha256(inv.getProofSnapshot()));
+        inv.setDetailSnapshot(printPayload(InvoicePrintSourceFactsPortImpl.DETAIL_SCENE,
+                InvoicePrintSourceFactsPortImpl.TYPE, inv.getInvoiceNo(), occurred, inv, regime.detail(inv),
+                detailLines(inv, rows)));
+        inv.setDetailSnapshotHash(PrintHashes.sha256(inv.getDetailSnapshot()));
         invoices.insert(inv);
         rows.forEach(lines::insert);
         enqueue(inv, profile, "ISSUE", inv.getInvoiceNo(), regime.message("ISSUE", inv, rows, null));
+        // 打印中心按门店的场景策略决定是否自动出纸：证明联只在应印时唤醒，交易明细每张都唤醒
         if ("Y".equals(inv.getPrintMark()))
             events.publish(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.ref(inv)));
+        events.publish(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.detailRef(inv)));
         return receipt(inv);
     }
 
@@ -342,7 +350,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         a.setReason(reason);
         a.setCreatedBy(scope.actorNo());
         a.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        a.setPrintSnapshot(printPayload(InvoicePrintSourceFactsPortImpl.ALLOWANCE_SCENE,
+                InvoicePrintSourceFactsPortImpl.ALLOWANCE_TYPE, a.getAllowanceNo(),
+                a.getCreatedAt().toInstant(ZoneOffset.UTC), inv, regime.allowanceProof(inv, a), List.of()));
+        a.setPrintSnapshotHash(PrintHashes.sha256(a.getPrintSnapshot()));
         allowances.insert(a);
+        events.publish(new BusinessPrintFactReady(a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
         enqueue(inv, activeProfile(scope), "ALLOWANCE", a.getAllowanceNo(),
                 regime.message("ALLOWANCE", inv, List.of(), a));
         return view(require(scope, invoiceNo), true);
@@ -372,27 +385,50 @@ public class InvoiceServiceImpl implements InvoiceService {
      * 证明联的打印事实快照（打印中心公共字段 + 税制给出的 fields）。按键排序序列化，哈希才稳定。
      * 门店名取开立时冻结的卖方名称：证明联上印的是营业人，不是门店展示名。
      */
-    private String printPayload(IvcInvoice inv, List<IvcInvoiceLine> rows, Map<String, Object> proof) {
-        var lineItems = new ArrayList<Map<String, Object>>();
-        for (var r : rows)
-            lineItems.add(Map.of("lineRef", String.valueOf(r.getLineNo()), "title", r.getName(),
-                    "quantity", r.getQuantity().stripTrailingZeros().toPlainString(),
-                    "lineAmount", money(r.getAmountMinor(), inv.getCurrency())));
+    /**
+     * 打印事实快照：打印中心公共字段 + 税制给出的 fields + 明细行。按键排序序列化，哈希才稳定。
+     * 门店名取开立时冻结的营业人名称：发票上印的是营业人，不是门店展示名。
+     */
+    private String printPayload(String scene, String sourceType, String factNo, Instant occurredAt, IvcInvoice inv,
+            Map<String, Object> regimeFields, List<Map<String, Object>> lineItems) {
         var payload = new TreeMap<String, Object>();
-        payload.put("scene", InvoicePrintSourceFactsPortImpl.SCENE);
+        payload.put("scene", scene);
         payload.put("payloadSchemaVersion", 1);
-        payload.put("store", Map.of("name", inv.getSellerName(), "timezone", proof.getOrDefault("timezone", "UTC")));
-        payload.put("source", Map.of("type", InvoicePrintSourceFactsPortImpl.TYPE, "no", inv.getInvoiceNo(), "factNo", inv.getInvoiceNo(),
-                "revision", "1", "occurredAt", inv.getIssuedAt().toInstant(ZoneOffset.UTC).toString()));
+        payload.put("store", Map.of("name", inv.getSellerName(),
+                "timezone", regimeFields.getOrDefault("timezone", "UTC")));
+        payload.put("source", Map.of("type", sourceType, "no", factNo, "factNo", factNo, "revision", "1",
+                "occurredAt", occurredAt.toString()));
         payload.put("currency", inv.getCurrency());
         var fields = new TreeMap<String, Object>();
-        proof.forEach((k, v) -> {
+        regimeFields.forEach((k, v) -> {
             if (v != null) fields.put(k, v);
         });
         fields.put("totalAmount", money(inv.getTotalMinor(), inv.getCurrency()));
         payload.put("fields", fields);
         payload.put("lines", lineItems);
         return json.writeValueAsString(sorted(payload));
+    }
+
+    private static List<Map<String, Object>> proofLines(IvcInvoice inv, List<IvcInvoiceLine> rows) {
+        var out = new ArrayList<Map<String, Object>>();
+        for (var r : rows)
+            out.add(Map.of("lineRef", String.valueOf(r.getLineNo()), "title", r.getName(),
+                    "quantity", r.getQuantity().stripTrailingZeros().toPlainString(),
+                    "lineAmount", money(r.getAmountMinor(), inv.getCurrency())));
+        return out;
+    }
+
+    /** 交易明细逐行：品名、数量、单价（文本，已按币种小数位）、金额（金额型，打印中心按币种排版）。 */
+    private static List<Map<String, Object>> detailLines(IvcInvoice inv, List<IvcInvoiceLine> rows) {
+        int scale = Currency.getInstance(inv.getCurrency()).getDefaultFractionDigits();
+        var out = new ArrayList<Map<String, Object>>();
+        for (var r : rows)
+            out.add(Map.of("title", r.getName(),
+                    "quantity", r.getQuantity().stripTrailingZeros().toPlainString(),
+                    "unitPrice", BigDecimal.valueOf(r.getUnitPriceMinor(), scale).stripTrailingZeros()
+                            .toPlainString(),
+                    "lineAmount", money(r.getAmountMinor(), inv.getCurrency())));
+        return out;
     }
 
     @SuppressWarnings("unchecked")

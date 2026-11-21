@@ -2085,6 +2085,257 @@
         "fields.barcode",
         "fields.qrLeft",
         "fields.qrRight"
+      ],
+      "reprintNotice": "補印",
+      "extraCopiesAllowed": false
+    },
+    {
+      "scene": "INVOICE_DETAIL",
+      "group": "COMMON",
+      "name": "发票交易明细",
+      "title": "交易明細",
+      "purpose": "每张发票的逐项明细；存载具或捐赠时即顾客的收据，打统编时随证明联交付",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "INVOICE"
+      ],
+      "sourceContract": "invoice.detail-snapshot",
+      "triggers": [
+        "INVOICE_ISSUED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "交易明細",
+      "lineMode": "INVOICE",
+      "lineFields": [
+        "title",
+        "quantity",
+        "unitPrice",
+        "lineAmount"
+      ],
+      "requiredFields": [
+        {
+          "path": "fields.fiscalNumber",
+          "label": "发票号码",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.periodLabel",
+          "label": "期别",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.issuedAt",
+          "label": "开立时间",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.sellerTaxId",
+          "label": "卖方",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.totalAmount",
+          "label": "总计",
+          "type": "Money",
+          "required": true
+        },
+        {
+          "path": "fields.keepNote",
+          "label": "发票去向",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        },
+        {
+          "path": "lines",
+          "type": "Lines<INVOICE>",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 500
+        }
+      ],
+      "optionalFields": [
+        {
+          "path": "fields.buyerTaxId",
+          "label": "买方",
+          "type": "String",
+          "required": false
+        },
+        {
+          "path": "fields.sales",
+          "label": "销售额",
+          "type": "String",
+          "required": false
+        },
+        {
+          "path": "fields.tax",
+          "label": "税额",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [
+        "title",
+        "quantity",
+        "unitPrice",
+        "lineAmount"
+      ],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "fields.fiscalNumber",
+        "fields.issuedAt",
+        "fields.totalAmount",
+        "fields.keepNote",
+        "lines"
+      ]
+    },
+    {
+      "scene": "INVOICE_ALLOWANCE",
+      "group": "COMMON",
+      "name": "发票折让证明单",
+      "title": "折讓證明單",
+      "purpose": "销货退回或折让时交买受人签收",
+      "payloadSchemaVersion": 1,
+      "sourceTypes": [
+        "INVOICE_ALLOWANCE"
+      ],
+      "sourceContract": "invoice.allowance-snapshot",
+      "triggers": [
+        "INVOICE_ALLOWANCE_ISSUED"
+      ],
+      "autoTrigger": true,
+      "manualMode": "EXISTING_FACT_ONLY",
+      "critical": false,
+      "executionDocument": false,
+      "paymentEvidence": true,
+      "mandatoryNotice": "折讓證明單",
+      "reprintNotice": "補印",
+      "lineMode": "NONE",
+      "lineFields": [],
+      "requiredFields": [
+        {
+          "path": "fields.title",
+          "label": "单据名称",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.allowanceNo",
+          "label": "折让单号",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.allowanceDate",
+          "label": "折让日期",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.sellerTaxId",
+          "label": "卖方",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalNumber",
+          "label": "原发票号码",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.originalDate",
+          "label": "原发票日期",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.reason",
+          "label": "品名或原因",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.net",
+          "label": "未税金额",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.tax",
+          "label": "税额",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.total",
+          "label": "合计",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "fields.signature",
+          "label": "签收栏",
+          "type": "String",
+          "required": true
+        },
+        {
+          "path": "currency",
+          "type": "CurrencyCode",
+          "required": true
+        }
+      ],
+      "optionalFields": [
+        {
+          "path": "fields.buyerTaxId",
+          "label": "买方",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "defaultVariants": {
+        "58": "STANDARD_58",
+        "80": "STANDARD_80"
+      },
+      "fallback": "SAME_SCENE_SAME_VARIANT",
+      "priority": 0,
+      "lineRequiredFields": [],
+      "mandatoryPrintPaths": [
+        "store.name",
+        "system.ticketNo",
+        "system.jobKind",
+        "system.copyIndex",
+        "fields.title",
+        "fields.allowanceNo",
+        "fields.allowanceDate",
+        "fields.sellerTaxId",
+        "fields.originalNumber",
+        "fields.originalDate",
+        "fields.net",
+        "fields.tax",
+        "fields.total",
+        "fields.signature"
       ]
     }
   ]

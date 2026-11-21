@@ -13630,11 +13630,14 @@ CREATE TABLE IF NOT EXISTS ivc_invoice
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
     buyer_user_no VARCHAR(64) NULL,
+    detail_snapshot LONGTEXT NULL,
+    detail_snapshot_hash CHAR(64) NULL,
     CONSTRAINT uk_ivc_invoice_no UNIQUE (tenant_no, invoice_no),
     CONSTRAINT uk_ivc_invoice_fiscal UNIQUE (tenant_no, regime_code, fiscal_number),
     CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
     CONSTRAINT ck_ivc_invoice_proof_json CHECK ((proof_snapshot IS JSON)),
-    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor)
+    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor),
+    CONSTRAINT ck_ivc_invoice_detail_json CHECK (detail_snapshot IS NULL OR (detail_snapshot IS JSON))
 );
 
 CREATE TABLE IF NOT EXISTS ivc_invoice_line
@@ -13666,8 +13669,11 @@ CREATE TABLE IF NOT EXISTS ivc_allowance
     reason VARCHAR(256) NOT NULL,
     created_by VARCHAR(64) NULL,
     created_at DATETIME(3) NOT NULL,
+    print_snapshot LONGTEXT NULL,
+    print_snapshot_hash CHAR(64) NULL,
     CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
-    CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor)
+    CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor),
+    CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR (print_snapshot IS JSON))
 );
 
 CREATE TABLE IF NOT EXISTS ivc_buyer_preference

@@ -49,6 +49,15 @@ public interface InvoiceRegime {
     /** 证明联冻结内容；{@code qrKey} 为该主体的加密密钥（可为空，空则不生成需加密的码）。 */
     Map<String, Object> proof(IvcInvoice invoice, List<IvcInvoiceLine> lines, byte[] qrKey);
 
+    /**
+     * 交易明细的字段（逐行明细由主流程另给）：存了载具 / 捐赠时写明去向，打统编时列销售额与税额。
+     * 与证明联不同，它不是法定凭证，所以 58 / 80 两种纸宽都可以。
+     */
+    Map<String, Object> detail(IvcInvoice invoice);
+
+    /** 折让证明单的字段：原发票、未税 / 税额 / 合计、签收栏。 */
+    Map<String, Object> allowanceProof(IvcInvoice invoice, IvcAllowance allowance);
+
     boolean voidable(IvcInvoice invoice, Instant now);
 
     /** 折让的税额（含税金额中所含税额）。 */

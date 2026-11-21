@@ -33,6 +33,13 @@ public final class DefaultPrintLayoutEngine implements PrintLayoutEngine {
         BigDecimal y = BigDecimal.valueOf(5);
         drawings.addAll(systemDrawings(d, p));
         y = BigDecimal.valueOf(40);
+        String reprint = json.tree(d.businessData()).path("reprintNotice").asText();
+        if (d.systemSlots().jobKind() == PrintJobKind.REPRINT && !reprint.isBlank()) {
+            // 法定凭证的补印要在正文里一眼可见（发票证明联「補印」），不只是系统栏里的 REPRINT
+            var size = BigDecimal.valueOf(16);
+            drawings.add(text(reprint, p, size, y));
+            y = y.add(size.multiply(MM_PER_PT)).add(BigDecimal.valueOf(2));
+        }
         for (var row : rows) {
             if (row.has("symbol")) {
                 // 条码行（发票证明联）：整块不跨页，放不下先换页

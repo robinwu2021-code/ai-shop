@@ -348,3 +348,34 @@ scripts/check-sql-portability.mjs（扫 backend/，含 db/invoice）            
 
 偏差：`InvoiceSetupServiceImpl#saveProfile` 原先用 `updateById`，清空会员载具类别号时被静默跳过（商家关不掉会员载具）；
 AC22 用例在 MySQL 上复现后改为显式写 null。
+
+## §9 发票打印（后端）
+
+| AC | 落点 |
+|---|---|
+| AC25 | 场景 `INVOICE_DETAIL`（58 / 80）；`TwEguiRegime#detail`、`InvoiceServiceImpl#detailLines`；`ivc_invoice.detail_snapshot`（V4）；开立后唤醒 |
+| AC26 | 场景与来源类型 `INVOICE_ALLOWANCE`（58 / 80）；`TwEguiRegime#allowanceProof`；`ivc_allowance.print_snapshot`（V4）；折让后唤醒 |
+| AC27 | 正本唯一：打印中心按事实的触发键去重（既有）；加印：场景目录 `extraCopiesAllowed: false` → `PrintReprintServiceImpl` 拒绝 `print.extraCopiesNotAllowed`、`PrintViews` 不出「加印」动作；补印标记：场景目录 `reprintNotice`「補印」随文档冻结，`DefaultPrintLayoutEngine` 在 REPRINT 时以 16pt 画在正文开头 |
+
+**为什么交易明细每张都唤醒、证明联只在应印时唤醒**：载具 / 捐赠发票不出纸，顾客手上唯一的东西就是明细；
+是否真的自动出纸由门店的场景策略决定（打印中心既有），不在发票域写死。
+**为什么折让证明单的法定全称不放在系统栏**：系统栏的公告行不换行，58 mm 放不下「營業人銷貨退回、進貨退出或折讓證明單」，
+所以系统栏写「折讓證明單」，全称作为正文第一行（会换行）。
+**补印标记只对非紧凑版面生效**：发票三种模板都不用 COMPACT_V2；以后紧凑模板要用 `reprintNotice` 需在 `CompactPrintLayout` 补同样的一段。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `invoice-domain/…/db/invoice/V4__invoice_print_documents.sql` | 明细与折让证明单快照（LONGTEXT + JSON_VALID） |
+| 修改 | `invoice-domain/…/port/InvoicePrintSourceFactsPortImpl.java` | 两种来源类型、三种场景；作废发票的证明联与明细都取消 |
+| 修改 | `invoice-domain/…/regime/{InvoiceRegime,tw/TwEguiRegime}.java`、`service/impl/InvoiceServiceImpl.java`、`entity/{IvcInvoice,IvcAllowance}.java` | 内容生成、冻结与唤醒 |
+| 修改 | `shop-core/…/printing/center/{template/PrintSceneRegistry,template/DefaultPrintDocumentCompiler,layout/DefaultPrintLayoutEngine,service/impl/PrintReprintServiceImpl,service/impl/PrintQueryServiceImpl,support/PrintViews}.java` | `extraCopiesAllowed`、`reprintNotice` |
+| 修改 | `print-api/…/PrintSourceDataScopes.java`、`shop-core/src/main/resources/print/print-*.json` | 数据权限与场景、模板、示例 |
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC25 | `InvoiceServiceMysqlTest#ac25EveryInvoiceHasAFrozenDetailSlipAndCarrierOnesSayWhereTheInvoiceWent`、`#ac7CarrierOrDonationMeansNoProof`；`ReceiptSoftwareAcceptanceTest`（58 / 80 出 PDF） | ✅ |
+| AC26 | `#ac26AllowanceProofIsFrozenPrintableAndVoidStopsTheInvoiceDocuments`；`ReceiptSoftwareAcceptanceTest` | ✅ |
+| AC27 | `InvoiceProofLayoutTest#reprintOfTheProofCarriesAVisibleBuYinMarkButTheOriginalDoesNot`、`#onlyTheProofRefusesExtraCopies` | ✅ |
+
+`PrintDatabaseAcceptanceTest#sampleSimulationAndPdfExportNeverCreateProductionJobs` 在干净父提交上同样失败（模拟运行 0 成功，与 `BusinessPrintSourceFlowTest` 同一症状），非本次引入。
+
