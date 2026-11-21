@@ -298,6 +298,78 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 
 不是代码问题、需要业务决定的：门店 830（收款码无扫码链接同因）、834（两者名称都标「舊·待下架」）该下架还是挂到主体 `M261113Y3QW5XKEFW` 的新商户（near-pay 里还没有）；测试店 835（主体 `M261119TS0PN0XBK9` 在 near-pay 无商户，`UNLINKED_ENTITY`）。
 
+### 2.15 P8–P10 对接补齐（2026-11-21 用户：「给出对接计划，先完成页面，再对接，再测试」「确认，然后自动执行所有任务」）
+
+依据《支付中心对接完整性测试方案》：near-pay `/pay-ops/v2` 321 个接口，已接 212、只封装 2、未接 107（`scripts/pay-center-wiring.py`）。
+
+**范围（用户确认）**
+- **A 核心运营闭环（约 64 个，本节做）**：分 P8–P10 三批，每批按「页面（mock）→ 对接（HTTP、权限码、菜单）→ 测试（vitest、Chrome）」走完再做下一批。
+- **B 渠道专属（37 个，暂不做）**：易特付虚拟账户 15、PayBy POS 及验收 13、SoftPOS 3、测试渠道试用 / 注册 / 会话 6。等业务确认上线渠道后再排。
+- **C 不在前端提供（8 个）**：near-pay 权限映射与资源 7 个（权限由 ai-shop 决定，ADR-061 / 支付运营权限在服务内判）；`/me/access` 已由顶栏入口使用。
+- **不接**：`POST /channel-accounts/{}/close`。near-pay 不在允许的操作里开放，前端保留「未开放」说明。
+
+**批次**
+
+| 批 | 业务域 | 落点 | 接口 |
+|---|---|---|---|
+| P8 | 商户 | 商户详情：资料版本列表、工作台、关闭商户；代办建档结果查询；**新页签「商户成员」** | 11 |
+| P8 | 审核 | 「审批流程」页签加新建 / 编辑 / 复制 / 发布 / 停用；审核待办加候选人、任务审核 | 7 |
+| P8 | 门店 | 渠道绑定加「重新绑定」；**新页签「来源关联修复」**（申请、审批、执行、驳回） | 7 |
+| P8 | 进件 | 草稿命令状态查询 | 1 |
+| P9 | 渠道 | 渠道账户编辑、恢复；资质新建与详情；认领附件与命令状态；终端凭证引用、退役信息；应用撤销门店授权 | 11 |
+| P9 | 订单 / 告警 | 告警事件「冲正回查」；告警规则详情；告警指标 | 3 |
+| P9 | 资金对账 | 对账差异匹配、调整申请；储值交易详情；**新页签「渠道账单」** | 9 |
+| P10 | 平台设置 | **新页签「凭证管理」**（类型、策略、凭证、版本生成 / 启用 / 撤销 / 校验、访问日志、绑定）；**新页签「审计事件」**；佣金规则详情 | 16 |
+
+**每批的契约动作**
+- 新页签：`module.ts` 登记（先进 `PENDING_MENU`），`platform-nav.ts` 加叶子，迁移加菜单功能点（V687 起，授权 SUPER_ADMIN），重跑 `gen-ui-catalog.py`。
+- 新权限码：`perm-map`、shop `Perms` 与功能点迁移；`FunctionPointPermAlignmentTest`、near-pay `OpsV2PermissionCoverageTest` 要通过。
+- 文案：`-copy.ts` 简体、繁体、英文；新枚举进枚举登记。
+- 网关：`/ops/pay-ops/v2` 整体透传，不改。
+- 每批结束重跑 `scripts/pay-center-wiring.py`，更新测试方案的对照表。
+
+**P8 实现（2026-11-21，分支 `feat/pay-center-p8-20261121`）**
+
+契约逐个从 near-pay `da3ced2a4` 源码核对。调整如下：
+
+- **near-pay 未开放，不做**（固定回 409 `CAPABILITY_NOT_READY`）：关闭商户（随 BM09/BM18）、审批流新建 / 编辑 / 复制 / 发布 / 停用（随 S3）、审核任务候选人（无员工目录）。
+- **按等价能力处理**：`POST /approval-tasks/{}/review` 与现有 `/approvals/{}/review` 重复，不另做。
+- **门店换绑执行**：`POST /stores/{}/bindings/{}/rebind` 是换绑审批通过后的执行。需要 `pay:store-binding:approve`，登记人不能自己执行，返回新绑定号。做成渠道绑定里「执行换绑」按钮。
+- **超时恢复（接口层，页面无感）**：建商户、代填资料保存与提交、进件草稿保存 / 确认 / 提交遇到网络中断或 5xx 时，按同一个幂等号查回执（`/merchant-creations/by-request/{}`、`/assisted-profile/operations/{}`、`/draft/commands/{}`）。查到就当成功，否则原样报错。
+- **资料版本**：商户详情原有「资料版本」改用 `GET /merchants/{}/profile-revisions`，多出审核人、审核意见、审批号；新增「工作台」段（`GET /workspace`）。
+- **新页签**「商户成员」「关联修复」：菜单 V687（排序 550 / 551，授权 SUPER_ADMIN 并从商户列表继承查看）。成员的状态命令先取详情拿版本（列表不带版本）。修复单审批用审批版本，执行用修复单版本。
+- **权限码**：后端早已登记（V686），前端 `perm-map` 补 `pay:member:view|manage`、`pay:merchant:repair`、`pay:merchant:repair:approve`。
+
+**结果**：`scripts/pay-center-wiring.py` 统计本期范围 267 个接口，已接 230（86%）；未开放 7、不提供 10、暂缓 37 单列。测试：`p8.test.ts` 9 条，ops-web 全量通过；后端 `FunctionPointPermAlignmentTest`、`OpsPermConfigFlowTest`、`FunctionModuleSyncTest`、`PayOpsPermissionCodesTest` 通过。
+
+**P9 / P10 实现（2026-11-21，同一分支）**
+
+契约同样从 near-pay `da3ced2a4` 核对，线上开关从 166 只读核对。
+
+- **P9 渠道**：
+  - 渠道账户「修改坐标」（`PUT /channel-accounts/{}`，只在 UNVERIFIED，改完核验退回 PENDING；渠道商户号要重填、不存草稿）。
+  - 蓝新测试渠道「准备沙箱试运行」资质（`POST /channel-accounts/{}/qualifications`，建 DRAFT 经审批生效）；资质展开改取 `GET /channel-qualifications/{}`。
+  - 终端详情「凭证与退役」（凭证引用需 `pay:credential:view`，没有就不发请求）。
+  - 应用门店授权「撤销」（版本是授权版本）。
+- **P9 告警与资产**：
+  - 告警规则的指标说明来自 `GET /alert-metrics`。
+  - 告警事件「冲正回查」（无请求体、不带幂等号，结果 VERIFIED / PENDING / DEFERRED）。
+  - 储值交易查看改取详情。
+- **超时恢复**：认领处理也走回执（`/channel-account-claims/{}/commands/{}`）。回执明确「被拒」时把原因交给页面，不再当作查不到。
+- **P10**：
+  - 新页签「凭证管理」：列表、详情（版本 / 策略 / 操作记录 / 访问记录）、登记、录入版本、生成（明文只显示一次）、核验 / 启用 / 撤销、轮换策略、使用情况。录入与生成不带自动幂等号，避免密钥材料进请求体指纹。
+  - 新页签「审计事件」（只读）。
+  - 佣金规则查看改取详情。
+  - 两个页签都只授 SUPER_ADMIN（V687 排序 552 / 553）。
+- **不做（已核对）**：
+  - 对账差异匹配 / 调整申请：near-pay 固定 409。
+  - 渠道账单 6 个：线上未开 `shop.pay.channel-bill.enabled`，控制器不加载；回执下载也是空文件。
+  - 账户恢复：已由审批执行完成，`/resume` 等价。
+  - 认领附件：随认领详情返回。
+- **权限码**：前端补 `pay:credential:view|approve`、`pay:audit:view`（后端 V686 早已登记）。
+
+**结果**：`scripts/pay-center-wiring.py` 统计本期范围 257 个接口已接 257（100%）；near-pay 未开放 15、不在运营端提供 12、渠道专属暂缓 37 单列。测试：P8 9 条 + P9 7 条 + P10 6 条，ops-web 全量 158 个文件 1431 条通过；后端菜单 / 权限测试通过。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。

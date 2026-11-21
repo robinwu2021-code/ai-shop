@@ -1,6 +1,6 @@
 // 支付中心各页签的接口层：一个接口，两种实现（HTTP / mock），按 NEXT_PUBLIC_USE_MOCK 切换（与 lib/api 同一个开关）。
 // 路径、查询参数、命令体与 near-pay /pay-ops/v2 一一对应（TDD-支付中心运营页面 §2.6，契约核对见 §6）。
-import type { PayOpsClient, PayPage } from "./client";
+import { PayOpsError, requestNoFor, type PayOpsClient, type PayPage } from "./client";
 import type {
   AttemptListRow, ChannelCostRow, CommissionRuleRow, LedgerEntryRow, LedgerVoucher, PayoutRow, ReconDiffRow, SettlementRow,
   StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
@@ -10,6 +10,9 @@ import type {
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
   AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
   NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
+  CredentialTypeRow, CredentialPolicy, CredentialPolicySave, CredentialRow, CredentialDetail, CredentialAccessLog, CredentialVersion, CredentialVersionEntry, CredentialBindingRow, AuditEventRow,
+  ChannelAccountUpdate, QualificationPrepare, ClaimCommandReceipt, TerminalCredentialReference, TerminalRetirement, AlertMetric, ReversalRecheck,
+  MerchantMemberRow, MemberCreate, ProfileRevisionRow, MerchantWorkspace, AssistedOperation, DraftCommandOutcome, RepairRow, RepairCreate,
   AdapterRow, BindingImpact, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRegister, ChannelAccountRow, ChannelKeyEntry, ClaimResolve, EscalatedRow, PaymentMethodRow, StoreBinding,
 } from "./types";
 
@@ -68,6 +71,11 @@ export interface PayCenterApi {
     detail(no: string): Promise<Detail<MerchantDetail>>;
     suspend(no: string, c: Cmd): Promise<ActionResult>;
     activate(no: string, c: Cmd): Promise<ActionResult>;
+    /** P8：资料版本（near-pay 回数组，不分页）、工作台、两个写操作的回执（超时恢复用，页面不直调） */
+    revisions(no: string, q?: { purpose?: string; reviewStatus?: string }): Promise<ProfileRevisionRow[]>;
+    workspace(no: string): Promise<MerchantWorkspace>;
+    creationByRequest(requestNo: string): Promise<MerchantCreation>;
+    assistedOperation(no: string, requestNo: string): Promise<AssistedOperation>;
     // P4 商户工作区
     creationContext(): Promise<{ enabled: boolean }>;
     create(body: { operatingEntityId: string; name: string }): Promise<MerchantCreation>;
@@ -120,6 +128,8 @@ export interface PayCenterApi {
     submitDraft(no: string, body: DraftCmd): Promise<OnboardingDraft>;
     requestMoreFields(no: string, body: DraftCmd & { fields: string[]; reason: string }): Promise<OnboardingDraft>;
     readiness(no: string): Promise<OnboardingReadiness>;
+    /** P8：草稿命令是否已生效（超时恢复用） */
+    draftCommand(no: string, requestNo: string): Promise<DraftCommandOutcome>;
     retryHandoff(no: string, c: Cmd): Promise<{ onboardingNo: string; version: number; candidateStatus: string | null }>;
     /** 敏感字段封存：明文只走这一个口，换回 cipherRef 再写草稿（near-pay 不收幂等号） */
     seal(no: string, body: { expectedVersion: number; fieldCode: string; secret: string }): Promise<{ fieldCode: string; cipherRef: string }>;
@@ -177,6 +187,8 @@ export interface PayCenterApi {
     activate(no: string, c: Cmd): Promise<ActionResult>;
     suspend(no: string, c: Cmd): Promise<ActionResult>;
     refundOnly(no: string, c: Cmd): Promise<ActionResult>;
+    /** P9：只在 UNVERIFIED 可改坐标，改完核验退回 PENDING */
+    update(no: string, body: ChannelAccountUpdate): Promise<ActionResult>;
     openProduct(no: string, productCode: string, body: { expectedVersion: number; evidenceRef: string; reason: string }): Promise<ActionResult>;
     closeProduct(no: string, productCode: string, c: Cmd): Promise<ActionResult>;
     bindCredential(no: string, body: { expectedVersion: number; keyId: number; reason: string }): Promise<ActionResult>;
@@ -195,6 +207,8 @@ export interface PayCenterApi {
   /** 渠道资质版本：导入为草稿，激活走 CHANNEL_QUALIFICATION 审批，吊销直接生效。§2.12 */
   qualifications: {
     ofAccount(payMerchantNo: string): Promise<QualificationVersion[]>;
+    /** P9：沙箱试运行资质准备（建 DRAFT，经审批生效） */
+    prepare(payMerchantNo: string, body: QualificationPrepare): Promise<QualificationVersion>;
     detail(ref: string): Promise<QualificationVersion>;
     importVersion(body: QualificationImport): Promise<QualificationVersion>;
     revoke(ref: string, reason: string): Promise<string>;
@@ -207,12 +221,52 @@ export interface PayCenterApi {
     impact(storeNo: string, bindingNo: string, targetPayMerchantNo: string): Promise<BindingImpact>;
     rebindRequest(storeNo: string, bindingNo: string, body: { expectedVersion: number; targetPayMerchantNo: string; reason: string }): Promise<ActionResult>;
     rebindWithdraw(storeNo: string, bindingNo: string, c: Cmd): Promise<ActionResult>;
+    /** P8：换绑审批通过后执行（审批权限；执行人不能是登记换绑的人）；resourceNo 是新绑定号 */
+    rebind(storeNo: string, bindingNo: string, c: Cmd): Promise<ActionResult>;
+  };
+  /** P10 凭证管理（near-pay OpsCredentialController）：只有 generate 的响应带一次性明文；启用要审批（启用人 ≠ 录入人） */
+  credentials: {
+    types(): Promise<CredentialTypeRow[]>;
+    policies(): Promise<CredentialPolicy[]>;
+    savePolicy(ownerType: string, body: CredentialPolicySave): Promise<CredentialPolicy>;
+    list(q: Q): Promise<PayPage<CredentialRow>>;
+    detail(keyId: number): Promise<CredentialDetail>;
+    accessLogs(keyId: number): Promise<CredentialAccessLog[]>;
+    register(body: { credentialType: string; ownerRef: string; reason: string }): Promise<CredentialRow>;
+    addVersion(keyId: number, body: CredentialVersionEntry): Promise<CredentialVersion>;
+    generate(keyId: number, reason: string): Promise<CredentialIssued>;
+    verify(keyId: number, versionIndex: number, body: { evidenceRef: string | null; reason: string }): Promise<CredentialVersion>;
+    enable(keyId: number, versionIndex: number, body: { approvalRef: string | null; reason: string }): Promise<CredentialVersion>;
+    revoke(keyId: number, versionIndex: number, reason: string): Promise<CredentialVersion>;
+    bindings(days?: number): Promise<CredentialBindingRow[]>;
+  };
+  /** P10 审计事件（near-pay OpsAuditController，只读） */
+  audits: {
+    list(q: Q): Promise<PayPage<AuditEventRow>>;
+    detail(no: string): Promise<Detail<AuditEventRow>>;
+  };
+  /** P8 商户成员（near-pay OpsMemberController）；新增只在商户没有生效管理员时可用 */
+  merchantMembers: {
+    list(q: Q): Promise<PayPage<MerchantMemberRow>>;
+    detail(no: string): Promise<Detail<MerchantMemberRow>>;
+    create(body: MemberCreate): Promise<Detail<MerchantMemberRow>>;
+    command(no: string, action: "suspend" | "resume" | "revoke", c: Cmd): Promise<ActionResult>;
+  };
+  /** P8 来源关联修复（near-pay OpsSourceAssociationRepairController）；建单自动提交审批，双人：申请人不能自审 */
+  repairs: {
+    list(q: Q): Promise<PayPage<RepairRow>>;
+    detail(no: string): Promise<Detail<RepairRow>>;
+    create(body: RepairCreate): Promise<Detail<RepairRow>>;
+    /** approve / reject 的 expectedVersion 是审批版本（RepairRow.approvalVersion）；execute 的是修复单版本 */
+    decide(no: string, action: "approve" | "reject" | "execute", c: Cmd): Promise<ActionResult>;
   };
   /** 商户号认领（实例未开放时 near-pay 回 404） */
   claims: {
     list(merchantNo: string): Promise<ChannelAccountClaim[]>;
     detail(no: string): Promise<ChannelAccountClaim>;
     resolve(no: string, body: ClaimResolve): Promise<ChannelAccountClaim>;
+    /** P9：认领命令回执（超时恢复用） */
+    command(no: string, requestNo: string): Promise<ClaimCommandReceipt>;
     file(no: string, fileNo: string): Promise<Blob>;
   };
   entries: {
@@ -251,6 +305,9 @@ export interface PayCenterApi {
     enable(no: string, c: Cmd): Promise<ActionResult>;
     disable(no: string, c: Cmd): Promise<ActionResult>;
     activationCode(no: string): Promise<{ activationCode: string }>;
+    /** P9：凭证引用（需 pay:credential:view）与退役状态 */
+    credentialReference(no: string): Promise<TerminalCredentialReference>;
+    retirement(no: string): Promise<TerminalRetirement>;
     lost(no: string): Promise<unknown>;
     retire(no: string, c: Cmd): Promise<unknown>;
   };
@@ -258,6 +315,8 @@ export interface PayCenterApi {
     list(q: Q): Promise<PayPage<AppRow>>;
     detail(no: string): Promise<Detail<AppDetail>>;
     grants(no: string): Promise<PayPage<AppGrant>>;
+    /** P9：撤销某个门店的授权；expectedVersion 是授权的版本 */
+    revokeGrant(no: string, storeNo: string, c: Cmd): Promise<ActionResult>;
     create(body: AppCreate): Promise<Detail<AppDetail>>;
     update(no: string, body: AppUpdate): Promise<ActionResult>;
     scopes(no: string, body: Cmd & { scopes: string[] }): Promise<ActionResult>;
@@ -276,6 +335,9 @@ export interface PayCenterApi {
   };
   alerts: {
     events(q: Q): Promise<PayPage<AlertEventRow>>;
+    /** P9：指标目录（单位、默认窗口、适用范围）与冲正回查（无请求体，回 VERIFIED / PENDING / DEFERRED） */
+    metrics(): Promise<AlertMetric[]>;
+    recheckReversal(no: string): Promise<ReversalRecheck>;
     event(no: string): Promise<Detail<AlertEventRow>>;
     claim(no: string, c: Cmd): Promise<ActionResult>;
     assign(no: string, body: Cmd & { assigneeNo: string }): Promise<ActionResult>;
@@ -333,6 +395,7 @@ export interface PayCenterApi {
     accounts(q: Q): Promise<PayPage<StoredValueAccountRow>>;
     account(no: string): Promise<Detail<{ account: StoredValueAccountRow; recentTransactions: StoredValueTransactionRow[] }>>;
     transactions(q: Q): Promise<PayPage<StoredValueTransactionRow>>;
+    transaction(no: string): Promise<Detail<StoredValueTransactionRow>>;
   };
   channelCosts: {
     list(q: Q): Promise<PayPage<ChannelCostRow>>;
@@ -376,6 +439,23 @@ export interface ShopPorts { refunds: RefundPort; documents: DocumentPort }
 const unset = () => Promise.reject(new Error("shop port not configured"));
 const NO_PORTS: ShopPorts = { refunds: { list: unset, review: unset }, documents: { recognize: unset } };
 
+/** 网络中断或 5xx：命令可能已经生效，按同一个幂等号查回执再决定（TDD-支付中心运营页面 §2.15 P8） */
+function transient(err: unknown): boolean {
+  return !(err instanceof PayOpsError) || err.status >= 500;
+}
+/** 回执明确说命令被拒（不是「查不到回执」）：要把回执里的原因交给页面 */
+class ReceiptRejected extends PayOpsError {}
+async function recover<T>(send: () => Promise<T>, receipt: () => Promise<T | null>): Promise<T> {
+  try {
+    return await send();
+  } catch (err) {
+    if (!transient(err)) throw err;
+    const r = await receipt().catch((e: unknown) => { if (e instanceof ReceiptRejected) throw e; return null; });
+    if (r == null) throw err;
+    return r;
+  }
+}
+
 export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts> = {}): PayCenterApi {
   const { refunds, documents } = { ...NO_PORTS, ...ports };
   const crud = <Row, Save extends object>(base: string) => ({
@@ -384,6 +464,13 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
     create: (body: Save) => c.command<Detail<Row>>(base, body as Record<string, unknown> as never).then((d) => ({ ...d, allowedActions: d.allowedActions ?? [], timeline: d.timeline ?? [] })),
     update: (id: string, body: Save) => c.command<ActionResult>(`${base}/${e(id)}`, body as never, { method: "PUT" }),
   });
+  /** 进件草稿写命令：超时后按幂等号查是否已生效，生效了就回最新草稿 */
+  const draftCmd = (no: string, suffix: string, body: Record<string, unknown>, method?: "PUT") => {
+    const path = `/onboardings/${e(no)}/draft${suffix}`;
+    return recover<OnboardingDraft>(() => c.command(path, body, method ? { method } : {}),
+      async () => ((await c.get<DraftCommandOutcome>(`/onboardings/${e(no)}/draft/commands/${e(requestNoFor(path, body))}`)).applied
+        ? c.get<OnboardingDraft>(`/onboardings/${e(no)}/draft`) : null));
+  };
   return {
     source: "http",
     orders: {
@@ -406,7 +493,8 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       suspend: (no, cmd) => c.command(`/merchants/${e(no)}/suspend`, { ...cmd }),
       activate: (no, cmd) => c.command(`/merchants/${e(no)}/activate`, { ...cmd }),
       creationContext: () => c.get("/merchant-creations/context"),
-      create: (body) => c.command("/merchant-creations", { ...body }),
+      create: (body) => recover(() => c.command("/merchant-creations", { ...body }),
+        () => c.get(`/merchant-creations/by-request/${e(requestNoFor("/merchant-creations", { ...body }))}`)),
       testContext: () => c.get("/test-merchants/context"),
       createTest: (body) => c.command("/test-merchants", { ...body }),
       capability: (no) => c.get(`/merchants/${e(no)}/capability-progress`),
@@ -415,8 +503,14 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       savePolicy: (no, body) => c.command(`/merchants/${e(no)}/collection-policy`, { ...body }, { method: "PUT" }),
       sourceEvents: (no, q) => c.page(`/merchants/${e(no)}/source-events`, q),
       assistedDraft: (no) => c.get(`/merchants/${e(no)}/assisted-profile/draft`),
-      saveAssisted: (no, body) => c.command(`/merchants/${e(no)}/assisted-profile/draft`, { ...body }, { method: "PUT" }),
-      submitAssisted: (no, body) => c.command(`/merchants/${e(no)}/assisted-profile/submit`, { ...body, fields: {} }),
+      saveAssisted: (no, body) => recover(() => c.command(`/merchants/${e(no)}/assisted-profile/draft`, { ...body }, { method: "PUT" }),
+        () => c.get<AssistedOperation>(`/merchants/${e(no)}/assisted-profile/operations/${e(requestNoFor(`/merchants/${e(no)}/assisted-profile/draft`, { ...body }))}`).then((o) => o.current)),
+      submitAssisted: (no, body) => recover(() => c.command(`/merchants/${e(no)}/assisted-profile/submit`, { ...body, fields: {} }),
+        () => c.get<AssistedOperation>(`/merchants/${e(no)}/assisted-profile/operations/${e(requestNoFor(`/merchants/${e(no)}/assisted-profile/submit`, { ...body, fields: {} }))}`).then((o) => o.current)),
+      revisions: (no, q) => c.get(`/merchants/${e(no)}/profile-revisions`, { ...q }),
+      workspace: (no) => c.get(`/merchants/${e(no)}/workspace`),
+      creationByRequest: (rn) => c.get(`/merchant-creations/by-request/${e(rn)}`),
+      assistedOperation: (no, rn) => c.get(`/merchants/${e(no)}/assisted-profile/operations/${e(rn)}`),
       verifyLink: (no, link, body) => c.command(`/merchants/${e(no)}/source-links/${e(link)}/verify`, { ...body }),
       confirm: (no, body) => c.command(`/merchants/${e(no)}/confirm`, { ...body }),
       entityMaterials: (no, rev) => c.get(`/merchants/${e(no)}/profile-revisions/${e(rev)}/entity-materials`),
@@ -449,9 +543,10 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       refresh: (no, cmd) => c.command(`/onboardings/${e(no)}/refresh`, { ...cmd }),
       cancel: (no, cmd) => c.command(`/onboardings/${e(no)}/cancel`, { ...cmd }),
       draft: (no) => c.get(`/onboardings/${e(no)}/draft`),
-      saveDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft`, { ...body }, { method: "PUT" }),
-      confirmDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft/confirm`, { ...body, fields: {} }),
-      submitDraft: (no, body) => c.command(`/onboardings/${e(no)}/draft/submit`, { ...body, fields: {} }),
+      saveDraft: (no, body) => draftCmd(no, "", { ...body }, "PUT"),
+      confirmDraft: (no, body) => draftCmd(no, "/confirm", { ...body, fields: {} }),
+      submitDraft: (no, body) => draftCmd(no, "/submit", { ...body, fields: {} }),
+      draftCommand: (no, rn) => c.get(`/onboardings/${e(no)}/draft/commands/${e(rn)}`),
       requestMoreFields: (no, body) => c.command(`/onboardings/${e(no)}/draft/request-more`, { ...body }),
       readiness: (no) => c.get(`/onboardings/${e(no)}/draft/readiness`),
       retryHandoff: (no, cmd) => c.command(`/onboardings/${e(no)}/draft/handoff/retry`, { ...cmd }),
@@ -500,6 +595,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       activate: (no, cmd) => c.command(`/channel-accounts/${e(no)}/activate`, { ...cmd }),
       suspend: (no, cmd) => c.command(`/channel-accounts/${e(no)}/suspend`, { ...cmd }),
       refundOnly: (no, cmd) => c.command(`/channel-accounts/${e(no)}/refund-only`, { ...cmd }),
+      update: (no, body) => c.command(`/channel-accounts/${e(no)}`, { ...body }, { method: "PUT" }),
       openProduct: (no, code, body) => c.command(`/channel-accounts/${e(no)}/products/${e(code)}/open`, { ...body, source: "OPS_CONFIRMED" }),
       closeProduct: (no, code, cmd) => c.command(`/channel-accounts/${e(no)}/products/${e(code)}/close`, { ...cmd }),
       bindCredential: (no, body) => c.command(`/channel-accounts/${e(no)}/credential`, { ...body }, { method: "PUT" }),
@@ -516,6 +612,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
     },
     qualifications: {
       ofAccount: (no) => c.get(`/channel-accounts/${e(no)}/qualifications`),
+      prepare: (no, body) => c.command(`/channel-accounts/${e(no)}/qualifications`, { ...body }),
       detail: (ref) => c.get(`/channel-qualifications/${e(ref)}`),
       importVersion: (body) => c.command("/channel-qualifications", { ...body }),
       revoke: (ref, reason) => c.command(`/channel-qualifications/${e(ref)}/revoke`, { reason }),
@@ -527,11 +624,50 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       impact: (store, b, target) => c.get(`/stores/${e(store)}/bindings/${e(b)}/rebind-impact`, { targetPayMerchantNo: target }),
       rebindRequest: (store, b, body) => c.command(`/stores/${e(store)}/bindings/${e(b)}/rebind-request`, { ...body }),
       rebindWithdraw: (store, b, cmd) => c.command(`/stores/${e(store)}/bindings/${e(b)}/rebind-request/withdraw`, { ...cmd }),
+      rebind: (store, b, cmd) => c.command(`/stores/${e(store)}/bindings/${e(b)}/rebind`, { ...cmd }),
+    },
+    credentials: {
+      types: () => c.get("/credential-types"),
+      policies: () => c.get("/credential-policies"),
+      savePolicy: (owner, body) => c.command(`/credential-policies/${e(owner)}`, { ...body }, { method: "PUT" }),
+      list: (q) => c.page("/credentials", q),
+      detail: (id) => c.get(`/credentials/${id}`),
+      accessLogs: (id) => c.get(`/credentials/${id}/access-logs`),
+      register: (body) => c.command("/credentials", { ...body }),
+      // 明文只写不读：不带自动幂等号，避免请求体指纹里出现密钥材料
+      addVersion: (id, body) => c.command(`/credentials/${id}/versions`, { ...body }, { idempotent: false }),
+      // 生成的明文只在这次响应里出现一次；不重放
+      generate: (id, reason) => c.command(`/credentials/${id}/versions/generate`, { reason }, { idempotent: false }),
+      verify: (id, v, body) => c.command(`/credentials/${id}/versions/${v}/verify`, { ...body }),
+      enable: (id, v, body) => c.command(`/credentials/${id}/versions/${v}/enable`, { ...body }),
+      revoke: (id, v, reason) => c.command(`/credentials/${id}/versions/${v}/revoke`, { reason }),
+      bindings: (days) => c.get("/credential-bindings", days ? { days } : undefined),
+    },
+    audits: {
+      list: (q) => c.page("/audit-events", q),
+      detail: (no) => detailOf(c, `/audit-events/${e(no)}`),
+    },
+    merchantMembers: {
+      list: (q) => c.page("/merchant-members", q),
+      detail: (no) => detailOf(c, `/merchant-members/${e(no)}`),
+      create: (body) => c.command("/merchant-members", { ...body }),
+      command: (no, action, cmd) => c.command(`/merchant-members/${e(no)}/${action}`, { ...cmd }),
+    },
+    repairs: {
+      list: (q) => c.page("/source-association-repair-requests", q),
+      detail: (no) => detailOf(c, `/source-association-repair-requests/${e(no)}`),
+      create: (body) => c.command("/source-association-repair-requests", { ...body }),
+      decide: (no, action, cmd) => c.command(`/source-association-repair-requests/${e(no)}/${action}`, { ...cmd }),
     },
     claims: {
       list: (merchantNo) => c.get("/channel-account-claims", { merchantNo }),
       detail: (no) => c.get(`/channel-account-claims/${e(no)}`),
-      resolve: (no, body) => c.command(`/channel-account-claims/${e(no)}/resolve`, { ...body }),
+      resolve: (no, body) => recover(() => c.command(`/channel-account-claims/${e(no)}/resolve`, { ...body }), async () => {
+        const r = await c.get<ClaimCommandReceipt>(`/channel-account-claims/${e(no)}/commands/${e(requestNoFor(`/channel-account-claims/${e(no)}/resolve`, { ...body }))}`);
+        if (r.outcome === "REJECTED") throw new ReceiptRejected(r.failure?.message ?? "认领处理被拒绝", { status: r.failure?.code ?? 409, reasonCode: r.failure?.reasonCode });
+        return r.result as ChannelAccountClaim;
+      }),
+      command: (no, rn) => c.get(`/channel-account-claims/${e(no)}/commands/${e(rn)}`),
       file: (no, fileNo) => c.blob(`/channel-account-claims/${e(no)}/files/${e(fileNo)}`),
     },
     entries: {
@@ -554,6 +690,8 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       enable: (no, cmd) => c.command(`/terminals/${e(no)}/enable`, { ...cmd }),
       disable: (no, cmd) => c.command(`/terminals/${e(no)}/disable`, { ...cmd }),
       activationCode: (no) => c.command(`/terminals/${e(no)}/activation-codes`, undefined, { idempotent: false }),
+      credentialReference: (no) => c.get(`/terminals/${e(no)}/credential-reference`),
+      retirement: (no) => c.get(`/terminals/${e(no)}/retirement`),
       lost: (no) => c.command(`/terminals/${e(no)}/lost`, undefined, { idempotent: false }),
       retire: (no, cmd) => c.command(`/terminals/${e(no)}/retire`, { ...cmd }),
     },
@@ -561,6 +699,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       list: (q) => c.page("/apps", q),
       detail: (no) => detailOf(c, `/apps/${e(no)}`),
       grants: (no) => c.page(`/apps/${e(no)}/grants`, { page: 1, size: 100 }),
+      revokeGrant: (no, store, cmd) => c.command(`/apps/${e(no)}/grants/${e(store)}/revoke`, { ...cmd }),
       create: (body) => c.command("/apps", { ...body }),
       update: (no, body) => c.command(`/apps/${e(no)}`, { ...body }, { method: "PUT" }),
       scopes: (no, body) => c.command(`/apps/${e(no)}/scopes`, { ...body }, { method: "PUT" }),
@@ -580,6 +719,8 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
     },
     alerts: {
       events: (q) => c.page("/alert-events", q),
+      metrics: () => c.get("/alert-metrics"),
+      recheckReversal: (no) => c.command(`/alert-events/${e(no)}/recheck-reversal`, undefined, { idempotent: false }),
       event: (no) => detailOf(c, `/alert-events/${e(no)}`),
       claim: (no, cmd) => c.command(`/alert-events/${e(no)}/claim`, { ...cmd }),
       assign: (no, body) => c.command(`/alert-events/${e(no)}/assign`, { ...body }),
@@ -638,6 +779,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       accounts: (q) => c.page("/stored-value/accounts", q),
       account: (no) => detailOf(c, `/stored-value/accounts/${e(no)}`),
       transactions: (q) => c.page("/stored-value/transactions", q),
+      transaction: (no) => detailOf(c, `/stored-value/transactions/${e(no)}`),
     },
     channelCosts: {
       list: (q) => c.page("/channel-costs", q),

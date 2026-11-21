@@ -17,6 +17,10 @@ import type { AlertRuleSave } from "@/app/payment-center/_api/api";
 import { ALERT_EVENT_STATUSES, ALERT_METRICS, ALERT_OPERATORS, ALERT_RESOLUTIONS, ALERT_RULE_STATUSES, ALERT_SEVERITIES, type AlertEventRow, type AlertRuleRow } from "@/app/payment-center/_api/types";
 import { useAuth } from "@/lib/auth";
 import { fmtTime } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { useCopy, fill } from "@/lib/use-copy";
+import { notify } from "@/lib/notify";
+import { P9_COPY } from "./p9-copy";
 import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, type C } from "./shared";
 
 const OP_SIGN: Record<string, string> = { GT: ">", GTE: "≥", LT: "<", LTE: "≤" };
@@ -35,6 +39,7 @@ export function AlertEventsTab({ header }: { header: React.ReactNode }) {
   const { api } = list;
   const draft = (action: string, id: string) => (operator ? { operator, page: "pay-alert-events", action, id } : null);
   const versionOf = async (no: string) => (await api.alerts.event(no)).version;
+  const m9 = useCopy(P9_COPY);
 
   const actions: ActionSpec<AlertEventRow>[] = [
     {
@@ -59,7 +64,7 @@ export function AlertEventsTab({ header }: { header: React.ReactNode }) {
               { label: c.relatedRef, value: r.relatedRef },
               { label: c.resolutionNote, value: r.resolutionNote, full: true },
             ] }]}
-            actions={<DetailActions ctx={ctx} keys={["close", "assign", "claim", "resolve"]} />}
+            actions={<DetailActions ctx={ctx} keys={["close", "assign", "claim", "resolve", "recheckReversal"]} />}
           />
         );
       },
@@ -74,6 +79,16 @@ export function AlertEventsTab({ header }: { header: React.ReactNode }) {
           onSubmit={(v) => run(async () => api.alerts.assign(ctx.row!.eventNo, { expectedVersion: await versionOf(ctx.row!.eventNo), assigneeNo: String(v.assigneeNo).trim(), reason: String(v.reason) }))}
           onDone={ctx.back ?? ctx.close} />
       ),
+    },
+    {
+      // P9：冲正待确认告警向渠道回查（无请求体；结果 VERIFIED / PENDING / DEFERRED）
+      key: "recheckReversal", label: m9.recheckReversal, kind: "dialog", perm: "pay:alert-event:handle",
+      visible: (r) => !!r && r.metric === "REVERSAL_PENDING" && (r.status === "OPEN" || r.status === "CLAIMED"),
+      confirm: () => ({ title: m9.recheckReversalTitle, desc: m9.recheckReversalDesc }),
+      run: async (r) => {
+        const result = await run(() => api.alerts.recheckReversal(r!.eventNo), m9.recheckReversal);
+        notify.info(fill(m9.recheckResult, { result: (m9 as unknown as Record<string, string>)[`recheck_${result}`] ?? result }));
+      },
     },
     {
       key: "resolve", label: c.resolveAlert, kind: "drawer", perm: "pay:alert-event:handle", title: () => c.resolveAlertTitle,
@@ -118,10 +133,10 @@ export function AlertEventsTab({ header }: { header: React.ReactNode }) {
   );
 }
 
-function ruleFields(c: C, metricLabel: (v: string) => string, sevLabel: (v: string) => string): FieldDef[] {
+function ruleFields(c: C, metricLabel: (v: string) => string, sevLabel: (v: string) => string, metricHelp?: string): FieldDef[] {
   return [
     { key: "name", label: c.ruleName, required: true, maxLength: 64 },
-    { key: "metric", label: c.metric, type: "select", required: true, options: [{ value: "", label: "—" }, ...options(ALERT_METRICS, metricLabel)] },
+    { key: "metric", label: c.metric, type: "select", required: true, help: metricHelp, options: [{ value: "", label: "—" }, ...options(ALERT_METRICS, metricLabel)] },
     { key: "scopeRef", label: c.scopeRef, help: c.scopeRefHelp, maxLength: 64 },
     { key: "operator", label: c.conditionLabel, type: "select", required: true, options: options(ALERT_OPERATORS, (v) => `${OP_SIGN[v]} ${v}`) },
     { key: "threshold", label: c.thresholdLabel, required: true, help: c.thresholdHelp, pattern: { re: "^-?\\d+(\\.\\d+)?$", msg: "95.5" } },
@@ -158,7 +173,11 @@ export function AlertRulesTab({ header }: { header: React.ReactNode }) {
   const { api } = list;
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-alert-rules", action, id } : null);
   const versionOf = async (no: string) => (await api.alerts.rule(no)).version;
-  const fields = ruleFields(c, (v) => metricMap[v]?.label ?? v, (v) => v);
+  // P9：指标目录（GET /alert-metrics）给出单位、默认窗口与适用范围，写在指标下拉的说明里
+  const m9 = useCopy(P9_COPY);
+  const catalog = useQuery({ queryKey: ["pay-center", "alert-metrics", api.source], queryFn: () => api.alerts.metrics(), staleTime: 3600_000 });
+  const metricHelp = catalog.data?.map((x) => `${metricMap[x.metric]?.label ?? x.title}：${fill(m9.metricHelp, { unit: x.unit, window: x.defaultWindowSeconds, scopes: x.scopeTypes.join("/") })}${x.eventDriven ? ` · ${m9.eventDriven}` : ""}`).join("；");
+  const fields = ruleFields(c, (v) => metricMap[v]?.label ?? v, (v) => v, metricHelp);
 
   const actions: ActionSpec<AlertRuleRow>[] = [
     {

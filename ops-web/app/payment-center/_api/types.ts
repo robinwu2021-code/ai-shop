@@ -401,3 +401,91 @@ export interface StoreMethodSave { expectedVersion: number; eligibilityRevision:
 // ── 门店同步事件：near-pay OpsStoreDtos.StoreSyncEventDto ──
 export interface StoreSyncEvent { eventNo: string; sourceSystem: string; eventId: string; channel: string; revision: number; outcome: string; issue: string | null; createdAt: number }
 
+
+// ════ P8（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+export const MEMBER_STATUSES = ["ACTIVE", "SUSPENDED", "REVOKED"] as const;
+export const MEMBER_ROLES = ["CASHIER", "STORE_MANAGER", "MERCHANT_ADMIN"] as const;
+export const MEMBER_SUBJECT_TYPES = ["MCH_ACCOUNT", "USER"] as const;
+/** near-pay OpsMemberController · MerchantMemberDto */
+export interface MerchantMemberRow {
+  membershipNo: string; merchantNo: string; sourceSystem: string; subjectType: string; subjectRef: string; role: string;
+  storeScope: "ALL" | "LISTED"; storeNos: string[]; actions: string[]; status: string; validUntil: number | null; grantedBy: string; revokeReason: string | null;
+}
+export interface MemberCreate { merchantNo: string; subjectType: string; subjectRef: string; reason: string }
+
+export const PROFILE_REVIEW_STATUSES = ["SUBMITTED", "APPROVED", "REJECTED", "NEED_MORE", "SUPERSEDED"] as const;
+/** near-pay OpsMerchantController · ProfileRevisionDto（列表是数组，不分页） */
+export interface ProfileRevisionRow {
+  revisionNo: string; revision: number; purpose: string; market: string; sourceProfileRevision: number; profile: Record<string, string>;
+  materials: { kind: string; ref: string; purpose: string }[]; profileHash: string; reviewStatus: string; submittedBy: string; submittedAt: number;
+  reviewedBy: string | null; reviewedAt: number | null; reviewReason: string | null; approvalNo: string | null; version: number;
+}
+/** near-pay MerchantWorkspaceDto.WorkspaceSection；summaryJson 是 JSON 字符串 */
+export interface WorkspaceSection { key: string; title: string; module: string; status: "READY" | "NOT_READY"; count: number | null; summaryJson: string | null }
+export interface MerchantWorkspace { merchant: { merchantNo: string; displayName: string; status: string }; sections: WorkspaceSection[] }
+/** 代填资料超时后按请求号取回执（OperationView） */
+export interface AssistedOperation { requestNo: string; action: "SAVE" | "SUBMIT"; appliedVersion: number | null; current: AssistedProfileView }
+/** 进件草稿命令是否已生效（OnboardingDraftService.Outcome；未知请求号也回 applied:false） */
+export interface DraftCommandOutcome { requestNo: string; applied: boolean }
+
+export const REPAIR_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CANCELLED", "EXPIRED", "EXECUTED"] as const;
+/** near-pay OpsSourceAssociationRepairController · RepairDto */
+export interface RepairRow {
+  repairNo: string; requestNo: string; merchantNo: string; linkNo: string; sourceSystem: string; sourceScope: string;
+  fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number; status: string;
+  approvalNo: string | null; approvalStatus: string | null; approvalVersion: number | null; requestedBy: string; executedBy: string | null; executedAt: number | null;
+  beforeSnapshot: Record<string, unknown> | null; afterSnapshot: Record<string, unknown> | null; createdAt: number; version: number;
+}
+/** expectedVersion 是商户来源关联（指向 from 主体）的版本，不是修复单版本 */
+export interface RepairCreate { merchantNo: string; fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number }
+
+// ════ P9（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+/** 渠道账户坐标修改（只在 UNVERIFIED；改完核验退回 PENDING）。channelMerchantId 在详情里是脱敏的，必须重新填 */
+export interface ChannelAccountUpdate {
+  expectedVersion: number; channelMerchantId: string; subMerchantId: string | null; accountMode: string; fundsPath: string;
+  parentPayMerchantNo: string | null; evidenceRef: string | null; reason: string;
+}
+/** 沙箱试运行资质准备（只 NEWEBPAY_TEST 账户；建出 DRAFT，经 CHANNEL_QUALIFICATION 审批生效） */
+export interface QualificationPrepare {
+  evidenceNo: string; revision: number; productCode: string; protocolEvidence: string; trialEvidence: string; enablementEvidence: string;
+  returnUrl: string; notifyUrl: string; validUntil: string; reason: string;
+}
+export interface ClaimCommandReceipt { requestNo: string; outcome: "SUCCEEDED" | "REJECTED"; result: unknown | null; failure: { code: number; reasonCode: string; message: string } | null }
+export interface TerminalCredentialReference { terminalNo: string; credentialRef: string | null; keyId: number | null }
+export interface TerminalRetirement { terminalNo: string; serialNo: string; deviceStatus: string; retirementStatus: string; version: number }
+export interface AlertMetric { metric: string; title: string; unit: string; scopeTypes: string[]; defaultWindowSeconds: number; eventDriven: boolean }
+export type ReversalRecheck = "VERIFIED" | "PENDING" | "DEFERRED";
+
+// ════ P10（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+export const CREDENTIAL_OWNER_TYPES = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"] as const;
+export const CREDENTIAL_VERSION_STATUSES = ["DRAFT", "VERIFIED", "ACTIVE", "ROTATING", "REVOKED"] as const;
+export const CREDENTIAL_EXPIRY_STATES = ["NONE", "OK", "EXPIRING", "EXPIRED"] as const;
+export interface CredentialTypeRow { credentialType: string; ownerType: string; counterparty: string | null; purpose: string; algorithm: string; materialType: "COMPOSITE" | "SYMMETRIC_SECRET" | "PRIVATE_KEY" | "PUBLIC_KEY"; materialFields: string[]; generated: boolean }
+export interface CredentialPolicy { ownerType: string; env: string; maxAgeDays: number; warnBeforeDays: number; overlapDays: number; dualControl: boolean; verifyBeforeEnable: boolean; revealOnIssueOnly: boolean; version: number }
+export interface CredentialPolicySave { expectedVersion: number; maxAgeDays: number; warnBeforeDays: number; overlapDays: number; verifyBeforeEnable: boolean; reason: string }
+/** 列表行只有元数据、指纹与前缀，从不带明文 */
+export interface CredentialRow {
+  keyId: number; credentialType: string; ownerType: string; ownerRef: string; name: string; counterparty: string | null; purpose: string; algorithm: string;
+  materialType: string; env: string; status: string; currentVersion: number; currentFingerprint: string | null; expiresAt: number | null; expiryState: string; pendingVersions: number; lastUsedAt: number | null;
+}
+export interface CredentialVersion {
+  versionIndex: number; status: string; fingerprint: string; displayPrefix: string; externalKeyId: string | null; source: string; validFrom: number | null; validTo: number | null;
+  enteredBy: string; verifiedAt: number | null; verifyEvidence: string | null; enabledBy: string | null; enabledAt: number | null; overlapUntil: number | null;
+  revokedBy: string | null; revokedAt: number | null; revokeReason: string | null;
+}
+export interface CredentialEvent { eventType: string; versionIndex: number | null; operatorNo: string; approvalRef: string | null; reason: string; occurredAt: number }
+/** near-pay CredentialDetailDto（不是通用 Detail）；allowedActions 大写：GENERATE / ADD_VERSION / VERIFY / ENABLE / REVOKE */
+export interface CredentialDetail { record: CredentialRow; versions: CredentialVersion[]; policy: CredentialPolicy; events: CredentialEvent[]; allowedActions: string[] }
+export interface CredentialAccessLog { accessType: string; accessorNo: string; accessorRole: string; reason: string; approvalRef: string | null; accessedAt: number }
+/** 版本录入：明文字段只写不读，不进本地草稿 */
+export interface CredentialVersionEntry { secret?: string; hashKey?: string; hashIv?: string; publicMaterial?: string; externalKeyId?: string; validTo?: number; reason: string }
+export interface CredentialBindingRow { keyId: number | null; source: "SEC" | "ENV"; consumerType: string; consumerRef: string; consumerName: string; field: string; channel: string; status: string; environment: string; transactions: number; lastFrozenAt: number | null }
+
+/** near-pay OpsAuditController · AuditEventDto；before / after 是脱敏后的 JSON 字符串 */
+export interface AuditEventRow {
+  auditNo: string; requestId: string; operatorNo: string; roleNos: string[]; face: string; resourceType: string; resourceNo: string; action: string; result: string;
+  reason: string | null; approvalRef: string | null; beforeSummary: string | null; afterSummary: string | null; occurredAt: number;
+}
