@@ -3,6 +3,8 @@
 // 退款订单（TR03）。near-pay 只有 v1：一次最多返回最近 200 笔、不分页 —— 在前端按状态 / 关键字筛选后分页。
 // 行操作：查看 · 同意 / 驳回（理由弹框，pay:refund:review）。复核要两个不同的人，申请人不能复核自己的（near-pay 强制）。
 import * as React from "react";
+import { TW_COPY } from "./tw-copy";
+import { useCopy } from "@/lib/use-copy";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
@@ -29,6 +31,7 @@ export function RefundsTab({ header }: { header: React.ReactNode }) {
     return { records: hit.slice((page - 1) * size, page * size), total: hit.length };
   });
   const { api } = list;
+  const tw = useCopy(TW_COPY);
   const orderHref = (no: string) => `${payCenterHref("orders")}&action=view&id=${encodeURIComponent(no)}`;
   const review = (approve: boolean) => (r: RefundListRow | null, reason: string) => run(() => api.refunds.review(r!.payRefundNo, { approve, reason }));
 
@@ -48,6 +51,7 @@ export function RefundsTab({ header }: { header: React.ReactNode }) {
               { label: c.colCreated, value: fmtTime(r.createdAt) },
               { label: c.reasonField, value: r.reason, full: true },
               { label: c.hitReasons, value: r.hitReasons, full: true },
+              ...(r.status === "DISPATCHED" ? [{ label: c.colStatus, value: tw.refundDispatchedNote, full: true }] : []),
             ] }]}
             actions={<DetailActions ctx={ctx} keys={["reject", "approve"]} />}
           />
@@ -72,7 +76,7 @@ export function RefundsTab({ header }: { header: React.ReactNode }) {
   return (
     <PayListPage<RefundListRow>
       header={header}
-      help={`${c.refundsDesc} ${c.refundsLimitNote}`}
+      help={list.filters.status === "DISPATCHED" ? `${c.refundsDesc} ${tw.refundDispatchedNote}` : `${c.refundsDesc} ${c.refundsLimitNote}`}
       search={list.keyword}
       onSearch={list.setKeyword}
       searchPlaceholder={c.ordersSearch}
