@@ -7,8 +7,8 @@ import { USE_MOCK } from '@/api';
 import { ROUTES } from '@/shared/nav';
 import { confirm, prompt } from '@ai-shop/ui/prompt';
 import { callPrint, PrintCommands, SIMULATION_FIXTURES, decodeFrozen, type FactRef, type PrintPage, type PrintJob, type PrintRequest, type Scene, type Simulation, type ExportView, type Incident, type PrintSummary, type PrintOperation } from '@/api/print';
-import { printJobActions, simulationOutcomeLabel, simulationEvidence, type JobAction } from '@/shared/print-center';
-const { t } = useI18n();
+import { printJobActions, simulationOutcomeLabel, simulationEvidence, sceneTitle, printErrorText, operationFailureText, type JobAction } from '@/shared/print-center';
+const { t, te } = useI18n();
 const merchant = useMerchantStore();
 const commands = new PrintCommands();
 const orderNo = ref('');
@@ -27,10 +27,12 @@ let epoch = 0, scopeGeneration = 0, timer:ReturnType<typeof setInterval>|undefin
 const tabs = computed(() => [
  { key:'jobs',permission:'read' },{ key:'requests',permission:'read' },{ key:'simulations',permission:'simulate' },{ key:'exports',permission:'export' },{ key:'incidents',permission:'resolve' },
 ].filter(x=>merchant.can('biz:print:'+x.permission)));
-const sceneNames = computed(()=>scenes.value.map(s=>s.title));
-const selectedTitle = computed(()=>scenes.value.find(s=>s.scene===selectedScene.value)?.title || selectedScene.value);
+const sceneName = (scene:string)=>sceneTitle(scene,scenes.value,t,te);
+const sceneNames = computed(()=>scenes.value.map(s=>sceneName(s.scene)));
+const selectedTitle = computed(()=>sceneName(selectedScene.value));
+const latestFailure = computed(()=>latestOperation.value?operationFailureText(latestOperation.value,t,te):null);
 const canRead = computed(()=>merchant.can('biz:print:read')||merchant.can('biz:print:simulate')||merchant.can('biz:print:export'));
-function textError(value:unknown){return value instanceof Error?value.message:String(t('printCenter.failed'));}
+function textError(value:unknown){return printErrorText(value,t,te,String(t('printCenter.failed')));}
 async function load(clearError=true){
  if(USE_MOCK || !merchant.storeNo || !canRead.value)return;
  const current=++epoch, storeNo=merchant.storeNo;loading.value=true;if(clearError)error.value='';
@@ -100,7 +102,7 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
      <text>{{ t('printCenter.status.'+summary.generationState) }}</text>
      <sh-stat :items="[{value:summary.expectedCount,label:String(t('printCenter.expectedLabel'))},{value:summary.confirmedCount,label:String(t('printCenter.confirmedLabel'))}]"></sh-stat>
      <sh-stat :items="[{value:summary.replacementResolvedCount,label:String(t('printCenter.resolvedLabel'))},{value:summary.unknownCount,label:String(t('printCenter.unknownLabel')),tone:'warn'}]"></sh-stat>
-     <picker v-if="summary.sourceFacts.length" data-test="source-scene" :range="summary.sourceFacts.map(f=>(scenes.find(s=>s.scene===f.scene)?.title||f.scene)+' · '+f.factNo+' · v'+f.bizRevision)" @change="changeSourceScene"><view class="sh-cell">{{ selectedTitle }} · {{ selectedFact?.factNo }} · v{{ selectedFact?.bizRevision }} ▾</view></picker>
+     <picker v-if="summary.sourceFacts.length" data-test="source-scene" :range="summary.sourceFacts.map(f=>sceneName(f.scene)+' · '+f.factNo+' · v'+f.bizRevision)" @change="changeSourceScene"><view class="sh-cell">{{ selectedTitle }} · {{ selectedFact?.factNo }} · v{{ selectedFact?.bizRevision }} ▾</view></picker>
      <button class="sh-btn sh-btn--sm" v-if="selectedFact&&merchant.can('biz:print:submit')" size="mini" :disabled="busy" @tap="submitSource">{{ t('printCenter.submit') }}</button>
     </view>
     <view class="sh-row print-nav"><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:device')" size="mini" @tap="navigate(ROUTES.printDevices)">{{ t('printCenter.devices') }}</button><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:config')" size="mini" @tap="navigate(ROUTES.printTemplates)">{{ t('printCenter.templates') }}</button></view>
@@ -112,13 +114,13 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
     <view class="sh-row"><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===58?'print-selected':''" @tap="width=58">58mm</button><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===80?'print-selected':''" @tap="width=80">80mm</button><button class="sh-btn sh-btn--sm" size="mini" :disabled="busy" @tap="simulate">{{ t('printCenter.runSimulation') }}</button></view>
    </view>
    <view v-if="error" class="sh-card print-error sh-stack" role="alert">{{ error }}</view>
-   <view v-if="latestOperation" class="sh-card sh-muted sh-stack">{{ t('printCenter.operation') }} {{ latestOperation.operationNo }} · {{ t('printCenter.status.'+latestOperation.status) }}<text class="print-hint txt-caption">{{ t('printCenter.operationHint') }}</text></view>
+   <view v-if="latestOperation" class="sh-card sh-muted sh-stack">{{ t('printCenter.operation') }} {{ latestOperation.operationNo }} · {{ t('printCenter.status.'+latestOperation.status) }}<text v-if="latestFailure" class="print-hint print-error">{{ latestFailure }}</text><text class="print-hint txt-caption">{{ t('printCenter.operationHint') }}</text></view>
    <view class="sh-row print-tabs"><button class="sh-btn sh-btn--soft sh-btn--sm" v-for="item in tabs" :key="item.key" size="mini" :class="tab===item.key?'print-selected':''" @tap="tab=item.key">{{ t('printCenter.tabs.'+item.key) }}</button></view>
    <template v-if="tab==='jobs'">
     <input v-model="reason" class="sh-card" :placeholder="String(t('printCenter.reason'))" :maxlength="60" />
     <view v-for="job in jobs" :key="job.jobNo" class="sh-card sh-stack">
      <view class="sh-row sh-row--between"><text class="txt-strong">{{ job.jobNo }}</text><text>{{ t('printCenter.status.'+job.status) }}</text></view>
-     <text class="print-hint txt-caption">{{ job.scene }} · {{ job.jobKind }} · {{ job.printerNo }}</text>
+     <text class="print-hint txt-caption">{{ sceneName(job.scene) }} · {{ job.jobKind }} · {{ job.printerNo }}</text>
      <text v-if="job.status==='UNKNOWN'" class="print-error print-hint">{{ t('printCenter.unknownHint') }}</text>
      <text v-if="job.resolutionStatus==='RESOLVED'" class="print-hint txt-caption">{{ t('printCenter.replacedHint') }}</text>
      <view class="sh-row print-actions"><button class="sh-btn sh-btn--soft sh-btn--sm" v-for="action in printJobActions(job,merchant.can)" :key="action" size="mini" :disabled="busy" @tap="jobAction(job,action)">{{ t('printCenter.action.'+action) }}</button><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('JOB',job.jobNo,job.revision)">{{ t('printCenter.exportPdf') }}</button></view>

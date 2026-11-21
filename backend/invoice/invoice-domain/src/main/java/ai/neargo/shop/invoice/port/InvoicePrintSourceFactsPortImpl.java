@@ -118,27 +118,33 @@ public class InvoicePrintSourceFactsPortImpl implements PrintSourceFactsPort {
             var inv = a == null ? null : invoice(scope, a.getInvoiceNo());
             if (inv == null || a.getPrintSnapshot() == null || !ref(inv, a).equals(r))
                 throw new PrintFailure("print.factNotFound");
-            return fact(r, a.getAllowanceNo(), a.getCreatedAt(), a.getPrintSnapshot(), a.getPrintSnapshotHash(), null);
+            return fact(r, inv, a.getAllowanceNo(), a.getCreatedAt(), a.getPrintSnapshot(), a.getPrintSnapshotHash(),
+                    null);
         }
         var inv = invoice(scope, r.factNo());
         if (inv == null) throw new PrintFailure("print.factNotFound");
         if (DETAIL_SCENE.equals(r.scene())) {
             if (inv.getDetailSnapshot() == null || !detailRef(inv).equals(r))
                 throw new PrintFailure("print.factNotFound");
-            return fact(r, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getDetailSnapshot(),
+            return fact(r, inv, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getDetailSnapshot(),
                     inv.getDetailSnapshotHash(), null);
         }
         if (!ref(inv).equals(r)) throw new PrintFailure("print.factNotFound");
         String block = "N".equals(inv.getPrintMark()) ? "invoice.proofNotPrintable"
                 : !inv.getProofSnapshot().contains("\"qrLeft\"") ? "invoice.qrKeyMissing" : null;
-        return fact(r, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getProofSnapshot(), inv.getProofSnapshotHash(),
+        return fact(r, inv, inv.getInvoiceNo(), inv.getIssuedAt(), inv.getProofSnapshot(), inv.getProofSnapshotHash(),
                 block);
     }
 
-    private static PrintFact fact(PrintFactRef r, String instance, LocalDateTime at, String snapshot, String hash,
-            String block) {
+    /**
+     * 来源是子单的发票，打印件挂到那张子单上：打印中心按订单号查作业时连同主单的支付小票一起列出，
+     * 门店在订单的打印记录里就能看到它的发票打印件。
+     */
+    private static PrintFact fact(PrintFactRef r, IvcInvoice inv, String instance, LocalDateTime at, String snapshot,
+            String hash, String block) {
         String trigger = ALLOWANCE_TYPE.equals(r.sourceType()) ? "INVOICE_ALLOWANCE_ISSUED" : "INVOICE_ISSUED";
-        return new PrintFact(r, null, null, trigger, instance, at.toInstant(ZoneOffset.UTC), 1,
+        String subOrderNo = "SUB_ORDER".equals(inv.getSourceType()) ? inv.getSourceNo() : null;
+        return new PrintFact(r, null, subOrderNo, trigger, instance, at.toInstant(ZoneOffset.UTC), 1,
                 new FrozenJson(snapshot, hash), block == null ? Printability.READY : Printability.BLOCKED, block,
                 block == null ? List.of() : List.of(block));
     }

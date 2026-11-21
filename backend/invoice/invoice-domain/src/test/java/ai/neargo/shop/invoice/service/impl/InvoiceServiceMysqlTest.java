@@ -434,6 +434,7 @@ class InvoiceServiceMysqlTest {
         var inv = row(paper.invoiceNo());
         var detail = printSource.snapshot(InvoicePrintSourceFactsPortImpl.detailRef(inv));
         assertEquals(Printability.READY, detail.printability());
+        assertEquals("SO1", detail.subOrderNo(), "invoice prints hang on the source sub-order in the print centre");
         String json = detail.immutablePayload().canonicalJson();
         assertTrue(json.contains("\"unitPrice\":\"1049\""), json);
         assertTrue(json.contains("本明細非發票"), json);

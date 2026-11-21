@@ -51,6 +51,7 @@
             <text class="txt-sub sh-num">{{ invoiceMoney(a.amountMinor, inv.currency) }}</text>
           </view>
           <text class="txt-caption txt-quiet">{{ a.reason }} · {{ a.createdAt }}</text>
+          <view v-if="canSubmitPrint" class="sh-btn sh-btn--soft sh-btn--sm sh-mt-sm" @tap="printAllowance(a.allowanceNo)">{{ t("salesInvoice.printAllowance") }}</view>
         </view>
       </view>
 
@@ -58,6 +59,9 @@
 
       <view v-if="actionable" class="sh-card sh-stack">
         <view v-if="canPrint" class="sh-btn" @tap="printProof">{{ t("salesInvoice.print") }}</view>
+        <view v-if="canReprint" class="sh-btn sh-btn--soft" @tap="reprintProof">{{ t("salesInvoice.reprint") }}</view>
+        <text v-if="canPrint || canReprint" class="sh-hint txt-caption txt-quiet">{{ t("salesInvoice.proofOnceHint") }}</text>
+        <view v-if="canPrintDetail" class="sh-btn sh-btn--soft" @tap="printDetail">{{ t("salesInvoice.printDetail") }}</view>
         <view v-if="merchant.can('biz:print:read')" class="sh-btn sh-btn--soft" @tap="openPrintCenter">{{ t("salesInvoice.printCenter") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft" @tap="allowance">{{ t("salesInvoice.allowance") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft is-danger" @tap="voidInvoice">{{ t("salesInvoice.void") }}</view>
@@ -68,19 +72,21 @@
 
 <script setup lang="ts">
 // 销售发票详情：号码、期别、随机码、买受人与上传状态；作废（当期）、开折让、打印证明联。
-// 证明联与补印走共享打印中心（来源类型 INVOICE，场景 INVOICE_PROOF），补印在打印中心的任务上做。
+// 证明联、交易明细、折让证明单都走共享打印中心（来源 INVOICE / INVOICE_ALLOWANCE）。
+// 证明联法定只有一张正本：重复提交只回原请求，再要一张走补印（票面标「補印」），不提供加印。
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
-import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 import { api } from "@/api";
-import { PrintCommands } from "@/api/print";
+import { callPrint, PrintCommands, type PrintJob, type PrintOperation, type PrintPage } from "@/api/print";
+import { operationFailureText, printErrorText } from "@/shared/print-center";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { invoiceMinor, invoiceMoney } from "@/shared/sales-invoice";
 import type { SalesInvoice } from "@/api/sales-invoice";
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const merchant = useMerchantStore();
 const prints = new PrintCommands();
 const invoiceNo = ref("");
@@ -92,8 +98,13 @@ const error = ref("");
 
 const issued = computed(() => inv.value?.status === "ISSUED");
 const canVoid = computed(() => issued.value && merchant.can("biz:invoice:void"));
-const canPrint = computed(() => issued.value && !!inv.value?.printMark && merchant.can("biz:print:submit"));
-const actionable = computed(() => canPrint.value || canVoid.value || merchant.can("biz:print:read"));
+const canSubmitPrint = computed(() => merchant.can("biz:print:submit"));
+const canPrint = computed(() => issued.value && !!inv.value?.printMark && canSubmitPrint.value);
+const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);
+// 补印要先在打印中心找到这张证明联的任务（biz:print:read），再对它补印（biz:print:reprint）
+const canReprint = computed(() => issued.value && !!inv.value?.printMark
+  && merchant.can("biz:print:reprint") && merchant.can("biz:print:read"));
+const actionable = computed(() => canPrint.value || canPrintDetail.value || canReprint.value || canVoid.value || merchant.can("biz:print:read"));
 const buyerText = computed(() => {
   const i = inv.value;
   if (!i) return "";
@@ -101,7 +112,7 @@ const buyerText = computed(() => {
 });
 
 function message(e: unknown): string {
-  return e instanceof Error && e.message ? e.message : String(t("salesInvoice.failed"));
+  return printErrorText(e, t, te, String(t("salesInvoice.failed")));
 }
 
 async function load() {
@@ -164,12 +175,13 @@ async function allowance() {
   await run(() => api.mSiAllowance(i.invoiceNo, { amountMinor, reason }), String(t("salesInvoice.done")));
 }
 
-async function printProof() {
-  const i = inv.value;
-  if (!i) return;
-  const sourceRef = { type: "INVOICE", no: i.invoiceNo, factNo: i.invoiceNo, revision: "1", scene: "INVOICE_PROOF" };
+type PrintSource = { type: string; no: string; scene: string };
+
+/** 按已有业务事实出纸（EXISTING_FACT）；同一事实重复提交只返回原请求，不会多出一张正本。 */
+async function submitPrint(source: PrintSource, done: string) {
+  const sourceRef = { type: source.type, no: source.no, factNo: source.no, revision: "1", scene: source.scene };
   await run(async () => {
-    await prints.run("J03", {
+    const op = await prints.run("J03", {
       storeNo: merchant.storeNo,
       sourceRef,
       scene: sourceRef.scene,
@@ -177,12 +189,97 @@ async function printProof() {
       printMode: "EXISTING_FACT",
       outputOptions: { pdfEnabled: true, pdfProfile: "ORIGINAL_ROLL" },
     });
+    failIfRejected(op);
     return null;
-  }, String(t("salesInvoice.printSent")));
+  }, done);
+}
+
+function failIfRejected(op: PrintOperation) {
+  const failure = operationFailureText(op, t, te);
+  if (failure) throw new Error(failure);
+}
+
+async function printProof() {
+  const i = inv.value;
+  if (i) await submitPrint({ type: "INVOICE", no: i.invoiceNo, scene: "INVOICE_PROOF" }, String(t("salesInvoice.printSent")));
+}
+
+async function printDetail() {
+  const i = inv.value;
+  if (i) await submitPrint({ type: "INVOICE", no: i.invoiceNo, scene: "INVOICE_DETAIL" }, String(t("salesInvoice.printSent")));
+}
+
+async function printAllowance(allowanceNo: string) {
+  await submitPrint({ type: "INVOICE_ALLOWANCE", no: allowanceNo, scene: "INVOICE_ALLOWANCE" }, String(t("salesInvoice.printSent")));
+}
+
+const PROOF_PAGES = 5;
+const ACTIVE = ["PENDING", "DISPATCHING", "ACCEPTED", "PRINTING", "RETRY_WAIT", "STALE"];
+
+/** 打印中心按 documentKey（`发票号:INVOICE_PROOF`）认这张证明联；补印沿用原任务的 key，按新到旧排。 */
+async function proofJobs(invoiceNo: string): Promise<PrintJob[]> {
+  const key = `${invoiceNo}:INVOICE_PROOF`;
+  const found: PrintJob[] = [];
+  for (let page = 1; page <= PROOF_PAGES; page++) {
+    const r = await callPrint<PrintPage<PrintJob>>("J06", { storeNo: merchant.storeNo, scene: "INVOICE_PROOF", page, size: 100 });
+    found.push(...r.records.filter((j) => j.documentKey === key));
+    if (found.length || page * 100 >= r.total) break;
+  }
+  return found;
+}
+
+const REPRINT_REASONS = ["JAM", "PAPER_OUT", "LOST", "OTHER"] as const;
+
+async function reprintReason(): Promise<string | null> {
+  const idx = await pick({
+    title: String(t("salesInvoice.reprintTitle")),
+    hint: String(t("salesInvoice.reprintHint")),
+    items: REPRINT_REASONS.map((r) => String(t(`salesInvoice.reprintReason.${r}`))),
+  });
+  if (idx === null) return null;
+  const code = REPRINT_REASONS[idx];
+  if (code !== "OTHER") return String(t(`salesInvoice.reprintReason.${code}`));
+  return (await prompt({ title: String(t("salesInvoice.reprintOther")), maxlength: 60 }))?.trim() || null;
+}
+
+async function reprintProof() {
+  const i = inv.value;
+  if (!i || busy.value) return;
+  const store = merchant.storeNo;
+  error.value = "";
+  let jobs: PrintJob[];
+  busy.value = true;
+  try {
+    jobs = await proofJobs(i.invoiceNo);
+  } catch (e) {
+    error.value = message(e);
+    return;
+  } finally {
+    busy.value = false;
+  }
+  if (store !== merchant.storeNo) return;
+  // 正本或上一次补印还没落地时不能再补（后端同样拒绝）；结果待核实的要先到打印中心核实，免得重复出纸
+  const target = jobs.some((j) => ACTIVE.includes(j.status)) ? undefined
+    : jobs.find((j) => j.status !== "UNKNOWN" && (j.allowedActions ?? []).includes("REPRINT"));
+  if (!target) {
+    error.value = String(t(!jobs.length ? "salesInvoice.reprintNoOriginal"
+      : jobs.some((j) => ACTIVE.includes(j.status)) ? "salesInvoice.reprintBusy"
+      : jobs.some((j) => j.status === "UNKNOWN") ? "salesInvoice.reprintUnknown"
+      : "salesInvoice.reprintUnavailable"));
+    return;
+  }
+  const reason = await reprintReason();
+  if (!reason) return;
+  await run(async () => {
+    const op = await prints.run("J13", { expectedRevision: target.revision, reason, riskAcknowledged: false }, { jobNo: target.jobNo });
+    failIfRejected(op);
+    return null;
+  }, String(t("salesInvoice.reprintSent")));
 }
 
 function openPrintCenter() {
-  if (inv.value) uni.navigateTo({ url: `${ROUTES.printCenter}?orderNo=${encodeURIComponent(inv.value.invoiceNo)}` });
+  // 发票的打印件挂在来源子单上（打印中心的作业列表按订单号同时匹配主单与子单）
+  if (inv.value) uni.navigateTo({ url: `${ROUTES.printCenter}?orderNo=${encodeURIComponent(inv.value.sourceNo)}` });
 }
 
 onLoad((q) => {

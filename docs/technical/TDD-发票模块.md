@@ -379,3 +379,23 @@ AC22 用例在 MySQL 上复现后改为显式写 null。
 
 `PrintDatabaseAcceptanceTest#sampleSimulationAndPdfExportNeverCreateProductionJobs` 在干净父提交上同样失败（模拟运行 0 成功，与 `BusinessPrintSourceFlowTest` 同一症状），非本次引入。
 
+### §9.1 打印前端（B 端）
+
+| 入口 | 接法 |
+|---|---|
+| 发票详情「打印证明联」 | `POST /biz/print/requests`（J03），`sourceRef {INVOICE, invoiceNo, scene INVOICE_PROOF}`；ISSUED + printMark + `biz:print:submit`。重复按不会出第二张正本（打印中心按触发键去重） |
+| 「打印交易明细」 | 同上，scene `INVOICE_DETAIL`；ISSUED 即可，不看 printMark |
+| 折让行「打印折让证明单」 | 同上，`sourceRef {INVOICE_ALLOWANCE, allowanceNo, scene INVOICE_ALLOWANCE}` |
+| 「补印证明联」 | 按场景分页查作业（J06），取 `documentKey = 发票号:INVOICE_PROOF` 的最新一张；选原因（卡纸 / 缺纸 / 顾客遗失 / 其他）后 `POST /biz/print/jobs/{jobNo}/reprints`（J13）。没出过正本时提示先打正本；`biz:print:reprint` + `biz:print:read` |
+| 打印中心 | 动作只认后端下发的 `allowedActions`（证明联不出「加印」）；23 个场景三语名称；`printCenter.failure.*` 失败文案 |
+| 「打印中心」链接 | 按来源子单号过滤 —— 发票打印件的事实记了来源子单（`InvoicePrintSourceFactsPortImpl#fact`），与该单的支付小票列在一起 |
+
+**共享 `ApiError` 带出失败 `data`**（`packages/shared/src/net/http-client.ts`）：打印中心把机器可读原因放在 `data.key`，
+此前 HTTP 失败路径把它丢了，用户只看到「打印操作未完成」。改为可选第三参数，旧调用不受影响（`http-error-data.test.ts`）。
+
+| 测试 | 结果 |
+|---|---|
+| `b-app/tests/sales-invoice-print.test.ts`（7）、`b-app/tests/print-center.test.ts`；b-app vitest 410/410；b-app、c-app `vue-tsc` 无错 | ✅ |
+| `packages/shared/tests/http-error-data.test.ts`（2） | ✅ |
+| `InvoiceServiceMysqlTest#ac25…`（打印事实挂来源子单） | ✅ |
+

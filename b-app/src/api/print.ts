@@ -40,7 +40,9 @@ export interface PrintJob {jobNo:string;requestNo:string;batchNo:string;
   /** 服务端业务状态编码 */
   status:string;jobKind:string;rootJobNo:string;
   /** 当前记录版本号，用于并发控制 */
-  revision:number;resolutionStatus:string;allowedActions?:string[];lastErrorCode?:string|null}
+  revision:number;resolutionStatus:string;allowedActions?:string[];lastErrorCode?:string|null;
+  /** `${factNo}:${scene}`; reprints keep the original's key */
+  documentKey?:string}
 export interface FactRef {tenantNo:string;
   /** 经营主体编号 */
   entityNo:string;
