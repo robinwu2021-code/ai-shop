@@ -512,3 +512,24 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - 完整测试：pay-channel 610、pay-domain 3706（665 跳过）、pay-guard 128、pay-portal 286 全过；`ChannelAccountDomainIntegrationTest` 过。
 - Chrome（用户会话）：商户列表 0.7 s / 0.6 s（原 12.7–20 s）、门店 2.6 s（原 13–17 s）、渠道账户 0.3 s（原 6–17 s），总数不变；按资料状态筛选仍 12.6 s（设计如此）。测试渠道账户资质 200（NEWEBPAY_TEST 5 条、LINEPAY_TEST 4 条，界面正常）；允许操作不再含 `close`。日志：重启后 `rebuild deferred` 0 次，830/834 各记两行「展示为空」后停止。
 - 注意：`NEWEBPAY_TEST` 唯一生效的资格 `LYD_MPG_RENEW_20261120:1` 有效期到 2026-11-21 12:44（浏览器时区），到期后该测试账户试运行收款会被拒。
+
+### 前端被覆盖后从 main 重新发布（2026-11-21 14:3x CST）
+
+- **发现**：13:03 另一会话的 retail 发布把 `current` 切到 `retail-tier-b7fe7ee36`，后端换成 `shop-app-4bc6c4cf2.jar`。两个提交都没推送。后端核对：shop-app 自身类、V686 以及 11 个嵌套库与 `58c006c82` 一致，只差 `StoreFeatureMatrix`（retail），支付与网关代码都在。前端核对：有支付中心，但缺 P7（`method-preferences`、`sync-events`）和 IAM 支付范围说明。Chrome 实测门店详情只有「基本信息 / 归属记录」。
+- **根因**：支付中心只在功能分支，从别的分支发布就会冲掉。
+- **处理**：
+  - 最新 main 合入分支（1726ef126）。冲突 4 处：交接文档取 main，3 份生成物重新生成；`check-generated-docs` 27 个生成器全部最新；ops-web `tsc` 通过、vitest 1405 条全过。
+  - PR #22 压缩合入 main（`d055d9696`，与 1726ef126 内容一致）。
+  - 推送用了 `--no-verify`，用户同意。被跳过的只有 3 条 commerce 测试：`CommerceMigrationIsolationTest.hostHistoryAndLaterHostVersionStayIndependentAcrossRestarts`、`MallFulfillmentMysqlTest.migratedLegacyTask*` ×2。它们在纯 origin/main（fb4ef9a82）上同样失败，来自 d0a4316d8 的 `V14__industry_catalog_tiers.sql`（1062 主键重复，迁移数断言 13≠14），待 RobinWu 修。
+- **构建参数**：在原有参数基础上必须加 `NEXT_PUBLIC_NEARPAY_ACCESS_URL=/ops-shop-v2/ops/pay-ops/v2/me/access`，否则顶栏「支付运营」会探测旧的 `/oms-api/...`。retail 版就用了这个参数。和 retail 版比过页面清单与文案，没有 retail 独有的前端源码。
+- **发布**：`releases/main-1726ef126`（tgz sha256 前缀 `e78c4ff466c044ea`），只原子切换 `current` 软链，不重启。回退：`ln -sfn …/releases/retail-tier-b7fe7ee36`。
+- **Chrome 验证**（用户会话）：
+
+| 页面 | 结果 |
+|---|---|
+| 门店详情（Oscar Retail QA 1121） | 收款码（暂无，可新建）、支付方式 5 项及不可改原因、同步事件 1 条「已生效」✅ |
+| 渠道账户（`PM0E0F6CC8F7454D75` · ALIPAY） | 转移、资质页签都在，空状态和表单正常 ✅ |
+| 顶栏权限探测 | `/ops-shop-v2/ops/pay-ops/v2/me/access` 返回 200 ✅ |
+| 审核待办 / 支付订单 | 0 条 / 151 条，无报错；支付中心菜单 24 项 ✅ |
+
+- **约定**：支付中心改动先合 main，发布一律从 main 打包；其他会话发布前先合最新 main。
