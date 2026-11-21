@@ -17732,12 +17732,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/invoice-carriers":
+  "/mp/invoice-carrier":
     get:
       operationId: "invoiceCarriers"
       summary: "我的常用发票载具"
       tags:
-        - "invoice-carriers"
+        - "invoice-carrier"
       security:
         - bearerAuth: []
       parameters: []
@@ -17766,7 +17766,7 @@ paths:
       operationId: "saveInvoiceCarrier"
       summary: "保存常用发票载具"
       tags:
-        - "invoice-carriers"
+        - "invoice-carrier"
       security:
         - bearerAuth: []
       parameters: []
@@ -17795,12 +17795,12 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/SaveInvoiceCarrierReq"
-  "/mp/invoice-carriers/{carrierNo}/delete":
+  "/mp/invoice-carrier/{carrierNo}/delete":
     post:
       operationId: "deleteInvoiceCarrier"
       summary: "删除常用发票载具"
       tags:
-        - "invoice-carriers"
+        - "invoice-carrier"
       security:
         - bearerAuth: []
       parameters:
@@ -17829,12 +17829,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/sales-invoices/choice":
+  "/mp/sales-invoice/choice":
     put:
       operationId: "chooseSalesInvoice"
       summary: "给自己的订单选发票开法"
       tags:
-        - "sales-invoices"
+        - "sales-invoice"
       security:
         - bearerAuth: []
       parameters: []
@@ -17865,12 +17865,12 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/InvoiceChoiceReq"
-  "/mp/sales-invoices":
+  "/mp/sales-invoice":
     get:
       operationId: "mySalesInvoices"
       summary: "我的发票（各商家开给我的）"
       tags:
-        - "sales-invoices"
+        - "sales-invoice"
       security:
         - bearerAuth: []
       parameters: []
@@ -17893,12 +17893,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/sales-invoices/{invoiceNo}":
+  "/mp/sales-invoice/{invoiceNo}":
     get:
       operationId: "salesInvoiceDetail"
       summary: "我的发票详情"
       tags:
-        - "sales-invoices"
+        - "sales-invoice"
       security:
         - bearerAuth: []
       parameters:

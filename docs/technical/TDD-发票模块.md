@@ -326,11 +326,11 @@ scripts/check-sql-portability.mjs（扫 backend/，含 db/invoice）            
 
 | AC | 落点 |
 |---|---|
-| AC20 | `ivc_user_carrier`（V3）+ `InvoiceBuyerServiceImpl#saveCarrier / carriers / deleteCarrier`；`GET/POST /mp/invoice-carriers`、`POST /mp/invoice-carriers/{carrierNo}/delete` |
+| AC20 | `ivc_user_carrier`（V3）+ `InvoiceBuyerServiceImpl#saveCarrier / carriers / deleteCarrier`；`GET/POST /mp/invoice-carrier`、`POST /mp/invoice-carrier/{carrierNo}/delete` |
 | AC21 | `InvoiceServiceImpl#memberCarrier`：类别号取主体 `member_carrier_type`，号码 = 登录买家用户号，服务端填 |
 | AC22 | `InvoiceServiceImpl#issueIfAutomatic`：无预存选择 + 来源有买家 + 主体有会员载具 → 会员载具；否则一般 |
-| AC23 | `ivc_invoice.buyer_user_no`（V3，开立时取自 `InvoiceSource.buyerUserNo`）；`GET /mp/sales-invoices`、`/{invoiceNo}` |
-| AC24 | `InvoiceSourcePort#sourcesOfBuyerOrder`（子单实现按买家过滤）+ `InvoiceBuyerServiceImpl#choose`；`PUT /mp/sales-invoices/choice` |
+| AC23 | `ivc_invoice.buyer_user_no`（V3，开立时取自 `InvoiceSource.buyerUserNo`）；`GET /mp/sales-invoice`、`/{invoiceNo}` |
+| AC24 | `InvoiceSourcePort#sourcesOfBuyerOrder`（子单实现按买家过滤）+ `InvoiceBuyerServiceImpl#choose`；`PUT /mp/sales-invoice/choice` |
 
 **为什么会员载具号码不让顾客填**：会员载具的号码就是他的账号；让客户端报号码，等于允许把发票存进别人的载具。
 **为什么按订单而不是按子单选**：C 端只认识主订单；一张单拆给几家商家时，每家各自一个事务、各自回结果，一家没开通不影响另一家。

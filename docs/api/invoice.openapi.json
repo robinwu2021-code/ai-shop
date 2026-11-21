@@ -531,7 +531,7 @@
         }
       }
     },
-    "/mp/invoice-carriers": {
+    "/mp/invoice-carrier": {
       "get": {
         "summary": "我的常用载具",
         "description": "要登录；买家身份只取登录态，入参不收用户号。",
@@ -602,7 +602,7 @@
         }
       }
     },
-    "/mp/invoice-carriers/{carrierNo}/delete": {
+    "/mp/invoice-carrier/{carrierNo}/delete": {
       "post": {
         "summary": "删除常用载具",
         "description": "要登录；买家身份只取登录态，入参不收用户号。",
@@ -630,7 +630,7 @@
         }
       }
     },
-    "/mp/sales-invoices/choice": {
+    "/mp/sales-invoice/choice": {
       "put": {
         "summary": "给自己的订单选发票开法",
         "description": "要登录；买家身份只取登录态，入参不收用户号。",
@@ -696,7 +696,7 @@
         }
       }
     },
-    "/mp/sales-invoices": {
+    "/mp/sales-invoice": {
       "get": {
         "summary": "我的发票（跨商家）",
         "description": "要登录；买家身份只取登录态，入参不收用户号。",
@@ -730,7 +730,7 @@
         }
       }
     },
-    "/mp/sales-invoices/{invoiceNo}": {
+    "/mp/sales-invoice/{invoiceNo}": {
       "get": {
         "summary": "我的发票详情",
         "description": "要登录；买家身份只取登录态，入参不收用户号。",

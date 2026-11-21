@@ -43,38 +43,38 @@ public class MpSalesInvoiceController {
         this.invoices = invoices;
     }
 
-    @GetMapping("/mp/invoice-carriers")
+    @GetMapping("/mp/invoice-carrier")
     public List<CarrierVO> carriers() {
         var user = SecurityUtils.requireUser();
         return buyers.carriers(user.tenantNo(), user.userNo());
     }
 
-    @PostMapping("/mp/invoice-carriers")
+    @PostMapping("/mp/invoice-carrier")
     public CarrierVO saveCarrier(@Valid @RequestBody SaveCarrierReq req) {
         var user = SecurityUtils.requireUser();
         return buyers.saveCarrier(user.tenantNo(), user.userNo(), req);
     }
 
-    @PostMapping("/mp/invoice-carriers/{carrierNo}/delete")
+    @PostMapping("/mp/invoice-carrier/{carrierNo}/delete")
     public void deleteCarrier(@PathVariable String carrierNo) {
         var user = SecurityUtils.requireUser();
         buyers.deleteCarrier(user.tenantNo(), user.userNo(), carrierNo);
     }
 
-    @PutMapping("/mp/sales-invoices/choice")
+    @PutMapping("/mp/sales-invoice/choice")
     public List<ChoiceResultVO> choose(@Valid @RequestBody InvoiceChoiceReq req) {
         var user = SecurityUtils.requireUser();
         return buyers.choose(user.tenantNo(), user.userNo(), req);
     }
 
-    @GetMapping("/mp/sales-invoices")
+    @GetMapping("/mp/sales-invoice")
     public PageData<InvoiceVO> mine(@RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
         var user = SecurityUtils.requireUser();
         return invoices.listForBuyer(user.tenantNo(), user.userNo(), page, size);
     }
 
-    @GetMapping("/mp/sales-invoices/{invoiceNo}")
+    @GetMapping("/mp/sales-invoice/{invoiceNo}")
     public InvoiceVO detail(@PathVariable String invoiceNo) {
         var user = SecurityUtils.requireUser();
         return invoices.getForBuyer(user.tenantNo(), user.userNo(), invoiceNo);
