@@ -181,12 +181,12 @@ export interface MallEndRequest {
   reason: string;
 }
 
-// ── 三档 Plan ─────────────────────────────────────────────────────────
+// ── Plan 档位 ─────────────────────────────────────────────────────────
 
-/** 三档 */
-export type MallPlanTier = "FREE" | "PRO" | "CHAIN";
+/** FREE 用于门店初始化，行业有四个对外档位，纯支付只有 BASE。 */
+export type MallPlanTier = "FREE" | "BASE" | "PRO" | "GROWTH" | "CHAIN";
 
-/** Plan 定义（每个经营类型固定三条，新建类型时由后端生成） */
+/** Plan 定义（新建经营类型时由后端生成） */
 export interface MallPlanDefinitionView {
   /** Plan 号（形如 `RETAIL:PRO`） */
   planNo?: string;
@@ -194,7 +194,7 @@ export interface MallPlanDefinitionView {
   typeCode?: string;
   /** 档位 */
   tier?: MallPlanTier;
-  /** 当前在售版本；未发布为 null */
+  /** 当前已发布版本；未发布为 null */
   currentVersionNo?: string | null;
   /** 售卖状态（DRAFT / ON_SALE / OFF_SALE） */
   saleStatus?: string;
@@ -260,16 +260,20 @@ export interface MallPlanRequest {
   reason: string;
 }
 
-/** 行业发布：三档版本 + 候选 SKU 版本 + 全部相关行的乐观锁 */
+/** 行业发布：档位版本、候选 SKU 版本与对应的乐观锁 */
 export interface MallIndustryPublish {
   /** 幂等操作号 */
   operationNo: string;
   /** FREE 版本号 */
   freePlanVersionNo: string;
-  /** PRO 版本号 */
-  proPlanVersionNo: string;
-  /** CHAIN 版本号 */
-  chainPlanVersionNo: string;
+  /** BASE 版本号 */
+  basePlanVersionNo?: string;
+  /** PRO 版本号，纯支付省略 */
+  proPlanVersionNo?: string;
+  /** GROWTH 版本号 */
+  growthPlanVersionNo?: string;
+  /** CHAIN 版本号，纯支付省略 */
+  chainPlanVersionNo?: string;
   /** 同时发布的套餐 SKU 版本 */
   candidateSkuVersionNos: string[];
   /** 行业目录当前版本（首次发布为 0） */
@@ -278,7 +282,7 @@ export interface MallIndustryPublish {
   expectedPlanVersions: Record<string, number>;
   /** 选中 SKU 版本号 → 行版本 */
   expectedSkuVersions: Record<string, number>;
-  /** 该类型三条 Plan 定义 → 行版本 */
+  /** 所选 Plan 定义 → 行版本 */
   expectedPlanDefinitionVersions: Record<string, number>;
   /** 候选 SKU 定义 → 行版本 */
   expectedSkuDefinitionVersions: Record<string, number>;

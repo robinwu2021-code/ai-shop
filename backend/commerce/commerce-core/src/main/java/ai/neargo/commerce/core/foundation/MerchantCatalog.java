@@ -38,7 +38,10 @@ final class MerchantCatalog {
                     || !d.typeCode().equals(p.typeCode())
                     || rows.put(p.tier(), d) != null) return Map.of();
         }
-        return rows.size() == PlanTier.values().length ? rows : Map.of();
+        if (rows.keySet().equals(Set.copyOf(PlanTier.catalogTiers(type.draft().typeCode())))) return rows;
+        if (!PlanTier.PAYMENT_TYPE.equals(type.draft().typeCode())
+                && rows.keySet().equals(Set.copyOf(PlanTier.legacyCatalogTiers()))) return rows;
+        return Map.of();
     }
 
     static Set<String> publishedEntitlements(CatalogState state, String typeCode) {
@@ -56,6 +59,8 @@ final class MerchantCatalog {
         var cards = new ArrayList<PlanCard>();
         for (var d : current.values()) {
             String sale = state.plans.get(d.planNo()).saleStatus();
+            if (current.containsKey(PlanTier.BASE)
+                    && (d.tier() == PlanTier.FREE || !"ON_SALE".equals(sale))) continue;
             var prices = "ON_SALE".equals(sale) ? prices(state, d) : List.<PriceOption>of();
             String status =
                     d.tier() == PlanTier.FREE

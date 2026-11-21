@@ -112,32 +112,31 @@ public final class IndustryPublicationService {
                 state -> {
                     var type = require(state.types, d.typeCode());
                     expected(d.expectedCatalogVersion(), type.catalogVersion());
-                    code(d.freePlanVersionNo(), 64);
-                    code(d.proPlanVersionNo(), 64);
-                    code(d.chainPlanVersionNo(), 64);
-                    var versions =
-                            List.of(
-                                    d.freePlanVersionNo(),
-                                    d.proPlanVersionNo(),
-                                    d.chainPlanVersionNo());
+                    boolean payment = PlanTier.PAYMENT_TYPE.equals(d.typeCode());
+                    boolean legacy = !payment && d.basePlanVersionNo() == null && d.growthPlanVersionNo() == null;
+                    var tiers = legacy ? PlanTier.legacyCatalogTiers() : PlanTier.catalogTiers(d.typeCode());
+                    var selected = new EnumMap<PlanTier, String>(PlanTier.class);
+                    selected.put(PlanTier.FREE, d.freePlanVersionNo());
+                    selected.put(PlanTier.BASE, d.basePlanVersionNo());
+                    selected.put(PlanTier.PRO, d.proPlanVersionNo());
+                    selected.put(PlanTier.GROWTH, d.growthPlanVersionNo());
+                    selected.put(PlanTier.CHAIN, d.chainPlanVersionNo());
+                    for (var entry : selected.entrySet()) {
+                        if (tiers.contains(entry.getKey())) code(entry.getValue(), 64);
+                        else check(entry.getValue() == null, "unexpected Plan tier");
+                    }
+                    var versions = tiers.stream().map(selected::get).toList();
                     unique(versions);
-                    check(
-                            state.plans.values().stream()
-                                            .filter(p -> p.typeCode().equals(d.typeCode()))
-                                            .count()
-                                    == 3,
-                            "exactly three stable Plans required");
-                    // Selected content and every affected live master belong to the same preview.
-                    for (var definition : state.plans.values())
-                        if (definition.typeCode().equals(d.typeCode())) {
-                            check(
-                                    d.expectedPlanDefinitionVersions()
-                                            .containsKey(definition.planNo()),
-                                    "Plan definition row version required");
-                            expected(
-                                    d.expectedPlanDefinitionVersions().get(definition.planNo()),
-                                    definition.version());
+                    for (var definition : state.plans.values()) {
+                        if (!definition.typeCode().equals(d.typeCode())) continue;
+                        if (!tiers.contains(definition.tier())) {
+                            check(definition.currentVersionNo() == null, "published tier cannot be omitted");
+                            continue;
                         }
+                        check(d.expectedPlanDefinitionVersions().containsKey(definition.planNo()),
+                                "Plan definition row version required");
+                        expected(d.expectedPlanDefinitionVersions().get(definition.planNo()), definition.version());
+                    }
                     for (String no : d.candidateSkuVersionNos()) {
                         var candidate = require(state.skuVersions, no);
                         var master = require(state.skus, candidate.draft().skuNo());
@@ -158,7 +157,7 @@ public final class IndustryPublicationService {
                     check(
                             required != null && !required.isEmpty(),
                             "trusted base-entry registry required");
-                    for (int i = 0; i < 3; i++) {
+                    for (int i = 0; i < versions.size(); i++) {
                         var v = require(state.planVersions, versions.get(i));
                         check(
                                 d.expectedPlanVersions().containsKey(versions.get(i)),
@@ -167,8 +166,8 @@ public final class IndustryPublicationService {
                         var p = require(state.plans, v.draft().planNo());
                         check(
                                 p.typeCode().equals(d.typeCode())
-                                        && p.tier() == PlanTier.values()[i],
-                                "exact FREE/PRO/CHAIN order required");
+                                        && p.tier() == tiers.get(i),
+                                "selected Plan tier and industry must match");
                         check(
                                 v.status().equals("DRAFT") || v.status().equals("PUBLISHED"),
                                 "invalid Plan publication status");
@@ -190,6 +189,7 @@ public final class IndustryPublicationService {
                     }
                     var packagePlans = new HashSet<>(versions);
                     var candidateSkuNos = new HashSet<String>();
+                    var offeredPlans = new HashSet<String>();
                     String currency = null;
                     for (String no : d.candidateSkuVersionNos()) {
                         var sku = require(state.skuVersions, no);
@@ -209,6 +209,10 @@ public final class IndustryPublicationService {
                                 sku.draft().allowedBusinessTypes().contains(d.typeCode()),
                                 "candidate SKU outside industry");
                         skus.validatePublication(a.tenantNo(), state, no, packagePlans);
+                        sku.draft().components().stream()
+                                .filter(c -> c.kind() == ComponentKind.PLAN)
+                                .map(SkuComponent::planVersionNo)
+                                .forEach(offeredPlans::add);
                         if (currency == null) currency = sku.draft().price().currency();
                         else
                             check(
@@ -229,15 +233,14 @@ public final class IndustryPublicationService {
                                             now,
                                             a.principalNo()));
                         var p = state.plans.get(v.draft().planNo());
+                        boolean onSale = legacy || p.tier() == PlanTier.FREE || offeredPlans.contains(no)
+                                || (no.equals(p.currentVersionNo()) && "ON_SALE".equals(p.saleStatus()));
                         state.plans.put(
                                 p.planNo(),
                                 new CatalogState.Plan(
-                                        p.planNo(),
-                                        p.typeCode(),
-                                        p.tier(),
-                                        no,
-                                        "ON_SALE",
-                                        p.version() + 1));
+                                        p.planNo(), p.typeCode(), p.tier(), no,
+                                        onSale ? "ON_SALE" : "OFF_SALE", p.version() + 1));
+
                     }
                     // A new current Plan must never leave old-Plan SKUs purchasable under the new
                     // industry catalogue.

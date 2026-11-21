@@ -13826,9 +13826,11 @@ components:
       type: "string"
       enum:
         - "FREE"
+        - "BASE"
         - "PRO"
+        - "GROWTH"
         - "CHAIN"
-      description: "三档"
+      description: "FREE 用于门店初始化，行业有四个对外档位，纯支付只有 BASE。"
     MallPlanDefinitionView:
       type: "object"
       properties:
@@ -13845,7 +13847,7 @@ components:
           type:
             - "string"
             - "null"
-          description: "当前在售版本；未发布为 null"
+          description: "当前已发布版本；未发布为 null"
         saleStatus:
           type: "string"
           description: "售卖状态（DRAFT / ON_SALE / OFF_SALE）"
@@ -13853,7 +13855,7 @@ components:
           type: "number"
           description: "乐观锁版本"
       additionalProperties: false
-      description: "Plan 定义（每个经营类型固定三条，新建类型时由后端生成）"
+      description: "Plan 定义（新建经营类型时由后端生成）"
     MallPlanDraft:
       type: "object"
       properties:
@@ -13967,12 +13969,18 @@ components:
         freePlanVersionNo:
           type: "string"
           description: "FREE 版本号"
+        basePlanVersionNo:
+          type: "string"
+          description: "BASE 版本号"
         proPlanVersionNo:
           type: "string"
-          description: "PRO 版本号"
+          description: "PRO 版本号，纯支付省略"
+        growthPlanVersionNo:
+          type: "string"
+          description: "GROWTH 版本号"
         chainPlanVersionNo:
           type: "string"
-          description: "CHAIN 版本号"
+          description: "CHAIN 版本号，纯支付省略"
         candidateSkuVersionNos:
           type: "array"
           items:
@@ -13989,7 +13997,7 @@ components:
           description: "选中 SKU 版本号 → 行版本"
         expectedPlanDefinitionVersions:
           "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
-          description: "该类型三条 Plan 定义 → 行版本"
+          description: "所选 Plan 定义 → 行版本"
         expectedSkuDefinitionVersions:
           "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
           description: "候选 SKU 定义 → 行版本"
@@ -13999,8 +14007,6 @@ components:
       required:
         - "operationNo"
         - "freePlanVersionNo"
-        - "proPlanVersionNo"
-        - "chainPlanVersionNo"
         - "candidateSkuVersionNos"
         - "expectedCatalogVersion"
         - "expectedPlanVersions"
@@ -14009,7 +14015,7 @@ components:
         - "expectedSkuDefinitionVersions"
         - "reason"
       additionalProperties: false
-      description: "行业发布：三档版本 + 候选 SKU 版本 + 全部相关行的乐观锁"
+      description: "行业发布：档位版本、候选 SKU 版本与对应的乐观锁"
     MallProductKind:
       type: "string"
       enum:

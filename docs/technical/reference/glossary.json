@@ -36258,6 +36258,13 @@
   "dictionaries": {
     "javaConstantGroups": [
       {
+        "host": "PlanTier",
+        "name": "PAYMENT_TYPE",
+        "value": "PAYMENT",
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "host": "ElecInternal",
         "name": "RESULT_QUOTED",
         "value": "QUOTED",
@@ -47029,7 +47036,9 @@
         "name": "PlanTier",
         "values": [
           "FREE",
+          "BASE",
           "PRO",
+          "GROWTH",
           "CHAIN"
         ],
         "zh": "",
@@ -49645,10 +49654,12 @@
         "client": "ops-web",
         "values": [
           "FREE",
+          "BASE",
           "PRO",
+          "GROWTH",
           "CHAIN"
         ],
-        "zh": "三档"
+        "zh": "FREE 用于门店初始化，行业有四个对外档位，纯支付只有 BASE。"
       },
       {
         "name": "MallProductKind",
@@ -51748,7 +51759,7 @@
       "host": "CommerceRoutePolicy",
       "name": "BIZ",
       "type": "String",
-      "value": "\"END_BIZ_APP\", POS = \"END_APP_POS\"",
+      "value": "\"END_BIZ_APP\", POS = \"END_APP_POS\", RETAIL = \"END_RETAIL\"",
       "zh": "",
       "module": "commerce"
     },

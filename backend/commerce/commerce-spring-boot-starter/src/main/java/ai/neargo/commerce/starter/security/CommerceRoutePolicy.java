@@ -66,7 +66,7 @@ public final class CommerceRoutePolicy {
         this.hostRoutes = List.copyOf(hostRoutes);
     }
 
-    public static final String BIZ = "END_BIZ_APP", POS = "END_APP_POS";
+    public static final String BIZ = "END_BIZ_APP", POS = "END_APP_POS", RETAIL = "END_RETAIL";
     public static final String PROCUREMENT_DUTY = "biz:store:admin";
     private static final Set<String> SELECTION_READS =
             Set.of("/biz/context", "/biz/stores/mine", "/biz/store/list", "/biz/merchant/profile");
@@ -355,6 +355,7 @@ public final class CommerceRoutePolicy {
         return switch (end) {
             case "BIZ_APP" -> Optional.of(BIZ);
             case "APP_POS" -> Optional.of(POS);
+            case RETAIL -> Optional.of(RETAIL);
             case null, default -> Optional.empty();
         };
     }
@@ -368,6 +369,7 @@ public final class CommerceRoutePolicy {
         return switch (entitlement) {
             case BIZ -> "BIZ_APP";
             case POS -> "APP_POS";
+            case RETAIL -> RETAIL;
             default -> throw new AccessDenied(AccessStatus.FORBIDDEN);
         };
     }
@@ -376,6 +378,7 @@ public final class CommerceRoutePolicy {
         return switch (entitlement) {
             case BIZ -> "biz:store";
             case POS -> "biz:receive";
+            case RETAIL -> "biz:stock";
             default -> throw new AccessDenied(AccessStatus.FORBIDDEN);
         };
     }

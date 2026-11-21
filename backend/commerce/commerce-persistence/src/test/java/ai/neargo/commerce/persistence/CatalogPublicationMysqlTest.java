@@ -13,6 +13,38 @@ import java.util.concurrent.*;
 
 class CatalogPublicationMysqlTest {
     @Test
+    void upgradeAddsDraftTiersAndPreservesExistingPlanPointersAndSaleState() {
+        try (var db = new MysqlDatabase()) {
+            db.migrate("13");
+            db.jdbc.update("""
+                    INSERT INTO sys_business_type
+                        (tenant_no, created_at, updated_at, version, deleted, business_type_code,
+                         name, sort, enabled, plan_catalog_version)
+                    VALUES ('tenant-a', NOW(3), NOW(3), 4, 0, 'RETAIL', 'Retail', 1, 1, 2)
+                    """);
+            for (var tier : PlanTier.legacyCatalogTiers()) {
+                int oldRank = PlanTier.legacyCatalogTiers().indexOf(tier);
+                db.jdbc.update("""
+                        INSERT INTO sys_industry_plan
+                            (tenant_no, created_at, updated_at, version, deleted, plan_no, business_type_code,
+                             tier_code, `rank`, current_version_no, sale_status, sort)
+                        VALUES ('tenant-a', NOW(3), NOW(3), 3, 0, ?, 'RETAIL', ?, ?, ?, 'ON_SALE', ?)
+                        """, "RETAIL:" + tier, tier.name(), oldRank, tier + "-old", oldRank);
+            }
+            db.migrate();
+
+            assertEquals(List.of("FREE", "BASE", "PRO", "GROWTH", "CHAIN"),
+                    db.jdbc.queryForList("SELECT tier_code FROM sys_industry_plan ORDER BY `rank`", String.class));
+            assertEquals(List.of("BASE", "GROWTH"),
+                    db.jdbc.queryForList("SELECT tier_code FROM sys_industry_plan WHERE sale_status='DRAFT' ORDER BY `rank`",
+                            String.class));
+            assertEquals(List.of("FREE-old", "PRO-old", "CHAIN-old"),
+                    db.jdbc.queryForList("SELECT current_version_no FROM sys_industry_plan WHERE sale_status='ON_SALE' ORDER BY `rank`",
+                            String.class));
+        }
+    }
+
+    @Test
     void firstPackagePersistsAllPointersComponentsAndAudit() {
         try (var db = new MysqlDatabase()) {
             db.migrate();
