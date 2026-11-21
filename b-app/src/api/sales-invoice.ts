@@ -28,6 +28,8 @@ export interface SiAllowance {
 }
 export type SiStatus = "ISSUED" | "VOIDED";
 export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED";
+/** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
+export type SiGatewayCode = "STUB" | "TURNKEY";
 export interface SalesInvoice {
   invoiceNo: string;
   regimeCode: string;
@@ -112,7 +114,7 @@ export interface SiProfileReq {
   regimeCode: "TW_EGUI";
   sellerTaxId: string;
   sellerName: string;
-  gatewayCode: "STUB" | "TURNKEY";
+  gatewayCode: SiGatewayCode;
   /** 32 位十六进制；不填表示不改 */
   qrAesKeyHex?: string;
   memberCarrierType?: string;
