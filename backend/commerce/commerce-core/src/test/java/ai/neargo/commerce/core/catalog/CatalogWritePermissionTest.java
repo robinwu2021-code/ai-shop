@@ -91,7 +91,11 @@ class CatalogWritePermissionTest {
         f.facade.publishIndustry(f.ops, f.publication(java.util.List.of(), 0));
         var before = f.facade.catalog(f.ops, "RETAIL");
         assertEquals(2, before.businessType().version());
-        assertEquals(3, before.planDefinitions().size());
+        assertEquals(
+                java.util.Set.copyOf(PlanTier.catalogTiers("RETAIL")),
+                before.planDefinitions().stream()
+                        .map(PlanDefinitionView::tier)
+                        .collect(java.util.stream.Collectors.toSet()));
         f.capabilities.remove("commerce:catalog:edit");
         f.facade.saveBusinessType(
                 f.ops,
