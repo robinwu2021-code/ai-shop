@@ -19,7 +19,9 @@ import ai.neargo.secret.api.SecretVault;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceChoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.SaveCarrierReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
@@ -27,6 +29,7 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
+import ai.neargo.shop.invoice.service.InvoiceBuyerService;
 import ai.neargo.shop.invoice.service.InvoiceService;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
@@ -39,6 +42,7 @@ import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import ai.neargo.shop.spi.invoice.InvoicePort.InvoiceReceipt;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
+import ai.neargo.shop.spi.invoice.InvoiceSourcePort.BuyerSource;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
@@ -94,6 +98,7 @@ class InvoiceServiceMysqlTest {
     @Autowired InvoiceService invoices;
     @Autowired InvoiceSetupService setup;
     @Autowired InvoiceTransmissionService transmissions;
+    @Autowired InvoiceBuyerService buyers;
     @Autowired InvoicePrintSourceFactsPortImpl printSource;
     @Autowired Sources sources;
     @Autowired FlakyGateway gateway;
@@ -106,8 +111,10 @@ class InvoiceServiceMysqlTest {
     @BeforeEach
     void reset() {
         for (var t : List.of("ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice", "ivc_buyer_preference",
+                "ivc_user_carrier",
                 "ivc_number_range", "ivc_regime_profile")) jdbc.update("DELETE FROM " + t);
         sources.byNo.clear();
+        sources.orders.clear();
         gateway.fail.set(false);
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
@@ -165,7 +172,7 @@ class InvoiceServiceMysqlTest {
     @Test
     void ac5AmountsAgreeWithTheSourceAndB2bSplitsTax() {
         sources.byNo.put("BAD", new InvoiceSourcePort.InvoiceSource("RETAIL", "TWD", Instant.now(), 10_000,
-                List.of(line("x", 9_000))));
+                List.of(line("x", 9_000)), null));
         assertCode(ErrorCode.INVOICE_SOURCE_NOT_READY, () -> issue("BAD"));
         sources.paid("SO1", 105_000);
         var r = invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer("22099131", "台積", null, null, null));
@@ -184,7 +191,7 @@ class InvoiceServiceMysqlTest {
         sources.byNo.put("MIX", new InvoiceSourcePort.InvoiceSource("FOOD", "TWD", Instant.now(), 155_000,
                 List.of(line("餐點", 105_000, InvoiceSourcePort.Line.TAXABLE),
                         line("外銷", 20_000, InvoiceSourcePort.Line.ZERO),
-                        line("書籍", 30_000, InvoiceSourcePort.Line.EXEMPT))));
+                        line("書籍", 30_000, InvoiceSourcePort.Line.EXEMPT)), null));
         var r = invoices.issue(SCOPE, "SUB_ORDER", "MIX", new Buyer("22099131", null, null, null, null));
         var vo = invoices.get(SCOPE, r.invoiceNo());
         assertEquals(100_000, vo.salesMinor());
@@ -333,6 +340,83 @@ class InvoiceServiceMysqlTest {
         assertTrue(clerk.contains("biz:invoice:issue") && !clerk.contains("biz:invoice:void"));
     }
 
+    // ---------------------------------------------------------------- 载具优先（§8）
+
+    private void memberCarrier(String type, boolean auto) {
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, type, auto));
+    }
+
+    @Test
+    void ac20BuyerKeepsCarriersAndTheFirstOrChosenOneIsDefault() {
+        var phone = buyers.saveCarrier("T1", "B1", new SaveCarrierReq("3J0002", "/ABC+123", "我的手機", null));
+        assertTrue(phone.isDefault(), "the first carrier becomes default");
+        var cert = buyers.saveCarrier("T1", "B1", new SaveCarrierReq("CQ0001", "AB12345678901234", null, true));
+        assertTrue(cert.isDefault());
+        assertEquals(List.of("CQ0001", "3J0002"), buyers.carriers("T1", "B1").stream().map(c -> c.carrierType()).toList());
+        assertEquals(1, buyers.carriers("T1", "B1").stream().filter(c -> c.isDefault()).count());
+        assertCode(ErrorCode.INVOICE_BUYER_INVALID,
+                () -> buyers.saveCarrier("T1", "B1", new SaveCarrierReq("3J0002", "/abc1234", null, null)));
+        assertTrue(buyers.carriers("T1", "B2").isEmpty(), "carriers belong to their buyer");
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> buyers.deleteCarrier("T1", "B2", phone.carrierNo()));
+        buyers.deleteCarrier("T1", "B1", phone.carrierNo());
+        assertEquals(1, buyers.carriers("T1", "B1").size());
+    }
+
+    @Test
+    void ac21MemberCarrierNumberIsTheLoggedInBuyerAndIssuesWithoutPaper() {
+        memberCarrier("EJ0113", true);
+        sources.paid("SUB1", 1_000, "B1");
+        sources.orders.put("B1/ORD1", List.of(new BuyerSource("SUB_ORDER", "SUB1", "E1", "S1", false)));
+        var saved = buyers.choose("T1", "B1", new InvoiceChoiceReq("ORD1", "MEMBER", null, "SOMEONE-ELSE", null, null, null));
+        assertEquals("SAVED", saved.getFirst().outcome(), "unpaid: only remembered");
+        var r = invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SUB1").orElseThrow();
+        var vo = invoices.getForBuyer("T1", "B1", r.invoiceNo());
+        assertEquals("EJ0113", vo.carrierType());
+        assertEquals("B1", vo.carrierId(), "server fills the member number; a client-sent id is ignored");
+        assertFalse(vo.printMark());
+        assertEquals("示例營業人", vo.sellerName());
+        assertEquals(1, invoices.listForBuyer("T1", "B1", 1, 20).total());
+        assertEquals(0, invoices.listForBuyer("T1", "B2", 1, 20).total());
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> invoices.getForBuyer("T1", "B2", r.invoiceNo()));
+    }
+
+    @Test
+    void ac22AutoIssueDefaultsToMemberCarrierWhenThereIsABuyerAndNoChoice() {
+        memberCarrier("EJ0113", true);
+        sources.paid("APP", 1_000, "B1");
+        sources.paid("POS", 1_000);
+        assertFalse(invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "APP").orElseThrow().printMark(),
+                "app order with a buyer: member carrier, no paper");
+        assertTrue(invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "POS").orElseThrow().printMark(),
+                "walk-in without an account: ordinary consumer with a proof");
+        memberCarrier(null, true);
+        sources.paid("APP2", 1_000, "B1");
+        assertTrue(invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "APP2").orElseThrow().printMark(),
+                "no member carrier type: falls back to consumer");
+    }
+
+    @Test
+    void ac23ChoosingOnAPaidOrderIssuesNowAndEachShopAnswersForItself() {
+        memberCarrier(null, true);
+        sources.paid("SUB1", 1_000, "B1");
+        sources.paid("SUB2", 1_000, "B1");
+        sources.orders.put("B1/ORD1", List.of(new BuyerSource("SUB_ORDER", "SUB1", "E1", "S1", true),
+                new BuyerSource("SUB_ORDER", "SUB2", "E9", "S9", true)));
+        var first = buyers.choose("T1", "B1", new InvoiceChoiceReq("ORD1", "CARRIER", "3J0002", "/ABC+123", null, null, null));
+        assertEquals("ISSUED", first.get(0).outcome());
+        assertTrue(first.get(0).fiscalNumber().startsWith("AB"));
+        assertEquals("NOT_ENABLED", first.get(1).outcome(), "the other shop never enabled e-invoices");
+        var again = buyers.choose("T1", "B1", new InvoiceChoiceReq("ORD1", "CONSUMER", null, null, null, null, null));
+        assertEquals("ALREADY_ISSUED", again.get(0).outcome());
+        var member = buyers.choose("T1", "B1", new InvoiceChoiceReq("ORD1", "MEMBER", null, null, null, null, null));
+        assertEquals("ALREADY_ISSUED", member.get(0).outcome());
+        sources.orders.put("B1/ORD2", List.of(new BuyerSource("SUB_ORDER", "SUB3", "E1", "S1", false)));
+        assertEquals("MEMBER_CARRIER_UNAVAILABLE", buyers.choose("T1", "B1",
+                new InvoiceChoiceReq("ORD2", "MEMBER", null, null, null, null, null)).getFirst().outcome());
+        assertCode(ErrorCode.INVOICE_SOURCE_NOT_READY, () -> buyers.choose("T1", "B2",
+                new InvoiceChoiceReq("ORD1", "CONSUMER", null, null, null, null, null)));
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private InvoiceReceipt issue(String sourceNo) {
@@ -409,7 +493,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(2, applied);
+            assertEquals(3, applied);
             return ds;
         }
     }
@@ -423,9 +507,19 @@ class InvoiceServiceMysqlTest {
     static final class Sources implements InvoiceSourcePort {
         final Map<String, InvoiceSource> byNo = new ConcurrentHashMap<>();
 
+        final Map<String, List<BuyerSource>> orders = new ConcurrentHashMap<>();
+
         void paid(String no, long total) {
+            paid(no, total, null);
+        }
+
+        void paid(String no, long total, String buyer) {
             byNo.put(no, new InvoiceSource("FOOD", "TWD", Instant.now(), total,
-                    List.of(line("牛肉麵", total - 100), line("小菜", 100))));
+                    List.of(line("牛肉麵", total - 100), line("小菜", 100)), buyer));
+        }
+
+        public List<BuyerSource> sourcesOfBuyerOrder(String tenantNo, String buyer, String orderNo) {
+            return orders.getOrDefault(buyer + "/" + orderNo, List.of());
         }
 
         public Set<String> sourceTypes() {
@@ -472,7 +566,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceTransmissionServiceImpl.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean

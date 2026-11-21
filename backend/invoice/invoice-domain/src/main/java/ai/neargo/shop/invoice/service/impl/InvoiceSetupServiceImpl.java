@@ -19,6 +19,7 @@ import ai.neargo.shop.invoice.regime.tw.TwQrCipher;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -88,6 +89,10 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
                     TwQrCipher.parseKey(req.qrAesKeyHex())).blobId());
         }
         profiles.updateById(p);
+        // updateById 跳过 null 字段：清空会员载具类别号（不再提供会员载具）要显式写 null，否则旧值留着
+        if (p.getMemberCarrierType() == null)
+            profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId())
+                    .set("member_carrier_type", null));
         // 一个主体同一时刻只开通一种税制
         var others = new IvcRegimeProfile();
         others.setStatus("SUSPENDED");

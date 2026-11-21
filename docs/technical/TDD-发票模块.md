@@ -265,12 +265,17 @@ public interface InvoiceGateway { String code(); GatewayReceipt send(String regi
 | AC16 | `#autoIssueUsesTheRememberedBuyerOnlyWhenTheEntityTurnedItOn`；`InvoiceAutoIssueConsumerTest`（2） | ✅ |
 | AC17 | `TwRulesTest#mixedTaxTypesSplitIntoTaxableZeroAndFreeAndOnlyTaxablePaysTax`、`#allowanceTaxFollowsTheTaxableShareOfTheInvoice`；`#ac5MixedTaxTypesArePersistedPerLineAndInTheUploadMessage`；`SubOrderInvoiceSourcePortImplTest#foodOrderTakesIndustryAndTaxClassFromTheFrozenQuote`、`#mixedTaxWithWholeOrderDiscountOrUnknownTaxClassIsNotInvoiced` | ✅ |
 | AC18 | `SubOrderInvoiceSourcePortImplTest#retailOrderBecomesItemsFreightDiscountPointsAndWeighLinesThatSumToThePayment`、`#unpaidOrPartlyRefundedOrdersAreNotInvoiced` | ✅ |
+| AC20 | `InvoiceServiceMysqlTest#ac20BuyerKeepsCarriersAndTheFirstOrChosenOneIsDefault` | ✅ |
+| AC21 | `#ac21MemberCarrierNumberIsTheLoggedInBuyerAndIssuesWithoutPaper` | ✅ |
+| AC22 | `#ac22AutoIssueDefaultsToMemberCarrierWhenThereIsABuyerAndNoChoice` | ✅ |
+| AC23 | `#ac21…`（买家只看到自己的）；`MpEndpointAuthTest#loginRequiredEndpointsRejectAnonymous`（6 个端点匿名被拒） | ✅ |
+| AC24 | `#ac23ChoosingOnAPaidOrderIssuesNowAndEachShopAnswersForItself` | ✅ |
 | AC19 | `TurnkeyInvoiceGatewayTest`（2：命名空间 XML、转义、原子写、重发覆盖；拒绝非台湾与未知报文） | ✅ |
 
 实际输出（2026-11-21）：
 
 ```
-invoice-domain  TwRulesTest 8 · TwProofCodesTest 3 · InvoiceServiceMysqlTest 16 · InvoiceBoundaryTest 1  → Tests run: 28, Failures: 0, Errors: 0
+invoice-domain  TwRulesTest 8 · TwProofCodesTest 3 · InvoiceServiceMysqlTest 20 · InvoiceBoundaryTest 1  → Tests run: 32, Failures: 0, Errors: 0
 invoice-channel TurnkeyInvoiceGatewayTest 2                                                           → Tests run: 2, Failures: 0, Errors: 0
 shop-app        SubOrderInvoiceSourcePortImplTest 4 · InvoiceAutoIssueConsumerTest 2                   → Tests run: 6, Failures: 0, Errors: 0
 print-channel   ReceiptSoftwareAcceptanceTest 27 · InvoiceProofLayoutTest 2                            → Tests run: 29, Failures: 0, Errors: 0
@@ -314,5 +319,32 @@ scripts/check-sql-portability.mjs（扫 backend/，含 db/invoice）            
 
 1. 运营端「上传失败 / 即将超过 48 小时」清单（PRD §2 运营场景；需 ops 五处登记）。
 2. Turnkey 回执目录（处理结果、退件）回写 `ivc_transmission`；商业加值中心通道按签约方各加一个 `InvoiceGateway`。
-3. C 端（顾客自助下单）输入载具：复用 `PUT …/buyer-preferences` 的 C 端版本。
+3. 手机条码真伪验证：接财政部验证接口（需营业人或加值中心 AppID）；目前只校验格式。
 4. 飞鹅等文本通道：其原生标签只有 Code128 / QR，没有证明联规定的 Code39，故证明联只走 PDF / 桌面 agent；如需飞鹅出证明联，须先确认机型支持 Code39。
+
+## §8 载具优先（C 端载具、会员载具、我的发票）
+
+| AC | 落点 |
+|---|---|
+| AC20 | `ivc_user_carrier`（V3）+ `InvoiceBuyerServiceImpl#saveCarrier / carriers / deleteCarrier`；`GET/POST /mp/invoice-carriers`、`POST /mp/invoice-carriers/{carrierNo}/delete` |
+| AC21 | `InvoiceServiceImpl#memberCarrier`：类别号取主体 `member_carrier_type`，号码 = 登录买家用户号，服务端填 |
+| AC22 | `InvoiceServiceImpl#issueIfAutomatic`：无预存选择 + 来源有买家 + 主体有会员载具 → 会员载具；否则一般 |
+| AC23 | `ivc_invoice.buyer_user_no`（V3，开立时取自 `InvoiceSource.buyerUserNo`）；`GET /mp/sales-invoices`、`/{invoiceNo}` |
+| AC24 | `InvoiceSourcePort#sourcesOfBuyerOrder`（子单实现按买家过滤）+ `InvoiceBuyerServiceImpl#choose`；`PUT /mp/sales-invoices/choice` |
+
+**为什么会员载具号码不让顾客填**：会员载具的号码就是他的账号；让客户端报号码，等于允许把发票存进别人的载具。
+**为什么按订单而不是按子单选**：C 端只认识主订单；一张单拆给几家商家时，每家各自一个事务、各自回结果，一家没开通不影响另一家。
+**为什么迁移是 V3 而不再补改 V1**：V1 已在本分支提交；此后改表一律加新迁移。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `invoice-domain/…/db/invoice/V3__invoice_buyer_carriers.sql` | `ivc_invoice.buyer_user_no` + 索引；`ivc_user_carrier` |
+| 新增 | `invoice-domain/…/entity/IvcUserCarrier.java`、`service/InvoiceBuyerService.java`、`service/impl/InvoiceBuyerServiceImpl.java`、`api/mp/MpSalesInvoiceController.java` | C 端载具与开法 |
+| 修改 | `shop-base/…/spi/invoice/InvoiceSourcePort.java` | `InvoiceSource.buyerUserNo`、`sourcesOfBuyerOrder`、`BuyerSource` |
+| 修改 | `invoice-domain/…/service/impl/{InvoiceServiceImpl,InvoiceSetupServiceImpl}.java`、`dto/InvoiceDtos.java`、`mapper/InvoiceMappers.java` | 买受人在读到来源后决定、`listForBuyer / getForBuyer`、VO 带营业人；清空会员载具类别号显式写 null |
+| 修改 | `shop-app/…/invoicebridge/port/SubOrderInvoiceSourcePortImpl.java` | 带出买家、按买家列订单子单 |
+| 修改 | `shop-app/src/test/…/arch/MpEndpointAuthTest.java` | 6 个 /mp 端点登记为要登录，补探测请求体 |
+| 新增 | `c-app` 我的发票 / 载具管理 / 订单开法页面 | 见 §8 测试 |
+
+偏差：`InvoiceSetupServiceImpl#saveProfile` 原先用 `updateById`，清空会员载具类别号时被静默跳过（商家关不掉会员载具）；
+AC22 用例在 MySQL 上复现后改为显式写 null。

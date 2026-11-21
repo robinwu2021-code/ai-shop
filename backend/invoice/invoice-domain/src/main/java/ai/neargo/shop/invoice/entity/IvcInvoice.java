@@ -37,6 +37,8 @@ public class IvcInvoice {
     private LocalDateTime issuedAt;
     /** B2C / B2B */
     private String buyerType;
+    /** 平台买家用户号（V3）；门店现场无账号的单为空 */
+    private String buyerUserNo;
     private String buyerTaxId;
     private String buyerName;
     private String carrierType;

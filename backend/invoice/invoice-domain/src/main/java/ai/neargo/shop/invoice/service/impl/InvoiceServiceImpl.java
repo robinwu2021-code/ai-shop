@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.BiFunction;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -103,14 +104,24 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
+        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer);
+    }
+
+    /**
+     * 买受人在读到来源之后才定：自动开立没预存选择时，要看来源有没有平台买家才能决定是否默认走会员载具。
+     * 买受人校验仍在取号之前，不合规不占号。
+     */
+    private InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo,
+            BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf) {
         var existing = active(scope, sourceType, sourceNo);
         if (existing != null) return receipt(existing);
         var profile = activeProfile(scope);
         var regime = regimes.require(profile.getRegimeCode());
-        regime.validateBuyer(buyer, profile);
         var port = sources.get(sourceType);
         if (port == null) throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);
         var source = port.load(scope, sourceType, sourceNo);
+        var buyer = buyerOf.apply(profile, source);
+        regime.validateBuyer(buyer, profile);
         long sum = 0;
         for (var l : source.lines()) sum = Math.addExact(sum, l.amountMinor());
         if (source.lines().isEmpty() || source.totalMinor() <= 0 || sum != source.totalMinor())
@@ -145,6 +156,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         inv.setSellerName(profile.getSellerName());
         inv.setIssuedAt(LocalDateTime.ofInstant(now, ZoneOffset.UTC));
         inv.setBuyerType(regime.buyerType(buyer));
+        inv.setBuyerUserNo(source.buyerUserNo());
         inv.setBuyerTaxId(blankToNull(buyer.taxId()));
         inv.setBuyerName(blankToNull(buyer.name()));
         inv.setCarrierType(blankToNull(buyer.carrierType()));
@@ -234,9 +246,34 @@ public class InvoiceServiceImpl implements InvoiceService {
         if (profile == null || !Boolean.TRUE.equals(profile.getAutoIssue())) return Optional.empty();
         var p = preferences.selectOne(new QueryWrapper<IvcBuyerPreference>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("source_type", sourceType).eq("source_no", sourceNo));
-        var buyer = p == null ? Buyer.consumer()
-                : new Buyer(p.getBuyerTaxId(), p.getBuyerName(), p.getCarrierType(), p.getCarrierId(), p.getDonateCode());
-        return Optional.of(issue(scope, sourceType, sourceNo, buyer));
+        if (p != null)
+            return Optional.of(issue(scope, sourceType, sourceNo, new Buyer(p.getBuyerTaxId(), p.getBuyerName(),
+                    p.getCarrierType(), p.getCarrierId(), p.getDonateCode())));
+        // 载具优先：没预存选择、但有平台买家且主体申请了会员载具 → 存会员载具，不出纸
+        return Optional.of(issue(scope, sourceType, sourceNo, (settings, source) ->
+                source.buyerUserNo() != null && settings.getMemberCarrierType() != null
+                        ? memberCarrier(settings, source.buyerUserNo()) : Buyer.consumer()));
+    }
+
+    /** 会员载具：类别号取主体申请的那一个，载具号就是平台买家用户号 —— 由服务端填，不让买家自报。 */
+    static Buyer memberCarrier(IvcRegimeProfile profile, String buyerUserNo) {
+        return new Buyer(null, null, profile.getMemberCarrierType(), buyerUserNo, null);
+    }
+
+    @Override
+    public PageData<InvoiceVO> listForBuyer(String tenantNo, String buyerUserNo, int page, int size) {
+        var result = invoices.selectPage(new Page<>(page, size), new QueryWrapper<IvcInvoice>()
+                .eq("tenant_no", tenantNo).eq("buyer_user_no", buyerUserNo).orderByDesc("issued_at", "id"));
+        return PageData.of(result.getRecords().stream().map(i -> view(i, false)).toList(), result.getTotal(),
+                page, size);
+    }
+
+    @Override
+    public InvoiceVO getForBuyer(String tenantNo, String buyerUserNo, String invoiceNo) {
+        var inv = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", tenantNo)
+                .eq("buyer_user_no", buyerUserNo).eq("invoice_no", invoiceNo));
+        if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
+        return view(inv, true);
     }
 
     @Override
@@ -422,7 +459,8 @@ public class InvoiceServiceImpl implements InvoiceService {
                             a.getCreatedAt()))
                     .toList();
         }
-        return new InvoiceVO(i.getInvoiceNo(), i.getRegimeCode(), i.getIndustryCode(), i.getSourceType(),
+        return new InvoiceVO(i.getInvoiceNo(), i.getRegimeCode(), i.getIndustryCode(), i.getSellerName(),
+                i.getSellerTaxId(), i.getSourceType(),
                 i.getSourceNo(), i.getStoreNo(), i.getFiscalNumber(), i.getPeriodCode(), i.getRandomCode(),
                 i.getIssuedAt(), i.getBuyerType(), i.getBuyerTaxId(), i.getCarrierType(), i.getCarrierId(),
                 i.getDonateCode(), "Y".equals(i.getPrintMark()), i.getCurrency(), i.getSalesMinor(),

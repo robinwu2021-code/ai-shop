@@ -13629,6 +13629,7 @@ CREATE TABLE IF NOT EXISTS ivc_invoice
     created_by VARCHAR(64) NULL,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
+    buyer_user_no VARCHAR(64) NULL,
     CONSTRAINT uk_ivc_invoice_no UNIQUE (tenant_no, invoice_no),
     CONSTRAINT uk_ivc_invoice_fiscal UNIQUE (tenant_no, regime_code, fiscal_number),
     CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
@@ -13707,6 +13708,22 @@ CREATE TABLE IF NOT EXISTS ivc_transmission
     updated_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_ivc_transmission_no UNIQUE (tenant_no, transmission_no),
     CONSTRAINT uk_ivc_transmission_ref UNIQUE (tenant_no, message_type, ref_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_user_carrier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    carrier_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    carrier_type VARCHAR(16) NOT NULL,
+    carrier_id VARCHAR(64) NOT NULL,
+    label VARCHAR(32) NULL,
+    is_default TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_user_carrier_no UNIQUE (tenant_no, carrier_no),
+    CONSTRAINT uk_ivc_user_carrier UNIQUE (tenant_no, user_no, carrier_type, carrier_id)
 );
 
 -- 种子数据

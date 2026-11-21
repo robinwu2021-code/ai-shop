@@ -13425,6 +13425,275 @@ components:
         - "next"
         - "hasMore"
       additionalProperties: false
+    InvoiceCarrierType:
+      type: "string"
+      enum:
+        - "3J0002"
+        - "CQ0001"
+      description: "载具类别（财政部代码）：3J0002 手机条码 / CQ0001 自然人凭证。会员载具不在这里存。"
+    InvoiceChoiceKind:
+      type: "string"
+      enum:
+        - "CONSUMER"
+        - "MEMBER"
+        - "CARRIER"
+        - "TAX_ID"
+        - "DONATE"
+      description: "给一张订单选的开法：一般（印证明联）/ 会员载具 / 我的载具 / 打统编 / 捐赠"
+    InvoiceChoiceOutcome:
+      type: "string"
+      enum:
+        - "SAVED"
+        - "ISSUED"
+        - "ALREADY_ISSUED"
+        - "NOT_ENABLED"
+        - "MEMBER_CARRIER_UNAVAILABLE"
+      description: "每张子单各自的结果。SAVED 已记下（付款后按它开）/ ISSUED 已按新选择开立 / ALREADY_ISSUED 早开过了（要改须找商家作废重开）/ NOT_ENABLED 该商家没开通电子发票 / MEMBER_CARRIER_UNAVAILABLE 该商家没有会员载具"
+    BuyerInvoiceStatus:
+      type: "string"
+      enum:
+        - "ISSUED"
+        - "VOIDED"
+      description: "发票状态：已开立 / 已作废"
+    InvoiceCarrier:
+      type: "object"
+      properties:
+        carrierNo:
+          type: "string"
+        carrierType:
+          "$ref": "#/components/schemas/InvoiceCarrierType"
+        carrierId:
+          type: "string"
+          description: "手机条码 `/ABC+123`，自然人凭证 `AB12345678901234`"
+        label:
+          type:
+            - "string"
+            - "null"
+        isDefault:
+          type: "boolean"
+      required:
+        - "carrierNo"
+        - "carrierType"
+        - "carrierId"
+        - "isDefault"
+      additionalProperties: false
+    SaveInvoiceCarrierReq:
+      type: "object"
+      properties:
+        carrierType:
+          "$ref": "#/components/schemas/InvoiceCarrierType"
+        carrierId:
+          type: "string"
+        label:
+          type: "string"
+        makeDefault:
+          type: "boolean"
+      required:
+        - "carrierType"
+        - "carrierId"
+      additionalProperties: false
+    InvoiceChoiceReq:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+          description: "C 端主单号；一张主单可能拆成多家商家的子单，各自返回一条结果"
+        kind:
+          "$ref": "#/components/schemas/InvoiceChoiceKind"
+        carrierType:
+          "$ref": "#/components/schemas/InvoiceCarrierType"
+        carrierId:
+          type: "string"
+        taxId:
+          type: "string"
+        name:
+          type: "string"
+        donateCode:
+          type: "string"
+      required:
+        - "orderNo"
+        - "kind"
+      additionalProperties: false
+    InvoiceChoiceResult:
+      type: "object"
+      properties:
+        sourceNo:
+          type: "string"
+          description: "子单号"
+        outcome:
+          "$ref": "#/components/schemas/InvoiceChoiceOutcome"
+        fiscalNumber:
+          type:
+            - "string"
+            - "null"
+          description: "ISSUED / ALREADY_ISSUED 时的发票号码"
+      required:
+        - "sourceNo"
+        - "outcome"
+      additionalProperties: false
+    BuyerInvoiceLine:
+      type: "object"
+      properties:
+        lineNo:
+          type: "number"
+        name:
+          type: "string"
+        quantity:
+          type:
+            - "number"
+            - "string"
+          description: "数量（保留小数精度）"
+        unit:
+          type:
+            - "string"
+            - "null"
+        unitPriceMinor:
+          type: "number"
+        amountMinor:
+          type: "number"
+        taxType:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "lineNo"
+        - "name"
+        - "quantity"
+        - "unitPriceMinor"
+        - "amountMinor"
+      additionalProperties: false
+    BuyerInvoiceAllowance:
+      type: "object"
+      properties:
+        allowanceNo:
+          type: "string"
+        amountMinor:
+          type: "number"
+        taxMinor:
+          type: "number"
+        reason:
+          type: "string"
+        createdAt:
+          type: "string"
+      required:
+        - "allowanceNo"
+        - "amountMinor"
+        - "taxMinor"
+        - "reason"
+        - "createdAt"
+      additionalProperties: false
+    BuyerInvoice:
+      type: "object"
+      properties:
+        invoiceNo:
+          type: "string"
+        sellerName:
+          type:
+            - "string"
+            - "null"
+          description: "营业人名称与统编（开立当下冻结）"
+        sellerTaxId:
+          type:
+            - "string"
+            - "null"
+        fiscalNumber:
+          type: "string"
+          description: "字轨 + 8 码，如 AB12345678"
+        periodCode:
+          type: "string"
+          description: "期别：民国年 3 码 + 双月末月 2 码，如 11512 = 115 年 11-12 月"
+        randomCode:
+          type: "string"
+        issuedAt:
+          type: "string"
+        buyerType:
+          type: "string"
+        buyerTaxId:
+          type:
+            - "string"
+            - "null"
+        carrierType:
+          type:
+            - "string"
+            - "null"
+        carrierId:
+          type:
+            - "string"
+            - "null"
+        donateCode:
+          type:
+            - "string"
+            - "null"
+        printMark:
+          type: "boolean"
+          description: "是否印证明联（存载具 / 捐赠时为 false）"
+        currency:
+          type: "string"
+        salesMinor:
+          type: "number"
+        zeroTaxSalesMinor:
+          type:
+            - "number"
+            - "null"
+        freeTaxSalesMinor:
+          type:
+            - "number"
+            - "null"
+        taxMinor:
+          type: "number"
+        totalMinor:
+          type: "number"
+        allowedMinor:
+          type: "number"
+          description: "累计折让"
+        status:
+          "$ref": "#/components/schemas/BuyerInvoiceStatus"
+        lines:
+          anyOf:
+            - type: "array"
+              items:
+                "$ref": "#/components/schemas/BuyerInvoiceLine"
+            - type: "null"
+        allowances:
+          anyOf:
+            - type: "array"
+              items:
+                "$ref": "#/components/schemas/BuyerInvoiceAllowance"
+            - type: "null"
+      required:
+        - "invoiceNo"
+        - "fiscalNumber"
+        - "periodCode"
+        - "randomCode"
+        - "issuedAt"
+        - "buyerType"
+        - "printMark"
+        - "currency"
+        - "salesMinor"
+        - "taxMinor"
+        - "totalMinor"
+        - "allowedMinor"
+        - "status"
+      additionalProperties: false
+    BuyerInvoicePage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/BuyerInvoice"
+        total:
+          type: "number"
+        page:
+          type: "number"
+        size:
+          type: "number"
+      required:
+        - "records"
+        - "total"
+        - "page"
+        - "size"
+      additionalProperties: false
     PayInit:
       type: "object"
       properties:
@@ -17459,6 +17728,200 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Review"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/invoice-carriers":
+    get:
+      operationId: "invoiceCarriers"
+      summary: "我的常用发票载具"
+      tags:
+        - "invoice-carriers"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/InvoiceCarrier"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "saveInvoiceCarrier"
+      summary: "保存常用发票载具"
+      tags:
+        - "invoice-carriers"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/InvoiceCarrier"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SaveInvoiceCarrierReq"
+  "/mp/invoice-carriers/{carrierNo}/delete":
+    post:
+      operationId: "deleteInvoiceCarrier"
+      summary: "删除常用发票载具"
+      tags:
+        - "invoice-carriers"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "carrierNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/sales-invoices/choice":
+    put:
+      operationId: "chooseSalesInvoice"
+      summary: "给自己的订单选发票开法"
+      tags:
+        - "sales-invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/InvoiceChoiceResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/InvoiceChoiceReq"
+  "/mp/sales-invoices":
+    get:
+      operationId: "mySalesInvoices"
+      summary: "我的发票（各商家开给我的）"
+      tags:
+        - "sales-invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BuyerInvoicePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/sales-invoices/{invoiceNo}":
+    get:
+      operationId: "salesInvoiceDetail"
+      summary: "我的发票详情"
+      tags:
+        - "sales-invoices"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "invoiceNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/BuyerInvoice"
                 required:
                   - "code"
                   - "msg"

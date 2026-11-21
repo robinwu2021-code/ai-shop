@@ -3,7 +3,7 @@
   "info": {
     "title": "发票 B 端接口（ADR-063）",
     "version": "1.0.0",
-    "description": "多行业发票开立与台湾电子发票证明联。设计见 docs/technical/TDD-发票模块.md。证明联打印与补印走打印中心 /biz/print/requests（来源类型 INVOICE、场景 INVOICE_PROOF）。"
+    "description": "多行业发票开立与台湾电子发票证明联。设计见 docs/technical/TDD-发票模块.md。证明联打印与补印走打印中心 /biz/print/requests（来源类型 INVOICE、场景 INVOICE_PROOF）。 C 端 /mp 部分见 TDD §8（载具优先）。"
   },
   "paths": {
     "/biz/invoices": {
@@ -530,6 +530,233 @@
           }
         }
       }
+    },
+    "/mp/invoice-carriers": {
+      "get": {
+        "summary": "我的常用载具",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CarrierVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "保存常用载具（第一个或 makeDefault 成为默认）",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarrierVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "carrierType",
+                  "carrierId"
+                ],
+                "properties": {
+                  "carrierType": {
+                    "type": "string",
+                    "description": "3J0002 / CQ0001"
+                  },
+                  "carrierId": {
+                    "type": "string",
+                    "description": "号码"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "名字"
+                  },
+                  "makeDefault": {
+                    "type": "boolean",
+                    "description": "设为默认"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/invoice-carriers/{carrierNo}/delete": {
+      "post": {
+        "summary": "删除常用载具",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "carrierNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoices/choice": {
+      "put": {
+        "summary": "给自己的订单选发票开法",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChoiceResultVO"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderNo",
+                  "kind"
+                ],
+                "properties": {
+                  "orderNo": {
+                    "type": "string",
+                    "description": "主订单号"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "CONSUMER / MEMBER / CARRIER / TAX_ID / DONATE"
+                  },
+                  "carrierType": {
+                    "type": "string",
+                    "description": "CARRIER 时"
+                  },
+                  "carrierId": {
+                    "type": "string",
+                    "description": "CARRIER 时"
+                  },
+                  "taxId": {
+                    "type": "string",
+                    "description": "TAX_ID 时"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "TAX_ID 时可填"
+                  },
+                  "donateCode": {
+                    "type": "string",
+                    "description": "DONATE 时"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoices": {
+      "get": {
+        "summary": "我的发票（跨商家）",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoices/{invoiceNo}": {
+      "get": {
+        "summary": "我的发票详情",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -761,6 +988,14 @@
             "items": {
               "$ref": "#/components/schemas/AllowanceVO"
             }
+          },
+          "sellerName": {
+            "type": "string",
+            "description": "营业人名称（开立当下冻结）"
+          },
+          "sellerTaxId": {
+            "type": "string",
+            "description": "营业人统编"
           }
         }
       },
@@ -859,6 +1094,48 @@
           "status": {
             "type": "string",
             "description": "ACTIVE / EXHAUSTED"
+          }
+        }
+      },
+      "CarrierVO": {
+        "type": "object",
+        "properties": {
+          "carrierNo": {
+            "type": "string",
+            "description": "载具记录号"
+          },
+          "carrierType": {
+            "type": "string",
+            "description": "3J0002 手机条码 / CQ0001 自然人凭证"
+          },
+          "carrierId": {
+            "type": "string",
+            "description": "载具号码"
+          },
+          "label": {
+            "type": "string",
+            "description": "买家起的名字"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "默认载具"
+          }
+        }
+      },
+      "ChoiceResultVO": {
+        "type": "object",
+        "properties": {
+          "sourceNo": {
+            "type": "string",
+            "description": "子单号"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "SAVED / ISSUED / ALREADY_ISSUED / NOT_ENABLED / MEMBER_CARRIER_UNAVAILABLE"
+          },
+          "fiscalNumber": {
+            "type": "string",
+            "description": "已开立时的发票号码"
           }
         }
       }

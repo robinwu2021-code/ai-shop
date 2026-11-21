@@ -395,6 +395,13 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
   // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
   // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
+  // 台湾电子发票（买方，MpSalesInvoiceController）。与上面 /mp/invoice/*（事后申请平台开票）是两件事
+  invoiceCarriers: { method: "GET", path: "/mp/invoice-carriers", auth: true, summary: "我的常用发票载具" },
+  saveInvoiceCarrier: { method: "POST", path: "/mp/invoice-carriers", auth: true, summary: "保存常用发票载具" },
+  deleteInvoiceCarrier: { method: "POST", path: "/mp/invoice-carriers/:carrierNo/delete", auth: true, summary: "删除常用发票载具" },
+  chooseSalesInvoice: { method: "PUT", path: "/mp/sales-invoices/choice", auth: true, summary: "给自己的订单选发票开法" },
+  mySalesInvoices: { method: "GET", path: "/mp/sales-invoices", auth: true, summary: "我的发票（各商家开给我的）" },
+  salesInvoiceDetail: { method: "GET", path: "/mp/sales-invoices/:invoiceNo", auth: true, summary: "我的发票详情" },
   storedValuePendingServices:{method:"GET",path:"/mp/entitlement-service-orders",auth:true,summary:"My pending service confirmations"},
   storedValueService:{method:"GET",path:"/mp/entitlement-service-orders/:orderNo",auth:true,summary:"My service confirmation"},
   storedValueAuthorize:{method:"POST",path:"/mp/orders/:orderNo/entitlement-authorizations",auth:true,summary:"Confirm frozen service and wallet"},

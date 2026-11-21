@@ -24,6 +24,11 @@ public interface InvoiceService {
 
     InvoiceVO get(Scope scope, String invoiceNo);
 
+    /** C 端「我的发票」：按平台买家查，跨主体；也是会员载具的法定查询入口。 */
+    PageData<InvoiceVO> listForBuyer(String tenantNo, String buyerUserNo, int page, int size);
+
+    InvoiceVO getForBuyer(String tenantNo, String buyerUserNo, String invoiceNo);
+
     PageData<InvoiceVO> list(Scope scope, InvoiceQuery query);
 
     InvoiceVO voidInvoice(Scope scope, String invoiceNo, String reason);

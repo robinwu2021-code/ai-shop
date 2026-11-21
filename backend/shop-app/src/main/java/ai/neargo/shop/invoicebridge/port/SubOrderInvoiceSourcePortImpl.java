@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -105,7 +106,18 @@ public class SubOrderInvoiceSourcePortImpl implements InvoiceSourcePort {
         String industry = binding == null || "CORE".equals(binding.getSourceSystem()) ? "RETAIL"
                 : binding.getSourceSystem();
         return new InvoiceSource(industry, order.getCurrency(), Instant.ofEpochMilli(order.getPaidAt()),
-                value(sub.getPayAmount()), lines);
+                value(sub.getPayAmount()), lines, blankToNull(sub.getUserNo()));
+    }
+
+    @Override
+    public List<BuyerSource> sourcesOfBuyerOrder(String tenantNo, String buyerUserNo, String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> subOrders.selectList(new QueryWrapper<OrdSubOrder>()
+                        .eq("tenant_no", tenantNo).eq("order_no", orderNo).eq("user_no", buyerUserNo)
+                        .notIn("status", OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED).orderByAsc("id"))
+                .stream().filter(s -> s.getEntityNo() != null && s.getStoreNo() != null)
+                .map(s -> new BuyerSource(SOURCE_TYPE, s.getSubOrderNo(), s.getEntityNo(), s.getStoreNo(),
+                        PAID.contains(s.getStatus())))
+                .toList());
     }
 
     /** 订单行 id → 课税别：经行业绑定里的分摊（订单行 ↔ 报价源行）取报价行的冻结税类。 */
@@ -134,6 +146,10 @@ public class SubOrderInvoiceSourcePortImpl implements InvoiceSourcePort {
 
     private static long value(Long v) {
         return v == null ? 0 : v;
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
     }
 
     private static BizException notReady() {

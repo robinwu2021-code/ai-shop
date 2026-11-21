@@ -34,6 +34,37 @@ public final class InvoiceDtos {
 
     public record AllowanceReq(@NotNull @Positive Long amountMinor, @NotBlank @Size(max = 256) String reason) {}
 
+    /** C 端：保存一个常用载具。会员载具不在这里 —— 它的号码就是登录账号，由服务端填。 */
+    public record SaveCarrierReq(
+            @NotBlank @Pattern(regexp = "3J0002|CQ0001") String carrierType,
+            @NotBlank @Size(max = 64) String carrierId,
+            @Size(max = 32) String label,
+            Boolean makeDefault) {}
+
+    public record CarrierVO(String carrierNo, String carrierType, String carrierId, String label, boolean isDefault) {}
+
+    /**
+     * C 端：给自己的一张订单选发票开法。
+     *
+     * @param kind CONSUMER 一般（印证明联）/ MEMBER 会员载具 / CARRIER 手机条码或自然人凭证 / TAX_ID 打统编 / DONATE 捐赠
+     */
+    public record InvoiceChoiceReq(
+            @NotBlank @Size(max = 64) String orderNo,
+            @NotBlank @Pattern(regexp = "CONSUMER|MEMBER|CARRIER|TAX_ID|DONATE") String kind,
+            @Size(max = 16) String carrierType,
+            @Size(max = 64) String carrierId,
+            @Size(max = 32) String taxId,
+            @Size(max = 60) String name,
+            @Size(max = 16) String donateCode) {}
+
+    /**
+     * 一张订单拆成几张子单（可能分属不同商家），每张各自的结果。
+     *
+     * @param outcome SAVED 已记下 / ISSUED 已按新选择开立 / ALREADY_ISSUED 已开过票（要改须找商家作废重开）/
+     *     NOT_ENABLED 该商家未开通电子发票 / MEMBER_CARRIER_UNAVAILABLE 该商家没有会员载具
+     */
+    public record ChoiceResultVO(String sourceNo, String outcome, String fiscalNumber) {}
+
     public record InvoiceQuery(
             @Pattern(regexp = "[0-9]{5}") String periodCode,
             @Pattern(regexp = "ISSUED|VOIDED") String status,
@@ -98,6 +129,9 @@ public final class InvoiceDtos {
             String invoiceNo,
             String regimeCode,
             String industryCode,
+            /** 营业人名称与统编（开立当下冻结），C 端「我的发票」要看到是哪家开的 */
+            String sellerName,
+            String sellerTaxId,
             String sourceType,
             String sourceNo,
             String storeNo,

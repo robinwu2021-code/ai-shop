@@ -71,7 +71,8 @@ function generatorFor(file) {
 }
 
 let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(path.resolve(root,"src/api/stored-value-types.ts")),
-  ...collectAll(path.resolve(root, "src/api/points-types.ts")) };
+  ...collectAll(path.resolve(root, "src/api/points-types.ts")),
+  ...collectAll(path.resolve(root, "src/api/sales-invoice-types.ts")) };
 // 支付协议声明在 C 端合同中，响应不能引用共享类型里不存在的组件。
 for (const name of ["PayInit", "PayMethodList", "StoredValueStoresPage", "StoredValueRecordsPage", "StoredValueNotificationCapability"]) {
   const schema = generatorFor(path.resolve(root, "src/api/contract.ts")).createSchema(name);
@@ -293,6 +294,13 @@ const RESPONSE_TYPES = {
   // 这条是 **PUT**，此前抽取正则只认 GET|POST，它压根没进过 spec
   setMembershipReach: "void",
   reachOpened: "ReachOpened",
+  // 台湾电子发票（买方）
+  invoiceCarriers: "InvoiceCarrier[]",
+  saveInvoiceCarrier: "InvoiceCarrier",
+  deleteInvoiceCarrier: "void",
+  chooseSalesInvoice: "InvoiceChoiceResult[]",
+  mySalesInvoices: "BuyerInvoicePage",
+  salesInvoiceDetail: "BuyerInvoice",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
@@ -338,6 +346,8 @@ const REQUEST_TYPES = {
   updateMerchantApply: "MerchantApplyReq",
   reviewList: "ReviewListQuery",
   createReview: "CreateReviewReq",
+  saveInvoiceCarrier: "SaveInvoiceCarrierReq",
+  chooseSalesInvoice: "InvoiceChoiceReq",
 };
 
 /*

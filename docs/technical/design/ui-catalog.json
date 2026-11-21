@@ -175,50 +175,6 @@
             },
             {
               "app": "b-app",
-              "route": "/pages/sales-invoices/index",
-              "title": "销售发票",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/sales-invoices/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/sales-invoice/index",
-              "title": "发票详情",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/sales-invoice/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/sales-invoice-issue/index",
-              "title": "开发票",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/sales-invoice-issue/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/invoice-setup/index",
-              "title": "发票设置",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/invoice-setup/index"
-            },
-            {
-              "app": "b-app",
               "route": "/pages/statement/index",
               "title": "对账单",
               "domain": "其它",
@@ -1008,6 +964,50 @@
             },
             {
               "app": "b-app",
+              "route": "/pages/sales-invoices/index",
+              "title": "销售发票",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoices/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sales-invoice/index",
+              "title": "发票详情",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoice/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sales-invoice-issue/index",
+              "title": "开发票",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoice-issue/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/invoice-setup/index",
+              "title": "发票设置",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/invoice-setup/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/pay-collect/index",
               "title": "代客收款",
               "domain": "钱",
@@ -1500,7 +1500,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 40,
+      "count": 44,
       "domains": [
         {
           "name": "工作台",
@@ -1919,6 +1919,50 @@
         {
           "name": "钱",
           "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/sales-invoices/index",
+              "title": "我的发票",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/sales-invoices/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/sales-invoice/index",
+              "title": "发票详情",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/sales-invoice/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/invoice-carriers/index",
+              "title": "发票载具",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/invoice-carriers/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/invoice-choice/index",
+              "title": "发票开法",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/invoice-choice/index"
+            },
             {
               "app": "c-app",
               "route": "/pages/points/index",
@@ -4247,5 +4291,5 @@
       ]
     }
   ],
-  "total": 340
+  "total": 344
 }

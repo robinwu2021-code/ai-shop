@@ -19,11 +19,24 @@ public interface InvoiceSourcePort {
     InvoiceSource load(InvoicePort.Scope scope, String sourceType, String sourceNo);
 
     /**
+     * 某买家一张订单拆出的发票来源（C 端按订单设定载具用）。只返回属于该买家、未取消的来源；
+     * 不认识这张单或不属于他时返回空集合，不区分两者（不让人借此探测别人的单号）。
+     */
+    default List<BuyerSource> sourcesOfBuyerOrder(String tenantNo, String buyerUserNo, String orderNo) {
+        return List.of();
+    }
+
+    /** @param paid 来源是否已付清（已付清的可当场按新选择补开） */
+    record BuyerSource(String sourceType, String sourceNo, String entityNo, String storeNo, boolean paid) {}
+
+    /**
      * @param industryCode 行业码（RETAIL / FOOD / BEAUTY …），只用于归类与报表，不参与金额
      * @param totalMinor 含税总计，等于各行 amountMinor 之和（可含负数的折扣行）
+     * @param buyerUserNo 平台买家用户号；门店现场无账号的单为空。用于会员载具与 C 端「我的发票」
      */
     record InvoiceSource(
-            String industryCode, String currency, Instant paidAt, long totalMinor, List<Line> lines) {
+            String industryCode, String currency, Instant paidAt, long totalMinor, List<Line> lines,
+            String buyerUserNo) {
         public InvoiceSource {
             lines = List.copyOf(lines);
         }
