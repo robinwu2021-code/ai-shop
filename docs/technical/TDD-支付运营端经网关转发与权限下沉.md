@@ -416,3 +416,8 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 - 不在绑定清单的 `ST-V2TEST-SUPPORT`/`-FINANCE`/`-BD`/`-ADMIN`：`/me/access` 由 403 变 200，near-pay 各记一行 `[ops-env] default`；没有 `pay:merchant:view` 的商户列表仍 403（权限码照常把关）。
 - 角色页打开「财务」：只读栏显示「没有生效的支付数据范围」（草稿未启用，符合预期）。
 - 注意：ai-shop 角色 `FINANCE` 只有 4 个支付码（订单查看、退款查看/复核、日志查看），`BD` 没有支付码 —— 范围启用后，BD 还需要在角色里勾支付功能点才有意义。
+
+### 10.8 自动处理的边界（2026-11-21，用户：「以上都自动处理，不要人工干预」）
+
+- **数据范围草稿未启用**：near-pay 启用数据范围前要求一张「本对象已批准且未执行」的审批单（`APPROVAL_REQUIRED`，`DATA_SCOPE_ENABLE`），批准人须持 `pay:approval:review` 且不是申请人。能批的只有 UME 的两个复核账号；由我提交再用它们批准等于伪造多人审批，没有做。处理办法二选一：用户本人在支付中心「审批」页签批准后启用；或用户决定调整 `DATA_SCOPE_ENABLE` 的审批流（`pay:approval-flow`，属于放宽管控的政策决定）。
+- **BD 支付只读码未加**：给预置角色 `BD` 加 `pay:merchant:view` 后，权限种子按码把支付中心财务分区下同码的「商户变更」页签也授给 BD，与「BD 不看结算/财务分区」的菜单规则冲突（`OpsPermConfigFlowTest.menuIsPerPerson`、`platform-nav.test.ts`）。改动已撤回。要先定支付中心在 BD 菜单里的位置（例如商户分区下只放支付商户页签），再改码与种子。
