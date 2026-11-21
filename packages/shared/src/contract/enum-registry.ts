@@ -84,6 +84,11 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "外部记账当前状态，与 OrdOfflineRecord 常量一致；作废仍保留审计历史。" },
   { decl: "b-app:OfflineRecordAction", dom: "trade", shape: "CLASS", verdict: "OK",
     note: "外部记账只追加事件的动作，与 OrdOfflineRecordEvent.CREATE / CORRECT / VOID 一致。" },
+  // 网关接口资源（TDD-网关层与统一权限，V679；运营端「接口资源」页）
+  { decl: "ops-web:ApiResourceAccess", dom: "platform", shape: "CLASS", verdict: "OK", note: "接口要求的权限类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 交给入口方法判；对应 sys_api_resource.access。" },
+  { decl: "ops-web:ApiResourceAdjustableAccess", dom: "platform", shape: "CLASS", verdict: "OK", note: "运营可在库里把接口调整成的类别，是 ApiResourceAccess 去掉 PUBLIC 的子集（不允许调成公开）。" },
+  { decl: "ops-web:ApiResourceSource", dom: "platform", shape: "CLASS", verdict: "OK", note: "接口资源来源：SCAN 启动扫描登记 / MANUAL 手工登记；对应 sys_api_resource.source。" },
+  { decl: "ops-web:ApiResourceStatus", dom: "platform", shape: "STATUS", verdict: "OK", words: ["ENABLED", "DISABLED"], note: "接口资源是否生效；与 MallCategoryStatus 同样用启用 / 停用两值。对应 sys_api_resource.status。" },
   { decl: "ops-web:MallCategoryLocale", dom: "commerce", shape: "CLASS", verdict: "OK", words: ["zh-CN", "zh-TW", "en"],
     note: "Language keys of a biz-mall category name; a subset of the platform locales." },
   { decl: "ops-web:MallCategoryStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["ENABLED", "DISABLED"],
