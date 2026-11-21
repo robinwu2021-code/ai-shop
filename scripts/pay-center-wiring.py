@@ -28,10 +28,13 @@ EXCLUDED = {("GET", "/permission-mappings"), ("GET", "/permission-mappings/{}"),
             ("POST", "/permission-mappings/{}/enable"), ("POST", "/permission-mappings/{}/revoke"), ("PUT", "/permission-mappings/{}"),
             ("GET", "/me/access"), ("POST", "/channel-accounts/{}/close"), ("POST", "/approval-tasks/{}/review"),
             # 已有等价能力：账户恢复走审批执行（approvals.execute）；认领附件随认领详情返回
-            ("POST", "/channel-accounts/{}/resume"), ("GET", "/channel-account-claims/{}/files")}
-# 渠道专属，等业务确认再排（易特付、PayBy POS、SoftPOS、测试渠道）
-DEFERRED_CONTROLLERS = {"OpsYitePayVaController", "OpsPayByPosController", "OpsPayByPosAcceptanceController", "OpsPayBySgsAcceptanceController",
-                        "OpsSoftPosBindingController", "OpsTestChannelRegistrationController", "OpsTestChannelTrialController", "OpsTestCollectionSessionController"}
+            ("POST", "/channel-accounts/{}/resume"), ("GET", "/channel-account-claims/{}/files"),
+            # 试运行资质统一走 /newebpay-trial|/linepay-trial（带准备信息、支持 LINE Pay）；通用准备接口等价
+            ("POST", "/channel-accounts/{}/qualifications"),
+            # 测试渠道「从服务器环境变量登记」读服务器沙箱密钥，属运维一次性动作，不放运营端（《支付中心-渠道专属能力运营需求》§1）
+            ("POST", "/channel-accounts/test-channel-registrations")}
+# 暂缓：易特付虚拟账户（线上 yitepay.va.enabled 未配置、接口不加载；缺列表接口；产品方案评审稿）——《支付中心-渠道专属能力运营需求》§4
+DEFERRED_CONTROLLERS = {"OpsYitePayVaController"}
 
 
 def nearpay_endpoints(np_root):
@@ -105,7 +108,8 @@ def wrappers():
 
 def match(fm, fp, m, p):
     a, b = fp.strip("/").split("/"), p.strip("/").split("/")
-    return fm == m and len(a) == len(b) and all(x == y or x == "{}" for x, y in zip(a, b))
+    seg = lambda x, y: x == y or x == "{}" or ("{}" in x and re.fullmatch(re.escape(x).replace(r"\{\}", "[^/]+"), y) is not None)
+    return fm == m and len(a) == len(b) and all(seg(x, y) for x, y in zip(a, b))
 
 
 def main():

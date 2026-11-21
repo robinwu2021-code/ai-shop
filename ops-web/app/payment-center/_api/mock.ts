@@ -11,6 +11,7 @@ import type {
   ChannelAccountTransfer, QualificationVersion, StoreMethodView, StoreQrCode,
   MerchantMemberRow, ProfileRevisionRow, RepairRow,
   CredentialRow, CredentialVersion, CredentialPolicy, AuditEventRow,
+  PosConfigView, UatRun, SoftPosBinding,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -246,6 +247,16 @@ export function createMockPayCenterApi(): PayCenterApi {
   const credPolicies: CredentialPolicy[] = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"].map((o) => ({ ownerType: o, env: "PRODUCTION", maxAgeDays: 365, warnBeforeDays: 30, overlapDays: 7, dualControl: true, verifyBeforeEnable: true, revealOnIssueOnly: true, version: 0 }));
   const credActions = (r: CredRec) => (r.status === "REVOKED" ? [] : [r.materialType === "SYMMETRIC_SECRET" && r.ownerType === "PARTNER_APP" ? "GENERATE" : "ADD_VERSION", ...(r.versions.some((v) => v.status === "DRAFT") ? ["VERIFY"] : []), ...(r.versions.some((v) => v.status === "VERIFIED") ? ["ENABLE"] : []), "REVOKE"]);
   const audits: AuditEventRow[] = Array.from({ length: 5 }, (_, i) => ({ auditNo: `AU${6001 + i}`, requestId: `req-${i}`, operatorNo: i % 2 ? "ST-OPS-2" : "ST-OPS-1", roleNos: ["SUPER_ADMIN"], face: "OPS", resourceType: ["MERCHANT", "CHANNEL_ACCOUNT", "STORE_BINDING", "CREDENTIAL", "ALERT_RULE"][i], resourceNo: ["PM1001", "NWP7000", "SB5001", "4101", "AR2001"][i], action: ["SUSPEND", "VERIFY", "UNBIND", "ENABLE", "PUBLISH"][i], result: "SUCCEEDED", reason: "例行操作", approvalRef: i === 3 ? "AP8100" : null, beforeSummary: '{"status":"ACTIVE"}', afterSummary: '{"status":"SUSPENDED"}', occurredAt: T0 - i * H }));
+  // ── P11：PayBy POS 配置与验收、SoftPOS 绑定（状态机与 near-pay 同口径） ──
+  const posConfigs: PosConfigView[] = [];
+  const uatRuns: UatRun[] = [];
+  const softposBindings: SoftPosBinding[] = [];
+  const posOf = (t: string, id: number) => { const x = posConfigs.find((p) => p.terminalNo === t && p.id === id); if (!x) throw new MockPayError("NOT_FOUND", "没有这个 POS 配置"); return x; };
+  const posBump = (x: PosConfigView, patch: Partial<PosConfigView>, expected: number) => {
+    if (x.version !== expected) throw new MockPayError("VERSION_CONFLICT", "配置已被他人修改（POS_REVISION_CHANGED）");
+    Object.assign(x, patch, { version: x.version + 1, audit: [{ operation: patch.state ?? "SAVE", state: patch.state ?? x.state, created_at: Date.now() }, ...x.audit] }); return x;
+  };
+  const posReady = (x: PosConfigView) => x.state === "VERIFIED" && !x.stale && !!x.binding;
   const repairActions = (r: RepairRow) => (r.status === "PENDING_APPROVAL" ? ["approve", "reject"] : r.status === "APPROVED" ? ["execute"] : []);
   const transfers: ChannelAccountTransfer[] = [];
   const qrCodes = new Map<string, StoreQrCode[]>();
@@ -767,6 +778,52 @@ export function createMockPayCenterApi(): PayCenterApi {
       enable: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）"); const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) }); return next; }),
       revoke: (id, vi, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(!!v && v.status !== "REVOKED", "版本已撤销"); const next = { ...v!, status: "REVOKED", revokedBy: "admin", revokedAt: Date.now(), revokeReason: reason }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
       bindings: () => run(() => [{ keyId: 4101, source: "SEC" as const, consumerType: "CHANNEL_ACCOUNT", consumerRef: "NWP7000", consumerName: "蓝新商户 7000", field: "pay_merchant.sec_key_id", channel: "NEWEBPAY", status: "ACTIVE", environment: "PRODUCTION", transactions: 128, lastFrozenAt: T0 - H }]),
+    },
+    trials: {
+      preparation: (no, ch) => run(() => { const a = accounts.get(no); return { payMerchantNo: no, accountVersion: a.version, products: ch === "newebpay" ? ["NEWEBPAY_TEST_CARD_ONETIME"] : ["LINEPAY_TEST_ONLINE"], enablementEvidence: `approval:AP-${no}` }; }),
+      create: (no, ch, b) => run(() => {
+        reasonOf(b.reason); const a = accounts.get(no); if (a.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "渠道账户已变更，请刷新后重试");
+        need(/^[A-Z0-9_-]{1,32}$/.test(b.evidenceNo), "证据号格式不对"); need(["H5", "API"].includes(b.entry), "入口只能是 H5 或 API");
+        const v: QualificationVersion = { ref: `${b.evidenceNo}:${b.revision}`, revision: b.revision, channel: ch === "newebpay" ? "NEWEBPAY" : "LINEPAY", purpose: "SANDBOX_TRIAL", coordinates: { payMerchantNo: no, product: b.productCode, entry: b.entry }, coordinateKey: null, payloadJson: JSON.stringify({ returnUrl: b.returnUrl, notifyUrl: b.notifyUrl }), payloadSha256: "mock", status: "DRAFT", maker: "admin", approvalNo: null, validUntil: b.validUntil, version: 1 };
+        qualifications.push(v); return v;
+      }),
+    },
+    testSessions: {
+      sandbox: (no, b) => run(() => { need(b.expiresAt > Date.now() && b.expiresAt <= Date.now() + 30 * 60_000, "测试单有效期须在 30 分钟内"); return { payOrderNo: `SBH${no.slice(-6)}${String(b.expiresAt).slice(-4)}`, checkoutUrl: `https://pay.example/cashier/SBH-${no}`, expireAt: b.expiresAt }; }),
+      payby: (no, b) => run(() => { need(b.expiresAt > Date.now() && b.expiresAt <= Date.now() + 30 * 60_000, "测试单有效期须在 30 分钟内"); return { payOrderNo: `PBA${no.slice(-6)}${String(b.expiresAt).slice(-4)}`, checkoutUrl: `https://pay.example/cashier/PBA-${no}`, expireAt: b.expiresAt }; }),
+    },
+    pos: {
+      list: (t) => run(() => posConfigs.filter((p) => p.terminalNo === t).slice(0, 30)),
+      detail: (t, id) => run(() => posOf(t, id)),
+      save: (t, b) => run(() => {
+        reasonOf(b.reason); const term = terminals.get(t); need(term.payChannel === "PAYBY", "需要 PayBy · 阿联酋终端（PAYBY_AE_AED_TERMINAL_REQUIRED）");
+        need(b.settings.allowedModes.includes(b.settings.defaultMode), "默认模式必须在允许模式里");
+        need(!b.binding.deviceKeyRef || /^(vault|secret):/.test(b.binding.deviceKeyRef), "凭据只收 vault: / secret: 引用");
+        const binding = { bindingId: 1, bindingVersion: 1, status: "PENDING", physicalSn: term.serialNo, deviceId: b.binding.deviceId, channelMerchantNo: b.binding.channelMerchantNo, channelStoreNo: b.binding.channelStoreNo, channelTerminalNo: b.binding.channelTerminalNo, issuerCode: b.binding.issuerCode, issuerType: b.binding.issuerType, payeeMemberId: b.binding.payeeMemberId, deviceKeyVersion: b.binding.deviceKeyVersion, queryKeyVersion: b.binding.queryKeyVersion, deviceCredentialLinked: !!b.binding.deviceKeyRef, queryCredentialLinked: !!b.binding.queryCredentialRef, activationRef: b.binding.activationRef, authorizationRef: b.binding.authorizationRef };
+        if (b.configurationId == null) {
+          need(b.expectedVersion === 0, "新草稿的版本必须是 0（POS_DRAFT_VERSION_CONFLICT）"); need(!posConfigs.some((p) => p.terminalNo === t && ["DRAFT", "VERIFIED"].includes(p.state)), "已有未发布的草稿，请修改它（EDIT_EXISTING_POS_DRAFT）");
+          const x: PosConfigView = { id: 9000 + posConfigs.length + 1, terminalNo: t, state: "DRAFT", version: 1, baseTerminalVersion: b.expectedTerminalVersion, targetTerminalVersion: b.expectedTerminalVersion + 1, settings: b.settings, binding, configuredBy: "admin", verifiedBy: null, reviewEvidenceRef: null, stale: false, canPublish: false, modes: Object.fromEntries(b.settings.allowedModes.map((md) => [md, { mode: md, ready: true, checks: { contract: true, credential: !!b.binding.deviceKeyRef }, reasons: [] }])), runtime: { ready: false, canReceivePayments: false, reasons: ["POS_NOT_PUBLISHED"] }, audit: [] };
+          posConfigs.unshift(x); return x;
+        }
+        const x = posOf(t, b.configurationId); need(["DRAFT", "VERIFIED"].includes(x.state), "只有草稿或已核验的配置可修改（POS_DRAFT_NOT_EDITABLE）");
+        return posBump(x, { state: "DRAFT", verifiedBy: null, settings: b.settings, binding: { ...binding, deviceCredentialLinked: binding.deviceCredentialLinked || !!x.binding?.deviceCredentialLinked, queryCredentialLinked: binding.queryCredentialLinked || !!x.binding?.queryCredentialLinked }, canPublish: false }, b.expectedVersion);
+      }),
+      verify: (t, id, b) => run(() => { reasonOf(b.reason); const x = posOf(t, id); need(x.state === "DRAFT", "只有草稿可核验"); need(x.configuredBy !== "admin", "制单人不能核验自己的草稿（INDEPENDENT_CURRENT_MAKER_REVIEW_REQUIRED）"); const r = posBump(x, { state: "VERIFIED", verifiedBy: "admin", reviewEvidenceRef: b.evidenceRef }, b.expectedVersion); r.canPublish = posReady(r); return r; }),
+      publish: (t, id, c) => run(() => { cmdCheck(c); const x = posOf(t, id); need(x.canPublish, "默认模式或配置未就绪（POS_DEFAULT_MODE_OR_CONFIGURATION_NOT_READY）"); posConfigs.filter((p) => p.terminalNo === t && p.state === "PUBLISHED").forEach((p) => { p.state = "SUPERSEDED"; }); return posBump(x, { state: "PUBLISHED", canPublish: false, runtime: { ready: true, canReceivePayments: true, reasons: [] } }, c.expectedVersion); }),
+      disable: (t, id, c) => run(() => { cmdCheck(c); const x = posOf(t, id); need(x.state === "PUBLISHED", "只有已发布的配置可停用（PUBLISHED_POS_REVISION_REQUIRED）"); return posBump(x, { state: "DISABLED", runtime: { ready: false, canReceivePayments: false, reasons: ["POS_DISABLED"] } }, c.expectedVersion); }),
+    },
+    posUat: {
+      runs: (t, id) => run(() => uatRuns.filter((r) => r.identity.terminalNo === t && r.identity.configurationId === id)),
+      start: (t, id, b) => run(() => { reasonOf(b.reason); const x = posOf(t, id); need(x.state === "PUBLISHED" && !x.stale && x.settings.environment === "SANDBOX" && b.mode === x.settings.defaultMode, "需要当前已发布的沙箱默认模式配置（CURRENT_PUBLISHED_SANDBOX_DEFAULT_MODE_REQUIRED）"); if (x.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "配置已变更"); const r: UatRun = { runNo: `POS-UAT-${uatRuns.length + 1}`, version: 1, state: "COLLECTING", mode: b.mode, createdBy: "admin", reviewedBy: null, reviewEvidenceRef: null, stale: false, identity: { terminalNo: t, configurationId: id, mode: b.mode }, identityHash: "mock", cases: [], blockers: ["UAT_EVIDENCE_VERIFIER_UNAVAILABLE"], reviewerEligible: false }; uatRuns.unshift(r); return r; }),
+      run: (_t, rn) => run(() => { const r = uatRuns.find((x) => x.runNo === rn); if (!r) throw new MockPayError("NOT_FOUND", "没有这个批次"); return r; }),
+      recordCase: (_t, rn, b) => run(() => { reasonOf(b.reason); const r = uatRuns.find((x) => x.runNo === rn)!; need(r.state === "COLLECTING", "已签核的批次不能再记录（ACCEPTED_UAT_IMMUTABLE）"); need(/^file:/.test(b.evidenceRef), "证据须是 file: 引用"); if (r.version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "批次已变更"); r.cases = [{ caseCode: b.caseCode, result: b.result, evidenceRef: b.evidenceRef, executionNo: b.executionNo, recordedBy: "admin", recordedAt: new Date().toISOString() }, ...r.cases.filter((c) => c.caseCode !== b.caseCode)]; r.version += 1; return r; }),
+      review: (_t, rn, b) => run(() => { reasonOf(b.reason); const r = uatRuns.find((x) => x.runNo === rn)!; need(r.reviewerEligible, "签核人不能是批次创建人或用例记录人（INDEPENDENT_UAT_REVIEWER_REQUIRED）"); need(r.blockers.length === 0, "还有阻塞项（INDEPENDENT_COMPLETE_UAT_EVIDENCE_REQUIRED）"); r.state = "ACCEPTED"; r.version += 1; return r; }),
+      manifest: (_t, rn) => run(() => { const r = uatRuns.find((x) => x.runNo === rn)!; return { schemaVersion: 1, kind: "PAYBY_POS_UAT_EVIDENCE", runNo: r.runNo, state: r.state, identity: r.identity, identityHash: r.identityHash, requiredCases: Array.from({ length: 20 }, (_, i) => `D${String(i + 1).padStart(2, "0")}`), cases: r.cases }; }),
+    },
+    softpos: {
+      register: (t, b) => run(() => { reasonOf(b.reason); const term = terminals.get(t); need(/^[a-f0-9]{64}$/.test(b.signatureSha256), "签名须是 64 位小写十六进制"); const x: SoftPosBinding = { id: 7700 + softposBindings.length + 1, terminal: t, store: term.storeNo, accountId: 1, physicalDevice: term.serialNo, epoch: "1", providerMid: term.payMerchantNo ?? "", providerTid: term.channelTerminalNo ?? "", packageName: b.packageName, signatureSha256: b.signatureSha256, appVersion: b.appVersion, sdkVersion: b.sdkVersion, configVersion: term.version, status: "DRAFT", validUntil: b.validUntil }; softposBindings.unshift(x); return x; }),
+      detail: (t, id) => run(() => { const x = softposBindings.find((b) => b.terminal === t && b.id === id); if (!x) throw new MockPayError("NOT_FOUND", "没有这个绑定"); return x; }),
+      revoke: (t, id, reason) => run(() => { reasonOf(reason); const x = softposBindings.find((b) => b.terminal === t && b.id === id); need(!!x, "没有这个绑定"); x!.status = "REVOKED"; return x!; }),
     },
     audits: {
       list: (q) => pageOf(audits, q, ["auditNo", "resourceNo", "operatorNo"]),

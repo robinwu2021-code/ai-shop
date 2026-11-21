@@ -4,6 +4,9 @@
 // 字段随接入方式联动：H5 要域名与会话时长、API/APP 要接入应用、APP 还要包名、POS 可填终端号 —— 不适用的字段禁用并清空，
 // 与 near-pay 的校验口径一致（不适用的字段必须不传）。
 import * as React from "react";
+import { useCopy } from "@/lib/use-copy";
+import { P11_COPY } from "./p11-copy";
+import { TestSessionPanel, isPaybyTestEntry, isSandboxEntry } from "./p11-panels";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
@@ -66,7 +69,14 @@ export function AccessTab({ header }: { header: React.ReactNode }) {
   const { api } = list;
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-access", action, id } : null);
 
+  const m11 = useCopy(P11_COPY);
+  const testable = (r: EntryRow | null) => !!r && r.status === "ACTIVE" && r.accessMethod === "H5";
   const actions: ActionSpec<EntryRow>[] = [
+    // P11：开通验收用的测试单（沙箱 H5：入口只含测试产品；PayBy SGS：配置的测试门店入口）
+    { key: "sandboxSession", label: m11.sandboxSession, kind: "drawer", perm: "pay:collection-entry:manage", title: () => m11.sandboxSessionTitle,
+      visible: (r) => testable(r) && isSandboxEntry(r!.productCodes), render: (ctx) => <TestSessionPanel api={api} entryNo={ctx.row!.entryNo} kind="sandbox" run={run} /> },
+    { key: "paybySession", label: m11.paybySession, kind: "drawer", perm: "pay:collection-entry:manage", title: () => m11.paybySessionTitle,
+      visible: (r) => testable(r) && isPaybyTestEntry(r!.productCodes), render: (ctx) => <TestSessionPanel api={api} entryNo={ctx.row!.entryNo} kind="payby" run={run} /> },
     {
       key: "view", label: c.view, kind: "drawer", width: "w-[560px]", title: () => c.entryDetailTitle,
       render: (ctx) => {
