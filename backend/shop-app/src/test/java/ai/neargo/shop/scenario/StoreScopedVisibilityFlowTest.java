@@ -77,7 +77,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 买家侧：A 店的货不出现在只有 B 店服务的社区里")
     void buyerInCommunityBOnlySeesGoodsFromStoreB() throws Exception {
-        String biz = merchant("12600180001", "两片区的店");
+        String biz = merchant("19600180001", "两片区的店");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -133,7 +133,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 送货方式原样再存一次不能 500 —— 范围子集是物理删后重插，逻辑删的墓碑会撞唯一键")
     void savingSameSubsetTwiceDoesNotCollide() throws Exception {
-        String biz = merchant("12600180019", "连存两次的店");
+        String biz = merchant("19600180019", "连存两次的店");
         String merchantNo = merchantNoOf(biz);
         String store = defaultStoreNo(biz);
         storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
@@ -165,7 +165,7 @@ class StoreScopedVisibilityFlowTest {
          * CM001 只是申请单里的一个字符串，库里没有那一行，也就没有坐标可设。
          */
         String cm = openCommunityWithCoords("SVC-NEAR", 30_000_000, 120_000_000);
-        String biz = merchant("12600180003", "两家店都送同一片区", cm);
+        String biz = merchant("19600180003", "两家店都送同一片区", cm);
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String defaultStore = defaultStoreNo(biz);
@@ -201,7 +201,7 @@ class StoreScopedVisibilityFlowTest {
         assertThat(merchantQuery.reachableCommunities(merchantNo, defaultStore)).contains(cm);
         assertThat(merchantQuery.reachableCommunities(merchantNo, other)).contains(cm);
 
-        String storeNo = orderedStoreNo(biz, "12600180013", cm);
+        String storeNo = orderedStoreNo(biz, "19600180013", cm);
         assertThat(storeNo)
                 .as("默认店服务得了这个社区，单就该还落在它身上 —— 与改造前逐字相同")
                 .isEqualTo(defaultStore);
@@ -224,12 +224,12 @@ class StoreScopedVisibilityFlowTest {
         String drop = openBuildingUnder("SVC-BLD-DROP", estate);
 
         /*
-         * 独占一个号（此前与 pendingGoodsStayInAllTabRegardlessOfStore 共用 12600180014，两条用例落在同一个主体上）。
+         * 独占一个号（此前与 pendingGoodsStayInAllTabRegardlessOfStore 共用 19600180014，两条用例落在同一个主体上）。
          * 经营范围门店级之后（V381），那条用例开的第二家店保留着它自己的 CM001 范围，
          * 主体并集里就多出 CM001 —— 而这件货只在默认店上架，现算可见里自然没有它。
          * 以前范围是主体级、后一次保存把 CM001 覆盖掉了，共用主体这件事被巧合盖住。
          */
-        String biz = merchant("12600180050", "框了小区又单独框了楼", estate);
+        String biz = merchant("19600180050", "框了小区又单独框了楼", estate);
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
@@ -523,7 +523,7 @@ class StoreScopedVisibilityFlowTest {
          * 不会让行政/聚落级少命中）。
          */
         String cm = openCommunityWithCoords("SVC-RC", 22_655_148, 114_034_872, "440309001");
-        String biz = merchant("12600180064", "只框了一个小区的店", cm);
+        String biz = merchant("19600180064", "只框了一个小区的店", cm);
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String store = defaultStoreNo(biz);
@@ -592,7 +592,7 @@ class StoreScopedVisibilityFlowTest {
          *
          * 这条用例就从那条路进：只给坐标。
          */
-        String biz = merchant("12600180063", "只做福田区的店（坐标路径）");
+        String biz = merchant("19600180063", "只做福田区的店（坐标路径）");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String store = defaultStoreNo(biz);
@@ -638,7 +638,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 框了区的店对区外不可见 —— 买家只有粗定位（ADR-034 AC2）")
     void framedDistrictIsInvisibleOutsideIt() throws Exception {
-        String biz = merchant("12600180061", "只做福田区的店");
+        String biz = merchant("19600180061", "只做福田区的店");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String store = defaultStoreNo(biz);
@@ -671,7 +671,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 市级店对纯粗定位的买家可见 —— 不再要求「落在某个开放聚落里」（ADR-034 AC4）")
     void cityLevelStoreIsVisibleWithoutAnyCommunity() throws Exception {
-        String biz = merchant("12600180062", "整个深圳都送的店");
+        String biz = merchant("19600180062", "整个深圳都送的店");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String store = defaultStoreNo(biz);
@@ -708,7 +708,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 同一门店连着下架两次不许报错 —— 播种门店行是 check-then-act，连点会撞唯一键")
     void togglingOffTwiceAtTheSameStoreDoesNotBlowUp() throws Exception {
-        String biz = merchant("12600180009", "连点下架的店");
+        String biz = merchant("19600180009", "连点下架的店");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -741,7 +741,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 停用门店，它的货买家当场看不到 —— 再启用当场回来")
     void suspendingAStoreHidesItsGoodsFromBuyers() throws Exception {
-        String biz = merchant("12600180010", "会关掉一家店的商家");
+        String biz = merchant("19600180010", "会关掉一家店的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -793,7 +793,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 所属门店下架的货下不了单，也不会被落到同主体别家店 —— 端上带别家店号也不行")
     void goodsOffSaleAtThisStoreCannotBeOrdered() throws Exception {
-        String biz = merchant("12600180012", "两家店卖法不同的商家");
+        String biz = merchant("19600180012", "两家店卖法不同的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -822,7 +822,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★ B 端「全部」页签要按门店筛 —— 此前切哪家店都是同一批货")
     void allTabIsScopedToCurrentStore() throws Exception {
-        String biz = merchant("12600180013", "两家店卖不同品类的商家");
+        String biz = merchant("19600180013", "两家店卖不同品类的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -856,7 +856,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★ 审核中/已驳回的货不受门店筛影响 —— 那是等店主动手的一批，藏起来他就找不到了")
     void pendingGoodsStayInAllTabRegardlessOfStore() throws Exception {
-        String biz = merchant("12600180014", "有待审商品的商家");
+        String biz = merchant("19600180014", "有待审商品的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -932,7 +932,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 在粮油店下架一件粮油，不该把它播进只卖水果的那家店 —— 而且是在架的")
     void seedingDoesNotPushGoodsIntoStoresThatDoNotSellThatCategory() throws Exception {
-        String biz = merchant("12600180015", "两家店两个业态的商家");
+        String biz = merchant("19600180015", "两家店两个业态的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -995,7 +995,7 @@ class StoreScopedVisibilityFlowTest {
          */
         String in = openCommunityWithCoords("SVC-SUB-IN", 30_020_000, 120_020_000);
         String out = openCommunityWithCoords("SVC-SUB-OUT", 30_030_000, 120_030_000);
-        String biz = merchant("12600180033", "自送只送一个小区", in);
+        String biz = merchant("19600180033", "自送只送一个小区", in);
         String merchantNo = merchantNoOf(biz);
         String store = defaultStoreNo(biz);
         storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
@@ -1005,7 +1005,7 @@ class StoreScopedVisibilityFlowTest {
         fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
                 Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaNoOf(merchantNo, in)))));
 
-        String body = placeDeliveryOrder(biz, "12600180034", out);
+        String body = placeDeliveryOrder(biz, "19600180034", out);
         assertThat(json.readTree(body).get("code").asInt())
                 .as("自送只送 %s，住在 %s 的买家下自送单必须被拒：%s", in, out, body)
                 .isEqualTo(ai.neargo.shop.common.ErrorCode.FULFILLMENT_NOT_SUPPORTED.code());
@@ -1018,7 +1018,7 @@ class StoreScopedVisibilityFlowTest {
          * 此前每保存一次设置都要重建整个主体的社区池，而重建走的是上下架那条链 ——
          * 主体下每件货都多发一条 GOODS_ON_SALE_CHANGED（上下架状态其实没变），进销存白收一遍。
          */
-        String biz = merchant("12600180042", "存送货方式的店");
+        String biz = merchant("19600180042", "存送货方式的店");
         String merchantNo = merchantNoOf(biz);
         String store = defaultStoreNo(biz);
         String goodsNo = onSaleGoods(biz, "存设置时不该被打扰的纸巾");
@@ -1047,7 +1047,7 @@ class StoreScopedVisibilityFlowTest {
          * 而 C 端列表只看商品自己的 on_sale 与审核 —— 停业商家的货照样被搜到，下单时才被拦。
          * 现在买家侧在查询时只认 ACTIVE 主体（R1），状态一改，下一次查询就对。
          */
-        String biz = merchant("12600180041", "会被处置停业的商家");
+        String biz = merchant("19600180041", "会被处置停业的商家");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = onSaleGoods(biz, "停业前在卖的纸巾");
         assertThat(visibility.goodsNos("CM001", null)).as("前置：营业中看得到").contains(goodsNo);
@@ -1069,7 +1069,7 @@ class StoreScopedVisibilityFlowTest {
          * 换成查询时现算之后盲区还在同一个位置，所以这里直接量现算的结果。
          * 消融判据：把 GoodsVisibility 里「只取在架的」那个条件去掉，这条必须红。
          */
-        String biz = merchant("12600180030", "下架再上架的店");
+        String biz = merchant("19600180030", "下架再上架的店");
         String storeNo = defaultStoreNo(biz);
         String goodsNo = onSaleGoods(biz, "上架下架再上架的抽纸");
 
@@ -1111,7 +1111,7 @@ class StoreScopedVisibilityFlowTest {
          * setStoreOnSale 本来就会播种，走它等于绕开被测的那一段，又是一条假绿。
          * 这里走真实的新品路径：建品 → 提交审核（记下「我要卖它」）→ 运营过审兑现。
          */
-        String biz = merchant("12600180031", "两业态的多门店商家·新品");
+        String biz = merchant("19600180031", "两业态的多门店商家·新品");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
@@ -1162,7 +1162,7 @@ class StoreScopedVisibilityFlowTest {
          * 播种只对多门店主体做。单店也播的话，等于把所有存量单店商家的货
          * 一次性转成「店级管理」—— 那是个大得多的改动，而且没有任何人要求过。
          */
-        String biz = merchant("12600180032", "就一家店的商家");
+        String biz = merchant("19600180032", "就一家店的商家");
         String goodsNo = saveGoods(biz, "单店商家的抽纸");
         mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
                         .header("Authorization", "Bearer " + biz))

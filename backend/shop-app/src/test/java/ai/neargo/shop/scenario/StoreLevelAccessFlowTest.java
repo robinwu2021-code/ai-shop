@@ -233,8 +233,8 @@ class StoreLevelAccessFlowTest {
 
     private Shop shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String ownerPhone = "126017700%02d".formatted(seq);
-        String staffPhone = "126017701%02d".formatted(seq);
+        String ownerPhone = "196017700%02d".formatted(seq);
+        String staffPhone = "196017701%02d".formatted(seq);
         String owner = merchant(ownerPhone, "门店级访问-" + seq);
         String entityNo = data(get("/biz/context"), owner).get("merchantNo").asString();
         TestPlan.grantPro(planMapper, entityNo);

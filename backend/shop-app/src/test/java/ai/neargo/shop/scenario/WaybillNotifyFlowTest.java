@@ -179,6 +179,7 @@ class WaybillNotifyFlowTest {
         sub.setSubOrderNo(subOrderNo);
         sub.setOrderNo(orderNo);
         sub.setUserNo(userNo);
+        sub.setIdentityRevision(1L);
         sub.setEntityNo("M-WBN");
         sub.setStatus(OrdSubOrder.WAIT_FULFILL);
         sub.setFulfillment(Fulfillments.EXPRESS);

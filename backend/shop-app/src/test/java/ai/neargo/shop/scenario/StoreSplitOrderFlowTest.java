@@ -64,7 +64,7 @@ class StoreSplitOrderFlowTest {
     @Test
     @DisplayName("★★★ 同主体两家店的货进一单：预览两组、下单两张子单，各带各的店")
     void sameEntityTwoStoresTwoSubOrders() throws Exception {
-        String biz = merchant("12600340010", "按店拆单·主体");
+        String biz = merchant("19600340010", "按店拆单·主体");
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "按店拆单·分店");

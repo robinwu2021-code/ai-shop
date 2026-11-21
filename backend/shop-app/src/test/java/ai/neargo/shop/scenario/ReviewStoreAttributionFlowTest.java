@@ -65,7 +65,7 @@ class ReviewStoreAttributionFlowTest {
     @Test
     @DisplayName("★★★ 两家店各评一次，分不一样 —— 而且换默认店不会让老评价搬家")
     void eachStoreKeepsItsOwnRating() throws Exception {
-        String biz = merchant("12601300001", "评价归店·总店");
+        String biz = merchant("13601300001", "评价归店·总店");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantPro(planMapper, merchantNo);
         String storeA = defaultStoreNo(biz);
@@ -114,7 +114,7 @@ class ReviewStoreAttributionFlowTest {
     @Test
     @DisplayName("★★ 差评被平台裁掉，门店分跟着回去 —— 只回主体分等于申诉只赢一半")
     void rejectingAReviewAlsoLowersTheStoreRating() throws Exception {
-        String biz = merchant("12601300020", "评价归店·处置店");
+        String biz = merchant("13601300020", "评价归店·处置店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
         String store = defaultStoreNo(biz);
         String goodsNo = listedGoods(biz, "评价归店·处置商品");
@@ -137,7 +137,7 @@ class ReviewStoreAttributionFlowTest {
     @Test
     @DisplayName("★★ 跨店对比每行有自己的分（V155 之前只能在顶部给一个主体分）")
     void compareRowsCarryTheirOwnRating() throws Exception {
-        String biz = merchant("12601300030", "评价归店·对比店");
+        String biz = merchant("13601300030", "评价归店·对比店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
         String storeA = defaultStoreNo(biz);
         String goodsNo = listedGoods(biz, "评价归店·对比商品");

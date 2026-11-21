@@ -66,9 +66,9 @@ class TodoPickupScopeFlowTest {
          * 新商家（他自己没有任何自提点），买家把货收到 PP0001 ——
          * PP0001 属于种子商家 M0001，不属于他。
          */
-        String supplier = merchant("12600260001", "只供货不设点");
+        String supplier = merchant("19600260001", "只供货不设点");
         String goodsNo = onSaleGoods(supplier, "青菜");
-        placeAndPayPickup("12600260002", goodsNo, "PP0001");
+        placeAndPayPickup("19600260002", goodsNo, "PP0001");
 
         // 按门店算的话这里是 1
         assertThat(todo(supplier, "toPick"))
@@ -89,14 +89,14 @@ class TodoPickupScopeFlowTest {
     @Test
     @DisplayName("★★★ 承接方看得到别家商家送来的货 —— 那正是他要分的")
     void pickupOwnerSeesOtherMerchantsGoods() throws Exception {
-        String owner = loginAsOwnerOf("M0001", "12600260010");
+        String owner = loginAsOwnerOf("M0001", "19600260010");
         int before = todo(owner, "toPick");
         int beforeRows = pickingRows(owner);
 
         // 另一家商家的货，收货点选 PP0001（M0001 承接）
-        String supplier = merchant("12600260011", "借点铺货的店");
+        String supplier = merchant("19600260011", "借点铺货的店");
         String goodsNo = onSaleGoods(supplier, "土豆");
-        placeAndPayPickup("12600260012", goodsNo, "PP0001");
+        placeAndPayPickup("19600260012", goodsNo, "PP0001");
 
         assertThat(todo(owner, "toPick"))
                 .as("一个自提点承接多家商家的货，别家的货同样要我分")
@@ -116,9 +116,9 @@ class TodoPickupScopeFlowTest {
          * 把 toPick 改成按自提点算之后，这件事一度在工作台上**完全消失**：
          * 有活、没数字、也没入口。这一格补的就是它。
          */
-        String supplier = merchant("12600260030", "只供货不设点");
+        String supplier = merchant("19600260030", "只供货不设点");
         String goodsNo = onSaleGoods(supplier, "冬笋");
-        placeAndPayPickup("12600260031", goodsNo, "PP0001");
+        placeAndPayPickup("19600260031", goodsNo, "PP0001");
 
         assertThat(todo(supplier, "toStock"))
                 .as("他有一单自提货要备 —— 无论买家选的是谁家的点")
@@ -131,9 +131,9 @@ class TodoPickupScopeFlowTest {
     @Test
     @DisplayName("★★ 发货那两个数仍按门店 —— 它们是商家的活，与自提点无关")
     void shippingCountsStayOnStoreScope() throws Exception {
-        String supplier = merchant("12600260020", "发快递的店");
+        String supplier = merchant("19600260020", "发快递的店");
         String goodsNo = onSaleGoods(supplier, "大米");
-        placeAndPayExpress("12600260021", goodsNo);
+        placeAndPayExpress("19600260021", goodsNo);
 
         assertThat(todo(supplier, "toShip"))
                 .as("他没有自提点，但快递单照样是他要发的")

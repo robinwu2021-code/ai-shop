@@ -60,7 +60,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★ 单店商家：上下架仍走主体级，行为与改造前逐字相同")
     void singleStoreBehaviourUnchanged() throws Exception {
-        String biz = merchant("12600220001", "单店上架铺");
+        String biz = merchant("19600220001", "单店上架铺");
         String goodsNo = approvedGoods(biz);
         String store = defaultStoreNo(biz);
 
@@ -73,7 +73,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★★ 下架再上架不能 500 —— 逻辑删的池行还占着 uk_community_goods")
     void offThenOnAgainDoesNotBlowUp() throws Exception {
-        String biz = merchant("12600220060", "反复上下架店");
+        String biz = merchant("19600220060", "反复上下架店");
         String goodsNo = approvedGoods(biz);
         String store = defaultStoreNo(biz);
 
@@ -92,7 +92,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★ A 店下架不影响 B 店 —— 店长做的是「今天我这儿不卖」")
     void storesToggleIndependently() throws Exception {
-        String biz = merchant("12600220010", "双店上架·总店");
+        String biz = merchant("19600220010", "双店上架·总店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
@@ -116,7 +116,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★★ 转成店级的那一刻：A 店下架不能把从没单独设过的 B 店一起带下去")
     void firstConversionKeepsOtherStoresAsThoseWere() throws Exception {
-        String biz = merchant("12600220050", "转换时刻店");
+        String biz = merchant("19600220050", "转换时刻店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
 
@@ -139,7 +139,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★★ 只在 B 店上架 → A 店视为未上架，不是回退主体级")
     void storeWithoutRowIsNotOnSale() throws Exception {
-        String biz = merchant("12600220020", "只在分店卖·总店");
+        String biz = merchant("19600220020", "只在分店卖·总店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -157,7 +157,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★ 所有门店都下架后，主体级也关掉 —— 否则 C 端社区池里还留着")
     void allStoresOffClosesEntityToo() throws Exception {
-        String biz = merchant("12600220030", "全下架店");
+        String biz = merchant("19600220030", "全下架店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -175,7 +175,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★ 不传门店头 = 默认店，不是「主体视角」—— B 端没有主体视角这回事")
     void noStoreHeaderMeansDefaultStore() throws Exception {
-        String biz = merchant("12600220040", "默认店口径店");
+        String biz = merchant("19600220040", "默认店口径店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -206,7 +206,7 @@ class StoreGoodsFlowTest {
     @Test
     @DisplayName("★★★ 「在售/已下架」页签按当前门店筛 —— 商品只属于一家门店，别家店的货一件都不列")
     void tabsFilterByCurrentStore() throws Exception {
-        String biz = merchant("12600220060", "页签按店筛店");
+        String biz = merchant("19600220060", "页签按店筛店");
         String goodsNo = approvedGoods(biz);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);

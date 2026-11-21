@@ -358,6 +358,10 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     /** 越权保护：门店号对不上主体一律 404，**不要 403** —— 403 等于确认这个号存在。 */
     private MchStore require(String merchantNo, String storeNo) {
+        // 别家的门店号一律 404：先按本主体名下判存在，再加锁核对归属 —— 否则锁检查的 CONFLICT 会确认这个号存在
+        if (stores(merchantNo).stream().noneMatch(s -> s.getStoreNo().equals(storeNo))) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         ownership.lockAndCheck("MAIN",merchantNo,storeNo);
         return stores(merchantNo).stream()
                 .filter(s -> s.getStoreNo().equals(storeNo))

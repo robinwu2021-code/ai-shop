@@ -56,6 +56,7 @@ class SettleBatchFlowTest {
             jdbc.update("DELETE FROM stl_bill WHERE entity_no = ?", ENTITY);
             jdbc.update("DELETE FROM stl_settle_batch WHERE entity_no = ?", ENTITY);
             jdbc.update("DELETE FROM ord_status_log WHERE sub_order_no LIKE 'SUB-BATCH-%'");
+            jdbc.update("DELETE FROM ord_sub_order WHERE sub_order_no LIKE 'SUB-BATCH-%'");
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-BATCH-%'");
             jdbc.update("DELETE FROM stl_recon_diff WHERE payment_no LIKE 'STL-BATCH-%'");
             return null;
@@ -90,6 +91,7 @@ class SettleBatchFlowTest {
         b.setCommissionMinor(500L);
         b.setAccruedAt(completedAt);
         DataScopeContext.executeWithoutScope(() -> billMapper.insert(b));
+        legacyFundedSub(subNo, b.getOrderNo());
         return b;
     }
 
@@ -542,5 +544,23 @@ class SettleBatchFlowTest {
         batchService.collectIntoBatches();
 
         assertThat(reload("STL-BATCH-nochan").getBatchNo()).isNull();
+    }
+
+    @Autowired
+    private ai.neargo.shop.trade.order.mapper.StoreOrderMapper subOrderMapper;
+
+    /** 结算只认「先收款后履约」的子单（admission_kind=LEGACY_FUNDED，SettleSourcePortImpl.settleReadiness） */
+    private void legacyFundedSub(String subNo, String orderNo) {
+        var s = new ai.neargo.shop.trade.entity.OrdSubOrder();
+        s.setSubOrderNo(subNo);
+        s.setOrderNo(orderNo);
+        s.setUserNo("U-BATCH");
+        s.setIdentityRevision(1L);
+        s.setEntityNo(ENTITY);
+        s.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.COMPLETED);
+        s.setFulfillment(ai.neargo.shop.common.Fulfillments.EXPRESS);
+        s.setPayAmount(10000L);
+        s.setAdmissionKind("LEGACY_FUNDED");
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.insert(s));
     }
 }

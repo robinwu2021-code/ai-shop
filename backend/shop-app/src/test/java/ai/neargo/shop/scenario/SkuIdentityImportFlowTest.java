@@ -57,7 +57,7 @@ class SkuIdentityImportFlowTest {
 
     @Test
     void importingUnitAdvancesSkuVersionAndIdenticalReplayDoesNot() throws Exception {
-        String token = merchant("12600311010", "SKU单位版本");
+        String token = merchant("19600311010", "SKU单位版本");
         String skuNo = firstSkuNo(token, createGoods(token, "版本测试"));
         Long before = jdbc.queryForObject("SELECT version FROM prd_sku WHERE sku_no=? AND market='CN'",
                 Long.class, skuNo);
@@ -74,7 +74,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ CSV 里的空格子是「不改」，不是「清空」")
     void blankCellKeepsCurrentValue() throws Exception {
-        String token = merchant("12600311001", "编码导入·空格子");
+        String token = merchant("19600311001", "编码导入·空格子");
         String goodsNo = createGoods(token, "饼干两档");
         String skuNo = firstSkuNo(token, goodsNo);
 
@@ -97,7 +97,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ 要清空得显式写 -，这样「清空」是他说的，不是文件的副作用")
     void dashClearsExplicitly() throws Exception {
-        String token = merchant("12600311002", "编码导入·清空");
+        String token = merchant("19600311002", "编码导入·清空");
         String goodsNo = createGoods(token, "清空用");
         String skuNo = firstSkuNo(token, goodsNo);
 
@@ -113,7 +113,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ 整列不在表头里 = 这一列一个字都不碰")
     void missingColumnTouchesNothing() throws Exception {
-        String token = merchant("12600311003", "编码导入·缺列");
+        String token = merchant("19600311003", "编码导入·缺列");
         String goodsNo = createGoods(token, "缺列用");
         String skuNo = firstSkuNo(token, goodsNo);
 
@@ -130,7 +130,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ 只有货号没有 skuNo 的表：按货号认行，认不出要指名报错")
     void resolvesByMerchantCodeWhenSkuNoAbsent() throws Exception {
-        String token = merchant("12600311004", "编码导入·货号回退");
+        String token = merchant("19600311004", "编码导入·货号回退");
         String goodsNo = createGoods(token, "货号回退");
         String skuNo = firstSkuNo(token, goodsNo);
         importCsv(token, "skuNo,条码,货号\n" + skuNo + ",6903333333333,HX-A1");
@@ -160,7 +160,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ 货号撞了当场报，且不写这一行 —— 唯一键不能靠数据库抛")
     void duplicateCodeIsRejectedPerRow() throws Exception {
-        String token = merchant("12600311005", "编码导入·撞号");
+        String token = merchant("19600311005", "编码导入·撞号");
         String goodsNo = createGoods(token, "撞号用");
         String[] skus = twoSkuNos(token, goodsNo);
         importCsv(token, "skuNo,货号\n" + skus[0] + ",HX-DUP");
@@ -177,7 +177,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★★ 试算不写库 —— 「先算后做」只有在真的没写时才成立")
     void planDoesNotWrite() throws Exception {
-        String token = merchant("12600311006", "编码导入·试算");
+        String token = merchant("19600311006", "编码导入·试算");
         String goodsNo = createGoods(token, "试算用");
         String skuNo = firstSkuNo(token, goodsNo);
 
@@ -191,8 +191,8 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★ 别家的规格行认不出来 —— 作用域来自登录态，不是文件里的编号")
     void otherMerchantsSkuIsNotFound() throws Exception {
-        String a = merchant("12600311007", "编码导入·甲店");
-        String b = merchant("12600311008", "编码导入·乙店");
+        String a = merchant("19600311007", "编码导入·甲店");
+        String b = merchant("19600311008", "编码导入·乙店");
         String goodsA = createGoods(a, "甲店的货");
         String skuA = firstSkuNo(a, goodsA);
 
@@ -204,7 +204,7 @@ class SkuIdentityImportFlowTest {
     @Test
     @DisplayName("★ 导出的表能原样导回去：一行不改，就该报 0 行改动")
     void exportRoundTripsWithNoChange() throws Exception {
-        String token = merchant("12600311009", "编码导入·回环");
+        String token = merchant("19600311009", "编码导入·回环");
         String goodsNo = createGoods(token, "回环用");
         String skuNo = firstSkuNo(token, goodsNo);
         importCsv(token, "skuNo,条码,货号,单位\n" + skuNo + ",6906666666666,HX-RT,件");

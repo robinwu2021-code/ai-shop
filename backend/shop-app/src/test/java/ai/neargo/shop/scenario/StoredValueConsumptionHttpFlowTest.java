@@ -41,7 +41,7 @@ class StoredValueConsumptionHttpFlowTest {
     @Autowired OtpStore otp;
     @Autowired StoredValueCreditService credits;
     private String id() { return UUID.randomUUID().toString().replace("-", ""); }
-    private String phone() { return "126" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+    private String phone() { return "196" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
     private JsonNode postJson(MockMvc mvc, String path, String token, Object body, String key) throws Exception {
         return json.readTree(mvc.perform(post(path).header("Authorization", "Bearer " + token)

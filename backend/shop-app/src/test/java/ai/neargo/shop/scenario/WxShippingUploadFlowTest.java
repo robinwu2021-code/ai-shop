@@ -144,6 +144,7 @@ class WxShippingUploadFlowTest {
         sub.setSubOrderNo(subOrderNo);
         sub.setOrderNo(orderNo);
         sub.setUserNo("UWS" + System.nanoTime() % 100_000_000L);
+        sub.setIdentityRevision(1L);
         sub.setEntityNo(entityNo);
         sub.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.WAIT_FULFILL);
         sub.setFulfillment(ai.neargo.shop.common.Fulfillments.EXPRESS);
@@ -222,6 +223,7 @@ class WxShippingUploadFlowTest {
         sub.setSubOrderNo(subOrderNo);
         sub.setOrderNo(orderNo);
         sub.setUserNo("UWD" + System.nanoTime() % 100_000_000L);
+        sub.setIdentityRevision(1L);
         sub.setEntityNo(entityNo);
         sub.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.WAIT_FULFILL);
         sub.setFulfillment(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
@@ -262,6 +264,7 @@ class WxShippingUploadFlowTest {
         sub.setSubOrderNo(subNo);
         sub.setOrderNo(orderNo);
         sub.setUserNo("UWSO" + System.nanoTime() % 100_000_000L);
+        sub.setIdentityRevision(1L);
         sub.setEntityNo(entityNo);
         sub.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.WAIT_FULFILL);
         sub.setFulfillment(ai.neargo.shop.common.Fulfillments.EXPRESS);
@@ -280,6 +283,7 @@ class WxShippingUploadFlowTest {
         OrdOrder payment = new OrdOrder();
         payment.setOrderNo(orderNo);
         payment.setUserNo(userNo);
+        payment.setIdentityRevision(1L);
         payment.setStatus(OrdOrder.PAID);
         payment.setPayAmount(1_000L);
         DataScopeContext.executeWithoutScope(() -> shippingPayments.insert(payment));

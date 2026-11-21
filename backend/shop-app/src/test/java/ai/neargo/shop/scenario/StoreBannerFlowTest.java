@@ -51,7 +51,7 @@ class StoreBannerFlowTest {
     @Test
     @DisplayName("★★★ AC1/AC2 店主设了背景图：B 端回读是它，C 端门户 store.bannerUrl 也是它")
     void bannerSetShowsOnPortal() throws Exception {
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600168001");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "19600168001");
         String merchantNo = quickStart(token, "设背景图的店");
 
         JsonNode profile = saveStore(token, "{\"bannerUrl\":\"" + BANNER + "\"}");
@@ -65,7 +65,7 @@ class StoreBannerFlowTest {
     @Test
     @DisplayName("★★★ AC3 清掉（空串）= 没设；不传 = 不改（老版本 B 端保存别的资料不能把图冲掉）")
     void clearAndKeep() throws Exception {
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600168002");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "19600168002");
         String merchantNo = quickStart(token, "清背景图的店");
         saveStore(token, "{\"bannerUrl\":\"" + BANNER + "\"}");
 
@@ -108,7 +108,7 @@ class StoreBannerFlowTest {
     @Test
     @DisplayName("★★ AC4 不是 http(s) 的值拒收 —— 本地临时路径写进去，买家那边是一张裂图")
     void rejectsNonHttp() throws Exception {
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600168003");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "19600168003");
         String merchantNo = quickStart(token, "乱传背景图的店");
 
         mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
@@ -121,7 +121,7 @@ class StoreBannerFlowTest {
     @Test
     @DisplayName("★★ 从没设过的店：C 端读到空串，不是 null（端上把 null 当值会画出一张裂图）")
     void neverSetIsEmptyString() throws Exception {
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600168004");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "19600168004");
         String merchantNo = quickStart(token, "没设背景图的店");
         JsonNode front = portalFront(merchantNo);
         assertThat(front.has("bannerUrl")).isTrue();
