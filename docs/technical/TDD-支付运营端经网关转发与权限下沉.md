@@ -304,3 +304,22 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 - near-pay（`feat/ops-identity-unified-20261120`）：`pay:onboarding:read` → `view`（接口 + 手册 3 处原地替换；手册生成器在本机会带出上万行无关差异、`verify-api-handbook.py` 在干净代码上也失败，未重生成）；`OpsV2PermissionCoverageTest` + `docs/api/ops-v2-permission-codes.txt`。
   反向验证：临时去掉一个接口的 `@PreAuthorize`，测试失败并指出该接口；恢复后通过。同跑 `PayPermissionEvaluatorTest`、`OpsAccessControllerTest`、`OpsCollectionHandlerMappingTest` 通过。
 - 正式库：V686 随下次 v2 发布执行，预计补 27 个码的功能点（正式库已有 53 个码，按 `perm_code` 去重不重复插）。补完后在运营端角色里按岗位勾选。
+
+### 9.5 上线（2026-11-21 09:45–09:53 CST）
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 | .80 `releases/shop-app-58c006c82.jar`（sha256 前缀 `cee785903380c2e4`），标签 `gateway-permcodes-58c006c82`；Flyway 执行 V686 | 复原 `run.sh.before-permcodes-58c006c82` 后 `./run.sh all restart`；V686 的数据按 .61 `~/backup/sys_function_point_role_point.before-v686-20261121.sql` 回滚（或删 `created_at` 为本次的 26 个 `ACT__PAY_*` 点及其授权） |
+| near-pay | 166 `pay-svc.jar` sha256 前缀 `9c92d095ce7db23e` = 上一版补丁包 `cf59cb8913a44168` 只换 `pay-portal` 内 `OpsNewebPayModificationController`（javap 与线上类仅差权限码字符串） | 复原 `pay-svc.jar.before-opsv2-20261121`，`docker restart nearpay-prod` |
+
+中断：v2 01:47:35–01:49:17 UTC，near-pay 01:50:13–01:51:08 UTC。运营端页面未变，未重发。
+
+**线上验证**
+
+- 库：V686 新增 26 个 `ACT__PAY_*` 操作功能点，全部只授 `SUPER_ADMIN`（预计 27 个：`onboarding:read` 改成已有的 `view`）；near-pay 登记的 72 个码全部有功能点。功能点 325→351、角色授权 643→669。
+- 运营端角色编辑的功能点目录（`/ops/perm/functions`）能看到新点（抽查 5 个）。
+- 超管经网关：商户、进件、渠道账户、审批、`/me/access`、权限映射 6 个接口 200、业务码 0（商户列表 20 s，near-pay 查询慢的老问题）。不带令牌：直连 near-pay 与经网关都 401。
+- near-pay 调统一认证接口 200、拒绝 0 次；近 26 小时 `[ops-perm] mapping-only` 0 条；收款推送积压 0。
+- 笔误修正的接口在正式环境未装配（新蓝进件网关为 stub 时不启用，探测回框架 404），线上暂无行为变化。
+
+**仍未验证**：低权限账号被拒（403）与数据范围 —— 需要用户在运营端建测试角色与测试账号并登录（§9.3）。
