@@ -401,3 +401,18 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 2. 白名单 `ST-V2TEST-SUPPORT`（不在绑定清单）：`/me/access` 由 403 变 200，码为空 → 商户列表 403；给它的角色加「商户：查看」→ 200（列表按其角色的数据范围）。
 3. 按 10.5 第 2 条在支付中心为岗位角色建范围（两人审批），用 `ST-V2TEST-FINANCE` 验证可见商户。
 4. 回退：删掉 `ops-operator-default` 一行并重启，即回到逐人绑定。
+
+### 10.7 实现与上线（2026-11-21 10:40–11:00 CST，用户：「按推荐项开工」）
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| near-pay 代码 | `feat/ops-identity-unified-20261120` `0da459bb1`：`ExecutionEnvironmentBindings` 读 `shop.pay.environment.ops-operator-default`，OPS 运营无绑定行时取默认（只此一类，停用行仍拒，未配 = 原行为），每人首次记 `[ops-env] default`；单测 7 例 + 环境/守卫相关测试通过 | — |
+| near-pay 线上 | `pay-svc.jar` sha256 前缀 `8aa470ca44fc2484` = 上一版 `9c92d095…` 只换 `pay-domain` 内该类（javap 逐方法比对：仅构造器、新方法与 `requirePrincipal` 变化，其余差异为 `ldc→ldc_w` 偏移）；`cloud.properties` 加 `shop.pay.environment.ops-operator-default=PRODUCTION`；中断 02:51:08–02:51:57 UTC | 复原 `pay-svc.jar.before-opsenv-20261121`、`cloud.properties.before-opsenv-20261121`，`docker restart nearpay-prod` |
+| ai-shop 前端 | `bfb2af8b7`：角色权限抽屉里的「支付中心数据范围」只读栏（`app/payment-center/role-pay-scope.tsx`，经 `module.ts` 导出，持 `pay:data-scope:view` 才显示）；账号数据域抽屉加「商家编号不作用于支付中心」说明。166 `current → releases/gateway-bfb2af8b7` | `current` 指回 `releases/gateway-398f4a855` |
+| 数据范围草稿 | `DS6E489E546B054D58`（`FINANCE`，TW 全部商户，资金脱敏只读，到 2027-11-21）、`DS60D7539E6F3142CB`（`BD`，TW 全部商户，资金不可见），录入人 `ST-V2TEST-ADMIN`，**状态 DRAFT，待用户本人在支付中心「数据范围」页签启用**（两人审批，不能由录入方代为启用） | 撤销草稿 |
+
+**验证**
+
+- 不在绑定清单的 `ST-V2TEST-SUPPORT`/`-FINANCE`/`-BD`/`-ADMIN`：`/me/access` 由 403 变 200，near-pay 各记一行 `[ops-env] default`；没有 `pay:merchant:view` 的商户列表仍 403（权限码照常把关）。
+- 角色页打开「财务」：只读栏显示「没有生效的支付数据范围」（草稿未启用，符合预期）。
+- 注意：ai-shop 角色 `FINANCE` 只有 4 个支付码（订单查看、退款查看/复核、日志查看），`BD` 没有支付码 —— 范围启用后，BD 还需要在角色里勾支付功能点才有意义。
