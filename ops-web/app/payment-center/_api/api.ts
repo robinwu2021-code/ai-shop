@@ -10,6 +10,8 @@ import type {
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
   AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
   NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
+  TrialChannel, TrialPreparation, TrialCommand, TestSession,
+  PosConfigView, PosSave, UatRun, UatManifest, PosMode, SoftPosBinding, SoftPosRegistration,
   CredentialTypeRow, CredentialPolicy, CredentialPolicySave, CredentialRow, CredentialDetail, CredentialAccessLog, CredentialVersion, CredentialVersionEntry, CredentialBindingRow, AuditEventRow,
   ChannelAccountUpdate, QualificationPrepare, ClaimCommandReceipt, TerminalCredentialReference, TerminalRetirement, AlertMetric, ReversalRecheck,
   MerchantMemberRow, MemberCreate, ProfileRevisionRow, MerchantWorkspace, AssistedOperation, DraftCommandOutcome, RepairRow, RepairCreate,
@@ -239,6 +241,40 @@ export interface PayCenterApi {
     enable(keyId: number, versionIndex: number, body: { approvalRef: string | null; reason: string }): Promise<CredentialVersion>;
     revoke(keyId: number, versionIndex: number, reason: string): Promise<CredentialVersion>;
     bindings(days?: number): Promise<CredentialBindingRow[]>;
+  };
+  /** P11 测试渠道试运行资格（蓝新 / LINE Pay 沙箱）：准备信息 + 建 DRAFT，经「渠道资质」审批生效 */
+  trials: {
+    preparation(payMerchantNo: string, channel: TrialChannel): Promise<TrialPreparation>;
+    create(payMerchantNo: string, channel: TrialChannel, body: TrialCommand): Promise<QualificationVersion>;
+  };
+  /** P11 收款入口测试单：沙箱 H5（入口只含测试产品）与 PayBy SGS（配置门店）；最长 30 分钟 */
+  testSessions: {
+    sandbox(entryNo: string, body: { expiresAt: number }): Promise<TestSession>;
+    payby(entryNo: string, body: { expiresAt: number }): Promise<TestSession>;
+  };
+  /** P11 PayBy POS 执行配置（终端 PayBy · AE · AED）：制单 → 另一人核验 → 发布 / 停用 */
+  pos: {
+    list(terminalNo: string): Promise<PosConfigView[]>;
+    detail(terminalNo: string, id: number): Promise<PosConfigView>;
+    save(terminalNo: string, body: PosSave): Promise<PosConfigView>;
+    verify(terminalNo: string, id: number, body: { expectedVersion: number; reason: string; evidenceRef: string }): Promise<PosConfigView>;
+    publish(terminalNo: string, id: number, c: Cmd): Promise<PosConfigView>;
+    disable(terminalNo: string, id: number, c: Cmd): Promise<PosConfigView>;
+  };
+  /** P11 PayBy POS 验收批次（D01–D20）；签核人不能是创建人或用例记录人 */
+  posUat: {
+    runs(terminalNo: string, configId: number): Promise<UatRun[]>;
+    start(terminalNo: string, configId: number, body: { expectedVersion: number; mode: PosMode; reason: string }): Promise<UatRun>;
+    run(terminalNo: string, runNo: string): Promise<UatRun>;
+    recordCase(terminalNo: string, runNo: string, body: { expectedVersion: number; caseCode: string; result: string; evidenceRef: string; executionNo: string | null; reason: string }): Promise<UatRun>;
+    review(terminalNo: string, runNo: string, body: { expectedVersion: number; evidenceRef: string; reason: string }): Promise<UatRun>;
+    manifest(terminalNo: string, runNo: string): Promise<UatManifest>;
+  };
+  /** P11 SoftPOS 绑定（蓝新 · 台湾终端）；没有幂等号与版本，也没有列表接口 */
+  softpos: {
+    register(terminalNo: string, body: SoftPosRegistration): Promise<SoftPosBinding>;
+    detail(terminalNo: string, id: number): Promise<SoftPosBinding>;
+    revoke(terminalNo: string, id: number, reason: string): Promise<SoftPosBinding>;
   };
   /** P10 审计事件（near-pay OpsAuditController，只读） */
   audits: {
@@ -642,6 +678,35 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       enable: (id, v, body) => c.command(`/credentials/${id}/versions/${v}/enable`, { ...body }),
       revoke: (id, v, reason) => c.command(`/credentials/${id}/versions/${v}/revoke`, { reason }),
       bindings: (days) => c.get("/credential-bindings", days ? { days } : undefined),
+    },
+    trials: {
+      preparation: (no, ch) => c.get(`/channel-accounts/${e(no)}/${ch}-trial`),
+      create: (no, ch, body) => c.command(`/channel-accounts/${e(no)}/${ch}-trial`, { ...body }),
+    },
+    pos: {
+      list: (t) => c.get(`/terminals/${e(t)}/payby-pos`),
+      detail: (t, id) => c.get(`/terminals/${e(t)}/payby-pos/${id}`),
+      save: (t, body) => c.command(`/terminals/${e(t)}/payby-pos`, { ...body }),
+      verify: (t, id, body) => c.command(`/terminals/${e(t)}/payby-pos/${id}/verify`, { ...body }),
+      publish: (t, id, cmd) => c.command(`/terminals/${e(t)}/payby-pos/${id}/publish`, { ...cmd }),
+      disable: (t, id, cmd) => c.command(`/terminals/${e(t)}/payby-pos/${id}/disable`, { ...cmd }),
+    },
+    posUat: {
+      runs: (t, id) => c.get(`/terminals/${e(t)}/payby-pos/${id}/acceptance-runs`),
+      start: (t, id, body) => c.command(`/terminals/${e(t)}/payby-pos/${id}/acceptance-runs`, { ...body }),
+      run: (t, rn) => c.get(`/terminals/${e(t)}/payby-pos/acceptance-runs/${e(rn)}`),
+      recordCase: (t, rn, body) => c.command(`/terminals/${e(t)}/payby-pos/acceptance-runs/${e(rn)}/cases`, { ...body }),
+      review: (t, rn, body) => c.command(`/terminals/${e(t)}/payby-pos/acceptance-runs/${e(rn)}/review`, { ...body }),
+      manifest: (t, rn) => c.get(`/terminals/${e(t)}/payby-pos/acceptance-runs/${e(rn)}/manifest`),
+    },
+    softpos: {
+      register: (t, body) => c.command(`/terminals/${e(t)}/softpos-bindings`, { ...body }, { idempotent: false }),
+      detail: (t, id) => c.get(`/terminals/${e(t)}/softpos-bindings/${id}`),
+      revoke: (t, id, reason) => c.command(`/terminals/${e(t)}/softpos-bindings/${id}/revoke`, { reason }, { idempotent: false }),
+    },
+    testSessions: {
+      sandbox: (no, body) => c.command(`/collection-entries/${e(no)}/sessions`, { ...body }),
+      payby: (no, body) => c.command(`/collection-entries/${e(no)}/payby-test-sessions`, { ...body }),
     },
     audits: {
       list: (q) => c.page("/audit-events", q),

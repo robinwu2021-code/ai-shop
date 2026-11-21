@@ -52,39 +52,6 @@ export function ChannelAccountEdit({ api, account, version, run, onDone }: { api
   );
 }
 
-/** 沙箱试运行资质准备（只 NEWEBPAY_TEST 账户）：建 DRAFT，经「渠道资质」审批生效 */
-export function QualificationPrepare({ api, payMerchantNo, nextRevision, run, onDone }: { api: PayCenterApi; payMerchantNo: string; nextRevision: number; run: Run; onDone: () => void }) {
-  const c = usePc();
-  const m = useCopy(P9_COPY);
-  const [open, setOpen] = React.useState(false);
-  if (!open) return <Button size="sm" variant="outline" onClick={() => setOpen(true)}>{m.qualPrepare}</Button>;
-  return (
-    <section className="space-y-3 rounded-card border border-border p-3" aria-label={m.qualPrepareTitle}>
-      <h4 className="txt-label">{m.qualPrepareTitle}</h4>
-      <Notice tone="info">{m.qualPrepareNote}</Notice>
-      <ActionForm notify={false} draft={null /* 含渠道商户号等，不存本地草稿 */}
-        fields={[
-          { key: "evidenceNo", label: m.evidenceNo, required: true, maxLength: 32, pattern: { re: "^[A-Z0-9_-]{1,32}$", msg: "A-Z 0-9 _ -" } },
-          { key: "revision", label: m.revision, type: "number", required: true, min: 1, help: m.revisionHelp },
-          { key: "protocolEvidence", label: m.protocolEvidence, required: true, maxLength: 255 },
-          { key: "trialEvidence", label: m.trialEvidence, required: true, maxLength: 255, help: m.trialHelp, pattern: { re: "^sandbox-trial:.+", msg: "sandbox-trial:..." } },
-          { key: "enablementEvidence", label: m.enablementEvidence, required: true, maxLength: 255 },
-          { key: "returnUrl", label: m.returnUrl, required: true, maxLength: 200, pattern: { re: "^https://.+", msg: "https://" } },
-          { key: "notifyUrl", label: m.notifyUrl, required: true, maxLength: 200, help: m.notifyHelp, pattern: { re: "^https://.+", msg: "https://" } },
-          { key: "validUntil", label: m.validUntil, required: true, help: m.validUntilHelp, pattern: { re: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$", msg: "YYYY-MM-DD HH:mm" } },
-          reasonField(c),
-        ]}
-        initial={{ evidenceNo: "", revision: nextRevision, protocolEvidence: "", trialEvidence: "sandbox-trial:", enablementEvidence: "", returnUrl: "", notifyUrl: "", validUntil: "", reason: "" }}
-        onSubmit={(v) => run(() => api.qualifications.prepare(payMerchantNo, {
-          evidenceNo: String(v.evidenceNo).trim(), revision: Number(v.revision), productCode: "NEWEBPAY_CARD_ONETIME",
-          protocolEvidence: String(v.protocolEvidence).trim(), trialEvidence: String(v.trialEvidence).trim(), enablementEvidence: String(v.enablementEvidence).trim(),
-          returnUrl: String(v.returnUrl).trim(), notifyUrl: String(v.notifyUrl).trim(), validUntil: new Date(parseLocalDateTime(v.validUntil)).toISOString(), reason: String(v.reason),
-        }))}
-        onDone={() => { setOpen(false); onDone(); }} />
-    </section>
-  );
-}
-
 /** 资质详情：坐标与资质内容（GET /channel-qualifications/{ref}） */
 export function QualificationDetail({ api, ref }: { api: PayCenterApi; ref: string }) {
   const m = useCopy(P9_COPY);

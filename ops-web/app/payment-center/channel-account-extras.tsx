@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton, ErrorState } from "@/components/ui/misc";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { QualificationDetail, QualificationPrepare } from "./p9-panels";
+import { QualificationDetail } from "./p9-panels";
+import { TrialRenew, trialChannelOf } from "./p11-panels";
 import type { PayCenterApi } from "@/app/payment-center/_api/api";
 import {
   QUALIFICATION_STATUSES, TRANSFER_STATUSES,
@@ -236,8 +237,8 @@ export function QualificationsPanel({ api, detail, run }: { api: PayCenterApi; d
           })()}
         </>
       )}
-      {canManage && a.payChannel === "NEWEBPAY_TEST" && (
-        <QualificationPrepare api={api} payMerchantNo={a.payMerchantNo} nextRevision={Math.max(0, ...(q.data ?? []).map((x) => x.revision)) + 1} run={run} onDone={() => void q.refetch()} />
+      {canManage && trialChannelOf(a.payChannel) && (
+        <TrialRenew api={api} payMerchantNo={a.payMerchantNo} channel={trialChannelOf(a.payChannel)!} nextRevision={Math.max(0, ...(q.data ?? []).map((x) => x.revision)) + 1} run={run} onDone={() => void q.refetch()} />
       )}
       {canManage && (
         <section className="space-y-2" aria-label={m.qualImport}>

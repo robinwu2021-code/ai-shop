@@ -489,3 +489,58 @@ export interface AuditEventRow {
   auditNo: string; requestId: string; operatorNo: string; roleNos: string[]; face: string; resourceType: string; resourceNo: string; action: string; result: string;
   reason: string | null; approvalRef: string | null; beforeSummary: string | null; afterSummary: string | null; occurredAt: number;
 }
+
+// ════ P11（渠道专属能力：测试渠道、PayBy；《支付中心-渠道专属能力运营需求》；契约 near-pay da3ced2a4） ════
+
+export type TrialChannel = "newebpay" | "linepay";
+/** 试运行准备信息（GET /channel-accounts/{}/newebpay-trial | linepay-trial） */
+export interface TrialPreparation { payMerchantNo: string; accountVersion: number; products: string[]; enablementEvidence: string }
+/** 试运行资格草稿（expectedVersion 是渠道账户版本；有效期 ≤24 小时；entry 只收 H5 / API） */
+export interface TrialCommand {
+  expectedVersion: number; evidenceNo: string; revision: number; productCode: string; entry: "H5" | "API";
+  protocolEvidence: string; returnUrl: string; notifyUrl: string; validUntil: string; reason: string;
+}
+/** 测试收款会话（沙箱 H5 或 PayBy SGS）：固定小额，同一请求号复用同一笔单 */
+export interface TestSession { payOrderNo: string; checkoutUrl: string; expireAt: number }
+
+export const POS_MODES = ["PLATFORM_PROXY", "TERMINAL_DIRECT"] as const;
+export type PosMode = (typeof POS_MODES)[number];
+export const POS_STATES = ["DRAFT", "VERIFIED", "PUBLISHED", "DISABLED", "SUPERSEDED"] as const;
+export interface PosSettings {
+  environment: "SANDBOX" | "PRODUCTION"; allowedModes: PosMode[]; defaultMode: PosMode; protocolVersion: string; contractVersion: string;
+  readerKitVersion: string; firmwareVersion: string; queryContractRef: string; certificationRefs: Partial<Record<PosMode, string>>;
+}
+/** 绑定只回「凭据是否已关联」，不回凭据引用 */
+export interface PosBindingView {
+  bindingId: number; bindingVersion: number; status: string; physicalSn: string; deviceId: string; channelMerchantNo: string; channelStoreNo: string; channelTerminalNo: string;
+  issuerCode: string; issuerType: string; payeeMemberId: string | null; deviceKeyVersion: string; queryKeyVersion: string; deviceCredentialLinked: boolean; queryCredentialLinked: boolean;
+  activationRef: string; authorizationRef: string;
+}
+export interface PosModeReport { mode: PosMode; ready: boolean; checks: Record<string, boolean>; reasons: string[] }
+/** near-pay PosOpsModels.View */
+export interface PosConfigView {
+  id: number; terminalNo: string; state: string; version: number; baseTerminalVersion: number; targetTerminalVersion: number; settings: PosSettings; binding: PosBindingView | null;
+  configuredBy: string; verifiedBy: string | null; reviewEvidenceRef: string | null; stale: boolean; canPublish: boolean; modes: Partial<Record<PosMode, PosModeReport>>;
+  runtime: { ready: boolean; canReceivePayments: boolean; reasons: string[] } | null; audit: Record<string, unknown>[];
+}
+export interface PosBindingInput {
+  issuerCode: string; issuerType: string; channelMerchantNo: string; channelStoreNo: string; deviceId: string; channelTerminalNo: string; payeeMemberId: string | null;
+  deviceKeyRef: string | null; deviceKeyVersion: string; queryCredentialRef: string | null; queryKeyVersion: string; activationRef: string; authorizationRef: string;
+}
+/** 新建草稿 configurationId 为 null、expectedVersion 为 0；expectedTerminalVersion 是终端版本 */
+export interface PosSave { expectedTerminalVersion: number; configurationId: number | null; expectedVersion: number; reason: string; settings: PosSettings; binding: PosBindingInput }
+export const UAT_CASES = Array.from({ length: 20 }, (_, i) => `D${String(i + 1).padStart(2, "0")}`);
+export const UAT_RESULTS = ["PASS", "FAIL", "NOT_APPLICABLE"] as const;
+export interface UatEvidence { caseCode: string; result: string; evidenceRef: string; executionNo: string | null; recordedBy: string; recordedAt: string }
+/** near-pay PosAcceptanceModels.Run */
+export interface UatRun {
+  runNo: string; version: number; state: "COLLECTING" | "ACCEPTED"; mode: PosMode; createdBy: string; reviewedBy: string | null; reviewEvidenceRef: string | null; stale: boolean;
+  identity: Record<string, unknown>; identityHash: string; cases: UatEvidence[]; blockers: string[]; reviewerEligible: boolean;
+}
+export interface UatManifest { schemaVersion: number; kind: string; runNo: string; state: string; identity: Record<string, unknown>; identityHash: string; requiredCases: string[]; cases: UatEvidence[] }
+/** near-pay TerminalExecutionModels.Binding（SoftPOS）：没有幂等号与版本 */
+export interface SoftPosBinding {
+  id: number; terminal: string; store: string; accountId: number; physicalDevice: string; epoch: string; providerMid: string; providerTid: string;
+  packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; configVersion: number; status: "DRAFT" | "REVOKED"; validUntil: string;
+}
+export interface SoftPosRegistration { packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; validUntil: string; reason: string }
