@@ -323,3 +323,25 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 - 笔误修正的接口在正式环境未装配（新蓝进件网关为 stub 时不启用，探测回框架 404），线上暂无行为变化。
 
 **仍未验证**：低权限账号被拒（403）与数据范围 —— 需要用户在运营端建测试角色与测试账号并登录（§9.3）。
+
+### 9.6 线上权限矩阵实测（2026-11-21 10:15–10:30 CST，用户：「用白名单账号测试」）
+
+方式：ADR-027 密钥票据换白名单测试账号的会话（脚本 `scripts/automation/v2_session.py`，令牌只在进程内存）；ai-shop 侧的角色、范围、启停用白名单超管 `ST-V2TEST-ADMIN` 调；逐轮账号 `ST-UME-REVIEW2`（两天未登录）临时改挂临时角色 `TEST_PAYPERM_QA`，测完恢复为 `NP_IT_REVIEW`、角色已删。写请求只发测试商户 `PM0E0F6CC8F7454D75` 且带过期版本，测后其收款策略仍为版本 2、`UNRESTRICTED`。
+
+| 轮 | 给的权限 | 结果 |
+|---|---|---|
+| R1 | 无支付码 | `/me/access` 200（码空）；商户列表 403；改收款策略 403 ✅ |
+| R2 | 商户：查看 | near-pay 看到的码正好 `[pay:merchant:view]`；商户列表 200；看收款策略、渠道账户、改收款策略 403 ✅ |
+| R3 | + 收款策略：查看 | 看范围内商户的策略 **403** ❌ —— 该账号在 near-pay 没有数据范围授权（`entityNos=[]`），被数据范围挡下；本轮不能单独证明补码放行（由 R2 与下面对照覆盖） |
+| R4 | ai-shop 账号的 `merchantNo` 设为测试商户 | near-pay 范围仍为空、列表仍空：**ai-shop 账号上的商户字段不影响 near-pay 数据范围** |
+| R5 | 撤掉商户查看 | 32 秒后 403 ✅ |
+| R6 | 停用账号 | 立刻 401（网关拒，会话被踢）✅ |
+| 对照 | `ST-UME-REVIEW1`（10 码）、`ST-UME-CONFIG`（26 码）原样 | 8 项全部「持有即 200、未持有即 403」✅ |
+| 未登记 | `ST-V2TEST-SUPPORT` | near-pay 403 ✅（见下） |
+
+**发现：near-pay 还有两道 ai-shop 管不到的门**
+
+1. **执行环境绑定（运营人员白名单）**：near-pay 配置 `shop.pay.environment.bindings` 只登记了 `ST-NEARA`、`ST-UME-CONFIG`、`ST-UME-REVIEW1`、`ST-UME-REVIEW2` 四个运营账号；不在其中的账号（包括白名单超管 `ST-V2TEST-ADMIN`）连 `/me/access` 都 403（`ENVIRONMENT_BINDING_UNAVAILABLE`），在判权限码之前。新增运营要改 near-pay 配置并重启。
+2. **数据范围只认 near-pay 的 SY04**：能看哪些商户来自 near-pay `pay_data_scope_grant`，与 ai-shop 账号上的 `merchantNo` 无关；没有授权的账号列表为空、详情 403。
+
+所以「权限码」已由 ai-shop 统一授予并验证生效；但「谁能进 near-pay」「能看哪些商户」仍在 near-pay 侧配置。是否把这两项也收归 ai-shop（例如运营端统一认证接口带出范围、near-pay 对 OPS 运营不再要求逐人环境绑定）需另行决定。
