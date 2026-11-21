@@ -66,7 +66,7 @@ class SuspendedStoreWindDownFlowTest {
     @Test
     @DisplayName("★★★ 门店停用后老板仍进得去，撤得下货；撤完主体总闸要关")
     void ownerCanStillWindDownASuspendedStore() throws Exception {
-        String biz = merchant("12600182001", "会停用一家店的商家");
+        String biz = merchant("19600182001", "会停用一家店的商家");
         TestPlan.grantQuota(planMapper, merchantNoOf(biz), 3);
 
         String storeA = defaultStoreNo(biz);
@@ -112,7 +112,7 @@ class SuspendedStoreWindDownFlowTest {
     @Test
     @DisplayName("★★★ 放开权限的代价：在停业门店上架，买家侧一个字节都不能变")
     void sellingInASuspendedStoreChangesNothingForBuyers() throws Exception {
-        String biz = merchant("12600182002", "在停业店上架的商家");
+        String biz = merchant("19600182002", "在停业店上架的商家");
         TestPlan.grantQuota(planMapper, merchantNoOf(biz), 3);
 
         String storeA = defaultStoreNo(biz);

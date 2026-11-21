@@ -156,6 +156,7 @@ class SelfOperatedAfterSaleFlowTest {
         s.setOrderNo("ORDAS" + System.nanoTime() % 100_000_000L);
         String buyer = "UAS" + System.nanoTime() % 100_000_000L;
         s.setUserNo(buyer);
+        s.setIdentityRevision(1L);
         asBuyer(buyer);
         s.setEntityNo(entityNo);
         s.setStatus("COMPLETED");

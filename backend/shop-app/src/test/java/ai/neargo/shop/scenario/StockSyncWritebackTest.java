@@ -506,7 +506,7 @@ class StockSyncWritebackTest {
 
     private Shop shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String token = merchant("1260936%04d".formatted(seq), "库存同步测试店-" + seq);
+        String token = merchant("1960936%04d".formatted(seq), "库存同步测试店-" + seq);
         TestStoreCategory.open(mvc(), json, token, FRUIT);
         JsonNode ctx = ok(get("/biz/context"), token);
         String entityNo = ctx.get("merchantNo").asString();

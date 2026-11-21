@@ -61,7 +61,7 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★ 匿名扫码（无 token）也要落一行访问，且 userNo 为空")
     void anonymousScanIsRecorded() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128001", "获客埋点测试店A", "CM-ACQ-A");
+        String merchantNo = approvedMerchantNo("19600128001", "获客埋点测试店A", "CM-ACQ-A");
         String storeCode = storeCodeOf(merchantNo);
 
         long before = countVisits(merchantNo);
@@ -91,7 +91,7 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★ 缺 deviceId / UA / 登录态时，扫码落地页照常返回门店")
     void landingSurvivesMinimalContext() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128002", "获客埋点测试店B", "CM-ACQ-B");
+        String merchantNo = approvedMerchantNo("19600128002", "获客埋点测试店B", "CM-ACQ-B");
         String storeCode = storeCodeOf(merchantNo);
 
         mvc().perform(get("/mp/store/by-code").param("storeCode", storeCode))
@@ -109,7 +109,7 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★ 扫码 → 进店 → 首单 走完，获客看板四个数都非零")
     void funnelCountsAreRealAfterFullPath() throws Exception {
-        String phone = "12600128003";
+        String phone = "19600128003";
         String merchantNo = approvedMerchantNo(phone, "获客埋点测试店C", "CM-ACQ-C");
         String storeCode = storeCodeOf(merchantNo);
 
@@ -118,7 +118,7 @@ class StoreAcquisitionFlowTest {
                 .param("deviceId", "DEV-ACQ-C")).andExpect(status().isOk());
 
         // ② 登录后进店 —— 归因判定在这一步发生（source=STORE_CODE，decision=CREATED）
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600128004");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "19600128004");
         mvc().perform(post("/mp/store/" + merchantNo + "/enter")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -151,9 +151,9 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★★ 登录后扫码即写归因 —— 不靠端上再调一次 /enter")
     void scanAloneFeedsTheFunnel() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128007", "获客真实链路店", "CM-ACQ-R");
+        String merchantNo = approvedMerchantNo("19600128007", "获客真实链路店", "CM-ACQ-R");
         String storeCode = storeCodeOf(merchantNo);
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600128008");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "19600128008");
 
         // 唯一动作：带着登录态扫这张码。**没有 /enter**
         mvc().perform(get("/mp/store/by-code")
@@ -176,7 +176,7 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★ 同设备连扫三次：scan=3 而 scanUv=1（去重在聚合层，不在明细层）")
     void repeatedScansFromOneDeviceCountAsOneUv() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128005", "获客埋点测试店D", "CM-ACQ-D");
+        String merchantNo = approvedMerchantNo("19600128005", "获客埋点测试店D", "CM-ACQ-D");
         String storeCode = storeCodeOf(merchantNo);
 
         for (int i = 0; i < 3; i++) {
@@ -202,7 +202,7 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★ 平台看板 funnel 的 SCAN/ENTER 两环真的出现（且不是写死的 0）")
     void platformFunnelHasScanRingsFromSameSource() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128006", "获客埋点测试店E", "CM-ACQ-E");
+        String merchantNo = approvedMerchantNo("19600128006", "获客埋点测试店E", "CM-ACQ-E");
         String storeCode = storeCodeOf(merchantNo);
         mvc().perform(get("/mp/store/by-code").param("storeCode", storeCode)
                 .param("deviceId", "DEV-ACQ-E")).andExpect(status().isOk());
@@ -247,14 +247,14 @@ class StoreAcquisitionFlowTest {
     @Test
     @DisplayName("★★ 两家分店在看板上各占一行，且只扫其中一家时另一家是 0")
     void boardSplitsByStore() throws Exception {
-        String merchantNo = approvedMerchantNo("12600128009", "分店看板测试店", "CM-ACQ-S");
+        String merchantNo = approvedMerchantNo("19600128009", "分店看板测试店", "CM-ACQ-S");
         String branch = extraStore(merchantNo, "分店看板·南门店");
         String branchCode = codeService.ensureForStore(merchantNo, branch);
         String defaultStore = codeService.ensureForStore(merchantNo, null);
         assertThat(branchCode).as("两家店拿到同一个码，后面的断言就没意义了")
                 .isNotEqualTo(defaultStore);
 
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600128010");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "19600128010");
         // 只扫分店的码
         mvc().perform(get("/mp/store/by-code")
                         .header("Authorization", "Bearer " + buyer)

@@ -69,7 +69,7 @@ class StoreCampaignFlowTest {
     @Test
     @DisplayName("★ 全主体满减（store_no 为空）对哪家店都生效 —— 存量活动行为不变")
     void entityWideCampaignAppliesToAnyStore() throws Exception {
-        String biz = merchant("12600230001", "全店满减铺");
+        String biz = merchant("19600230001", "全店满减铺");
         String entityNo = merchantNo(biz);
         saveFullCut(biz, "全店满减", 5000, 800, null);
 
@@ -83,7 +83,7 @@ class StoreCampaignFlowTest {
     @Test
     @DisplayName("★★ 门店级满减只减那家店的单 —— 别家店的单一分不减")
     void storeCampaignOnlyAppliesToItsStore() throws Exception {
-        String biz = merchant("12600230010", "开业满减·总店");
+        String biz = merchant("19600230010", "开业满减·总店");
         String entityNo = merchantNo(biz);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
         TestPlan.grantPro(planMapper, entityNo);
@@ -102,7 +102,7 @@ class StoreCampaignFlowTest {
     @Test
     @DisplayName("★★ 限时特价 / 买赠 / 店铺券限定门店当场被拒，且不是通用「参数有误」")
     void onlyFullCutAcceptsStoreScope() throws Exception {
-        String biz = merchant("12600230020", "限定门店被拒铺");
+        String biz = merchant("19600230020", "限定门店被拒铺");
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "被拒·分店");
 
@@ -118,7 +118,7 @@ class StoreCampaignFlowTest {
     @Test
     @DisplayName("★ 门店级与全主体级同时命中：取最优，不叠加")
     void bestOfStoreAndEntityWide() throws Exception {
-        String biz = merchant("12600230030", "两个满减铺");
+        String biz = merchant("19600230030", "两个满减铺");
         String entityNo = merchantNo(biz);
         TestPlan.grantPro(planMapper, entityNo);
         String storeB = createStore(biz, "两个满减·分店");

@@ -55,7 +55,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★★ 码落到那家店：Location 上必须同时有 storeCode 与 from=QR")
     void shortLinkCarriesCodeAndAttribution() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140001", "短链测试店A", "CM-SL-A");
+        String merchantNo = approvedMerchantNo("19600140001", "短链测试店A", "CM-SL-A");
         String code = storeCodeService.ensureFor(merchantNo);
         assertThat(code).as("发码本身要成功，否则下面测的是空字符串").isNotBlank();
 
@@ -71,7 +71,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★ 商品号原样透传 —— 老链接用的就是 ?g=")
     void goodsParamIsPassedThrough() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140002", "短链测试店B", "CM-SL-B");
+        String merchantNo = approvedMerchantNo("19600140002", "短链测试店B", "CM-SL-B");
         String code = storeCodeService.ensureFor(merchantNo);
 
         String location = locationOf(get("/s/" + code).param("g", "G0001"));
@@ -111,7 +111,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★★ 302 不许被全局信封裹住 —— 响应体要是空的")
     void redirectIsNotWrappedInApiEnvelope() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140003", "短链测试店C", "CM-SL-C");
+        String merchantNo = approvedMerchantNo("19600140003", "短链测试店C", "CM-SL-C");
         String code = storeCodeService.ensureFor(merchantNo);
 
         MvcResult r = mvc().perform(get("/s/" + code)).andReturn();
@@ -129,7 +129,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★★ 设了门店代码，/s/<代码> 落到这家店 —— 链接从此是能念出来的")
     void slugResolvesToTheSameStore() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140004", "短链测试店D", "CM-SL-D");
+        String merchantNo = approvedMerchantNo("19600140004", "短链测试店D", "CM-SL-D");
         String storeNo = defaultStoreNo(merchantNo);
         String code = storeCodeService.ensureFor(merchantNo);
 
@@ -145,7 +145,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★★ 清掉门店代码要真的清掉 —— updateById 会跳过 null，那句 set 根本不生成")
     void clearingSlugActuallyClearsIt() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140005", "短链测试店E", "CM-SL-E");
+        String merchantNo = approvedMerchantNo("19600140005", "短链测试店E", "CM-SL-E");
         String storeNo = defaultStoreNo(merchantNo);
         String code = storeCodeService.ensureFor(merchantNo);
 
@@ -172,7 +172,7 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★ 格式不合与撞保留词都给专门的错误码，不是「请求参数有误」")
     void invalidSlugIsRejectedWithItsOwnCode() throws Exception {
-        String merchantNo = approvedMerchantNo("12600140006", "短链测试店F", "CM-SL-F");
+        String merchantNo = approvedMerchantNo("19600140006", "短链测试店F", "CM-SL-F");
         String storeNo = defaultStoreNo(merchantNo);
 
         for (String bad : new String[]{"ab", "-abc", "abc-", "Abc_Def", "有中文", "download"}) {
@@ -187,8 +187,8 @@ class StoreShortLinkFlowTest {
     @Test
     @DisplayName("★★ 代码被别家店占了就说「换一个」，不是 500 也不是静默覆盖")
     void takenSlugIsRejected() throws Exception {
-        String a = approvedMerchantNo("12600140007", "短链测试店G", "CM-SL-G");
-        String b = approvedMerchantNo("12600140008", "短链测试店H", "CM-SL-H");
+        String a = approvedMerchantNo("19600140007", "短链测试店G", "CM-SL-G");
+        String b = approvedMerchantNo("19600140008", "短链测试店H", "CM-SL-H");
         storeAdminService.setSlug(a, defaultStoreNo(a), "same-name-shop");
 
         assertThatThrownBy(() -> storeAdminService.setSlug(b, defaultStoreNo(b), "same-name-shop"))

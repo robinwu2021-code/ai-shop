@@ -70,6 +70,7 @@ class StoreCodeRedeemTest {
     /** 建一张到店核销券并发给一个真实注册过的会员，返回 {主体号, 核销码, 用户券号} */
     private String[] giveStoreCodeCoupon(int timesTotal) {
         String e = "M-RDM-" + (++seq);
+        entity(e);
         String phone = "1360000" + (++seq);
         String userNo = "U-RDM-" + seq;
         String personNo = personService.resolveOrCreateByPhone(phone).getPersonNo();
@@ -117,14 +118,14 @@ class StoreCodeRedeemTest {
         assertThat(view.phoneMasked()).as("店员当面核对券主人：头三尾四，与 C 端同一口径")
                 .matches("^136\\*{4}\\d{4}$");
 
-        CouponRedeemService.RedeemResult r = redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1");
+        CouponRedeemService.RedeemResult r = redeemService.redeem(g[0], g[1], store(g[0]), "STAFF-1");
         assertThat(r.usedUp()).isTrue();
         assertThat(r.remaining()).isZero();
         assertThat(r.duplicated()).isFalse();
 
         PmtApply row = applyMapper.selectOne(Wrappers.<PmtApply>lambdaQuery()
                 .eq(PmtApply::getPromoNo, g[2]).last("limit 1"));
-        assertThat(row.getStoreNo()).as("对账要知道货从哪家店出").isEqualTo("ST-9");
+        assertThat(row.getStoreNo()).as("对账要知道货从哪家店出").isEqualTo(store(g[0]));
         assertThat(row.getOperatorNo()).as("不可逆动作必须记名").isEqualTo("STAFF-1");
         assertThat(row.getRevertedAt()).as("线下核销不可撤销，这一列恒为空").isNull();
     }
@@ -133,9 +134,9 @@ class StoreCodeRedeemTest {
     @DisplayName("★★★ 3 秒内连点第二下：返回上一次的结果，不报错 —— 报错他会再按一次")
     void doubleTapWithinWindowReturnsSameResult() {
         String[] g = giveStoreCodeCoupon(1);
-        redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1");
+        redeemService.redeem(g[0], g[1], store(g[0]), "STAFF-1");
 
-        CouponRedeemService.RedeemResult again = redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1");
+        CouponRedeemService.RedeemResult again = redeemService.redeem(g[0], g[1], store(g[0]), "STAFF-1");
         assertThat(again.duplicated()).isTrue();
         assertThat(again.timesUsed()).as("没有扣第二次").isEqualTo(1);
 
@@ -154,7 +155,7 @@ class StoreCodeRedeemTest {
             applyMapper.update(null, Wrappers.<PmtApply>lambdaUpdate()
                     .eq(PmtApply::getPromoNo, g[2])
                     .set(PmtApply::getAppliedAt, System.currentTimeMillis() - 10_000));
-            CouponRedeemService.RedeemResult r = redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1");
+            CouponRedeemService.RedeemResult r = redeemService.redeem(g[0], g[1], store(g[0]), "STAFF-1");
             assertThat(r.timesUsed()).isEqualTo(i);
             assertThat(r.usedUp()).as("第 %d 次", i).isEqualTo(i == 3);
         }
@@ -167,7 +168,7 @@ class StoreCodeRedeemTest {
         applyMapper.update(null, Wrappers.<PmtApply>lambdaUpdate()
                 .eq(PmtApply::getPromoNo, g[2])
                 .set(PmtApply::getAppliedAt, System.currentTimeMillis() - 10_000));
-        assertThatThrownBy(() -> redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1"))
+        assertThatThrownBy(() -> redeemService.redeem(g[0], g[1], store(g[0]), "STAFF-1"))
                 .isInstanceOf(BizException.class);
     }
 
@@ -175,7 +176,9 @@ class StoreCodeRedeemTest {
     @DisplayName("★★ 别家的码在这家店查不到 —— 码是短的，不限主体就成了枚举工具")
     void codeFromAnotherMerchantIsNotFound() {
         String[] g = giveStoreCodeCoupon(1);
-        assertThatThrownBy(() -> redeemService.redeem("M-OTHER", g[1], "ST-9", "STAFF-1"))
+        String other = "M-OTHER-" + (++seq);
+        entity(other);
+        assertThatThrownBy(() -> redeemService.redeem(other, g[1], store(other), "STAFF-1"))
                 .isInstanceOf(BizException.class)
                 .hasMessage(ErrorCode.COUPON_CODE_NOT_FOUND.name());
     }
@@ -184,6 +187,7 @@ class StoreCodeRedeemTest {
     @org.junit.jupiter.api.DisplayName("★★ 发给预设人群（@ALL / @NEW）不用先存人群；不认识的 @ 键照旧拒（原型 s18）")
     void issueToPresetAudience() {
         String e = "M-PRE-" + (++seq);
+        entity(e);
         String phone = "1360000" + (++seq);
         String userNo = "U-PRE-" + seq;
         String personNo = personService.resolveOrCreateByPhone(phone).getPersonNo();
@@ -204,5 +208,21 @@ class StoreCodeRedeemTest {
                 .as("刚下过单的人不是沉睡会员").isZero();
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> couponService.issue(e, c.couponNo(), "@NOPE", "OP"))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
+    }
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate entityJdbc;
+
+    /** 建券要锁住并核对真实主体（StoreOwnershipWritePortImpl.lockEntityAndCheck），夹具得先落一行 */
+    private void entity(String entityNo) {
+        entityJdbc.update("INSERT INTO mch_entity(entity_no,name,status,tenant_no,created_at,updated_at)"
+                + " VALUES (?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entityNo, entityNo);
+        entityJdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at)"
+                + " VALUES (?,?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", store(entityNo), entityNo, entityNo);
+    }
+
+    /** 核销要核对门店属于这个主体（CouponRedeemServiceImpl → lockAndCheck），每个主体一家自己的店 */
+    private static String store(String entityNo) {
+        return "ST9-" + entityNo;
     }
 }

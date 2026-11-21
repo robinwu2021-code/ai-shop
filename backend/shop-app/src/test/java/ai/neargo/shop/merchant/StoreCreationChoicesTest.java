@@ -17,7 +17,8 @@ class StoreCreationChoicesTest {
   var active=new EntityStoresVO(new EntityVO("E1","Entity","ACTIVE",true,null,0,true,true),List.of());
   when(entities.myStores(user)).thenReturn(List.of(active));
   assertTrue(service.access(user).canQuickStart());
-  var pending=new EntityStoresVO(new EntityVO("E1","Entity","PENDING_LICENSE",false,null,0,true,true),List.of());
+  // 待补证照只有「已经开出门店」时才挡快速开店、允许续开（09eba90fd 起）
+  var pending=new EntityStoresVO(new EntityVO("E1","Entity","PENDING_LICENSE",false,null,0,true,true),List.of(mock(ai.neargo.shop.merchant.dto.StoreVO.class)));
   when(entities.myStores(user)).thenReturn(List.of(pending));
   assertFalse(service.access(user).canQuickStart());assertTrue(service.access(user).canResumeQuickStart());
   when(entities.myStores(user)).thenReturn(Collections.nCopies(5,active));

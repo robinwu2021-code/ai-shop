@@ -121,7 +121,7 @@ class StoreOrderRoutingTest {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
                 .build();
-        String token = TestLogin.consumer(mvc, json, otpStore, "12600137001");
+        String token = TestLogin.consumer(mvc, json, otpStore, "19600137001");
         String body = "{\"fulfillment\":\"STORE_PICKUP\","
                 + "\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}],"
                 + "\"storeChoices\":[{\"merchantNo\":\"" + ENTITY + "\",\"storeNo\":\"" + b + "\"}]}";

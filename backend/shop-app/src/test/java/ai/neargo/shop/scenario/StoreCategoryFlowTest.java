@@ -53,7 +53,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★★★ 类目不在本店经营类目里就拒，且经营类目不被撑大（TDD-门店经营类目 · 取代原「建品自动加入」）")
     void savingGoodsOutsideStoreIsRejected() throws Exception {
-        String token = merchant("12600141001", "货架测试·经营类目");
+        String token = merchant("19600141001", "货架测试·经营类目");
         String storeNo = defaultStore(token);
 
         // 新店经营类目是空的，且这不是错误状态：他还没开过类目
@@ -80,7 +80,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★ 底下还有商品的货架撤不掉 —— 否则店铺页里消失、商品列表里还在")
     void shelfInUseCannotBeRemoved() throws Exception {
-        String token = merchant("12600141002", "货架测试·占用");
+        String token = merchant("19600141002", "货架测试·占用");
         String storeNo = defaultStore(token);
         open(token, storeNo, "CAT210");
         saveGoods(token, "洗洁精", "CAT210");
@@ -95,7 +95,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★ 归档类目摆不上货架，也建不了新品 —— 降二级后三级类目全归档，这个口子现在就能踩")
     void archivedCategoryIsRejectedEverywhere() throws Exception {
-        String token = merchant("12600141003", "货架测试·归档");
+        String token = merchant("19600141003", "货架测试·归档");
         String storeNo = defaultStore(token);
 
         // CAT111（原三级叶菜）已被 V168 归档
@@ -131,7 +131,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★★★ 闸门关着时照样能摆 —— 这是生产默认，改回 true 会让商家全线摆不上货架")
     void shelfIsNotBlockedWhileGateIsOff() throws Exception {
-        String token = merchant("12600141007", "货架测试·闸门关");
+        String token = merchant("19600141007", "货架测试·闸门关");
         String storeNo = defaultStore(token);
 
         /*
@@ -150,7 +150,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★ 没那张证就摆不上带门槛的货架 —— 而且要在勾选那一刻拒，不是等到上架")
     void gatedCategoryNeedsTheCode() throws Exception {
-        String token = merchant("12600141004", "货架测试·门槛");
+        String token = merchant("19600141004", "货架测试·门槛");
         String storeNo = defaultStore(token);
         /*
          * **门店经营模式故意不动，保持建表默认的 SELF_OPERATED** —— 入驻这条路不改它，
@@ -184,7 +184,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★★ 移出再加回同一个类目 —— 逻辑删除留下的行不能把唯一键占死")
     void removedCategoryCanBeAddedBack() throws Exception {
-        String token = merchant("12600141020", "货架测试·加回");
+        String token = merchant("19600141020", "货架测试·加回");
         String storeNo = defaultStore(token);
 
         assertThat(codeOf(replace(token, storeNo,
@@ -213,10 +213,10 @@ class StoreCategoryFlowTest {
     @DisplayName("★★ 运营授码之后，同一个类目就加得上了 —— 没证的第三方的出路在运营那一侧")
     void opsGrantOpensTheCategory() throws Exception {
         /*
-         * 号段避开 12600141009 —— 那个号在 BizDashboardAndReviewFlowTest 里被当作
+         * 号段避开 19600141009 —— 那个号在 BizDashboardAndReviewFlowTest 里被当作
          * 「不是商家的人」，这里注册成商家会让那条用例在全量跑时变红（而报错与类目无关）
          */
-        String token = merchant("12600141019", "货架测试·授权后");
+        String token = merchant("19600141019", "货架测试·授权后");
         String storeNo = defaultStore(token);
         gate(true);
 
@@ -241,7 +241,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★★ 平台自营主体加经营类目不判资质 —— 与上面那条同一个类目、同一个开关，只差主体的 self_operated")
     void selfOperatedStoreSkipsQualification() throws Exception {
-        String token = merchant("12600141008", "货架测试·自营");
+        String token = merchant("19600141008", "货架测试·自营");
         String storeNo = defaultStore(token);
         markEntitySelfOperated(storeNo);
         // 门店模式故意设成第三方：判据只看主体，门店这一列不参与
@@ -262,7 +262,7 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★ 建第二家店默认复制默认店的货架 —— 分店卖的多半是同一批货")
     void secondStoreCopiesTheFirst() throws Exception {
-        String token = merchant("12600141005", "货架测试·分店");
+        String token = merchant("19600141005", "货架测试·分店");
         // 默认套餐只给一家店 —— 不升级的话第二家卡在额度上，测不到货架这件事
         ai.neargo.shop.support.TestPlan.grantPro(planMapper, merchantNoOf(token));
         String first = defaultStore(token);

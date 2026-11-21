@@ -61,7 +61,7 @@ class TopicFlowTest {
         String ops = opsLogin();
         String topicNo = createTopic(ops, "测试专题·上架校验");
 
-        String biz = merchant("12600161001", "专题测试店");
+        String biz = merchant("19600161001", "专题测试店");
         String goodsNo = saveGoods(biz, "还没过审的货");
 
         // 草稿/待审的货：直接拒

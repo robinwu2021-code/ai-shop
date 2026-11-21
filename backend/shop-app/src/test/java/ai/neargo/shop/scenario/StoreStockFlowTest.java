@@ -66,7 +66,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★ 单店商家：一条门店库存行都没有 → 走主体总量，行为与改造前逐字相同")
     void singleStoreBehaviourUnchanged() throws Exception {
-        String biz = merchant("12600190001", "单店库存店");
+        String biz = merchant("19600190001", "单店库存店");
         String goodsNo = listedGoods(biz, 3);
         String skuNo = firstSku(goodsNo);
 
@@ -81,7 +81,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★ 启用分店库存后，A 店卖光不影响 B 店的数")
     void storesHaveIndependentStock() throws Exception {
-        String biz = merchant("12600190010", "双店库存·总店");
+        String biz = merchant("19600190010", "双店库存·总店");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -107,7 +107,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★ 没设过库存的门店卖不出去 —— 视为 0，不是回退到主体总量")
     void storeWithoutStockRowSellsNothing() throws Exception {
-        String biz = merchant("12600190020", "只给一家店设库存");
+        String biz = merchant("19600190020", "只给一家店设库存");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -130,7 +130,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 买家看到的库存按商品所属门店算 —— 链接上带别家店号也不变")
     void buyerSeesStoreStock() throws Exception {
-        String biz = merchant("12600190080", "买家侧门店库存");
+        String biz = merchant("19600190080", "买家侧门店库存");
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "买家侧·分店");
@@ -164,7 +164,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 单落在商品所属的门店 —— 不是默认店，也不是自提点所在的店")
     void orderLandsOnTheStoreThatActuallyHasIt() throws Exception {
-        String biz = merchant("12600190082", "落店·归属门店");
+        String biz = merchant("19600190082", "落店·归属门店");
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "落店·卖它的分店");
         String goodsNo = listedGoodsAt(biz, storeB, 100);
@@ -179,7 +179,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 所属门店没货就拒 —— 不拿同主体别家店的库存放行")
     void orderSkipsStoreThatDoesNotSellIt() throws Exception {
-        String biz = merchant("12600190083", "落店·所属店没货");
+        String biz = merchant("19600190083", "落店·所属店没货");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -198,7 +198,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 加购按**商品所属门店**判库存 —— 端上带别家店号也不拿那家的库存放行")
     void cartAddJudgesTheStoreYouAreBrowsing() throws Exception {
-        String biz = merchant("12600190086", "加购·按店判");
+        String biz = merchant("19600190086", "加购·按店判");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -218,7 +218,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 商品流里那一行带的是**商品所属的门店**，不是主体")
     void catalogRowCarriesTheStoreThatSellsIt() throws Exception {
-        String biz = merchant("12600190087", "目录·带门店");
+        String biz = merchant("19600190087", "目录·带门店");
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "目录·只有分店在卖");
         // 默认店的店名等于主体名，分不出东西 —— 所以货建在分店
@@ -235,7 +235,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★★ 没有社区上下文时也要带门店 —— 搜索页此前显示的是主体名")
     void catalogRowCarriesStoreEvenWithoutCommunity() throws Exception {
-        String biz = merchant("12600190091", "目录·无社区也带门店");
+        String biz = merchant("19600190091", "目录·无社区也带门店");
         String title = "无社区带门店的货";
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "无社区·只有分店在卖");
@@ -252,7 +252,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
     void mainStockWriteLandsWhereTheReadLooks() throws Exception {
-        String biz = merchant("12600190040", "写读要同一个数");
+        String biz = merchant("19600190040", "写读要同一个数");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -302,7 +302,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★ 商家看到的库存 = 当前门店的数，不是主体总量")
     void merchantSeesCurrentStoreStock() throws Exception {
-        String biz = merchant("12600190030", "看得见分店库存");
+        String biz = merchant("19600190030", "看得见分店库存");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -325,7 +325,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("没设过库存的门店显示 0 —— 与下单侧同一口径，不回退主体总量")
     void storeWithoutRowShowsZero() throws Exception {
-        String biz = merchant("12600190040", "只设一家店");
+        String biz = merchant("19600190040", "只设一家店");
         String goodsNo = listedGoods(biz, 100);
         String skuNo = firstSku(goodsNo);
         String storeA = defaultStoreNo(biz);
@@ -355,7 +355,7 @@ class StoreStockFlowTest {
     @Test
     @DisplayName("★★ A 店下架后，A 店的列表显示下架；B 店的列表里根本没有这件货")
     void listShowsPerStoreOnSale() throws Exception {
-        String biz = merchant("12600190070", "分店上下架回显");
+        String biz = merchant("19600190070", "分店上下架回显");
         String goodsNo = listedGoods(biz, 50);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
