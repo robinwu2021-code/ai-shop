@@ -131,6 +131,26 @@
   },
   {
     "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_MERCHANT_MEMBERS",
+    "href": "/payment-center?tab=merchant-members",
+    "label": "商户成员",
+    "perm": "pay:member:view",
+    "group": "支付商户",
+    "ready": true,
+    "sourcePoint": "OPS_MERCHANT__TAB_PAYMENT"
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_ASSOCIATION_REPAIRS",
+    "href": "/payment-center?tab=association-repairs",
+    "label": "关联修复",
+    "perm": "pay:merchant:view",
+    "group": "支付商户",
+    "ready": true,
+    "sourcePoint": "OPS_MERCHANT__TAB_PAYMENT"
+  },
+  {
+    "functionKey": "finance",
     "pointCode": "OPS_FINANCE__PAYCENTER_REFUNDS",
     "href": "/payment-center?tab=refunds",
     "label": "退款订单",

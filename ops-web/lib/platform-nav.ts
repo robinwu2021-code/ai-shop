@@ -47,7 +47,7 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
     { key: 'paymentMerchant', label: '支付中心', icon: 'Landmark', modules: ['pay'], href: '/payment-center', match: ['/payment-center'],
       children: [
         pc('approvals'),
-        pc('merchants', '支付商户'), pc('stores'), pc('onboardings', '支付商户'), pc('merchant-changes'),
+        pc('merchants', '支付商户'), pc('stores'), pc('onboardings', '支付商户'), pc('merchant-changes'), pc('merchant-members'), pc('association-repairs'),
         pc('orders', '交易'), pc('exceptions', '交易'), pc('attempts'), pc('refunds'),
         pc('channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
         // P3a（V685）：费率 / 资金结算 / 对账 / 会员资产；P3b、P3c 的页面接口出来再进

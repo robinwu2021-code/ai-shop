@@ -401,3 +401,41 @@ export interface StoreMethodSave { expectedVersion: number; eligibilityRevision:
 // ── 门店同步事件：near-pay OpsStoreDtos.StoreSyncEventDto ──
 export interface StoreSyncEvent { eventNo: string; sourceSystem: string; eventId: string; channel: string; revision: number; outcome: string; issue: string | null; createdAt: number }
 
+
+// ════ P8（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+export const MEMBER_STATUSES = ["ACTIVE", "SUSPENDED", "REVOKED"] as const;
+export const MEMBER_ROLES = ["CASHIER", "STORE_MANAGER", "MERCHANT_ADMIN"] as const;
+export const MEMBER_SUBJECT_TYPES = ["MCH_ACCOUNT", "USER"] as const;
+/** near-pay OpsMemberController · MerchantMemberDto */
+export interface MerchantMemberRow {
+  membershipNo: string; merchantNo: string; sourceSystem: string; subjectType: string; subjectRef: string; role: string;
+  storeScope: "ALL" | "LISTED"; storeNos: string[]; actions: string[]; status: string; validUntil: number | null; grantedBy: string; revokeReason: string | null;
+}
+export interface MemberCreate { merchantNo: string; subjectType: string; subjectRef: string; reason: string }
+
+export const PROFILE_REVIEW_STATUSES = ["SUBMITTED", "APPROVED", "REJECTED", "NEED_MORE", "SUPERSEDED"] as const;
+/** near-pay OpsMerchantController · ProfileRevisionDto（列表是数组，不分页） */
+export interface ProfileRevisionRow {
+  revisionNo: string; revision: number; purpose: string; market: string; sourceProfileRevision: number; profile: Record<string, string>;
+  materials: { kind: string; ref: string; purpose: string }[]; profileHash: string; reviewStatus: string; submittedBy: string; submittedAt: number;
+  reviewedBy: string | null; reviewedAt: number | null; reviewReason: string | null; approvalNo: string | null; version: number;
+}
+/** near-pay MerchantWorkspaceDto.WorkspaceSection；summaryJson 是 JSON 字符串 */
+export interface WorkspaceSection { key: string; title: string; module: string; status: "READY" | "NOT_READY"; count: number | null; summaryJson: string | null }
+export interface MerchantWorkspace { merchant: { merchantNo: string; displayName: string; status: string }; sections: WorkspaceSection[] }
+/** 代填资料超时后按请求号取回执（OperationView） */
+export interface AssistedOperation { requestNo: string; action: "SAVE" | "SUBMIT"; appliedVersion: number | null; current: AssistedProfileView }
+/** 进件草稿命令是否已生效（OnboardingDraftService.Outcome；未知请求号也回 applied:false） */
+export interface DraftCommandOutcome { requestNo: string; applied: boolean }
+
+export const REPAIR_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CANCELLED", "EXPIRED", "EXECUTED"] as const;
+/** near-pay OpsSourceAssociationRepairController · RepairDto */
+export interface RepairRow {
+  repairNo: string; requestNo: string; merchantNo: string; linkNo: string; sourceSystem: string; sourceScope: string;
+  fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number; status: string;
+  approvalNo: string | null; approvalStatus: string | null; approvalVersion: number | null; requestedBy: string; executedBy: string | null; executedAt: number | null;
+  beforeSnapshot: Record<string, unknown> | null; afterSnapshot: Record<string, unknown> | null; createdAt: number; version: number;
+}
+/** expectedVersion 是商户来源关联（指向 from 主体）的版本，不是修复单版本 */
+export interface RepairCreate { merchantNo: string; fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number }

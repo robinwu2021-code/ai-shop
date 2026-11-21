@@ -22,7 +22,9 @@ export type PayCenterTabKey =
   | "approval-flows" | "settings"
   // P3a
   | "attempts" | "ledger-entries" | "settlements" | "withdrawals" | "payouts" | "recon-diffs"
-  | "sv-accounts" | "sv-transactions" | "channel-costs" | "commission-rules";
+  | "sv-accounts" | "sv-transactions" | "channel-costs" | "commission-rules"
+  // P8
+  | "merchant-members" | "association-repairs";
 
 export interface PayCenterTab {
   key: PayCenterTabKey;
@@ -38,6 +40,9 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "merchants", perm: "pay:merchant:view", group: "merchant", zh: "商户档案", en: "Merchants" },
   { key: "stores", perm: "pay:store:view", group: "merchant", zh: "支付门店", en: "Stores" },
   { key: "merchant-changes", perm: "pay:merchant:view", group: "merchant", zh: "商户变更", en: "Merchant changes" },
+  // P8（TDD-支付中心运营页面 §2.15）：商户成员（BM03）、来源关联修复
+  { key: "merchant-members", perm: "pay:member:view", group: "merchant", zh: "商户成员", en: "Merchant members" },
+  { key: "association-repairs", perm: "pay:merchant:view", group: "merchant", zh: "关联修复", en: "Association repairs" },
   { key: "onboardings", perm: "pay:onboarding:view", group: "merchant", zh: "渠道进件", en: "Onboarding" },
   { key: "orders", perm: "pay:order:view", group: "trade", zh: "支付订单", en: "Payments" },
   { key: "exceptions", perm: "pay:order:view", group: "trade", zh: "异常交易", en: "Exceptions" },

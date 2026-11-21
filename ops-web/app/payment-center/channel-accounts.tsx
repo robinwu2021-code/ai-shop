@@ -23,6 +23,7 @@ import {
 } from "@/app/payment-center/_api/types";
 import { useCopy, fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
+import { P8_COPY } from "./p8-copy";
 import { fmtTime } from "@/lib/utils";
 import { MiniTable, usePc } from "./shared";
 import { CHANNEL_ACCOUNTS_COPY, type ChannelAccountsCopy } from "./channel-accounts-copy";
@@ -487,6 +488,8 @@ export function StoreBindingsPanel({ api, storeNo, merchantNo, run }: { api: Pay
   const c = usePc();
   const allow = useCan();
   const canManage = allow("pay:store-binding:manage");
+  const canApprove = allow("pay:store-binding:approve");
+  const p8 = useCopy(P8_COPY);
   const { confirm, dialog } = useConfirm();
   const q = useQuery({ queryKey: [KEY, "stores", "bindings", api.source, storeNo], queryFn: () => api.storeBindings.list(storeNo) });
   const accounts = useQuery({ queryKey: [KEY, "stores", "binding-accounts", api.source, merchantNo], enabled: !!merchantNo,
@@ -516,10 +519,11 @@ export function StoreBindingsPanel({ api, storeNo, merchantNo, run }: { api: Pay
           {b.pendingTargetPayMerchantNo ? (
             <div className="space-y-2">
               <Notice tone="warning">{fill(m.pendingRebind, { target: b.pendingTargetPayMerchantNo, reason: b.pendingReason ?? "" })}</Notice>
-              {canManage && (
+              {(canManage || canApprove) && (
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => act(fill(m.submitRebindTitle, { no: b.bindingNo }), "", (r) => api.approvals.submit({ subjectType: "STORE_BINDING_REBIND", subjectRef: b.bindingNo, subjectRevision: b.version + 1, action: "REBIND", reason: r }))}>{m.submitRebind}</Button>
-                  <Button size="sm" variant="ghost" onClick={() => act(fill(m.withdrawRebindTitle, { no: b.bindingNo }), m.withdrawRebindDesc, (r) => api.storeBindings.rebindWithdraw(storeNo, b.bindingNo, { expectedVersion: b.version, reason: r }))}>{m.withdrawRebind}</Button>
+                  {canApprove && <Button size="sm" onClick={() => act(fill(p8.executeRebindTitle, { no: b.bindingNo, target: b.pendingTargetPayMerchantNo ?? "" }), p8.executeRebindDesc, (r) => api.storeBindings.rebind(storeNo, b.bindingNo, { expectedVersion: b.version, reason: r }))}>{p8.executeRebind}</Button>}
+                  {canManage && <><Button size="sm" variant="outline" onClick={() => act(fill(m.submitRebindTitle, { no: b.bindingNo }), "", (r) => api.approvals.submit({ subjectType: "STORE_BINDING_REBIND", subjectRef: b.bindingNo, subjectRevision: b.version + 1, action: "REBIND", reason: r }))}>{m.submitRebind}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => act(fill(m.withdrawRebindTitle, { no: b.bindingNo }), m.withdrawRebindDesc, (r) => api.storeBindings.rebindWithdraw(storeNo, b.bindingNo, { expectedVersion: b.version, reason: r }))}>{m.withdrawRebind}</Button></>}
                 </div>
               )}
             </div>

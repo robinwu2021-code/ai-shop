@@ -9,6 +9,7 @@ import type {
   MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow, NewebpayModification, OnboardingDraft,
   AccountStatus, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRow, StoreBinding, VerificationStatus,
   ChannelAccountTransfer, QualificationVersion, StoreMethodView, StoreQrCode,
+  MerchantMemberRow, ProfileRevisionRow, RepairRow,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -220,6 +221,21 @@ export function createMockPayCenterApi(): PayCenterApi {
   ], (r) => r.claimNo);
 
   const cmdCheck = (c: Cmd) => reasonOf(c.reason);
+  // ── P8：商户成员、资料版本、来源关联修复（TDD-支付中心运营页面 §2.15） ──
+  type MemberRec = MerchantMemberRow & { version: number };
+  const members = new VersionedTable<MemberRec>([
+    { membershipNo: "MM9001", merchantNo: "PM1001", sourceSystem: "AI_SHOP", subjectType: "MCH_ACCOUNT", subjectRef: "MA-OWNER-1001", role: "MERCHANT_ADMIN", storeScope: "ALL", storeNos: [], actions: ["payment.create", "refund.create"], status: "ACTIVE", validUntil: null, grantedBy: "system", revokeReason: null, version: 1 },
+    { membershipNo: "MM9002", merchantNo: "PM1001", sourceSystem: "AI_SHOP", subjectType: "MCH_ACCOUNT", subjectRef: "MA-CASHIER-1001", role: "CASHIER", storeScope: "LISTED", storeNos: ["ST2001"], actions: ["payment.create"], status: "ACTIVE", validUntil: null, grantedBy: "MA-OWNER-1001", revokeReason: null, version: 1 },
+  ], (r) => r.membershipNo);
+  const memberActions = (r: MemberRec) => (r.status === "ACTIVE" ? ["suspend", "revoke"] : r.status === "SUSPENDED" ? ["resume", "revoke"] : []);
+  const revisionsOf = (no: string): ProfileRevisionRow[] => [
+    { revisionNo: `${no}:GENERAL:2`, revision: 2, purpose: "GENERAL", market: "TW", sourceProfileRevision: 2, profile: { legalName: "示例商户" }, materials: [], profileHash: "h2", reviewStatus: "SUBMITTED", submittedBy: "ST-OPS-1", submittedAt: T0 - 2 * H, reviewedBy: null, reviewedAt: null, reviewReason: null, approvalNo: null, version: 1 },
+    { revisionNo: `${no}:GENERAL:1`, revision: 1, purpose: "GENERAL", market: "TW", sourceProfileRevision: 1, profile: { legalName: "示例商户" }, materials: [], profileHash: "h1", reviewStatus: "APPROVED", submittedBy: "ST-OPS-1", submittedAt: T0 - 48 * H, reviewedBy: "ST-OPS-2", reviewedAt: T0 - 47 * H, reviewReason: "资料一致", approvalNo: "AP8001", version: 2 },
+  ];
+  const repairs = new VersionedTable<RepairRow>([
+    { repairNo: "SR7001", requestNo: "ops-seed-1", merchantNo: "PM1002", linkNo: "LK-PM1002", sourceSystem: "AI_SHOP", sourceScope: "MAIN", fromOperatingEntityId: "E-OLD-1002", toOperatingEntityId: "E-NEW-1002", storeNos: ["ST2003"], evidence: "工单 OPS-1002：主体变更已核对证照", expectedVersion: 3, status: "PENDING_APPROVAL", approvalNo: "AP8051", approvalStatus: "PENDING_FIRST", approvalVersion: 1, requestedBy: "ST-OPS-1", executedBy: null, executedAt: null, beforeSnapshot: null, afterSnapshot: null, createdAt: T0 - 3 * H, version: 1 },
+  ], (r) => r.repairNo);
+  const repairActions = (r: RepairRow) => (r.status === "PENDING_APPROVAL" ? ["approve", "reject"] : r.status === "APPROVED" ? ["execute"] : []);
   const transfers: ChannelAccountTransfer[] = [];
   const qrCodes = new Map<string, StoreQrCode[]>();
   const methodViews = new Map<string, StoreMethodView>();
@@ -284,6 +300,21 @@ export function createMockPayCenterApi(): PayCenterApi {
       }),
       suspend: (no, c) => run(() => setStatus(merchants, no, c, ["ACTIVE"], "SUSPENDED")),
       activate: (no, c) => run(() => setStatus(merchants, no, c, ["SUSPENDED"], "ACTIVE")),
+      revisions: (no, q) => run(() => { merchants.get(no); return revisionsOf(no).filter((r) => (!q?.purpose || r.purpose === q.purpose) && (!q?.reviewStatus || r.reviewStatus === q.reviewStatus)); }),
+      workspace: (no) => run(() => {
+        const m = merchants.get(no);
+        const sec = (key: string, title: string, module: string, ready: boolean, count: number | null, summary: unknown = null) => ({ key, title, module, status: ready ? "READY" as const : "NOT_READY" as const, count, summaryJson: summary == null ? null : JSON.stringify(summary) });
+        return { merchant: { merchantNo: m.merchantNo, displayName: m.displayName, status: m.status }, sections: [
+          sec("profile", "资料", "BM01", true, 2, { GENERAL: `${no}:GENERAL:2` }),
+          sec("members", "成员", "BM03", true, members.all().filter((x) => x.merchantNo === no).length),
+          sec("stores", "门店", "BM02", true, m.storeCount),
+          sec("channelAccounts", "渠道账户", "BM06", true, 1, { byStatus: { ACTIVE: 1 } }),
+          sec("trades", "交易", "BM09", false, null),
+          sec("funds", "资金", "BM29", false, null),
+        ] };
+      }),
+      creationByRequest: () => run(() => { throw new MockPayError("NOT_FOUND", "创建操作尚未受理"); }),
+      assistedOperation: () => run(() => { throw new MockPayError("NOT_FOUND", "此操作尚无已提交回执"); }),
       creationContext: () => run(() => ({ enabled: true })),
       create: (b) => run(async () => {
         need(/^[A-Za-z0-9_-]{1,64}$/.test(b.operatingEntityId), "经营主体号格式不对");
@@ -445,6 +476,7 @@ export function createMockPayCenterApi(): PayCenterApi {
         d.supplementFields = b.fields; d.supplementReason = b.reason; d.state = "EDITING"; d.draftVersion += 1;
         return draftView(no);
       }),
+      draftCommand: (no, rn) => run(() => { onboardings.get(no); return { requestNo: rn, applied: false }; }),
       readiness: (no) => run(() => { const o = onboardings.get(no); const done = o.status === "APPROVED"; return { receiptStage: done ? "IMPORTED" : "NOT_RECEIVED", candidateStage: done ? "ACCEPTED" : null, payMerchantNo: done ? `NWP${o.onboardingNo.slice(-4)}` : null, accountStatus: done ? "ENABLED" : "NONE", verificationStatus: done ? "VERIFIED" : "NONE", credentialStatus: done ? "ACTIVE" : "NONE", openProductCount: done ? 2 : 0, storeReadinessEvaluated: done, channelReady: true }; }),
       retryHandoff: (no, c) => run(async () => { cmdCheck(c); need(onboardings.get(no).status === "APPROVED", "只有已通过的进件能重试交接"); const r = await onboardings.update(no, {}, c.expectedVersion); return { onboardingNo: no, version: r.version, candidateStatus: "ACCEPTED" }; }),
       seal: (no, b) => run(() => { need(onboardings.get(no).version === b.expectedVersion, "记录已被他人修改，请刷新后重试"); need(!!b.secret && b.secret.length <= 512, "敏感值 1–512 字"); return { fieldCode: b.fieldCode, cipherRef: `cipher:newebpay/${(sealSeq++).toString().padStart(6, "0")}` }; }),
@@ -589,6 +621,12 @@ export function createMockPayCenterApi(): PayCenterApi {
       impact: (store, b, target) => run(() => { const x = bindings.get(b); const t = accounts.find(target); const bindable = !!t && t.account.verificationStatus === "VERIFIED" && ["ACTIVE", "REFUND_ONLY"].includes(t.account.status) && t.account.merchantNo === x.merchantNo; const cur = accounts.find(x.payMerchantNo)?.products.filter((p) => p.status === "OPEN").map((p) => p.productCode) ?? []; const next = t?.products.filter((p) => p.status === "OPEN").map((p) => p.productCode) ?? []; return { bindingNo: b, currentPayMerchantNo: x.payMerchantNo, targetPayMerchantNo: target, targetBindable: bindable, blockedReason: bindable ? null : "目标账户未核验或不可收款", productsKept: cur.filter((c) => next.includes(c)), productsLost: cur.filter((c) => !next.includes(c)), productsGained: next.filter((c) => !cur.includes(c)), inflightPayments: "UNKNOWN" as const }; }),
       rebindRequest: (store, b, body) => run(async () => { reasonOf(body.reason); need(!bindings.get(b).pendingTargetPayMerchantNo, "已有待审换绑"); const r = await bindings.update(b, { pendingTargetPayMerchantNo: body.targetPayMerchantNo, pendingReason: body.reason }, body.expectedVersion); return ok(b, "ACTIVE", r.version); }),
       rebindWithdraw: (store, b, c) => run(async () => { cmdCheck(c); need(!!bindings.get(b).pendingTargetPayMerchantNo, "没有待审换绑"); const r = await bindings.update(b, { pendingTargetPayMerchantNo: null, pendingReason: null }, c.expectedVersion); return ok(b, "ACTIVE", r.version); }),
+      rebind: (store, b, c) => run(async () => {
+        cmdCheck(c); const x = bindings.get(b); need(x.status === "ACTIVE" && x.storeNo === store && !!x.pendingTargetPayMerchantNo, "无待审换绑");
+        await bindings.update(b, { status: "INACTIVE", effectiveTo: Date.now(), endedReason: c.reason }, c.expectedVersion);
+        const row: StoreBinding = { ...x, bindingNo: `SB${5100 + bindings.all().length}`, payMerchantNo: x.pendingTargetPayMerchantNo!, pendingTargetPayMerchantNo: null, pendingReason: null, effectiveFrom: Date.now(), reason: c.reason, version: 1 };
+        await bindings.insert(row); return ok(row.bindingNo, "ACTIVE", 1);
+      }),
     },
     claims: {
       list: (merchantNo) => run(() => claims.all().filter((c) => c.merchantNo === merchantNo)),
@@ -671,6 +709,40 @@ export function createMockPayCenterApi(): PayCenterApi {
       updateRule: (no, b) => run(async () => { reasonOf(b.reason); const { expectedVersion, reason: _r, ...rest } = b; const r = await alertRules.update(no, { ...rest, status: "DRAFT", enteredBy: "admin" }, expectedVersion); return ok(no, r.status, r.version); }),
       enableRule: (no, c) => run(async () => { cmdCheck(c); need(alertRules.get(no).enteredBy !== "admin", "发布人不能是录入人"); return setStatus(alertRules, no, c, ["DRAFT"], "PUBLISHED"); }),
       disableRule: (no, c) => run(() => setStatus(alertRules, no, c, ["PUBLISHED", "DRAFT"], "RETIRED")),
+    },
+    merchantMembers: {
+      list: (q) => pageOf(members.all().map(({ version: _v, ...r }) => r), q, ["membershipNo", "merchantNo", "subjectRef"]),
+      detail: (no) => run(() => { const x = members.get(no); const { version, ...r } = x; return wrap<MerchantMemberRow>(r, version, memberActions(x)); }),
+      create: (b) => run(async () => {
+        reasonOf(b.reason); need(["MCH_ACCOUNT", "USER"].includes(b.subjectType), "主体类型只能是 MCH_ACCOUNT 或 USER");
+        need(!members.all().some((x) => x.merchantNo === b.merchantNo && x.role === "MERCHANT_ADMIN" && x.status === "ACTIVE"), "商户已有生效管理员");
+        const row: MemberRec = { membershipNo: `MM${9100 + members.all().length}`, merchantNo: b.merchantNo, sourceSystem: "NEAR_PAY", subjectType: b.subjectType, subjectRef: b.subjectRef, role: "MERCHANT_ADMIN", storeScope: "ALL", storeNos: [], actions: ["payment.create", "refund.create"], status: "ACTIVE", validUntil: null, grantedBy: "admin", revokeReason: null, version: 1 };
+        await members.insert(row); const { version: _v, ...r } = row; return wrap(r, 1, memberActions(row));
+      }),
+      command: (no, action, c) => run(async () => {
+        cmdCheck(c); const x = members.get(no);
+        const next = action === "suspend" ? (need(x.status === "ACTIVE", "只有生效中的成员可暂停"), "SUSPENDED") : action === "resume" ? (need(x.status === "SUSPENDED", "只有已暂停的成员可恢复"), "ACTIVE") : (need(x.status !== "REVOKED", "成员已撤销"), "REVOKED");
+        if (x.role === "MERCHANT_ADMIN" && x.status === "ACTIVE" && action !== "resume") need(members.all().some((m) => m.merchantNo === x.merchantNo && m.membershipNo !== no && m.role === "MERCHANT_ADMIN" && m.status === "ACTIVE"), "至少保留一位生效管理员");
+        const r = await members.update(no, { status: next, revokeReason: action === "revoke" ? c.reason : x.revokeReason }, c.expectedVersion); return ok(no, next, r.version);
+      }),
+    },
+    repairs: {
+      list: (q) => pageOf(repairs.all(), q, ["repairNo", "merchantNo", "requestNo"]),
+      detail: (no) => run(() => { const x = repairs.get(no); return wrap(x, x.version, repairActions(x)); }),
+      create: (b) => run(async () => {
+        need(!!b.evidence?.trim(), "请填写依据"); need(b.fromOperatingEntityId !== b.toOperatingEntityId, "原主体与目标主体不能相同"); need(b.storeNos.length <= 100 && new Set(b.storeNos).size === b.storeNos.length, "门店不能重复且最多 100 个");
+        need(!repairs.all().some((r) => r.merchantNo === b.merchantNo && ["PENDING_APPROVAL", "APPROVED"].includes(r.status)), "这条关联已有进行中的修复");
+        const row: RepairRow = { repairNo: `SR${7100 + repairs.all().length}`, requestNo: `ops-${Date.now()}`, merchantNo: b.merchantNo, linkNo: `LK-${b.merchantNo}`, sourceSystem: "AI_SHOP", sourceScope: "MAIN", fromOperatingEntityId: b.fromOperatingEntityId, toOperatingEntityId: b.toOperatingEntityId, storeNos: b.storeNos, evidence: b.evidence, expectedVersion: b.expectedVersion, status: "PENDING_APPROVAL", approvalNo: `AP${8100 + repairs.all().length}`, approvalStatus: "PENDING_FIRST", approvalVersion: 1, requestedBy: "admin", executedBy: null, executedAt: null, beforeSnapshot: null, afterSnapshot: null, createdAt: Date.now(), version: 1 };
+        await repairs.insert(row); return wrap(row, 1, repairActions(row));
+      }),
+      decide: (no, action, c) => run(async () => {
+        cmdCheck(c); const x = repairs.get(no);
+        if (action === "execute") { need(x.status === "APPROVED", "只有已批准的修复可执行"); const r = await repairs.update(no, { status: "EXECUTED", executedBy: "admin", executedAt: Date.now() }, c.expectedVersion); return ok(no, "EXECUTED", r.version, x.approvalNo); }
+        need(x.status === "PENDING_APPROVAL", "只有待审批的修复可审批");
+        if (x.approvalVersion !== c.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "审批已被他人处理，请刷新后重试");
+        const status = action === "approve" ? "APPROVED" : "REJECTED";
+        const r = await repairs.update(no, { status, approvalStatus: status, approvalVersion: (x.approvalVersion ?? 0) + 1 }); return ok(no, status, r.version, x.approvalNo);
+      }),
     },
     approvalFlows: {
       list: (q) => pageOf(flows, q, ["flowNo", "name"]),

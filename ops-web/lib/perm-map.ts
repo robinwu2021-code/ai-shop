@@ -196,6 +196,11 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "pay:store-binding:view": "pay:store-binding:view",
   "pay:store-binding:manage": "pay:store-binding:manage",
   "pay:store-binding:approve": "pay:store-binding:approve",
+  // P8（TDD-支付中心运营页面 §2.15）：商户成员、来源关联修复
+  "pay:member:view": "pay:member:view",
+  "pay:member:manage": "pay:member:manage",
+  "pay:merchant:repair": "pay:merchant:repair",
+  "pay:merchant:repair:approve": "pay:merchant:repair:approve",
   "sec:key:view": "sec:key:view",
   "sec:key:write": "sec:key:write",
   "sec:key:enable": "sec:key:enable",

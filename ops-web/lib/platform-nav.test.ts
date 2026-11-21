@@ -27,7 +27,7 @@ describe('platform primary navigation', () => {
     expect(nav[3].children?.map(l => l.href)).toEqual(['/orders', '/orders?tab=exception', '/after-sales']);
     expect(nav[4].children?.map(l => [l.href, l.group])).toEqual([
       ['/payment-center?tab=approvals', '审批'],
-      ['/payment-center?tab=merchants', '支付商户'], ['/payment-center?tab=stores', '支付商户'], ['/payment-center?tab=onboardings', '支付商户'], ['/payment-center?tab=merchant-changes', '支付商户'],
+      ['/payment-center?tab=merchants', '支付商户'], ['/payment-center?tab=stores', '支付商户'], ['/payment-center?tab=onboardings', '支付商户'], ['/payment-center?tab=merchant-changes', '支付商户'], ['/payment-center?tab=merchant-members', '支付商户'], ['/payment-center?tab=association-repairs', '支付商户'],
       ['/payment-center?tab=orders', '交易'], ['/payment-center?tab=exceptions', '交易'], ['/payment-center?tab=attempts', '交易'], ['/payment-center?tab=refunds', '交易'],
       ['/payment-center?tab=channels', '渠道接入'], ['/payment-center?tab=products', '渠道接入'], ['/payment-center?tab=access', '渠道接入'],
       ['/payment-center?tab=terminals', '渠道接入'], ['/payment-center?tab=apps', '渠道接入'],
@@ -90,8 +90,8 @@ it('seeds aliases from exact source point grants while retaining existing action
   const { readFileSync } = await import('node:fs');
   const { PLATFORM_MENU_ALIASES } = await import('./platform-nav');
   const sql = execFileSync('node', ['scripts/gen-perm-seed.mjs'], { encoding: 'utf8' });
-  // V671（五目录别名）+ V684（支付中心 16 个页签）+ V685（P3a 10 个页签）—— 已应用的 V671 冻结，新别名的点位与授权在后两份
-  const migration = ['V671__ops_platform_primary_navigation.sql', 'V684__ops_payment_center_menu.sql', 'V685__ops_payment_center_p3a_menu.sql']
+  // V671（五目录别名）+ V684（支付中心 16 个页签）+ V685（P3a 10 个页签）+ V687（P8 2 个页签）—— 已应用的 V671 冻结，新别名的点位与授权在后两份
+  const migration = ['V671__ops_platform_primary_navigation.sql', 'V684__ops_payment_center_menu.sql', 'V685__ops_payment_center_p3a_menu.sql', 'V687__ops_payment_center_p8_menu.sql']
     .map(f => readFileSync(new URL(`../../backend/shop-app/src/main/resources/db/migration/${f}`, import.meta.url), 'utf8')).join('\n');
   expect(migration).not.toMatch(/\b(?:DELETE|UPDATE|TRUNCATE|ALTER|DROP)\s+(?:sys_|TABLE)/i);
   const grants = new Map<string, Set<string>>();

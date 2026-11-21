@@ -4,7 +4,8 @@
 用法：python3 scripts/pay-center-wiring.py <near-pay 仓库根目录> [--tsv 输出文件]
   near-pay 侧读 backend/pay/pay-portal/.../api/ops/v2/*.java 的 @*Mapping；
   运营端读 ops-web/app/payment-center/_api/api.ts 的封装方法，再在 payment-center 页面里找调用。
-  状态：UI = 页面能用；API_ONLY = 只封装、页面没用；MISSING = 运营端没接。
+  状态：UI = 页面能用；API_ONLY = 只封装、页面没用；MISSING = 运营端没接；
+        NOT_OPEN = near-pay 未开放；EXCLUDED = 不在运营端提供；DEFERRED = 渠道专属暂缓。
 """
 import collections, glob, json, os, pathlib, re, sys
 
@@ -12,6 +13,19 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 API = ROOT / "ops-web/app/payment-center/_api/api.ts"
 PAGES = ROOT / "ops-web/app/payment-center"
 DYNAMIC = {"transfers.approve", "transfers.reject", "transfers.execute"}  # api.transfers[kind](...)
+# 接口层内部调用（写命令超时后按幂等号取回执，TDD-支付中心运营页面 §2.15）：随所属写命令一起算「已接」
+INTERNAL = {"merchants.creationByRequest", "merchants.assistedOperation", "onboardings.draftCommand"}
+INTERNAL_PATHS = {("GET", "/merchant-creations/by-request/{}"), ("GET", "/merchants/{}/assisted-profile/operations/{}"), ("GET", "/onboardings/{}/draft/commands/{}")}
+# near-pay 未开放（固定回 409 CAPABILITY_NOT_READY，da3ced2a4 核对）
+NOT_OPEN = {("POST", "/merchants/{}/close"), ("GET", "/approval-tasks/{}/candidates"), ("POST", "/approval-flows"), ("PUT", "/approval-flows/{}"),
+            ("POST", "/approval-flows/{}/copy"), ("POST", "/approval-flows/{}/publish"), ("POST", "/approval-flows/{}/disable")}
+# 用户确认不在运营端提供：near-pay 权限映射（权限由 ai-shop 决定）、关闭渠道账户（near-pay 不开放）、等价能力已有
+EXCLUDED = {("GET", "/permission-mappings"), ("GET", "/permission-mappings/{}"), ("GET", "/permission-resources"), ("POST", "/permission-mappings"),
+            ("POST", "/permission-mappings/{}/enable"), ("POST", "/permission-mappings/{}/revoke"), ("PUT", "/permission-mappings/{}"),
+            ("GET", "/me/access"), ("POST", "/channel-accounts/{}/close"), ("POST", "/approval-tasks/{}/review")}
+# 渠道专属，等业务确认再排（易特付、PayBy POS、SoftPOS、测试渠道）
+DEFERRED_CONTROLLERS = {"OpsYitePayVaController", "OpsPayByPosController", "OpsPayByPosAcceptanceController", "OpsPayBySgsAcceptanceController",
+                        "OpsSoftPosBindingController", "OpsTestChannelRegistrationController", "OpsTestChannelTrialController", "OpsTestCollectionSessionController"}
 
 
 def nearpay_endpoints(np_root):
@@ -56,6 +70,10 @@ def wrappers():
             methods += [(port, n, mt, pp) for n, mt, pp in
                         [("list", "GET", b), ("detail", "GET", b + "/{}"), ("create", "POST", b), ("update", "PUT", b + "/{}")]]
             continue
+        dc = re.match(r'^      ([a-zA-Z]+): \(no, body\) => draftCmd\(no, "([^"]*)", [^)]*?(?:, "(PUT)")?\),', l)
+        if dc and port:  # 进件草稿写命令（带超时恢复的 draftCmd 包装）
+            methods.append((port, dc.group(1), dc.group(3) or "POST", "/onboardings/{}/draft" + dc.group(2)))
+            continue
         mm = re.match(r'^      ([a-zA-Z]+): .*?(c\.(get|page|blob|upload|command)|detailOf\(c,)\s*(?:<[^>(]*>)?\(?\s*([`"])(.+?)\4(.*)$', l)
         if mm and port:
             kind = mm.group(3) or "detail"
@@ -81,12 +99,19 @@ def main():
     for m, p, c in nearpay_endpoints(sys.argv[1]):
         hits = [(f"{po}.{n}", u) for po, n, fm, fp, u in fe if match(fm, fp, m, p)]
         st = "MISSING" if not hits else ("UI" if any(u for _, u in hits) else "API_ONLY")
+        if st != "UI" and (m, p) in INTERNAL_PATHS: st = "UI"
+        if st != "UI":
+            st = ("NOT_OPEN" if (m, p) in NOT_OPEN else "EXCLUDED" if (m, p) in EXCLUDED
+                  else "DEFERRED" if c in DEFERRED_CONTROLLERS else st)
         rows.append((c, m, p, st, ",".join(sorted({h for h, _ in hits}))))
     if "--tsv" in sys.argv:
         with open(sys.argv[sys.argv.index("--tsv") + 1], "w", encoding="utf-8") as f:
             f.writelines("\t".join(r) + "\n" for r in rows)
     n = collections.Counter(r[3] for r in rows)
-    print(f"near-pay 接口 {len(rows)}：页面能用 {n['UI']}，只封装 {n['API_ONLY']}，未接 {n['MISSING']}")
+    scope = len(rows) - n["NOT_OPEN"] - n["EXCLUDED"] - n["DEFERRED"]
+    print(f"near-pay 接口 {len(rows)}：页面能用 {n['UI']}，只封装 {n['API_ONLY']}，未接 {n['MISSING']}；"
+          f"near-pay 未开放 {n['NOT_OPEN']}，不在运营端提供 {n['EXCLUDED']}，暂缓（渠道专属）{n['DEFERRED']}")
+    print(f"本期范围 {scope} 个，已接 {n['UI']}（{n['UI'] * 100 // max(scope, 1)}%）")
 
 
 if __name__ == "__main__":
