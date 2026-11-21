@@ -276,6 +276,17 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **契约变更**：`ops-web/lib/perm-map.ts` 加 `pay:channel-account:transfer`、`pay:channel-account:transfer:approve` 两个映射（后端常量 §9 已加），无端点、库表、迁移。
 - **不做**：测试渠道账户的试运行准备（`POST /channel-accounts/{no}/qualifications`，只适用蓝新测试渠道）、测试渠道开户与试单、代建进度与认领附件 —— 属测试工具或只读回执，放第 6 项。
 
+### 2.13 P7 门店页补缺（2026-11-21 用户：「三块都补」）
+
+| # | 位置 | 操作 | 端点 | 码 |
+|---|---|---|---|---|
+| 1 | 门店详情 · 收款码 | 列表（码、类型、桌号、币种、单笔 / 单日限额、状态、扫码链接与门店码链接）；新建（类型 STORE / TABLE、桌号、限额、理由；near-pay 建码非幂等，先查后建，页面在提交前刷新列表）；停用（理由，`expectedVersion` 取视图里的版本） | `GET/POST /stores/{no}/qr-codes`、`POST …/{qrCode}/disable` | `pay:collection-entry:view` / `manage` |
+| 2 | 门店详情 · 支付方式 | 当前模式（跟随商户 / 单独设置）、每种方式的配置开关与生效状态、能否改与被哪一层挡住；保存（开启集合 + 模式，带 `eligibilityRevision` 与版本；near-pay 换算成门店收款策略） | `GET/PUT /stores/{no}/method-preferences` | `pay:collection-policy:view` / `manage` |
+| 3 | 门店详情 · 同步事件 | 来源系统、事件号、渠道、版本、结果、问题、时间 | `GET /stores/{no}/sync-events` | `pay:store:view` |
+
+- **契约变更**：near-pay `OpsQrCodeController.CodeView` 加 `version`（只加字段；停码必须带它，原视图没给）。ai-shop 无新码、端点、库表。
+- **线上**：near-pay 换 `pay-portal` 内 `OpsQrCodeController` 与 `$CodeView` 两个类。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。

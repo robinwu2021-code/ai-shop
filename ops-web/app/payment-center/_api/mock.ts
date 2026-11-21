@@ -8,7 +8,7 @@ import type {
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ChannelRow, DataScopeRow, Detail, EntryRow, ExceptionRow,
   MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow, NewebpayModification, OnboardingDraft,
   AccountStatus, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRow, StoreBinding, VerificationStatus,
-  ChannelAccountTransfer, QualificationVersion,
+  ChannelAccountTransfer, QualificationVersion, StoreMethodView, StoreQrCode,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -221,6 +221,13 @@ export function createMockPayCenterApi(): PayCenterApi {
 
   const cmdCheck = (c: Cmd) => reasonOf(c.reason);
   const transfers: ChannelAccountTransfer[] = [];
+  const qrCodes = new Map<string, StoreQrCode[]>();
+  const methodViews = new Map<string, StoreMethodView>();
+  const methodsOf = (no: string): StoreMethodView => methodViews.get(no) ?? { storeNo: no, mode: "INHERIT", version: 0, eligibilityRevision: "mock-rev", items: [
+    { choice: { paymentMethodCode: "CARD", test: false }, configuredEnabled: true, effectiveEnabled: true, editable: true, blockedReason: null, productCodes: ["NEWEBPAY_CARD_ONETIME"], channelCodes: ["NEWEBPAY"] },
+    { choice: { paymentMethodCode: "LINEPAY", test: false }, configuredEnabled: true, effectiveEnabled: true, editable: true, blockedReason: null, productCodes: ["LINEPAY_ONLINE"], channelCodes: ["LINEPAY"] },
+    { choice: { paymentMethodCode: "JKOPAY", test: false }, configuredEnabled: false, effectiveEnabled: false, editable: false, blockedReason: "MERCHANT_POLICY", productCodes: [], channelCodes: ["JKOPAY"] },
+  ] };
   const qualifications: QualificationVersion[] = [];
   const setStatus = async <R extends { version: number; status: string }>(t: VersionedTable<R>, id: string, c: Cmd, from: string[], to: string) => {
     cmdCheck(c);
@@ -375,6 +382,23 @@ export function createMockPayCenterApi(): PayCenterApi {
         const r = await stores.update(no, { merchantNo: target.merchantNo, merchantName: target.displayName, pendingChange: null }, c.expectedVersion);
         return ok(no, "EXECUTED", r.version);
       }),
+      qrCodes: (no) => run(() => qrCodes.get(no) ?? []),
+      createQrCode: (no, b) => run(() => { reasonOf(b.reason); need(b.kind !== "TABLE" || !!b.tableRef?.trim(), "桌码须填桌号");
+        const list = qrCodes.get(no) ?? []; const code = `QR${no.slice(-4)}${list.length + 1}`;
+        const v: StoreQrCode = { qrCode: code, kind: b.kind, tableRef: b.tableRef, currency: "TWD", singleLimitMinor: b.singleLimitMinor ?? 500000, dailyLimitMinor: b.dailyLimitMinor ?? 5000000,
+          status: "ACTIVE", url: `https://example.test/q/${code}`, storeCodeUrl: null, version: 0 };
+        qrCodes.set(no, [...list, v]); return v; }),
+      disableQrCode: (no, code, c) => run(() => { cmdCheck(c); const v = (qrCodes.get(no) ?? []).find((x) => x.qrCode === code); need(!!v, "静态码不存在");
+        if (v!.status !== "DISABLED") { need(c.expectedVersion === v!.version, "版本已变化，请刷新"); v!.status = "DISABLED"; v!.version = (v!.version ?? 0) + 1; }
+        return ok(code, "DISABLED", v!.version ?? 0); }),
+      methods: (no) => run(() => methodsOf(no)),
+      saveMethods: (no, b) => run(() => { const cur = methodsOf(no); need(b.expectedVersion === cur.version, "版本已变化，请刷新"); need(b.eligibilityRevision === cur.eligibilityRevision, "商户或门店渠道设置已变化，请刷新");
+        need(b.mode === "OVERRIDE" || b.enabledMethods.length === 0, "继承模式无需指定付款方式");
+        const on = new Set(b.enabledMethods.map((m) => m.paymentMethodCode));
+        const next: StoreMethodView = { ...cur, mode: b.mode, version: cur.version + 1,
+          items: cur.items.map((i) => ({ ...i, configuredEnabled: b.mode === "INHERIT" ? true : on.has(i.choice.paymentMethodCode), effectiveEnabled: i.editable && (b.mode === "INHERIT" || on.has(i.choice.paymentMethodCode)) })) };
+        methodViews.set(no, next); return next; }),
+      syncEvents: (no, q) => pageOf([{ eventNo: `SY${no.slice(-4)}1`, sourceSystem: "AI_SHOP", eventId: `ais-${no}-1`, channel: "SYNC", revision: 1, outcome: "APPLIED", issue: null, createdAt: Date.now() - 3600_000 }], q, ["eventNo"]),
     },
     onboardings: {
       list: (q) => pageOf(onboardings.all(), q, ["onboardingNo", "merchantNo", "merchantName"]),

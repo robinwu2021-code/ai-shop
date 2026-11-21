@@ -6,7 +6,7 @@ import type {
   StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
   AlertEventRow, AlertRuleRow, AppDetail, AppGrant, AppRow, ApprovalFlowRow, ChannelCallDetail, ChannelCallRow, ChannelCallbackDetail, ChannelCallbackRow,
   CredentialIssued, OperatingSettings, ProfileRevisionDetail, RefundListRow, RequestLogDetail, RequestLogRow, TerminalRow,
-  ActionResult, ApprovalDetail, ChannelAccountTransfer, QualificationImport, QualificationVersion, TransferCreate, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
+  ActionResult, ApprovalDetail, StoreMethodSave, StoreMethodView, StoreQrCode, StoreQrCreate, StoreSyncEvent, ChannelAccountTransfer, QualificationImport, QualificationVersion, TransferCreate, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
   AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
   NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
@@ -95,6 +95,14 @@ export interface PayCenterApi {
     requestChange(no: string, body: { expectedVersion: number; targetMerchantNo: string; reason: string }): Promise<ActionResult>;
     cancelChange(no: string, c: Cmd): Promise<ActionResult>;
     executeChange(no: string, c: Cmd): Promise<ActionResult>;
+    /** 收款码：near-pay 建码非幂等（先查后建），停码带视图里的版本。§2.13 */
+    qrCodes(no: string): Promise<StoreQrCode[]>;
+    createQrCode(no: string, body: StoreQrCreate): Promise<StoreQrCode>;
+    disableQrCode(no: string, qrCode: string, c: Cmd): Promise<ActionResult>;
+    /** 支付方式：保存时 near-pay 换算成门店收款策略。§2.13 */
+    methods(no: string): Promise<StoreMethodView>;
+    saveMethods(no: string, body: StoreMethodSave): Promise<StoreMethodView>;
+    syncEvents(no: string, q: Q): Promise<PayPage<StoreSyncEvent>>;
   };
   onboardings: {
     list(q: Q): Promise<PayPage<OnboardingRow>>;
@@ -423,6 +431,13 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       requestChange: (no, body) => c.command(`/stores/${e(no)}/association-change`, { ...body }),
       cancelChange: (no, cmd) => c.command(`/stores/${e(no)}/association-change/cancel`, { ...cmd }),
       executeChange: (no, cmd) => c.command(`/stores/${e(no)}/association-change/execute`, { ...cmd }),
+      qrCodes: (no) => c.get(`/stores/${e(no)}/qr-codes`),
+      // 建码非幂等：不带自动幂等号，避免同一请求体被当成重放而吞掉第二个码
+      createQrCode: (no, body) => c.command(`/stores/${e(no)}/qr-codes`, { ...body }, { idempotent: false }),
+      disableQrCode: (no, code, cmd) => c.command(`/stores/${e(no)}/qr-codes/${e(code)}/disable`, { ...cmd }),
+      methods: (no) => c.get(`/stores/${e(no)}/method-preferences`),
+      saveMethods: (no, body) => c.command(`/stores/${e(no)}/method-preferences`, { ...body }, { method: "PUT" }),
+      syncEvents: (no, q) => c.page(`/stores/${e(no)}/sync-events`, q),
     },
     onboardings: {
       list: (q) => c.page("/onboardings", q),

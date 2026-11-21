@@ -14,6 +14,10 @@ import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/
 import { STORE_MODES, STORE_SOURCE_STATUSES, type StoreAssociation, type StoreRow } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { StoreBindingsPanel, useCac } from "./channel-accounts";
+import { StoreMethods, StoreQrCodes, StoreSyncEvents } from "./store-extras";
+import { STORE_EXTRAS_COPY } from "./store-extras-copy";
+import { useCopy } from "@/lib/use-copy";
+import { useCan } from "@/lib/use-can";
 import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, usePayCenterApi } from "./shared";
 
 const NAME = "stores";
@@ -22,6 +26,8 @@ export function StoresTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
   const operator = useDraftOperator();
   const run = useRun(NAME);
+  const sx = useCopy(STORE_EXTRAS_COPY);
+  const allow = useCan();
   const ca = useCac();
   const sourceMap = useStatusMap("source", STORE_SOURCE_STATUSES, { ACTIVE: "success", PENDING_SYNC: "warning", DELETED: "danger" });
   const modeMap = useStatusMap("mode", STORE_MODES, { OVERRIDE: "info" });
@@ -63,6 +69,9 @@ export function StoresTab({ header }: { header: React.ReactNode }) {
                     { header: c.validFrom, cell: (r) => fmtTime(r.validFrom) },
                     { header: c.validTo, cell: (r) => fmtTime(r.validTo) },
                   ]} /> },
+                  ...(allow("pay:collection-entry:view") ? [{ title: sx.qrTitle, content: <StoreQrCodes api={api} storeNo={s.storeNo} hasMerchant={!!s.merchantNo} run={run} /> }] : []),
+                  ...(allow("pay:collection-policy:view") ? [{ title: sx.methodsTitle, content: <StoreMethods api={api} storeNo={s.storeNo} hasMerchant={!!s.merchantNo} run={run} /> }] : []),
+                  { title: sx.syncTitle, content: <StoreSyncEvents api={api} storeNo={s.storeNo} /> },
                 ]}
                 actions={<DetailActions ctx={ctx} keys={["bindings", "policy", p ? "cancelChange" : "requestChange", ...(p ? ["executeChange"] : [])]} />}
               />

@@ -379,3 +379,25 @@ export interface QualificationVersion {
 }
 export interface QualificationImport { evidenceNo: string; revision: number; channel: string; purpose: string; payloadJson: string; validUntil: string; reason: string }
 
+// ════ P7（2026-11-21，TDD-支付中心运营页面 §2.13） ════
+
+// ── 门店收款码：near-pay OpsQrCodeController.CodeView（version 由 near-pay 2c5d97cbd 起返回，停码要带） ──
+export const QR_KINDS = ["STORE", "TABLE"] as const;
+export interface StoreQrCode {
+  qrCode: string; kind: string; tableRef: string | null; currency: string; singleLimitMinor: number; dailyLimitMinor: number;
+  status: string; url: string | null; storeCodeUrl: string | null; version?: number;
+}
+export interface StoreQrCreate { kind: string; tableRef: string | null; singleLimitMinor: number | null; dailyLimitMinor: number | null; reason: string }
+
+// ── 门店支付方式：near-pay StoreCollectionMethodService.MethodView ──
+export interface MethodChoice { paymentMethodCode: string; test: boolean }
+export interface StoreMethodItem {
+  choice: MethodChoice; configuredEnabled: boolean; effectiveEnabled: boolean; editable: boolean; blockedReason: string | null;
+  productCodes: string[]; channelCodes: string[];
+}
+export interface StoreMethodView { storeNo: string; mode: "INHERIT" | "OVERRIDE" | string; version: number; eligibilityRevision: string; items: StoreMethodItem[] }
+export interface StoreMethodSave { expectedVersion: number; eligibilityRevision: string; mode: "INHERIT" | "OVERRIDE"; enabledMethods: MethodChoice[] }
+
+// ── 门店同步事件：near-pay OpsStoreDtos.StoreSyncEventDto ──
+export interface StoreSyncEvent { eventNo: string; sourceSystem: string; eventId: string; channel: string; revision: number; outcome: string; issue: string | null; createdAt: number }
+
