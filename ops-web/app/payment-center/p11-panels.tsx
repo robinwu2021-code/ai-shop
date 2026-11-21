@@ -103,7 +103,7 @@ export function TestSessionPanel({ api, entryNo, kind, run }: { api: PayCenterAp
         <dl className="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-2 txt-body">
           <dt className="text-muted-foreground">{m.payOrderNo}</dt><dd className="font-mono">{session.payOrderNo}</dd>
           <dt className="text-muted-foreground">{m.checkoutUrl}</dt>
-          <dd className="break-all"><a className="text-primary-ink underline" href={session.checkoutUrl} target="_blank" rel="noopener noreferrer">{session.checkoutUrl}</a></dd>
+          <dd className="break-all"><a className="focus-ring text-primary-ink underline" href={session.checkoutUrl} target="_blank" rel="noopener noreferrer">{session.checkoutUrl}</a></dd>
           <dt className="text-muted-foreground">{m.expireAt}</dt><dd>{fmtTime(session.expireAt)}</dd>
         </dl>
       )}

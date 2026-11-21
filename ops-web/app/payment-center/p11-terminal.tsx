@@ -64,7 +64,7 @@ export function PosConfigSection({ api, terminal, run }: { api: PayCenterApi; te
       <Notice tone="info">{m.posIntro}</Notice>
       {rows.length === 0 ? <p className="txt-body text-muted-foreground">{m.posEmpty}</p> : (
         <MiniTable<PosConfigView> rows={rows} rowKey={(r) => String(r.id)} empty={m.posEmpty} columns={[
-          { header: m.posRevision, cell: (r) => <button type="button" className="text-primary-ink underline" onClick={() => setSelected(r.id)}>#{r.id} · v{r.version}</button> },
+          { header: m.posRevision, cell: (r) => <button type="button" className="focus-ring text-primary-ink underline" onClick={() => setSelected(r.id)}>#{r.id} · v{r.version}</button> },
           { header: m.posState, cell: (r) => <span className="inline-flex items-center gap-1"><StatusBadge value={r.state} map={stMap} />{r.stale ? <span className="txt-caption text-warning-ink">{m.posStale}</span> : null}</span> },
           { header: m.posEnv, cell: (r) => r.settings.environment },
           { header: m.posModes, cell: (r) => `${r.settings.allowedModes.map((x) => lbl(m, "mode", x)).join("、")} / ${lbl(m, "mode", r.settings.defaultMode)}` },
@@ -216,7 +216,7 @@ function UatSection({ api, terminalNo, cfg, run }: { api: PayCenterApi; terminal
       <Notice tone="info">{m.uatIntro}</Notice>
       {q.isPending ? <Skeleton className="h-12 w-full" /> : q.error ? <ErrorState error={q.error} onRetry={() => void refresh()} /> : (
         <MiniTable<UatRun> rows={q.data} rowKey={(r) => r.runNo} empty={m.uatEmpty} columns={[
-          { header: m.uatRun, cell: (r) => <button type="button" className="text-primary-ink underline" onClick={() => setOpen(open === r.runNo ? null : r.runNo)}>{r.runNo}</button> },
+          { header: m.uatRun, cell: (r) => <button type="button" className="focus-ring text-primary-ink underline" onClick={() => setOpen(open === r.runNo ? null : r.runNo)}>{r.runNo}</button> },
           { header: m.uatState, cell: (r) => <StatusBadge value={r.state} map={stMap} /> },
           { header: m.uatCases, cell: (r) => `${r.cases.length} / ${UAT_CASES.length}` },
           { header: m.uatBlockers, cell: (r) => r.blockers.length ? r.blockers.join("、") : m.uatNoBlockers },
