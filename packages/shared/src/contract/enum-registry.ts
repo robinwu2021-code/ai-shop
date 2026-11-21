@@ -870,7 +870,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:MallEndScope", dom: "commerce", shape: "CLASS", verdict: "OK", note: "业务端作用域 STORE/SYSTEM，对应 commerce-api EndScope" },
   { decl: "ops-web:MallReleaseStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["PLANNED", "VERIFIED", "RETIRED"],
     note: "业务端验收状态，对应 commerce-api ReleaseStatus；VERIFIED 必须绑定部署验收清单" },
-  { decl: "ops-web:MallPlanTier", dom: "commerce", shape: "CLASS", verdict: "OK", note: "三档 FREE/PRO/CHAIN，对应 commerce-api PlanTier；与旧主体额度档位不是一回事" },
+  { decl: "ops-web:MallPlanTier", dom: "commerce", shape: "CLASS", verdict: "OK", note: "门店初始化 FREE，行业 BASE/PRO/GROWTH/CHAIN，对应 commerce-api PlanTier" },
   { decl: "ops-web:MallProductKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "商城商品种类，对应 commerce-api ProductKind" },
   { decl: "ops-web:MallComponentKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU/订单组件种类 PLAN/END_PACKAGE/HARDWARE，对应 commerce-api ComponentKind" },
   { decl: "ops-web:MallOrderStatus", dom: "commerce", shape: "STATUS", verdict: "OK",

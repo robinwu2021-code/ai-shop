@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
-import { mallPlanTiers } from "@/lib/types";
+import { mallPlanTiers } from "@/lib/commerce-plan-tiers";
 import type {
   MallBusinessEndView, MallBusinessTypeView, MallEndScope, MallPlanTier, MallPlanVersionView, MallReleaseStatus,
 } from "@/lib/types";

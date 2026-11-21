@@ -8,7 +8,7 @@
 // 不是正式售价，也不是真实账户。三家台湾线上通道（NewebPay / LINE Pay / JKOPay）
 // 在这里**根本没有**状态 —— 它们未接通，界面写死「未接通」，不从数据里读一个可以被改成 true 的布尔。
 import { ApiError } from "@/lib/api/error";
-import { mallPlanTiers } from "@/lib/types";
+import { mallPlanTiers } from "@/lib/commerce-plan-tiers";
 import type {
   MallBusinessEndDraft, MallBusinessTypeDraft, MallDeploymentOption, MallEntitlementSource, MallAccessSegment,
   MallMoney, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineInstructionsView, MallPaymentAttempt,

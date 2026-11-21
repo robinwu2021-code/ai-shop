@@ -183,12 +183,8 @@ export interface MallEndRequest {
 
 // ── Plan 档位 ─────────────────────────────────────────────────────────
 
-const industryPlanTiers = ["FREE", "BASE", "PRO", "GROWTH", "CHAIN"] as const;
-export type MallPlanTier = (typeof industryPlanTiers)[number];
-
-/** FREE 用于门店初始化，纯支付只有一个对外档位。 */
-export const mallPlanTiers = (typeCode: string): readonly MallPlanTier[] =>
-  typeCode === "PAYMENT" ? ["FREE", "BASE"] : industryPlanTiers;
+/** FREE 用于门店初始化，行业有四个对外档位，纯支付只有 BASE。 */
+export type MallPlanTier = "FREE" | "BASE" | "PRO" | "GROWTH" | "CHAIN";
 
 /** Plan 定义（新建经营类型时由后端生成） */
 export interface MallPlanDefinitionView {

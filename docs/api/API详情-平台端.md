@@ -16512,14 +16512,14 @@ Delivery state of an inventory/order synchronization event.
 
 ### MallPlanDefinitionView
 
-Plan 定义（每个经营类型固定三条，新建类型时由后端生成）
+Plan 定义（新建经营类型时由后端生成）
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `planNo` | `string` | 否 | Plan 号（形如 `RETAIL:PRO`） |
 | `typeCode` | `string` | 否 | 所属经营类型 |
 | `tier` | [`MallPlanTier`](#mallplantier) | 否 | 档位 |
-| `currentVersionNo` | `string,null` | 否 | 当前在售版本；未发布为 null |
+| `currentVersionNo` | `string,null` | 否 | 当前已发布版本；未发布为 null |
 | `saleStatus` | `string` | 否 | 售卖状态（DRAFT / ON_SALE / OFF_SALE） |
 | `version` | `number` | 否 | 乐观锁版本 |
 
@@ -16542,12 +16542,14 @@ Plan 版本内容
 
 ### MallPlanTier
 
-三档
+FREE 用于门店初始化，行业有四个对外档位，纯支付只有 BASE。
 
 枚举取值：
 
 - `FREE`
+- `BASE`
 - `PRO`
+- `GROWTH`
 - `CHAIN`
 
 ### MallPlanVersionView
