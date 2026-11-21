@@ -14,15 +14,21 @@ API = ROOT / "ops-web/app/payment-center/_api/api.ts"
 PAGES = ROOT / "ops-web/app/payment-center"
 DYNAMIC = {"transfers.approve", "transfers.reject", "transfers.execute"}  # api.transfers[kind](...)
 # 接口层内部调用（写命令超时后按幂等号取回执，TDD-支付中心运营页面 §2.15）：随所属写命令一起算「已接」
-INTERNAL = {"merchants.creationByRequest", "merchants.assistedOperation", "onboardings.draftCommand"}
-INTERNAL_PATHS = {("GET", "/merchant-creations/by-request/{}"), ("GET", "/merchants/{}/assisted-profile/operations/{}"), ("GET", "/onboardings/{}/draft/commands/{}")}
+INTERNAL = {"merchants.creationByRequest", "merchants.assistedOperation", "onboardings.draftCommand", "claims.command"}
+INTERNAL_PATHS = {("GET", "/merchant-creations/by-request/{}"), ("GET", "/merchants/{}/assisted-profile/operations/{}"), ("GET", "/onboardings/{}/draft/commands/{}"),
+                  ("GET", "/channel-account-claims/{}/commands/{}")}
 # near-pay 未开放（固定回 409 CAPABILITY_NOT_READY，da3ced2a4 核对）
 NOT_OPEN = {("POST", "/merchants/{}/close"), ("GET", "/approval-tasks/{}/candidates"), ("POST", "/approval-flows"), ("PUT", "/approval-flows/{}"),
-            ("POST", "/approval-flows/{}/copy"), ("POST", "/approval-flows/{}/publish"), ("POST", "/approval-flows/{}/disable")}
+            ("POST", "/approval-flows/{}/copy"), ("POST", "/approval-flows/{}/publish"), ("POST", "/approval-flows/{}/disable"),
+            ("POST", "/reconciliation-differences/{}/match"), ("POST", "/reconciliation-differences/{}/adjust-requests")}
+# 功能开关在线上没开（near-pay shop.pay.channel-bill.enabled 未配置，2026-11-21 核对 166）：整个控制器不加载
+NOT_OPEN_CONTROLLERS = {"OpsChannelBillController"}
 # 用户确认不在运营端提供：near-pay 权限映射（权限由 ai-shop 决定）、关闭渠道账户（near-pay 不开放）、等价能力已有
 EXCLUDED = {("GET", "/permission-mappings"), ("GET", "/permission-mappings/{}"), ("GET", "/permission-resources"), ("POST", "/permission-mappings"),
             ("POST", "/permission-mappings/{}/enable"), ("POST", "/permission-mappings/{}/revoke"), ("PUT", "/permission-mappings/{}"),
-            ("GET", "/me/access"), ("POST", "/channel-accounts/{}/close"), ("POST", "/approval-tasks/{}/review")}
+            ("GET", "/me/access"), ("POST", "/channel-accounts/{}/close"), ("POST", "/approval-tasks/{}/review"),
+            # 已有等价能力：账户恢复走审批执行（approvals.execute）；认领附件随认领详情返回
+            ("POST", "/channel-accounts/{}/resume"), ("GET", "/channel-account-claims/{}/files")}
 # 渠道专属，等业务确认再排（易特付、PayBy POS、SoftPOS、测试渠道）
 DEFERRED_CONTROLLERS = {"OpsYitePayVaController", "OpsPayByPosController", "OpsPayByPosAcceptanceController", "OpsPayBySgsAcceptanceController",
                         "OpsSoftPosBindingController", "OpsTestChannelRegistrationController", "OpsTestChannelTrialController", "OpsTestCollectionSessionController"}
@@ -54,7 +60,17 @@ def nearpay_endpoints(np_root):
 def wrappers():
     lines = API.read_text(encoding="utf-8").split("\n")
     methods, port = [], None
-    for l in lines:
+    for idx, l in enumerate(lines):
+        am = re.match(r"^      ([a-zA-Z]+): async \(", l)
+        if am and port and "c." not in l:  # 多行 async 方法：在后几行里找第一个请求
+            for nxt in lines[idx + 1: idx + 5]:
+                cm = re.search(r'c\.(get|page|blob|upload|command)(?:<.*?>)?\(\s*([`"])(.+?)\2(.*)$', nxt)
+                if cm:
+                    p = re.sub(r"\$\{[^}]*\}", "{}", cm.group(3)).split("?")[0]
+                    mt = {"get": "GET", "page": "GET", "blob": "GET", "upload": "POST", "command": "POST"}[cm.group(1)]
+                    r = re.search(r'method:\s*"(PUT|DELETE|PATCH)"', cm.group(4))
+                    methods.append((port, am.group(1), r.group(1) if r else mt, p)); break
+            continue
         m = re.match(r"^    ([a-zA-Z]+): \{\s*$", l)
         if m:
             port = m.group(1); continue
@@ -101,7 +117,7 @@ def main():
         st = "MISSING" if not hits else ("UI" if any(u for _, u in hits) else "API_ONLY")
         if st != "UI" and (m, p) in INTERNAL_PATHS: st = "UI"
         if st != "UI":
-            st = ("NOT_OPEN" if (m, p) in NOT_OPEN else "EXCLUDED" if (m, p) in EXCLUDED
+            st = ("NOT_OPEN" if (m, p) in NOT_OPEN or c in NOT_OPEN_CONTROLLERS else "EXCLUDED" if (m, p) in EXCLUDED
                   else "DEFERRED" if c in DEFERRED_CONTROLLERS else st)
         rows.append((c, m, p, st, ",".join(sorted({h for h, _ in hits}))))
     if "--tsv" in sys.argv:

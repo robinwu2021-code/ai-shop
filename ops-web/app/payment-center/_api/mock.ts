@@ -10,6 +10,7 @@ import type {
   AccountStatus, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRow, StoreBinding, VerificationStatus,
   ChannelAccountTransfer, QualificationVersion, StoreMethodView, StoreQrCode,
   MerchantMemberRow, ProfileRevisionRow, RepairRow,
+  CredentialRow, CredentialVersion, CredentialPolicy, AuditEventRow,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -235,6 +236,16 @@ export function createMockPayCenterApi(): PayCenterApi {
   const repairs = new VersionedTable<RepairRow>([
     { repairNo: "SR7001", requestNo: "ops-seed-1", merchantNo: "PM1002", linkNo: "LK-PM1002", sourceSystem: "AI_SHOP", sourceScope: "MAIN", fromOperatingEntityId: "E-OLD-1002", toOperatingEntityId: "E-NEW-1002", storeNos: ["ST2003"], evidence: "工单 OPS-1002：主体变更已核对证照", expectedVersion: 3, status: "PENDING_APPROVAL", approvalNo: "AP8051", approvalStatus: "PENDING_FIRST", approvalVersion: 1, requestedBy: "ST-OPS-1", executedBy: null, executedAt: null, beforeSnapshot: null, afterSnapshot: null, createdAt: T0 - 3 * H, version: 1 },
   ], (r) => r.repairNo);
+  // ── P10：凭证管理、审计事件 ──
+  type CredRec = CredentialRow & { versions: CredentialVersion[] };
+  const ver = (i: number, status: string, by = "ST-OPS-1"): CredentialVersion => ({ versionIndex: i, status, fingerprint: `fp${i}a9c3`, displayPrefix: `sk_test_${i}…`, externalKeyId: null, source: "UPLOADED", validFrom: T0 - 72 * H, validTo: T0 + 300 * 24 * H, enteredBy: by, verifiedAt: status === "DRAFT" ? null : T0 - 70 * H, verifyEvidence: status === "DRAFT" ? null : "MANUAL:OPS-1", enabledBy: status === "ACTIVE" ? "ST-OPS-2" : null, enabledAt: status === "ACTIVE" ? T0 - 69 * H : null, overlapUntil: null, revokedBy: null, revokedAt: null, revokeReason: null });
+  const creds = new VersionedTable<CredRec & { version: number }>([
+    { keyId: 4101, credentialType: "NEWEBPAY_MERCHANT_HASH", ownerType: "PAY_MERCHANT", ownerRef: "NWP7000", name: "蓝新商户 HashKey/IV", counterparty: "NEWEBPAY", purpose: "MERCHANT_HASH", algorithm: "AES-256", materialType: "COMPOSITE", env: "PRODUCTION", status: "ACTIVE", currentVersion: 2, currentFingerprint: "fp2a9c3", expiresAt: T0 + 300 * 24 * H, expiryState: "OK", pendingVersions: 0, lastUsedAt: T0 - H, versions: [ver(2, "ACTIVE"), ver(1, "REVOKED")], version: 1 },
+    { keyId: 4102, credentialType: "APP_SECRET", ownerType: "PARTNER_APP", ownerRef: "APP9001", name: "点餐 App 密钥", counterparty: null, purpose: "APP_SIGN", algorithm: "HMAC-SHA256", materialType: "SYMMETRIC_SECRET", env: "SANDBOX", status: "ACTIVE", currentVersion: 1, currentFingerprint: "fp1a9c3", expiresAt: T0 + 20 * 24 * H, expiryState: "EXPIRING", pendingVersions: 1, lastUsedAt: null, versions: [ver(2, "DRAFT"), ver(1, "ACTIVE")], version: 1 },
+  ], (r) => String(r.keyId));
+  const credPolicies: CredentialPolicy[] = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"].map((o) => ({ ownerType: o, env: "PRODUCTION", maxAgeDays: 365, warnBeforeDays: 30, overlapDays: 7, dualControl: true, verifyBeforeEnable: true, revealOnIssueOnly: true, version: 0 }));
+  const credActions = (r: CredRec) => (r.status === "REVOKED" ? [] : [r.materialType === "SYMMETRIC_SECRET" && r.ownerType === "PARTNER_APP" ? "GENERATE" : "ADD_VERSION", ...(r.versions.some((v) => v.status === "DRAFT") ? ["VERIFY"] : []), ...(r.versions.some((v) => v.status === "VERIFIED") ? ["ENABLE"] : []), "REVOKE"]);
+  const audits: AuditEventRow[] = Array.from({ length: 5 }, (_, i) => ({ auditNo: `AU${6001 + i}`, requestId: `req-${i}`, operatorNo: i % 2 ? "ST-OPS-2" : "ST-OPS-1", roleNos: ["SUPER_ADMIN"], face: "OPS", resourceType: ["MERCHANT", "CHANNEL_ACCOUNT", "STORE_BINDING", "CREDENTIAL", "ALERT_RULE"][i], resourceNo: ["PM1001", "NWP7000", "SB5001", "4101", "AR2001"][i], action: ["SUSPEND", "VERIFY", "UNBIND", "ENABLE", "PUBLISH"][i], result: "SUCCEEDED", reason: "例行操作", approvalRef: i === 3 ? "AP8100" : null, beforeSummary: '{"status":"ACTIVE"}', afterSummary: '{"status":"SUSPENDED"}', occurredAt: T0 - i * H }));
   const repairActions = (r: RepairRow) => (r.status === "PENDING_APPROVAL" ? ["approve", "reject"] : r.status === "APPROVED" ? ["execute"] : []);
   const transfers: ChannelAccountTransfer[] = [];
   const qrCodes = new Map<string, StoreQrCode[]>();
@@ -587,6 +598,12 @@ export function createMockPayCenterApi(): PayCenterApi {
       activate: (no, c) => run(async () => { cmdCheck(c); const d = accounts.get(no); need(d.account.verificationStatus === "VERIFIED" && d.products.some((p) => p.status === "OPEN") && !!d.account.credentialKeyId, "须已核验、至少开通一个产品、凭据就绪"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "ACTIVE" }); return ok(no, "ACTIVE", r.version); }),
       suspend: (no, c) => run(async () => { cmdCheck(c); need(["ACTIVE", "REFUND_ONLY"].includes(accounts.get(no).account.status), "当前状态不允许停用"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "SUSPENDED" }); return ok(no, "SUSPENDED", r.version); }),
       refundOnly: (no, c) => run(async () => { cmdCheck(c); need(accounts.get(no).account.status === "ACTIVE", "只有可收款账户可改为仅退款"); const r = await accounts.update(no, {}, c.expectedVersion); syncAccount(no, { status: "REFUND_ONLY" }); return ok(no, "REFUND_ONLY", r.version); }),
+      update: (no, b) => run(async () => {
+        reasonOf(b.reason); const cur = accounts.get(no); need(cur.account.status === "UNVERIFIED", "只有未核验的账户可修改坐标");
+        need(!!b.channelMerchantId?.trim(), "请填写渠道商户号"); need(b.accountMode !== "MERCHANT_OWN" || !b.parentPayMerchantNo, "自有商户模式不能填上级账户");
+        const r = await accounts.update(no, { account: { ...cur.account, channelMerchantId: `****${b.channelMerchantId.slice(-4)}`, subMerchantId: b.subMerchantId ? `****${b.subMerchantId.slice(-4)}` : null, accountMode: b.accountMode as never, fundsPath: b.fundsPath as never, parentPayMerchantNo: b.parentPayMerchantNo, evidenceRef: b.evidenceRef, verificationStatus: "PENDING" } }, b.expectedVersion);
+        return ok(no, r.account.status, r.version);
+      }),
       openProduct: (no, code, b) => run(async () => { reasonOf(b.reason); need(!!b.evidenceRef.trim(), "请填写证明引用"); const d = accounts.get(no); const products = [...d.products.filter((p) => p.productCode !== code), { productCode: code, productName: products_name(code), status: "OPEN" as const, source: "OPS_CONFIRMED" as const, evidenceRef: b.evidenceRef, openedBy: "admin", openedAt: Date.now() }]; const r = await accounts.update(no, { products }, b.expectedVersion); syncAccount(no, {}); return ok(no, d.account.status, r.version); }),
       closeProduct: (no, code, c) => run(async () => { cmdCheck(c); const d = accounts.get(no); need(d.account.status !== "ACTIVE" || d.products.filter((p) => p.status === "OPEN").length > 1, "可收款账户须保留至少一个产品"); const r = await accounts.update(no, { products: d.products.map((p) => (p.productCode === code ? { ...p, status: "CLOSED" as const } : p)) }, c.expectedVersion); syncAccount(no, {}); return ok(no, d.account.status, r.version); }),
       bindCredential: (no, b) => run(async () => { reasonOf(b.reason); const r = await accounts.update(no, { credentialVersion: 1 }, b.expectedVersion); syncAccount(no, { credentialKeyId: b.keyId }); return ok(no, accounts.get(no).account.status, r.version); }),
@@ -607,6 +624,11 @@ export function createMockPayCenterApi(): PayCenterApi {
     },
     qualifications: {
       ofAccount: (no) => run(() => qualifications.filter((x) => x.coordinates?.payMerchantNo === no)),
+      prepare: (no, b) => run(() => {
+        reasonOf(b.reason); need(/^[A-Z0-9_-]{1,32}$/.test(b.evidenceNo), "证据号格式不对"); need(b.trialEvidence.startsWith("sandbox-trial:"), "试运行证据须以 sandbox-trial: 开头");
+        const v: QualificationVersion = { ref: `${b.evidenceNo}:${b.revision}`, revision: b.revision, channel: "NEWEBPAY", purpose: "SANDBOX_TRIAL", coordinates: { payMerchantNo: no, product: b.productCode, entry: "H5" }, coordinateKey: null, payloadJson: JSON.stringify({ returnUrl: b.returnUrl, notifyUrl: b.notifyUrl }), payloadSha256: "mock", status: "DRAFT", maker: "admin", approvalNo: null, validUntil: b.validUntil, version: 1 };
+        qualifications.push(v); return v;
+      }),
       detail: (ref) => run(() => { const v = qualifications.find((x) => x.ref === ref); need(!!v, "资质版本不存在"); return v!; }),
       importVersion: (b) => run(() => { reasonOf(b.reason); try { JSON.parse(b.payloadJson); } catch { need(false, "资质内容须为 JSON"); }
         const v: QualificationVersion = { ref: `${b.evidenceNo}:${b.revision}`, revision: b.revision, channel: b.channel, purpose: b.purpose, coordinates: JSON.parse(b.payloadJson).coordinates ?? null, coordinateKey: null,
@@ -632,6 +654,7 @@ export function createMockPayCenterApi(): PayCenterApi {
       list: (merchantNo) => run(() => claims.all().filter((c) => c.merchantNo === merchantNo)),
       detail: (no) => run(() => claims.get(no)),
       resolve: (no, b) => run(async () => { reasonOf(b.reason); need(claims.get(no).state === "PENDING_VERIFY", "只有待核实的认领可处理"); return claims.update(no, { state: b.result, reason: b.reason, payMerchantNo: b.payMerchantNo ?? null }, b.expectedVersion); }),
+      command: (_no, rn) => run(() => { throw new MockPayError("NOT_FOUND", `命令 ${rn} 没有回执`); }),
       file: () => Promise.reject(new MockPayError("NOT_FOUND", "mock 没有证明文件")),
     },
     entries: {
@@ -668,6 +691,8 @@ export function createMockPayCenterApi(): PayCenterApi {
       enable: (no, c) => run(async () => { need(terminals.get(no).verificationStatus === "VERIFIED", "核验通过后才能启用"); return setStatusField(terminals, no, c, "configurationStatus", ["DRAFT", "DISABLED"], "ENABLED"); }),
       disable: (no, c) => run(() => setStatusField(terminals, no, c, "configurationStatus", ["ENABLED"], "DISABLED")),
       activationCode: (no) => run(() => { need(terminals.get(no).deviceStatus !== "RETIRED", "已退役的终端不能生成激活码"); return { activationCode: `${Math.floor(100000 + Math.random() * 900000)}` }; }),
+      credentialReference: (no) => run(() => { const t = terminals.get(no); return { terminalNo: no, credentialRef: t.credentialRef ? `secret:terminal/${no}` : null, keyId: t.credentialRef ? 4100 : null }; }),
+      retirement: (no) => run(() => { const t = terminals.get(no); return { terminalNo: no, serialNo: t.serialNo, deviceStatus: t.deviceStatus, retirementStatus: t.deviceStatus === "RETIRED" ? "RETIRED" : "NOT_STARTED", version: t.version }; }),
       lost: (no) => run(async () => { need(terminals.get(no).deviceStatus !== "RETIRED", "已退役"); await terminals.update(no, { deviceStatus: "LOST", configurationStatus: "DISABLED" }); return null; }),
       retire: (no, c) => run(async () => { cmdCheck(c); const r = await terminals.update(no, { deviceStatus: "RETIRED", configurationStatus: "DISABLED" }, c.expectedVersion); return { terminalNo: no, serialNo: r.serialNo, deviceStatus: "RETIRED", retirementStatus: "COMPLETED", version: r.version }; }),
     },
@@ -675,6 +700,12 @@ export function createMockPayCenterApi(): PayCenterApi {
       list: (q) => pageOf(apps.all().map(({ grants: _g, ...a }) => a), q, ["appNo", "name"]),
       detail: (no) => run(() => { const { grants: _g, ...a } = apps.get(no); const acts = ({ DRAFT: ["update", "scopes", "callback", "verifyCallback", "enable", "revoke"], ACTIVE: ["update", "scopes", "suspend", "revoke"], SUSPENDED: ["update", "scopes", "callback", "verifyCallback", "resume", "revoke"] } as Record<string, string[]>)[a.status] ?? []; return wrap({ app: a, registeredBy: "admin", callbackSetBy: "admin", callbackVerifiedBy: a.callbackStatus === "VERIFIED" ? "admin2" : null, callbackEvidenceRef: null, statusReason: null, enableApprovalNo: null }, a.version, acts); }),
       grants: (no) => run(() => ({ records: apps.get(no).grants, total: apps.get(no).grants.length })),
+      revokeGrant: (no, store, c) => run(async () => {
+        cmdCheck(c); const a = apps.get(no); const g = a.grants.find((x) => x.storeNo === store); need(!!g, "没有这个门店的授权");
+        if (g!.status === "REVOKED") return ok(no, "REVOKED", g!.version);
+        if (g!.version !== c.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "授权已被他人修改，请刷新后重试");
+        await apps.update(no, { grants: a.grants.map((x) => (x.storeNo === store ? { ...x, status: "REVOKED", version: x.version + 1 } : x)) }); return ok(no, "REVOKED", g!.version + 1);
+      }),
       create: (b) => run(async () => { reasonOf(b.reason); const row = { appNo: `APP${9001 + apps.all().length}`, name: b.name, purpose: b.purpose, ownerKind: b.ownerKind as "MERCHANT", merchantNo: b.merchantNo, environment: (b.environment ?? "SANDBOX") as "SANDBOX", scopes: b.scopes, notifyUrl: b.notifyUrl, callbackDomains: b.callbackDomains, callbackStatus: "UNVERIFIED", ipWhitelist: b.ipWhitelist, rateLimitQps: b.rateLimitQps, dailyRefundLimitMinor: b.dailyRefundLimitMinor, credentialStatus: "NONE", grantCount: 0, status: "DRAFT", lastAccessAt: null, lastAccessOutcome: null, version: 1, grants: [] }; await apps.insert(row); const { grants: _g, ...a } = row; return wrap({ app: a, registeredBy: "admin", callbackSetBy: null, callbackVerifiedBy: null, callbackEvidenceRef: null, statusReason: null, enableApprovalNo: null }, 1, ["update"]); }),
       update: (no, b) => run(async () => { reasonOf(b.reason); const { expectedVersion, reason: _r, ...rest } = b; const r = await apps.update(no, rest, expectedVersion); return ok(no, r.status, r.version); }),
       scopes: (no, b) => run(async () => { reasonOf(b.reason); const r = await apps.update(no, { scopes: b.scopes }, b.expectedVersion); return ok(no, r.status, r.version); }),
@@ -698,6 +729,14 @@ export function createMockPayCenterApi(): PayCenterApi {
     },
     alerts: {
       events: (q) => pageOf(alertEvents.all(), q, ["eventNo", "ruleNo"]),
+      metrics: () => run(() => [
+        { metric: "CHANNEL_SUCCESS_RATE", title: "渠道成功率", unit: "PERCENT", scopeTypes: ["INSTANCE", "CHANNEL"], defaultWindowSeconds: 300, eventDriven: false },
+        { metric: "CHANNEL_LATENCY", title: "渠道耗时", unit: "MILLISECOND", scopeTypes: ["INSTANCE", "CHANNEL"], defaultWindowSeconds: 300, eventDriven: false },
+        { metric: "CALLBACK_FAILURE", title: "回调失败", unit: "COUNT", scopeTypes: ["INSTANCE", "CHANNEL"], defaultWindowSeconds: 300, eventDriven: false },
+        { metric: "NOTIFY_FAILURE", title: "通知失败", unit: "COUNT", scopeTypes: ["INSTANCE"], defaultWindowSeconds: 900, eventDriven: false },
+        { metric: "REVERSAL_PENDING", title: "冲正待确认", unit: "MINUTE", scopeTypes: ["INSTANCE", "CHANNEL"], defaultWindowSeconds: 1800, eventDriven: true },
+      ]),
+      recheckReversal: (no) => run(() => { const ev = alertEvents.get(no); need(ev.metric === "REVERSAL_PENDING" && ["OPEN", "CLAIMED"].includes(ev.status), "只有未关闭的冲正待确认告警可回查"); return "PENDING" as const; }),
       event: (no) => run(() => { const a = alertEvents.get(no); const acts = a.status === "OPEN" ? ["claim", "resolve"] : a.status === "CLAIMED" ? ["assign", "resolve"] : a.status === "RESOLVED" ? ["close"] : []; return wrap(a, a.version, acts); }),
       claim: (no, c) => run(async () => { cmdCheck(c); need(alertEvents.get(no).status === "OPEN", "只能认领待处理的告警"); const r = await alertEvents.update(no, { status: "CLAIMED", assigneeNo: "admin" }, c.expectedVersion); return ok(no, r.status, r.version); }),
       assign: (no, b) => run(async () => { cmdCheck(b); need(["OPEN", "CLAIMED"].includes(alertEvents.get(no).status), "当前状态不能指派"); const r = await alertEvents.update(no, { status: "CLAIMED", assigneeNo: b.assigneeNo }, b.expectedVersion); return ok(no, r.status, r.version); }),
@@ -709,6 +748,29 @@ export function createMockPayCenterApi(): PayCenterApi {
       updateRule: (no, b) => run(async () => { reasonOf(b.reason); const { expectedVersion, reason: _r, ...rest } = b; const r = await alertRules.update(no, { ...rest, status: "DRAFT", enteredBy: "admin" }, expectedVersion); return ok(no, r.status, r.version); }),
       enableRule: (no, c) => run(async () => { cmdCheck(c); need(alertRules.get(no).enteredBy !== "admin", "发布人不能是录入人"); return setStatus(alertRules, no, c, ["DRAFT"], "PUBLISHED"); }),
       disableRule: (no, c) => run(() => setStatus(alertRules, no, c, ["PUBLISHED", "DRAFT"], "RETIRED")),
+    },
+    credentials: {
+      types: () => run(() => [
+        { credentialType: "NEWEBPAY_MERCHANT_HASH", ownerType: "PAY_MERCHANT", counterparty: "NEWEBPAY", purpose: "MERCHANT_HASH", algorithm: "AES-256", materialType: "COMPOSITE" as const, materialFields: ["hashKey", "hashIv"], generated: false },
+        { credentialType: "APP_SECRET", ownerType: "PARTNER_APP", counterparty: null, purpose: "APP_SIGN", algorithm: "HMAC-SHA256", materialType: "SYMMETRIC_SECRET" as const, materialFields: ["secret"], generated: true },
+        { credentialType: "JKOPAY_PLATFORM_VERIFY", ownerType: "CHANNEL_PLATFORM", counterparty: "JKOPAY", purpose: "PLATFORM_VERIFY", algorithm: "RSA", materialType: "PUBLIC_KEY" as const, materialFields: ["publicMaterial"], generated: false },
+      ]),
+      policies: () => run(() => credPolicies),
+      savePolicy: (owner, b) => run(() => { reasonOf(b.reason); const i = credPolicies.findIndex((p) => p.ownerType === owner); need(i >= 0, "没有这个归属类型"); if (credPolicies[i].version !== b.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "策略已被他人修改，请刷新后重试"); credPolicies[i] = { ...credPolicies[i], ...b, dualControl: true, revealOnIssueOnly: true, version: credPolicies[i].version + 1 }; return credPolicies[i]; }),
+      list: (q) => pageOf(creds.all().map(({ versions: _v, version: _x, ...r }) => r), q, ["name", "ownerRef", "credentialType"]),
+      detail: (id) => run(() => { const r = creds.get(String(id)); const { versions, version: _x, ...rec } = r; return { record: rec, versions, policy: credPolicies.find((p) => p.ownerType === r.ownerType)!, events: [], allowedActions: credActions(r) }; }),
+      accessLogs: (id) => run(() => { creds.get(String(id)); return [{ accessType: "SIGN", accessorNo: "pay-svc", accessorRole: "SERVICE", reason: "收款签名", approvalRef: null, accessedAt: T0 - H }]; }),
+      register: (b) => run(async () => { reasonOf(b.reason); need(!b.credentialType.startsWith("TERMINAL"), "终端密钥只能由激活流程登记"); const row = { keyId: 4100 + creds.all().length + 1, credentialType: b.credentialType, ownerType: "PAY_MERCHANT", ownerRef: b.ownerRef, name: b.credentialType, counterparty: null, purpose: b.credentialType, algorithm: "—", materialType: "COMPOSITE", env: "SANDBOX", status: "ACTIVE", currentVersion: 0, currentFingerprint: null, expiresAt: null, expiryState: "NONE", pendingVersions: 0, lastUsedAt: null, versions: [], version: 1 }; await creds.insert(row); const { versions: _v, version: _x, ...r } = row; return r; }),
+      addVersion: (id, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); need(!!(b.secret || b.hashKey || b.publicMaterial), "请填写密钥材料"); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return v; }),
+      generate: (id, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return { keyId: id, versionIndex: v.versionIndex, serial: `ext-${v.versionIndex}`, secret: `sk_test_mock_${Date.now()}`, fingerprint: v.fingerprint, status: "DRAFT" }; }),
+      verify: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "DRAFT", "只有草稿版本可核验"); const next = { ...v!, status: "VERIFIED", verifiedAt: Date.now(), verifyEvidence: b.evidenceRef ? `MANUAL:${b.evidenceRef}` : null }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
+      enable: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）"); const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) }); return next; }),
+      revoke: (id, vi, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(!!v && v.status !== "REVOKED", "版本已撤销"); const next = { ...v!, status: "REVOKED", revokedBy: "admin", revokedAt: Date.now(), revokeReason: reason }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
+      bindings: () => run(() => [{ keyId: 4101, source: "SEC" as const, consumerType: "CHANNEL_ACCOUNT", consumerRef: "NWP7000", consumerName: "蓝新商户 7000", field: "pay_merchant.sec_key_id", channel: "NEWEBPAY", status: "ACTIVE", environment: "PRODUCTION", transactions: 128, lastFrozenAt: T0 - H }]),
+    },
+    audits: {
+      list: (q) => pageOf(audits, q, ["auditNo", "resourceNo", "operatorNo"]),
+      detail: (no) => run(() => { const a = audits.find((x) => x.auditNo === no); if (!a) throw new MockPayError("NOT_FOUND", "没有这条审计"); return wrap(a, 0, []); }),
     },
     merchantMembers: {
       list: (q) => pageOf(members.all().map(({ version: _v, ...r }) => r), q, ["membershipNo", "merchantNo", "subjectRef"]),
@@ -787,6 +849,7 @@ export function createMockPayCenterApi(): PayCenterApi {
       accounts: (q) => pageOf(svAccounts, q, ["accountNo", "customerNo"]),
       account: (no) => run(() => { const a = svAccounts.find((x) => x.accountNo === no); if (!a) throw new MockPayError("NOT_FOUND", "账户不存在"); return wrap({ account: a, recentTransactions: svTx.filter((t) => t.accountNo === no).slice(0, 20) }, a.version); }),
       transactions: (q) => pageOf(svTx, q, ["transactionNo", "accountNo", "bizNo"]),
+      transaction: (no) => run(() => { const t = svTx.find((x) => x.transactionNo === no); if (!t) throw new MockPayError("NOT_FOUND", "没有这笔储值交易"); return wrap(t, 0, []); }),
     },
     channelCosts: {
       list: (q) => pageOf(costStatus(costs).sort((a, b) => b.effectiveFrom - a.effectiveFrom), q, ["payChannel", "payMethod"]),

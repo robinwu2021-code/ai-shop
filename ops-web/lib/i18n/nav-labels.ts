@@ -32,6 +32,8 @@ const OVERLAY: Record<string, Record<string, string>> = {
   "商户变更": { en: "Merchant Changes" },
   "商户成员": { en: "Merchant Members" },
   "关联修复": { en: "Association Repairs" },
+  "凭证管理": { en: "Credentials" },
+  "审计事件": { en: "Audit Events" },
   "退款订单": { en: "Refunds" },
   "支付产品": { en: "Payment Products" },
   "收款接入": { en: "Collection Entries" },

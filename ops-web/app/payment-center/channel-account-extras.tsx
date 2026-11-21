@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton, ErrorState } from "@/components/ui/misc";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { QualificationDetail, QualificationPrepare } from "./p9-panels";
 import type { PayCenterApi } from "@/app/payment-center/_api/api";
 import {
   QUALIFICATION_STATUSES, TRANSFER_STATUSES,
@@ -229,11 +230,14 @@ export function QualificationsPanel({ api, detail, run }: { api: PayCenterApi; d
             return v ? (
               <div className="space-y-1">
                 <Note>{m.sha}: {v.payloadSha256}</Note>
-                <pre className="max-h-64 overflow-auto rounded-field bg-muted p-2 txt-caption">{v.payloadJson}</pre>
+                <QualificationDetail api={api} ref={v.ref} />
               </div>
             ) : null;
           })()}
         </>
+      )}
+      {canManage && a.payChannel === "NEWEBPAY_TEST" && (
+        <QualificationPrepare api={api} payMerchantNo={a.payMerchantNo} nextRevision={Math.max(0, ...(q.data ?? []).map((x) => x.revision)) + 1} run={run} onDone={() => void q.refetch()} />
       )}
       {canManage && (
         <section className="space-y-2" aria-label={m.qualImport}>

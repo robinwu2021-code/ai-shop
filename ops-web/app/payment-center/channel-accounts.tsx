@@ -24,6 +24,7 @@ import {
 import { useCopy, fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
 import { P8_COPY } from "./p8-copy";
+import { ChannelAccountEdit } from "./p9-panels";
 import { fmtTime } from "@/lib/utils";
 import { MiniTable, usePc } from "./shared";
 import { CHANNEL_ACCOUNTS_COPY, type ChannelAccountsCopy } from "./channel-accounts-copy";
@@ -195,6 +196,7 @@ function AccountDetailView({ api, no, run, back }: { api: PayCenterApi; no: stri
           {has("suspend") && <Button size="sm" variant="ghost" onClick={() => act(fill(m.suspendTitle, { no }), m.suspendDesc, (r) => api.channelAccounts.suspend(no, cmd(r)), true)}>{m.suspend}</Button>}
         </div>
       )}
+      {has("update") && canManage && <ChannelAccountEdit api={api} account={a} version={d.version} run={run} onDone={() => void q.refetch()} />}
       {has("resume") && <ResumeApprovalPanel api={api} no={no} run={run} changed={() => void q.refetch()} />}
       {has("close") && <CloseUnavailableNote />}
       <Tabs value={tab} onChange={setTab} tabs={[

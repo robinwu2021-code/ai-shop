@@ -342,6 +342,34 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 
 **结果**：`scripts/pay-center-wiring.py` 统计本期范围 267 个接口，已接 230（86%）；未开放 7、不提供 10、暂缓 37 单列。测试：`p8.test.ts` 9 条，ops-web 全量通过；后端 `FunctionPointPermAlignmentTest`、`OpsPermConfigFlowTest`、`FunctionModuleSyncTest`、`PayOpsPermissionCodesTest` 通过。
 
+**P9 / P10 实现（2026-11-21，同一分支）**
+
+契约同样从 near-pay `da3ced2a4` 核对，线上开关从 166 只读核对。
+
+- **P9 渠道**：
+  - 渠道账户「修改坐标」（`PUT /channel-accounts/{}`，只在 UNVERIFIED，改完核验退回 PENDING；渠道商户号要重填、不存草稿）。
+  - 蓝新测试渠道「准备沙箱试运行」资质（`POST /channel-accounts/{}/qualifications`，建 DRAFT 经审批生效）；资质展开改取 `GET /channel-qualifications/{}`。
+  - 终端详情「凭证与退役」（凭证引用需 `pay:credential:view`，没有就不发请求）。
+  - 应用门店授权「撤销」（版本是授权版本）。
+- **P9 告警与资产**：
+  - 告警规则的指标说明来自 `GET /alert-metrics`。
+  - 告警事件「冲正回查」（无请求体、不带幂等号，结果 VERIFIED / PENDING / DEFERRED）。
+  - 储值交易查看改取详情。
+- **超时恢复**：认领处理也走回执（`/channel-account-claims/{}/commands/{}`）。回执明确「被拒」时把原因交给页面，不再当作查不到。
+- **P10**：
+  - 新页签「凭证管理」：列表、详情（版本 / 策略 / 操作记录 / 访问记录）、登记、录入版本、生成（明文只显示一次）、核验 / 启用 / 撤销、轮换策略、使用情况。录入与生成不带自动幂等号，避免密钥材料进请求体指纹。
+  - 新页签「审计事件」（只读）。
+  - 佣金规则查看改取详情。
+  - 两个页签都只授 SUPER_ADMIN（V687 排序 552 / 553）。
+- **不做（已核对）**：
+  - 对账差异匹配 / 调整申请：near-pay 固定 409。
+  - 渠道账单 6 个：线上未开 `shop.pay.channel-bill.enabled`，控制器不加载；回执下载也是空文件。
+  - 账户恢复：已由审批执行完成，`/resume` 等价。
+  - 认领附件：随认领详情返回。
+- **权限码**：前端补 `pay:credential:view|approve`、`pay:audit:view`（后端 V686 早已登记）。
+
+**结果**：`scripts/pay-center-wiring.py` 统计本期范围 257 个接口已接 257（100%）；near-pay 未开放 15、不在运营端提供 12、渠道专属暂缓 37 单列。测试：P8 9 条 + P9 7 条 + P10 6 条，ops-web 全量 158 个文件 1431 条通过；后端菜单 / 权限测试通过。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。

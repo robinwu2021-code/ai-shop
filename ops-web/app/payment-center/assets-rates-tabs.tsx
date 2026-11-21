@@ -84,8 +84,9 @@ export function SvTransactionsTab({ header }: { header: React.ReactNode }) {
   const list = useTabList<StoredValueTransactionRow, Record<string, never>>("sv-transactions", {}, (api, q) => api.storedValue.transactions({ ...q, keyword: undefined, transactionNo: q.keyword }));
   const actions: ActionSpec<StoredValueTransactionRow>[] = [{
     key: "view", label: c.view, kind: "drawer", width: "w-[560px]", title: () => c.svTxDesc,
-    render: (ctx) => {
-      const t = ctx.row!;
+    // P9：取详情（GET /stored-value/transactions/{no}），不只用列表行
+    render: (ctx) => <DetailLoader name="sv-transactions" id={ctx.row!.transactionNo} load={() => list.api.storedValue.transaction(ctx.row!.transactionNo)}>{(d) => {
+      const t = d.record;
       return <DetailBody sections={[{ title: c.sectionBasic, fields: [
         { label: c.transactionNo, value: <PayRefCell value={t.transactionNo} /> },
         { label: c.bizTypeLabel, value: t.bizType },
@@ -98,7 +99,7 @@ export function SvTransactionsTab({ header }: { header: React.ReactNode }) {
         { label: c.afterBalance, value: `${money(t.afterPrincipalMinor, t.currency)} + ${money(t.afterBonusMinor, t.currency)}` },
         { label: c.occurredAtLabel, value: fmtTime(t.occurredAt) },
       ] }]} />;
-    },
+    }}</DetailLoader>,
   }];
   return (
     <PayListPage<StoredValueTransactionRow> header={header} help={c.svTxDesc} search={list.keyword} onSearch={list.setKeyword} searchPlaceholder={c.svTxSearch}
@@ -215,8 +216,9 @@ export function CommissionRulesTab({ header }: { header: React.ReactNode }) {
   const list = useTabList<CommissionRuleRow, { status: string }>("commission-rules", { status: "" }, (a, q) => a.commissionRules.list({ ...q, keyword: undefined, businessMode: q.keyword }));
   const actions: ActionSpec<CommissionRuleRow>[] = [{
     key: "view", label: c.view, kind: "drawer", title: () => c.commissionDetailTitle,
-    render: (ctx) => {
-      const r = ctx.row!;
+    // P10：取详情（GET /commission-rules/{no}，状态按同一经营模式 × 流量来源实时算）
+    render: (ctx) => <DetailLoader name="commission-rules" id={ctx.row!.ruleNo} load={() => list.api.commissionRules.detail(ctx.row!.ruleNo)}>{(d) => {
+      const r = d.record;
       return <DetailBody sections={[{ title: c.sectionBasic, fields: [
         { label: c.revision, value: <PayRefCell value={r.ruleNo} /> },
         { label: c.colStatus, value: <StatusBadge value={r.status} map={statusMap} /> },
@@ -227,7 +229,7 @@ export function CommissionRulesTab({ header }: { header: React.ReactNode }) {
         { label: c.colCreated, value: r.createdAt ? `${fmtTime(r.createdAt)} · ${r.createdBy ?? ""}` : "—" },
         { label: c.reasonField, value: r.remark, full: true },
       ] }]} />;
-    },
+    }}</DetailLoader>,
   }];
   const pageActions: ActionSpec<CommissionRuleRow>[] = [{
     key: "create", label: c.create, kind: "drawer", perm: "pay:fee-plan:manage", title: () => c.createCommissionTitle,

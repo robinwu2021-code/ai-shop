@@ -31,6 +31,8 @@ import { TerminalsTab } from "./terminals-tab";
 import { AppsTab } from "./apps-tab";
 import { MembersTab } from "./members-tab";
 import { RepairsTab } from "./repairs-tab";
+import { CredentialsTab } from "./credentials-tab";
+import { AuditTab } from "./audit-tab";
 import { ChannelCallbacksTab, ChannelCallsTab, RequestLogsTab } from "./traces-tab";
 import { AlertEventsTab, AlertRulesTab } from "./alerts-tab";
 import { ApprovalFlowsTab, SettingsTab } from "./config-tabs";
@@ -59,6 +61,8 @@ const TAB_COMPONENT: Record<PayCenterTabKey, React.ComponentType<{ header: React
   apps: AppsTab,
   "merchant-members": MembersTab,
   "association-repairs": RepairsTab,
+  credentials: CredentialsTab,
+  "audit-events": AuditTab,
   "request-logs": RequestLogsTab,
   "channel-calls": ChannelCallsTab,
   "channel-callbacks": ChannelCallbacksTab,

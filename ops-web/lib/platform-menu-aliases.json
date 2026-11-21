@@ -231,6 +231,16 @@
   },
   {
     "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_CREDENTIALS",
+    "href": "/payment-center?tab=credentials",
+    "label": "凭证管理",
+    "perm": "pay:credential:view",
+    "group": "支付配置",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
     "pointCode": "OPS_FINANCE__PAYCENTER_ALERT_EVENTS",
     "href": "/payment-center?tab=alert-events",
     "label": "告警事件",
@@ -275,6 +285,16 @@
     "href": "/payment-center?tab=request-logs",
     "label": "请求日志",
     "perm": "pay:trace:view",
+    "group": "支付运维",
+    "ready": true,
+    "sourcePoint": null
+  },
+  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_AUDIT_EVENTS",
+    "href": "/payment-center?tab=audit-events",
+    "label": "审计事件",
+    "perm": "pay:audit:view",
     "group": "支付运维",
     "ready": true,
     "sourcePoint": null

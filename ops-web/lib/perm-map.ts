@@ -201,6 +201,10 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "pay:member:manage": "pay:member:manage",
   "pay:merchant:repair": "pay:merchant:repair",
   "pay:merchant:repair:approve": "pay:merchant:repair:approve",
+  // P9/P10：终端凭证引用、凭证管理、审计事件
+  "pay:credential:view": "pay:credential:view",
+  "pay:credential:approve": "pay:credential:approve",
+  "pay:audit:view": "pay:audit:view",
   "sec:key:view": "sec:key:view",
   "sec:key:write": "sec:key:write",
   "sec:key:enable": "sec:key:enable",

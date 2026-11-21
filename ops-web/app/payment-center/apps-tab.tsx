@@ -16,6 +16,7 @@ import { APP_STATUSES, type AppGrant, type AppRow } from "@/app/payment-center/_
 import { fmtTime, money } from "@/lib/utils";
 import { DetailLoader, MiniTable, csv, fromMinor, joinCsv, options, reasonField, toMinor, usePayCenterApi, useRefresh, useRun, useStatusMap, useTabList, usePc, amt, useInstanceCurrency } from "./shared";
 import { SecretOnce } from "./secret-once";
+import { GrantRevokeButton } from "./p9-panels";
 
 const NAME = "apps";
 
@@ -66,6 +67,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
                 { header: c.merchantNo, cell: (x) => x.merchantNo },
                 { header: c.grantActions, cell: (x) => joinCsv(x.actions) },
                 { header: c.colStatus, cell: (x) => x.status },
+                { header: "", cell: (x) => <GrantRevokeButton api={api} grant={x} run={run} /> },
               ]} /> },
             ];
             return <DetailBody sections={sections} actions={<DetailActions ctx={ctx} keys={["revoke", "suspend", "issueKey", "callback", "scopes", "verifyCallback", "enable", "resume", "edit"]} />} />;

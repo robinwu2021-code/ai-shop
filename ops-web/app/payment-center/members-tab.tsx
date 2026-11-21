@@ -20,7 +20,7 @@ import { P8_COPY, type P8Copy } from "./p8-copy";
 const NAME = "merchant-members";
 
 /** P8 文案里的枚举名：`<prefix>_<value>`；没登记的值原样显示 */
-export function p8Map(m: P8Copy, prefix: string, values: readonly string[], tones: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {}): StatusMap<string> {
+export function p8Map(m: object, prefix: string, values: readonly string[], tones: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {}): StatusMap<string> {
   const t = m as unknown as Record<string, string>;
   return Object.fromEntries(values.map((v) => [v, { label: t[`${prefix}_${v}`] ?? v, tone: tones[v] ?? "muted" }]));
 }
