@@ -2487,6 +2487,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `title` | `string,null` | 否 | 模型识别出的商品名，置信度不足时为空 |
 | `specs` | `object`（见下）\[\] | 是 | 规格维度草稿（LLM 归类，P1 空） |
 | `params` | `object`（见下）\[\] | 是 | 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule |
 | `pricesMinor` | `number`\[\] | 是 | 抽到的价（分）。带「元/￥」才算 |
@@ -13868,6 +13869,7 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `title` | `string,null` | 否 | 模型识别出的商品名，置信度不足时为空 |
 | `specs` | `object`（见下）\[\] | 是 | 规格维度草稿（LLM 归类，P1 空） |
 | `params` | `object`（见下）\[\] | 是 | 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule |
 | `pricesMinor` | `number`\[\] | 是 | 抽到的价（分）。带「元/￥」才算 |

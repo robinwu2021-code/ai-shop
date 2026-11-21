@@ -45346,6 +45346,16 @@
         "module": "shop-base"
       },
       {
+        "name": "EditorProvider",
+        "values": [
+          "LEGACY",
+          "RELAY",
+          "OPENAI"
+        ],
+        "zh": "",
+        "module": "shop-channel"
+      },
+      {
         "name": "EndScope",
         "values": [
           "STORE",

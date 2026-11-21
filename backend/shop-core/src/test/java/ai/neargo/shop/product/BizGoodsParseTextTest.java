@@ -78,7 +78,7 @@ class BizGoodsParseTextTest {
         // 控制器调的是带清单的那个（两参数）—— mock 单参数版的话这里拿到的是 null，测试会假失败
         when(vision.extractText(anyString(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(new GoodsVisionPort.TextExtract(
-                "", List.of(new GoodsVisionPort.ParamKV("单果重量", "140g+"),
+                "赣南脐橙", List.of(new GoodsVisionPort.ParamKV("单果重量", "140g+"),
                         new GoodsVisionPort.ParamKV("净重", "4.5斤")),
                 10.0, List.of("EXPRESS"), "圆通",
                 List.of("新疆维吾尔自治区", "西藏自治区", "海南省"), 0.9));
@@ -92,6 +92,7 @@ class BizGoodsParseTextTest {
 
         var vo = controller.parseText(new BizGoodsController.ParseTextReq(
                 "规格：\n单果140g+\n净重4.5斤装10元\n圆通快递，新疆西藏海南不发货", null));
+        assertThat(vo.title()).isEqualTo("赣南脐橙");
 
         // 参数来自 LLM：单果重量 / 净重 各一条（规则层不做归类）
         assertThat(vo.params()).extracting(BizGoodsController.GoodsTextParseVO.ParamDraft::name)

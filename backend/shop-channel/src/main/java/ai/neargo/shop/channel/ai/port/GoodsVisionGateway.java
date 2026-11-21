@@ -1,10 +1,12 @@
 package ai.neargo.shop.channel.ai.port;
 
+import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.spi.product.GoodsVisionPort;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -12,7 +14,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -46,6 +50,8 @@ public class GoodsVisionGateway implements GoodsVisionPort {
 
     /** 五品类。**必须与 CATEGORY_TYPE 一致** —— 模型返回别的值一律丢弃 */
     private static final List<String> TYPES = List.of("NORMAL", "FRESH", "SERVICE", "VIRTUAL", "CARD");
+    // Gemini's relay budget includes thinking tokens as well as the returned JSON.
+    private static final int RELAY_COMPLETION_TOKENS = 2048;
 
     private final ObjectMapper json = new ObjectMapper();
     /**
@@ -85,18 +91,36 @@ public class GoodsVisionGateway implements GoodsVisionPort {
     private final String apiKey;
     private final int timeoutSeconds;
     private final boolean enabled;
+    private final EditorProvider editorProvider;
+    private final String editorBaseUrl;
+    private final String editorModel;
+    private final String editorApiKey;
+    private final int editorTimeoutSeconds;
+    private final String testStoreNo;
+    private final String testBraId;
 
     public GoodsVisionGateway(
             @Value("${shop.ai.vision.base-url:}") String baseUrl,
             @Value("${shop.ai.vision.model:qwen3.6}") String model,
             @Value("${shop.ai.vision.api-key:}") String apiKey,
             @Value("${shop.ai.vision.timeout-seconds:25}") int timeoutSeconds,
-            @Value("${shop.ai.vision.enabled:false}") boolean enabled) {
+            @Value("${shop.ai.vision.enabled:false}") boolean enabled,
+            Environment environment) {
         this.baseUrl = baseUrl;
         this.model = model;
         this.apiKey = apiKey;
         this.timeoutSeconds = timeoutSeconds;
         this.enabled = enabled;
+        String prefix = "shop.ai.goods.editor.";
+        String provider = environment.getProperty(prefix + "provider", "legacy").toLowerCase(Locale.ROOT);
+        this.editorProvider = EditorProvider.valueOf(provider.toUpperCase(Locale.ROOT));
+        this.testStoreNo = environment.getProperty(prefix + "test-store-no", "");
+        this.testBraId = environment.getProperty(prefix + "relay.test-bra-id", "");
+        String modelPrefix = prefix + provider + ".";
+        this.editorBaseUrl = environment.getProperty(modelPrefix + "base-url", "").replaceFirst("/+$", "");
+        this.editorModel = environment.getProperty(modelPrefix + "model", "");
+        this.editorApiKey = environment.getProperty(modelPrefix + "api-key", "");
+        this.editorTimeoutSeconds = environment.getProperty(modelPrefix + "timeout-seconds", Integer.class, 25);
     }
 
     @Override
@@ -113,10 +137,15 @@ public class GoodsVisionGateway implements GoodsVisionPort {
      */
     @Override
     public Guess recognize(String imageUrl, Map<String, String> categories) {
-        if (!isEnabled() || imageUrl == null || imageUrl.isBlank()) {
+        boolean useEditor = useEditorProvider();
+        if ((!useEditor && !isEnabled()) || imageUrl == null || imageUrl.isBlank()) {
             return null;
         }
         try {
+            if (useEditor) {
+                String content = editorCompletion(prompt(categories), imageUrl, 300);
+                return content == null ? null : parse(content, categories);
+            }
             var body = Map.of(
                     "model", model,
                     "max_tokens", 300,
@@ -167,10 +196,16 @@ public class GoodsVisionGateway implements GoodsVisionPort {
     @Override
     public ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract extractText(
             String text, java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints) {
-        if (!isEnabled() || text == null || text.isBlank()) {
+        boolean useEditor = useEditorProvider();
+        if ((!useEditor && !isEnabled()) || text == null || text.isBlank()) {
             return null;
         }
         try {
+            String prompt = textPrompt(hints) + "\n\n商品文字：\n" + text;
+            if (useEditor) {
+                String content = editorCompletion(prompt, null, 500);
+                return content == null ? null : parseExtract(content);
+            }
             var body = Map.of(
                     "model", model,
                     "max_tokens", 500,
@@ -178,7 +213,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
                     "chat_template_kwargs", Map.of("enable_thinking", false),
                     "messages", List.of(Map.of(
                             "role", "user",
-                            "content", textPrompt(hints) + "\n\n商品文字：\n" + text)));
+                            "content", prompt)));
             var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .header("Content-Type", "application/json");
@@ -199,6 +234,69 @@ public class GoodsVisionGateway implements GoodsVisionPort {
             log.warn("文字识别异常：{}", e.toString());
             return null;
         }
+    }
+
+    private enum EditorProvider { LEGACY, RELAY, OPENAI }
+
+    private boolean useEditorProvider() {
+        if (editorProvider == EditorProvider.LEGACY) return false;
+        var scope = BizContext.current();
+        String storeNo = scope.currentStoreNo();
+        if (storeNo == null || !scope.storeNos().contains(storeNo)) return false;
+        if (editorProvider == EditorProvider.RELAY) {
+            return !testBraId.isBlank() && testStoreNo.equals(storeNo);
+        }
+        return testStoreNo.isBlank() || testStoreNo.equals(storeNo);
+    }
+
+    private String editorCompletion(String prompt, String imageUrl, int maxTokens) throws Exception {
+        boolean openAi = editorProvider == EditorProvider.OPENAI;
+        if (editorBaseUrl.isBlank() || editorModel.isBlank() || (openAi && editorApiKey.isBlank())) {
+            log.warn("商品识别配置不完整：{}", editorProvider);
+            return null;
+        }
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("type", openAi ? "input_text" : "text", "text", prompt));
+        if (imageUrl != null) {
+            parts.add(openAi ? Map.of("type", "input_image", "image_url", imageUrl)
+                    : Map.of("type", "image_url", "image_url", Map.of("url", imageUrl)));
+        }
+        Map<String, Object> message = Map.of("role", "user",
+                "content", openAi || imageUrl != null ? parts : prompt);
+        var body = openAi
+                ? Map.of("model", editorModel, "max_output_tokens", maxTokens, "store", false,
+                        "input", List.of(message))
+                : Map.of("model", editorModel, "max_tokens", RELAY_COMPLETION_TOKENS, "stream", false,
+                        "messages", List.of(message));
+        var request = HttpRequest.newBuilder(URI.create(editorBaseUrl + (openAi ? "/responses" : "/chat/completions")))
+                .timeout(Duration.ofSeconds(editorTimeoutSeconds))
+                .header("Content-Type", "application/json");
+        if (!openAi) request.header("X-Bra-Id", testBraId);
+        if (!editorApiKey.isBlank()) request.header("Authorization", "Bearer " + editorApiKey);
+        HttpResponse<String> response;
+        try {
+            response = http.send(request.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+        if (response.statusCode() / 100 != 2) {
+            log.warn("商品识别失败：{} HTTP {} trace={}", editorProvider, response.statusCode(),
+                    response.headers().firstValue("X-Trace-Id").orElse(""));
+            return null;
+        }
+        log.debug("商品识别完成：{} trace={}", editorProvider,
+                response.headers().firstValue("X-Trace-Id").orElse(""));
+        JsonNode result = json.readTree(response.body());
+        if (openAi) return OpenAiCertVisionGateway.output(result);
+        JsonNode choice = result.path("choices").path(0);
+        if ("length".equals(choice.path("finish_reason").asText())) {
+            log.warn("商品识别返回超过输出预算：{} trace={}", editorProvider,
+                    response.headers().firstValue("X-Trace-Id").orElse(""));
+            return null;
+        }
+        return choice.path("message").path("content").asText(null);
     }
 
     /**
@@ -377,7 +475,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         int start = s.indexOf('{');
         int end = s.lastIndexOf('}');
         if (start < 0 || end <= start) {
-            log.warn("文字识别：返回体里没有 JSON —— {}", abbreviate(content));
+            log.warn("文字识别：返回体里没有完整 JSON");
             return null;
         }
         try {
@@ -414,7 +512,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
                     fulfillment, node.path("courier").asText("").trim(),
                     provinces, node.path("confidence").asDouble(0d));
         } catch (Exception e) {
-            log.warn("文字识别：JSON 解析失败 —— {}", abbreviate(content));
+            log.warn("文字识别：JSON 解析失败");
             return null;
         }
     }
@@ -707,7 +805,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         int start = s.indexOf('{');
         int end = s.lastIndexOf('}');
         if (start < 0 || end <= start) {
-            log.warn("商品识别：返回体里没有 JSON —— {}", abbreviate(content));
+            log.warn("商品识别：返回体里没有完整 JSON");
             return null;
         }
         try {
@@ -724,7 +822,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
                     categories.containsKey(categoryNo) ? categoryNo : "",
                     clamp(n.path("confidence").asDouble(0)));
         } catch (Exception e) {
-            log.warn("商品识别：JSON 解析失败 —— {}", abbreviate(content));
+            log.warn("商品识别：JSON 解析失败");
             return null;
         }
     }

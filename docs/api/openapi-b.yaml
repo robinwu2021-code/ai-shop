@@ -12820,6 +12820,11 @@ components:
     GoodsTextParse:
       type: "object"
       properties:
+        title:
+          type:
+            - "string"
+            - "null"
+          description: "模型识别出的商品名，置信度不足时为空"
         specs:
           type: "array"
           items:

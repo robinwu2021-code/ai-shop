@@ -779,6 +779,8 @@ public class BizGoodsController {
          */
         List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints = paramHints(req.categoryNo());
         var extract = vision.extractText(req.text(), hints);
+        String title = extract != null && extract.confidence() >= 0.5
+                && extract.name() != null && !extract.name().isBlank() ? extract.name() : null;
 
         // 有承运商 = 走快递。值对齐 packages/shared 的 FULFILLMENT.EXPRESS（端上据此勾履约）
         List<String> fulfillment = rule.carriers().isEmpty()
@@ -830,7 +832,7 @@ public class BizGoodsController {
         return new GoodsTextParseVO(
                 List.of(), params,
                 rule.pricesMinor(), rule.weights(), rule.carriers(),
-                fulfillment, region, new java.util.ArrayList<>(regionCodes), confidence);
+                fulfillment, region, new java.util.ArrayList<>(regionCodes), confidence, title);
     }
 
     /**
@@ -1072,7 +1074,8 @@ public class BizGoodsController {
                                     * {@code excludeRegionText}（运费模板/经营范围那条，守 AC9）并存、互不替代。
                                     */
                                    List<String> restrictedRegions,
-                                   double confidence) {
+                                   double confidence,
+                                   String title) {
         /** 规格维度草稿（LLM 归类，P1 空）。 */
         public record SpecDraft(String name, List<String> options) {
         }

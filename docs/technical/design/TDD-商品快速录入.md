@@ -49,7 +49,16 @@
 - 权限码：复用 `BizPerms.GOODS`（与 recognize/describe 同）。
 - 库表：**无**。
 - i18n：导入入口、确认层、覆盖/追加提示的词条（三语）。
-- 配置：无。
+- 商品编辑的文字和图片识别使用 `shop.ai.goods.editor.provider`。取值为 `legacy`（默认）、`relay` 或 `openai`。中转站与 OpenAI 各自配置 `.base-url`、`.model`、`.api-key`（运行环境注入）和 `.timeout-seconds`。
+- 文字识别结果增加可选 `title`；价格继续来自规则解析。
+
+文字和图片沿用现有接口。中转站联调时配置 `shop.ai.goods.editor.test-store-no` 与 `shop.ai.goods.editor.relay.test-bra-id`。166 只将授权上下文中的 QA166 Retail Test（`ST261111JX1JMM2F3Q`）映射到 AI 回归门店 `B17752062199591055`。该店已有独立测试登录。其他门店继续使用原有配置。切到 OpenAI 时可保留 `test-store-no` 做单店验证，OpenAI 使用商品专用配置和 Responses API。正式启用中转站前须建立真实门店到平台门店 ID 的关联。
+
+验收顺序为从 166 用固定平台测试门店验证合成文字和图片，再从商品编辑入口联调。中转站实测模型为 `gemini-2.5-flash`，文字返回冷萃咖啡、350ml 和 65 元，图片返回 MANGO、420 g。后端契约由 `GoodsEditorVisionGatewayTest` 验证两个提供方的请求格式以及非目标门店的隔离。
+
+Gemini 中转站的输出预算包含推理 token。首次经商品图片接口调用时，300 token 将 JSON 截断。中转站请求统一给 2048 token，截断时记录中转站追踪 ID，并返回当前接口的识别失败结果。
+
+166 版本 `42b337e51` 使用现有商品接口验证通过。文字识别返回冷萃咖啡和 350ml，规则价格为 6500 分。通过正常媒体上传的合成 PNG 经站点根下的公开 HTTPS 地址识别为 `MANGO 420g`，置信度 0.95。后端 34 项相关测试通过，涵盖中转站测试门店隔离和 OpenAI Responses 传输。OpenAI 实际服务待恢复后再验证。
 
 ### 模块设计
 | 动作 | 路径 | 说明 |
