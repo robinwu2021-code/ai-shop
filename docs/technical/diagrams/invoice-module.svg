@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="13">
+  <title>发票模块结构</title>
+  <desc>行业经 InvoiceSourcePort 供数、经 InvoicePort 开票；发票域在同一事务里取号与落库，税制与通道走 SPI；证明联交给共享打印中心出图，上传交给开票通道。</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0L10 5L0 10z" fill="#475569"/>

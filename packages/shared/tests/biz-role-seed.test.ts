@@ -69,8 +69,9 @@ function fromSeed(): Record<string, Set<string>> {
     out[m[1]!] = new Set(JSON.parse(m[2]!) as string[]);
   }
   // V71 remains immutable; later additive migrations contribute to the effective role seed.
-  const dir = join(SEED, "..");
-  for (const file of readdirSync(dir).filter((f) => /^V\d+__.*\.sql$/.test(f))
+  // 模块自带的迁移序列在平台之后执行（发票 db/invoice，ADR-063），它们追加的权限码属于终态
+  const dirs = [join(SEED, ".."), join(ROOT, "backend/invoice/invoice-domain/src/main/resources/db/invoice")];
+  for (const dir of dirs) for (const file of readdirSync(dir).filter((f) => /^V\d+__.*\.sql$/.test(f))
     .sort((a, b) => Number(a.match(/^V(\d+)/)![1]) - Number(b.match(/^V(\d+)/)![1]))) {
     for (const statement of readFileSync(join(dir, file), "utf8").split(";")) {
       if (!/UPDATE\s+mch_role\s+SET\s+perms\s*=\s*JSON_ARRAY_APPEND/i.test(statement)) continue;
