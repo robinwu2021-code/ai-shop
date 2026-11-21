@@ -287,6 +287,17 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **契约变更**：near-pay `OpsQrCodeController.CodeView` 加 `version`（只加字段；停码必须带它，原视图没给）。ai-shop 无新码、端点、库表。
 - **线上**：near-pay 换 `pay-portal` 内 `OpsQrCodeController` 与 `$CodeView` 两个类。
 
+### 2.14 near-pay 侧修复（2026-11-21 用户：「直接改」，Chrome 复核与线上排查发现）
+
+| # | 问题 | 原因 | 修复（near-pay `feat/ops-identity-unified-20261120`） |
+|---|---|---|---|
+| 1 | 测试渠道账户的资质页 403「资格材料归属冲突」 | 8 条历史资格版本内容写 SANDBOX、却存于 PRODUCTION 分区（ADR-046 并入正式接口时留下）；按账户列版本时一条不符就整页失败 | `cfa29d4a8`：列表跳过非当前环境的版本；单条读取仍严格校验 |
+| 2 | 渠道账户允许操作里有 `close`，点了必报「S1 未开放」 | `allowedActions` 与 `close()` 不一致 | `c586f7938`：未开放前不列 `close`（运营端的「关闭未开放」说明随之不再出现） |
+| 3 | 日志每 3 秒刷 `Payment display rebuild deferred for projection 830/834` | 门店 830/834 在 ai-shop 已换主体 `M261113Y3QW5XKEFW`，near-pay 仍挂商户 15，解析器判不可收款；`defer()` 只改时间，同一行无限重选 | `36f05f23f`：不可收款的门店发布空支付方式，不再重试；意外异常仍 defer |
+| 4 | 商户 / 门店 / 渠道账户列表 6–20 秒 | 全部行先转 DTO（每行数次查库）再内存分页 | `a0032ba7c`：先按原始字段筛选分页，只给当前页转 DTO（商户列表带资料状态 / 来源系统筛选时保持原路径） |
+
+不是代码问题、需要业务决定的：门店 830（收款码无扫码链接同因）、834（两者名称都标「舊·待下架」）该下架还是挂到主体 `M261113Y3QW5XKEFW` 的新商户（near-pay 里还没有）；测试店 835（主体 `M261119TS0PN0XBK9` 在 near-pay 无商户，`UNLINKED_ENTITY`）。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。
