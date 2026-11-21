@@ -8,7 +8,7 @@ import type { MenuFunction } from "@/lib/types";
 //
 // 支付中心是独立模块：全部页面、接口客户端（_api/）、组件（_kit/）都在 app/payment-center/ 下；
 // 模块外只许 import 这个文件，模块内不 import 其它业务页（payment-center-module.test.ts 守着）。
-// 菜单点位全部在库里（V671 的 5 个既有入口由 V686 改到 /payment-center，其余 V684/V685），
+// 菜单点位全部在库里（V671 的 5 个既有入口由待执行的 ops_payment_center_own_module.sql 改到 /payment-center，其余 V684/V685），
 // 权限码都是 pay:*，网关按前缀归到 pay 模块。PENDING_MENU 列「还没登记菜单点位」的页签，nav.test.ts 守着。
 
 export type PayCenterTabKey =
@@ -88,7 +88,7 @@ export const PENDING_MENU: readonly PayCenterTabKey[] = [];
 
 /**
  * 旧书签：商户、订单模块原来挂支付页签的地址（V671 的 href），打开时转到支付中心对应页签。
- * 菜单已不再指向它们（V686）。
+ * 菜单已不再指向它们（ops_payment_center_own_module.sql 执行后）。
  */
 export const LEGACY_TAB_REDIRECT: Readonly<Record<"/merchants" | "/orders", Readonly<Record<string, PayCenterTabKey>>>> = {
   "/merchants": { payment: "merchants", "payment-onboarding": "onboardings", "payment-channels": "channels" },
@@ -96,9 +96,9 @@ export const LEGACY_TAB_REDIRECT: Readonly<Record<"/merchants" | "/orders", Read
 };
 
 /**
- * 库里还没改址的旧菜单地址 → 支付中心页签。V686（改 href）暂不在正式库执行：v1 运营端与 v2 共用菜单表，
+ * 库里还没改址的旧菜单地址 → 支付中心页签。改 href 的脚本（docs/technical/pending-sql/ops_payment_center_own_module.sql，原定 V686）暂不在正式库执行：v1 运营端与 v2 共用菜单表，
  * v1 前端没有支付中心页，改了 v1 这 5 项会失效（2026-11-20 用户定：先兼容，v1 下线后再执行）。
- * 服务端菜单进前端时按这张表换成新地址；V686 执行后库里就是新地址，这张表自然不再命中。
+ * 服务端菜单进前端时按这张表换成新地址；该脚本执行后库里就是新地址，这张表自然不再命中。
  */
 export const LEGACY_MENU_HREFS: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(LEGACY_TAB_REDIRECT).flatMap(([path, tabs]) => Object.entries(tabs).map(([tab, key]) => [`${path}?tab=${tab}`, `/payment-center?tab=${key}`])),
@@ -125,3 +125,6 @@ export function payCenterHref(key: PayCenterTabKey, params?: Record<string, stri
   const extra = params ? Object.entries(params).map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("") : "";
   return `/payment-center/?tab=${key}${extra}`;
 }
+
+/** 角色页里的「支付中心数据范围」只读栏（TDD-支付运营端经网关转发与权限下沉 §10 B2）。 */
+export { RolePayScope } from "./role-pay-scope";

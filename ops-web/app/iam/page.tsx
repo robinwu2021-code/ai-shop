@@ -8,6 +8,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { RoleMatrix } from "./role-matrix";
+import { RolePayScope } from "@/app/payment-center/module";
 import { MenuOrderTree, ORDER_ROOT, type OrderNode } from "./menu-order-tree";
 import { api } from "@/lib/api";
 import { toBackendRole } from "@/lib/api/https/dashboard";
@@ -751,6 +752,7 @@ function IamInner() {
               {pickedRoleDef?.builtin && (
                 <Notice tone="muted">{c.builtinReadOnly}</Notice>
               )}
+              {allow("pay:data-scope:view") && <RolePayScope roleCode={pickedRole} />}
               {/* 权限树用的就是 Tree 的 checkable 语义：值只认叶子（功能点码），父节点三态 */}
               <Tree
                 nodes={permTree}
@@ -879,6 +881,7 @@ function IamInner() {
             {rolesForm.some(isScopedRole) ? (
               <>
                 <Notice>{c.scopeNotice}</Notice>
+                <Notice tone="info">{c.scopePayNote}</Notice>
                 <div className="space-y-1">
                   <Label htmlFor="sc-community">{c.fieldCommunityNo}</Label>
                   <Input id="sc-community" className="w-full" placeholder={c.phCommunity} value={scopeForm.communityNo}
