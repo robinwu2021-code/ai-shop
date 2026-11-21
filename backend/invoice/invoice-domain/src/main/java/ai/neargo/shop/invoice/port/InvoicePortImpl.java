@@ -24,4 +24,14 @@ public class InvoicePortImpl implements InvoicePort {
     public Optional<InvoiceReceipt> activeOf(Scope scope, String sourceType, String sourceNo) {
         return invoices.activeOf(scope, sourceType, sourceNo);
     }
+
+    @Override
+    public void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
+        invoices.rememberBuyer(scope, sourceType, sourceNo, buyer);
+    }
+
+    @Override
+    public Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo) {
+        return invoices.issueIfAutomatic(scope, sourceType, sourceNo);
+    }
 }

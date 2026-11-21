@@ -76,6 +76,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         p.setSellerName(req.sellerName());
         p.setGatewayCode(req.gatewayCode());
         p.setMemberCarrierType(req.memberCarrierType());
+        p.setAutoIssue(Boolean.TRUE.equals(req.autoIssue()));
         p.setStatus("ACTIVE");
         p.setUpdatedBy(scope.actorNo());
         p.setUpdatedAt(now);
@@ -132,7 +133,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
 
     private static RegimeProfileVO view(IvcRegimeProfile p) {
         return new RegimeProfileVO(p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(), p.getGatewayCode(),
-                p.getQrKeyRef() != null, p.getMemberCarrierType(), p.getStatus());
+                p.getQrKeyRef() != null, p.getMemberCarrierType(), Boolean.TRUE.equals(p.getAutoIssue()), p.getStatus());
     }
 
     private static NumberRangeVO view(IvcNumberRange r) {

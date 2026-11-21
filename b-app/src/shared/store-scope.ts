@@ -46,6 +46,12 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mSvCancel: "门店储值BFF：校验资源与当前门店归属",
   mSvResolveRecharge: "门店储值BFF：校验资源与当前门店归属",
   mSvCancelCreate: "门店储值BFF：校验资源与当前门店归属",
+  mSiIssue: "BizInvoiceScope.current()：BizContext.requireStoreNo()，发票开在当前门店",
+  mSiBuyerPreference: "BizInvoiceScope.current()：预存在当前门店的来源单上",
+  mSiList: "BizInvoiceScope.current()：只列当前门店的发票",
+  mSiDetail: "BizInvoiceScope.current()：按当前门店校验发票归属",
+  mSiVoid: "BizInvoiceScope.current()：按当前门店校验发票归属",
+  mSiAllowance: "BizInvoiceScope.current()：按当前门店校验发票归属",
 
   mShipSetting: "路径带 storeNo：这家店的寄件人、寄件地址与默认快递",
   mNotifySetting: "按 X-Store-No：这家店的四条通道开关与企微群",
@@ -138,6 +144,9 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   "stored-value-account": "门店储值方案、账户与收支均按当前门店",
   "stored-value-record": "门店储值方案、账户与收支均按当前门店",
   "stored-value-recharge": "门店储值方案、账户与收支均按当前门店",
+  "sales-invoices": "只列当前门店开出的销售发票（mSiList，按 X-Store-No）",
+  "sales-invoice": "发票详情、作废与折让按当前门店校验归属（mSiDetail / mSiVoid / mSiAllowance）",
+  "sales-invoice-issue": "发票开在当前门店名下（mSiIssue，按 X-Store-No）",
 
   home: "工作台的统计与待办按当前门店（mStats / mTodo）",
   "goods-list": "在售与库存按店（mGoodsList）",

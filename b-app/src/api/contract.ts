@@ -1,5 +1,6 @@
 import type {ReplenishmentApi} from "./replenishment";
 import type {RetailReplenishmentApi} from "./retail-replenishment";
+import type {SalesInvoiceApi} from "./sales-invoice";
 import type {StoredValueFinanceApi} from "./stored-value-finance";
 import type { PayApi } from "./pay";
 import type { MallApi } from "./mall";
@@ -877,7 +878,7 @@ export interface EstateList {
   stale: boolean;
 }
 
-export interface MerchantApi extends ReplenishmentApi,RetailReplenishmentApi,ManagementApi,IssuerApi,StoredValueGovernanceApi,StoredValueFinanceApi,PayApi,MallApi {
+export interface MerchantApi extends ReplenishmentApi,RetailReplenishmentApi,SalesInvoiceApi,ManagementApi,IssuerApi,StoredValueGovernanceApi,StoredValueFinanceApi,PayApi,MallApi {
   mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
   mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
   mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;

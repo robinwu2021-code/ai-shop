@@ -26,6 +26,8 @@ public class IvcRegimeProfile {
     /** secret 模块密钥引用；明文 AES Key 不进业务表 */
     private Long qrKeyRef;
     private String memberCarrierType;
+    /** 付款成功后自动开立 */
+    private Boolean autoIssue;
     /** ACTIVE / SUSPENDED */
     private String status;
     private String createdBy;

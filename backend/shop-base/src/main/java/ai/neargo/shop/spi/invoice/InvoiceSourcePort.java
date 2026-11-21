@@ -29,12 +29,21 @@ public interface InvoiceSourcePort {
         }
     }
 
-    /** 一行发票明细。amountMinor 为该行含税金额；折扣行为负数。 */
+    /**
+     * 一行发票明细。amountMinor 为该行含税金额；折扣行为负数。
+     *
+     * @param taxType TAXABLE（应税）/ ZERO（零税率）/ EXEMPT（免税），取自来源冻结的税类，不由发票域猜
+     */
     record Line(
             String sourceLineRef,
             String name,
             BigDecimal quantity,
             String unit,
             long unitPriceMinor,
-            long amountMinor) {}
+            long amountMinor,
+            String taxType) {
+        public static final String TAXABLE = "TAXABLE";
+        public static final String ZERO = "ZERO";
+        public static final String EXEMPT = "EXEMPT";
+    }
 }

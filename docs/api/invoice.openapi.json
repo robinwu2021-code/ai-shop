@@ -337,6 +337,10 @@
                   "memberCarrierType": {
                     "type": "string",
                     "description": "会员载具类别号"
+                  },
+                  "autoIssue": {
+                    "type": "boolean",
+                    "description": "付款成功后按预存买受人自动开立；不传 = 关"
                   }
                 },
                 "required": [
@@ -455,6 +459,77 @@
           }
         }
       }
+    },
+    "/biz/invoices/buyer-preferences": {
+      "put": {
+        "summary": "付款前预存买受人（载具 / 统编 / 捐赠），自动开立时使用",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`，主体取登录上下文。按主体税制校验，同一来源以最后一次为准。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sourceType",
+                  "sourceNo",
+                  "buyer"
+                ],
+                "properties": {
+                  "sourceType": {
+                    "type": "string",
+                    "description": "来源类型，SUB_ORDER"
+                  },
+                  "sourceNo": {
+                    "type": "string",
+                    "description": "来源单号"
+                  },
+                  "buyer": {
+                    "type": "object",
+                    "properties": {
+                      "taxId": {
+                        "type": "string",
+                        "description": "买方统编（打统编）"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "买方名称"
+                      },
+                      "carrierType": {
+                        "type": "string",
+                        "description": "载具类别：3J0002 手机条码 / CQ0001 自然人凭证 / 会员载具"
+                      },
+                      "carrierId": {
+                        "type": "string",
+                        "description": "载具号码"
+                      },
+                      "donateCode": {
+                        "type": "string",
+                        "description": "爱心码"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包，data 为空"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -528,6 +603,10 @@
             "type": "integer",
             "format": "int64",
             "description": "含税金额"
+          },
+          "taxType": {
+            "type": "string",
+            "description": "课税别 TAXABLE / ZERO / EXEMPT"
           }
         }
       },
@@ -632,7 +711,17 @@
           "salesMinor": {
             "type": "integer",
             "format": "int64",
-            "description": "销售额（税制口径）"
+            "description": "应税销售额（台湾 B2C 为含税）"
+          },
+          "zeroTaxSalesMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "零税率销售额"
+          },
+          "freeTaxSalesMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "免税销售额"
           },
           "taxMinor": {
             "type": "integer",
@@ -725,6 +814,10 @@
           "status": {
             "type": "string",
             "description": "ACTIVE / SUSPENDED"
+          },
+          "autoIssue": {
+            "type": "boolean",
+            "description": "付款成功后自动开立"
           }
         }
       },

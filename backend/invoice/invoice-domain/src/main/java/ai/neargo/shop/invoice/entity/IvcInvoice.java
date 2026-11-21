@@ -46,6 +46,10 @@ public class IvcInvoice {
     private String printMark;
     private String currency;
     private Long salesMinor;
+    /** 零税率销售额 */
+    private Long zeroTaxSalesMinor;
+    /** 免税销售额 */
+    private Long freeTaxSalesMinor;
     private Long taxMinor;
     private Long totalMinor;
     private Long allowedMinor;

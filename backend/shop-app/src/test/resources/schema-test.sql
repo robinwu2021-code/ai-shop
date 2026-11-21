@@ -13554,6 +13554,7 @@ CREATE TABLE IF NOT EXISTS ivc_regime_profile
     gateway_code VARCHAR(32) NOT NULL,
     qr_key_ref BIGINT NULL,
     member_carrier_type VARCHAR(16) NULL,
+    auto_issue TINYINT NOT NULL DEFAULT 0,
     status VARCHAR(16) NOT NULL,
     created_by VARCHAR(64) NULL,
     updated_by VARCHAR(64) NULL,
@@ -13612,6 +13613,8 @@ CREATE TABLE IF NOT EXISTS ivc_invoice
     print_mark CHAR(1) NOT NULL,
     currency CHAR(3) NOT NULL,
     sales_minor BIGINT NOT NULL,
+    zero_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
+    free_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
     tax_minor BIGINT NOT NULL,
     total_minor BIGINT NOT NULL,
     allowed_minor BIGINT NOT NULL DEFAULT 0,
@@ -13630,7 +13633,7 @@ CREATE TABLE IF NOT EXISTS ivc_invoice
     CONSTRAINT uk_ivc_invoice_fiscal UNIQUE (tenant_no, regime_code, fiscal_number),
     CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
     CONSTRAINT ck_ivc_invoice_proof_json CHECK ((proof_snapshot IS JSON)),
-    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor AND sales_minor + tax_minor = total_minor)
+    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor)
 );
 
 CREATE TABLE IF NOT EXISTS ivc_invoice_line
@@ -13664,6 +13667,24 @@ CREATE TABLE IF NOT EXISTS ivc_allowance
     created_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
     CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_buyer_preference
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(128) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_buyer_preference UNIQUE (tenant_no, entity_no, source_type, source_no)
 );
 
 CREATE TABLE IF NOT EXISTS ivc_transmission

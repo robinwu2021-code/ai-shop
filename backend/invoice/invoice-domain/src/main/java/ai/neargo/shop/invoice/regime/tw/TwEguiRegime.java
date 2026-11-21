@@ -8,6 +8,7 @@ import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.regime.InvoiceRegime;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
+import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import org.springframework.stereotype.Component;
 
 /**
@@ -36,6 +38,8 @@ public class TwEguiRegime implements InvoiceRegime {
     static final int RATE_BP = 500;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final DateTimeFormatter SHOWN = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DAY = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public String code() {
         return CODE;
@@ -60,10 +64,25 @@ public class TwEguiRegime implements InvoiceRegime {
             throw BizException.of(ErrorCode.INVOICE_RANGE_INVALID);
     }
 
-    public Amounts amounts(long totalMinor, Buyer buyer) {
-        long total = dollars(totalMinor);
-        long tax = TwBuyerRules.present(buyer.taxId()) ? taxIn(total) : 0;
-        return new Amounts((total - tax) * 100, tax * 100, totalMinor, "TAXABLE", RATE_BP);
+    public Amounts amounts(List<InvoiceSourcePort.Line> lines, Buyer buyer) {
+        long taxable = 0, zero = 0, free = 0;
+        var types = new TreeSet<String>();
+        for (var l : lines) {
+            long amount = dollars(l.amountMinor());
+            switch (l.taxType()) {
+                case InvoiceSourcePort.Line.TAXABLE -> taxable += amount;
+                case InvoiceSourcePort.Line.ZERO -> zero += amount;
+                case InvoiceSourcePort.Line.EXEMPT -> free += amount;
+                default -> throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);
+            }
+            types.add(l.taxType());
+        }
+        // 某一税别合计为负（折扣大过该税别商品）在 MIG 里表达不了，不开
+        if (taxable < 0 || zero < 0 || free < 0) throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);
+        long tax = TwBuyerRules.present(buyer.taxId()) ? taxIn(taxable) : 0;
+        long total = taxable + zero + free;
+        return new Amounts((taxable - tax) * 100, zero * 100, free * 100, tax * 100, total * 100,
+                types.size() == 1 ? types.first() : "MIXED", RATE_BP);
     }
 
     public boolean printMark(Buyer buyer) {
@@ -100,6 +119,8 @@ public class TwEguiRegime implements InvoiceRegime {
             out.put("buyerTaxId", inv.getBuyerTaxId());
             out.put("sales", Long.toString(dollars(inv.getSalesMinor())));
             out.put("tax", Long.toString(dollars(inv.getTaxMinor())));
+            if (inv.getZeroTaxSalesMinor() != 0) out.put("zeroTaxSales", Long.toString(dollars(inv.getZeroTaxSalesMinor())));
+            if (inv.getFreeTaxSalesMinor() != 0) out.put("freeTaxSales", Long.toString(dollars(inv.getFreeTaxSalesMinor())));
         }
         out.put("barcode", TwProofCodes.barcode(inv.getPeriodCode(), inv.getFiscalNumber(), inv.getRandomCode()));
         if (qrKey != null) {
@@ -107,7 +128,8 @@ public class TwEguiRegime implements InvoiceRegime {
             for (var l : lines)
                 items.add(new TwProofCodes.Item(l.getName(), l.getQuantity(), yuan(l.getUnitPriceMinor())));
             var qr = TwProofCodes.qr(inv.getFiscalNumber(), issued, inv.getRandomCode(),
-                    dollars(inv.getSalesMinor()), dollars(inv.getTotalMinor()), inv.getBuyerTaxId(),
+                    dollars(inv.getSalesMinor() + inv.getZeroTaxSalesMinor() + inv.getFreeTaxSalesMinor()),
+                    dollars(inv.getTotalMinor()), inv.getBuyerTaxId(),
                     inv.getSellerTaxId(),
                     TwQrCipher.verification(qrKey, inv.getFiscalNumber(), inv.getRandomCode()), items);
             out.put("qrLeft", qr.left());
@@ -120,67 +142,133 @@ public class TwEguiRegime implements InvoiceRegime {
         return invoice.getPeriodCode().equals(periodOf(now));
     }
 
+    /** 折让中所含税额：按原发票应税（含税）占比摊出应税部分，再取其中 5%。 */
     public long allowanceTax(IvcInvoice invoice, long amountMinor) {
-        return taxIn(dollars(amountMinor)) * 100;
+        long total = dollars(invoice.getTotalMinor());
+        long taxableGross = dollars(invoice.getSalesMinor() + invoice.getTaxMinor());
+        long share = total == 0 ? 0 : BigDecimal.valueOf(dollars(amountMinor)).multiply(BigDecimal.valueOf(taxableGross))
+                .divide(BigDecimal.valueOf(total), 0, RoundingMode.HALF_UP).longValue();
+        return taxIn(share) * 100;
     }
 
+    /**
+     * MIG 4.x 报文，结构与 XML 元素一一对应（Main / Details / Amount），通道按自己的协议序列化：
+     * Turnkey 直接转成 XML 落目录，加值中心可转成它们的 JSON。顶层 {@code mig} 是报文代号，不是元素。
+     */
     public Map<String, Object> message(String type, IvcInvoice inv, List<IvcInvoiceLine> lines,
             IvcAllowance allowance) {
         var m = new LinkedHashMap<String, Object>();
-        Instant issued = inv.getIssuedAt().toInstant(ZoneOffset.UTC);
+        var issued = TwPeriods.local(inv.getIssuedAt().toInstant(ZoneOffset.UTC));
+        boolean b2b = "B2B".equals(inv.getBuyerType());
         switch (type) {
             case "ISSUE" -> {
                 m.put("mig", "F0401");
-                m.put("InvoiceNumber", inv.getFiscalNumber());
-                m.put("InvoiceDate", DateTimeFormatter.BASIC_ISO_DATE.format(TwPeriods.local(issued)));
-                m.put("InvoiceTime", DateTimeFormatter.ISO_LOCAL_TIME.format(TwPeriods.local(issued).withNano(0)));
-                m.put("RandomNumber", inv.getRandomCode());
-                m.put("BuyerIdentifier", inv.getBuyerTaxId() == null ? "0000000000" : inv.getBuyerTaxId());
-                m.put("BuyerName", inv.getBuyerName() == null ? "0000" : inv.getBuyerName());
-                m.put("CarrierType", inv.getCarrierType());
-                m.put("CarrierId1", inv.getCarrierId());
-                m.put("NPOBAN", inv.getDonateCode());
-                m.put("DonateMark", inv.getDonateCode() == null ? "0" : "1");
-                m.put("PrintMark", inv.getPrintMark());
-                var details = new ArrayList<Map<String, Object>>();
+                var main = new LinkedHashMap<String, Object>();
+                main.put("InvoiceNumber", inv.getFiscalNumber());
+                main.put("InvoiceDate", DAY.format(issued));
+                main.put("InvoiceTime", TIME.format(issued));
+                main.put("Seller", party(inv.getSellerTaxId(), inv.getSellerName()));
+                main.put("Buyer", buyer(inv));
+                main.put("InvoiceType", "07");
+                main.put("DonateMark", inv.getDonateCode() == null ? "0" : "1");
+                if (inv.getCarrierType() != null) {
+                    main.put("CarrierType", inv.getCarrierType());
+                    main.put("CarrierId1", inv.getCarrierId());
+                    main.put("CarrierId2", inv.getCarrierId());
+                }
+                main.put("PrintMark", inv.getPrintMark());
+                if (inv.getDonateCode() != null) main.put("NPOBAN", inv.getDonateCode());
+                main.put("RandomNumber", inv.getRandomCode());
+                m.put("Main", main);
+                var items = new ArrayList<Map<String, Object>>();
                 for (var l : lines) {
                     var d = new LinkedHashMap<String, Object>();
-                    d.put("SequenceNumber", l.getLineNo());
                     d.put("Description", l.getName());
                     d.put("Quantity", l.getQuantity().stripTrailingZeros().toPlainString());
-                    d.put("Unit", l.getUnit());
+                    if (l.getUnit() != null) d.put("Unit", l.getUnit());
                     d.put("UnitPrice", yuan(l.getUnitPriceMinor()).toPlainString());
+                    d.put("TaxType", migTaxType(l.getTaxType()));
                     d.put("Amount", Long.toString(dollars(l.getAmountMinor())));
-                    d.put("TaxType", "1");
-                    details.add(d);
+                    d.put("SequenceNumber", Integer.toString(l.getLineNo()));
+                    items.add(d);
                 }
-                m.put("Details", details);
-                m.put("SalesAmount", dollars(inv.getSalesMinor()));
-                m.put("TaxType", "1");
-                m.put("TaxRate", "0.05");
-                m.put("TaxAmount", dollars(inv.getTaxMinor()));
-                m.put("TotalAmount", dollars(inv.getTotalMinor()));
+                m.put("Details", Map.of("ProductItem", items));
+                var amount = new LinkedHashMap<String, Object>();
+                amount.put("SalesAmount", dollars(inv.getSalesMinor()));
+                amount.put("FreeTaxSalesAmount", dollars(inv.getFreeTaxSalesMinor()));
+                amount.put("ZeroTaxSalesAmount", dollars(inv.getZeroTaxSalesMinor()));
+                amount.put("TaxType", migTaxType(inv.getTaxType()));
+                amount.put("TaxRate", "0.05");
+                amount.put("TaxAmount", dollars(inv.getTaxMinor()));
+                amount.put("TotalAmount", dollars(inv.getTotalMinor()));
+                m.put("Amount", amount);
             }
             case "VOID" -> {
                 m.put("mig", "F0501");
+                var voided = TwPeriods.local(inv.getVoidedAt().toInstant(ZoneOffset.UTC));
                 m.put("CancelInvoiceNumber", inv.getFiscalNumber());
-                m.put("InvoiceDate", DateTimeFormatter.BASIC_ISO_DATE.format(TwPeriods.local(issued)));
+                m.put("InvoiceDate", DAY.format(issued));
+                m.put("BuyerId", b2b ? inv.getBuyerTaxId() : "0000000000");
+                m.put("SellerId", inv.getSellerTaxId());
+                m.put("CancelDate", DAY.format(voided));
+                m.put("CancelTime", TIME.format(voided));
                 m.put("CancelReason", inv.getVoidReason());
             }
             case "ALLOWANCE" -> {
                 m.put("mig", "G0401");
-                m.put("AllowanceNumber", allowance.getAllowanceNo());
-                m.put("OriginalInvoiceNumber", inv.getFiscalNumber());
-                m.put("OriginalInvoiceDate", DateTimeFormatter.BASIC_ISO_DATE.format(TwPeriods.local(issued)));
-                m.put("Amount", dollars(allowance.getAmountMinor() - allowance.getTaxMinor()));
-                m.put("Tax", dollars(allowance.getTaxMinor()));
-                m.put("TotalAmount", dollars(allowance.getAmountMinor()));
-                m.put("Reason", allowance.getReason());
+                var at = TwPeriods.local(allowance.getCreatedAt().toInstant(ZoneOffset.UTC));
+                var main = new LinkedHashMap<String, Object>();
+                main.put("AllowanceNumber", allowance.getAllowanceNo());
+                main.put("AllowanceDate", DAY.format(at));
+                main.put("Seller", party(inv.getSellerTaxId(), inv.getSellerName()));
+                main.put("Buyer", buyer(inv));
+                main.put("AllowanceType", "2");
+                m.put("Main", main);
+                long net = dollars(allowance.getAmountMinor() - allowance.getTaxMinor());
+                var item = new LinkedHashMap<String, Object>();
+                item.put("OriginalInvoiceDate", DAY.format(issued));
+                item.put("OriginalInvoiceNumber", inv.getFiscalNumber());
+                item.put("OriginalDescription", allowance.getReason());
+                item.put("Quantity", "1");
+                item.put("UnitPrice", Long.toString(net));
+                item.put("Amount", Long.toString(net));
+                item.put("Tax", Long.toString(dollars(allowance.getTaxMinor())));
+                item.put("AllowanceSequenceNumber", "1");
+                item.put("TaxType", "MIXED".equals(inv.getTaxType()) ? "1" : migTaxType(inv.getTaxType()));
+                m.put("Details", Map.of("ProductItem", List.of(item)));
+                var amount = new LinkedHashMap<String, Object>();
+                amount.put("TaxAmount", dollars(allowance.getTaxMinor()));
+                amount.put("TotalAmount", net);
+                m.put("Amount", amount);
             }
             default -> throw new IllegalArgumentException(type);
         }
-        m.put("SellerIdentifier", inv.getSellerTaxId());
         return m;
+    }
+
+    private static Map<String, Object> party(String id, String name) {
+        var p = new LinkedHashMap<String, Object>();
+        p.put("Identifier", id);
+        p.put("Name", name);
+        return p;
+    }
+
+    /** 一般消费者：识别码 10 个 0，名称 4 位数字（沿用随机码）。 */
+    private static Map<String, Object> buyer(IvcInvoice inv) {
+        return "B2B".equals(inv.getBuyerType())
+                ? party(inv.getBuyerTaxId(), inv.getBuyerName() == null ? inv.getBuyerTaxId() : inv.getBuyerName())
+                : party("0000000000", inv.getRandomCode());
+    }
+
+    /** MIG 课税别：1 应税、2 零税率、3 免税、9 混合。 */
+    static String migTaxType(String type) {
+        return switch (type) {
+            case "TAXABLE" -> "1";
+            case "ZERO" -> "2";
+            case "EXEMPT" -> "3";
+            case "MIXED" -> "9";
+            default -> throw new IllegalArgumentException(type);
+        };
     }
 
     /** 含税整元金额里的 5% 营业税：总计 − round(总计 / 1.05)。 */

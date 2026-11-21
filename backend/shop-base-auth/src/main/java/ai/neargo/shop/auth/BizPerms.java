@@ -308,7 +308,7 @@ public final class BizPerms {
     }
 
     /**
-     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构及跨店税配置写权限。
+     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构、跨店税配置及发票设置（统编、QR 加密密钥、号段）写权限。
      *
      * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、
      * 能给自己加任何角色，<b>一次授权就绕开了整个模型</b>。
@@ -317,7 +317,7 @@ public final class BizPerms {
      */
     public static Set<String> assignableCodes() {
         return LABELS.keySet().stream()
-                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c))
+                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c) && !INVOICE_SETUP.equals(c))
                 .collect(Collectors.toUnmodifiableSet());
     }
 

@@ -1,0 +1,219 @@
+<template>
+  <sh-scaffold title-key="salesInvoice.setupTitle" :denied="!merchant.can('biz:invoice:setup')">
+    <sh-empty v-if="!loaded || failed" :pending="!loaded" :failed="failed" @retry="load"></sh-empty>
+
+    <template v-else>
+      <sh-section :title="String(t('salesInvoice.profile'))" pad>
+        <text class="sh-hint txt-quiet">{{ profileStatus }}</text>
+      </sh-section>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.regime") }}</text>
+          <text class="txt-body">{{ t("salesInvoice.regimeTW") }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.sellerTaxId") }}</text>
+          <input v-model="profile.sellerTaxId" type="number" maxlength="8" class="txt-body sh-num sh-fill cell-input" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.sellerName") }}</text>
+          <input v-model="profile.sellerName" maxlength="60" class="txt-body sh-fill cell-input" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.gateway") }}</text>
+          <view class="sh-row">
+            <text v-for="g in GATEWAYS" :key="g" class="sh-chip" :class="profile.gatewayCode === g ? 'sh-chip--primary' : ''"
+              @tap="profile.gatewayCode = g">{{ t(`salesInvoice.gatewayName.${g}`) }}</text>
+          </view>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.qrKey") }}</text>
+          <text class="txt-caption" :class="qrKeyConfigured ? 'is-success' : 'is-warning'">{{ qrKeyConfigured ? t("salesInvoice.qrConfigured") : t("salesInvoice.qrMissing") }}</text>
+        </view>
+        <view class="sh-cell">
+          <input v-model="profile.qrAesKeyHex" password maxlength="32" class="txt-body sh-num"
+            :placeholder="String(t('salesInvoice.qrKeyPh'))" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.autoIssue") }}</text>
+          <sh-switch v-model="profile.autoIssue"></sh-switch>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.memberCarrier") }}</text>
+          <input v-model="profile.memberCarrierType" maxlength="6" class="txt-body sh-num sh-fill cell-input"
+            :placeholder="String(t('salesInvoice.optional'))" />
+        </view>
+      </view>
+      <view class="sh-card sh-mt-sm">
+        <view v-if="profileErrMsg" class="sh-notice sh-notice--danger sh-mb-sm" role="alert">{{ profileErrMsg }}</view>
+        <view class="sh-btn" :class="busy ? 'is-disabled' : ''" @tap="saveProfile">{{ t("salesInvoice.save") }}</view>
+      </view>
+
+      <sh-section :title="String(t('salesInvoice.ranges'))" pad></sh-section>
+      <sh-empty v-if="!ranges.length" compact :text="String(t('salesInvoice.rangesEmpty'))"></sh-empty>
+      <view v-for="r in ranges" :key="r.rangeNo" class="sh-card">
+        <view class="sh-row sh-row--between">
+          <text class="txt-strong sh-num">{{ r.periodCode }} · {{ r.track }} {{ r.startNo }}–{{ r.endNo }}</text>
+          <text class="sh-chip" :class="r.status === 'ACTIVE' ? 'sh-chip--primary' : ''">{{ t(`salesInvoice.rangeStatus.${r.status}`) }}</text>
+        </view>
+        <view class="sh-row sh-row--between sh-mt-xs">
+          <text class="txt-caption txt-quiet sh-num">{{ r.storeNo === "*" ? t("salesInvoice.rangeShared") : r.storeNo }}</text>
+          <text class="txt-caption txt-quiet">{{ t("salesInvoice.remaining", { n: r.remaining }) }}</text>
+        </view>
+      </view>
+
+      <sh-section :title="String(t('salesInvoice.addRange'))" pad></sh-section>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.period") }}</text>
+          <input v-model="range.periodCode" type="number" maxlength="5" class="txt-body sh-num sh-fill cell-input"
+            :placeholder="String(t('salesInvoice.periodPh'))" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.track") }}</text>
+          <input v-model="range.track" maxlength="2" class="txt-body sh-num sh-fill cell-input" placeholder="AB" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.startNo") }}</text>
+          <input v-model="range.startNo" type="number" maxlength="8" class="txt-body sh-num sh-fill cell-input" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.endNo") }}</text>
+          <input v-model="range.endNo" type="number" maxlength="8" class="txt-body sh-num sh-fill cell-input" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.rangeStore") }}</text>
+          <input v-model="range.storeNo" maxlength="32" class="txt-body sh-num sh-fill cell-input"
+            :placeholder="String(t('salesInvoice.rangeShared'))" />
+        </view>
+      </view>
+      <view class="sh-card sh-mt-sm">
+        <view v-if="rangeErrMsg" class="sh-notice sh-notice--danger sh-mb-sm" role="alert">{{ rangeErrMsg }}</view>
+        <view class="sh-btn" :class="busy ? 'is-disabled' : ''" @tap="addRange">{{ t("salesInvoice.addRange") }}</view>
+      </view>
+    </template>
+  </sh-scaffold>
+</template>
+
+<script setup lang="ts">
+// 发票设置：开通税制（首期 TW_EGUI）与登记字轨号段。主体级配置，仅 biz:invoice:setup。
+// QR 加密密钥只写不读：页面只显示「已配置 / 未配置」，输入框留空表示不改。
+import { computed, reactive, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import type { SiProfile, SiProfileReq, SiRange } from "@/api/sales-invoice";
+
+type Gateway = SiProfileReq["gatewayCode"];
+const GATEWAYS: readonly Gateway[] = ["STUB", "TURNKEY"];
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+const loaded = ref(false);
+const failed = ref(false);
+const busy = ref(false);
+const profileErrMsg = ref("");
+const rangeErrMsg = ref("");
+const current = ref<SiProfile | null>(null);
+const ranges = ref<SiRange[]>([]);
+const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "STUB" as Gateway, qrAesKeyHex: "", memberCarrierType: "", autoIssue: false });
+const range = reactive({ periodCode: "", track: "", startNo: "", endNo: "", storeNo: "" });
+
+const qrKeyConfigured = computed(() => !!current.value?.qrKeyConfigured);
+const profileStatus = computed(() => current.value
+  ? String(t(`salesInvoice.profileStatus.${current.value.status}`))
+  : String(t("salesInvoice.notOpened")));
+
+function message(e: unknown): string {
+  return e instanceof Error && e.message ? e.message : String(t("salesInvoice.failed"));
+}
+
+function fill(p: SiProfile | null) {
+  current.value = p;
+  profile.sellerTaxId = p?.sellerTaxId ?? "";
+  profile.sellerName = p?.sellerName ?? "";
+  profile.gatewayCode = p?.gatewayCode === "TURNKEY" ? "TURNKEY" : "STUB";
+  profile.memberCarrierType = p?.memberCarrierType ?? "";
+  profile.qrAesKeyHex = "";
+  profile.autoIssue = !!p?.autoIssue;
+}
+
+async function load() {
+  failed.value = false;
+  try {
+    const [p, r] = await Promise.all([api.mSiProfile(), api.mSiRanges({})]);
+    fill(p);
+    ranges.value = r;
+  } catch {
+    failed.value = true;
+  } finally {
+    loaded.value = true;
+  }
+}
+
+async function saveProfile() {
+  if (busy.value) return;
+  if (!profile.sellerTaxId.trim() || !profile.sellerName.trim()) {
+    profileErrMsg.value = String(t("salesInvoice.required"));
+    return;
+  }
+  busy.value = true;
+  profileErrMsg.value = "";
+  try {
+    const key = profile.qrAesKeyHex.trim();
+    const carrier = profile.memberCarrierType.trim();
+    fill(await api.mSiSaveProfile({
+      regimeCode: "TW_EGUI",
+      sellerTaxId: profile.sellerTaxId.trim(),
+      sellerName: profile.sellerName.trim(),
+      gatewayCode: profile.gatewayCode,
+      autoIssue: profile.autoIssue,
+      ...(key ? { qrAesKeyHex: key } : {}),
+      ...(carrier ? { memberCarrierType: carrier } : {}),
+    }));
+    uni.showToast({ title: String(t("salesInvoice.saved")), icon: "none" });
+  } catch (e) {
+    profileErrMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function addRange() {
+  if (busy.value) return;
+  const startNo = Number(range.startNo), endNo = Number(range.endNo);
+  if (!range.periodCode.trim() || !range.track.trim() || !range.startNo || !range.endNo) {
+    rangeErrMsg.value = String(t("salesInvoice.required"));
+    return;
+  }
+  busy.value = true;
+  rangeErrMsg.value = "";
+  try {
+    const store = range.storeNo.trim();
+    const added = await api.mSiAddRange({
+      regimeCode: "TW_EGUI",
+      periodCode: range.periodCode.trim(),
+      track: range.track.trim().toUpperCase(),
+      startNo,
+      endNo,
+      ...(store ? { storeNo: store } : {}),
+    });
+    ranges.value = [added, ...ranges.value];
+    Object.assign(range, { track: "", startNo: "", endNo: "", storeNo: "" });
+    uni.showToast({ title: String(t("salesInvoice.saved")), icon: "none" });
+  } catch (e) {
+    rangeErrMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+onShow(load);
+</script>
+
+<style scoped>
+.cell-input {
+  text-align: end;
+}
+</style>

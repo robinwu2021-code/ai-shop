@@ -242,7 +242,9 @@ class MerchantRoleFlowTest {
                 // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有属主有，老板给收银员建角色时勾这几项
                 "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr",
                 // App 外收款记录（TDD-商户App外部记账）：记一笔 / 更正与作废
-                "mch:pay:offline:record","mch:pay:offline:manage"));
+                "mch:pay:offline:record","mch:pay:offline:manage",
+                // 发票（ADR-063）：查 / 开 / 作废折让可授；发票设置（统编、QR 密钥、号段）与跨店税配置一样不下发
+                "biz:invoice:read","biz:invoice:issue","biz:invoice:void"));
     }
 
     @Test

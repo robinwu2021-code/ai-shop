@@ -1,6 +1,6 @@
 # TDD-发票模块（多行业 · 首期台湾电子发票与证明联打印）
 
-状态：已实现（首期后端 + 证明联打印；B 端页面、正式通道见 §7 后续）
+状态：已实现（后端、证明联打印、B 端页面、自动开立、混合课税、Turnkey 通道；运营端与回执回写见 §7 后续）
 档位：2 · 依据：[PRD-发票开立与打印](../requirements/PRD-发票开立与打印.md) §4 ·
 决策：[ADR-063](./ADR/ADR-063-发票独立成模块与税制SPI.md)
 创建：2026-11-21 · 最后更新：2026-11-21
@@ -53,6 +53,10 @@
 | AC13 | 多行业同一入口 | `InvoiceSourcePort`（按 sourceType 注册）+ `InvoicePort`；发票域不依赖 shop-core 与行业插件（`InvoiceBoundaryTest`） |
 | AC14 | 税制可替换 | `InvoiceRegime` SPI + `ivc_regime_profile`；未开通 → `INVOICE_REGIME_NOT_ENABLED(26001)` |
 | AC15 | B 端查询 | `GET /biz/invoices`、`GET /biz/invoices/{invoiceNo}` |
+| AC16 | 付款后自动开立 | `ivc_regime_profile.auto_issue` + `ivc_buyer_preference` + `PUT /biz/invoices/buyer-preferences`；`InvoicePort#rememberBuyer / issueIfAutomatic`；`shop-app/…/invoicebridge/InvoiceAutoIssueConsumer`（`ORDER_PAID`） |
+| AC17 | 混合课税别 | `InvoiceSourcePort.Line.taxType`（取自报价行冻结税类）、`ivc_invoice.zero_tax_sales_minor / free_tax_sales_minor`、`TwEguiRegime#amounts` |
+| AC18 | 积分折抵 / 秤重调整 | `SubOrderInvoiceSourcePortImpl` 各成一行 |
+| AC19 | Turnkey 通道 | `invoice-channel/…/turnkey/TurnkeyInvoiceGateway`（`shop.invoice.turnkey.root`） |
 
 **孤立项**：无。号段登记、税制开通（`/biz/invoice-setup/*`）挂 AC1、AC14 的前置。
 
@@ -83,7 +87,8 @@
 | POST | `/biz/invoices/{invoiceNo}/void` | `biz:invoice:void` | `{reason}` |
 | POST | `/biz/invoices/{invoiceNo}/allowances` | `biz:invoice:void` | `{amountMinor, reason}` |
 | GET | `/biz/invoice-setup/profile` | `biz:invoice:setup` | 本主体税制配置 |
-| PUT | `/biz/invoice-setup/profile` | `biz:invoice:setup` | `{regimeCode, sellerTaxId, sellerName, gatewayCode, qrAesKeyHex?, memberCarrierType?}` |
+| PUT | `/biz/invoice-setup/profile` | `biz:invoice:setup` | `{regimeCode, sellerTaxId, sellerName, gatewayCode(STUB/TURNKEY), qrAesKeyHex?, memberCarrierType?, autoIssue?}` |
+| PUT | `/biz/invoices/buyer-preferences` | `biz:invoice:issue` | `{sourceType, sourceNo, buyer}`：付款前预存买受人，自动开立时使用 |
 | GET | `/biz/invoice-setup/ranges` | `biz:invoice:setup` | `?periodCode` |
 | POST | `/biz/invoice-setup/ranges` | `biz:invoice:setup` | `{periodCode, track, startNo, endNo, storeNo?}` |
 
@@ -95,8 +100,9 @@
 |---|---|---|
 | `ivc_regime_profile` | tenant_no, entity_no, regime_code, seller_tax_id, seller_name, gateway_code, qr_key_ref, member_carrier_type, status | uk(tenant, entity, regime) |
 | `ivc_number_range` | range_no, tenant/entity, regime_code, store_no(`*`=主体共用), period_code, track, start_no, end_no, next_no, status ACTIVE/EXHAUSTED | uk(tenant, entity, regime, period, track, start_no)；CHECK start≤end |
-| `ivc_invoice` | invoice_no, tenant/entity/store, regime_code, industry_code, source_type, source_no, **active_source_key**, fiscal_number, period_code, random_code, issued_at, buyer_type, buyer_tax_id, buyer_name, carrier_type, carrier_id, donate_code, print_mark, currency, sales/tax/total_minor, allowed_minor, tax_type, status, void_*, proof_snapshot JSON, proof_snapshot_hash | uk(tenant, fiscal_number, regime)；uk(tenant, entity, active_source_key)；CHECK allowed≤total |
+| `ivc_invoice` | invoice_no, tenant/entity/store, regime_code, industry_code, source_type, source_no, **active_source_key**, fiscal_number, period_code, random_code, issued_at, buyer_type, buyer_tax_id, buyer_name, carrier_type, carrier_id, donate_code, print_mark, currency, sales/zero_tax_sales/free_tax_sales/tax/total_minor, allowed_minor, tax_type, status, void_*, proof_snapshot JSON, proof_snapshot_hash | uk(tenant, fiscal_number, regime)；uk(tenant, entity, active_source_key)；CHECK allowed≤total |
 | `ivc_invoice_line` | invoice_no, line_no, source_line_ref, name, quantity, unit, unit_price_minor, amount_minor, tax_type | uk(invoice_no, line_no) |
+| `ivc_buyer_preference` | tenant/entity, source_type, source_no, buyer_tax_id, buyer_name, carrier_type, carrier_id, donate_code | uk(tenant, entity, source_type, source_no) |
 | `ivc_allowance` | allowance_no, invoice_no, tenant/entity/store, amount_minor, tax_minor, reason | uk(allowance_no) |
 | `ivc_transmission` | transmission_no, tenant/entity, regime/gateway_code, message_type ISSUE/VOID/ALLOWANCE, ref_no, payload JSON, status PENDING/SENT/FAILED, attempts, next_attempt_at, last_error, gateway_ref | uk(tenant, message_type, ref_no)；idx(status, next_attempt_at) |
 
@@ -116,7 +122,7 @@
 | 26008 | INVOICE_STATE_INVALID | 已作废发票再作废 / 折让 |
 | 26009 | INVOICE_RANGE_INVALID | 号段格式错误或与已有号段重叠 |
 
-**i18n**：上述 9 条 × 三语（`messages*.properties`）。**配置项**：`shop.invoice.transmission.enabled`（默认 false）、
+**i18n**：上述 9 条 × 三语（`messages*.properties`）。**配置项**：`shop.invoice.transmission.enabled`（默认 false）、`shop.invoice.turnkey.root` / `shop.invoice.turnkey.path-pattern`（配了才装 Turnkey 通道）、
 `shop.invoice.flyway.enabled`（默认 true，与平台迁移同开同关）。
 
 ### 2.2 关键接口
@@ -178,6 +184,11 @@ public interface InvoiceGateway { String code(); GatewayReceipt send(String regi
 | 新增 | `invoice-domain/…/invoice/job/InvoiceTransmissionJob.java` | 定时上传（开关控制） |
 | 新增 | `invoice-domain/src/main/resources/db/invoice/V1__invoice_core.sql`、`V2__invoice_role_permissions.sql` | 独立迁移序列 |
 | 新增 | `backend/invoice/invoice-channel/…/invoice/channel/stub/StubInvoiceGateway.java` | 本地桩通道 |
+| 新增 | `backend/invoice/invoice-channel/…/invoice/channel/turnkey/TurnkeyInvoiceGateway.java` | 财政部 Turnkey：MIG XML 原子落目录 |
+| 新增 | `invoice-domain/…/invoice/entity/IvcBuyerPreference.java` | 预存买受人 |
+| 新增 | `shop-app/…/invoicebridge/InvoiceAutoIssueConsumer.java` | `ORDER_PAID` → 自动开立 |
+| 修改 | `shop-base-auth/…/auth/BizPerms.java` | `LABELS` 补发票四码；`assignableCodes` 排除 `biz:invoice:setup` |
+| 修改 | `b-app/src/i18n/locale/{zh-CN,en,ar}.ts`、`packages/shared/tests/biz-role-seed.test.ts`、`docs/technical/README.md` | 权限文案、角色种子守卫读模块序列、索引 |
 | 新增 | `shop-base/…/spi/invoice/{InvoicePort,InvoiceSourcePort}.java` | 跨域契约 |
 | 新增 | `shop-app/…/invoicebridge/port/SubOrderInvoiceSourcePortImpl.java` | 已付子单来源（三行业共用） |
 | 新增 | `shop-app/…/config/InvoiceSchemaConfig.java` | `db/invoice` 迁移，历史表 `ivc_flyway_history` |
@@ -189,11 +200,14 @@ public interface InvoiceGateway { String code(); GatewayReceipt send(String regi
 | 修改 | `shop-core/…/template/DefaultPrintDocumentCompiler.java`、`layout/DefaultPrintLayoutEngine.java` | `barcode`、`qrPair` 块 |
 | 修改 | `shop-core/src/main/resources/print/print-{scene-catalog,template-definitions,scene-examples}.json` | `INVOICE_PROOF` 场景与 58mm 模板 |
 | 修改 | `print-channel/…/pdf/PdfReceiptRenderer.java` | 画 `ImageRun` |
-| 新增 | 测试：`TwRulesTest`、`TwProofCodesTest`、`InvoiceServiceMysqlTest`、`InvoiceBoundaryTest`（invoice-domain），`InvoiceProofLayoutTest`（print-channel） | 见 §5 |
+| 新增 | 测试：`TwRulesTest`、`TwProofCodesTest`、`InvoiceServiceMysqlTest`、`InvoiceBoundaryTest`（invoice-domain），`TurnkeyInvoiceGatewayTest`（invoice-channel），`InvoiceProofLayoutTest`（print-channel），`SubOrderInvoiceSourcePortImplTest`、`InvoiceAutoIssueConsumerTest`（shop-app） | 见 §5 |
 | 修改 | `shop-app/src/test/…/arch/{ArchitectureTest,BizEndpointPermTest,BizRoleSeedTest}.java`、`infra/SchemaDriftTest.java` | 登记 `invoice` 域与 `invoicebridge`、6 个 /biz 端点的权限、模块迁移序列的角色追加、`db/invoice` 重放 |
 | 修改 | `backend/scripts/gen-test-schema.py`、`shop-app/src/test/resources/schema-test.sql` | H2 夹具接上 `db/invoice`（只并入发票增量，见 §6） |
 | 修改 | `print-channel/src/test/…/ReceiptSoftwareAcceptanceTest.java` | 按场景声明的纸宽渲染（证明联只有 58） |
-| 新增 | `docs/api/invoice.openapi.json`、`docs/api/backend-ui-delivery-invoice.json` | 9 个 /biz 端点的公开契约；登记为「后端已交付、B 端页面下一批」，`check-app-backend-orphan.py` 按此计入分阶段交付而不是欠账 |
+| 新增 | `docs/api/invoice.openapi.json` | 10 个 /biz 端点的公开契约（首次提交时另有 `backend-ui-delivery-invoice.json` 登记「页面待接」，B 端页面接通后已删除） |
+| 新增 | `b-app/src/pages/{sales-invoices,sales-invoice,sales-invoice-issue,invoice-setup}/index.vue` | 列表（期别/状态筛选）、详情（作废 / 折让 / 打印证明联走打印中心 J03）、开票（含「仅预存，付款后自动开立」）、设置（税制、通道、自动开立、号段） |
+| 新增 | `b-app/src/api/{sales-invoice,sales-invoice-http}.ts`、`api/mocks/sales-invoice.ts`、`shared/sales-invoice.ts` | 端点 `mSi*`；mock 抛「不可用」不伪造成功 |
+| 修改 | `b-app/src/{pages.json,shared/nav.ts,shared/store-scope.ts,api/contract.ts,api/endpoints.ts,api/http.ts,api/mocks/index.ts,pages/home/index.vue,pages/order/index.vue}`、三语 locale、`docs/technical/design/ui-catalog.json` | 路由登记、首页「销售发票」入口、订单详情「开发票」入口（子单号预填）、门店作用域、界面清单 |
 
 ### 2.5 开立时序
 
@@ -222,9 +236,9 @@ public interface InvoiceGateway { String code(); GatewayReceipt send(String regi
 |---|---|---|
 | QR 加密规格与财政部验证不一致 | 证明联扫不出 | `TwQrCipher` 用财政部公开 IV 与样例单测；正式启用前用财政部「电子发票 QR 码验证」实测一张 |
 | 飞鹅通道不支持图片 | 用飞鹅的门店打不出证明联 | 打印中心如实返回 `print.vendorDrawingUnsupported`；后续给飞鹅适配 `<QR>`/`<BC128>` 原生标签（Code39 需确认机型） |
-| 子单金额组成（积分、储值抵扣）与发票总计口径 | 开错金额 | 首期只接「明细 + 运费 − 优惠 = 实付」的子单，不满足 → 26002，不伪造金额；储值/积分口径随 CKO07 冻结税据接入 |
-| 只有桩通道 | 发票未真正上传 | `ivc_transmission` 留全量报文；正式通道上线后对 PENDING/FAILED 补传；48 小时期限在 B 端可见 |
-| 混合税别（零税率、免税） | 不能开 | 首期所有行按应税 5%；`tax_type` 列已留，混合税别随报价税类接入 |
+| 子单金额组成与发票总计口径 | 开错金额 | 明细 + 运费 − 优惠 − 积分折抵 ± 秤重 = 实付，对不上 → 26002；混合税别下整单优惠/折抵分不到税别 → 26002，不伪造分摊 |
+| Turnkey 只确认「文件已交出」 | 大平台退件看不到 | 报文与文件名可追溯；回执目录（ERRORS/ProcessResult）回写是下一步；48 小时期限在 B 端可见上传状态 |
+| 报价税类缺失或 OUT_OF_SCOPE | 不能开 | 回 26002，不默认按应税开 |
 
 ## §5 对账三 · 实现 → 需求（测试）
 
@@ -246,13 +260,19 @@ public interface InvoiceGateway { String code(); GatewayReceipt send(String regi
 | AC12 | `#ac12TransmissionSendsAndRetriesTheSamePayload` | ✅ |
 | AC13 | `InvoiceBoundaryTest#invoiceDomainImportsNoIndustryOrTradeCode`；`ArchitectureTest` 登记 `invoice` 域（无发票违规） | ✅ |
 | AC14 | `#ac14NoRegimeMeansNoInvoice` | ✅ |
-| AC15 | `#ac15ListByPeriodAndStatusInTheCurrentStore` | ✅ |
+| AC15 | `#ac15ListByPeriodAndStatusInTheCurrentStore`；B 端页面 `vue-tsc --noEmit` 无错、b-app vitest 400/400 | ✅ |
 | 设置 | `#setupRejectsOverlappingRangesAndRoleSeedGotInvoicePermissions`（V2 角色追加在真库生效） | ✅ |
+| AC16 | `#autoIssueUsesTheRememberedBuyerOnlyWhenTheEntityTurnedItOn`；`InvoiceAutoIssueConsumerTest`（2） | ✅ |
+| AC17 | `TwRulesTest#mixedTaxTypesSplitIntoTaxableZeroAndFreeAndOnlyTaxablePaysTax`、`#allowanceTaxFollowsTheTaxableShareOfTheInvoice`；`#ac5MixedTaxTypesArePersistedPerLineAndInTheUploadMessage`；`SubOrderInvoiceSourcePortImplTest#foodOrderTakesIndustryAndTaxClassFromTheFrozenQuote`、`#mixedTaxWithWholeOrderDiscountOrUnknownTaxClassIsNotInvoiced` | ✅ |
+| AC18 | `SubOrderInvoiceSourcePortImplTest#retailOrderBecomesItemsFreightDiscountPointsAndWeighLinesThatSumToThePayment`、`#unpaidOrPartlyRefundedOrdersAreNotInvoiced` | ✅ |
+| AC19 | `TurnkeyInvoiceGatewayTest`（2：命名空间 XML、转义、原子写、重发覆盖；拒绝非台湾与未知报文） | ✅ |
 
 实际输出（2026-11-21）：
 
 ```
-invoice-domain  TwRulesTest 6 · TwProofCodesTest 3 · InvoiceServiceMysqlTest 14 · InvoiceBoundaryTest 1  → Tests run: 24, Failures: 0, Errors: 0
+invoice-domain  TwRulesTest 8 · TwProofCodesTest 3 · InvoiceServiceMysqlTest 16 · InvoiceBoundaryTest 1  → Tests run: 28, Failures: 0, Errors: 0
+invoice-channel TurnkeyInvoiceGatewayTest 2                                                           → Tests run: 2, Failures: 0, Errors: 0
+shop-app        SubOrderInvoiceSourcePortImplTest 4 · InvoiceAutoIssueConsumerTest 2                   → Tests run: 6, Failures: 0, Errors: 0
 print-channel   ReceiptSoftwareAcceptanceTest 27 · InvoiceProofLayoutTest 2                            → Tests run: 29, Failures: 0, Errors: 0
 shop-app        BizRoleSeedTest 4 · BackendI18nParityTest 6 · ErrorCodeUniqueTest 3 · ConditionalBeanWiringTest 1
                 ControllerProfileTest 2 · FunctionPointPermAlignmentTest 3 · JsonColumnSeedTest 1           → 全绿
@@ -279,6 +299,8 @@ scripts/check-sql-portability.mjs（扫 backend/，含 db/invoice）            
 | zxing 依赖加在 `shop-core`（版本在父 POM） | 版面引擎住在 `shop-core/printing/center`，条码位图在那里生成 |
 | 证明联模板只有 `STANDARD_58`；`ReceiptSoftwareAcceptanceTest` 改为按场景声明的纸宽渲染 | 证明联法定 5.7 cm，不提供 80 mm 版本 |
 | 上传任务增加 `SENDING` 中间态（超过 10 分钟视为执行者中断） | 多实例下用条件更新认领，避免同一报文并发发送 |
+| V1 在首次合入前补改（课税别两列、`auto_issue`、`ivc_buyer_preference`），未另开 V3 | V1 只存在于本分支未推送的提交里，从未在任何持久库执行过（测试库每次建删）；补改比叠一条 `DROP CHECK` 迁移干净，且 H2 重放器不认 `DROP CHECK` |
+| `biz:invoice:setup` 不进自定义角色可分配列表 | 它写统编、QR 加密密钥与号段，与已排除的跨店税配置同类 |
 | `schema-test.sql` 只并入发票增量 | 本分支已存在与生成器不一致的漂移（他人在途改动），整份重生成会把无关改动一并带入 |
 
 ## §7 确认与完成
@@ -290,8 +312,7 @@ scripts/check-sql-portability.mjs（扫 backend/，含 db/invoice）            
 
 ### 后续（不在本期）
 
-1. B 端页面：开票（结账后选载具/统编/捐赠）、发票列表与详情、作废/折让、发票设置（税制、号段），并登记界面清单。
-2. 正式加值中心通道（`InvoiceGateway` 新实现）与开启 `shop.invoice.transmission.enabled`；首张证明联用财政部 QR 验证工具实测。
-3. 餐饮结账 / 美业结账在付款成功后直接调 `InvoicePort.issue`（目前经 B 端 `/biz/invoices` 按子单开立）。
-4. 积分抵扣、称重补差、混合税别的发票口径，随 CKO07 冻结税据接入 `SubOrderInvoiceSourcePortImpl`。
-5. 飞鹅等文本通道的原生条码标签适配；自定义角色可分配权限目录登记发票四个码。
+1. 运营端「上传失败 / 即将超过 48 小时」清单（PRD §2 运营场景；需 ops 五处登记）。
+2. Turnkey 回执目录（处理结果、退件）回写 `ivc_transmission`；商业加值中心通道按签约方各加一个 `InvoiceGateway`。
+3. C 端（顾客自助下单）输入载具：复用 `PUT …/buyer-preferences` 的 C 端版本。
+4. 飞鹅等文本通道：其原生标签只有 Code128 / QR，没有证明联规定的 Code39，故证明联只走 PDF / 桌面 agent；如需飞鹅出证明联，须先确认机型支持 Code39。

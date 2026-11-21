@@ -1,6 +1,7 @@
 package ai.neargo.shop.invoice.mapper;
 
 import ai.neargo.shop.invoice.entity.IvcAllowance;
+import ai.neargo.shop.invoice.entity.IvcBuyerPreference;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcNumberRange;
@@ -71,5 +72,8 @@ public final class InvoiceMappers {
     }
 
     public interface TransmissionMapper extends BaseMapper<IvcTransmission> {
+    }
+
+    public interface BuyerPreferenceMapper extends BaseMapper<IvcBuyerPreference> {
     }
 }

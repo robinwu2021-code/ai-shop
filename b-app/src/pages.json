@@ -590,6 +590,31 @@
       }
     },
     {
+      "path": "pages/sales-invoices/index",
+      "style": {
+        "navigationBarTitleText": "销售发票",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/sales-invoice/index",
+      "style": {
+        "navigationBarTitleText": "发票详情"
+      }
+    },
+    {
+      "path": "pages/sales-invoice-issue/index",
+      "style": {
+        "navigationBarTitleText": "开发票"
+      }
+    },
+    {
+      "path": "pages/invoice-setup/index",
+      "style": {
+        "navigationBarTitleText": "发票设置"
+      }
+    },
+    {
       "path": "pages/statement/index",
       "style": {
         "navigationBarTitleText": "对账单"

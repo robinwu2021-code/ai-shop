@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 126,
+      "count": 130,
       "domains": [
         {
           "name": "其它",
@@ -172,6 +172,50 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/deposit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sales-invoices/index",
+              "title": "销售发票",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoices/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sales-invoice/index",
+              "title": "发票详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoice/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sales-invoice-issue/index",
+              "title": "开发票",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sales-invoice-issue/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/invoice-setup/index",
+              "title": "发票设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/invoice-setup/index"
             },
             {
               "app": "b-app",
@@ -4203,5 +4247,5 @@
       ]
     }
   ],
-  "total": 336
+  "total": 340
 }

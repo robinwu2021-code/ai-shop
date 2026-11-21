@@ -105,13 +105,13 @@ class InvoiceServiceMysqlTest {
 
     @BeforeEach
     void reset() {
-        for (var t : List.of("ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice",
+        for (var t : List.of("ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice", "ivc_buyer_preference",
                 "ivc_number_range", "ivc_regime_profile")) jdbc.update("DELETE FROM " + t);
         sources.byNo.clear();
         gateway.fail.set(false);
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null));
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 1, 50, null));
     }
 
@@ -177,6 +177,26 @@ class InvoiceServiceMysqlTest {
         assertEquals("B2B", row.get("buyer_type"));
         assertEquals(105_000L, jdbc.queryForObject(
                 "SELECT SUM(amount_minor) FROM ivc_invoice_line WHERE invoice_no=?", Long.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac5MixedTaxTypesArePersistedPerLineAndInTheUploadMessage() {
+        sources.byNo.put("MIX", new InvoiceSourcePort.InvoiceSource("FOOD", "TWD", Instant.now(), 155_000,
+                List.of(line("餐點", 105_000, InvoiceSourcePort.Line.TAXABLE),
+                        line("外銷", 20_000, InvoiceSourcePort.Line.ZERO),
+                        line("書籍", 30_000, InvoiceSourcePort.Line.EXEMPT))));
+        var r = invoices.issue(SCOPE, "SUB_ORDER", "MIX", new Buyer("22099131", null, null, null, null));
+        var vo = invoices.get(SCOPE, r.invoiceNo());
+        assertEquals(100_000, vo.salesMinor());
+        assertEquals(5_000, vo.taxMinor());
+        assertEquals(20_000, vo.zeroTaxSalesMinor());
+        assertEquals(30_000, vo.freeTaxSalesMinor());
+        assertEquals(List.of("TAXABLE", "ZERO", "EXEMPT"),
+                vo.lines().stream().map(l -> l.taxType()).toList());
+        String payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE ref_no=?", String.class,
+                r.invoiceNo());
+        assertTrue(payload.matches("(?s).*\"TaxType\":\\s*\"9\".*"), payload);
+        assertTrue(payload.matches("(?s).*\"ZeroTaxSalesAmount\":\\s*200.*"), payload);
     }
 
     @Test
@@ -283,6 +303,25 @@ class InvoiceServiceMysqlTest {
     }
 
     @Test
+    void autoIssueUsesTheRememberedBuyerOnlyWhenTheEntityTurnedItOn() {
+        sources.paid("SO1", 1_000);
+        assertTrue(invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SO1").isEmpty(), "auto issue is off by default");
+        assertCode(ErrorCode.INVOICE_BUYER_INVALID, () -> invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1",
+                new Buyer(null, null, "3J0002", "bad", null)));
+        invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer("22099131", "台積", null, null, null));
+        invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer(null, null, "3J0002", "/ABC+123", null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, true));
+        var r = invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SO1").orElseThrow();
+        var vo = invoices.get(SCOPE, r.invoiceNo());
+        assertEquals("/ABC+123", vo.carrierId(), "last remembered choice wins");
+        assertEquals(null, vo.buyerTaxId(), "the earlier tax id was cleared, not kept");
+        assertFalse(vo.printMark());
+        assertEquals(r.invoiceNo(), invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SO1").orElseThrow().invoiceNo());
+        assertTrue(setup.profile(SCOPE).orElseThrow().autoIssue());
+        assertTrue(setup.profile(SCOPE).orElseThrow().qrKeyConfigured(), "omitting the key keeps the stored one");
+    }
+
+    @Test
     void setupRejectsOverlappingRangesAndRoleSeedGotInvoicePermissions() {
         assertCode(ErrorCode.INVOICE_RANGE_INVALID,
                 () -> setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 40, 60, null)));
@@ -309,7 +348,11 @@ class InvoiceServiceMysqlTest {
     }
 
     private static InvoiceSourcePort.Line line(String name, long amount) {
-        return new InvoiceSourcePort.Line(name, name, BigDecimal.ONE, null, amount, amount);
+        return line(name, amount, InvoiceSourcePort.Line.TAXABLE);
+    }
+
+    private static InvoiceSourcePort.Line line(String name, long amount, String taxType) {
+        return new InvoiceSourcePort.Line(name, name, BigDecimal.ONE, null, amount, amount, taxType);
     }
 
     private static void assertCode(ErrorCode code, Runnable call) {

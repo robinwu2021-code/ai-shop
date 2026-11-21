@@ -76,6 +76,11 @@ export const ROUTES = {
   payoutAccount: "/pages/payout-account/index",
   deposit: "/pages/deposit/index",
   invoice: "/pages/invoice/index",
+  // 销售发票（门店开给顾客的电子发票；上面那条 invoice 是供应商结算向平台开的进项票）
+  salesInvoices: "/pages/sales-invoices/index",
+  salesInvoice: "/pages/sales-invoice/index",
+  salesInvoiceIssue: "/pages/sales-invoice-issue/index",
+  invoiceSetup: "/pages/invoice-setup/index",
   statement: "/pages/statement/index",
   // 商家端支付（TDD-支付服务-I5接入层 S8）
   payCollect: "/pages/pay-collect/index",

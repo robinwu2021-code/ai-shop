@@ -279,6 +279,8 @@ const cells = computed(() => {
 const entries = computed(() =>
   [
     { key: "printing", label: t("printCenter.title"), route: ROUTES.printCenter, perm: "biz:print:read" },
+    // 销售发票：本店开给顾客的电子发票；开票、作废折让、发票设置都从列表页进
+    { key: "salesInvoice", label: t("salesInvoice.title"), route: ROUTES.salesInvoices, perm: "biz:invoice:read" },
     { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store" },
     { key: "scope", label: t("store.scopeTitle"), route: ROUTES.storeScope, perm: "biz:store" },
     { key: "store", label: t("store.title"), route: ROUTES.store, perm: "biz:store" },

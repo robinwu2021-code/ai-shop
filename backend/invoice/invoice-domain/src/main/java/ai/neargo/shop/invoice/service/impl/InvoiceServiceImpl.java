@@ -13,11 +13,13 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceLineVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
+import ai.neargo.shop.invoice.entity.IvcBuyerPreference;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper;
+import ai.neargo.shop.invoice.mapper.InvoiceMappers.BuyerPreferenceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceLineMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
@@ -69,6 +71,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceLineMapper lines;
     private final AllowanceMapper allowances;
     private final TransmissionMapper transmissions;
+    private final BuyerPreferenceMapper preferences;
     private final InvoiceRegimes regimes;
     private final Map<String, InvoiceSourcePort> sources = new HashMap<>();
     private final ObjectProvider<SecretVault> vault;
@@ -77,6 +80,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     public InvoiceServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceMapper invoices,
             InvoiceLineMapper lines, AllowanceMapper allowances, TransmissionMapper transmissions,
+            BuyerPreferenceMapper preferences,
             InvoiceRegimes regimes, List<InvoiceSourcePort> sourcePorts, ObjectProvider<SecretVault> vault,
             OutboxEventBus events, ObjectMapper json) {
         this.profiles = profiles;
@@ -85,6 +89,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         this.lines = lines;
         this.allowances = allowances;
         this.transmissions = transmissions;
+        this.preferences = preferences;
         this.regimes = regimes;
         for (var port : sourcePorts)
             for (var type : port.sourceTypes())
@@ -110,7 +115,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         for (var l : source.lines()) sum = Math.addExact(sum, l.amountMinor());
         if (source.lines().isEmpty() || source.totalMinor() <= 0 || sum != source.totalMinor())
             throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);
-        var amounts = regime.amounts(source.totalMinor(), buyer);
+        var amounts = regime.amounts(source.lines(), buyer);
 
         Instant now = Instant.now();
         var range = ranges.lockUsable(scope.tenantNo(), scope.entityNo(), regime.code(), regime.periodOf(now),
@@ -148,6 +153,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         inv.setPrintMark(regime.printMark(buyer) ? "Y" : "N");
         inv.setCurrency(source.currency());
         inv.setSalesMinor(amounts.salesMinor());
+        inv.setZeroTaxSalesMinor(amounts.zeroTaxSalesMinor());
+        inv.setFreeTaxSalesMinor(amounts.freeTaxSalesMinor());
         inv.setTaxMinor(amounts.taxMinor());
         inv.setTotalMinor(amounts.totalMinor());
         inv.setAllowedMinor(0L);
@@ -171,7 +178,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             row.setUnit(l.unit());
             row.setUnitPriceMinor(l.unitPriceMinor());
             row.setAmountMinor(l.amountMinor());
-            row.setTaxType(amounts.taxType());
+            row.setTaxType(l.taxType());
             rows.add(row);
         }
         var proof = regime.proof(inv, rows, qrKey(profile));
@@ -183,6 +190,53 @@ public class InvoiceServiceImpl implements InvoiceService {
         if ("Y".equals(inv.getPrintMark()))
             events.publish(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.ref(inv)));
         return receipt(inv);
+    }
+
+    @Override
+    @Transactional
+    public void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
+        var profile = activeProfile(scope);
+        regimes.require(profile.getRegimeCode()).validateBuyer(buyer, profile);
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        var key = new QueryWrapper<IvcBuyerPreference>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("source_type", sourceType).eq("source_no", sourceNo);
+        var row = preferences.selectOne(key);
+        boolean fresh = row == null;
+        if (fresh) {
+            row = new IvcBuyerPreference();
+            row.setTenantNo(scope.tenantNo());
+            row.setEntityNo(scope.entityNo());
+            row.setSourceType(sourceType);
+            row.setSourceNo(sourceNo);
+            row.setCreatedAt(now);
+        }
+        row.setBuyerTaxId(blankToNull(buyer.taxId()));
+        row.setBuyerName(blankToNull(buyer.name()));
+        row.setCarrierType(blankToNull(buyer.carrierType()));
+        row.setCarrierId(blankToNull(buyer.carrierId()));
+        row.setDonateCode(blankToNull(buyer.donateCode()));
+        row.setCreatedBy(scope.actorNo());
+        row.setUpdatedAt(now);
+        // 清空某个字段（例如从打统编改成一般消费者）也要落库：用整行 UpdateWrapper，不靠 updateById 跳过 null
+        if (fresh) preferences.insert(row);
+        else preferences.update(null, new UpdateWrapper<IvcBuyerPreference>().eq("id", row.getId())
+                .set("buyer_tax_id", row.getBuyerTaxId()).set("buyer_name", row.getBuyerName())
+                .set("carrier_type", row.getCarrierType()).set("carrier_id", row.getCarrierId())
+                .set("donate_code", row.getDonateCode()).set("created_by", row.getCreatedBy())
+                .set("updated_at", now));
+    }
+
+    @Override
+    @Transactional
+    public Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo) {
+        var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("status", "ACTIVE").last("LIMIT 1"));
+        if (profile == null || !Boolean.TRUE.equals(profile.getAutoIssue())) return Optional.empty();
+        var p = preferences.selectOne(new QueryWrapper<IvcBuyerPreference>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("source_type", sourceType).eq("source_no", sourceNo));
+        var buyer = p == null ? Buyer.consumer()
+                : new Buyer(p.getBuyerTaxId(), p.getBuyerName(), p.getCarrierType(), p.getCarrierId(), p.getDonateCode());
+        return Optional.of(issue(scope, sourceType, sourceNo, buyer));
     }
 
     @Override
@@ -360,7 +414,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             lineViews = lines.selectList(new QueryWrapper<IvcInvoiceLine>().eq("tenant_no", i.getTenantNo())
                             .eq("invoice_no", i.getInvoiceNo()).orderByAsc("line_no")).stream()
                     .map(l -> new InvoiceLineVO(l.getLineNo(), l.getName(), l.getQuantity(), l.getUnit(),
-                            l.getUnitPriceMinor(), l.getAmountMinor()))
+                            l.getUnitPriceMinor(), l.getAmountMinor(), l.getTaxType()))
                     .toList();
             allowanceViews = allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", i.getTenantNo())
                             .eq("invoice_no", i.getInvoiceNo()).orderByAsc("id")).stream()
@@ -371,7 +425,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         return new InvoiceVO(i.getInvoiceNo(), i.getRegimeCode(), i.getIndustryCode(), i.getSourceType(),
                 i.getSourceNo(), i.getStoreNo(), i.getFiscalNumber(), i.getPeriodCode(), i.getRandomCode(),
                 i.getIssuedAt(), i.getBuyerType(), i.getBuyerTaxId(), i.getCarrierType(), i.getCarrierId(),
-                i.getDonateCode(), "Y".equals(i.getPrintMark()), i.getCurrency(), i.getSalesMinor(), i.getTaxMinor(),
+                i.getDonateCode(), "Y".equals(i.getPrintMark()), i.getCurrency(), i.getSalesMinor(),
+                i.getZeroTaxSalesMinor(), i.getFreeTaxSalesMinor(), i.getTaxMinor(),
                 i.getTotalMinor(), i.getAllowedMinor(), i.getStatus(), i.getVoidReason(),
                 issue == null ? null : issue.getStatus(), lineViews, allowanceViews);
     }

@@ -47,7 +47,14 @@ public final class InvoiceDtos {
             @NotBlank @Size(max = 32) String gatewayCode,
             /** 台湾 QR 加密 AES Key（32 位十六进制）；不传 = 不改已存的密钥 */
             @Pattern(regexp = "[0-9A-Fa-f]{32}") String qrAesKeyHex,
-            @Size(max = 16) String memberCarrierType) {}
+            @Size(max = 16) String memberCarrierType,
+            /** 付款成功后自动开立；不传 = 关 */
+            Boolean autoIssue) {}
+
+    public record BuyerPreferenceReq(
+            @NotBlank @Size(max = 32) String sourceType,
+            @NotBlank @Size(max = 64) String sourceNo,
+            @NotNull @Valid BuyerReq buyer) {}
 
     public record NumberRangeReq(
             @NotBlank @Size(max = 16) String regimeCode,
@@ -65,6 +72,7 @@ public final class InvoiceDtos {
             String gatewayCode,
             boolean qrKeyConfigured,
             String memberCarrierType,
+            boolean autoIssue,
             String status) {}
 
     public record NumberRangeVO(
@@ -80,7 +88,8 @@ public final class InvoiceDtos {
             String status) {}
 
     public record InvoiceLineVO(
-            int lineNo, String name, BigDecimal quantity, String unit, long unitPriceMinor, long amountMinor) {}
+            int lineNo, String name, BigDecimal quantity, String unit, long unitPriceMinor, long amountMinor,
+            String taxType) {}
 
     public record AllowanceVO(String allowanceNo, long amountMinor, long taxMinor, String reason,
             LocalDateTime createdAt) {}
@@ -104,6 +113,8 @@ public final class InvoiceDtos {
             boolean printMark,
             String currency,
             long salesMinor,
+            long zeroTaxSalesMinor,
+            long freeTaxSalesMinor,
             long taxMinor,
             long totalMinor,
             long allowedMinor,

@@ -3,6 +3,7 @@ package ai.neargo.shop.invoice.api.biz;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.BuyerPreferenceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.IssueInvoiceReq;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,6 +49,15 @@ public class BizInvoiceController {
                 : new Buyer(b.taxId(), b.name(), b.carrierType(), b.carrierId(), b.donateCode());
         var receipt = invoices.issue(scope, req.sourceType(), req.sourceNo(), buyer);
         return invoices.get(scope, receipt.invoiceNo());
+    }
+
+    /** 付款前记下买受人（载具 / 统编 / 捐赠）；主体打开自动开立时，付款成功即按它开票。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
+    @PutMapping("/biz/invoices/buyer-preferences")
+    public void rememberBuyer(@Valid @RequestBody BuyerPreferenceReq req) {
+        var b = req.buyer();
+        invoices.rememberBuyer(BizInvoiceScope.current(), req.sourceType(), req.sourceNo(),
+                new Buyer(b.taxId(), b.name(), b.carrierType(), b.carrierId(), b.donateCode()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_READ + "')")

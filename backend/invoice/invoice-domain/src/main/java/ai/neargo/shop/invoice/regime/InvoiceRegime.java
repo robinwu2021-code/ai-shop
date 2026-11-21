@@ -5,6 +5,7 @@ import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
+import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +33,8 @@ public interface InvoiceRegime {
     /** 号段字轨与号码格式；不合规抛 {@code INVOICE_RANGE_INVALID}。 */
     void validateRange(String periodCode, String track, int startNo, int endNo);
 
-    /** 按税制口径把含税总计拆成销售额与税额。 */
-    Amounts amounts(long totalMinor, Buyer buyer);
+    /** 按税制口径把明细（含税）拆成应税 / 零税率 / 免税销售额与税额。 */
+    Amounts amounts(List<InvoiceSourcePort.Line> lines, Buyer buyer);
 
     /** 是否应印纸本凭证（台湾：存载具或捐赠则不印证明联）。 */
     boolean printMark(Buyer buyer);
@@ -57,5 +58,10 @@ public interface InvoiceRegime {
     Map<String, Object> message(
             String messageType, IvcInvoice invoice, List<IvcInvoiceLine> lines, IvcAllowance allowance);
 
-    record Amounts(long salesMinor, long taxMinor, long totalMinor, String taxType, int taxRateBp) {}
+    /**
+     * @param salesMinor 应税销售额（税制口径：台湾 B2C 为含税、税额 0）
+     * @param taxType TAXABLE / ZERO / EXEMPT，三类并存为 MIXED
+     */
+    record Amounts(long salesMinor, long zeroTaxSalesMinor, long freeTaxSalesMinor, long taxMinor, long totalMinor,
+            String taxType, int taxRateBp) {}
 }

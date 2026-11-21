@@ -16,6 +16,12 @@ public interface InvoiceService {
 
     Optional<InvoiceReceipt> activeOf(Scope scope, String sourceType, String sourceNo);
 
+    /** 付款前预存买受人；按主体开通的税制校验。 */
+    void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer);
+
+    /** 主体开通且打开自动开立时，按预存买受人开立；否则返回空。 */
+    Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo);
+
     InvoiceVO get(Scope scope, String invoiceNo);
 
     PageData<InvoiceVO> list(Scope scope, InvoiceQuery query);

@@ -11,6 +11,7 @@ CREATE TABLE ivc_regime_profile (
   gateway_code VARCHAR(32) NOT NULL COMMENT '开票通道：STUB / 加值中心代码',
   qr_key_ref BIGINT NULL COMMENT 'secret 模块的密钥引用（台湾 QR 加密 AES Key），不存明文',
   member_carrier_type VARCHAR(16) NULL COMMENT '会员载具类别号（向财政部申请）',
+  auto_issue TINYINT NOT NULL DEFAULT 0 COMMENT '1=付款成功后按预存买受人自动开立',
   status VARCHAR(16) NOT NULL COMMENT 'ACTIVE / SUSPENDED',
   created_by VARCHAR(64) NULL,
   updated_by VARCHAR(64) NULL,
@@ -68,7 +69,9 @@ CREATE TABLE ivc_invoice (
   donate_code VARCHAR(16) NULL,
   print_mark CHAR(1) NOT NULL COMMENT 'Y=应印证明联',
   currency CHAR(3) NOT NULL,
-  sales_minor BIGINT NOT NULL COMMENT '按税制口径的销售额（台湾 B2C 为含税）',
+  sales_minor BIGINT NOT NULL COMMENT '应税销售额，按税制口径（台湾 B2C 为含税）',
+  zero_tax_sales_minor BIGINT NOT NULL DEFAULT 0 COMMENT '零税率销售额',
+  free_tax_sales_minor BIGINT NOT NULL DEFAULT 0 COMMENT '免税销售额',
   tax_minor BIGINT NOT NULL,
   total_minor BIGINT NOT NULL,
   allowed_minor BIGINT NOT NULL DEFAULT 0 COMMENT '累计已折让（含税）',
@@ -90,7 +93,7 @@ CREATE TABLE ivc_invoice (
   KEY idx_ivc_invoice_source (tenant_no, entity_no, source_type, source_no),
   CONSTRAINT ck_ivc_invoice_proof_json CHECK (JSON_VALID(proof_snapshot)),
   CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor
-    AND sales_minor + tax_minor = total_minor)
+    AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor)
 ) COMMENT='已开立发票；明细与金额为开立当下冻结事实';
 
 CREATE TABLE ivc_invoice_line (
@@ -124,6 +127,23 @@ CREATE TABLE ivc_allowance (
   KEY idx_ivc_allowance_invoice (tenant_no, invoice_no),
   CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor)
 ) COMMENT='发票折让';
+
+CREATE TABLE ivc_buyer_preference (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  source_type VARCHAR(32) NOT NULL,
+  source_no VARCHAR(64) NOT NULL,
+  buyer_tax_id VARCHAR(32) NULL,
+  buyer_name VARCHAR(128) NULL,
+  carrier_type VARCHAR(16) NULL,
+  carrier_id VARCHAR(64) NULL,
+  donate_code VARCHAR(16) NULL,
+  created_by VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_buyer_preference (tenant_no, entity_no, source_type, source_no)
+) COMMENT='付款前预存的买受人选择，自动开票时使用；改主意以最后一次为准';
 
 CREATE TABLE ivc_transmission (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
