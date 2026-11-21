@@ -456,3 +456,10 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
   2. 动作码（`ACT__PAY_CHANNEL_ACCOUNT_*`、`ACT__PAY_STORE_BINDING_*`）与 P1–P3 的 `pay:*` 动作码一样**不出迁移**：只进生成器产出（`nav-platform-settings.test.ts` 的支付中心清单），超管不受影响；按岗位授权时再一并落库。
   3. 异常交易页不同步地址栏，「转人工」没有深链接（与该页其它操作一致）。
 - **验证**：ops-web 1384 条、packages/shared 731 条（另有 `entity-alignment`、`i18n-backend-enum-keys` 两个套件在本工作树加载即报错，HEAD 原样，非本次）、`tsc` 通过；后端 `FunctionPointPermAlignmentTest`、`OpsEndpointPermTest`、`BizEndpointPermTest`、`BizRoleSeedTest` 通过；mock 浏览器走查：LINE Pay 待核验账户录入密钥一次到可收款（凭据 v1、按钮切到仅退款 / 停用）、门店绑定蓝新账户后出现换绑与解绑、转人工列表、适配器下拉与待开通操作。**未在正式 near-pay 上验证**（写操作要等测试商户与用户确认）。
+
+### P6 · 商户页补缺（2026-11-21，分支 `feat/pay-ops-gateway-passthrough` `1862bac39`）
+
+- 新增 `channel-account-extras.tsx`（`ResumeApprovalPanel`、`CloseUnavailableNote`、`TransfersPanel`、`QualificationsPanel`）与其文案文件；`_api` 加 `transfers`、`qualifications` 两个端口（HTTP + mock）；`SourceEvent` 按 near-pay 实际字段补齐，`sourceEventTitle` / `sourceEventSummary` 出摘要；`perm-map.ts` 加两个转移码。
+- 测试：`channel-account-extras.test.ts` 6 例（HTTP 映射、mock 状态机、来源事件摘要）；ops-web 全量 154 文件 1398 例通过；`tsc`、eslint、生成物检查通过。
+- 上线：166 `current → releases/gateway-1862bac39`（回退 `gateway-bfb2af8b7`）。线上核对：测试商户藍新账户详情出现「关闭未开放」说明与「转移」「资质」页签；`PM5731C712FF9145B8` 的转移页签列出已执行的 `CTCF1DFB4710594F04`；来源事件显示「AI_SHOP · FIAT｜已生效 · 操作人 ST-NEARA」。
+- 未在线上验证：恢复审批面板（线上暂无暂停 / 仅退款的渠道账户）；转移与资质的写操作（未在正式数据上发起）。
