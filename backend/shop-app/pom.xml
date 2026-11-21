@@ -124,6 +124,17 @@
             <artifactId>logistics-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 发票域与开票通道（ADR-063） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>invoice-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>invoice-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 支付通道适配（2026-09-01 从 shop-channel 拆出）。
              **内嵌形态必须显式依赖它**：shop-app 不直接 import 这些类，
              只通过 spi 接口拿到 —— 所以少了这条依赖**编译照样过**，

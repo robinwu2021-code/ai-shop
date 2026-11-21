@@ -893,6 +893,45 @@
         "generatedAt": "2026-10-23T02:00:00Z",
         "warnings": []
       }
+    },
+    {
+      "scene": "INVOICE_PROOF",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例營業人",
+        "timezone": "Asia/Taipei"
+      },
+      "source": {
+        "type": "INVOICE",
+        "no": "IVC-EXAMPLE",
+        "factNo": "IVC-EXAMPLE",
+        "revision": "1",
+        "occurredAt": "2026-11-21T06:00:00Z"
+      },
+      "fields": {
+        "periodLabel": "115年11-12月",
+        "fiscalNumber": "AB-12345678",
+        "issuedAt": "2026-11-21 14:00:00",
+        "randomCode": "1234",
+        "total": "1050",
+        "sellerTaxId": "12345675",
+        "barcode": "11512AB123456781234",
+        "qrLeft": "AB1234567811511211234000004b9000004b9000000001234567578q+EUHVK3fkb8T/w1Xfq2A==:**********:1:1:1:咖啡:1:1050",
+        "qrRight": "**",
+        "totalAmount": {
+          "minor": "105000",
+          "currency": "TWD",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-INVOICE_PROOF",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-11-21T06:00:00Z",
+        "warnings": []
+      },
+      "currency": "TWD"
     }
   ]
 }

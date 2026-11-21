@@ -57,6 +57,10 @@ class BizRoleSeedTest {
         }
     }
 
+    /** 追加预置角色权限的模块迁移序列（在平台序列之后执行）。 */
+    private static final List<Path> MODULE_SERIES = List.of(
+            Path.of("../invoice/invoice-domain/src/main/resources/db/invoice"));
+
     private static final Path BACKFILL = Path.of(
             "src/main/resources/db/migration/V642__builtin_role_backfill.sql");
 
@@ -134,6 +138,21 @@ class BizRoleSeedTest {
                 }
             }
         }
+        // 模块自带的迁移序列在平台迁移之后跑（InvoiceSchemaConfig 等），它们追加的权限码属于终态
+        if (before == Integer.MAX_VALUE)
+            for (var dir : MODULE_SERIES)
+                try (var files = Files.list(dir)) {
+                    for (var file : files.filter(f -> f.getFileName().toString().matches("V[0-9]+__.*[.]sql"))
+                            .sorted(java.util.Comparator.comparingInt(f -> Integer.parseInt(
+                                    f.getFileName().toString().split("__")[0].substring(1)))).toList()) {
+                        var updates = append.matcher(Files.readString(file));
+                        while (updates.find()) {
+                            var permissions = new java.util.ArrayList<>(out.getOrDefault(updates.group(2), List.of()));
+                            if (!permissions.contains(updates.group(1))) permissions.add(updates.group(1));
+                            out.put(updates.group(2), permissions);
+                        }
+                    }
+                }
         assertThat(out).as("一条预置角色都没解析到 —— 正则或迁移文件变了？").isNotEmpty();
         return out;
     }

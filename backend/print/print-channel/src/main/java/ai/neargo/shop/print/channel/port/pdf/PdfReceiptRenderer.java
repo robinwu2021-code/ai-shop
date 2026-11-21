@@ -7,6 +7,7 @@ import ai.neargo.shop.print.channel.port.font.PdfFontBundle;
 
 import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.common.*;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -100,6 +101,13 @@ public final class PdfReceiptRenderer implements PrintPdfPort {
                                 stream.lineTo(
                                         left + pt(l.x2Mm()), rect.getHeight() - top - pt(l.y2Mm()));
                                 stream.stroke();
+                            } else if (drawing instanceof PrintDrawing.ImageRun image) {
+                                // 发票证明联的一维码 / QR：位图每模块一像素，按毫米尺寸放大，热感机打出来不糊
+                                var x = PDImageXObject.createFromByteArray(doc, image.embeddedBytes(),
+                                        image.contentHash());
+                                stream.drawImage(x, left + pt(image.xMm()),
+                                        rect.getHeight() - top - pt(image.yMm()) - pt(image.heightMm()),
+                                        pt(image.widthMm()), pt(image.heightMm()));
                             } else throw new PrintFailure("print.imageDrawingUnsupported");
                         }
                         stream.beginText();

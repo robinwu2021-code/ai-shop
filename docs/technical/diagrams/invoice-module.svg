@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="960" height="560" fill="#ffffff"/>
+  <text x="24" y="32" font-size="16" font-weight="600" fill="#0f172a">发票模块（ADR-063）：行业供数 → 发票域开立 → 打印中心出证明联 / 通道上传</text>
+
+  <!-- industries -->
+  <g>
+    <rect x="24" y="64" width="200" height="200" rx="10" fill="#f1f5f9" stroke="#94a3b8"/>
+    <text x="40" y="88" font-weight="600" fill="#0f172a">行业（来源所有者）</text>
+    <rect x="40" y="100" width="168" height="34" rx="6" fill="#fff" stroke="#cbd5e1"/><text x="52" y="122">零售下单</text>
+    <rect x="40" y="142" width="168" height="34" rx="6" fill="#fff" stroke="#cbd5e1"/><text x="52" y="164">餐饮结账（food）</text>
+    <rect x="40" y="184" width="168" height="34" rx="6" fill="#fff" stroke="#cbd5e1"/><text x="52" y="206">美业服务单（beauty）</text>
+    <text x="40" y="244" fill="#475569" font-size="12">三者都落成核心子单</text>
+    <text x="40" y="258" fill="#475569" font-size="12">ord_sub_order + ord_item</text>
+  </g>
+
+  <!-- bridge -->
+  <rect x="24" y="300" width="200" height="72" rx="10" fill="#ecfeff" stroke="#06b6d4"/>
+  <text x="40" y="324" font-weight="600" fill="#0e7490">shop-app · invoicebridge</text>
+  <text x="40" y="344" font-size="12">SubOrderInvoiceSourcePortImpl</text>
+  <text x="40" y="360" font-size="12" fill="#475569">已付子单 → 冻结明细 + 行业码</text>
+
+  <!-- spi -->
+  <rect x="270" y="64" width="190" height="112" rx="10" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="286" y="88" font-weight="600" fill="#854d0e">shop-base · spi.invoice</text>
+  <text x="286" y="112">InvoicePort</text><text x="286" y="128" font-size="12" fill="#475569">行业结账后开票</text>
+  <text x="286" y="152">InvoiceSourcePort</text><text x="286" y="168" font-size="12" fill="#475569">按 sourceType 供数</text>
+
+  <!-- invoice domain -->
+  <rect x="500" y="64" width="250" height="330" rx="10" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="516" y="88" font-weight="600" fill="#3730a3">backend/invoice · invoice-domain</text>
+  <rect x="516" y="100" width="218" height="58" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="528" y="122">InvoiceServiceImpl</text>
+  <text x="528" y="142" font-size="12" fill="#475569">幂等 · 号段 FOR UPDATE 同事务取号</text>
+  <rect x="516" y="166" width="218" height="58" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="528" y="188">税制 SPI · InvoiceRegime</text>
+  <text x="528" y="208" font-size="12" fill="#475569">TW_EGUI：期别 / 统编 / 载具 / QR</text>
+  <rect x="516" y="232" width="218" height="40" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="528" y="257">InvoiceTransmissionServiceImpl</text>
+  <rect x="516" y="280" width="218" height="40" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="528" y="305">InvoicePrintSourceFactsPortImpl</text>
+  <text x="516" y="344" font-size="12" fill="#475569">表族 ivc_*（独立序列 db/invoice）</text>
+  <text x="516" y="362" font-size="12" fill="#475569">regime_profile · number_range · invoice</text>
+  <text x="516" y="378" font-size="12" fill="#475569">invoice_line · allowance · transmission</text>
+
+  <!-- print center -->
+  <rect x="790" y="250" width="150" height="144" rx="10" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="804" y="274" font-weight="600" fill="#166534">共享打印中心</text>
+  <text x="804" y="296" font-size="12">场景 INVOICE_PROOF</text>
+  <text x="804" y="314" font-size="12">barcode / qrPair 块</text>
+  <text x="804" y="332" font-size="12">设备 · 重试 · 补印</text>
+  <text x="804" y="350" font-size="12" fill="#475569">PDF / 桌面 agent 出图</text>
+  <text x="804" y="368" font-size="12" fill="#475569">飞鹅仅文本（拒图）</text>
+
+  <!-- gateway -->
+  <rect x="790" y="100" width="150" height="110" rx="10" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="804" y="124" font-weight="600" fill="#9a3412">invoice-channel</text>
+  <text x="804" y="146" font-size="12">InvoiceGateway SPI</text>
+  <text x="804" y="164" font-size="12">首期 STUB</text>
+  <text x="804" y="182" font-size="12" fill="#475569">加值中心 / Turnkey</text>
+  <text x="804" y="198" font-size="12" fill="#475569">→ 财政部大平台</text>
+
+  <!-- B-end -->
+  <rect x="270" y="300" width="190" height="94" rx="10" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="286" y="324" font-weight="600" fill="#9d174d">B 端 API</text>
+  <text x="286" y="346" font-size="12">/biz/invoices …</text>
+  <text x="286" y="364" font-size="12">/biz/invoice-setup/…</text>
+  <text x="286" y="382" font-size="12" fill="#475569">主体取登录态，不收主体号</text>
+
+  <!-- arrows -->
+  <path d="M124 264 V300" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M224 336 H250 V150 H270" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M224 120 H270" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M460 120 H500" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M460 346 H500" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M734 252 H762 V156 H790" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <path d="M734 300 H790" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <text x="742" y="292" font-size="11" fill="#475569">事实</text>
+
+  <!-- legend -->
+  <text x="24" y="430" font-weight="600" fill="#0f172a">读图要点</text>
+  <text x="24" y="452" font-size="12" fill="#334155">1. 金额只从来源所有者读（InvoiceSourcePort），B 端与行业都不能把金额递进来。</text>
+  <text x="24" y="472" font-size="12" fill="#334155">2. 号段是主体级唯一资源：取号与发票、明细、上传任务同一事务提交，失败整体回滚，不跳号不重号。</text>
+  <text x="24" y="492" font-size="12" fill="#334155">3. 税制与通道都是 SPI：新地区加一个 InvoiceRegime 实现，新加值中心加一个 InvoiceGateway 实现，主流程不动。</text>
+  <text x="24" y="512" font-size="12" fill="#334155">4. 证明联内容在开立时冻结；打印中心只按冻结内容排版出图，补印标记与留痕由打印中心负责。</text>
+</svg>

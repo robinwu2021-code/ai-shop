@@ -380,6 +380,18 @@ public enum ErrorCode {
     CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
+    // 26xxx · 发票（ADR-063，TDD-发票模块 §2.1）
+    INVOICE_REGIME_NOT_ENABLED(26001, "err.invoice.regime_not_enabled"),
+    INVOICE_SOURCE_NOT_READY(26002, "err.invoice.source_not_ready"),
+    INVOICE_NUMBER_EXHAUSTED(26003, "err.invoice.number_exhausted"),
+    INVOICE_BUYER_INVALID(26004, "err.invoice.buyer_invalid"),
+    INVOICE_NOT_FOUND(26005, "err.invoice.not_found"),
+    INVOICE_VOID_PERIOD_CLOSED(26006, "err.invoice.void_period_closed"),
+    INVOICE_ALLOWANCE_EXCEEDED(26007, "err.invoice.allowance_exceeded"),
+    INVOICE_STATE_INVALID(26008, "err.invoice.state_invalid"),
+    INVOICE_RANGE_INVALID(26009, "err.invoice.range_invalid"),
+    INVOICE_KEY_UNAVAILABLE(26010, "err.invoice.key_unavailable"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

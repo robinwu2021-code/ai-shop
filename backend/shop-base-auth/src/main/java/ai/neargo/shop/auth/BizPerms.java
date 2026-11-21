@@ -196,6 +196,11 @@ public final class BizPerms {
     public static final String PRINT_RESOLVE = "biz:print:resolve";
     public static final String PRINT_SIMULATE = "biz:print:simulate";
     public static final String PRINT_EXPORT = "biz:print:export";
+    /** 发票（ADR-063）：查、开、作废与折让、税制与号段设置 */
+    public static final String INVOICE_READ = "biz:invoice:read";
+    public static final String INVOICE_ISSUE = "biz:invoice:issue";
+    public static final String INVOICE_VOID = "biz:invoice:void";
+    public static final String INVOICE_SETUP = "biz:invoice:setup";
 
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
@@ -205,9 +210,11 @@ public final class BizPerms {
                     // 预约：店长看与管、店员只看（TDD-B端门店功能矩阵与方案准入 §4-1，V640）
                     BOOKING_VIEW, BOOKING_MANAGE,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
-                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
+                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT,
+                    INVOICE_READ, INVOICE_ISSUE, INVOICE_VOID, INVOICE_SETUP),
             CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, PAY_OFFLINE_RECORD, BOOKING_VIEW,
-                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT,
+                    INVOICE_READ, INVOICE_ISSUE),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
             // 只对着顾客说话：回评价、处理售后、看得到那张单。不碰货、不碰钱

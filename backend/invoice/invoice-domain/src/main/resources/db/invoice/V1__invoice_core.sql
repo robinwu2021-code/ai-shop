@@ -1,0 +1,148 @@
+-- 发票域表族（ADR-063，TDD-发票模块 §2.1）。独立迁移序列 db/invoice，历史表 ivc_flyway_history。
+-- 前缀 ivc_：inv_ 已被进销存占用。
+
+CREATE TABLE ivc_regime_profile (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  regime_code VARCHAR(16) NOT NULL COMMENT 'TW_EGUI …',
+  seller_tax_id VARCHAR(32) NOT NULL COMMENT '卖方税号（台湾统一编号 8 位）',
+  seller_name VARCHAR(128) NOT NULL,
+  gateway_code VARCHAR(32) NOT NULL COMMENT '开票通道：STUB / 加值中心代码',
+  qr_key_ref BIGINT NULL COMMENT 'secret 模块的密钥引用（台湾 QR 加密 AES Key），不存明文',
+  member_carrier_type VARCHAR(16) NULL COMMENT '会员载具类别号（向财政部申请）',
+  status VARCHAR(16) NOT NULL COMMENT 'ACTIVE / SUSPENDED',
+  created_by VARCHAR(64) NULL,
+  updated_by VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_regime_profile (tenant_no, entity_no, regime_code)
+) COMMENT='主体开通的税制与开票通道';
+
+CREATE TABLE ivc_number_range (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  range_no VARCHAR(32) NOT NULL,
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  regime_code VARCHAR(16) NOT NULL,
+  store_no VARCHAR(64) NOT NULL COMMENT '* = 主体内各店共用；否则该店专用',
+  period_code VARCHAR(8) NOT NULL COMMENT '台湾：民国年3位+双月2位，如 11512',
+  track VARCHAR(4) NOT NULL COMMENT '字轨，如 AB',
+  start_no INT NOT NULL,
+  end_no INT NOT NULL,
+  next_no INT NOT NULL COMMENT '下一个可用号；> end_no 即用尽',
+  status VARCHAR(16) NOT NULL COMMENT 'ACTIVE / EXHAUSTED',
+  created_by VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_number_range_no (tenant_no, range_no),
+  UNIQUE KEY uk_ivc_number_range (tenant_no, entity_no, regime_code, period_code, track, start_no),
+  KEY idx_ivc_number_range_pick (tenant_no, entity_no, regime_code, period_code, status, store_no),
+  CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999
+    AND next_no >= start_no AND next_no <= end_no + 1)
+) COMMENT='财政部配发的字轨号段；取号与发票落库同一事务，不回收';
+
+CREATE TABLE ivc_invoice (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  invoice_no VARCHAR(32) NOT NULL COMMENT '内部单号 IVC…',
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  store_no VARCHAR(64) NOT NULL,
+  regime_code VARCHAR(16) NOT NULL,
+  industry_code VARCHAR(32) NOT NULL,
+  source_type VARCHAR(32) NOT NULL,
+  source_no VARCHAR(64) NOT NULL,
+  active_source_key VARCHAR(128) NULL COMMENT 'source_type:source_no；作废后置空，保证同来源同时只有一张有效发票',
+  fiscal_number VARCHAR(32) NOT NULL COMMENT '法定发票号码，如 AB12345678',
+  range_no VARCHAR(32) NOT NULL,
+  period_code VARCHAR(8) NOT NULL,
+  random_code VARCHAR(8) NOT NULL,
+  seller_tax_id VARCHAR(32) NOT NULL COMMENT '开立当下的卖方税号，冻结',
+  seller_name VARCHAR(128) NOT NULL,
+  issued_at DATETIME(3) NOT NULL COMMENT 'UTC',
+  buyer_type VARCHAR(8) NOT NULL COMMENT 'B2C / B2B',
+  buyer_tax_id VARCHAR(32) NULL,
+  buyer_name VARCHAR(128) NULL,
+  carrier_type VARCHAR(16) NULL,
+  carrier_id VARCHAR(64) NULL,
+  donate_code VARCHAR(16) NULL,
+  print_mark CHAR(1) NOT NULL COMMENT 'Y=应印证明联',
+  currency CHAR(3) NOT NULL,
+  sales_minor BIGINT NOT NULL COMMENT '按税制口径的销售额（台湾 B2C 为含税）',
+  tax_minor BIGINT NOT NULL,
+  total_minor BIGINT NOT NULL,
+  allowed_minor BIGINT NOT NULL DEFAULT 0 COMMENT '累计已折让（含税）',
+  tax_type VARCHAR(16) NOT NULL COMMENT 'TAXABLE / ZERO / EXEMPT / MIXED',
+  tax_rate_bp INT NOT NULL,
+  status VARCHAR(16) NOT NULL COMMENT 'ISSUED / VOIDED',
+  void_reason VARCHAR(256) NULL,
+  voided_at DATETIME(3) NULL,
+  voided_by VARCHAR(64) NULL,
+  proof_snapshot LONGTEXT NOT NULL COMMENT '证明联冻结内容（期别、号码、条码与 QR 文本）。不用 JSON 类型：MySQL 会重排键、改空白，哈希就对不上',
+  proof_snapshot_hash CHAR(64) NOT NULL,
+  created_by VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_invoice_no (tenant_no, invoice_no),
+  UNIQUE KEY uk_ivc_invoice_fiscal (tenant_no, regime_code, fiscal_number),
+  UNIQUE KEY uk_ivc_invoice_active_source (tenant_no, entity_no, active_source_key),
+  KEY idx_ivc_invoice_store (tenant_no, entity_no, store_no, period_code, created_at),
+  KEY idx_ivc_invoice_source (tenant_no, entity_no, source_type, source_no),
+  CONSTRAINT ck_ivc_invoice_proof_json CHECK (JSON_VALID(proof_snapshot)),
+  CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor
+    AND sales_minor + tax_minor = total_minor)
+) COMMENT='已开立发票；明细与金额为开立当下冻结事实';
+
+CREATE TABLE ivc_invoice_line (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  tenant_no VARCHAR(32) NOT NULL,
+  invoice_no VARCHAR(32) NOT NULL,
+  line_no INT NOT NULL,
+  source_line_ref VARCHAR(64) NOT NULL,
+  name VARCHAR(256) NOT NULL,
+  quantity DECIMAL(18,4) NOT NULL,
+  unit VARCHAR(16) NULL,
+  unit_price_minor BIGINT NOT NULL,
+  amount_minor BIGINT NOT NULL,
+  tax_type VARCHAR(16) NOT NULL,
+  UNIQUE KEY uk_ivc_invoice_line (tenant_no, invoice_no, line_no)
+) COMMENT='发票明细';
+
+CREATE TABLE ivc_allowance (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  allowance_no VARCHAR(32) NOT NULL,
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  store_no VARCHAR(64) NOT NULL,
+  invoice_no VARCHAR(32) NOT NULL,
+  amount_minor BIGINT NOT NULL COMMENT '含税折让金额',
+  tax_minor BIGINT NOT NULL,
+  reason VARCHAR(256) NOT NULL,
+  created_by VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_allowance_no (tenant_no, allowance_no),
+  KEY idx_ivc_allowance_invoice (tenant_no, invoice_no),
+  CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor)
+) COMMENT='发票折让';
+
+CREATE TABLE ivc_transmission (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  transmission_no VARCHAR(32) NOT NULL,
+  tenant_no VARCHAR(32) NOT NULL,
+  entity_no VARCHAR(64) NOT NULL,
+  regime_code VARCHAR(16) NOT NULL,
+  gateway_code VARCHAR(32) NOT NULL,
+  message_type VARCHAR(16) NOT NULL COMMENT 'ISSUE / VOID / ALLOWANCE',
+  ref_no VARCHAR(32) NOT NULL COMMENT 'invoice_no 或 allowance_no',
+  payload JSON NOT NULL COMMENT '税制生成的上传报文，补传时原样再发',
+  status VARCHAR(16) NOT NULL COMMENT 'PENDING / SENDING / SENT / FAILED',
+  attempts INT NOT NULL DEFAULT 0,
+  next_attempt_at DATETIME(3) NOT NULL,
+  last_error VARCHAR(512) NULL,
+  gateway_ref VARCHAR(128) NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uk_ivc_transmission_no (tenant_no, transmission_no),
+  UNIQUE KEY uk_ivc_transmission_ref (tenant_no, message_type, ref_no),
+  KEY idx_ivc_transmission_due (status, next_attempt_at)
+) COMMENT='发票上传任务';

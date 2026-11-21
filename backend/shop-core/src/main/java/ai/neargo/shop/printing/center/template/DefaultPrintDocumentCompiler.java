@@ -25,7 +25,10 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                     "lines",
                     "lineItems",
                     "payments",
-                    "separator");
+                    "separator",
+                    // 条码块（发票证明联，TDD-发票模块 §2.3）：值是税制冻结好的文本，这里只决定画成什么
+                    "barcode",
+                    "qrPair");
 
     public DefaultPrintDocumentCompiler(PrintJsonCodec j, PrintSceneRegistry s) {
         json = j;
@@ -106,6 +109,15 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
             if (!binding.isEmpty() && !allowedBinding(scene.definition(), binding))
                 throw new PrintFailure("print.bindingRejected");
             if (block.path("omitIfEmpty").asBoolean() && empty(value)) continue;
+            if (type.equals("barcode") || type.equals("qrPair")) {
+                String text = format(value, "plain", data);
+                if (text.isEmpty()) throw new PrintFailure("print.requiredFieldMissing");
+                if (type.equals("barcode")) rows.add(Map.of("symbol", "CODE39", "value", text));
+                else
+                    rows.add(Map.of("symbol", "QR_PAIR", "value", text, "value2",
+                            format(at(data, block.path("secondBinding").asText()), "plain", data)));
+                continue;
+            }
             if (type.equals("lines") || type.equals("lineItems") || type.equals("payments")) {
                 if (value == null
                         || !value.isArray()
@@ -198,6 +210,16 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
                 continue;
             }
             if (bound && b.has("literal")) throw new PrintFailure("print.boundLiteralRejected");
+            if (type.equals("barcode") || type.equals("qrPair")) {
+                String second = b.path("secondBinding").asText();
+                if (!bound || !format.equals("plain")
+                        || type.equals("qrPair") != !second.isBlank()
+                        || (!second.isBlank() && !allowedBinding(def, second)))
+                    throw new PrintFailure("print.bindingRejected");
+                displayed.add(binding);
+                if (!second.isBlank()) displayed.add(second);
+                continue;
+            }
             if (type.equals("text")) {
                 if (bound == b.has("literal"))
                     throw new PrintFailure("print.templateBindingRequired");

@@ -265,6 +265,13 @@ class BizEndpointPermTest {
                     put("/biz/print/templates/{templateNo}/versions", BizPerms.PRINT_CONFIG);
                     // Resource registry uses stricter write permission; method security tests
                     // verify read/write separately.
+                    // 发票（ADR-063）：同一路径上查与开分属两个码，这里登记读的那一个，开 / 作废在注解里各自判
+                    put("/biz/invoices", BizPerms.INVOICE_READ);
+                    put("/biz/invoices/{invoiceNo}", BizPerms.INVOICE_READ);
+                    put("/biz/invoices/{invoiceNo}/void", BizPerms.INVOICE_VOID);
+                    put("/biz/invoices/{invoiceNo}/allowances", BizPerms.INVOICE_VOID);
+                    put("/biz/invoice-setup/profile", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-setup/ranges", BizPerms.INVOICE_SETUP);
                     put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/personnel/{personnelNo}/assignments", BizPerms.STORE_ADMIN);

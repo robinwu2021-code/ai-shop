@@ -3428,6 +3428,91 @@
         }
       },
       "exampleRef": "CARD_BALANCE"
+    },
+    {
+      "definitionKey": "INVOICE_PROOF.STANDARD_58",
+      "scene": "INVOICE_PROOF",
+      "variantCode": "STANDARD_58",
+      "paperWidthMm": 58,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "text",
+            "binding": "fields.periodLabel",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.fiscalNumber",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.issuedAt"
+          },
+          {
+            "type": "keyValue",
+            "label": "隨機碼",
+            "binding": "fields.randomCode",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "總計",
+            "binding": "fields.total",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.format",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "barcode",
+            "binding": "fields.barcode"
+          },
+          {
+            "type": "qrPair",
+            "binding": "fields.qrLeft",
+            "secondBinding": "fields.qrRight"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 58,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_PROOF"
     }
   ]
 }
