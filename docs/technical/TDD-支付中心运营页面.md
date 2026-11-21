@@ -474,3 +474,12 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - 测试：`channel-account-extras.test.ts` 6 例（HTTP 映射、mock 状态机、来源事件摘要）；ops-web 全量 154 文件 1398 例通过；`tsc`、eslint、生成物检查通过。
 - 上线：166 `current → releases/gateway-1862bac39`（回退 `gateway-bfb2af8b7`）。线上核对：测试商户藍新账户详情出现「关闭未开放」说明与「转移」「资质」页签；`PM5731C712FF9145B8` 的转移页签列出已执行的 `CTCF1DFB4710594F04`；来源事件显示「AI_SHOP · FIAT｜已生效 · 操作人 ST-NEARA」。
 - 未在线上验证：恢复审批面板（线上暂无暂停 / 仅退款的渠道账户）；转移与资质的写操作（未在正式数据上发起）。
+
+### P7 · 门店页补缺（2026-11-21，分支 `feat/pay-ops-gateway-passthrough` `c0650a3e6`、`219fd4b7c`）
+
+- 新增 `store-extras.tsx`（`StoreQrCodes`、`StoreMethods`、`StoreSyncEvents`，`buildMethodSave` / `initialOn` 与 near-pay 同一口径）与文案文件；`_api.stores` 加 6 个方法（建码 `idempotent:false`）；门店详情加三个区块（收款码、支付方式按码显隐）。被挡原因按 near-pay `Item#excludedBy` 真实取值翻译（`MERCHANT`、`BINDING`、`CATALOG`、`STORE_STATE`、`ENTRY`、`STORE`）。
+- near-pay `2c5d97cbd`：`OpsQrCodeController.CodeView` 加 `version`，单测断言。
+- 测试：`store-extras.test.ts` 5 例；ops-web 全量 155 文件 1403 例通过。
+- 上线（UTC）：near-pay `pay-svc.jar` sha256 前缀 `4eb7826e11bfe6a0` = 上一版 `8aa470ca…` 只换 `pay-portal` 内 `OpsQrCodeController` 与 `$CodeView`（逐方法比对仅 `view()` 变化），中断 03:50:21–03:51:12，回退 `pay-svc.jar.before-qrver-20261121`；前端 `current → releases/gateway-219fd4b7c`（回退 `gateway-1862bac39`）。
+- 线上核对（Oscar 测试店）：收款码 1 个（NT$5,000 / NT$50,000、启用中、两条链接、出现「停用」= 版本已返回）；支付方式「跟随商户」，LINE Pay 可开关，信用卡 / Apple Pay 因「收款入口未包含该产品」不可改；同步事件 3 条，旧的一条带 `UNLINKED_ENTITY`。
+- 未在线上验证：建码、停码、保存支付方式（未在正式门店上写）。
