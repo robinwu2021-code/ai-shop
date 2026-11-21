@@ -191,6 +191,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "pay:channel-account:view": "pay:channel-account:view",
   "pay:channel-account:manage": "pay:channel-account:manage",
   "pay:channel-account:approve": "pay:channel-account:approve",
+  "pay:channel-account:transfer": "pay:channel-account:transfer",
+  "pay:channel-account:transfer:approve": "pay:channel-account:transfer:approve",
   "pay:store-binding:view": "pay:store-binding:view",
   "pay:store-binding:manage": "pay:store-binding:manage",
   "pay:store-binding:approve": "pay:store-binding:approve",

@@ -6,7 +6,7 @@ import type {
   StoredValueAccountRow, StoredValueTransactionRow, WithdrawalRow,
   AlertEventRow, AlertRuleRow, AppDetail, AppGrant, AppRow, ApprovalFlowRow, ChannelCallDetail, ChannelCallRow, ChannelCallbackDetail, ChannelCallbackRow,
   CredentialIssued, OperatingSettings, ProfileRevisionDetail, RefundListRow, RequestLogDetail, RequestLogRow, TerminalRow,
-  ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
+  ActionResult, ApprovalDetail, ChannelAccountTransfer, QualificationImport, QualificationVersion, TransferCreate, ApprovalRow, ApprovalTask, ApprovalView, ChannelRow, CollectionPolicyView, DataScopeRow, Detail, EntryRow,
   ExceptionRow, MerchantDetail, MerchantRow, OnboardingDetail, OnboardingRow, OrderDetail, OrderLogEntry, OrderRow, ProductRow, StoreDetail, StoreRow,
   AssistedProfileView, CapabilityProgress, EntityMaterials, MerchantChannels, MerchantConfirmResult, MerchantCreation, SourceEvent, TestMerchantContext, TestMerchantCreated,
   NewebpayModification, NewebpayModificationsView, OnboardingDraft, OnboardingFile, OnboardingReadiness, DocumentType, RecognizeResult,
@@ -174,6 +174,22 @@ export interface PayCenterApi {
     bindCredential(no: string, body: { expectedVersion: number; keyId: number; reason: string }): Promise<ActionResult>;
     enterKey(no: string, body: ChannelKeyEntry): Promise<Detail<ChannelAccountDetail>>;
     bindings(no: string): Promise<PayPage<StoreBinding>>;
+  };
+  /** 渠道账户转移（换主体）：发起 → 审核通过 / 驳回（审批单版本）→ 执行（申请版本）。§2.12 */
+  transfers: {
+    list(q: Q): Promise<PayPage<ChannelAccountTransfer>>;
+    detail(no: string): Promise<Detail<ChannelAccountTransfer>>;
+    create(body: TransferCreate): Promise<Detail<ChannelAccountTransfer>>;
+    approve(no: string, c: Cmd): Promise<ActionResult>;
+    reject(no: string, c: Cmd): Promise<ActionResult>;
+    execute(no: string, c: Cmd): Promise<ActionResult>;
+  };
+  /** 渠道资质版本：导入为草稿，激活走 CHANNEL_QUALIFICATION 审批，吊销直接生效。§2.12 */
+  qualifications: {
+    ofAccount(payMerchantNo: string): Promise<QualificationVersion[]>;
+    detail(ref: string): Promise<QualificationVersion>;
+    importVersion(body: QualificationImport): Promise<QualificationVersion>;
+    revoke(ref: string, reason: string): Promise<string>;
   };
   /** 门店渠道绑定（门店「渠道绑定」抽屉）；换绑执行在审批通过后由审核待办触发，这里不直调 */
   storeBindings: {
@@ -474,6 +490,20 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       bindCredential: (no, body) => c.command(`/channel-accounts/${e(no)}/credential`, { ...body }, { method: "PUT" }),
       enterKey: (no, body) => c.command(`/channel-accounts/${e(no)}/migration-credential`, { ...body }),
       bindings: (no) => c.page(`/channel-accounts/${e(no)}/bindings`, { size: 100 }),
+    },
+    transfers: {
+      list: (q) => c.page("/channel-account-transfers", q),
+      detail: (no) => detailOf(c, `/channel-account-transfers/${e(no)}`),
+      create: (body) => c.command("/channel-account-transfers", { ...body }),
+      approve: (no, cmd) => c.command(`/channel-account-transfers/${e(no)}/approve`, { ...cmd }),
+      reject: (no, cmd) => c.command(`/channel-account-transfers/${e(no)}/reject`, { ...cmd }),
+      execute: (no, cmd) => c.command(`/channel-account-transfers/${e(no)}/execute`, { ...cmd }),
+    },
+    qualifications: {
+      ofAccount: (no) => c.get(`/channel-accounts/${e(no)}/qualifications`),
+      detail: (ref) => c.get(`/channel-qualifications/${e(ref)}`),
+      importVersion: (body) => c.command("/channel-qualifications", { ...body }),
+      revoke: (ref, reason) => c.command(`/channel-qualifications/${e(ref)}/revoke`, { reason }),
     },
     storeBindings: {
       list: (store) => c.page(`/stores/${e(store)}/bindings`, { size: 100 }),

@@ -8,6 +8,7 @@ import type {
   ActionResult, ApprovalDetail, ApprovalRow, ApprovalTask, ChannelRow, DataScopeRow, Detail, EntryRow, ExceptionRow,
   MerchantRow, OnboardingRow, OrderRow, ProductRow, StoreRow, NewebpayModification, OnboardingDraft,
   AccountStatus, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRow, StoreBinding, VerificationStatus,
+  ChannelAccountTransfer, QualificationVersion,
 } from "./types";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
@@ -219,6 +220,8 @@ export function createMockPayCenterApi(): PayCenterApi {
   ], (r) => r.claimNo);
 
   const cmdCheck = (c: Cmd) => reasonOf(c.reason);
+  const transfers: ChannelAccountTransfer[] = [];
+  const qualifications: QualificationVersion[] = [];
   const setStatus = async <R extends { version: number; status: string }>(t: VersionedTable<R>, id: string, c: Cmd, from: string[], to: string) => {
     cmdCheck(c);
     need(from.includes(t.get(id).status), "当前状态不允许此操作");
@@ -533,6 +536,27 @@ export function createMockPayCenterApi(): PayCenterApi {
       bindCredential: (no, b) => run(async () => { reasonOf(b.reason); const r = await accounts.update(no, { credentialVersion: 1 }, b.expectedVersion); syncAccount(no, { credentialKeyId: b.keyId }); return ok(no, accounts.get(no).account.status, r.version); }),
       enterKey: (no, b) => run(async () => { reasonOf(b.reason); const d = accounts.get(no); const first = d.account.status === "UNVERIFIED"; await accounts.update(no, { credentialVersion: (d.credentialVersion ?? 0) + 1, ...(first ? { verifiedBy: "admin", verifiedAt: Date.now() } : {}) }); syncAccount(no, first ? { credentialKeyId: 600 + accounts.all().length, verificationStatus: "VERIFIED", status: "ACTIVE" } : {}); const n = accounts.get(no); return wrap(n, n.version, []); }),
       bindings: (no) => pageOf(bindings.all().filter((b) => b.payMerchantNo === no), { size: 100 }, []),
+    },
+    transfers: {
+      list: (q) => pageOf(transfers.filter((t) => !q.payMerchantNo || t.payMerchantNo === q.payMerchantNo), { ...q, payMerchantNo: undefined }, ["transferNo"]),
+      detail: (no) => run(() => { const t = transfers.find((x) => x.transferNo === no); need(!!t, "转移申请不存在"); return wrap(t!, t!.version, t!.status === "PENDING_APPROVAL" ? ["approve", "reject"] : t!.status === "APPROVED" ? ["execute"] : []); }),
+      create: (b) => run(() => { need(!!b.evidence.trim(), "请填写证明"); need(b.fromMerchantNo !== b.toMerchantNo, "目标商户不能与当前商户相同");
+        need(!transfers.some((t) => t.payMerchantNo === b.payMerchantNo && ["PENDING_APPROVAL", "APPROVED"].includes(t.status)), "该账户已有进行中的转移");
+        const t: ChannelAccountTransfer = { transferNo: `CT${7001 + transfers.length}`, requestNo: `RQ${Date.now()}`, ...b, status: "PENDING_APPROVAL", approvalNo: `AP${8001 + transfers.length}`, approvalStatus: "PENDING_FIRST", approvalVersion: 1,
+          requestedBy: "admin", executedBy: null, executedAt: null, beforeSnapshot: { merchantNo: b.fromMerchantNo }, afterSnapshot: { merchantNo: b.toMerchantNo }, createdAt: Date.now(), version: 1 };
+        transfers.unshift(t); return wrap(t, 1, ["approve", "reject"]); }),
+      approve: (no, c) => run(() => { cmdCheck(c); const t = transfers.find((x) => x.transferNo === no)!; need(t.status === "PENDING_APPROVAL", "只有待审核的申请可审核"); need(t.requestedBy !== "reviewer", "申请人不能审核自己的申请"); Object.assign(t, { status: "APPROVED", approvalStatus: "APPROVED", approvalVersion: (t.approvalVersion ?? 0) + 1, version: t.version + 1 }); return ok(no, t.status, t.version, t.approvalNo); }),
+      reject: (no, c) => run(() => { cmdCheck(c); const t = transfers.find((x) => x.transferNo === no)!; need(t.status === "PENDING_APPROVAL", "只有待审核的申请可驳回"); Object.assign(t, { status: "REJECTED", approvalStatus: "REJECTED", version: t.version + 1 }); return ok(no, t.status, t.version, t.approvalNo); }),
+      execute: (no, c) => run(() => { cmdCheck(c); const t = transfers.find((x) => x.transferNo === no)!; need(t.status === "APPROVED", "审核通过后才能执行"); Object.assign(t, { status: "EXECUTED", executedBy: "admin", executedAt: Date.now(), version: t.version + 1 }); return ok(no, t.status, t.version, t.approvalNo); }),
+    },
+    qualifications: {
+      ofAccount: (no) => run(() => qualifications.filter((x) => x.coordinates?.payMerchantNo === no)),
+      detail: (ref) => run(() => { const v = qualifications.find((x) => x.ref === ref); need(!!v, "资质版本不存在"); return v!; }),
+      importVersion: (b) => run(() => { reasonOf(b.reason); try { JSON.parse(b.payloadJson); } catch { need(false, "资质内容须为 JSON"); }
+        const v: QualificationVersion = { ref: `${b.evidenceNo}:${b.revision}`, revision: b.revision, channel: b.channel, purpose: b.purpose, coordinates: JSON.parse(b.payloadJson).coordinates ?? null, coordinateKey: null,
+          payloadJson: b.payloadJson, payloadSha256: "mock", status: "DRAFT", maker: "admin", approvalNo: null, validUntil: b.validUntil, version: 1 };
+        need(!qualifications.some((x) => x.ref === v.ref), "同一证据号的版本已存在"); qualifications.unshift(v); return v; }),
+      revoke: (ref, reason) => run(() => { reasonOf(reason); const v = qualifications.find((x) => x.ref === ref); need(!!v && v.status !== "REVOKED", "资质版本不存在或已吊销"); Object.assign(v!, { status: "REVOKED", version: v!.version + 1 }); return ref; }),
     },
     storeBindings: {
       list: (store) => pageOf(bindings.all().filter((b) => b.storeNo === store), { size: 100 }, []),

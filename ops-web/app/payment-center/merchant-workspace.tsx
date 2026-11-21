@@ -185,9 +185,9 @@ export function merchantExtraSections(api: PayCenterApi, no: string, c: C, m: Me
     ) },
     { title: m.sectionEvents, content: (
       <DetailLoader name={NAME} id={`${no}:events`} load={() => api.merchants.sourceEvents(no, { page: 1, size: 20 })}>
-        {(d) => <MiniTable<SourceEvent> rows={d.records} rowKey={(r) => String(r.eventNo ?? `${r.eventType}:${r.occurredAt}`)} empty={m.emptyEvents} columns={[
-          { header: m.eventType, cell: (r) => r.eventType },
-          { header: m.summary, cell: (r) => r.summary ?? "—" },
+        {(d) => <MiniTable<SourceEvent> rows={d.records} rowKey={(r) => String(r.eventNo ?? r.sourceEventId ?? `${r.eventType}:${r.occurredAt ?? r.createdAt}`)} empty={m.emptyEvents} columns={[
+          { header: m.eventType, cell: (r) => sourceEventTitle(r) },
+          { header: m.summary, cell: (r) => sourceEventSummary(r, m as Record<string, string>) },
           { header: m.occurredAt, cell: (r) => fmtTime(r.occurredAt ?? r.createdAt ?? null) },
         ]} />}
       </DetailLoader>
@@ -447,5 +447,20 @@ function EntityMoreForm({ api, row, run, onDone }: { api: PayCenterApi; row: Mer
       />
     </>
   );
+}
+
+/** 来源事件的「事件」列：来源系统 · 能力（near-pay 实际字段），缺时退回早期的 eventType */
+export function sourceEventTitle(r: SourceEvent): string {
+  const parts = [r.sourceSystem, r.capabilityType].filter((x): x is string => !!x);
+  return parts.length ? parts.join(" · ") : r.eventType ?? "—";
+}
+
+/** 来源事件的「摘要」列：结果 · 操作人；后端给了 summary 就用它 */
+export function sourceEventSummary(r: SourceEvent, m: Record<string, string>): string {
+  if (r.summary) return r.summary;
+  const outcome = r.outcome ? m[`eventOutcome_${r.outcome}`] ?? r.outcome : null;
+  const who = r.actorSubject ? (m.eventBy ?? "{who}").replace("{who}", r.actorSubject) : null;
+  const parts = [outcome, who].filter((x): x is string => !!x);
+  return parts.length ? parts.join(" · ") : "—";
 }
 

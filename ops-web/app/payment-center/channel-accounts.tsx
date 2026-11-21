@@ -26,6 +26,8 @@ import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
 import { MiniTable, usePc } from "./shared";
 import { CHANNEL_ACCOUNTS_COPY, type ChannelAccountsCopy } from "./channel-accounts-copy";
+import { CHANNEL_ACCOUNT_EXTRAS_COPY } from "./channel-account-extras-copy";
+import { CloseUnavailableNote, QualificationsPanel, ResumeApprovalPanel, TransfersPanel } from "./channel-account-extras";
 
 export const useCac = () => useCopy(CHANNEL_ACCOUNTS_COPY);
 type Run = <R>(fn: () => Promise<R>, ok?: string) => Promise<R>;
@@ -151,6 +153,7 @@ function AccountList({ api, merchantNo, run, open, prefill, onPrefill }: {
 
 function AccountDetailView({ api, no, run, back }: { api: PayCenterApi; no: string; run: Run; back: () => void }) {
   const m = useCac();
+  const mx = useCopy(CHANNEL_ACCOUNT_EXTRAS_COPY);
   const c = usePc();
   const maps = useMaps(m);
   const allow = useCan();
@@ -191,10 +194,15 @@ function AccountDetailView({ api, no, run, back }: { api: PayCenterApi; no: stri
           {has("suspend") && <Button size="sm" variant="ghost" onClick={() => act(fill(m.suspendTitle, { no }), m.suspendDesc, (r) => api.channelAccounts.suspend(no, cmd(r)), true)}>{m.suspend}</Button>}
         </div>
       )}
+      {has("resume") && <ResumeApprovalPanel api={api} no={no} run={run} changed={() => void q.refetch()} />}
+      {has("close") && <CloseUnavailableNote />}
       <Tabs value={tab} onChange={setTab} tabs={[
         { key: "info", label: m.tabInfo }, { key: "products", label: m.tabProducts }, { key: "credential", label: m.tabCredential },
-        { key: "stores", label: m.tabStores }, { key: "settle", label: m.tabSettle }, { key: "logs", label: m.tabLogs },
+        { key: "stores", label: m.tabStores }, { key: "settle", label: m.tabSettle },
+        { key: "transfers", label: mx.tabTransfers }, { key: "qualifications", label: mx.tabQualifications }, { key: "logs", label: m.tabLogs },
       ]} />
+      {tab === "transfers" && <TransfersPanel api={api} detail={d} run={run} changed={() => void q.refetch()} />}
+      {tab === "qualifications" && <QualificationsPanel api={api} detail={d} run={run} />}
       {tab === "info" && <DetailBody sections={[{ title: m.tabInfo, fields: [
         { label: m.merchant, value: a.merchantName || a.merchantNo || m.platformParent },
         { label: m.payChannel, value: a.payChannel },

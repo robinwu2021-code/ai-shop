@@ -262,6 +262,20 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **不移植**：near-pay 的「恢复上次操作 / 查询原回执」（`/commands/{key}`、`/merchant-creations/by-request`、`…/operations/{requestNo}`）—— 本模块幂等号由路径 + 请求体决定，原样重发即同号，同 §2.10 口径；直接调换绑执行 `…/rebind` 不做（执行在审批通过后由审核待办触发）。
 - **分步**：① 类型、接口、mock 与接口测试；② 渠道账户抽屉（含认领、产品、凭证）；③ 门店绑定抽屉；④ 转人工、待开通、两个下拉；⑤ 权限码、生成物、守卫、提交。
 
+### 2.12 P6 商户页补缺（2026-11-21 用户：「补 1–4，再看门店页」）
+
+**依据**：线上逐页核对（渠道 → 商户 → 门店）时，near-pay `feat/ops-identity-unified-20261120` 的 `/pay-ops/v2` 端点与本模块 `_api/api.ts` 重新比对，并在线上用测试商户 `PM0E0F6CC8F7454D75` 看 `allowedActions` 与实际返回。
+
+| # | 位置 | 操作 | 端点 | 码 |
+|---|---|---|---|---|
+| 1 | 渠道账户详情 | 恢复：显示本账户最近一张 `CHANNEL_ACCOUNT_RESUME` 审批的状态；已批准未执行时给「执行恢复」（审批执行即调 `ChannelAccountService.resume`）。关闭：near-pay 服务端未开放（「S1 未开放」），只在详情里注明，不放按钮 | `GET /approvals?bizType=&subjectRef=`、`POST /approvals/{no}/execute` | 执行 `pay:channel-account:approve` |
+| 2 | 渠道账户详情 · 新标签「转移」+ 商户页级入口不做 | 本账户的转移记录；发起转移（目标商户号、证明、理由）；审核通过 / 驳回（审批单版本）；执行（申请版本） | `GET/POST /channel-account-transfers`、`GET /{no}`、`POST /{no}/approve|reject|execute` | `pay:channel-account:view` / `:transfer` / `:transfer:approve` |
+| 3 | 渠道账户详情 · 新标签「资质」 | 资质版本列表（状态、用途、有效期、制单人、审批号）；查看内容；导入新版本（证据号、版本、渠道、用途、内容 JSON、有效期、理由）；草稿提交激活审批（`CHANNEL_QUALIFICATION`，`subjectRevision` = 资质版本号）；吊销 | `GET /channel-accounts/{no}/qualifications`、`GET /channel-qualifications/{ref}`、`POST /channel-qualifications`、`POST /{ref}/revoke`、`POST /approvals` | view / `manage`（激活审核、执行 `approve`） |
+| 4 | 商户详情 · 来源事件 | 摘要改用 near-pay 实际字段：来源系统 · 能力 · 结果 · 操作人 | 无新增 | — |
+
+- **契约变更**：`ops-web/lib/perm-map.ts` 加 `pay:channel-account:transfer`、`pay:channel-account:transfer:approve` 两个映射（后端常量 §9 已加），无端点、库表、迁移。
+- **不做**：测试渠道账户的试运行准备（`POST /channel-accounts/{no}/qualifications`，只适用蓝新测试渠道）、测试渠道开户与试单、代建进度与认领附件 —— 属测试工具或只读回执，放第 6 项。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。

@@ -267,7 +267,12 @@ export interface MerchantChannelRow {
   onboardingStatus: string | null; reviewStatus: string | null; reason: string | null;
 }
 export interface MerchantChannels { merchantNo: string; rows: MerchantChannelRow[]; channels: { payChannel: string; channelName: string | null; onlineApplication: boolean }[] }
-export interface SourceEvent { eventNo?: string; eventType: string; sourceSystem?: string | null; externalEntityId?: string | null; summary?: string | null; occurredAt?: number | null; createdAt?: number | null; [k: string]: unknown }
+/** near-pay 实际返回 sourceSystem / capabilityType / outcome / actorRealm / actorSubject（§2.12 P6 #4）；eventType、summary 是早期设计字段，可能缺 */
+export interface SourceEvent {
+  eventNo?: string; eventType?: string | null; sourceSystem?: string | null; sourceEventId?: string | null; externalEntityId?: string | null;
+  entityRevision?: number | null; capabilityType?: string | null; outcome?: string | null; actorRealm?: string | null; actorSubject?: string | null;
+  summary?: string | null; occurredAt?: number | null; createdAt?: number | null; [k: string]: unknown;
+}
 /** 代填资料：6 个字段；敏感三项服务端只回脱敏值 */
 export const ASSISTED_FIELDS = ["legalName", "registrationNo", "registeredAddress", "representativeName", "contactPhone", "industry"] as const;
 export type AssistedField = (typeof ASSISTED_FIELDS)[number];
@@ -353,3 +358,24 @@ export interface FollowupRow { id: number; operation: string; payChannel: string
 export interface EscalatedRow { order: OrderRow; followup: FollowupRow }
 export interface AdapterRow { adapterCode: string; channelType: string; operations: string[]; accountModes: string[]; channelMethods: string[]; tradeModes: string[] }
 export interface PaymentMethodRow { code: string; name: string; category: string }
+
+// ════ P6（2026-11-21，TDD-支付中心运营页面 §2.12） ════
+
+// ── 渠道账户转移（换主体）：near-pay OpsChannelAccountTransferController.TransferDto ──
+export const TRANSFER_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CANCELLED", "EXPIRED", "EXECUTED"] as const;
+export interface ChannelAccountTransfer {
+  transferNo: string; requestNo: string; payMerchantNo: string; fromMerchantNo: string; toMerchantNo: string; evidence: string;
+  expectedVersion: number; status: string; approvalNo: string | null; approvalStatus: string | null; approvalVersion: number | null;
+  requestedBy: string | null; executedBy: string | null; executedAt: number | null;
+  beforeSnapshot: Record<string, unknown> | null; afterSnapshot: Record<string, unknown> | null; createdAt: number; version: number;
+}
+export interface TransferCreate { payMerchantNo: string; fromMerchantNo: string; toMerchantNo: string; evidence: string; expectedVersion: number }
+
+// ── 渠道资质版本：near-pay QualificationService.Version（validUntil 是 Instant，可能序列化成 ISO 串或毫秒数） ──
+export const QUALIFICATION_STATUSES = ["DRAFT", "ACTIVE", "REVOKED"] as const;
+export interface QualificationVersion {
+  ref: string; revision: number; channel: string; purpose: string; coordinates: Record<string, unknown> | null; coordinateKey: string | null;
+  payloadJson: string; payloadSha256: string; status: string; maker: string | null; approvalNo: string | null; validUntil: string | number | null; version: number;
+}
+export interface QualificationImport { evidenceNo: string; revision: number; channel: string; purpose: string; payloadJson: string; validUntil: string; reason: string }
+
