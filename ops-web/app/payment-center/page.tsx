@@ -21,6 +21,7 @@ import { MerchantsTab } from "./merchants-tab";
 import { StoresTab } from "./stores-tab";
 import { OnboardingsTab } from "./onboardings-tab";
 import { ApprovalsTab } from "./approvals-tab";
+import { TwChannelHealth } from "./tw-health";
 import { ChannelsTab } from "./channels-tab";
 import { ProductsTab } from "./products-tab";
 import { AccessTab } from "./access-tab";
@@ -105,7 +106,9 @@ function PaymentCenterInner() {
       </div>
     );
   }
-  const header = <TabHeader tabs={tabs} value={active} onChange={(k) => router.replace(payCenterHref(k as PayCenterTabKey))} />;
+  const tabHeader = <TabHeader tabs={tabs} value={active} onChange={(k) => router.replace(payCenterHref(k as PayCenterTabKey))} />;
+  // 台湾主流渠道健康卡片只挂在默认落地的审核待办（《支付中心-台湾主流渠道运营需求》§4.3）
+  const header = active === "approvals" ? <>{tabHeader}<TwChannelHealth /></> : tabHeader;
   const Tab = TAB_COMPONENT[active];
   return <Tab key={active} header={header} />;
 }

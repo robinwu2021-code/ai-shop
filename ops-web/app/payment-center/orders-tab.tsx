@@ -4,6 +4,9 @@
 import * as React from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { useCopy } from "@/lib/use-copy";
+import { TW_COPY } from "./tw-copy";
+import { TW_CHANNELS, twChannelLabel } from "./tw-health";
 import { CheckboxField } from "@/components/ui/checkbox";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
 import { ActionForm } from "@/components/ui/action-form";
@@ -23,7 +26,10 @@ export function OrdersTab({ header }: { header: React.ReactNode }) {
   const operator = useDraftOperator();
   const run = useRun(NAME);
   const statusMap = useStatusMap("order", ORDER_STATUSES, TONES);
-  const list = useTabList<OrderRow, { status: string; needsAttention: boolean }>(NAME, { status: "", needsAttention: false }, (api, q) => api.orders.list(q));
+  const list = useTabList<OrderRow, { status: string; needsAttention: boolean; payChannel: string }>(NAME, { status: "", needsAttention: false, payChannel: "" }, (api, q) => api.orders.list(q));
+  // 台湾主流渠道快捷筛选（near-pay 订单列表的 payChannel 参数）
+  const tw = useCopy(TW_COPY);
+  const twMap = Object.fromEntries(TW_CHANNELS.map((ch) => [ch, { label: twChannelLabel(tw, ch), tone: "muted" as const }]));
   const { api } = list;
 
   const actions: ActionSpec<OrderRow>[] = [
@@ -130,6 +136,7 @@ export function OrdersTab({ header }: { header: React.ReactNode }) {
       searchPlaceholder={c.ordersSearch}
       filters={<>
         <FilterSelect value={list.filters.status} onChange={(v) => list.setFilter("status", v)} options={statusMap} allLabel={c.allStatus} />
+        <FilterSelect value={list.filters.payChannel} onChange={(v) => list.setFilter("payChannel", v)} options={twMap} allLabel={tw.channelFilter} />
         <CheckboxField label={c.ordersNeedsAttention} checked={list.filters.needsAttention} onChange={(v) => list.setFilter("needsAttention", v === true)} />
       </>}
       query={list.query}
