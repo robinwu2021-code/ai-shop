@@ -505,3 +505,10 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 | 测试渠道账户资质 | `PM5731C712FF9145B8`（NEWEBPAY_TEST）、`PM7C90169391874975`（LINEPAY_TEST）near-pay 回 403「资格材料归属冲突」，超管也一样；页面显示错误与重试。**near-pay 侧问题**，待 RobinWu |
 | 门店详情（ume 早餐店） | 收款码 1 个（限额、两条链接、停用按钮）；支付方式 5 项均可开关、测试项带标签；同步事件多条 ✅ |
 | 角色页「支付中心数据范围」 | `NP_IT_REVIEW`：AE · 1 家商户 · 资金不可见 · 到期 2026/12/9 ✅（UME 两个角色的范围 12/9 到期，需续期） |
+
+### near-pay 修复上线与 Chrome 验证（2026-11-21 12:38 CST）
+
+- near-pay `pay-svc.jar` sha256 前缀 `af785883f4243d50` = 上一版 `4eb7826e…` 换 `pay-domain` 内 `QualificationService`、`ChannelAccountService`、`StorePaymentDisplayService` 与 `pay-portal` 内 `OpsV2`、`OpsMerchantController`、`OpsStoreController`（新增 `$1Hit`）、`OpsChannelAccountController`；中断 04:37:59–04:38:49 UTC；回退 `pay-svc.jar.before-nearpayfix-20261121`。
+- 完整测试：pay-channel 610、pay-domain 3706（665 跳过）、pay-guard 128、pay-portal 286 全过；`ChannelAccountDomainIntegrationTest` 过。
+- Chrome（用户会话）：商户列表 0.7 s / 0.6 s（原 12.7–20 s）、门店 2.6 s（原 13–17 s）、渠道账户 0.3 s（原 6–17 s），总数不变；按资料状态筛选仍 12.6 s（设计如此）。测试渠道账户资质 200（NEWEBPAY_TEST 5 条、LINEPAY_TEST 4 条，界面正常）；允许操作不再含 `close`。日志：重启后 `rebuild deferred` 0 次，830/834 各记两行「展示为空」后停止。
+- 注意：`NEWEBPAY_TEST` 唯一生效的资格 `LYD_MPG_RENEW_20261120:1` 有效期到 2026-11-21 12:44（浏览器时区），到期后该测试账户试运行收款会被拒。
