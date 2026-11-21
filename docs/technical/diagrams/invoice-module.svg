@@ -62,7 +62,7 @@
   <rect x="790" y="100" width="150" height="110" rx="10" fill="#fff7ed" stroke="#ea580c"/>
   <text x="804" y="124" font-weight="600" fill="#9a3412">invoice-channel</text>
   <text x="804" y="146" font-size="12">InvoiceGateway SPI</text>
-  <text x="804" y="164" font-size="12">首期 STUB</text>
+  <text x="804" y="164" font-size="12">STUB / 鲸跃 CETUSTEK</text>
   <text x="804" y="182" font-size="12" fill="#475569">加值中心 / Turnkey</text>
   <text x="804" y="198" font-size="12" fill="#475569">→ 财政部大平台</text>
 

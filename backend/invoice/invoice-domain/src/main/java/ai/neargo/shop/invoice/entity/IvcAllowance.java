@@ -25,6 +25,8 @@ public class IvcAllowance {
     private Long amountMinor;
     private Long taxMinor;
     private String reason;
+    /** 对外折让单号：发票号码 + 两位序号（V5，MIG 上限 16 位） */
+    private String fiscalAllowanceNumber;
     /** 折让证明单冻结内容（V4） */
     private String printSnapshot;
     private String printSnapshotHash;

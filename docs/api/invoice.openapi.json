@@ -328,7 +328,7 @@
                   },
                   "gatewayCode": {
                     "type": "string",
-                    "description": "开票通道，首期 STUB"
+                    "description": "开票通道：STUB 模拟 / TURNKEY 财政部 Turnkey / CETUSTEK 鲸跃加值中心"
                   },
                   "qrAesKeyHex": {
                     "type": "string",
@@ -341,6 +341,18 @@
                   "autoIssue": {
                     "type": "boolean",
                     "description": "付款成功后按预存买受人自动开立；不传 = 关"
+                  },
+                  "providerAccountCode": {
+                    "type": "string",
+                    "description": "加值中心分给商家的代号（鲸跃 officeid）；不传 = 清空"
+                  },
+                  "providerUser": {
+                    "type": "string",
+                    "description": "加值中心账号（鲸跃 posno），只写不读；与 providerPassword 同传才更新"
+                  },
+                  "providerPassword": {
+                    "type": "string",
+                    "description": "加值中心密码（鲸跃 posid），只写不读，进 secret 模块"
                   }
                 },
                 "required": [
@@ -757,6 +769,78 @@
           }
         }
       }
+    },
+    "/biz/invoice-setup/provider-verification": {
+      "post": {
+        "summary": "核验加值中心账号",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 用已保存的账号查询服务商侧营业人资料，统编须一致；服务商回了 QR 金钥即存入 secret 模块。 服务商拒绝时回 26011（参数为服务商原文代码，如 invalid / exist）；主体通道不是加值中心时回 26008。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVerificationVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/provider-ranges": {
+      "post": {
+        "summary": "向加值中心取字轨号段",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 申请并取回一段号码入库（allocationOwner=PROVIDER，主体内各店共用）；同一段重复取回只入库一次。 服务商拒绝时回 26011（参数为服务商原文代码，如 invalid / exist）；主体通道不是加值中心时回 26008。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "periodCode": {
+                    "type": "string",
+                    "description": "期别（5 位，如 11512）；不传 = 当期"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1053,6 +1137,14 @@
           "autoIssue": {
             "type": "boolean",
             "description": "付款成功后自动开立"
+          },
+          "providerAccountCode": {
+            "type": "string",
+            "description": "加值中心商家代号"
+          },
+          "providerCredentialConfigured": {
+            "type": "boolean",
+            "description": "加值中心账号密码是否已保存"
           }
         }
       },
@@ -1094,6 +1186,10 @@
           "status": {
             "type": "string",
             "description": "ACTIVE / EXHAUSTED"
+          },
+          "allocationOwner": {
+            "type": "string",
+            "description": "MANUAL 商家登记 / PROVIDER 加值中心配给"
           }
         }
       },
@@ -1136,6 +1232,23 @@
           "fiscalNumber": {
             "type": "string",
             "description": "已开立时的发票号码"
+          }
+        }
+      },
+      "ProviderVerificationVO": {
+        "type": "object",
+        "properties": {
+          "taxId": {
+            "type": "string",
+            "description": "服务商侧的营业人统编（须与本主体一致）"
+          },
+          "name": {
+            "type": "string",
+            "description": "服务商侧的营业人名称"
+          },
+          "qrKeyStored": {
+            "type": "boolean",
+            "description": "服务商回传的 QR 金钥已存进 secret 模块"
           }
         }
       }

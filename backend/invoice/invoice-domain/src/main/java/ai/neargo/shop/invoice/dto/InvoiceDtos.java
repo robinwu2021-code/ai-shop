@@ -1,6 +1,7 @@
 package ai.neargo.shop.invoice.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -80,7 +81,24 @@ public final class InvoiceDtos {
             @Pattern(regexp = "[0-9A-Fa-f]{32}") String qrAesKeyHex,
             @Size(max = 16) String memberCarrierType,
             /** 付款成功后自动开立；不传 = 关 */
-            Boolean autoIssue) {}
+            Boolean autoIssue,
+            /** 加值中心分给商家的代号（鲸跃 officeid）；不传 = 清空 */
+            @Size(max = 64) String providerAccountCode,
+            /** 加值中心账号与密码（鲸跃 posno / posid）：只写不读，两项同传才更新，都不传 = 不改 */
+            @Size(max = 64) String providerUser,
+            @Size(max = 128) String providerPassword) {
+
+        @AssertTrue
+        public boolean isProviderCredentialPaired() {
+            return (providerUser == null) == (providerPassword == null);
+        }
+    }
+
+    /** @param periodCode 期别（如 11512）；不传 = 当期 */
+    public record ProviderRangeReq(@Pattern(regexp = "\\d{5}") String periodCode) {}
+
+    /** 加值中心账号核验结果；{@code qrKeyStored} = 服务商回传的 QR 金钥已存进 secret 模块。 */
+    public record ProviderVerificationVO(String taxId, String name, boolean qrKeyStored) {}
 
     public record BuyerPreferenceReq(
             @NotBlank @Size(max = 32) String sourceType,
@@ -104,7 +122,9 @@ public final class InvoiceDtos {
             boolean qrKeyConfigured,
             String memberCarrierType,
             boolean autoIssue,
-            String status) {}
+            String status,
+            String providerAccountCode,
+            boolean providerCredentialConfigured) {}
 
     public record NumberRangeVO(
             String rangeNo,
@@ -116,7 +136,9 @@ public final class InvoiceDtos {
             int endNo,
             int nextNo,
             int remaining,
-            String status) {}
+            String status,
+            /** MANUAL 商家登记 / PROVIDER 服务商配给 */
+            String allocationOwner) {}
 
     public record InvoiceLineVO(
             int lineNo, String name, BigDecimal quantity, String unit, long unitPriceMinor, long amountMinor,

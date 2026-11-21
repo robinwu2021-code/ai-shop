@@ -16,8 +16,8 @@ public class StubInvoiceGateway implements InvoiceGateway {
         return "STUB";
     }
 
-    public GatewayReceipt send(String regimeCode, String messageType, String payloadJson) {
-        String ref = "STUB-" + UUID.nameUUIDFromBytes(payloadJson.getBytes(StandardCharsets.UTF_8));
+    public GatewayReceipt send(GatewayRequest request) {
+        String ref = "STUB-" + UUID.nameUUIDFromBytes(request.payloadJson().getBytes(StandardCharsets.UTF_8));
         return new GatewayReceipt(true, ref, null);
     }
 }

@@ -3,6 +3,8 @@ package ai.neargo.shop.invoice.api.biz;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderRangeReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
@@ -21,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * B 端发票设置：开通税制、登记字轨号段。主体级配置，仅持 {@code biz:invoice:setup} 的人可改。
  *
- * <p>QR 加密密钥只能写不能读：响应里只回「是否已配置」，密钥本身进 secret 模块。
+ * <p>QR 加密密钥与加值中心账号密码只能写不能读：响应里只回「是否已配置」，本身进 secret 模块。
+ * 加值中心（鲸跃）模式下号段由服务商配给：先核验账号，再按期取回号段。
  */
 @Profile("api")
 @RestController
@@ -56,5 +59,17 @@ public class BizInvoiceSetupController {
     @PostMapping("/biz/invoice-setup/ranges")
     public NumberRangeVO addRange(@Valid @RequestBody NumberRangeReq req) {
         return setup.addRange(BizInvoiceScope.current(), req);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")
+    @PostMapping("/biz/invoice-setup/provider-verification")
+    public ProviderVerificationVO verifyProvider() {
+        return setup.verifyProvider(BizInvoiceScope.current());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")
+    @PostMapping("/biz/invoice-setup/provider-ranges")
+    public NumberRangeVO fetchProviderRange(@Valid @RequestBody(required = false) ProviderRangeReq req) {
+        return setup.fetchProviderRange(BizInvoiceScope.current(), req == null ? null : req.periodCode());
     }
 }

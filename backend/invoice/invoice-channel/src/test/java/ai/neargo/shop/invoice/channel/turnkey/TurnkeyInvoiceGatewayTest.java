@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -27,7 +28,7 @@ class TurnkeyInvoiceGatewayTest {
                  "Details":{"ProductItem":[{"Description":"牛肉麵<大>","Amount":"180","SequenceNumber":"1"},
                                            {"Description":"小菜","Amount":"40","SequenceNumber":"2"}]},
                  "Amount":{"SalesAmount":220,"TaxAmount":0,"TotalAmount":220}}""";
-        var receipt = gateway.send("TW_EGUI", "ISSUE", payload);
+        var receipt = gateway.send(req("TW_EGUI", "ISSUE", payload));
         assertTrue(receipt.accepted());
         Path file = root.resolve("UpCast/B2SSTORAGE/F0401/SRC/F0401_AB00000001.xml");
         assertEquals(file.toString(), receipt.gatewayRef());
@@ -42,7 +43,7 @@ class TurnkeyInvoiceGatewayTest {
         assertEquals("A&B 小吃", doc.getElementsByTagNameNS("*", "Name").item(0).getTextContent());
         assertEquals(0, doc.getElementsByTagNameNS("*", "mig").getLength());
 
-        assertTrue(gateway.send("TW_EGUI", "ISSUE", payload).accepted(), "retry overwrites, never duplicates");
+        assertTrue(gateway.send(req("TW_EGUI", "ISSUE", payload)).accepted(), "retry overwrites, never duplicates");
         try (var files = Files.list(file.getParent())) {
             assertEquals(1, files.count());
         }
@@ -51,7 +52,11 @@ class TurnkeyInvoiceGatewayTest {
     @Test
     void otherRegimesAndUnknownMessagesAreRefused() {
         var gateway = new TurnkeyInvoiceGateway(root.toString(), "{mig}", JsonMapper.builder().build());
-        assertFalse(gateway.send("AE_VAT", "ISSUE", "{\"mig\":\"F0401\"}").accepted());
-        assertFalse(gateway.send("TW_EGUI", "ISSUE", "{\"mig\":\"X9999\"}").accepted());
+        assertFalse(gateway.send(req("AE_VAT", "ISSUE", "{\"mig\":\"F0401\"}")).accepted());
+        assertFalse(gateway.send(req("TW_EGUI", "ISSUE", "{\"mig\":\"X9999\"}")).accepted());
+    }
+
+    private static InvoiceGateway.GatewayRequest req(String regime, String type, String payload) {
+        return new InvoiceGateway.GatewayRequest(regime, type, null, payload, null);
     }
 }

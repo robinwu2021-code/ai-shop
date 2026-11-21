@@ -176,7 +176,7 @@ public class TwEguiRegime implements InvoiceRegime {
         out.put("sellerName", inv.getSellerName());
         out.put("sellerTaxId", inv.getSellerTaxId());
         if (inv.getBuyerTaxId() != null) out.put("buyerTaxId", inv.getBuyerTaxId());
-        out.put("allowanceNo", a.getAllowanceNo());
+        out.put("allowanceNo", a.getFiscalAllowanceNumber() != null ? a.getFiscalAllowanceNumber() : a.getAllowanceNo());
         out.put("allowanceDate", DAY_SHOWN.format(TwPeriods.local(a.getCreatedAt().toInstant(ZoneOffset.UTC))));
         out.put("originalNumber", inv.getFiscalNumber().substring(0, 2) + "-" + inv.getFiscalNumber().substring(2));
         out.put("originalDate", DAY_SHOWN.format(TwPeriods.local(inv.getIssuedAt().toInstant(ZoneOffset.UTC))));
@@ -268,7 +268,8 @@ public class TwEguiRegime implements InvoiceRegime {
                 m.put("mig", "G0401");
                 var at = TwPeriods.local(allowance.getCreatedAt().toInstant(ZoneOffset.UTC));
                 var main = new LinkedHashMap<String, Object>();
-                main.put("AllowanceNumber", allowance.getAllowanceNo());
+                main.put("AllowanceNumber", allowance.getFiscalAllowanceNumber() != null
+                        ? allowance.getFiscalAllowanceNumber() : allowance.getAllowanceNo());
                 main.put("AllowanceDate", DAY.format(at));
                 main.put("Seller", party(inv.getSellerTaxId(), inv.getSellerName()));
                 main.put("Buyer", buyer(inv));
@@ -290,6 +291,8 @@ public class TwEguiRegime implements InvoiceRegime {
                 amount.put("TaxAmount", dollars(allowance.getTaxMinor()));
                 amount.put("TotalAmount", net);
                 m.put("Amount", amount);
+                // MIG 之外、加值中心要的补充字段（鲸跃折让单带原发票时间）；Turnkey 不输出
+                m.put("ext", Map.of("OriginalInvoiceTime", TIME.format(issued)));
             }
             default -> throw new IllegalArgumentException(type);
         }

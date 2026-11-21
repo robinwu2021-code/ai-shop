@@ -339,8 +339,14 @@ public class InvoiceServiceImpl implements InvoiceService {
         long tax = regime.allowanceTax(inv, amountMinor);
         if (invoices.addAllowance(inv.getId(), amountMinor) != 1)
             throw BizException.of(ErrorCode.INVOICE_ALLOWANCE_EXCEEDED);
+        // 对外折让单号 = 发票号码 + 两位序号（MIG AllowanceNumber 上限 16 位，内部单号放不下）；
+        // 上面的条件更新已锁住发票行，同一张发票的折让在此串行，计数不会撞号
+        long seq = allowances.selectCount(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())
+                .eq("invoice_no", inv.getInvoiceNo())) + 1;
+        if (seq > 99) throw BizException.of(ErrorCode.INVOICE_ALLOWANCE_EXCEEDED);
         var a = new IvcAllowance();
         a.setAllowanceNo(BizKey.next(BizKey.INVOICE_ALLOWANCE));
+        a.setFiscalAllowanceNumber(inv.getFiscalNumber() + "%02d".formatted(seq));
         a.setTenantNo(inv.getTenantNo());
         a.setEntityNo(inv.getEntityNo());
         a.setStoreNo(inv.getStoreNo());

@@ -29,6 +29,12 @@ public class IvcNumberRange {
     private Integer nextNo;
     /** ACTIVE / EXHAUSTED */
     private String status;
+    /** MANUAL 商家登记 / PROVIDER 服务商配给（V5） */
+    private String allocationOwner;
+    /** 服务商配号申请号（V5，鲸跃 applyid） */
+    private String applyId;
+    /** 服务商回传的发票种类（V5） */
+    private String invoiceType;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

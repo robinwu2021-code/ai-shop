@@ -13560,6 +13560,8 @@ CREATE TABLE IF NOT EXISTS ivc_regime_profile
     updated_by VARCHAR(64) NULL,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
+    provider_account_code VARCHAR(64) NULL,
+    provider_secret_ref BIGINT NULL,
     CONSTRAINT uk_ivc_regime_profile UNIQUE (tenant_no, entity_no, regime_code)
 );
 
@@ -13580,6 +13582,9 @@ CREATE TABLE IF NOT EXISTS ivc_number_range
     created_by VARCHAR(64) NULL,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
+    allocation_owner VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    apply_id VARCHAR(64) NULL,
+    invoice_type VARCHAR(4) NULL,
     CONSTRAINT uk_ivc_number_range_no UNIQUE (tenant_no, range_no),
     CONSTRAINT uk_ivc_number_range UNIQUE (tenant_no, entity_no, regime_code, period_code, track, start_no),
     CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999 AND next_no >= start_no AND next_no <= end_no + 1)
@@ -13671,6 +13676,7 @@ CREATE TABLE IF NOT EXISTS ivc_allowance
     created_at DATETIME(3) NOT NULL,
     print_snapshot LONGTEXT NULL,
     print_snapshot_hash CHAR(64) NULL,
+    fiscal_allowance_number VARCHAR(16) NULL,
     CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
     CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor),
     CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR (print_snapshot IS JSON))

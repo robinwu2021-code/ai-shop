@@ -29,6 +29,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
+import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -107,6 +108,7 @@ class InvoiceServiceMysqlTest {
     @Autowired InvoicePrintSourceFactsPortImpl printSource;
     @Autowired Sources sources;
     @Autowired FlakyGateway gateway;
+    @Autowired FakeProvider provider;
     @Autowired OutboxEventBus events;
     @Autowired JdbcTemplate jdbc;
     @Autowired InvoiceMapper invoiceRows;
@@ -121,9 +123,12 @@ class InvoiceServiceMysqlTest {
         sources.byNo.clear();
         sources.orders.clear();
         gateway.fail.set(false);
+        provider.seen.clear();
+        provider.taxId = "12345675";
+        provider.failCode = null;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null));
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 1, 50, null));
     }
 
@@ -274,7 +279,58 @@ class InvoiceServiceMysqlTest {
         assertEquals(1_400, after.allowances().getFirst().taxMinor(), "300 元含稅中的稅額 = 300 − round(285.71)");
         assertCode(ErrorCode.INVOICE_ALLOWANCE_EXCEEDED, () -> invoices.allowance(SCOPE, r.invoiceNo(), 80_000, "x"));
         assertEquals(1, count("ivc_allowance"));
+        assertEquals(r.fiscalNumber() + "01", jdbc.queryForObject(
+                "SELECT fiscal_allowance_number FROM ivc_allowance", String.class), "对外折让单号 = 发票号码 + 序号");
         assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.voidInvoice(SCOPE, r.invoiceNo(), "x"));
+    }
+
+    @Test
+    void ac28ProviderAccountIsSealedVerifiedAndAllocatesRanges() {
+        var profile = setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null,
+                null, null, "OFFICE-1", "pos-user", "pos-secret"));
+        assertEquals("OFFICE-1", profile.providerAccountCode());
+        assertTrue(profile.providerCredentialConfigured());
+        var row = jdbc.queryForMap("SELECT * FROM ivc_regime_profile WHERE entity_no='E1'");
+        assertFalse(row.values().stream().anyMatch(v -> String.valueOf(v).contains("pos-secret")), "密码不落业务表");
+        jdbc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
+
+        var office = setup.verifyProvider(SCOPE);
+        assertTrue(office.qrKeyStored(), "服务商回的 QR 金钥存进 secret");
+        assertTrue(setup.profile(SCOPE).orElseThrow().qrKeyConfigured());
+        assertEquals(new InvoiceGateway.ProviderAccount("OFFICE-1", "pos-user", "pos-secret"), provider.seen.getFirst());
+
+        var range = setup.fetchProviderRange(SCOPE, period);
+        assertEquals("PROVIDER", range.allocationOwner());
+        assertEquals(12_345_600, range.startNo());
+        assertEquals(range.rangeNo(), setup.fetchProviderRange(SCOPE, period).rangeNo(), "同一段取回两次只入库一次");
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ivc_number_range WHERE allocation_owner='PROVIDER' AND apply_id='APPLY-1'",
+                Integer.class));
+
+        sources.paid("SO1", 1_000);
+        var r = issue("SO1");
+        provider.seen.clear();
+        assertEquals(1, transmissions.transmitDue(10));
+        assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
+        assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
+                "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac28ProviderRejectionsSurfaceTheProviderCode() {
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> setup.verifyProvider(SCOPE));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
+                "OFFICE-1", null, null));
+        var noAccount = assertThrows(BizException.class, () -> setup.fetchProviderRange(SCOPE, null));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_REJECTED, noAccount.errorCode());
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
+                "OFFICE-1", "u", "p"));
+        provider.taxId = "87654321";
+        assertCode(ErrorCode.INVOICE_PROVIDER_REJECTED, () -> setup.verifyProvider(SCOPE));
+        provider.failCode = "invalid";
+        var e = assertThrows(BizException.class, () -> setup.fetchProviderRange(SCOPE, null));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_REJECTED, e.errorCode());
+        assertEquals(List.of("invalid"), List.of(e.args()));
     }
 
     @Test
@@ -325,7 +381,7 @@ class InvoiceServiceMysqlTest {
                 new Buyer(null, null, "3J0002", "bad", null)));
         invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer("22099131", "台積", null, null, null));
         invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer(null, null, "3J0002", "/ABC+123", null));
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, true));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, true, null, null, null));
         var r = invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SO1").orElseThrow();
         var vo = invoices.get(SCOPE, r.invoiceNo());
         assertEquals("/ABC+123", vo.carrierId(), "last remembered choice wins");
@@ -351,7 +407,7 @@ class InvoiceServiceMysqlTest {
     // ---------------------------------------------------------------- 载具优先（§8）
 
     private void memberCarrier(String type, boolean auto) {
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, type, auto));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, type, auto, null, null, null));
     }
 
     @Test
@@ -554,7 +610,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(4, applied);
+            assertEquals(5, applied);
             return ds;
         }
     }
@@ -602,10 +658,38 @@ class InvoiceServiceMysqlTest {
             return "TEST";
         }
 
-        public GatewayReceipt send(String regime, String type, String payload) {
+        public GatewayReceipt send(GatewayRequest request) {
             if (fail.get()) throw new IllegalStateException("gateway down");
-            payloads.add(payload);
+            payloads.add(request.payloadJson());
             return new GatewayReceipt(true, "G-" + payloads.size(), null);
+        }
+    }
+
+    /** 加值中心桩：记下收到的账号，核验回固定统编与 QR 金钥，配号回固定一段。 */
+    static final class FakeProvider implements InvoiceProviderGateway {
+        final List<InvoiceGateway.ProviderAccount> seen = new ArrayList<>();
+        volatile String taxId = "12345675";
+        volatile String failCode;
+
+        public String code() {
+            return "PROV";
+        }
+
+        public GatewayReceipt send(GatewayRequest request) {
+            seen.add(request.account());
+            return new GatewayReceipt(true, "P-" + request.refNo(), null);
+        }
+
+        public ProviderOffice verify(InvoiceGateway.ProviderAccount account) {
+            seen.add(account);
+            if (failCode != null) throw new ProviderException(failCode, null);
+            return new ProviderOffice(taxId, "示例營業人", KEY_HEX);
+        }
+
+        public AllocatedRange allocate(InvoiceGateway.ProviderAccount account, String periodCode) {
+            seen.add(account);
+            if (failCode != null) throw new ProviderException(failCode, null);
+            return new AllocatedRange("APPLY-1", "CD", 12_345_600, 12_345_649, "07");
         }
     }
 
@@ -627,7 +711,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean
@@ -673,6 +757,11 @@ class InvoiceServiceMysqlTest {
         @Bean
         FlakyGateway gateway() {
             return new FlakyGateway();
+        }
+
+        @Bean
+        FakeProvider provider() {
+            return new FakeProvider();
         }
 
         @Bean

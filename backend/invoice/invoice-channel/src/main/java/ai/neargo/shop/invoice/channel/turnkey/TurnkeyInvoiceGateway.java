@@ -51,9 +51,10 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
     }
 
     @Override
-    public GatewayReceipt send(String regimeCode, String messageType, String payloadJson) {
-        if (!"TW_EGUI".equals(regimeCode)) return new GatewayReceipt(false, null, "Turnkey only serves TW_EGUI");
-        JsonNode message = json.readTree(payloadJson);
+    public GatewayReceipt send(GatewayRequest request) {
+        if (!"TW_EGUI".equals(request.regimeCode()))
+            return new GatewayReceipt(false, null, "Turnkey only serves TW_EGUI");
+        JsonNode message = json.readTree(request.payloadJson());
         String mig = message.path("mig").asText();
         String rootElement = ROOT_ELEMENT.get(mig);
         if (rootElement == null) return new GatewayReceipt(false, null, "Unsupported MIG message: " + mig);
@@ -76,13 +77,16 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
         return new GatewayReceipt(true, target.toString(), null);
     }
 
-    /** 报文树 → MIG XML。对象成元素，数组成同名重复元素，顶层 {@code mig} 只决定命名空间不输出。 */
+    /**
+     * 报文树 → MIG XML。对象成元素，数组成同名重复元素；顶层 {@code mig} 只决定命名空间、{@code ext} 是给加值中心的
+     * 补充字段（MIG 之外），都不输出。
+     */
     static String xml(String rootElement, String mig, JsonNode message) {
         var out = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         out.append('<').append(rootElement).append(" xmlns=\"urn:GEINV:eInvoiceMessage:").append(mig)
                 .append(":4.0\">");
         for (var name : List.copyOf(message.propertyNames()))
-            if (!name.equals("mig")) element(out, name, message.get(name));
+            if (!name.equals("mig") && !name.equals("ext")) element(out, name, message.get(name));
         return out.append("</").append(rootElement).append(">\n").toString();
     }
 

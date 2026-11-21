@@ -391,6 +391,8 @@ public enum ErrorCode {
     INVOICE_STATE_INVALID(26008, "err.invoice.state_invalid"),
     INVOICE_RANGE_INVALID(26009, "err.invoice.range_invalid"),
     INVOICE_KEY_UNAVAILABLE(26010, "err.invoice.key_unavailable"),
+    /** 开票服务商拒绝或不可达；{0} = 服务商回的原文代码（鲸跃 invalid / exist / nodata …） */
+    INVOICE_PROVIDER_REJECTED(26011, "err.invoice.provider_rejected"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),

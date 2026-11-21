@@ -399,3 +399,138 @@ AC22 用例在 MySQL 上复现后改为显式写 null。
 | `packages/shared/tests/http-error-data.test.ts`（2） | ✅ |
 | `InvoiceServiceMysqlTest#ac25…`（打印事实挂来源子单） | ✅ |
 
+## §10 服务商接入整合方案（鲸跃、绿界）
+
+状态：草稿 · 2026-11-21。依据远端 `codex/food-next01` 的三份对接文档（`TDD-台湾电子发票-鲸跃与绿界.md`、`design/台灣電子發票多服務商接入方案.md`、`交接-台湾电子发票-鲸跃与绿界.md`，提交 `b41142678`、`b494219df`）与 UME Git 备份 `trendlab-pay/service-rpc@master` 的源码核对，把两家厂商落到本模块（`ivc_*`）上。
+
+### 10.1 已核实的事实
+
+| 项 | 鲸跃（Cetustek） | 绿界（ECPay） |
+|---|---|---|
+| 存量 | UME `invoice.t_user` 274 个账号、`t_invoice` 18,653 张，全部 `cetustek`；餐饮四分片当日仍在开立 | 无存量，新接入 |
+| 协议 | SOAP 1.1，`text/xml`，命名空间 `http://webservice.cetustek.com/`，结果取 `<return>` | HTTPS JSON；外层 `MerchantID`、`RqHeader.Timestamp`、`Data`，`Data` 为 URL Encode 后 AES-128-CBC/PKCS7 再 Base64；先判 `TransCode` 再判 `RtnCode` |
+| 地址 | UME 生产 `http://ve.ei.com.tw/InvoiceEntitySync/InvoiceAPI`；dev/uat `http://invoice.cetustek.com.tw/InvoiceEntitySync/InvoiceAPI`；两者改 HTTPS 读 WSDL 均 403。另有公开新服务 `https://www.ei.com.tw/InvoiceMultiWeb/InvoiceAPI`（`CreateInvoiceV3`、`QueryInvoiceByOrderid`、`CancelInvoice`、`CreateAllowance` 等，方法集不同） | 测试 `https://einvoice-stage.ecpay.com.tw`，正式 `https://einvoice.ecpay.com.tw` |
+| 凭证 | 只有商家级：`officeid`（店家代号）、`posno`（账号）、`posid`（密码），UME 来源 `t_user.OFFICE_ID/ID/PW`；**无平台密钥** | 商家级：`MerchantID`、发票专用 `HashKey`、`HashIV`；无平台密钥 |
+| 发票号 | **厂商配号段，本地依序取号**：`ApplyInvoiceNumber(民国年, 双月)` → `applyid` → `TakeInvoiceNumber` 回 `字轨;起号;讫号;种类`；`CheckInvoiceNumber` 回目前号；开立时本地生成随机码后 `UploadInvoice` | **在线由绿界分配**：`/B2CInvoice/Issue` 回 `InvoiceNo`、日期、随机码；本地以 `RelateNumber`（≤50，大写字母数字）作幂等身份；离线另有取号区间 + `OfflineIssue` |
+| 动作 | `QueryOfficeInfo`、`QueryLoveCode`、`UploadInvoice`(S0)、`QueryInvoiceStatus`、`UploadCancelInvoice`(C0，作废)、`UploadVoidInvoice`(V0)、`UploadAllowance`(A0)、`UploadCancelAllowance`(C0)；失败 `error/invalid/exist/nodata/notake` | `Issue`、`GetIssue`、`Invalid`、`Allowance`/线上折让、`GetAllowanceList`、`AllowanceInvalid`、`CheckBarcode`、`InvoicePrint`（回一小时有效的列印网址） |
+| 证明联 QR | `QueryOfficeInfo` 返回 `Office.QRCode`，UME 打印端用它生成 QR（32 位十六进制，与财政部 QR AES Key 同格式，待厂商确认） | 可本地生成（需 AES Key）或用 `InvoicePrint` 网址；以本地打印中心出纸为主 |
+
+### 10.2 与本模块的差距
+
+| 对接方案要求 | 本模块现状 | 需要的改动 |
+|---|---|---|
+| 厂商账户：营业人 × 厂商 × 环境 × 账号，凭证只存引用 | `ivc_regime_profile` 只有 `gateway_code`，没有账号、环境、凭证 | 新增 `ivc_provider_account`；凭证进 secret 模块（PLATFORM 命名空间，ownerType 区分厂商） |
+| 门店路由：按门店选唯一生效账户，切换只影响新开立，历史沿原账户 | 主体级一条配置；上传任务记 `gateway_code` 但不记账户 | 新增 `ivc_provider_route`（主体或门店级，生效时间，范围内唯一启用）；`ivc_invoice`、`ivc_transmission` 记 `account_id`，重试、作废、折让一律用原账户 |
+| 鲸跃号段来自厂商 | 号段由商家在 B 端手工登记 | 「领取本期号段」动作：调 `ApplyInvoiceNumber`/`TakeInvoiceNumber`，写入现有 `ivc_number_range`（加 `account_id`、`apply_id`、`allocation_owner=PROVIDER`）；手工登记保留给 Turnkey |
+| 绿界在线配号 | 开立在本地事务里取号，上传是事后异步 | 新增「厂商配号」开立模式：先落开立命令（`issue_status=PENDING`，`provider_order_no`=RelateNumber）→ 事务外调用 → 成功写回号码与随机码 → 超时置 `UNKNOWN`，由恢复任务按 `RelateNumber` 查单；`UNKNOWN` 不得换厂商重开 |
+| 开票、上报、出纸三种状态分开 | 发票 `ISSUED/VOIDED` + 上传任务状态 + 打印中心 | 补 `issue_status`（仅厂商配号模式有 PENDING/UNKNOWN/REJECTED）；上报状态沿用上传任务；出纸沿用打印中心，已满足 |
+| 证明联 QR 参数 | 商家在 B 端手填 AES Key | 鲸跃开通时调 `QueryOfficeInfo` 取 `QRCode` 自动入密钥模块（厂商确认语义后启用）；绿界仍手填或走厂商打印数据 |
+| 日志不落凭证与完整报文 | 上传任务保存完整报文（供补传） | 保留报文（补传必需）；应用日志只记请求号、厂商码、业务状态、耗时，不打凭证与签名原串 |
+| 旧 UME POS 兼容（SHA-256 签名网关） | 无 | 不做：ai-shop 原生端用现有门店身份 |
+
+**不需要改的**：开立主流程的幂等与金额校验、税制 SPI（`TW_EGUI`）、证明联 / 交易明细 / 折让证明单打印、补印与禁止加印、载具与会员载具、自动开立、B 端与 C 端页面。厂商差异全部收在 `InvoiceGateway` 实现与账户路由里。
+
+### 10.3 通道 SPI 扩展
+
+现有 `InvoiceGateway#send(regime, messageType, payload)` 只覆盖「本地配号 + 事后上传」。扩展为按能力声明：
+
+| 能力 | 鲸跃 `CETUSTEK` | 绿界 `ECPAY` | Turnkey / Stub |
+|---|---|---|---|
+| `numbering` | `PROVIDER_RANGE`（领号段，本地取号） | `PROVIDER_ONLINE`（开立即配号） | `LOCAL_RANGE`（手工登记） |
+| `fetchRange(account, period)` | Apply + Take | — | — |
+| `issue(account, invoice)` | `UploadInvoice`（异步上传任务调用） | `Issue`（同步，开立时调用） | 写文件 / 桩 |
+| `query(account, ref)` | `QueryInvoiceStatus(号码, 日期)` | `GetIssue(RelateNumber)` | — |
+| `void` / `allowance` / `cancelAllowance` | `UploadCancelInvoice` / `UploadAllowance` / `UploadCancelAllowance` | `Invalid` / `Allowance` / `AllowanceInvalid` | 写文件 |
+| `officeInfo(account)` | `QueryOfficeInfo`（核对营业人、取 QRCode） | — | — |
+
+### 10.4 数据库变更（完整方案，首期按 §11 简化落地）
+
+| 表 | 字段与约束 |
+|---|---|
+| `ivc_provider_account`（新） | `account_no, tenant_no, entity_no, seller_tax_id, provider_code, environment(SANDBOX/PRODUCTION), provider_account_code, office_id, secret_ref, status`；唯一 `tenant + entity + provider + environment + provider_account_code` |
+| `ivc_provider_route`（新） | `route_no, tenant_no, entity_no, store_no('*'=主体), account_no, effective_from, status`；同一路由范围仅一条 ACTIVE |
+| `ivc_invoice`（加列） | `account_no`、`provider_order_no`（绿界 RelateNumber，账户内唯一）、`issue_status`（PENDING/UNKNOWN/ISSUED/REJECTED，本地配号直接 ISSUED） |
+| `ivc_number_range`（加列） | `account_no`、`apply_id`、`allocation_owner`（PROVIDER/MANUAL） |
+| `ivc_transmission`（加列） | `account_no`（重试与补传沿原账户） |
+
+迁移只加列和新表，不改已存在的 V1–V4。
+
+### 10.5 配置与凭证
+
+| 项 | 位置 |
+|---|---|
+| 厂商地址 | 配置：`shop.invoice.provider.cetustek.{sandbox,production}-url`、`shop.invoice.provider.ecpay.{sandbox,production}-url`（绿界已知；鲸跃待厂商给 HTTPS POST 地址） |
+| 鲸跃凭证 | 账户表存 `office_id`；`posno`、`posid` 存 secret 模块，账户表只存 `secret_ref` |
+| 绿界凭证 | 账户表存 `MerchantID`（provider_account_code）；`HashKey`、`HashIV` 存 secret 模块 |
+| 运行环境 | 每个账户自带 `environment`；进程按部署环境只加载对应环境的账户，交叉加载拒绝 |
+| 录入入口 | 运营端（平台人员核对营业人、环境、字轨后录入并启用路由）；B 端只读账户状态。存量 UME 鲸跃商户（274 个账号）按营业人与门店逐个迁入，不复制明文到文档或工单 |
+
+### 10.6 实施顺序
+
+| 步 | 内容 | 依赖 |
+|---|---|---|
+| 1 | V5 表与账户 / 路由服务、运营端录入；`InvoiceGateway` 能力扩展；开票流程按账户路由，记 `account_no` | 无 |
+| 2 | 鲸跃适配器：SOAP 封装、`QueryOfficeInfo`、领号段、上传 / 作废 / 折让 / 查询、结果码映射；用 UME 报文结构做单测 | 鲸跃测试账套与 HTTPS 地址 |
+| 3 | 绿界适配器：加解密（官方测试向量字节级核对）、`Issue/GetIssue/Invalid/Allowance/AllowanceInvalid`；厂商配号开立模式与 `UNKNOWN` 恢复任务 | 绿界测试商户（公开测试介接资料可先用） |
+| 4 | 联调：两家各走纸本 / 载具 / 捐赠 / 统编、作废、部分折让、超时恢复、门店切换后新旧单分流；58mm 实机出纸与扫码 | 测试账号、实机 |
+| 5 | 存量鲸跃商户迁入与单店启用；对账（交易—发票—厂商回执—上报—出纸） | 厂商书面确认生产地址、账套、字轨 |
+
+### 10.7 待决与待厂商确认
+
+- **实施基线**：远端方案以 `ai-neargo` trade T3 为基线（`ng_trade.tax_tw_*`）；本节按 ai-shop 已实现的发票模块落地。两者只能选一个作为实施代码库，需产品与架构确认。
+- 鲸跃：新系统应接旧 `InvoiceEntitySync` 还是公开的 `InvoiceMultiWeb`（`CreateInvoiceV3`）；各自 HTTPS 测试 / 正式 POST 地址、白名单；`QRCode` 是否即 QR AES Key；`UploadCancelInvoice` 与 `UploadVoidInvoice` 的确切语义；`S1/S2` 含义；字段长度与回复时限。
+- 绿界：首批是否需要离线开立（取号区间 + `OfflineIssue`）；证明联走本地打印中心还是 `InvoicePrint` 网址（建议本地，需 AES Key）。
+
+## §11 鲸跃接入（首期实现）
+
+状态：已实现 · 2026-11-21 · 档位 1（新增端点、库表列、错误码、i18n）· 需求 PRD AC28。协议与字段照 UME `trendlab-pay/service-rpc` 的 `CetustekInvoiceServiceHelper` / `CetustekInvoiceServiceImpl` / `Soap*` 模型。
+
+### 11.1 范围与相对 §10 的简化
+
+| §10 方案 | 首期实现 | 为什么 |
+|---|---|---|
+| `ivc_provider_account` + `ivc_provider_route`（门店路由、多账户） | 账号挂在主体配置上：`ivc_regime_profile.provider_account_code`（officeid）+ `provider_secret_ref`（posno/posid 封存于 secret，ownerType `INVOICE_PROVIDER`） | UME 存量是一主体一账号；路由表等到同一主体真要分店用不同账号时再加，迁移只加列，不挡后续 |
+| 账户表 `environment` | 不区分；地址取配置 `shop.invoice.cetustek.url`（默认 UME 用的正式地址） | 一个部署只连一个环境 |
+| 绿界 `ECPAY`（在线配号） | 不做 | 本期只接鲸跃；绿界需要「厂商配号」开立模式，另起 |
+| 运营端录入 | B 端「发票设置」录入（只写不读） | 现有设置页即主体级入口，权限 `biz:invoice:setup` |
+
+### 11.2 契约变更
+
+| 类 | 内容 |
+|---|---|
+| 库表 | `db/invoice/V5`：`ivc_regime_profile` + `provider_account_code`、`provider_secret_ref`；`ivc_number_range` + `allocation_owner`（MANUAL/PROVIDER）、`apply_id`、`invoice_type`；`ivc_allowance` + `fiscal_allowance_number`（发票号码 + 两位序号，MIG 上限 16 位，内部单号放不下） |
+| 端点 | `POST /biz/invoice-setup/provider-verification`（QueryOfficeInfo，统编须一致，QRCode 存为 QR 金钥）；`POST /biz/invoice-setup/provider-ranges`（ApplyInvoiceNumber → TakeInvoiceNumber，同段重复取回只入库一次）；`PUT /biz/invoice-setup/profile` 加 `providerAccountCode / providerUser / providerPassword`（后两者只写） |
+| 错误码 | `26011 INVOICE_PROVIDER_REJECTED {0}`（服务商原文代码：invalid / exist / nodata / unreachable / tax_id_mismatch / account_not_configured） |
+| 配置 | `shop.invoice.cetustek.url`、`shop.invoice.cetustek.timeout-seconds`（默认 20） |
+| 前端枚举 | `SiGatewayCode` 加 `CETUSTEK` |
+
+### 11.3 模块设计
+
+| 文件 | 职责 |
+|---|---|
+| `invoice-domain/gateway/InvoiceGateway` | `send(GatewayRequest)`：请求带 `refNo` 与可空的 `ProviderAccount` |
+| `invoice-domain/gateway/InvoiceProviderGateway` | 加值中心类通道：`verify`、`allocate`、`ProviderException(code)` |
+| `invoice-domain/service/impl/InvoiceProviderAccounts` | 账号封存与现解（secret PLATFORM） |
+| `InvoiceTransmissionServiceImpl` | 加值中心通道发送前按任务主体 + 税制现取账号；没账号记一次失败，不抛 |
+| `InvoiceSetupServiceImpl` | 保存账号、核验、取号段；远程调用不在事务里 |
+| `InvoiceServiceImpl#allowance` / `TwEguiRegime#message` | 对外折让单号；G0401 带 `ext.OriginalInvoiceTime`（Turnkey 不输出 `ext`） |
+| `invoice-channel/cetustek/CetustekSoapClient` | SOAP 信封（与 UME 逐字同形）、`<return>` 提取、转义 |
+| `invoice-channel/cetustek/CetustekInvoiceGateway` | MIG 树 → 鲸跃 XML；结果码：开立 S0/S2、作废 C0/C5、折让 A0/A6 视为送达；零税率拒送 |
+| b-app `invoice-setup` | 通道选「鲸跃」时出现商家代号 / 账号 / 密码；已保存为鲸跃后出现「核验账号」「向加值中心取号段」 |
+
+字段映射（鲸跃 `Invoice`）：日期 `yyyy/MM/dd`；`OrderId` = 发票单号；B2C 不带 `BuyerIdentifier`；`DonateMark` 纸本 2 / 载具 0 / 捐赠 1；`PayWay` 5；明细 `ProductionCode` = 行序号，`DType` 应税空、免税 `TN`；金额栏取 MIG `Amount` 原值。
+
+### 11.4 测试（对账三）
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC28 | `CetustekInvoiceGatewayTest`（本机假 SOAP）：`#ac28IssueSendsUmeShapedSoapWithEscapedInvoiceXml`、`#ac28ResultCodesDecideDelivery`、`#ac28VoidAndAllowanceMapToCetustekFields`、`#ac28VerifyAndAllocateParseProviderReplies`、`#ac28UnreachableProviderIsAProviderException` | 5/5 ✅ |
+| AC28 | `InvoiceServiceMysqlTest#ac28ProviderAccountIsSealedVerifiedAndAllocatesRanges`、`#ac28ProviderRejectionsSurfaceTheProviderCode`；`#ac11…` 加断言对外折让单号（MySQL 9，全类 24/24） | ✅ |
+| AC28 实连 | 经 UME166 隧道（台湾出口）用本实现调正式 `invoice.cetustek.com.tw`：占位账号下 `QueryOfficeInfo`、`ApplyInvoiceNumber` 均回 `InValid`，被映射为 `ProviderException(invalid)` —— 信封、地址、回包解析在真服务上成立；未用真实账号，未产生任何发票 | ✅ |
+
+### 11.5 待办
+
+- 拿到鲸跃测试 / 正式账号后：核验 QRCode 是否即 QR AES Key（目前按 32 位十六进制才存）、一单 S0 实开、作废与折让实走一遍。
+- 鲸跃只放行台湾出口：生产实例在 UME166 机房可直连；本机开发无法直连，需经隧道。
+- `UploadCancelAllowance`（折让作废）、`QueryInvoiceStatus` 未接，本模块尚无折让作废动作。
+

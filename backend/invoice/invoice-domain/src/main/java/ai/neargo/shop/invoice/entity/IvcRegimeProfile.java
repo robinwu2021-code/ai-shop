@@ -28,6 +28,10 @@ public class IvcRegimeProfile {
     private String memberCarrierType;
     /** 付款成功后自动开立 */
     private Boolean autoIssue;
+    /** 服务商侧的商家代号（V5，鲸跃 officeid） */
+    private String providerAccountCode;
+    /** secret 模块引用：服务商账号与密码（V5） */
+    private Long providerSecretRef;
     /** ACTIVE / SUSPENDED */
     private String status;
     private String createdBy;

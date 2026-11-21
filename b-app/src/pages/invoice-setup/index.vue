@@ -26,6 +26,26 @@
               @tap="profile.gatewayCode = g">{{ t(`salesInvoice.gatewayName.${g}`) }}</text>
           </view>
         </view>
+        <template v-if="profile.gatewayCode === 'CETUSTEK'">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.providerAccountCode") }}</text>
+            <input v-model="profile.providerAccountCode" maxlength="64" class="txt-body sh-num sh-fill cell-input" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.provider") }}</text>
+            <text class="txt-caption" :class="providerCredOk ? 'is-success' : 'is-warning'">{{ providerCredOk ? t("salesInvoice.providerCredOk") : t("salesInvoice.providerCredMissing") }}</text>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.providerUser") }}</text>
+            <input v-model="profile.providerUser" maxlength="64" class="txt-body sh-num sh-fill cell-input"
+              :placeholder="String(t('salesInvoice.providerSecretPh'))" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.providerPassword") }}</text>
+            <input v-model="profile.providerPassword" password maxlength="128" class="txt-body sh-num sh-fill cell-input"
+              :placeholder="String(t('salesInvoice.providerSecretPh'))" />
+          </view>
+        </template>
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ t("salesInvoice.qrKey") }}</text>
           <text class="txt-caption" :class="qrKeyConfigured ? 'is-success' : 'is-warning'">{{ qrKeyConfigured ? t("salesInvoice.qrConfigured") : t("salesInvoice.qrMissing") }}</text>
@@ -49,6 +69,15 @@
         <view class="sh-btn" :class="busy ? 'is-disabled' : ''" @tap="saveProfile">{{ t("salesInvoice.save") }}</view>
       </view>
 
+      <view v-if="providerMode" class="sh-card sh-mt-sm">
+        <text class="sh-hint txt-quiet">{{ t("salesInvoice.providerHint") }}</text>
+        <view v-if="providerMsg" class="sh-notice sh-mt-sm" :class="providerFailed ? 'sh-notice--danger' : 'sh-notice--success'" role="status">{{ providerMsg }}</view>
+        <view class="sh-row sh-mt-sm">
+          <view class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="verifyProvider">{{ t("salesInvoice.verifyProvider") }}</view>
+          <view class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="fetchProviderRange">{{ t("salesInvoice.fetchRange") }}</view>
+        </view>
+      </view>
+
       <sh-section :title="String(t('salesInvoice.ranges'))" pad></sh-section>
       <sh-empty v-if="!ranges.length" compact :text="String(t('salesInvoice.rangesEmpty'))"></sh-empty>
       <view v-for="r in ranges" :key="r.rangeNo" class="sh-card">
@@ -60,6 +89,7 @@
           <text class="txt-caption txt-quiet sh-num">{{ r.storeNo === "*" ? t("salesInvoice.rangeShared") : r.storeNo }}</text>
           <text class="txt-caption txt-quiet">{{ t("salesInvoice.remaining", { n: r.remaining }) }}</text>
         </view>
+        <text v-if="r.allocationOwner === 'PROVIDER'" class="txt-caption txt-quiet">{{ t("salesInvoice.rangeOwner.PROVIDER") }}</text>
       </view>
 
       <sh-section :title="String(t('salesInvoice.addRange'))" pad></sh-section>
@@ -98,6 +128,7 @@
 <script setup lang="ts">
 // 发票设置：开通税制（首期 TW_EGUI）与登记字轨号段。主体级配置，仅 biz:invoice:setup。
 // QR 加密密钥只写不读：页面只显示「已配置 / 未配置」，输入框留空表示不改。
+// 加值中心（鲸跃）：账号密码同样只写不读；号段由服务商配给，在已保存的通道是加值中心时才出现「核验 / 取号段」。
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -106,7 +137,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import type { SiProfile, SiProfileReq, SiRange } from "@/api/sales-invoice";
 
 type Gateway = SiProfileReq["gatewayCode"];
-const GATEWAYS: readonly Gateway[] = ["STUB", "TURNKEY"];
+const GATEWAYS: readonly Gateway[] = ["STUB", "TURNKEY", "CETUSTEK"];
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -115,12 +146,18 @@ const failed = ref(false);
 const busy = ref(false);
 const profileErrMsg = ref("");
 const rangeErrMsg = ref("");
+const providerMsg = ref("");
+const providerFailed = ref(false);
 const current = ref<SiProfile | null>(null);
 const ranges = ref<SiRange[]>([]);
-const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "STUB" as Gateway, qrAesKeyHex: "", memberCarrierType: "", autoIssue: false });
+const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "STUB" as Gateway, qrAesKeyHex: "", memberCarrierType: "", autoIssue: false,
+  providerAccountCode: "", providerUser: "", providerPassword: "" });
 const range = reactive({ periodCode: "", track: "", startNo: "", endNo: "", storeNo: "" });
 
 const qrKeyConfigured = computed(() => !!current.value?.qrKeyConfigured);
+const providerCredOk = computed(() => !!current.value?.providerCredentialConfigured);
+/** 以已保存的配置为准：未保存的通道切换不能拿去核验 */
+const providerMode = computed(() => current.value?.gatewayCode === "CETUSTEK");
 const profileStatus = computed(() => current.value
   ? String(t(`salesInvoice.profileStatus.${current.value.status}`))
   : String(t("salesInvoice.notOpened")));
@@ -133,10 +170,13 @@ function fill(p: SiProfile | null) {
   current.value = p;
   profile.sellerTaxId = p?.sellerTaxId ?? "";
   profile.sellerName = p?.sellerName ?? "";
-  profile.gatewayCode = p?.gatewayCode === "TURNKEY" ? "TURNKEY" : "STUB";
+  profile.gatewayCode = GATEWAYS.find((g) => g === p?.gatewayCode) ?? "STUB";
   profile.memberCarrierType = p?.memberCarrierType ?? "";
   profile.qrAesKeyHex = "";
   profile.autoIssue = !!p?.autoIssue;
+  profile.providerAccountCode = p?.providerAccountCode ?? "";
+  profile.providerUser = "";
+  profile.providerPassword = "";
 }
 
 async function load() {
@@ -158,11 +198,17 @@ async function saveProfile() {
     profileErrMsg.value = String(t("salesInvoice.required"));
     return;
   }
+  const user = profile.providerUser.trim(), password = profile.providerPassword;
+  if (!!user !== !!password) {
+    profileErrMsg.value = String(t("salesInvoice.required"));
+    return;
+  }
   busy.value = true;
   profileErrMsg.value = "";
   try {
     const key = profile.qrAesKeyHex.trim();
     const carrier = profile.memberCarrierType.trim();
+    const accountCode = profile.providerAccountCode.trim();
     fill(await api.mSiSaveProfile({
       regimeCode: "TW_EGUI",
       sellerTaxId: profile.sellerTaxId.trim(),
@@ -171,6 +217,8 @@ async function saveProfile() {
       autoIssue: profile.autoIssue,
       ...(key ? { qrAesKeyHex: key } : {}),
       ...(carrier ? { memberCarrierType: carrier } : {}),
+      ...(accountCode ? { providerAccountCode: accountCode } : {}),
+      ...(user ? { providerUser: user, providerPassword: password } : {}),
     }));
     uni.showToast({ title: String(t("salesInvoice.saved")), icon: "none" });
   } catch (e) {
@@ -204,6 +252,42 @@ async function addRange() {
     uni.showToast({ title: String(t("salesInvoice.saved")), icon: "none" });
   } catch (e) {
     rangeErrMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function verifyProvider() {
+  if (busy.value) return;
+  busy.value = true;
+  providerMsg.value = "";
+  try {
+    const v = await api.mSiVerifyProvider();
+    const name = v.name ?? v.taxId;
+    providerFailed.value = false;
+    providerMsg.value = String(v.qrKeyStored ? t("salesInvoice.verifiedQr", { name }) : t("salesInvoice.verified", { name }));
+    if (v.qrKeyStored && current.value) current.value = { ...current.value, qrKeyConfigured: true };
+  } catch (e) {
+    providerFailed.value = true;
+    providerMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function fetchProviderRange() {
+  if (busy.value) return;
+  busy.value = true;
+  providerMsg.value = "";
+  try {
+    const period = range.periodCode.trim();
+    const got = await api.mSiFetchProviderRange(period ? { periodCode: period } : {});
+    ranges.value = [got, ...ranges.value.filter((r) => r.rangeNo !== got.rangeNo)];
+    providerFailed.value = false;
+    providerMsg.value = String(t("salesInvoice.fetched", { track: got.track, start: got.startNo, end: got.endNo }));
+  } catch (e) {
+    providerFailed.value = true;
+    providerMsg.value = message(e);
   } finally {
     busy.value = false;
   }

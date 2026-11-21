@@ -42,6 +42,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSiSaveProfile:{method:"PUT",path:"/biz/invoice-setup/profile",auth:true,summary:"发票设置：开通 / 修改税制"},
   mSiRanges:{method:"GET",path:"/biz/invoice-setup/ranges",auth:true,summary:"发票设置：字轨号段"},
   mSiAddRange:{method:"POST",path:"/biz/invoice-setup/ranges",auth:true,summary:"发票设置：登记字轨号段"},
+  mSiVerifyProvider:{method:"POST",path:"/biz/invoice-setup/provider-verification",auth:true,summary:"发票设置：核验加值中心账号"},
+  mSiFetchProviderRange:{method:"POST",path:"/biz/invoice-setup/provider-ranges",auth:true,summary:"发票设置：向加值中心取号段"},
   mRrContext:{method:"GET",path:"/biz/stock-control/retail-replenishment/context",auth:true,summary:"零售补货与原号恢复"},
   mRrList:{method:"GET",path:"/biz/stock-control/retail-replenishment",auth:true,summary:"零售补货与原号恢复"},
   mRrOriginal:{method:"GET",path:"/biz/stock-control/retail-replenishment/:no",auth:true,summary:"零售补货与原号恢复"},

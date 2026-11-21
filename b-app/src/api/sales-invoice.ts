@@ -29,7 +29,7 @@ export interface SiAllowance {
 export type SiStatus = "ISSUED" | "VOIDED";
 export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED";
 /** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
-export type SiGatewayCode = "STUB" | "TURNKEY";
+export type SiGatewayCode = "STUB" | "TURNKEY" | "CETUSTEK";
 export interface SalesInvoice {
   invoiceNo: string;
   regimeCode: string;
@@ -109,6 +109,10 @@ export interface SiProfile {
   status: string;
   /** 付款成功后按预存买受人自动开立 */
   autoIssue?: boolean | null;
+  /** 加值中心分给商家的代号（鲸跃 officeid） */
+  providerAccountCode?: string | null;
+  /** 加值中心账号密码是否已保存（本身只写不读） */
+  providerCredentialConfigured?: boolean;
 }
 export interface SiProfileReq {
   regimeCode: "TW_EGUI";
@@ -120,6 +124,17 @@ export interface SiProfileReq {
   memberCarrierType?: string;
   /** 不传 = 关 */
   autoIssue?: boolean;
+  /** 不传 = 清空 */
+  providerAccountCode?: string;
+  /** 账号与密码两项同传才更新；都不传 = 不改 */
+  providerUser?: string;
+  providerPassword?: string;
+}
+export interface SiProviderVerification {
+  taxId: string;
+  name?: string | null;
+  /** 服务商回传的 QR 密钥已存起来 */
+  qrKeyStored: boolean;
 }
 export interface SiRange {
   rangeNo: string;
@@ -134,6 +149,8 @@ export interface SiRange {
   remaining: number;
   /** ACTIVE / EXHAUSTED */
   status: string;
+  /** MANUAL 手工登记 / PROVIDER 服务商配给 */
+  allocationOwner?: "MANUAL" | "PROVIDER";
 }
 export interface SiRangeReq {
   regimeCode: "TW_EGUI";
@@ -160,4 +177,8 @@ export interface SalesInvoiceApi {
   mSiSaveProfile(body: SiProfileReq): Promise<SiProfile>;
   mSiRanges(q: { periodCode?: string }): Promise<SiRange[]>;
   mSiAddRange(body: SiRangeReq): Promise<SiRange>;
+  /** 用已保存的加值中心账号核验；统编须一致 */
+  mSiVerifyProvider(): Promise<SiProviderVerification>;
+  /** 向加值中心取号段；periodCode 不传 = 当期 */
+  mSiFetchProviderRange(body: { periodCode?: string }): Promise<SiRange>;
 }
