@@ -184,7 +184,8 @@ class CommerceCatalogWiringTest {
                                                 0,
                                                 "create through Boot"));
                                 assertEquals(
-                                        3, api.catalog(actor, "RETAIL").planDefinitions().size());
+                                        ai.neargo.commerce.api.common.PlanTier.catalogTiers("RETAIL").size(),
+                                        api.catalog(actor, "RETAIL").planDefinitions().size());
                                 assertEquals(
                                         1,
                                         db.jdbc.queryForObject(
