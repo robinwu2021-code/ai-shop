@@ -345,3 +345,59 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 2. **数据范围只认 near-pay 的 SY04**：能看哪些商户来自 near-pay `pay_data_scope_grant`，与 ai-shop 账号上的 `merchantNo` 无关；没有授权的账号列表为空、详情 403。
 
 所以「权限码」已由 ai-shop 统一授予并验证生效；但「谁能进 near-pay」「能看哪些商户」仍在 near-pay 侧配置。是否把这两项也收归 ai-shop（例如运营端统一认证接口带出范围、near-pay 对 OPS 运营不再要求逐人环境绑定）需另行决定。
+
+## §10 收归方案：谁能进 near-pay、能看哪些商户（2026-11-21，用户：「出收归方案」）
+
+### 10.1 现状（§9.6 实测 + 代码）
+
+| 门 | 在哪判 | 由谁配 | 问题 |
+|---|---|---|---|
+| 权限码 | near-pay `@payPerm.can` | ai-shop 角色（§9 已补齐、实测生效） | — |
+| 执行环境绑定 | near-pay `GuardFilter` → `ExecutionEnvironmentBindings.requirePrincipal("OPS","OPERATOR",工号)`，在判码之前 | near-pay 配置 `shop.pay.environment.bindings[n]`，逐人一行，改了要重启 | 4 个人之外的运营，ai-shop 给什么码都进不来 |
+| 数据范围 | near-pay `DataScopeService.effective`：USER 委托 ∪ **当前 ai-shop 角色**的 ROLE 委托；ai-shop 超管（`*`）视为全部商户 | near-pay SY04（`pay_data_scope_grant`），两人审批；界面已在 ai-shop 支付中心「数据范围」页签（经网关透传） | 线上有效委托已经是按 ai-shop 角色给（`NP_IT_REVIEW`/`NP_IT_CONFIG` → AE 市场 `PM3814137F73EE4DBF`）；但 ai-shop 角色页看不到某角色在支付中心能看哪些商户，ai-shop 账号上的 `merchantNo` 对支付无效却容易被误以为有效 |
+
+执行环境绑定的本意是**环境隔离**（这个人的请求落正式还是沙箱），注释明确「不授予任何支付权限」；正式实例上 4 个运营全部绑 `PRODUCTION`。
+
+### 10.2 目标
+
+- 进不进得来、能做什么：**只看 ai-shop 授的权限码**（运营只要在 ai-shop 有支付码就能进，撤码即出）。
+- 能看哪些商户：**按 ai-shop 角色配**，在 ai-shop 运营端一处看到、一处改；保留 near-pay 的审批与资金可见级别。
+- 不复制模型：near-pay 的市场 / 商户 / 门店 / 资金可见级别 / 到期 / 两人审批这套范围模型不搬到 ai-shop。
+
+### 10.3 方案
+
+**A. 执行环境：OPS 运营默认落本实例环境（near-pay 改一处）**
+
+- 新配置 `shop.pay.environment.ops-operator-default`（只接受本实例 `workerEnvironments` 里的值，例：`PRODUCTION`）。
+- `GuardFilter`：仅当 `face=OPS`、主体类型 `OPERATOR`、已经过 ai-shop 统一认证、且**库里没有这个人的绑定行**时，用这个默认值。有绑定行的照旧（包括停用行 —— 沿用「停用不得被静默当成默认」的约束）；不配这项 = 现状。
+- 每次走默认记一行 `[ops-env] default operator=… env=…`（请求记录里已有原因码，便于审计）。
+- 结果：ai-shop 新加的运营只要有支付码就能进；要让某人落沙箱，仍可显式绑一行。
+- 备选 A2（暂不做）：统一认证接口按人回 `payEnvironment`，由 ai-shop 决定每个人落哪个环境。只有出现「同一实例里有人要落沙箱」时才需要。
+
+**B. 数据范围：存 near-pay、按 ai-shop 角色授、在 ai-shop 一处可见**
+
+- B1 约定（无代码）：范围一律授给 **ai-shop 角色**（SY04 `subject_type=ROLE`、`subject_ref`=ai-shop 角色码），不再逐人授；给人分配角色即得到范围、撤角色即失去。仍走 near-pay 两人审批。需用户定各岗位的范围（10.5 第 2 条）。
+- B2 ai-shop 运营端角色页加只读一栏「支付中心数据范围」：前端经网关调 near-pay `/pay-ops/v2/data-scopes`，按角色码筛出生效的委托，显示市场、商户数、资金可见级别、到期，链到支付中心「数据范围」页签处理。不新增 ai-shop 端点与表。
+- B3 澄清 ai-shop 账号的 `merchantNo`：它是 ai-shop 自身订单等数据域，不作用于支付（§9.6 R4 实测）。账号页该字段旁注明；统一认证接口照常回该字段（near-pay 仍用它组装通用数据域上下文，不改行为）。
+- 不采用：由 ai-shop 统一认证接口下发支付范围、near-pay 只认它 —— 需要在 ai-shop 重建 near-pay 的范围模型与审批，两边各一份更难维护。
+
+### 10.4 改动清单
+
+| 仓库 | 改动 | 档位 |
+|---|---|---|
+| near-pay | `ExecutionEnvironmentProperties.opsOperatorDefault` + 启动校验；`GuardFilter` 在 OPS 运营无绑定行时取默认；单测：无行走默认、停用行仍拒、非 OPS 面不受影响、未配默认 = 现状 | 改配置契约（near-pay 侧，需 RobinWu 评审） |
+| ai-shop ops-web | B2：角色页只读栏（复用支付中心 `_api` 的 data-scopes 端口）；B3：账号页 `merchantNo` 说明文案 | 前端，无契约变更 |
+| near-pay 正式配置 | 加 `shop.pay.environment.ops-operator-default=PRODUCTION`；现有 4 行运营绑定保留（无害），稳定后可删 | 运维 |
+
+### 10.5 待确认
+
+1. 正式实例所有 OPS 运营默认落 `PRODUCTION` 是否可以（推荐：可以；沙箱运营另行显式绑定）。
+2. 各岗位在支付中心的数据范围（推荐初值：`FINANCE` TW 全部商户、资金脱敏只读；`BD` TW 全部商户、资金不可见；其余岗位不给，需要时再加）。
+3. near-pay 的改动由谁合并发布（推荐：沿用本分支 `feat/ops-identity-unified-20261120` 提交，类补丁上线，并入 RobinWu 下次整包）。
+
+### 10.6 上线与验证
+
+1. near-pay：配置加默认环境 → 换类补丁 → 重启（约 55 秒）。
+2. 白名单 `ST-V2TEST-SUPPORT`（不在绑定清单）：`/me/access` 由 403 变 200，码为空 → 商户列表 403；给它的角色加「商户：查看」→ 200（列表按其角色的数据范围）。
+3. 按 10.5 第 2 条在支付中心为岗位角色建范围（两人审批），用 `ST-V2TEST-FINANCE` 验证可见商户。
+4. 回退：删掉 `ops-operator-default` 一行并重启，即回到逐人绑定。
