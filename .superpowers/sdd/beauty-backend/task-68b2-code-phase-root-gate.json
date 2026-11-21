@@ -5,7 +5,7 @@
   "codeCommit": "5477210b96ef3339f340ac5d715263d8abf27a19",
   "sourcePins": [
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
       "sha256": "fb2c388ccccc4325f6a9cd590c4bdc45e5c0d4dd87ced5ac3ab94e7259de851c"
     },
     {

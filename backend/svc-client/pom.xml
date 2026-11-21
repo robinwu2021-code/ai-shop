@@ -35,6 +35,12 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+        <!-- 守卫包（ai.neargo.svc.guard）的过滤器要用；由微服务自己的容器提供 -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- JSON 编解码由调用方的 classpath 决定（两边都有 Jackson 3）；这里只为测试「真的解出对象」 -->
         <dependency>
             <groupId>tools.jackson.core</groupId>

@@ -107,6 +107,10 @@ export const FIELDS = [
   { concept: "notify_ticket.category（回报分类）", field: "notify_ticket.category", backend: { ddl: ["notify_ticket", "category"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "FeedbackCategory" }] },
   { concept: "notify_ticket.source（工单来源）", field: "notify_ticket.source", backend: { ddl: ["notify_ticket", "source"] }, clients: [{ file: "ops-web/lib/types/message.ts", type: "TicketSource" }] },
   { concept: "notify_ticket.client_platform（回报平台）", field: "notify_ticket.client_platform", backend: { ddl: ["notify_ticket", "client_platform"] }, clients: [] },
+  // 网关接口资源（TDD-网关层与统一权限，V679）：运营端「接口资源」页的三个取值域，与 ops-web/lib/types/system.ts 逐字对齐
+  { concept: "sys_api_resource.access（接口权限类别）", field: "sys_api_resource.access", backend: { ddl: ["sys_api_resource", "access"] }, clients: [{ file: "ops-web/lib/types/system.ts", type: "ApiResourceAccess" }] },
+  { concept: "sys_api_resource.source（接口资源来源）", field: "sys_api_resource.source", backend: { ddl: ["sys_api_resource", "source"] }, clients: [{ file: "ops-web/lib/types/system.ts", type: "ApiResourceSource" }] },
+  { concept: "sys_api_resource.status（接口资源状态）", field: "sys_api_resource.status", backend: { ddl: ["sys_api_resource", "status"] }, clients: [{ file: "ops-web/lib/types/system.ts", type: "ApiResourceStatus" }] },
   { concept: "sys_app_version.platform（版本策略平台）", field: "sys_app_version.platform", backend: { ddl: ["sys_app_version", "platform"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "AppPlatform" }, { file: "ops-web/lib/types/system.ts", type: "AppVersionPlatform" }] },
   // Business owner attachments expose the same closed printability domain as paid-order facts.
   { concept: "biz_print_fact.printability（打印取值域）", field: "biz_print_fact.printability", backend: { ddl: ["biz_print_fact", "printability"] }, clients: [] },

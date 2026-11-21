@@ -165,4 +165,5 @@ export const POINT_CODES: Record<string, string> = {
   "/risk?tab=rules": "OPS_RISK__TAB_RULES",
   "/merchants?tab=self-operated": "OPS_MERCHANT__TAB_SELF_OPERATED",
   "/merchants?tab=on-behalf": "OPS_MERCHANT__TAB_ON_BEHALF",
+  "/system?tab=apiResource": "OPS_SYSTEM__TAB_APIRESOURCE",
 };

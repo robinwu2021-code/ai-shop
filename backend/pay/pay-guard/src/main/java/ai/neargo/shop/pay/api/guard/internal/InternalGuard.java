@@ -1,5 +1,8 @@
 package ai.neargo.shop.pay.api.guard.internal;
 
+import ai.neargo.svc.context.SignedContextCodec;
+import ai.neargo.svc.guard.SignedContextVerifier;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 import ai.neargo.shop.pay.api.guard.PortalFace;
@@ -30,6 +33,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class InternalGuard implements EntryGuard {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InternalGuard.class);
+
     /** 端点读这个属性拿调用方码（只放行它自己的业务类型）；属性只能由本守卫写 */
     public static final String CALLER_ATTRIBUTE = InternalGuard.class.getName() + ".caller";
     /** 解出来的来源（{@link CallSource}）；记录器读它 */
@@ -41,6 +46,16 @@ public class InternalGuard implements EntryGuard {
     private final InternalCallerRegistry callers;
     private final boolean verifyCredential;
     private final String allowedIps;
+
+    /** 网关的签名上下文：只比对、记日志，从不因此拒绝（TDD-网关层与统一权限 §2.7；打开拒绝需另行确认）。 */
+    private SignedContextVerifier signedContext;
+
+    @Autowired
+    void signedContext(@Value("${shop.gateway.signing.key:}") String key,
+                       @Value("${shop.pay.guard.internal.signed-context:observe}") String mode) {
+        this.signedContext = key == null || key.isBlank() || !"observe".equalsIgnoreCase(mode)
+                ? null : new SignedContextVerifier(key.trim());
+    }
 
     public InternalGuard(InternalCallerRegistry callers,
                          @Value("${shop.pay.guard.internal.verify-credential:false}") boolean verifyCredential,
@@ -70,9 +85,31 @@ public class InternalGuard implements EntryGuard {
         CallSource source = CallSourceCodec.decode(request.getHeader(InternalHeaders.CALL_SOURCE))
                 .orElseGet(InternalGuard::unknown)
                 .withModuleIfAbsent(CallSources.UNKNOWN.equals(caller) ? null : caller);
+        observeSignedContext(request, caller);
         request.setAttribute(CALLER_ATTRIBUTE, caller);
         request.setAttribute(SOURCE_ATTRIBUTE, source);
         return GuardResult.ok(new PortalPrincipal(PortalFace.INTERNAL, "INTERNAL_CALLER", caller, null, Set.of()));
+    }
+
+    /**
+     * 比对签名上下文。这一处拿不到请求体，所以只验签名、时间窗、方法与地址。
+     * 没带的记 debug（别的调用方还没开始签）；带了但对不上的记 warn —— 那才是打开拒绝之前要逐条看清的。
+     */
+    private void observeSignedContext(HttpServletRequest request, String caller) {
+        if (signedContext == null) {
+            return;
+        }
+        String target = request.getRequestURI().substring(request.getContextPath().length())
+                + (request.getQueryString() == null ? "" : "?" + request.getQueryString());
+        SignedContextVerifier.Result result = signedContext.verify(request.getHeader(SignedContextCodec.HEADER_CONTEXT),
+                request.getHeader(SignedContextCodec.HEADER_SIGNATURE), request.getMethod(), target, null,
+                System.currentTimeMillis());
+        if (result.outcome() == SignedContextVerifier.Outcome.MISSING) {
+            log.debug("内部调用没带签名上下文 caller={} {} {}", caller, request.getMethod(), target);
+        } else if (!result.ok()) {
+            log.warn("内部调用的签名上下文对不上（只比对，已放行）caller={} {} {} · {}", caller, request.getMethod(),
+                    target, result.outcome());
+        }
     }
 
     /** 没带或解不开来源头：只知道「有人调了」 */

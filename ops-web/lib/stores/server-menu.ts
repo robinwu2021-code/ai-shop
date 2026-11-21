@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { NAV, overlayNav, type NavOverlay, type NavSection } from "@/lib/nav";
 import { platformCatalog, platformNav } from "@/lib/platform-nav";
 import { normalizeLegacyPointsMenu } from "@/lib/points-ops-routes";
+import { normalizeLegacyPaymentMenu } from "@/app/payment-center/module";
 import type { MenuPoint } from "@/lib/types";
 
 export interface ServerMenuState {
@@ -55,7 +56,7 @@ export const useServerMenu = create<ServerMenuState>()((set) => ({
   loaded: false,
   load: async () => {
     try {
-      const fns = normalizeLegacyPointsMenu(await api.menu());
+      const fns = normalizeLegacyPaymentMenu(normalizeLegacyPointsMenu(await api.menu()));
       const byHref: Record<string, MenuPoint> = {};
       const overlay: NavOverlay = { sections: {}, leaves: {} };
       for (const f of fns ?? []) {

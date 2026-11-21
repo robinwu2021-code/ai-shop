@@ -1,4 +1,4 @@
-import { platformCatalog, PLATFORM_MENU_ALIASES } from "./platform-nav";
+import { platformCatalog, platformNav, PLATFORM_MENU_ALIASES } from "./platform-nav";
 // 导航结构单测。这里锁的是**结构约束**，不是文案：
 // 文案会随产品走，结构一破（分组不相邻、href 重复、模块与权限码对不上）界面就会出错。
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
 import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
 import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
+import { PAY_CENTER_TABS, PENDING_MENU } from "@/app/payment-center/module";
 import { permsOf, ROLE_LABEL } from "./permissions";
 import { UI_PERM_MAP } from "./perm-map";
 import { pointsLegacyServerMenuHref } from "./points-ops-routes";
@@ -150,6 +151,8 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与「开关与灰度」同一个码，所以超管与技术运维两行各多出这一条，其余角色不变。
      */
     "/system?tab=appVersion",
+    // 接口资源（2026-11-18，TDD-网关层与统一权限 §2.23）。同样挂 system:param:read，超管与技术运维两行各多一条。
+    "/system?tab=apiResource",
     /*
      * 供应商收款账户（2026-09-29，V358 · ADR-011 自营供应商模式）。
      * 挂 finance:payout:execute —— 与「登记付款」同一个码，
@@ -214,6 +217,9 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       if (role === "TECH_OPS") for (const href of ["/system?tab=authCode", "/system?tab=industry", "/system?tab=scope"]) was.delete(href);
       if (role === "PRODUCT_OPS") was.add("/system?tab=authCode");
       if (role === "COMMUNITY_OPS") for (const href of ["/system?tab=industry", "/system?tab=scope"]) was.add(href);
+      // V683 补跨模块读码（财务读市场、商品运营读商家）：按码推算会多出这些页，真实菜单按功能点下发、没有变
+      if (role === "FINANCE") for (const href of ["/system?tab=market", "/system?tab=flags"]) was.add(href);
+      if (role === "PRODUCT_OPS") for (const href of ["/merchants?tab=plans", "/merchants?tab=plan-defs", "/merchants?tab=list", "/merchants?tab=stores", "/merchants?tab=credit", "/merchants?tab=chain"]) was.add(href);
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
@@ -582,6 +588,23 @@ describe("路由归属与面包屑", () => {
     }
     expect(missing, "这些页面 tab 在 lib/nav.ts 里没有叶子 —— 补一条，否则菜单里进不去：\n"
       + missing.join("\n")).toEqual([]);
+  });
+
+  it("★★ 支付中心页签：要么已有菜单叶子，要么在「等网关登记」清单上 —— 两边都没有 = 进不去", () => {
+    /*
+     * 支付中心的菜单点位由统一网关落库（TDD-支付中心菜单整合 G1/G4），页面先行。
+     * 这条把「先行」显式化：没登记的页签必须列在 PENDING_MENU 里；登记好了就从清单删掉
+     * （已登记却还挂在清单上同样红 —— 清单只许变短，不许当成永久豁免）。
+     */
+    const keys = PAY_CENTER_TABS.map((t) => t.key);
+    // 既有 5 个入口在菜单上用 V671 的原 href（开关打开后跳到原生页），其余用 /payment-center?tab=
+    const menuHrefs = new Set(platformNav().flatMap((sec) => (sec.children ?? []).map((l) => l.href)));
+    const registered = new Set(keys.filter((k) => menuHrefs.has(`/payment-center?tab=${k}`)));
+    const lost = keys.filter((k) => !registered.has(k) && !PENDING_MENU.includes(k));
+    const stale = PENDING_MENU.filter((k) => registered.has(k));
+    expect(lost, "这些支付中心页签既没有菜单叶子，也不在 PENDING_MENU：").toEqual([]);
+    expect(stale, "这些页签已在菜单登记，从 PENDING_MENU 删掉：").toEqual([]);
+    expect(PENDING_MENU.every((k) => keys.includes(k)), "PENDING_MENU 里有不存在的页签").toBe(true);
   });
 
   describe("服务端菜单覆盖（overlayNav）", () => {

@@ -65,6 +65,12 @@ public class PermConfigServiceImpl implements PermConfigService {
      */
     private final org.springframework.core.env.Environment environment;
 
+    /** 模块装没装由网关层回答；字段注入是为了不动构造器（直接 new 本类的测试不关心它）。 */
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.platform.ModuleAvailabilityPort> modules =
+            new org.springframework.beans.factory.support.StaticListableBeanFactory()
+                    .getBeanProvider(ai.neargo.shop.spi.platform.ModuleAvailabilityPort.class);
+
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
                                  RoleMemberMapper memberMapper, RolePermResolver resolver,
@@ -174,6 +180,12 @@ public class PermConfigServiceImpl implements PermConfigService {
      */
     // 包内可见：GatedMenuStatusTest 直接测它（AC1/AC2）
     String effectiveStatus(SysFunctionPoint p) {
+        // 模块没装：入口根本没登记，与开关关着是同一种「现在用不了」
+        ai.neargo.shop.spi.platform.ModuleAvailabilityPort available = modules.getIfAvailable();
+        if (available != null && p.getModuleCode() != null && !p.getModuleCode().isBlank()
+                && !available.available(p.getModuleCode())) {
+            return "NOT_IMPLEMENTED";
+        }
         String gate = p.getGatedBy();
         if (gate == null || gate.isBlank()) {
             return p.getBackendStatus();

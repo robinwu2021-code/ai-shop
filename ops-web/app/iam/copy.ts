@@ -202,6 +202,7 @@ const zh = {
   matrixDenied: "未配置",
   matrixUnavailable: "不可用",
   matrixPlanned: "待交付",
+  scopePayNote: "这里的商家编号只作用于商城自己的订单等数据，不作用于支付中心。支付中心能看哪些商户，由角色在支付中心「数据范围」页签里的授权决定。",
 };
 
 const en: typeof zh = {
@@ -394,6 +395,7 @@ const en: typeof zh = {
   matrixDenied: "Unassigned",
   matrixUnavailable: "Unavailable",
   matrixPlanned: "Planned",
+  scopePayNote: "The merchant number here only scopes the shop's own data such as orders, not the payment center. What a person sees in the payment center comes from their role's grants in the payment center Data scope tab.",
 };
 
 export const IAM_COPY: PageCopy<typeof zh> = { zh, en };

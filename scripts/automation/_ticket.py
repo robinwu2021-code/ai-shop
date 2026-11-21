@@ -35,8 +35,8 @@ def load_key():
 
 
 def sign_ticket(realm: str, sub: str) -> str:
-    if realm not in ("B", "OPS"):
-        raise SystemExit("realm 只能是 B 或 OPS")
+    if realm not in ("B", "OPS", "C"):
+        raise SystemExit("realm 只能是 B、OPS 或 C")
     payload = json.dumps({"realm": realm, "sub": sub, "exp": int(time.time()) + TTL_SECONDS,
                           "nonce": secrets.token_urlsafe(24)}, separators=(",", ":")).encode()
     p = _b64url(payload)

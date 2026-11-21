@@ -108,7 +108,7 @@
       "sha256": "88175ee7f98043607c8ef8b0a09f2b04210b7263db08fa2d3339290278f6248e"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java",
       "category": "modify",
       "state": "MODIFIED",
       "bytes": 12089,
@@ -136,7 +136,7 @@
       "sha256": "4134403842dfd3e88e2beef4d5425a783cf0d8aac9246e03d44a5f287fdbb6ec"
     },
     {
-      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "path": "backend/shop-gateway/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
       "category": "modify",
       "state": "MODIFIED",
       "bytes": 8079,

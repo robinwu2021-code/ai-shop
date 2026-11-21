@@ -256,10 +256,21 @@ class ArchitectureTest {
     @Test
     @DisplayName("注解与跨域类型不得用全限定名书写（会让静态扫描漏判）")
     void noFullyQualifiedReferences() {
-        Path src = Path.of("src/main/java").toAbsolutePath();
+        // 三端出口与桥接已搬到 shop-gateway（ADR-060）：两个模块都要扫，否则搬走的那六百多个文件从此没人看
+        List<Path> roots = List.of(Path.of("src/main/java").toAbsolutePath(),
+                Path.of("../shop-gateway/src/main/java").toAbsolutePath().normalize());
         List<String> offenders = new ArrayList<>();
-        try (var files = Files.walk(src)) {
-            for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+        List<Path> sources = new ArrayList<>();
+        for (Path src : roots) {
+            assertThat(src).as("源码目录不在了 —— 模块改名或搬家了？跟着改，否则这条规则少扫一块").isDirectory();
+            try (var files = Files.walk(src)) {
+                sources.addAll(files.filter(p -> p.toString().endsWith(".java")).toList());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        try {
+            for (Path f : sources) {
                 String text = Files.readString(f, StandardCharsets.UTF_8);
                 for (String line : text.split("\n")) {
                     String t = line.trim();
@@ -276,6 +287,98 @@ class ArchitectureTest {
         }
         assertThat(offenders)
                 .as("改成 import。全限定写法会让契约比对与依赖扫描漏判 —— 已因此出过三次问题")
+                .isEmpty();
+    }
+
+    /**
+     * 三端出口互不引用（ADR-060；TDD-网关层与统一权限-开发计划 M1 任务 1.8）。
+     *
+     * <p>三端出口现在住在同一个模块 shop-gateway 里，Maven 不再替我们隔开它们；
+     * 一个 B 端入口顺手引用了运营端的类，编译照过，而三端从此在代码上长在一起。
+     * 「shop-gateway 不依赖 shop-app」不在这里写规则：那是模块依赖方向，反过来 Maven 会直接报循环依赖。
+     */
+    @Test
+    @DisplayName("三端出口 portal.mp / portal.biz / portal.ops 互不引用")
+    void portalEndsMustNotDependOnEachOther() {
+        List<String> ends = List.of("mp", "biz", "ops");
+        for (String end : ends) {
+            String[] others = ends.stream().filter(other -> !other.equals(end))
+                    .map(other -> "ai.neargo.shop.portal." + other + "..").toArray(String[]::new);
+            noClasses().that().resideInAPackage("ai.neargo.shop.portal." + end + "..")
+                    .should().dependOnClassesThat().resideInAnyPackage(others)
+                    .because("三端各自独立演进；要共用的东西下沉到业务域或桥接，不在出口之间横向引用")
+                    .check(classes);
+        }
+    }
+
+    /**
+     * 桥接包不引用出口（ADR-060）。桥接按分层属于基础业务层，只是为了少一个模块才和出口放在一起；
+     * 这条规则守着它随时能整包移出去。
+     *
+     * <p>唯一的例外是 {@code PaymentCollectionExceptionHandler}：它是两个入口（一个 B 端、一个机器入口）
+     * 专用的异常处理，包名在 paybridge 下，人留在 shop-app（只有那里两个入口都看得见）。
+     */
+    @Test
+    @DisplayName("桥接包不引用出口 portal")
+    void bridgesMustNotDependOnPortals() {
+        noClasses().that().resideInAnyPackage(
+                        "ai.neargo.shop.payclient..", "ai.neargo.shop.paybridge..", "ai.neargo.shop.invbridge..",
+                        "ai.neargo.shop.commercebridge..", "ai.neargo.shop.reportbridge..",
+                        "ai.neargo.shop.merchantbridge..", "ai.neargo.shop.printbridge..",
+                        "ai.neargo.shop.logisticsbridge..", "ai.neargo.shop.promotion..", "ai.neargo.shop.points..")
+                .and().doNotHaveFullyQualifiedName("ai.neargo.shop.paybridge.PaymentCollectionExceptionHandler")
+                .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop.portal..")
+                .because("桥接被出口使用，不能反过来；反向引用会让桥接再也拆不出去")
+                .check(classes);
+    }
+
+    /**
+     * 网关公共件不认识任何一端（TDD-网关层与统一权限 §2.20；开发计划 M2 任务 2.7）。
+     * 公共件一旦引用了某一端，就会长出对那一端的特判，三端共用一份流程的前提就没了。
+     */
+    @Test
+    @DisplayName("网关公共 gateway.core 不引用 gateway.mp / biz / ops")
+    void gatewayCoreMustNotDependOnEnds() {
+        noClasses().that().resideInAPackage("ai.neargo.shop.gateway.core..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "ai.neargo.shop.gateway.mp..", "ai.neargo.shop.gateway.biz..", "ai.neargo.shop.gateway.ops..")
+                .because("差别写在端子类里，由端子类交给公共件；公共件不反过来认识端")
+                .check(classes);
+    }
+
+    /**
+     * 网关基类里固定流程的方法不许被子类改写，继承不超过「基类 → 子类」一层
+     * （TDD-网关层与统一权限 §2.21 的两条约束）。
+     */
+    @Test
+    @DisplayName("网关基类：对外的非抽象方法都是 final；子类不再被继承")
+    void gatewayBaseClassesKeepTheFlowFixed() {
+        List<String> offenders = new ArrayList<>();
+        for (var type : classes) {
+            if (!type.getPackageName().startsWith("ai.neargo.shop.gateway")) {
+                continue;
+            }
+            boolean base = type.getSimpleName().startsWith("Abstract")
+                    && type.getModifiers().contains(com.tngtech.archunit.core.domain.JavaModifier.ABSTRACT);
+            if (base) {
+                for (var method : type.getMethods()) {
+                    var modifiers = method.getModifiers();
+                    if (modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.PUBLIC)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.ABSTRACT)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.STATIC)
+                            && !modifiers.contains(com.tngtech.archunit.core.domain.JavaModifier.FINAL)) {
+                        offenders.add(type.getSimpleName() + "#" + method.getName() + " 不是 final");
+                    }
+                }
+            }
+            var parent = type.getRawSuperclass();
+            if (parent.isPresent() && parent.get().getPackageName().startsWith("ai.neargo.shop.gateway")
+                    && !parent.get().getSimpleName().startsWith("Abstract")) {
+                offenders.add(type.getSimpleName() + " 继承了非基类 " + parent.get().getSimpleName());
+            }
+        }
+        assertThat(offenders)
+                .as("流程写在基类、差别写在子类：基类的流程方法要 final，子类之下不再有子类")
                 .isEmpty();
     }
 
@@ -740,6 +843,9 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // gateway：网关层新写的代码（端基类、安全框架适配、三端的端子类；ADR-060）。
+                // 不是业务域：没有自己的业务表，只管「请求怎么进来、谁能进」。搬来的出口仍在 portal 包。
+                "gateway",
                 // Shared document identities and reservations, independent of business eligibility.
                 "numbering",
                 // App-level adapters compose existing merchant and member domains through their contracts.

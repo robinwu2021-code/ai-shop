@@ -41,6 +41,7 @@ public final class BeautyBm04ServerFixture {
         for (String entry :
                 System.getProperty("java.class.path").split(System.getProperty("path.separator"))) {
             if (entry.contains("shop-app")
+                    || entry.contains("shop-gateway")
                     || entry.contains("shop-core")
                     || entry.contains("shop-merchant")) {
                 throw new IllegalStateException("private SERVER owner classpath leak");

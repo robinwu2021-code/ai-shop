@@ -38,7 +38,7 @@ class PayAuditTrailTest {
 
     private static final Path BACKEND = Paths.get(System.getProperty("user.dir")).getParent();
     private static final Path IMPL = BACKEND.resolve(
-            "shop-app/src/main/java/ai/neargo/shop/payclient/impl");
+            "shop-gateway/src/main/java/ai/neargo/shop/payclient/impl");
 
     @Test
     @DisplayName("★★★ 拿到操作人的资金动作必须留痕 —— 漏一行不报错，事后就查不到是谁做的")

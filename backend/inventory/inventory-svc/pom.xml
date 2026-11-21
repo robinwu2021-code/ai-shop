@@ -29,6 +29,11 @@
             <artifactId>job-api</artifactId>
         </dependency>
         <dependency>
+            <!-- 验 ai-shop 网关的签名上下文（只比对）；白名单 §2.1 已列 svc-client -->
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>svc-client</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>

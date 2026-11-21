@@ -29225,6 +29225,84 @@
           "ar": null
         },
         {
+          "key": "actionKit.backToDetail",
+          "zh-CN": "返回详情",
+          "en": "Back to details",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftConflict",
+          "zh-CN": "这条记录在你编辑后被修改过，草稿基于旧版本，请核对后再提交",
+          "en": "This record changed after you started editing. Your draft is based on an older version; check it before submitting",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftDiscard",
+          "zh-CN": "放弃草稿",
+          "en": "Discard draft",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftKept",
+          "zh-CN": "草稿已保存，可稍后继续",
+          "en": "Draft saved. You can continue later",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftRestored",
+          "zh-CN": "已恢复 {time} 的草稿",
+          "en": "Draft from {time} restored",
+          "ar": null
+        },
+        {
+          "key": "actionKit.draftUnavailable",
+          "zh-CN": "浏览器无法存草稿，关闭前请先提交",
+          "en": "This browser can't save drafts. Submit before closing",
+          "ar": null
+        },
+        {
+          "key": "actionKit.hide",
+          "zh-CN": "隐藏",
+          "en": "Hide",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDrafts",
+          "zh-CN": "我的草稿",
+          "en": "My drafts",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDraftsCount",
+          "zh-CN": "我的草稿 ({n})",
+          "en": "My drafts ({n})",
+          "ar": null
+        },
+        {
+          "key": "actionKit.myDraftsEmpty",
+          "zh-CN": "没有未提交的草稿",
+          "en": "No unsubmitted drafts",
+          "ar": null
+        },
+        {
+          "key": "actionKit.newRecord",
+          "zh-CN": "新建",
+          "en": "New",
+          "ar": null
+        },
+        {
+          "key": "actionKit.reveal",
+          "zh-CN": "显示",
+          "en": "Show",
+          "ar": null
+        },
+        {
+          "key": "actionKit.submitFailed",
+          "zh-CN": "提交失败：{msg}",
+          "en": "Submit failed: {msg}",
+          "ar": null
+        },
+        {
           "key": "afterSaleStatus.APPLIED",
           "zh-CN": "待商家处理",
           "en": "Awaiting merchant",
@@ -30503,9 +30581,87 @@
           "ar": null
         },
         {
+          "key": "payKit.approvalRequired",
+          "zh-CN": "这项修改需要审批，提交后由审核人在「审核待办」处理",
+          "en": "This change needs approval. After you submit it, a reviewer handles it in Approvals",
+          "ar": null
+        },
+        {
+          "key": "payKit.approvalSubmitted",
+          "zh-CN": "已提交审批",
+          "en": "Submitted for approval",
+          "ar": null
+        },
+        {
+          "key": "payKit.copied",
+          "zh-CN": "已复制",
+          "en": "Copied",
+          "ar": null
+        },
+        {
+          "key": "payKit.copy",
+          "zh-CN": "复制",
+          "en": "Copy",
+          "ar": null
+        },
+        {
+          "key": "payKit.goApprovals",
+          "zh-CN": "去审核待办",
+          "en": "Go to Approvals",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.CLOSED",
+          "zh-CN": "已关闭",
+          "en": "Closed",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.CREATED",
+          "zh-CN": "待支付",
+          "en": "Awaiting payment",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.FAILED",
+          "zh-CN": "支付失败",
+          "en": "Failed",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.PAID",
+          "zh-CN": "已支付",
+          "en": "Paid",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.PAYING",
+          "zh-CN": "支付中",
+          "en": "Paying",
+          "ar": null
+        },
+        {
+          "key": "payKit.orderStatus.REFUNDED",
+          "zh-CN": "已退款",
+          "en": "Refunded",
+          "ar": null
+        },
+        {
           "key": "phase.backHome",
           "zh-CN": "返回工作台",
           "en": "Back to dashboard",
+          "ar": null
+        },
+        {
+          "key": "phase.deniedDesc",
+          "zh-CN": "你的角色没有开放这一页。需要的话请联系管理员在「角色权限」里授予。",
+          "en": "Your role does not include this page. Ask an administrator to grant it under Roles & permissions.",
+          "ar": null
+        },
+        {
+          "key": "phase.deniedTitle",
+          "zh-CN": "没有这个页面的权限",
+          "en": "No access to this page",
           "ar": null
         },
         {
@@ -37880,286 +38036,6 @@
         "module": "print"
       },
       {
-        "host": "InvManagedAppService",
-        "name": "DONE",
-        "value": "DONE",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvManagedAppService",
-        "name": "BLOCKED",
-        "value": "BLOCKED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvManagedAppService",
-        "name": "NEEDS_CONFIRM",
-        "value": "NEEDS_CONFIRM",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "PREFIX",
-        "value": "INV_MIRROR_",
-        "zh": "域前缀。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESERVE",
-        "value": "INV_MIRROR_RESERVE",
-        "zh": "平台锁库 → 进销存建预留。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "COMMIT",
-        "value": "INV_MIRROR_COMMIT",
-        "zh": "平台确认 → 进销存把预留转成出库。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ALLOCATE",
-        "value": "INV_MIRROR_ALLOCATE",
-        "zh": "Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ISSUE",
-        "value": "INV_MIRROR_ISSUE",
-        "zh": "Fulfillment handoff: only the referenced sub-order lines are issued.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RELEASE_ALLOCATED",
-        "value": "INV_MIRROR_RELEASE_ALLOCATED",
-        "zh": "Refund before handoff releases a paid allocation.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RELEASE",
-        "value": "INV_MIRROR_RELEASE",
-        "zh": "平台释放 → 进销存撤销预留。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESTORE",
-        "value": "INV_MIRROR_RESTORE",
-        "zh": "售后退回 → 进销存回补库存。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RESTORE_ORIGINAL",
-        "value": "INV_MIRROR_RESTORE_ORIGINAL",
-        "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "RETURN_RECEIPT",
-        "value": "INV_MIRROR_RETURN_RECEIPT",
-        "zh": "V2 physical return acceptance with quality routing; independent of cash refund callbacks.",
-        "module": "shop-app"
-      },
-      {
-        "host": "InvMirrorEvent",
-        "name": "ADJUST",
-        "value": "INV_MIRROR_ADJUST",
-        "zh": "商家在商品页手改库存 → 进销存跟着改。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Channel",
-        "name": "PLATFORM_TO_INVENTORY",
-        "value": "PLATFORM_TO_INVENTORY",
-        "zh": "平台 → 进销存（sys_outbox）：建品投影、上架变更走这条",
-        "module": "shop-app"
-      },
-      {
-        "host": "Channel",
-        "name": "INVENTORY_TO_PLATFORM",
-        "value": "INVENTORY_TO_PLATFORM",
-        "zh": "进销存 → 平台（inv_outbox）：库存镜像回写走这条",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "OK",
-        "value": "OK",
-        "zh": "没有积压",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "BACKLOG",
-        "value": "BACKLOG",
-        "zh": "有积压，但都还新鲜 —— 投递任务每 5 秒一轮，这是正常的处理中",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "DISPATCHER_STALLED",
-        "value": "DISPATCHER_STALLED",
-        "zh": "老积压且一次都没被碰过：**投递任务没在跑**。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Verdict",
-        "name": "CONSUMER_FAILING",
-        "value": "CONSUMER_FAILING",
-        "zh": "反复投递反复失败：**消费者在抛异常**。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_GOODS",
-        "value": "NO_GOODS",
-        "zh": "一个品都没建",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "IN_AUDIT",
-        "value": "IN_AUDIT",
-        "zh": "建了品但全卡在审核 —— **这一层的账要算在平台头上**，不是商家",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NOT_ON_SALE",
-        "value": "NOT_ON_SALE",
-        "zh": "审完了也没上架：商家自己没点，或者被驳回后没改",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_ACCOUNT",
-        "value": "NO_ACCOUNT",
-        "zh": "上架了但进销存里没有账 —— 多半是投影链路断了，见「链路健康」",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "NO_INBOUND",
-        "value": "NO_INBOUND",
-        "zh": "建了账但一次没进过货：进销存对他来说还只是个空壳",
-        "module": "shop-app"
-      },
-      {
-        "host": "Stuck",
-        "name": "STALE_LEDGER",
-        "value": "STALE_LEDGER",
-        "zh": "进过货，但很久没动了",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "OPEN_ORDERS",
-        "value": "OPEN_ORDERS",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "PENDING_PAYOUT",
-        "value": "PENDING_PAYOUT",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "PAID_PLAN_ACTIVE",
-        "value": "PAID_PLAN_ACTIVE",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "MerchantDeregisterChecks",
-        "name": "BUYER_OPEN_ORDERS",
-        "value": "BUYER_OPEN_ORDERS",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "PaymentCollectionWork",
-        "name": "TYPE",
-        "value": "MERCHANT_COLLECTION_RECEIVED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "WxShippingUploadRequested",
-        "name": "TYPE",
-        "value": "WX_SHIPPING_UPLOAD_REQUESTED",
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "host": "PayServiceApplyRequests",
-        "name": "UME_ENTITY_PREFIX",
-        "value": "MUME",
-        "zh": "UME 导入主体编号前缀（TDD-UME迁移建档 AC3）",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "BIZ_APP",
-        "value": "END_BIZ_APP",
-        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "APP_POS",
-        "value": "END_APP_POS",
-        "zh": "感应收款 / POS 端。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "RETAIL",
-        "value": "END_RETAIL",
-        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "FNB",
-        "value": "END_FNB",
-        "zh": "餐饮作业：点餐单、菜单、桌台、出品看板、报表。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "SERVICE",
-        "value": "END_SERVICE",
-        "zh": "服务业作业：预约、服务项目、排班、报表。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "MARKETING",
-        "value": "END_MARKETING",
-        "zh": "会员与营销。",
-        "module": "shop-app"
-      },
-      {
-        "host": "Codes",
-        "name": "CHAIN",
-        "value": "END_CHAIN",
-        "zh": "连锁：跨店管理、考勤工资。",
-        "module": "shop-app"
-      },
-      {
         "host": "BizKey",
         "name": "OPERATING_ENTITY",
         "value": "OE",
@@ -39550,6 +39426,13 @@
         "name": "BEAUTY",
         "value": "BEAUTY",
         "zh": "美业独立内部业务进程。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "INVENTORY",
+        "value": "INVENTORY",
+        "zh": "库存（进销存）独立服务。",
         "module": "shop-base"
       },
       {
@@ -43459,6 +43342,293 @@
         "module": "shop-core"
       },
       {
+        "host": "ApiResource",
+        "name": "LOCAL",
+        "value": "LOCAL",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "BLOCKED",
+        "value": "BLOCKED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "NEEDS_CONFIRM",
+        "value": "NEEDS_CONFIRM",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "PREFIX",
+        "value": "INV_MIRROR_",
+        "zh": "域前缀。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESERVE",
+        "value": "INV_MIRROR_RESERVE",
+        "zh": "平台锁库 → 进销存建预留。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "COMMIT",
+        "value": "INV_MIRROR_COMMIT",
+        "zh": "平台确认 → 进销存把预留转成出库。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ALLOCATE",
+        "value": "INV_MIRROR_ALLOCATE",
+        "zh": "Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ISSUE",
+        "value": "INV_MIRROR_ISSUE",
+        "zh": "Fulfillment handoff: only the referenced sub-order lines are issued.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE_ALLOCATED",
+        "value": "INV_MIRROR_RELEASE_ALLOCATED",
+        "zh": "Refund before handoff releases a paid allocation.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE",
+        "value": "INV_MIRROR_RELEASE",
+        "zh": "平台释放 → 进销存撤销预留。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE",
+        "value": "INV_MIRROR_RESTORE",
+        "zh": "售后退回 → 进销存回补库存。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE_ORIGINAL",
+        "value": "INV_MIRROR_RESTORE_ORIGINAL",
+        "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RETURN_RECEIPT",
+        "value": "INV_MIRROR_RETURN_RECEIPT",
+        "zh": "V2 physical return acceptance with quality routing; independent of cash refund callbacks.",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ADJUST",
+        "value": "INV_MIRROR_ADJUST",
+        "zh": "商家在商品页手改库存 → 进销存跟着改。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Channel",
+        "name": "PLATFORM_TO_INVENTORY",
+        "value": "PLATFORM_TO_INVENTORY",
+        "zh": "平台 → 进销存（sys_outbox）：建品投影、上架变更走这条",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Channel",
+        "name": "INVENTORY_TO_PLATFORM",
+        "value": "INVENTORY_TO_PLATFORM",
+        "zh": "进销存 → 平台（inv_outbox）：库存镜像回写走这条",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "OK",
+        "value": "OK",
+        "zh": "没有积压",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "BACKLOG",
+        "value": "BACKLOG",
+        "zh": "有积压，但都还新鲜 —— 投递任务每 5 秒一轮，这是正常的处理中",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "DISPATCHER_STALLED",
+        "value": "DISPATCHER_STALLED",
+        "zh": "老积压且一次都没被碰过：**投递任务没在跑**。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Verdict",
+        "name": "CONSUMER_FAILING",
+        "value": "CONSUMER_FAILING",
+        "zh": "反复投递反复失败：**消费者在抛异常**。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_GOODS",
+        "value": "NO_GOODS",
+        "zh": "一个品都没建",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "IN_AUDIT",
+        "value": "IN_AUDIT",
+        "zh": "建了品但全卡在审核 —— **这一层的账要算在平台头上**，不是商家",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NOT_ON_SALE",
+        "value": "NOT_ON_SALE",
+        "zh": "审完了也没上架：商家自己没点，或者被驳回后没改",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_ACCOUNT",
+        "value": "NO_ACCOUNT",
+        "zh": "上架了但进销存里没有账 —— 多半是投影链路断了，见「链路健康」",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "NO_INBOUND",
+        "value": "NO_INBOUND",
+        "zh": "建了账但一次没进过货：进销存对他来说还只是个空壳",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Stuck",
+        "name": "STALE_LEDGER",
+        "value": "STALE_LEDGER",
+        "zh": "进过货，但很久没动了",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "OPEN_ORDERS",
+        "value": "OPEN_ORDERS",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PENDING_PAYOUT",
+        "value": "PENDING_PAYOUT",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "PAID_PLAN_ACTIVE",
+        "value": "PAID_PLAN_ACTIVE",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "MerchantDeregisterChecks",
+        "name": "BUYER_OPEN_ORDERS",
+        "value": "BUYER_OPEN_ORDERS",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "PaymentCollectionWork",
+        "name": "TYPE",
+        "value": "MERCHANT_COLLECTION_RECEIVED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "WxShippingUploadRequested",
+        "name": "TYPE",
+        "value": "WX_SHIPPING_UPLOAD_REQUESTED",
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "PayServiceApplyRequests",
+        "name": "UME_ENTITY_PREFIX",
+        "value": "MUME",
+        "zh": "UME 导入主体编号前缀（TDD-UME迁移建档 AC3）",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "BIZ_APP",
+        "value": "END_BIZ_APP",
+        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "APP_POS",
+        "value": "END_APP_POS",
+        "zh": "感应收款 / POS 端。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "RETAIL",
+        "value": "END_RETAIL",
+        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "FNB",
+        "value": "END_FNB",
+        "zh": "餐饮作业：点餐单、菜单、桌台、出品看板、报表。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "SERVICE",
+        "value": "END_SERVICE",
+        "zh": "服务业作业：预约、服务项目、排班、报表。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "MARKETING",
+        "value": "END_MARKETING",
+        "zh": "会员与营销。",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "Codes",
+        "name": "CHAIN",
+        "value": "END_CHAIN",
+        "zh": "连锁：跨店管理、考勤工资。",
+        "module": "shop-gateway"
+      },
+      {
         "host": "ShopInventorySystem",
         "name": "CODE",
         "value": "SHOP",
@@ -44273,6 +44443,17 @@
     ],
     "javaEnums": [
       {
+        "name": "Access",
+        "values": [
+          "PUBLIC",
+          "LOGIN",
+          "POINT",
+          "DEFER"
+        ],
+        "zh": "一个地址的放行方式。",
+        "module": "shop-gateway"
+      },
+      {
         "name": "AccessMode",
         "values": [
           "MERCHANT_OWN",
@@ -44324,16 +44505,6 @@
       {
         "name": "Action",
         "values": [
-          "LOGIN",
-          "OTP_SEND",
-          "EMAIL_OTP_SEND"
-        ],
-        "zh": "",
-        "module": "shop-app"
-      },
-      {
-        "name": "Action",
-        "values": [
           "EARN",
           "HOLD",
           "RELEASE",
@@ -44380,6 +44551,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Action",
+        "values": [
+          "LOGIN",
+          "OTP_SEND",
+          "EMAIL_OTP_SEND"
+        ],
+        "zh": "",
+        "module": "shop-gateway"
       },
       {
         "name": "Action",
@@ -45187,7 +45368,7 @@
           "BANK_COVER"
         ],
         "zh": "App 的识别类型。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "ErrorCode",
@@ -45737,7 +45918,7 @@
           "CHAIN"
         ],
         "zh": "功能分组，端上按组折叠。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "GuardDecision",
@@ -45767,7 +45948,7 @@
           "COORDINATED"
         ],
         "zh": "商城硬件是否接进销存。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "Holder",
@@ -45864,16 +46045,6 @@
           "INSTALLED",
           "CORRUPT"
         ],
-        "zh": "ABSENT is legal only when neither a V606 marker nor any new owner table exists.",
-        "module": "shop-app"
-      },
-      {
-        "name": "Installation",
-        "values": [
-          "ABSENT",
-          "INSTALLED",
-          "CORRUPT"
-        ],
         "zh": "ABSENT is legal only when neither a V605 marker nor any new owner table exists.",
         "module": "shop-core"
       },
@@ -45886,6 +46057,16 @@
         ],
         "zh": "ABSENT is legal only when neither a V604 marker nor any new owner table exists.",
         "module": "shop-core"
+      },
+      {
+        "name": "Installation",
+        "values": [
+          "ABSENT",
+          "INSTALLED",
+          "CORRUPT"
+        ],
+        "zh": "ABSENT is legal only when neither a V606 marker nor any new owner table exists.",
+        "module": "shop-gateway"
       },
       {
         "name": "Installation",
@@ -46135,6 +46316,17 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "CODE",
+          "ALL",
+          "ANY",
+          "SCOPED"
+        ],
+        "zh": "节点种类。",
+        "module": "shop-gateway"
       },
       {
         "name": "Kind",
@@ -46440,7 +46632,7 @@
           "ACK"
         ],
         "zh": "",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "OrderBy",
@@ -46564,6 +46756,20 @@
         "module": "shop-base"
       },
       {
+        "name": "Outcome",
+        "values": [
+          "OK",
+          "MISSING",
+          "MALFORMED",
+          "BAD_SIGNATURE",
+          "EXPIRED",
+          "REQUEST_MISMATCH",
+          "BODY_MISMATCH"
+        ],
+        "zh": "验证结论。",
+        "module": "svc-client"
+      },
+      {
         "name": "OverlapMode",
         "values": [
           "DISJOINT",
@@ -46640,7 +46846,7 @@
           "UNKNOWN"
         ],
         "zh": "收款开通状态。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "PayErrorCode",
@@ -46837,6 +47043,15 @@
         ],
         "zh": "",
         "module": "commerce"
+      },
+      {
+        "name": "PointType",
+        "values": [
+          "MENU",
+          "ACTION"
+        ],
+        "zh": "功能点的种类：菜单，或页面内的一个动作。",
+        "module": "shop-gateway"
       },
       {
         "name": "PortalFace",
@@ -47649,6 +47864,16 @@
       {
         "name": "State",
         "values": [
+          "ON",
+          "CLOSED",
+          "ABSENT"
+        ],
+        "zh": "一端的装配状态。",
+        "module": "shop-gateway"
+      },
+      {
+        "name": "State",
+        "values": [
           "NOT_READY",
           "INITIALIZING",
           "READY",
@@ -47909,7 +48134,7 @@
           "HR"
         ],
         "zh": "商户 App 的功能注册表（TDD-B端门店功能矩阵与方案准入 §2）。",
-        "module": "shop-app"
+        "module": "shop-gateway"
       },
       {
         "name": "StoreStatus",
@@ -48014,10 +48239,11 @@
         "name": "TicketRealm",
         "values": [
           "B",
-          "OPS"
+          "OPS",
+          "C"
         ],
-        "zh": "",
-        "module": "shop-app"
+        "zh": "B 店主、OPS 运营、C 消费者（2026-11-19 加：三端都要能用测试账号从接口验证）。",
+        "module": "shop-gateway"
       },
       {
         "name": "TraceStatus",
@@ -48279,6 +48505,45 @@
           "RETURN_REFUND"
         ],
         "zh": "售后类型。"
+      },
+      {
+        "name": "ApiResourceAccess",
+        "client": "ops-web",
+        "values": [
+          "PUBLIC",
+          "LOGIN",
+          "POINT",
+          "DEFER"
+        ],
+        "zh": "权限要求的类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 留给入口方法判"
+      },
+      {
+        "name": "ApiResourceAdjustableAccess",
+        "client": "ops-web",
+        "values": [
+          "LOGIN",
+          "POINT",
+          "DEFER"
+        ],
+        "zh": "可以在库里调整成的类别（不能调成公开）"
+      },
+      {
+        "name": "ApiResourceSource",
+        "client": "ops-web",
+        "values": [
+          "SCAN",
+          "MANUAL"
+        ],
+        "zh": "接口资源的来源"
+      },
+      {
+        "name": "ApiResourceStatus",
+        "client": "ops-web",
+        "values": [
+          "ENABLED",
+          "DISABLED"
+        ],
+        "zh": "接口资源的状态"
       },
       {
         "name": "AppPlatform",
@@ -54099,70 +54364,6 @@
       "module": "shop-app"
     },
     {
-      "host": "InvMirrorEvent",
-      "name": "ALL",
-      "type": "Set<String>",
-      "value": "Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED, RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST)",
-      "zh": "全部镜像事件。",
-      "module": "shop-app"
-    },
-    {
-      "host": "SettleBatchJob",
-      "name": "NAME",
-      "type": "String",
-      "value": "\"settle-batch\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PayChannelAccountClaimForwarder",
-      "name": "BASE",
-      "type": "String",
-      "value": "\"/biz/pay/v2/channel-account-claims\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PayServiceApplyRequests",
-      "name": "PERM",
-      "type": "String",
-      "value": "\"merchant:merchant:pay-apply\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "PaymentReadRouter",
-      "name": "HEADER",
-      "type": "String",
-      "value": "\"X-Pay-Read-Environment\"",
-      "zh": "",
-      "module": "shop-app"
-    },
-    {
-      "host": "BizFoundationController",
-      "name": "OTHER",
-      "type": "String",
-      "value": "StoreVO.OTHER",
-      "zh": "行业与子业态的「其他」都用这个码。",
-      "module": "shop-app"
-    },
-    {
-      "host": "ReportDailyRollupJob",
-      "name": "WATERMARK_KEY",
-      "type": "String",
-      "value": "\"daily-store\"",
-      "zh": "水位的键。",
-      "module": "shop-app"
-    },
-    {
-      "host": "ReportDailyRollupJob",
-      "name": "GOODS_WATERMARK_KEY",
-      "type": "String",
-      "value": "\"daily-goods\"",
-      "zh": "商品日汇总的水位。",
-      "module": "shop-app"
-    },
-    {
       "host": "ApiResult",
       "name": "OK",
       "type": "int",
@@ -55556,6 +55757,534 @@
     },
     {
       "host": "Perms",
+      "name": "PAY_STORE_VIEW",
+      "type": "String",
+      "value": "\"pay:store:view\"",
+      "zh": "支付中心原生页（TDD-支付中心运营页面 P1）：与 near-pay /pay-ops/v2 守卫同名的码。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_MANAGE",
+      "type": "String",
+      "value": "\"pay:store:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_APPROVE",
+      "type": "String",
+      "value": "\"pay:store:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_POLICY_VIEW",
+      "type": "String",
+      "value": "\"pay:collection-policy:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_POLICY_MANAGE",
+      "type": "String",
+      "value": "\"pay:collection-policy:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_MANAGE",
+      "type": "String",
+      "value": "\"pay:merchant:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_APPROVE",
+      "type": "String",
+      "value": "\"pay:merchant:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_MANAGE",
+      "type": "String",
+      "value": "\"pay:onboarding:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ONBOARDING_APPROVE",
+      "type": "String",
+      "value": "\"pay:onboarding:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_COMPENSATE",
+      "type": "String",
+      "value": "\"pay:order:compensate\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_VIEW",
+      "type": "String",
+      "value": "\"pay:approval:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_REVIEW",
+      "type": "String",
+      "value": "\"pay:approval:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_DISPATCH",
+      "type": "String",
+      "value": "\"pay:approval:dispatch\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PRODUCT_VIEW",
+      "type": "String",
+      "value": "\"pay:product:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PRODUCT_MANAGE",
+      "type": "String",
+      "value": "\"pay:product:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_ENTRY_VIEW",
+      "type": "String",
+      "value": "\"pay:collection-entry:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_COLLECTION_ENTRY_MANAGE",
+      "type": "String",
+      "value": "\"pay:collection-entry:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_VIEW",
+      "type": "String",
+      "value": "\"pay:data-scope:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_MANAGE",
+      "type": "String",
+      "value": "\"pay:data-scope:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_DATA_SCOPE_APPROVE",
+      "type": "String",
+      "value": "\"pay:data-scope:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_VIEW",
+      "type": "String",
+      "value": "\"pay:terminal:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:terminal:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TERMINAL_VERIFY",
+      "type": "String",
+      "value": "\"pay:terminal:verify\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_VIEW",
+      "type": "String",
+      "value": "\"pay:app:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_APPROVE",
+      "type": "String",
+      "value": "\"pay:app:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:credential:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_TRACE_VIEW",
+      "type": "String",
+      "value": "\"pay:trace:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_VIEW",
+      "type": "String",
+      "value": "\"pay:alert-rule:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_MANAGE",
+      "type": "String",
+      "value": "\"pay:alert-rule:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_RULE_APPROVE",
+      "type": "String",
+      "value": "\"pay:alert-rule:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_EVENT_VIEW",
+      "type": "String",
+      "value": "\"pay:alert-event:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ALERT_EVENT_HANDLE",
+      "type": "String",
+      "value": "\"pay:alert-event:handle\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APPROVAL_FLOW_VIEW",
+      "type": "String",
+      "value": "\"pay:approval-flow:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FUND_ACCOUNT_VIEW",
+      "type": "String",
+      "value": "\"pay:fund-account:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_SETTLEMENT_VIEW",
+      "type": "String",
+      "value": "\"pay:settlement:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_VIEW",
+      "type": "String",
+      "value": "\"pay:withdrawal:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_REVIEW",
+      "type": "String",
+      "value": "\"pay:withdrawal:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_WITHDRAWAL_MANAGE",
+      "type": "String",
+      "value": "\"pay:withdrawal:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PAYOUT_VIEW",
+      "type": "String",
+      "value": "\"pay:payout:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PAYOUT_MANAGE",
+      "type": "String",
+      "value": "\"pay:payout:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_RECON_DIFF_VIEW",
+      "type": "String",
+      "value": "\"pay:recon-diff:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_RECON_DIFF_MANAGE",
+      "type": "String",
+      "value": "\"pay:recon-diff:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORED_VALUE_VIEW",
+      "type": "String",
+      "value": "\"pay:stored-value:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_COST_VIEW",
+      "type": "String",
+      "value": "\"pay:channel-cost:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_COST_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel-cost:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FEE_PLAN_VIEW",
+      "type": "String",
+      "value": "\"pay:fee-plan:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_FEE_PLAN_MANAGE",
+      "type": "String",
+      "value": "\"pay:fee-plan:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_VIEW",
+      "type": "String",
+      "value": "\"pay:channel-account:view\"",
+      "zh": "渠道账户（商户「渠道账户」）与门店渠道绑定：查看 / 登记与维护 / 驳回核验与换绑执行分开授权（near-pay 同名码，TDD-支付中心运营页面 §2.11）",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_MANAGE",
+      "type": "String",
+      "value": "\"pay:channel-account:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_APPROVE",
+      "type": "String",
+      "value": "\"pay:channel-account:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_VIEW",
+      "type": "String",
+      "value": "\"pay:store-binding:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_MANAGE",
+      "type": "String",
+      "value": "\"pay:store-binding:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_STORE_BINDING_APPROVE",
+      "type": "String",
+      "value": "\"pay:store-binding:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_AUDIT_VIEW",
+      "type": "String",
+      "value": "\"pay:audit:view\"",
+      "zh": "near-pay 运营端（/pay-ops/v2）用到、此前只能靠 near-pay 自己的映射（SY03）授予的码 （TDD-支付运营端经网关转发与权限下沉 §9）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_TRANSFER",
+      "type": "String",
+      "value": "\"pay:channel-account:transfer\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_TRANSFER_APPROVE",
+      "type": "String",
+      "value": "\"pay:channel-account:transfer:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_VIEW",
+      "type": "String",
+      "value": "\"pay:credential:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_APPROVE",
+      "type": "String",
+      "value": "\"pay:credential:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MEMBER_VIEW",
+      "type": "String",
+      "value": "\"pay:member:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MEMBER_MANAGE",
+      "type": "String",
+      "value": "\"pay:member:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_REPAIR",
+      "type": "String",
+      "value": "\"pay:merchant:repair\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_REPAIR_APPROVE",
+      "type": "String",
+      "value": "\"pay:merchant:repair:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_VIEW",
+      "type": "String",
+      "value": "\"pay:permission:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_MANAGE",
+      "type": "String",
+      "value": "\"pay:permission:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_APPROVE",
+      "type": "String",
+      "value": "\"pay:permission:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SEC_KEY_VIEW",
       "type": "String",
       "value": "\"sec:key:view\"",
@@ -56268,6 +56997,14 @@
     },
     {
       "host": "Perms",
+      "name": "SYSTEM_API_RESOURCE_UPDATE",
+      "type": "String",
+      "value": "\"system:api-resource:update\"",
+      "zh": "在「接口资源」页停用或恢复一条链接（TDD-网关层与统一权限 §2.23）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SYSTEM_TESTPHONE_READ",
       "type": "String",
       "value": "\"system:testphone:read\"",
@@ -56400,6 +57137,14 @@
       "type": "String",
       "value": "\"elec:base:manage\"",
       "zh": "元器件厂牌与别名维护。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "RedisTokenStore",
+      "name": "DEFAULT_KEY_PREFIX",
+      "type": "String",
+      "value": "\"shop:session:\"",
+      "zh": "默认键前缀。",
       "module": "shop-base-auth"
     },
     {
@@ -56843,6 +57588,206 @@
       "module": "shop-core"
     },
     {
+      "host": "SessionStoreKinds",
+      "name": "GLOBAL",
+      "type": "String",
+      "value": "\"shop.auth.token-store\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "BY_REALM",
+      "type": "String",
+      "value": "\"shop.auth.token-store-by-realm.\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "DB",
+      "type": "String",
+      "value": "\"db\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SessionStoreKinds",
+      "name": "REDIS",
+      "type": "String",
+      "value": "\"redis\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "RETAIL",
+      "type": "String",
+      "value": "\"retail\"",
+      "zh": "商家端的基础模块：零售。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PLATFORM",
+      "type": "String",
+      "value": "\"platform\"",
+      "zh": "运营端的基础模块：平台。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PAY",
+      "type": "String",
+      "value": "\"pay\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "INVENTORY",
+      "type": "String",
+      "value": "\"inventory\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "SERVICE",
+      "type": "String",
+      "value": "\"service\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "PRINT",
+      "type": "String",
+      "value": "\"print\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "COMMERCE",
+      "type": "String",
+      "value": "\"commerce\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "ELEC",
+      "type": "String",
+      "value": "\"elec\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ModuleOwnership",
+      "name": "JOB",
+      "type": "String",
+      "value": "\"job\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PermRuleParser",
+      "name": "OPS_METHODS",
+      "type": "Set<String>",
+      "value": "Set.of(\"can\")",
+      "zh": "运营端的写法。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PermRuleParser",
+      "name": "BIZ_METHODS",
+      "type": "Set<String>",
+      "value": "Set.of(\"canBiz\", \"canAnyBiz\")",
+      "zh": "B 端的写法：按当前门店判的 canBiz，以及任一即可的 canAnyBiz。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ApiResourceAdmin",
+      "name": "SELF_PREFIX",
+      "type": "String",
+      "value": "\"/ops/api-resources\"",
+      "zh": "本页自己的接口都在这个前缀下。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayOpsPassThrough",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/ops/pay-ops/v2\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "InvMirrorEvent",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED, RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST)",
+      "zh": "全部镜像事件。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SettleBatchJob",
+      "name": "NAME",
+      "type": "String",
+      "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayChannelAccountClaimForwarder",
+      "name": "BASE",
+      "type": "String",
+      "value": "\"/biz/pay/v2/channel-account-claims\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayServiceApplyRequests",
+      "name": "PERM",
+      "type": "String",
+      "value": "\"merchant:merchant:pay-apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PaymentReadRouter",
+      "name": "HEADER",
+      "type": "String",
+      "value": "\"X-Pay-Read-Environment\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "BizFoundationController",
+      "name": "OTHER",
+      "type": "String",
+      "value": "StoreVO.OTHER",
+      "zh": "行业与子业态的「其他」都用这个码。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-store\"",
+      "zh": "水位的键。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "GOODS_WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-goods\"",
+      "zh": "商品日汇总的水位。",
+      "module": "shop-gateway"
+    },
+    {
       "host": "StoreSlugs",
       "name": "PATTERN",
       "type": "Pattern",
@@ -57017,6 +57962,30 @@
       "value": "\"_USER\"",
       "zh": "entityNo 与 storeNo 的哨兵值：这份资产属于一个 C 端用户， 不属于任何经营主体，也不属于任何门店。",
       "module": "shop-store-mybatis"
+    },
+    {
+      "host": "SignedContextCodec",
+      "name": "HEADER_CONTEXT",
+      "type": "String",
+      "value": "\"X-Gateway-Context\"",
+      "zh": "",
+      "module": "svc-client"
+    },
+    {
+      "host": "SignedContextCodec",
+      "name": "HEADER_SIGNATURE",
+      "type": "String",
+      "value": "\"X-Gateway-Signature\"",
+      "zh": "",
+      "module": "svc-client"
+    },
+    {
+      "host": "SignedContextVerifier",
+      "name": "DEFAULT_WINDOW",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
+      "zh": "默认时间窗：前后各 5 分钟，容得下机器之间的时钟偏差，又不至于让截获的请求长期可重放。",
+      "module": "svc-client"
     }
   ],
   "dependencies": {
@@ -57041,6 +58010,7 @@
         "ai.neargo.inventory:inventory-domain",
         "ai.neargo.inventory:inventory-svc",
         "cloud.tianai.captcha:tianai-captcha",
+        "com.alibaba.nacos:nacos-client",
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",

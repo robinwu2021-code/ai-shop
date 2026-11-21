@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.gateway.core.end.GatewayEndRuntimes;
 import ai.neargo.auth.store.AuthCache;
 import ai.neargo.auth.store.IdentityLoader;
 import ai.neargo.auth.store.LoginLogDao;
@@ -66,9 +67,10 @@ public class DbSessionConfig {
     @Conditional(TokenStoreSelection.MerchantUsesDb.class)
     AccountSessionVerifier merchantAccountSessionVerifier(JdbcClient authJdbcClient,
             MerchantIdentityLoader merchants, ConsumerIdentityLoader consumers,
-            PlatformTransactionManager manager) {
+            PlatformTransactionManager manager, ObjectProvider<GatewayEndRuntimes> runtimes) {
         return new DbAccountSessionVerifier(
-                new SessionDao(authJdbcClient, SessionProfiles.MERCHANT),
+                new SessionDao(runtimes.getIfAvailable() == null ? authJdbcClient
+                        : runtimes.getIfAvailable().jdbc(Realm.MERCHANT).orElse(authJdbcClient), SessionProfiles.MERCHANT),
                 new CompositeIdentityLoader<>(merchants, consumers), Clock.systemDefaultZone(), manager);
     }
 
@@ -81,17 +83,21 @@ public class DbSessionConfig {
             OperatorIdentityLoader operators,
             java.util.Map<Realm, LoginLogWriter> loginLogWriters,
             Environment env,
-            @Qualifier(TokenStoreConfig.SHARED) ObjectProvider<TokenStore> sharedStore) {
+            @Qualifier(TokenStoreConfig.SHARED) ObjectProvider<TokenStore> sharedStore,
+            ObjectProvider<GatewayEndRuntimes> runtimes,
+            ObjectProvider<tools.jackson.databind.ObjectMapper> mapper) {
+        // 某一端配了自己的数据源或 Redis（ADR-061）就用它自己的；没配的照旧落在主库与共用存储上
+        GatewayEndTokenStores dedicated = new GatewayEndTokenStores(runtimes.getIfAvailable(), mapper.getIfAvailable(), env);
 
         Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
         byRealm.put(Realm.CONSUMER, TokenStoreSelection.usesDb(env, Realm.CONSUMER)
-                ? store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
+                ? store(dedicated.jdbc(Realm.CONSUMER, authJdbcClient), Realm.CONSUMER, SessionProfiles.CONSUMER,
                         // A7 之后 C 端池里只有 C 端会话，过渡期那个桥接器已删
                         consumers,
                         loginLogWriters.get(Realm.CONSUMER))
-                : shared(sharedStore, Realm.CONSUMER, env));
+                : dedicated.redisStore(Realm.CONSUMER).orElseGet(() -> shared(sharedStore, Realm.CONSUMER, env)));
         byRealm.put(Realm.MERCHANT, TokenStoreSelection.usesDb(env, Realm.MERCHANT)
-                ? store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
+                ? store(dedicated.jdbc(Realm.MERCHANT, authJdbcClient), Realm.MERCHANT, SessionProfiles.MERCHANT,
                         /*
                          * **B 端池里装着两类主体**，按会话行上的 subject_kind 分发：
                          *   MCH —— 店员从 /biz/auth/staff-login 进来，主体是 mch_account_no
@@ -102,11 +108,11 @@ public class DbSessionConfig {
                          */
                         new CompositeIdentityLoader<>(merchants, consumers),
                         loginLogWriters.get(Realm.MERCHANT))
-                : shared(sharedStore, Realm.MERCHANT, env));
+                : dedicated.redisStore(Realm.MERCHANT).orElseGet(() -> shared(sharedStore, Realm.MERCHANT, env)));
         byRealm.put(Realm.OPERATOR, TokenStoreSelection.usesDb(env, Realm.OPERATOR)
-                ? store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,
+                ? store(dedicated.jdbc(Realm.OPERATOR, authJdbcClient), Realm.OPERATOR, SessionProfiles.OPERATOR,
                         operators, loginLogWriters.get(Realm.OPERATOR))
-                : shared(sharedStore, Realm.OPERATOR, env));
+                : dedicated.redisStore(Realm.OPERATOR).orElseGet(() -> shared(sharedStore, Realm.OPERATOR, env)));
 
         log.info("会话存储按端装配：{}", TokenStoreSelection.all(env));
         return new RealmRoutingTokenStore(byRealm);

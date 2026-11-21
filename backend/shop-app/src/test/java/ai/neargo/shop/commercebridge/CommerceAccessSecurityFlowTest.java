@@ -24,7 +24,8 @@ import ai.neargo.shop.community.mapper.CommunityMappers.*;
 import ai.neargo.shop.community.service.PlaceResolver;
 import ai.neargo.shop.community.service.impl.CommunityServiceImpl;
 import ai.neargo.shop.community.support.MapBreaker;
-import ai.neargo.shop.config.SecurityConfig;
+import ai.neargo.shop.config.PayPortalSecurityConfig;
+import ai.neargo.shop.gateway.GatewaySecurityConfiguration;
 import ai.neargo.shop.fulfillment.service.PickupService;
 import ai.neargo.shop.member.service.*;
 import ai.neargo.shop.merchant.api.biz.BizStorePayController;
@@ -568,7 +569,8 @@ class CommerceAccessSecurityFlowTest {
                 });
         web.register(
                 Web.class,
-                SecurityConfig.class,
+                GatewaySecurityConfiguration.class,
+                PayPortalSecurityConfig.class,
                 CommerceAccessConfiguration.class,
                 DisabledCommerceConfiguration.class,
                 MerchantEntityServiceImpl.class,
@@ -645,7 +647,8 @@ class CommerceAccessSecurityFlowTest {
                     });
             web.register(
                     Web.class,
-                    SecurityConfig.class,
+                    GatewaySecurityConfiguration.class,
+                    PayPortalSecurityConfig.class,
                     DisabledCommerceConfiguration.class,
                     BizEntityController.class);
             web.refresh();

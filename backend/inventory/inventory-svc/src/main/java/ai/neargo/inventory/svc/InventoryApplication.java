@@ -5,6 +5,8 @@ import ai.neargo.inventory.guard.AdminTokenFilter;
 import ai.neargo.inventory.guard.InstanceGuard;
 import ai.neargo.inventory.guard.InstanceProperties;
 import ai.neargo.inventory.guard.InventoryAuthFilter;
+import ai.neargo.svc.guard.SignedContextGuardFilter;
+import ai.neargo.svc.guard.SignedContextVerifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -40,6 +42,29 @@ public class InventoryApplication {
                 new FilterRegistrationBean<>(new InventoryAuthFilter(platform, instanceGuard));
         bean.addUrlPatterns(InventoryAuthFilter.PATH_PREFIX + "*");
         bean.setOrder(10);
+        return bean;
+    }
+
+    /**
+     * ai-shop 网关的签名上下文（谁、哪一端、哪家店、判过哪些功能点）：<b>只比对、不拒绝</b>
+     * （ai-shop TDD-网关层与统一权限 §2.7、§2.22）。排在凭证过滤器之前；验过的上下文放进 {@code SignedContextHolder}，
+     * 对不上只记日志。密钥与 ai-shop 的 {@code shop.gateway.signing.key} 是同一把，没配就不验。
+     */
+    @Bean
+    FilterRegistrationBean<SignedContextGuardFilter> gatewaySignedContextGuard(
+            @Value("${inventory.gateway.signing-key:}") String key,
+            @Value("${inventory.gateway.signed-context:observe}") String mode) {
+        return signedContextGuard(key, mode);
+    }
+
+    /** 只有「关」与「只比对」两档：写成别的（包括 enforce）一律按关。打开拒绝要另行确认。 */
+    static FilterRegistrationBean<SignedContextGuardFilter> signedContextGuard(String key, String mode) {
+        boolean observe = key != null && !key.isBlank() && "observe".equalsIgnoreCase(mode);
+        FilterRegistrationBean<SignedContextGuardFilter> bean = new FilterRegistrationBean<>(new SignedContextGuardFilter(
+                new SignedContextVerifier(observe ? key.trim() : "unused"), observe ? "observe" : "off",
+                InventoryAuthFilter.PATH_PREFIX));
+        bean.addUrlPatterns(InventoryAuthFilter.PATH_PREFIX + "*");
+        bean.setOrder(5);
         return bean;
     }
 

@@ -225,9 +225,9 @@ for (const table of sqlOwners) {
 
 /** SQL adapters are mappings too: require their real table binding and every business column. */
 const SQL_PERSISTENCE: Record<string, string> = {
-  prd_stock_sync_operation: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
-  prd_stock_alignment_batch: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
-  prd_stock_alignment_line: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  prd_stock_sync_operation: "shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+  prd_stock_alignment_batch: "shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  prd_stock_alignment_line: "shop-gateway/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
   ord_refund_coupon_scope: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
   ord_refund_obligation: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
   inv_event_consumed: "shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",

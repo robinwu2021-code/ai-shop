@@ -8,7 +8,8 @@ import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
-import ai.neargo.shop.config.SecurityConfig;
+import ai.neargo.shop.config.PayPortalSecurityConfig;
+import ai.neargo.shop.gateway.GatewaySecurityConfiguration;
 import ai.neargo.shop.portal.biz.BizPayOnboardingController;
 import ai.neargo.shop.portal.biz.BizPaySessionController;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -106,7 +107,8 @@ public final class PayBizAiShopLocalLauncher {
         PayBizOnboardingHttpTest.Web.class,
         LocalDatabase.class,
         LocalOperatorIdentity.class,
-        SecurityConfig.class,
+        GatewaySecurityConfiguration.class,
+        PayPortalSecurityConfig.class,
         PayBizOnboardingConfiguration.class,
         BizPaySessionController.class,
         BizPayOnboardingController.class,

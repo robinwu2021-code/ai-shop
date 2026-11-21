@@ -102,6 +102,12 @@ const GENERATORS = [
    */
   ["scripts/gen-ops-ui-spec.py", ["docs/technical/design/规范-运营端.md"]],
   /*
+   * 网关接口清单（2026-11-19）：按端 × 对象列出网关要代理的每个入口，是对齐支付、零售、餐饮、服务业的底表。
+   * 来源只有源码与一份入库的生产索引导出，改了入口或权限注解不重跑的话，对齐用的底表就是错的。
+   */
+  ["scripts/gen-gateway-api-inventory.py", ["docs/api/网关接口清单.md", "docs/api/网关接口清单-运营端.md",
+    "docs/api/网关接口清单-B端.md", "docs/api/网关接口清单-C端.md"]],
+  /*
    * 权限种子与导航矩阵。**它们此前一道闸门都没挂** —— 而这两份的上游是 lib/nav.ts，
    * 产出的是 sys_function / sys_function_point / sys_role_point 的种子。
    * 陈了没人知道，而「陈了的权限种子」意味着库里的功能点与界面对不上。

@@ -28,7 +28,7 @@ class FoodArchitectureTest {
     private static final Set<String> MODULES = Set.of(
             "food-api", "food-core", "food-web", "food-channel", "food-server");
     private static final Set<String> FORBIDDEN_IMPLEMENTATIONS = Set.of(
-            "shop-core", "shop-app", "shop-merchant", "shop-inventory", "shop-report",
+            "shop-core", "shop-app", "shop-gateway", "shop-merchant", "shop-inventory", "shop-report",
             "pay-domain", "pay-channel", "pay-svc");
 
     @Test

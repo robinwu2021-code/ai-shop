@@ -29,7 +29,7 @@ class BeautyArchitectureTest {
             "beauty-api", "beauty-core", "beauty-web", "beauty-channel",
                 "beauty-server");
     private static final Set<String> FORBIDDEN_IMPLEMENTATIONS = Set.of(
-            "shop-core", "shop-app", "shop-merchant", "shop-inventory", "shop-report",
+            "shop-core", "shop-app", "shop-gateway", "shop-merchant", "shop-inventory", "shop-report",
             "pay-domain", "pay-channel", "pay-svc", "food-api", "food-core", "food-web");
 
     @Test
