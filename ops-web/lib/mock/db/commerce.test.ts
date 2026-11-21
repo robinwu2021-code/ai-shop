@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 // mock 延迟是给页面看加载态的，状态机测试不需要它
 vi.mock("@/lib/api/mocks/_wait", () => ({ wait: async <T,>(v: T) => v }));
+import type { MallPlanTier } from "@/lib/types";
 import { ApiError } from "@/lib/api/error";
 import { commerceMock as api } from "@/lib/api/mocks/commerce";
 import { mall, resetMall } from "./commerce";
@@ -25,12 +26,12 @@ async function evidence(store: string, order: string, purpose: "PLATFORM_RECEIPT
 beforeEach(() => resetMall());
 
 describe("目录：草稿 → 发布", () => {
-  it("新建经营类型必须停用；乐观锁错版本 → VERSION_CONFLICT；同时生成三档 Plan 定义", async () => {
+  it("新建经营类型必须停用；乐观锁错版本 → VERSION_CONFLICT；同时生成门店初始化档和四档行业 Plan", async () => {
     expect(await reason(api.createMallBusinessType({ typeCode: "SALON", name: "美业", sortOrder: 3, enabled: true, expectedVersion: 0, reason: "r" })))
       .toBe("INVALID_ARGUMENT");
     await api.createMallBusinessType({ typeCode: "SALON", name: "美业", sortOrder: 3, enabled: false, expectedVersion: 0, reason: "r" });
     const defs = (await api.mallPlanDefinitions()).filter((p) => p.typeCode === "SALON").map((p) => p.tier);
-    expect(defs).toEqual(["FREE", "PRO", "CHAIN"]);
+    expect(defs).toEqual(["FREE", "BASE", "PRO", "GROWTH", "CHAIN"]);
     expect(await reason(api.updateMallBusinessType("SALON", { name: "美业", sortOrder: 3, enabled: false, expectedVersion: 7, reason: "r" })))
       .toBe("VERSION_CONFLICT");
     // 没发布过行业目录不能启用
@@ -57,7 +58,8 @@ describe("目录：草稿 → 发布", () => {
         summary: null, entitlementCodes: codes[tier], policyVersion: "dev", expectedVersion: 0, reason: "起草" });
       ids[tier] = { vno: r.draftVersionNo!, version: r.version! };
     }
-    const defs = Object.fromEntries((await api.mallPlanDefinitions()).filter((p) => p.typeCode === "FNB").map((p) => [p.planNo!, p.version!]));
+    const defs = Object.fromEntries((await api.mallPlanDefinitions())
+      .filter((p) => p.typeCode === "FNB" && p.tier && p.tier in ids).map((p) => [p.planNo!, p.version!]));
     const publish = (expectedCatalogVersion: number, operationNo: string) => api.publishMallIndustry("FNB", {
       operationNo, freePlanVersionNo: ids.FREE!.vno, proPlanVersionNo: ids.PRO!.vno, chainPlanVersionNo: ids.CHAIN!.vno,
       candidateSkuVersionNos: [], expectedCatalogVersion,
@@ -73,6 +75,75 @@ describe("目录：草稿 → 发布", () => {
       displayName: "改", summary: null, entitlementCodes: ["END_BIZ_APP"], policyVersion: "dev", expectedVersion: ids.FREE!.version + 1, reason: "r" })))
       .toBe("IMMUTABLE_VERSION");
     await api.updateMallBusinessType("FNB", { name: "餐饮", sortOrder: 2, enabled: true, expectedVersion: 2, reason: "上线" });
+  });
+
+  it("行业可先发布四档权益，新增档位有定价 SKU 才上架", async () => {
+    const tiers = ["FREE", "BASE", "PRO", "GROWTH", "CHAIN"] as const;
+    const plans = await Promise.all(tiers.map(async (tier) => {
+      const row = await api.saveMallPlanVersion(`FNB:${tier}`, { planVersionNo: null, typeCode: "FNB", tier,
+        displayName: tier, summary: null, entitlementCodes: ["END_BIZ_APP"], policyVersion: "v2", expectedVersion: 0, reason: "起草" });
+      return [tier, row] as const;
+    }));
+    const plan = Object.fromEntries(plans) as Record<MallPlanTier, (typeof plans)[number][1]>;
+    const defs = async () => Object.fromEntries((await api.mallPlanDefinitions())
+      .filter((row) => row.typeCode === "FNB").map((row) => [row.planNo!, row.version!]));
+    const publication = {
+      operationNo: "PUB-FOUR", freePlanVersionNo: plan.FREE.draftVersionNo!, basePlanVersionNo: plan.BASE.draftVersionNo!,
+      proPlanVersionNo: plan.PRO.draftVersionNo!, growthPlanVersionNo: plan.GROWTH.draftVersionNo!,
+      chainPlanVersionNo: plan.CHAIN.draftVersionNo!, candidateSkuVersionNos: [], expectedCatalogVersion: 0,
+      expectedPlanVersions: Object.fromEntries(plans.map(([, row]) => [row.draftVersionNo!, row.version!])),
+      expectedSkuVersions: {}, expectedPlanDefinitionVersions: await defs(), expectedSkuDefinitionVersions: {}, reason: "发布",
+    };
+    expect((await api.publishMallIndustry("FNB", publication)).publishedVersionNos)
+      .toEqual(plans.map(([, row]) => row.draftVersionNo!));
+    const read = async (tier: MallPlanTier) => (await api.mallPlanDefinitions()).find((row) => row.planNo === `FNB:${tier}`)!;
+    expect(await read("BASE")).toMatchObject({ currentVersionNo: plan.BASE.draftVersionNo, saleStatus: "OFF_SALE" });
+    expect(await read("GROWTH")).toMatchObject({ currentVersionNo: plan.GROWTH.draftVersionNo, saleStatus: "OFF_SALE" });
+
+    await api.createMallProduct({ productNo: "MP-FNB-PLAN", categoryCode: "PLAN", kind: "PLAN", name: "餐饮套餐",
+      allowedBusinessTypes: ["FNB"], expectedVersion: 0, reason: "设置商品" });
+    const sku = await api.saveMallSkuVersion("MP-FNB-PLAN", {
+      skuNo: "SKU-FNB-GROWTH", skuVersionNo: null, title: "成长 30 天", price: { currency: "TWD", minor: "1200" },
+      listPrice: { currency: "TWD", minor: "1200" }, allowedBusinessTypes: ["FNB"], maxPerOrder: 1, expectedVersion: 0,
+      components: [{ kind: "PLAN", planVersionNo: plan.GROWTH.draftVersionNo!, periodDays: 30, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_PAYMENT" }],
+      refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" }, reason: "设置售价",
+    });
+    const skuVersion = (await api.mallCatalog()).skuVersions!.find((row) => row.draft?.skuVersionNo === sku.draftVersionNo)!;
+    await api.publishMallIndustry("FNB", {
+      ...publication, operationNo: "PUB-PRICE", expectedCatalogVersion: 1, expectedPlanDefinitionVersions: await defs(),
+      expectedPlanVersions: Object.fromEntries(plans.map(([, row]) => [row.draftVersionNo!, row.version! + 1])),
+      candidateSkuVersionNos: [sku.draftVersionNo!], expectedSkuVersions: { [sku.draftVersionNo!]: skuVersion.version! },
+      expectedSkuDefinitionVersions: { [sku.entityNo!]: sku.version! },
+    });
+    const growth = await read("GROWTH");
+    expect(growth.saleStatus).toBe("ON_SALE");
+    expect((await read("BASE")).saleStatus).toBe("OFF_SALE");
+    await api.stopMallPlanSale(growth.planNo!, { operationNo: "STOP-GROWTH", expectedVersion: growth.version!, reason: "停售" });
+    await api.publishMallIndustry("FNB", {
+      ...publication, operationNo: "PUB-KEEP-OFF", expectedCatalogVersion: 2, expectedPlanDefinitionVersions: await defs(),
+      expectedPlanVersions: Object.fromEntries(plans.map(([, row]) => [row.draftVersionNo!, row.version! + 1])),
+    });
+    expect((await read("GROWTH")).saleStatus).toBe("OFF_SALE");
+  });
+
+  it("纯支付发布使用 FREE 和 BASE 版本，无需 PRO 或 CHAIN", async () => {
+    const tiers = ["FREE", "BASE"] as const;
+    const plans = await Promise.all(tiers.map((tier) => api.saveMallPlanVersion(`PAYMENT:${tier}`, {
+      planVersionNo: null, typeCode: "PAYMENT", tier, displayName: tier, summary: null, entitlementCodes: ["END_BIZ_APP"],
+      policyVersion: "v2", expectedVersion: 0, reason: "起草",
+    })));
+    const defs = (await api.mallPlanDefinitions()).filter((row) => row.typeCode === "PAYMENT");
+    expect(defs.map((row) => row.tier)).toEqual(tiers);
+    const result = await api.publishMallIndustry("PAYMENT", {
+      operationNo: "PUB-PAY", freePlanVersionNo: plans[0]!.draftVersionNo!, basePlanVersionNo: plans[1]!.draftVersionNo!,
+      candidateSkuVersionNos: [], expectedCatalogVersion: 0,
+      expectedPlanVersions: Object.fromEntries(plans.map((row) => [row.draftVersionNo!, row.version!])),
+      expectedSkuVersions: {}, expectedPlanDefinitionVersions: Object.fromEntries(defs.map((row) => [row.planNo!, row.version!])),
+      expectedSkuDefinitionVersions: {}, reason: "发布纯支付",
+    });
+    expect(result.publishedVersionNos).toEqual(plans.map((row) => row.draftVersionNo!));
+    const base = (await api.mallPlanDefinitions()).find((row) => row.planNo === "PAYMENT:BASE");
+    expect(base).toMatchObject({ currentVersionNo: plans[1]!.draftVersionNo, saleStatus: "OFF_SALE" });
   });
 
   it("高档不包含低档权益 → 发布被拒", async () => {

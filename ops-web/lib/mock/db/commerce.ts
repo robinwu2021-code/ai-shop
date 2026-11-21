@@ -8,10 +8,11 @@
 // 不是正式售价，也不是真实账户。三家台湾线上通道（NewebPay / LINE Pay / JKOPay）
 // 在这里**根本没有**状态 —— 它们未接通，界面写死「未接通」，不从数据里读一个可以被改成 true 的布尔。
 import { ApiError } from "@/lib/api/error";
+import { mallPlanTiers } from "@/lib/types";
 import type {
   MallBusinessEndDraft, MallBusinessTypeDraft, MallDeploymentOption, MallEntitlementSource, MallAccessSegment,
   MallMoney, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineInstructionsView, MallPaymentAttempt,
-  MallCategoryDraft, MallCategoryView, MallPlanDraft, MallPlanTier, MallProductDraft, MallQuoteComponent, MallQuoteView, MallRefundView,
+  MallCategoryDraft, MallCategoryView, MallIndustryPublish, MallPlanDraft, MallPlanTier, MallProductDraft, MallQuoteComponent, MallQuoteView, MallRefundView,
   MallShipment, MallShippingAddress, MallSkuDraft, MallOrderStatus, MallComponentKind,
 } from "@/lib/types";
 
@@ -206,12 +207,14 @@ export function seedMall(): MallState {
 
   // 零售：已发布、已启用
   s.types.RETAIL = { draft: { typeCode: "RETAIL", name: "零售", sortOrder: 1, enabled: true }, catalogVersion: 1, version: 3 };
-  // 餐饮：只有类型，三档还没起草 —— 「目录草稿 → 发布」从这里走
+  // 餐饮：只有类型，还没起草档位 —— 「目录草稿 → 发布」从这里走
   s.types.FNB = { draft: { typeCode: "FNB", name: "餐饮", sortOrder: 2, enabled: false }, catalogVersion: 0, version: 1 };
+
+  s.types.PAYMENT = { draft: { typeCode: "PAYMENT", name: "纯支付", sortOrder: 3, enabled: false }, catalogVersion: 0, version: 1 };
 
   s.ends.END_BIZ_APP = { version: 2, draft: {
     code: "END_BIZ_APP", entitlementCode: "END_BIZ_APP", name: "B 端 App", scope: "STORE",
-    allowedBusinessTypes: ["RETAIL", "FNB"], releaseStatus: "VERIFIED", saleEnabled: false, bootstrapRequired: true,
+    allowedBusinessTypes: ["RETAIL", "FNB", "PAYMENT"], releaseStatus: "VERIFIED", saleEnabled: false, bootstrapRequired: true,
     enabled: true, clientId: "dev-biz-app", routePolicyRef: "commerce-route-v1:BIZ", acceptanceRef: "DEV-ACCEPT-BIZ-01" } };
   s.ends.END_APP_POS = { version: 2, draft: {
     code: "END_APP_POS", entitlementCode: "END_APP_POS", name: "收银 POS", scope: "STORE",
@@ -222,16 +225,16 @@ export function seedMall(): MallState {
     allowedBusinessTypes: ["FNB"], releaseStatus: "PLANNED", saleEnabled: false, bootstrapRequired: false,
     enabled: false, clientId: null, routePolicyRef: null, acceptanceRef: null } };
 
-  for (const type of ["RETAIL", "FNB"]) {
-    for (const tier of ["FREE", "PRO", "CHAIN"] as MallPlanTier[]) {
+  for (const type of ["RETAIL", "FNB", "PAYMENT"]) {
+    for (const tier of mallPlanTiers(type)) {
       const planNo = `${type}:${tier}`;
       s.planDefs[planNo] = { planNo, typeCode: type, tier, currentVersionNo: null, saleStatus: "DRAFT", version: 1 };
     }
   }
-  const retailCodes: Record<MallPlanTier, string[]> = {
+  const retailCodes = {
     FREE: ["END_BIZ_APP"], PRO: ["END_BIZ_APP", "END_APP_POS"], CHAIN: ["END_BIZ_APP", "END_APP_POS"],
   };
-  for (const tier of ["FREE", "PRO", "CHAIN"] as MallPlanTier[]) {
+  for (const tier of ["FREE", "PRO", "CHAIN"] as const) {
     const planNo = `RETAIL:${tier}`;
     const vno = `PV-RETAIL-${tier}-1`;
     s.planVersions[vno] = { status: "PUBLISHED", revision: 1, version: 2, draft: {
@@ -369,7 +372,7 @@ export function createType(d: MallBusinessTypeDraft) {
   expected(d.expectedVersion, 0);
   need(!d.enabled, "INVALID_ARGUMENT"); // 新建必须停用：发布行业目录后才能启用
   s.types[d.typeCode!] = { draft: { ...d }, catalogVersion: 0, version: 1 };
-  for (const tier of ["FREE", "PRO", "CHAIN"] as MallPlanTier[]) {
+  for (const tier of mallPlanTiers(d.typeCode!)) {
     const planNo = `${d.typeCode}:${tier}`;
     s.planDefs[planNo] = { planNo, typeCode: d.typeCode!, tier, currentVersionNo: null, saleStatus: "DRAFT", version: 1 };
   }
@@ -440,31 +443,32 @@ export function savePlanVersion(planNo: string, v: {
   return { entityNo: planNo, draftVersionNo: vno, version };
 }
 
-export function publishIndustry(typeCode: string, d: {
-  operationNo: string; freePlanVersionNo: string; proPlanVersionNo: string; chainPlanVersionNo: string;
-  candidateSkuVersionNos: string[]; expectedCatalogVersion: number; expectedPlanVersions: Record<string, number>;
-  expectedSkuVersions: Record<string, number>; expectedPlanDefinitionVersions: Record<string, number>;
-  expectedSkuDefinitionVersions: Record<string, number>; reason: string;
-}) {
+export function publishIndustry(typeCode: string, d: MallIndustryPublish) {
   const s = st();
   need(text(d.operationNo, 64) && text(d.reason, 1024), "INVALID_ARGUMENT");
   const key = `IND:${d.operationNo}`;
   if (s.publications[key]) return s.publications[key] as { publicationNo: string; catalogVersion: number; publishedVersionNos: string[] };
   const type = s.types[typeCode] ?? mallFail("NOT_FOUND");
   expected(d.expectedCatalogVersion, type.catalogVersion);
-  const versions = [d.freePlanVersionNo, d.proPlanVersionNo, d.chainPlanVersionNo];
-  need(new Set(versions).size === 3, "INVALID_ARGUMENT");
-  for (const def of Object.values(s.planDefs).filter((p) => p.typeCode === typeCode)) {
-    need(def.planNo in d.expectedPlanDefinitionVersions, "INVALID_ARGUMENT");
-    expected(d.expectedPlanDefinitionVersions[def.planNo], def.version);
-  }
-  const tiers: MallPlanTier[] = ["FREE", "PRO", "CHAIN"];
+  const picked = { FREE: d.freePlanVersionNo, BASE: d.basePlanVersionNo, PRO: d.proPlanVersionNo,
+    GROWTH: d.growthPlanVersionNo, CHAIN: d.chainPlanVersionNo };
+  const payment = typeCode === "PAYMENT";
+  const legacy = !payment && !picked.BASE && !picked.GROWTH;
+  if (payment) need(!picked.PRO && !picked.GROWTH && !picked.CHAIN, "INVALID_ARGUMENT");
+  if (legacy) need(!s.planDefs[`${typeCode}:BASE`]?.currentVersionNo
+    && !s.planDefs[`${typeCode}:GROWTH`]?.currentVersionNo, "INVALID_ARGUMENT");
+  const tiers = legacy ? ["FREE", "PRO", "CHAIN"] as const : mallPlanTiers(typeCode);
+  const versions = tiers.map((tier) => picked[tier]!);
+  need(versions.every(Boolean) && new Set(versions).size === tiers.length, "INVALID_ARGUMENT");
   let lower = new Set<string>();
   versions.forEach((no, i) => {
     const v = s.planVersions[no] ?? mallFail("NOT_FOUND");
     need(no in d.expectedPlanVersions, "INVALID_ARGUMENT");
     expected(d.expectedPlanVersions[no], v.version);
     need(v.draft.typeCode === typeCode && v.draft.tier === tiers[i], "INVALID_ARGUMENT");
+    const def = s.planDefs[v.draft.planNo!]!;
+    need(def.planNo in d.expectedPlanDefinitionVersions, "INVALID_ARGUMENT");
+    expected(d.expectedPlanDefinitionVersions[def.planNo], def.version);
     const codes = new Set(v.draft.entitlementCodes);
     need([...lower].every((c) => codes.has(c)), "INVALID_ARGUMENT"); // 高档必须包含低档
     if (i === 0) {
@@ -476,6 +480,7 @@ export function publishIndustry(typeCode: string, d: {
     lower = codes;
   });
   const skuNos = new Set<string>();
+  const pricedPlans = new Set<string>();
   let currency: string | null = null;
   for (const no of d.candidateSkuVersionNos) {
     const sv = s.skuVersions[no] ?? mallFail("NOT_FOUND");
@@ -485,7 +490,9 @@ export function publishIndustry(typeCode: string, d: {
     expected(d.expectedSkuDefinitionVersions[def.skuNo], def.version);
     need(!skuNos.has(def.skuNo), "INVALID_ARGUMENT");
     skuNos.add(def.skuNo);
-    need((sv.draft.components ?? []).filter((c) => c.kind === "PLAN").every((c) => versions.includes(c.planVersionNo!)), "INVALID_ARGUMENT");
+    const skuPlans = (sv.draft.components ?? []).filter((c) => c.kind === "PLAN");
+    need(skuPlans.every((c) => versions.includes(c.planVersionNo!)), "INVALID_ARGUMENT");
+    for (const c of skuPlans) pricedPlans.add(c.planVersionNo!);
     need(sv.draft.allowedBusinessTypes?.includes(typeCode), "INVALID_ARGUMENT");
     const cur: string = sv.draft.price!.currency;
     need(currency == null || currency === cur, "INVALID_ARGUMENT");
@@ -495,7 +502,9 @@ export function publishIndustry(typeCode: string, d: {
     const v = s.planVersions[no]!;
     if (v.status === "DRAFT") { v.status = "PUBLISHED"; v.version += 1; }
     const def = s.planDefs[v.draft.planNo!]!;
-    def.currentVersionNo = no; def.saleStatus = "ON_SALE"; def.version += 1;
+    const onSale = legacy || def.tier === "FREE" || pricedPlans.has(no)
+      || (def.currentVersionNo === no && def.saleStatus === "ON_SALE");
+    def.currentVersionNo = no; def.saleStatus = onSale ? "ON_SALE" : "OFF_SALE"; def.version += 1;
   }
   // 引用了本行业旧 Plan 版本的在售 SKU 一律停售：新目录下不能再买到旧 Plan
   for (const def of Object.values(s.skuDefs)) {

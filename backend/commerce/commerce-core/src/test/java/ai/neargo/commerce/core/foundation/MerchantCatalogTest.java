@@ -18,7 +18,7 @@ class MerchantCatalogTest {
                 "R",
                 new CatalogState.Type(
                         new BusinessTypeDraft("R", "Retail", 1, true, 4, "private"), 3, 4));
-        for (var tier : PlanTier.values()) {
+        for (var tier : PlanTier.legacyCatalogTiers()) {
             var key = tier.name();
             state.plans.put(key, new CatalogState.Plan(key, "R", tier, key + "2", "ON_SALE", 8));
             for (var version : List.of("1", "2", "3")) {
@@ -75,6 +75,34 @@ class MerchantCatalogTest {
         state.plans.remove("CHAIN");
         assertTrue(MerchantCatalog.types(state).isEmpty());
         assertTrue(MerchantCatalog.plans(state, "R").plans().isEmpty());
+    }
+
+    @Test
+    void modernCatalogShowsFourIndustryTiersAndOnePaymentTierWhenOnSale() {
+        var state = new CatalogState();
+        for (var type : List.of("RETAIL", PlanTier.PAYMENT_TYPE)) {
+            state.types.put(type, new CatalogState.Type(
+                    new BusinessTypeDraft(type, type, 1, true, 2, "test"), 1, 2));
+            for (var tier : PlanTier.catalogTiers(type)) {
+                var plan = type + ":" + tier;
+                var version = plan + ":1";
+                var codes = tier == PlanTier.GROWTH ? List.of("BIZ", "MEMBERS") : List.of("BIZ");
+                state.plans.put(plan, new CatalogState.Plan(plan, type, tier, version, "ON_SALE", 2));
+                var draft = new PlanDraft(plan, version, type, tier, tier.name(), "", codes, "P", 1, "test");
+                state.planVersions.put(version, new CatalogState.PlanVersion(draft, 1, "PUBLISHED", 2, 42L, "ops"));
+            }
+        }
+        assertEquals(List.of(PlanTier.BASE, PlanTier.PRO, PlanTier.GROWTH, PlanTier.CHAIN),
+                MerchantCatalog.plans(state, "RETAIL").plans().stream().map(p -> p.tier()).toList());
+        assertEquals(List.of(PlanTier.BASE),
+                MerchantCatalog.plans(state, PlanTier.PAYMENT_TYPE).plans().stream().map(p -> p.tier()).toList());
+
+        var growth = state.plans.get("RETAIL:GROWTH");
+        state.plans.put(growth.planNo(), new CatalogState.Plan(growth.planNo(), growth.typeCode(), growth.tier(),
+                growth.currentVersionNo(), "OFF_SALE", 3));
+        assertEquals(List.of(PlanTier.BASE, PlanTier.PRO, PlanTier.CHAIN),
+                MerchantCatalog.plans(state, "RETAIL").plans().stream().map(p -> p.tier()).toList());
+        assertTrue(MerchantCatalog.publishedEntitlements(state, "RETAIL").contains("MEMBERS"));
     }
 
     static void sku(

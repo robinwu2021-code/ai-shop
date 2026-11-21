@@ -46,7 +46,7 @@ public final class BusinessTypeService {
                             new CatalogState.Type(
                                     d, old == null ? 0 : old.catalogVersion(), version));
                     if (old == null)
-                        for (var tier : PlanTier.values()) {
+                        for (var tier : PlanTier.catalogTiers(d.typeCode())) {
                             var no = d.typeCode() + ":" + tier;
                             state.plans.put(
                                     no,

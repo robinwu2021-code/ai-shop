@@ -30,7 +30,7 @@ export function SourcesTab({ c, canGrant, canRevoke }: { c: MallCopy; canGrant: 
   const [storeNo, setStoreNo] = React.useState("");
   const sub = useQuery({ queryKey: ["mall-sub", storeNo], enabled: !!storeNo, queryFn: () => api.mallSubscription(storeNo) });
   const ends = useQuery({ queryKey: ["mall-ends"], queryFn: () => api.mallBusinessEnds() });
-  const grantable = (ends.data ?? []).filter((e) => e.draft?.saleEnabled && !e.draft?.bootstrapRequired && e.draft?.enabled);
+  const grantable = (ends.data ?? []).filter((e) => e.draft?.scope === "STORE" && e.draft.releaseStatus === "VERIFIED" && !e.draft.bootstrapRequired && e.draft.enabled);
   const [g, setG] = React.useState({ code: "", days: "30", reason: "" });
   const [opNo, setOpNo] = React.useState(() => newOpNo("GRANT"));
 

@@ -1,6 +1,6 @@
 "use client";
 
-// 经营类型 · 业务端 · 三档 Plan · 行业发布。
+// 经营类型 · 业务端 · Plan 档位 · 行业发布。
 //
 // 编辑权 (commerce:catalog:edit)与发布权 (commerce:catalog:publish)分开：
 // 起草谁都能起草，冻结给门店买只能是有发布权的人。已发布的 Plan 版本只读 ——
@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
+import { mallPlanTiers } from "@/lib/types";
 import type {
   MallBusinessEndView, MallBusinessTypeView, MallEndScope, MallPlanTier, MallPlanVersionView, MallReleaseStatus,
 } from "@/lib/types";
@@ -29,7 +30,6 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { newOpNo, saleMap, showErr, versionMap, type MallCopy } from "./shared";
 
-const TIERS: MallPlanTier[] = ["FREE", "PRO", "CHAIN"];
 const CATALOG_KEYS = [["mall-catalog"], ["mall-types"], ["mall-ends"], ["mall-plan-defs"]] as const;
 
 function useInvalidateCatalog() {
@@ -287,7 +287,7 @@ function EndsSection({ c, canEdit }: { c: MallCopy; canEdit: boolean }) {
   );
 }
 
-// ── 三档 Plan 与行业发布 ──────────────────────────────────────────────
+// ── 套餐档位与行业发布 ──────────────────────────────────────────────
 
 interface PlanForm {
   planNo: string; tier: MallPlanTier; typeCode: string; planVersionNo: string | null; displayName: string; summary: string;
@@ -347,7 +347,7 @@ function PlansSection({ c, canEdit, canPublish }: { c: MallCopy; canEdit: boolea
         <DataTable columns={[]} rows={undefined} error={showErr(catalog.error)} onRetry={() => catalog.refetch()} rowKey={() => ""} empty={c.plansEmpty} />
       ) : (
         <div className="grid gap-3 lg:grid-cols-3">
-          {TIERS.map((tier) => {
+          {mallPlanTiers(typeCode).map((tier) => {
             const def = typeDefs.find((d) => d.tier === tier);
             const versions = versionsOf(def?.planNo);
             return (
@@ -439,12 +439,12 @@ function PlansSection({ c, canEdit, canPublish }: { c: MallCopy; canEdit: boolea
   );
 }
 
-/** 行业发布：三档版本与候选 SKU 一起冻结，乐观锁来自当前目录回读。 */
+/** 行业发布：所选档位与候选 SKU 一起冻结，乐观锁来自当前目录回读。 */
 function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: string; canPublish: boolean }) {
   const catalog = useQuery({ queryKey: ["mall-catalog"], queryFn: () => api.mallCatalog() });
   const invalidate = useInvalidateCatalog();
   const { confirm, dialog, dismiss } = useConfirm();
-  const [picked, setPicked] = React.useState<Record<MallPlanTier, string>>({ FREE: "", PRO: "", CHAIN: "" });
+  const [picked, setPicked] = React.useState<Partial<Record<MallPlanTier, string>>>({});
   const [skus, setSkus] = React.useState<string[]>([]);
   const [opNo, setOpNo] = React.useState(() => newOpNo("PUB"));
 
@@ -452,9 +452,23 @@ function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: strin
   const defs = (data?.planDefinitions ?? []).filter((d) => d.typeCode === typeCode);
 
   const versions = (tier: MallPlanTier) => (data?.planVersions ?? []).filter((v) => v.draft?.typeCode === typeCode && v.draft?.tier === tier);
-  const candidates = (data?.skuVersions ?? []).filter((v) => v.draft?.allowedBusinessTypes?.includes(typeCode)
-    && (v.draft?.components ?? []).some((x) => x.kind === "PLAN"));
-  const chosen = TIERS.map((t) => picked[t] || defs.find((d) => d.tier === t)?.currentVersionNo || "");
+  const tiers = mallPlanTiers(typeCode);
+  const chosen = Object.fromEntries(tiers.map((tier) => [
+    tier, picked[tier] || defs.find((d) => d.tier === tier)?.currentVersionNo || "",
+  ]));
+  const { FREE: free, BASE: base, PRO: pro, GROWTH: growth, CHAIN: chain } = chosen;
+  const selectedVersionNos = new Set(Object.values(chosen).filter(Boolean));
+  const selectedPlans = [...selectedVersionNos].map((no) =>
+    data?.planVersions?.find((v) => v.draft?.planVersionNo === no));
+  const candidates = (data?.skuVersions ?? []).filter((v) => {
+    if (!v.draft?.allowedBusinessTypes?.includes(typeCode)) return false;
+    const planComponents = v.draft.components?.filter((component) => component.kind === "PLAN") ?? [];
+    return planComponents.length > 0 && planComponents.every((component) => selectedVersionNos.has(component.planVersionNo ?? ""));
+  });
+  const selectedSkus = skus.filter((no) => candidates.some((v) => v.draft?.skuVersionNo === no));
+  const payment = typeCode === "PAYMENT";
+  const requiresNewTiers = payment || Boolean(base || growth);
+  const requiredTiers = requiresNewTiers ? tiers : tiers.filter((tier) => tier !== "BASE" && tier !== "GROWTH");
   const expectedCatalog = data?.businessTypes?.find((t) => t.draft?.typeCode === typeCode)?.catalogVersion;
 
   if (!canPublish) return null;
@@ -462,16 +476,20 @@ function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: strin
   const publish = () => confirm({
     title: c.publishTitle, desc: fill(c.publishDesc, { type: typeCode }), requireReason: true,
     action: (reason) => {
-      const pv = Object.fromEntries(chosen.map((no) => [no, data!.planVersions!.find((v) => v.draft?.planVersionNo === no)!.version!]));
-      const sv = Object.fromEntries(skus.map((no) => [no, data!.skuVersions!.find((v) => v.draft?.skuVersionNo === no)!.version!]));
-      const sd = Object.fromEntries(skus.map((no) => {
+      const pv = Object.fromEntries(selectedPlans.map((v) => [v!.draft!.planVersionNo!, v!.version!]));
+      const selectedDefs = defs.filter((d) => d.tier && chosen[d.tier]);
+      const sv = Object.fromEntries(selectedSkus.map((no) => [no, data!.skuVersions!.find((v) => v.draft?.skuVersionNo === no)!.version!]));
+      const sd = Object.fromEntries(selectedSkus.map((no) => {
         const skuNo = data!.skuVersions!.find((v) => v.draft?.skuVersionNo === no)!.draft!.skuNo!;
         return [skuNo, data!.skuDefinitions!.find((d) => d.skuNo === skuNo)!.version!];
       }));
       return api.publishMallIndustry(typeCode, {
-        operationNo: opNo, freePlanVersionNo: chosen[0]!, proPlanVersionNo: chosen[1]!, chainPlanVersionNo: chosen[2]!,
-        candidateSkuVersionNos: skus, expectedCatalogVersion: expectedCatalog!, expectedPlanVersions: pv, expectedSkuVersions: sv,
-        expectedPlanDefinitionVersions: Object.fromEntries(defs.map((d) => [d.planNo!, d.version!])), expectedSkuDefinitionVersions: sd, reason,
+        operationNo: opNo, freePlanVersionNo: free!,
+        ...(base && { basePlanVersionNo: base }),
+        ...(growth && { growthPlanVersionNo: growth }),
+        ...(!payment && { proPlanVersionNo: pro!, chainPlanVersionNo: chain! }),
+        candidateSkuVersionNos: selectedSkus, expectedCatalogVersion: expectedCatalog!, expectedPlanVersions: pv, expectedSkuVersions: sv,
+        expectedPlanDefinitionVersions: Object.fromEntries(selectedDefs.map((d) => [d.planNo!, d.version!])), expectedSkuDefinitionVersions: sd, reason,
       }).then((r) => {
         setOpNo(newOpNo("PUB"));
         invalidate();
@@ -487,20 +505,21 @@ function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: strin
     },
   });
 
-  const ready = chosen.every(Boolean) && expectedCatalog !== undefined && Number.isInteger(expectedCatalog) && !catalog.isFetching;
+  const ready = requiredTiers.every((tier) => chosen[tier]) && selectedPlans.every(Boolean)
+    && expectedCatalog !== undefined && Number.isInteger(expectedCatalog) && !catalog.isFetching;
   return (
     <div className="mt-4 rounded-card border border-border bg-card p-4">
       <SectionHeader title={c.secPublish} desc={c.secPublishDesc} />
       <div className="grid gap-3 md:grid-cols-3">
-        {TIERS.map((tier) => (
+        {tiers.map((tier) => (
           <div key={tier} className="space-y-1">
-            <Label htmlFor={`pub-${tier}`} required>{tier}</Label>
-            <Select id={`pub-${tier}`} className="w-full" value={picked[tier] || defs.find((d) => d.tier === tier)?.currentVersionNo || ""}
+            <Label htmlFor={`pub-${tier}`} required={requiredTiers.includes(tier)}>{tier}</Label>
+            <Select id={`pub-${tier}`} className="w-full" value={chosen[tier]}
               onChange={(e) => setPicked((p) => ({ ...p, [tier]: e.target.value }))}>
               <option value="">{c.pickVersion}</option>
               {versions(tier).map((v) => (
                 <option key={v.draft?.planVersionNo} value={v.draft?.planVersionNo}>
-                  {v.draft?.planVersionNo} · {v.status === "PUBLISHED" ? c.verPublished : c.verDraft}
+                  {v.draft?.displayName} · {v.draft?.planVersionNo} · {v.status === "PUBLISHED" ? c.verPublished : c.verDraft}
                 </option>
               ))}
             </Select>

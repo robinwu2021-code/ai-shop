@@ -28,6 +28,32 @@ class IndustryPublicationTest {
     }
 
     @Test
+    void modernPackageUsesExplicitOffersAndCannotDropPublishedTiers() {
+        var f = new CatalogFixture();
+        f.setup();
+        f.plans();
+        f.facade.savePlan(f.ops, f.plan("BASE", "base-1", List.of("BASE")));
+        f.facade.savePlan(f.ops, f.plan("GROWTH", "growth-1", List.of("BASE", "POS")));
+        f.product();
+        var sku = f.sku();
+        f.facade.saveSku(f.ops, new SkuDraft(sku.productNo(), sku.skuNo(), sku.skuVersionNo(), sku.title(),
+                sku.listPrice(), new Money("CNY", 0), sku.allowedBusinessTypes(), sku.refundPolicySnapshot(),
+                sku.components(), sku.maxPerOrder(), sku.expectedVersion(), sku.reason()));
+
+        f.facade.publishIndustry(f.ops, new IndustryPublicationCommand(
+                "modern", "RETAIL", "free-1", "pro-1", "chain-1", "base-1", "growth-1",
+                List.of("sku-1"), 0, f.planTokens("RETAIL"), f.skuTokens("RETAIL"),
+                f.planDefinitionTokens("RETAIL"), f.skuDefinitionTokens("RETAIL"), "publish"));
+
+        var state = f.repo.load("tenant-a", CatalogLockMode.NONE);
+        assertEquals("ON_SALE", state.plans.get("RETAIL:PRO").saleStatus());
+        assertEquals("OFF_SALE", state.plans.get("RETAIL:BASE").saleStatus());
+        assertEquals("OFF_SALE", state.plans.get("RETAIL:GROWTH").saleStatus());
+        assertThrows(CatalogException.class,
+                () -> f.facade.publishIndustry(f.ops, f.publication(List.of(), 1)));
+    }
+
+    @Test
     void wrongTierAndMissingFreeBaseAndNonSupersetCannotPublish() {
         for (int variant = 0; variant < 3; variant++) {
             var f = new CatalogFixture();

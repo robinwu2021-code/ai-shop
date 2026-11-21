@@ -73,6 +73,18 @@ class StoreFeatureMatrixTest {
     private static final Set<String> OWNER = Set.of("*");
 
     @Test
+    void activeStoreGrantIsUsableBeforeItAppearsInThePublicCatalog() {
+        var catalog = new PlanCatalog("RETAIL", 1L, "PUBLISHED", List.of(plan(PlanTier.FREE, List.of(BIZ))));
+        var active = freeStore(true, right("END_RETAIL", "ACTIVE", 999L));
+        var inactive = freeStore(true, right("END_RETAIL", "NOT_PURCHASED", null));
+        var visible = byCode(StoreFeatureMatrix.forStore(active, catalog, OWNER, PayActivation.ACTIVE).features());
+        assertTrue(visible.get("INVENTORY").canUse());
+        assertEquals(999L, visible.get("INVENTORY").effectiveUntil());
+        assertFalse(byCode(StoreFeatureMatrix.forStore(inactive, catalog, OWNER, PayActivation.ACTIVE).features())
+                .containsKey("INVENTORY"));
+    }
+
+    @Test
     @DisplayName("AC1 矩阵：每个功能在三档是否包含、最低档、6 个预置角色的 NONE/USE/MANAGE；未发布的权益码不返回")
     void matrixForBusinessType() {
         var m = StoreFeatureMatrix.forBusinessType(fnbCatalog());

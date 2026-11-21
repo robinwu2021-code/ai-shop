@@ -11,6 +11,8 @@ public record IndustryPublicationCommand(
         String freePlanVersionNo,
         String proPlanVersionNo,
         String chainPlanVersionNo,
+        String basePlanVersionNo,
+        String growthPlanVersionNo,
         java.util.List<String> candidateSkuVersionNos,
         long expectedCatalogVersion,
         java.util.Map<String, Long> expectedPlanVersions,
@@ -18,6 +20,25 @@ public record IndustryPublicationCommand(
         java.util.Map<String, Long> expectedPlanDefinitionVersions,
         java.util.Map<String, Long> expectedSkuDefinitionVersions,
         String reason) {
+    public IndustryPublicationCommand(
+            String operationNo,
+            String typeCode,
+            String freePlanVersionNo,
+            String proPlanVersionNo,
+            String chainPlanVersionNo,
+            java.util.List<String> candidateSkuVersionNos,
+            long expectedCatalogVersion,
+            java.util.Map<String, Long> expectedPlanVersions,
+            java.util.Map<String, Long> expectedSkuVersions,
+            java.util.Map<String, Long> expectedPlanDefinitionVersions,
+            java.util.Map<String, Long> expectedSkuDefinitionVersions,
+            String reason)
+ {
+        this(operationNo, typeCode, freePlanVersionNo, proPlanVersionNo, chainPlanVersionNo,
+                null, null, candidateSkuVersionNos, expectedCatalogVersion, expectedPlanVersions,
+                expectedSkuVersions, expectedPlanDefinitionVersions, expectedSkuDefinitionVersions, reason);
+    }
+
     public IndustryPublicationCommand {
         candidateSkuVersionNos = java.util.List.copyOf(candidateSkuVersionNos);
         expectedPlanVersions = java.util.Map.copyOf(expectedPlanVersions);

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  *
  * <p>一个功能对当前用户的状态按顺序判，第一条不满足的就是它的状态：
  * <ol>
- *   <li>经营类型的方案里有没有它的权益码 —— 没有就不返回（这家店的行业没有这个功能）</li>
+ *   <li>经营类型的方案是否提供该权益，或门店是否有生效的独立授权</li>
  *   <li>门店该权益码的商业状态（旧模型门店跳过）</li>
  *   <li>当前用户有没有任一使用权限码</li>
  *   <li>要收款前置的，门店收款是否已开通</li>
@@ -45,7 +45,7 @@ public final class StoreFeatureMatrix {
     public record TierCard(PlanTier tier, String planNo, String displayName, boolean purchaseAvailable) {}
 
     /**
-     * @param tiers 三档是否包含，键为档位名
+     * @param tiers 各档是否包含，键为档位名
      * @param roles 预置角色 → {@code NONE} / {@code USE} / {@code MANAGE}
      */
     public record MatrixFeature(String featureCode, String group, String entitlementCode,
@@ -112,10 +112,14 @@ public final class StoreFeatureMatrix {
         Map<String, Right> rights = store.entitlements() == null ? Map.of()
                 : store.entitlements().items().stream()
                         .collect(Collectors.toMap(Right::entitlementCode, Function.identity(), (a, b) -> a));
-        List<StoreFeature> candidates = catalog == null ? List.of(StoreFeature.values()) : offered(plans);
-        var features = candidates.stream()
-                // 新模型门店：权益码要真的挂在这家店上（运营没登记 / 未验收的端，端准入也进不去）
-                .filter(f -> legacy || rights.containsKey(f.entitlementCode()))
+        var offered = offered(plans);
+        var features = Arrays.stream(StoreFeature.values())
+                .filter(f -> {
+                    boolean inCatalog = catalog == null || offered.contains(f);
+                    if (legacy) return inCatalog;
+                    var right = rights.get(f.entitlementCode());
+                    return right != null && (inCatalog || commercialStatus(right.commercialStatus()) == AccessStatus.ALLOWED);
+                })
                 .map(f -> state(f, legacy ? null : rights.get(f.entitlementCode()),
                         legacy ? null : minTier(plans, f).orElse(null), store.canProcure(), perms, pay))
                 .toList();
