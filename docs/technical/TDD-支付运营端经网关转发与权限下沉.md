@@ -263,8 +263,44 @@ X-Auth-Namespace: pay:                  （只回这个前缀的权限码，控�
 
 **上线中发现、与本次无关的问题**
 
-1. near-pay → ai-shop `/internal/payment-results/merchant-collections`（收款结果推送）自 11-20 16:39（v1 切 v2）起几乎全部 403（823 次 403、6 次 200），near-pay 每分钟重试。待查：v2 上该内部入口的调用方凭据或来源地址校验（请求现在从 166 经 18081 转到 .80）。
+1. near-pay → ai-shop 收款结果推送卡住 2 笔（`PYO261119081847541`、`PYO261120191330661`，商户 App 测试通道 1 元），每分钟重试、累计八百多次 403；**已于 2026-11-21 09:10 解决**。原因：两笔是旧格式（schemaVersion 1、不带门店号）的商户收款（`BIZ`），ai-shop 正式环境只有 `CHECKOUT` 来源绑定；在 `payment_collection_source` 补两行 `PRODUCTION/1/BIZ/1` 绑定后送达。与切 v2 无关（第一次推送就 403）。
 2. near-pay 日志持续 `Payment display rebuild deferred for projection 830/834`（上线前 40 分钟 3000 次）。
 3. 商户、门店、渠道账户列表在 near-pay 侧 13–17 秒。
 
 **下一步**：观察一周 `[ops-perm] mapping-only` 日志，无记录后 `permission-source=host`、隐藏 SY03（§7 阶段 6.4）。
+
+## §9 权限码补齐与自动对账（2026-11-21，用户：「先补码和自动测试」）
+
+### 9.1 问题
+
+线上验证只用了超管（`*`），按码放行/拒绝没有走过。静态核对（near-pay `feat/ops-identity-unified-20261120`）：
+
+- near-pay `/pay-ops/v2` 共 270 个接口，除 `/me/access`（只读自己的权限）外都挂 `@PreAuthorize("@payPerm.can(…)")`，用到 73 个码。
+- ai-shop 的角色授的是**功能点**（`sys_role_point` → `sys_function_point.perm_code`）。正式库 `pay:` 功能点只覆盖 53 个码，**near-pay 用到的码里有 27 个没有任何功能点**：除超管和 near-pay 自己的映射（SY03）外，谁都授不到。其中 12 个连 `Perms.java` 常量都没有；`pay:onboarding:read` 是 `pay:onboarding:view` 的笔误。
+- 一周后切 `permission-source=host` 时，这些功能只剩超管能用。
+
+### 9.2 改动
+
+| 处 | 内容 |
+|---|---|
+| ai-shop `Perms.java` | 补 12 个码：`pay:audit:view`、`pay:channel-account:transfer`、`pay:channel-account:transfer:approve`、`pay:credential:view`、`pay:credential:approve`、`pay:member:view`、`pay:member:manage`、`pay:merchant:repair`、`pay:merchant:repair:approve`、`pay:permission:view`、`pay:permission:manage`、`pay:permission:approve` |
+| ai-shop 迁移 `V686__pay_ops_action_points.sql` | near-pay 用到的每个码，**库里还没有任何功能点挂它时**补一个 `ACTION` 功能点（`ACT__PAY_<码>`，挂支付中心所在的 `OPS_FINANCE`）。授权只给 `SUPER_ADMIN`；不授给既有岗位（新增能力不默认授予，由运营在角色里勾）。只新增、可重复执行；正式库已有的功能点不动 |
+| near-pay | `OpsNewebPayModificationController` 列表的 `pay:onboarding:read` → `pay:onboarding:view`，接口手册三处同步 |
+| near-pay 测试 `OpsV2PermissionCoverageTest` | 用真实 `RequestMappingHandlerMapping` 枚举 `/pay-ops/v2` 全部接口：①除白名单 `/me/access` 外必须有 `@PreAuthorize`（方法或类上）；②表达式在「一个码都没有」时必须判拒；③「给齐它用到的码」时必须放行（没有永远拒绝的死表达式）；④用到的码集合必须等于登记文件 `docs/api/ops-v2-permission-codes.txt` —— 新接口漏挂、换码都会让测试失败 |
+| ai-shop 测试 `PayOpsPermissionCodesTest` | 读 near-pay 登记文件的副本 `backend/shop-app/src/test/resources/contracts/near-pay-ops-v2-permission-codes.txt`：每个码必须①是 `Perms.java` 常量（运营端可识别）②在库里有功能点（角色能勾到） |
+
+两份登记文件内容相同，靠 near-pay 侧的测试保证它与注解一致；near-pay 改码时同步拷到 ai-shop（ai-shop 测试失败即提示要补常量与功能点）。
+
+### 9.3 不在本次
+
+- 线上用低权限测试账号走权限矩阵（方案见会话记录：A–F 六类账号，需用户建账号并登录）。
+- 切 `permission-source=host`、隐藏 SY03（仍按 §7 阶段 6.4 观察一周）。
+- 功能点名称的繁体/英文：沿用 V685 只写简体名称的做法。
+
+### 9.4 实现记录（2026-11-21）
+
+- ai-shop（`feat/pay-ops-gateway-passthrough`）：`Perms.java` +12 码；`V686__pay_ops_action_points.sql`（72 个码，库里缺功能点的才补，授 `SUPER_ADMIN`）；`PayOpsPermissionCodesTest`（3 例）；`FunctionPointPermAlignmentTest` 认 near-pay 登记文件里的码（这些码有 near-pay 接口在判，不算「界面承诺做不到的事」）；`schema-test.sql`、常量清单、术语表、三端权限矩阵按生成器重生成。
+  通过：`PayOpsPermissionCodesTest`、`FunctionPointPermAlignmentTest`、`SchemaDriftTest`、`OperatorIdentityEndpointTest`、`OpsPermConfigFlowTest`、`FunctionRegistryTest`、`PayDownstreamActionsTest`；ops-web `perm-map`/`nav`/`nav-platform-settings`/`iam-role-display-page` 78 例。
+- near-pay（`feat/ops-identity-unified-20261120`）：`pay:onboarding:read` → `view`（接口 + 手册 3 处原地替换；手册生成器在本机会带出上万行无关差异、`verify-api-handbook.py` 在干净代码上也失败，未重生成）；`OpsV2PermissionCoverageTest` + `docs/api/ops-v2-permission-codes.txt`。
+  反向验证：临时去掉一个接口的 `@PreAuthorize`，测试失败并指出该接口；恢复后通过。同跑 `PayPermissionEvaluatorTest`、`OpsAccessControllerTest`、`OpsCollectionHandlerMappingTest` 通过。
+- 正式库：V686 随下次 v2 发布执行，预计补 27 个码的功能点（正式库已有 53 个码，按 `perm_code` 去重不重复插）。补完后在运营端角色里按岗位勾选。

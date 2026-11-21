@@ -92,11 +92,14 @@ class FunctionPointPermAlignmentTest {
         Set<String> unimplemented = new TreeSet<>(registered);
         unimplemented.removeAll(permCodesUsedByEndpoints());
         unimplemented.removeAll(nativePaymentCenterPermCodes());
+        // near-pay /pay-ops/v2 里真有接口判的码（登记文件由 near-pay OpsV2PermissionCoverageTest 保证与注解一致；
+        // TDD-支付运营端经网关转发与权限下沉 §9）：功能点能勾，near-pay 那边就有对应动作。
+        unimplemented.removeAll(ai.neargo.shop.gateway.PayOpsPermissionCodesTest.nearPayCodes());
         unimplemented.removeAll(KNOWN_UNIMPLEMENTED.keySet());
 
         assertThat(unimplemented)
                 .as("这些权限码登记成了功能点，运营能在界面上勾选、能授权，"
-                        + "但既无本地端点，也不是支付中心原生页签（2026-11-20 起支付入口不再跳 near-pay 工作区，V686）。\n"
+                        + "但既无本地端点，也不是支付中心原生页签或 near-pay 登记的接口码（2026-11-20 起支付入口不再跳 near-pay 工作区）。\n"
                         + "要么实现，要么把功能点下线 —— 留着等于让界面承诺一个做不到的事：")
                 .isEmpty();
     }
@@ -248,7 +251,7 @@ class FunctionPointPermAlignmentTest {
         Set<String> rendered = new TreeSet<>();
         Matcher key = Pattern.compile("\"?([a-z-]+)\"?:\\s*[A-Z]\\w*Tab\\b").matcher(table.group(1));
         while (key.find()) rendered.add(key.group(1));
-        // 库里还没改址的 5 个 V671 旧地址（V686 待 v1 下线后执行），前端按 module.ts 的 LEGACY_TAB_REDIRECT 映射到支付中心页签
+        // 库里还没改址的 5 个 V671 旧地址（docs/technical/pending-sql/ops_payment_center_own_module.sql 待 v1 下线后执行），前端按 module.ts 的 LEGACY_TAB_REDIRECT 映射到支付中心页签
         Map<String, String> legacy = new TreeMap<>();
         Matcher block = Pattern.compile("LEGACY_TAB_REDIRECT[^=]*=\\s*\\{(.*?)\\};", Pattern.DOTALL).matcher(tabs);
         assertThat(block.find()).as("module.ts 的 LEGACY_TAB_REDIRECT 未读到").isTrue();

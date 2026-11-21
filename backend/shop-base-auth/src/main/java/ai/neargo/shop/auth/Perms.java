@@ -246,6 +246,22 @@ public final class Perms {
     public static final String PAY_STORE_BINDING_MANAGE = "pay:store-binding:manage";
     public static final String PAY_STORE_BINDING_APPROVE = "pay:store-binding:approve";
     /**
+     * near-pay 运营端（/pay-ops/v2）用到、此前只能靠 near-pay 自己的映射（SY03）授予的码
+     * （TDD-支付运营端经网关转发与权限下沉 §9）。权限在 near-pay 内判，这里登记是为了能在 ai-shop 角色里授予。
+     */
+    public static final String PAY_AUDIT_VIEW = "pay:audit:view";
+    public static final String PAY_CHANNEL_ACCOUNT_TRANSFER = "pay:channel-account:transfer";
+    public static final String PAY_CHANNEL_ACCOUNT_TRANSFER_APPROVE = "pay:channel-account:transfer:approve";
+    public static final String PAY_CREDENTIAL_VIEW = "pay:credential:view";
+    public static final String PAY_CREDENTIAL_APPROVE = "pay:credential:approve";
+    public static final String PAY_MEMBER_VIEW = "pay:member:view";
+    public static final String PAY_MEMBER_MANAGE = "pay:member:manage";
+    public static final String PAY_MERCHANT_REPAIR = "pay:merchant:repair";
+    public static final String PAY_MERCHANT_REPAIR_APPROVE = "pay:merchant:repair:approve";
+    public static final String PAY_PERMISSION_VIEW = "pay:permission:view";
+    public static final String PAY_PERMISSION_MANAGE = "pay:permission:manage";
+    public static final String PAY_PERMISSION_APPROVE = "pay:permission:approve";
+    /**
      * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
      * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。
      */

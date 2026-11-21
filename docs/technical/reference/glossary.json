@@ -56178,6 +56178,102 @@
     },
     {
       "host": "Perms",
+      "name": "PAY_AUDIT_VIEW",
+      "type": "String",
+      "value": "\"pay:audit:view\"",
+      "zh": "near-pay 运营端（/pay-ops/v2）用到、此前只能靠 near-pay 自己的映射（SY03）授予的码 （TDD-支付运营端经网关转发与权限下沉 §9）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_TRANSFER",
+      "type": "String",
+      "value": "\"pay:channel-account:transfer\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CHANNEL_ACCOUNT_TRANSFER_APPROVE",
+      "type": "String",
+      "value": "\"pay:channel-account:transfer:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_VIEW",
+      "type": "String",
+      "value": "\"pay:credential:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_CREDENTIAL_APPROVE",
+      "type": "String",
+      "value": "\"pay:credential:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MEMBER_VIEW",
+      "type": "String",
+      "value": "\"pay:member:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MEMBER_MANAGE",
+      "type": "String",
+      "value": "\"pay:member:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_REPAIR",
+      "type": "String",
+      "value": "\"pay:merchant:repair\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_MERCHANT_REPAIR_APPROVE",
+      "type": "String",
+      "value": "\"pay:merchant:repair:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_VIEW",
+      "type": "String",
+      "value": "\"pay:permission:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_MANAGE",
+      "type": "String",
+      "value": "\"pay:permission:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_PERMISSION_APPROVE",
+      "type": "String",
+      "value": "\"pay:permission:approve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SEC_KEY_VIEW",
       "type": "String",
       "value": "\"sec:key:view\"",
