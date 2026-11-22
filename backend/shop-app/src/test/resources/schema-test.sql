@@ -20812,6 +20812,32 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS_FINANCE','开放平台密钥','支付配置','/payment-center?tab=platform-keys','pay:credential:view','pay:credential:view','IMPLEMENTED',1,NULL,'MENU',556,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_PLATFORM_KEYS' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT source.role_code,'OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source WHERE source.point_code='OPS_FINANCE__PAYCENTER_CREDENTIALS' AND source.end_code='OPS' AND NOT EXISTS(SELECT 1 FROM sys_role_point target WHERE target.role_code=source.role_code AND target.point_code='OPS_FINANCE__PAYCENTER_PLATFORM_KEYS' AND target.end_code='OPS');
+INSERT IGNORE INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at)
+SELECT 'OPEN_API_SUBMIT', '开放API·接入提交', 'OPS', 0, 0, 900, NOW(), NOW() FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'OPEN_API_SUBMIT' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at)
+SELECT 'OPEN_API_REVIEW', '开放API·接入审核', 'OPS', 0, 0, 901, NOW(), NOW() FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'OPEN_API_REVIEW' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'OPEN_API_SUBMIT', fp.point_code, 'OPS', NOW(), NOW() FROM sys_function_point fp
+WHERE fp.perm_code IN ('pay:app:view', 'pay:app:manage', 'pay:credential:view', 'pay:credential:manage')
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point rp WHERE rp.role_code = 'OPEN_API_SUBMIT' AND rp.point_code = fp.point_code AND rp.end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'OPEN_API_REVIEW', fp.point_code, 'OPS', NOW(), NOW() FROM sys_function_point fp
+WHERE fp.perm_code IN ('pay:app:view', 'pay:app:approve', 'pay:credential:view', 'pay:credential:approve')
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point rp WHERE rp.role_code = 'OPEN_API_REVIEW' AND rp.point_code = fp.point_code AND rp.end_code = 'OPS');
+UPDATE sys_ops_staff
+SET roles = CASE WHEN roles IS NULL OR TRIM(roles) IN ('', '[]') THEN '["OPEN_API_SUBMIT"]'
+                 ELSE CONCAT(SUBSTRING(TRIM(roles), 1, CHAR_LENGTH(TRIM(roles)) - 1), ',"OPEN_API_SUBMIT"]') END,
+    updated_at = NOW()
+WHERE username = 'robin@neargo.ai' AND deleted = 0
+  AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_SUBMIT"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
+UPDATE sys_ops_staff
+SET roles = CASE WHEN roles IS NULL OR TRIM(roles) IN ('', '[]') THEN '["OPEN_API_REVIEW"]'
+                 ELSE CONCAT(SUBSTRING(TRIM(roles), 1, CHAR_LENGTH(TRIM(roles)) - 1), ',"OPEN_API_REVIEW"]') END,
+    updated_at = NOW()
+WHERE username = 'neara@neargo.ai' AND deleted = 0
+  AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_REVIEW"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -396,6 +396,7 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **密钥处理**：AppSecret、EncryptKey、私钥只在抽屉组件内存，不进草稿、查询缓存、curl、运营接口；生产不收 RSA 私钥（商家侧签名）。mock 演示密钥对只在内存。
 - **菜单**：V688 只新增 3 个 MENU 点（sort 554–556）。授权 SUPER_ADMIN；接入申请、API 清单继承「接入应用」点位的岗位，开放平台密钥继承「凭证管理」（敏感，V687 只授超管）。试点账号要能提交 / 审核，须在角色里授 `pay:app:manage` / `pay:app:approve`（另一人审核）。
 - **不做**：运营端发真实开放 API 请求（生产无沙箱）；推送（P4）解密演示。
+- **试点授权种子（V689，2026-11-22 用户：「自动增加，做为种子数据」）**：新建两个非内置角色 `OPEN_API_SUBMIT`（开放API·接入提交：`pay:app:view/manage`、`pay:credential:view/manage`）与 `OPEN_API_REVIEW`（开放API·接入审核：`pay:app:view/approve`、`pay:credential:view/approve`），按 perm_code 取功能点（菜单 + 动作各 9 个）；追加给 `robin@neargo.ai` / `neara@neargo.ai`（`sys_ops_staff.roles` + `sys_role_member` 镜像，原有角色保留）。账号不存在则不生效；可重复执行。在本机一次性 MySQL 9.7 上连跑两次核对：两人各多一个角色、无关账号不变、每个角色 9 个点。
 
 ### 2.8 不做
 
