@@ -608,6 +608,8 @@ TurnkeyReceiptScanner    扫 Turnkey 回执目录（ProcessResult）
 | 事件 | 平台 Outbox | `ivc_biz_notify` 投递 |
 | 鲸跃出口 | 主应用所在机房（UME166，台湾出口） | `invoice-svc` 必须同样部署在台湾出口的机房 |
 
+**打包可排除发票**（已实现，TDD-发票模块 §17）：`-Dinvoice.exclude` 时 shop-app 不带发票模块，B 端按 `switches.invoice` 隐藏入口；这与上表两种形态正交 —— 内嵌、独立、不装，三选一。
+
 **调用方不知道发票在哪跑**：`shop-core` 只依赖 `InvoicePort`，切形态换的是装哪个 bean。
 **独立形态必须有自己的装配测试**（对照 `PayStandaloneAssemblyTest`），不能只靠上线那天试。
 

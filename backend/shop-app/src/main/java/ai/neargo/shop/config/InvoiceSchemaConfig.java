@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnResource;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * 排在平台迁移之后（V2 要改平台的 {@code mch_role}），平台迁移没启用的切片测试里跟着不跑。
  */
 @Configuration
+@ConditionalOnResource(resources = "classpath:db/invoice")   // 打包排除发票模块时整段不装（TDD-发票模块 §17）
 public class InvoiceSchemaConfig {
 
     static final String HISTORY_TABLE = "ivc_flyway_history";

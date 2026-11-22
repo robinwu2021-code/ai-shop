@@ -65,6 +65,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MpEndpointAuthTest {
 
     /** 匿名访问回 401，已逐条实弹验证。 */
+    /** 这次构建有没有打包发票模块（-Dinvoice.exclude 时没有）；按类名探测，不引用发票模块的类 */
+    private static final boolean INVOICE_PACKAGED =
+            org.springframework.util.ClassUtils.isPresent("ai.neargo.shop.invoice.api.mp.MpSalesInvoiceController", null);
+
+    private static boolean isInvoiceEndpoint(String ep) {
+        return ep.contains(" /mp/invoice-carrier") || ep.contains(" /mp/sales-invoice");
+    }
+
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             "POST /mp/member-code",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
@@ -384,8 +392,8 @@ class MpEndpointAuthTest {
     void loginRequiredEndpointsRejectAnonymous() {
         List<String> leaked = new ArrayList<>();
         for (String ep : REQUIRES_LOGIN) {
-            if (ep.isEmpty()) {
-                continue;
+            if (ep.isEmpty() || (!INVOICE_PACKAGED && isInvoiceEndpoint(ep))) {
+                continue;   // -Dinvoice.exclude 打包：发票端点本来就不存在（TDD-发票模块 §17）
             }
             int status = callAnonymously(ep);
             if (status != 401) {

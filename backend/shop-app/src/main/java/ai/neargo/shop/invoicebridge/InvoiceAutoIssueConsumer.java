@@ -12,6 +12,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,11 +37,17 @@ public class InvoiceAutoIssueConsumer implements OutboxConsumer {
     private static final Set<String> PAID =
             Set.of(OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED);
 
+    /** 打包排除发票模块（{@code -Dinvoice.exclude}）时没有实现：本消费者不认领任何事件，见 TDD-发票模块 §17 */
     private final InvoicePort invoices;
     private final SubOrderMapper subOrders;
     private final ObjectMapper json;
 
-    public InvoiceAutoIssueConsumer(InvoicePort invoices, SubOrderMapper subOrders, ObjectMapper json) {
+    @Autowired
+    public InvoiceAutoIssueConsumer(ObjectProvider<InvoicePort> invoices, SubOrderMapper subOrders, ObjectMapper json) {
+        this(invoices.getIfAvailable(), subOrders, json);
+    }
+
+    InvoiceAutoIssueConsumer(InvoicePort invoices, SubOrderMapper subOrders, ObjectMapper json) {
         this.invoices = invoices;
         this.subOrders = subOrders;
         this.json = json;
@@ -52,7 +60,7 @@ public class InvoiceAutoIssueConsumer implements OutboxConsumer {
 
     @Override
     public boolean supports(String eventType) {
-        return "ORDER_PAID".equals(eventType);
+        return invoices != null && "ORDER_PAID".equals(eventType);
     }
 
     @Override

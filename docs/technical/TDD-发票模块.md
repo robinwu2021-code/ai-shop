@@ -786,3 +786,46 @@ MySQL 9 全类 32/32、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契�
 
 MySQL 9 全类 33/33、鲸跃 6/6、Turnkey 3/3、b-app `vue-tsc` 无错。
 
+## §17 打包排除发票模块
+
+状态：已实现 · 2026-11-22 · 档位 1（`/biz/context` 的 `switches` 加一个键；构建 profile）。
+
+### 17.1 怎么打
+
+| 形态 | 命令 | jar 里 |
+|---|---|---|
+| 默认（带发票） | `mvn -pl shop-app -am package -DskipTests` | 有 `invoice-domain`、`invoice-channel` |
+| 排除发票 | `mvn -pl shop-app -am package -DskipTests -Dinvoice.exclude`（或 `-P !invoice`） | 没有 |
+
+实现：`shop-app/pom.xml` 的 `invoice` profile 以 `!invoice.exclude` 为激活条件，发票两个依赖只在 profile 里。
+`backend/invoice` 仍在 reactor 里照常编译，只是不进 shop-app 的包。
+
+### 17.2 排除后的行为
+
+| 部分 | 行为 | 怎么做到 |
+|---|---|---|
+| 发票接口（`/biz/invoices*`、`/biz/invoice-setup/*`、`/mp/sales-invoice*`、`/mp/invoice-carrier*`） | 不存在 | controller 在发票模块里，没打进包 |
+| 迁移 `db/invoice` | 不跑，`ivc_*` 表不建 | `InvoiceSchemaConfig` 加 `@ConditionalOnResource(classpath:db/invoice)` |
+| 付款后自动开票 | 不认领 `ORDER_PAID` | `InvoiceAutoIssueConsumer` 改取 `ObjectProvider<InvoicePort>`，没有实现时 `supports` 回 false（消费者仍注册，outbox 不缺处理器） |
+| 定时任务（上传、期限、水位） | 不存在 | 都在发票模块里 |
+| 打印 | 发票三个场景不可用，其余照常 | 打印中心按来源类型找供数端口，找不到只在用到时回 `print.sourceUnavailable`，不影响启动 |
+| B 端入口 | 全部隐藏 | `/biz/context` 下发 `switches.invoice`（有没有 `InvoicePort` 实现）；`merchant.can` 在 `switches.invoice === false` 时对 `biz:invoice:*` 一律回 false，**店主的 `*` 也不例外**。只认明确的 false：没下发该键的旧后端都带着发票 |
+| 权限种子 | 新库不写 `biz:invoice:*` | 种子在发票自己的迁移 V2 里，排除时不跑；已跑过的库留着权限也无妨（上一条兜住） |
+
+### 17.3 守卫
+
+- `InvoiceOptionalTest`（shop-app）：shop-app 自己的类不得依赖 `ai.neargo.shop.invoice..` —— 只能经 `spi.invoice`。否则排除打包时编译失败，而默认打包照样绿，所以在默认形态里守。
+- `MpEndpointAuthTest` 按类名探测发票模块是否在包里，不在时跳过发票 `/mp` 端点的「要登录」探测（排除形态下它们本来就 404）。
+
+### 17.4 验证
+
+| 形态 | 验证 | 结果 |
+|---|---|---|
+| 排除 | `package -Dinvoice.exclude`：jar 内发票模块包 0 个 | ✅ |
+| 排除 | `MpEndpointAuthTest`（加载完整 `ShopApplication` 上下文）：上下文正常启动，无装配失败；失败仅为既有的 checkout 端点未分类 | ✅ |
+| 排除 | `InvoiceOptionalTest`、`InvoiceAutoIssueConsumerTest`、`SubOrderInvoiceSourcePortImplTest` | ✅ |
+| 默认 | jar 内发票模块包 2 个；同一组测试 + `BizEndpointPermTest` 失败数与改动前一致（均为既有、与发票无关） | ✅ |
+| 前端 | b-app `vue-tsc` 无错 | ✅ |
+
+排除形态只用于打包部署；全量测试按默认形态跑（pre-push 不变）。
+
