@@ -290,7 +290,7 @@ near-pay 仓库，与 RobinWu 对齐排期。四件事：
 3. **灰度**：`near-pay.biz.permission-source=host+membership`（任一来源放行）先上，日志记「只靠成员表放行」的请求；一周没有再切 `host`。
 4. **`/biz/pay/v2/memberships`**（App 的商户切换器）：改成由 `memberships` 生成，形状不变。
 
-**要确认**：B 端支付码现在只有 9 个（`mch:pay:collect`、`order:view`、`refund`、`qr`、`statement`、`app-grant`、`store-method`、`offline:record`、`offline:manage`），near-pay B 端动作有 14 个（`payment.create`、`refund.apply`、`onboarding.apply`、`member.manage`……）。对照表里没有对应码的动作（如 `onboarding.apply`、`member.manage`），店员一律不给 —— 只有店主能做。这与现在「店员靠 near-pay 成员表授权」相比是**收紧**，要用户点头（§11.6 第 2 条）。
+**要确认（已被 §13.3 细化：14 个动作全部能对到现有的码，只有退款复核、设备激活收紧为只给店主）**：B 端支付码现在只有 9 个（`mch:pay:collect`、`order:view`、`refund`、`qr`、`statement`、`app-grant`、`store-method`、`offline:record`、`offline:manage`），near-pay B 端动作有 14 个（`payment.create`、`refund.apply`、`onboarding.apply`、`member.manage`……）。对照表里没有对应码的动作（如 `onboarding.apply`、`member.manage`），店员一律不给 —— 只有店主能做。这与现在「店员靠 near-pay 成员表授权」相比是**收紧**，要用户点头（§11.6 第 2 条）。
 
 ### 11.4 阶段 3 · 打开 B 端透传、下线转发入口
 
@@ -343,3 +343,107 @@ near-pay 仓库，与 RobinWu 对齐排期。四件事：
 | 11 | 剩余 C1 等 near-pay 补公开接口后再排 | — | — | — | — |
 
 可以马上做、不等别人的：1、2、3。4 起要 near-pay 排期；5、6、7 要部署窗口和用户。
+
+## §13 B 端 App 的菜单、权限、角色在透传下的梳理（2026-11-22，用户：「同时要考虑在 B 端 App 上的菜单，权限，角色定义判断」；待确认）
+
+依据（只读核对）：ai-shop `BizPerms`、`BizContext`、`b-app/src/pages/me`、`b-app/src/api`；App `ai-shop-bapp` `origin/main` `9cc7f65`（`apps/merchant_app/lib`）；near-pay `MerchantRole`、`/biz/pay/v2` 各 controller。
+
+### 13.1 现状：B 端有两套角色、三处判断
+
+**两套角色**
+
+| | ai-shop（`mch_role` + `mch_store_role`） | near-pay（`pay_merchant_membership`） |
+|---|---|---|
+| 角色 | 预置 OWNER、MANAGER、CLERK、PICKER、COURIER、CS，外加商家自建的角色 | CASHIER、STORE_MANAGER、MERCHANT_ADMIN |
+| 粒度 | 人 × 门店（同一人在两家店可以是两个角色） | 人 × 支付商户，门店范围 `ALL` 或指定门店 |
+| 码 / 动作 | 码：`biz:*`、`mch:pay:*`（9 个）、`pay:sv/ent/cash`（15 个，ai-shop 进程内业务） | 动作 14 个：`payment.*`、`refund.*`、`qrcode.manage`、`onboarding.*`、`store.bind`、`member.manage`、`app.grant*`…… |
+| 谁来配 | 店主在 App / b-app「员工、角色」里配；可勾选的码由 `/biz/roles` 下发（`BizPerms.assignableCodes`） | near-pay 成员接口；App 里**没有**管理入口（App 不调 `/biz/pay/v2/members`） |
+| 店主 | OWNER = `*` | 运营代建的商户里店主没有成员行，靠 ai-shop 转发时的「来源委托」当商户管理员（11-18 起） |
+
+**三处判断**
+
+| 端 / 页面 | 菜单显隐看什么 | 接口判权在哪 |
+|---|---|---|
+| b-app（本仓库）「我的」：收入、结算、收款设置（`biz:finance`），代客收款（`mch:pay:collect`），收款流水（`mch:pay:statement`），收款码（`mch:pay:qr`），第三方收款授权（`mch:pay:app-grant`），员工（`biz:store:admin`） | `/biz/context` 下发的当前门店 `perms` | ai-shop：`/biz/payment/**`、`/biz/merchant/payment/**`（形态 C） |
+| App 资金、收款、收银、App 外收款、服务收款 | 同上（`access_catalog.dart` 由 `docs/api/access-matrix.json` 生成，与 `BizPerms` 同源） | ai-shop（形态 C） |
+| App 支付进件、渠道审核、主体开通渠道、门店挂收款号、渠道账户认领 | near-pay `/biz/pay/v2/memberships` 的 `actions`：只用到 3 个 —— `onboarding.apply`、`onboarding.query`（进件，`PayMembership.canApply/canQuery`、门店准入 `http_admission_gateway`），`store.bind`（门店挂收款号、认领） | near-pay（形态 B：ai-shop 转发 + near-pay 按成员表/来源委托判） |
+
+问题：同一个店员，「能不能收款」由 ai-shop 角色决定，「能不能看进件」由 near-pay 成员表决定，两处配、两处判；店员的 near-pay 成员行没有界面可配，事实上只有店主能进件。
+
+### 13.2 目标：一套角色、一张对照表
+
+- **角色只剩 ai-shop 一套。** 店主在「员工、角色」里给人配角色，支付相关的能力随码走；near-pay 的三个成员角色退出判权（§11.5 阶段 4 后删）。
+- **菜单仍看 ai-shop 的码**（b-app、App 资金类页面不变）；**App 进件类页面仍看 `/memberships` 的 `actions`**（App 不用改），但 `actions` 改由 near-pay 按下表从 ai-shop 的码换出来。
+- **判权跟着接口走**：`/biz/pay/v2/**` 由 near-pay 判（`canBiz`，查同一张表）；`/biz/payment/**` 等形态 C 仍由 ai-shop 判。两边用的是同一组码，菜单与判权不会再分叉。
+
+### 13.3 near-pay 动作 ↔ ai-shop 码（推荐对照，全部用现有的码，不新增）
+
+| near-pay 动作 | 用在哪（near-pay `/biz/pay/v2`） | ai-shop 码 | 预置角色默认谁有 | 与现在 near-pay 角色比 |
+|---|---|---|---|---|
+| `payment.create`、`payment.close` | `BizCollectionController` | `mch:pay:collect` | 店主、店长 | 原 CASHIER 有 → 现在要店主给他勾「代客收款」 |
+| `payment.query` | 收款查询 | `mch:pay:order:view` | 店主、店长、店员 | 一致 |
+| `refund.apply` | 退款（主要在终端侧 `TerminalOperatorSessions`、`PosTerminalService`） | `mch:pay:refund` | 店主 | 原 CASHIER 有 → 收紧，店主可勾 |
+| `refund.review` | 退款复核 | **只给店主**（`biz:store:admin`，不可勾选） | 店主 | 原 STORE_MANAGER 有 → 收紧；保住「申请与复核不是同一人」（ai-shop 只有一个退款码，分不开） |
+| `qrcode.manage` | `BizQrCodeV2Controller` | `mch:pay:qr` | 店主 | 原 STORE_MANAGER 有 → 店主可勾 |
+| `store.ledger.read`、`statement.read` | 门店流水、对账单 | `mch:pay:statement` | 店主 | 一致（可勾） |
+| `app.grant.query`、`app.grant` | `BizAppGrantController` | `mch:pay:app-grant` | 店主 | 一致（可勾） |
+| `device.activate` | 终端管理（`TerminalMerchantManagement`、`TerminalManagerAuthorizations`，SoftPOS / POS 激活） | **只给店主**（`biz:store:admin`） | 店主 | 原 STORE_MANAGER 有 → 收紧；真要店员激活设备时再加 `mch:pay:device`（契约变更，另立） |
+| `onboarding.query`、`onboarding.apply` | 进件、补件、渠道申请（`BizOnboarding*`、`BizMerchantChannelController`） | `biz:finance`（「结算账单与收款进件」，ai-shop 认领入口已经用它） | 店主 | 原来只有 MERCHANT_ADMIN → **放宽**：被勾了 `biz:finance` 的店员也能进件 |
+| `store.bind` | 门店挂收款号、渠道账户认领 | `biz:store:admin`（「建店、停用、挂收款号、管员工」，不可勾选） | 店主 | 一致（实际只有店主） |
+| `member.manage` | `BizMemberController` | `biz:store:admin` | 店主 | 一致；near-pay 成员接口随成员表一起退役 |
+| `merchant.link`（建商户前的引导动作） | `BizMerchantCreationController` | 店主（`OWNER`） | 店主 | 一致 |
+
+**终端侧不在本方案内**：`payment.*`、`refund.*`、`device.activate` 也被 near-pay 终端面（`/terminal/pay/v1|v2`，POS 与 SoftPOS 的操作员会话）使用，那条链不经 ai-shop 网关，操作员身份是终端自己的；本表只约束经 `/biz/pay/v2` 进来的商户端请求。终端操作员是否也改由 ai-shop 角色授权，另议。
+
+对照表写在 near-pay 代码里（§11.3、§11.6-4），ai-shop 侧以 `payclient` 的 `DownstreamActions`（码 → 动作）为准，两边加对账测试。
+
+### 13.4 `memberships` 与门店范围
+
+near-pay 的 `/biz/pay/v2/memberships`（App 的商户切换器与进件准入）改由 `merchant-staff` 生成，形状不变：
+
+| 字段 | 店主 | 店员 |
+|---|---|---|
+| `merchantNo` | 名下主体关联的支付商户 | 他有码的门店所属主体关联的支付商户 |
+| `role` | `MERCHANT_ADMIN`（沿用 App 已认的值） | `STAFF`（新值；已检索 App 的进件、准入、主体三个目录，没有读 `role` 的地方，只读 `actions`、`storeScope`、`storeNos`） |
+| `actions` | 全部 | 各店的码按 13.3 换成动作后取并集 —— **只用于显示**；真正下单、退款时 near-pay 按请求的门店再判 |
+| `storeScope` / `storeNos` | `ALL` / `[]` | `STORES` / 有至少一个支付码的门店 |
+
+**要核对的一点**：`storeNos` 用的是 ai-shop 门店号（App 拿当前 ai-shop 门店去比）。near-pay 判门店级动作时要把它自己的门店换成来源门店号（门店同步时已存来源引用），阶段 2 实现时确认。
+
+### 13.5 `merchant-staff` 需要的小改动
+
+13.3 用到的码不止 `mch:pay:` 一个前缀，还有 `biz:finance`、`biz:store:admin`。`X-Auth-Namespace` 改成**可传多个前缀、逗号分隔**（`mch:pay:,biz:finance,biz:store:admin`），运营端接口共用同一个筛选函数，行为对单个前缀不变。属阶段 2 之前在本仓库补的改动（§12 新增第 3b 步）。
+
+### 13.6 各端要改什么
+
+| 端 | 阶段 2/3 要改 | 不用改 |
+|---|---|---|
+| ai-shop 后端 | `merchant-staff` 多前缀（13.5）；阶段 3 删转发入口时，`PayBizSourceDelegation.memberships`（ai-shop 代答的切换器）一起删 | `BizPerms`、预置角色、`/biz/roles`、`/biz/context` 都不动 |
+| near-pay | 13.3 对照表 + `canBiz`；`memberships` 改生成；成员角色退出判权 | — |
+| b-app（本仓库） | 无（全走 ai-shop 码与形态 C）；C1 批 2 时只换接口地址 | 菜单、角色页 |
+| App（`ai-shop-bapp`） | 无代码改动；走查一遍店员视角 | 进件页仍按 `actions` 显隐 |
+| 运营端 | 无 | — |
+
+如果以后选择新增 `mch:pay:device` 或拆分退款复核码，那是契约变更：`BizPerms` 加码与说明、预置角色种子迁移、`BizRoleSeedTest`、`docs/api/access-matrix.json` 与 App 的 `access_catalog.dart` 重新生成，另立任务。
+
+### 13.7 上线前要清点的人
+
+near-pay 正式库里非 MERCHANT_ADMIN 的成员行（CASHIER、STORE_MANAGER）就是 13.3 里「收紧」会影响到的人。阶段 2 灰度期间的「只靠成员表放行」日志会把他们逐个列出来；按日志在 ai-shop 给他们的角色补码，再切 `host`。
+
+### 13.8 要用户拍板的（并入 §11.6）
+
+| # | 问题 | 推荐 |
+|---|---|---|
+| 6 | 13.3 的对照表 | 同意；`refund.review`、`device.activate` 先只给店主 |
+| 7 | 被勾了 `biz:finance` 的店员可以进件（放宽） | 同意：`biz:finance` 的说明本来就是「结算账单与收款进件」，ai-shop 的认领入口也按它判 |
+| 8 | 店员的 `memberships.role` 回 `STAFF` | 同意（App 不读该字段） |
+
+### 13.9 计划增补（并入 §12）
+
+| # | 任务 | 仓库 | 验证 | 依赖 |
+|---|---|---|---|---|
+| 3b | `merchant-staff` 支持多前缀 | ai-shop | `MerchantStaffIdentityEndpointTest`、`OperatorIdentityEndpointTest` 加用例 | — |
+| 3c | 13.3 对照表落到 `payclient` 的支付 `DownstreamActions`，导出快照 | ai-shop | 快照测试 | 13.8-6 |
+| 4+ | near-pay 实现 13.3、13.4（并入原第 4 步） | near-pay | 每个动作店主/店长/店员/无码四种身份各一条 | 3b、3c |
+| 6+ | 白名单验证加：店员有/无 `biz:finance` 看进件入口；店员有/无 `mch:pay:qr` 管收款码；店员不能复核退款、不能激活设备 | ai-shop + 用户 | App 模拟器走查 | 6 |
+| 6++ | App 店员视角走查（已检索：不读 `memberships.role`） | ai-shop-bapp | 模拟器走查 | 6 |
