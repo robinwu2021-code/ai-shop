@@ -251,3 +251,95 @@ EndpointSnapshotTest             Tests run: 1,  Failures: 0, Errors: 0
 ```
 
 生成文档闸门 `node scripts/check-generated-docs.mjs`：新端点与新常量让 4 份产物漂了（网关接口清单 `/internal` 167→168、后端分层清单 Controller 455→456、静态常量清单与 glossary 多 `PayBizPassThrough.PREFIX`），已重新生成并一起提交。没有跑全量后端测试与 pre-push 全套。
+
+## §11 剩余阶段实施方案（2026-11-22，用户：「基于文档先出方案，然后给出计划」；待确认）
+
+阶段 1 已落地（§10）。本节把阶段 0、2–5 细化到可以开工的程度；计划见 §12。依据：§3–§5、附录盘点、near-pay `develop/s1` 现状（`backend/pay/pay-svc/.../identity/`）。
+
+### 11.1 目标状态（全部做完后）
+
+| 请求 | 网关 | 判权 | 权限数据 |
+|---|---|---|---|
+| 运营端支付中心 `/ops/pay-ops/v2/**` | 认证 + 透传（已上线） | near-pay `@payPerm.can` | ai-shop 角色的 `pay:` 码；SY04 数据范围按 ai-shop 角色授 |
+| B 端 `/biz/pay/v2/**`（进件、商户、渠道、收款、二维码、应用授权、成员、终端） | 认证 + 透传 | near-pay `@payPerm.canBiz(商户, 动作)` | `merchant-staff` 给的 `memberships`；near-pay 成员表退出判权 |
+| ai-shop 里的支付页面接口（结算、积分、储值、权益、对账……C2） | 照旧 | ai-shop `@PreAuthorize` | ai-shop |
+| ai-shop 里的薄转调（C1，确认后） | 改走透传或保持 | 迁走的由 near-pay 判 | ai-shop |
+
+### 11.2 阶段 0 · C1 逐个确认
+
+**做法**：每个 C1 controller 的每个接口填三栏 —— ai-shop 调的 `payclient` 方法 → near-pay 内部地址；near-pay 有没有同功能的公开接口（`/biz/pay/v2`、`/pay-ops/v2`、`/pay-ops/v1`）；ai-shop 返回前有没有拼自己的数据。结论只有三种：**迁**（有公开接口、无拼数据）、**等 near-pay 补**、**改判 C2**（有拼数据，留在 ai-shop）。
+
+**先改脚本再人工看**：`scripts/inventory-pay-endpoints.py` 加一栏「调用的 near-pay 内部地址」（按 `payclient` 接口上的 `@GetMapping/@PostMapping` 解析），省掉人工一条条追。
+
+**已知的初步对应**（用来排第一批，不是结论）：
+
+| C1 | 接口数 | near-pay 现有公开接口 | 初看 |
+|---|---:|---|---|
+| B 端 `BizPaymentController`（收款、二维码、订单、退款、对账单、应用授权、门店收款方式） | 23 | `/biz/pay/v2` 下有 `BizCollectionController`、`BizQrCodeV2Controller`、`BizAppGrantController`、`BizTerminalController`；退款、对账单只有旧版 `/biz/pay/{refund,statement}` | 一部分可迁；退款、对账单要 near-pay 先在 v2 补 |
+| 运营 `OpsPaymentController`（订单、退款、二维码、通知、异常、应用凭据） | 21 | `/pay-ops/v1/{orders,refunds,qr-codes,notifies,exceptions}`，同受 `AiShopOpsSessionFilter` | 可迁：运营透传多挂一个 `/ops/pay-ops/v1` 前缀 |
+| 运营积分、应付、提现、费率、渠道、结算统计；B 端储值报表/结算；权益 | 约 110 | 没有公开接口 | 第一期不迁（near-pay 补 100 多个公开接口不划算），维持 ai-shop 判 |
+
+**交付**：附录每行补「对应公开接口」「结论」两栏；结论为「迁」的形成批次清单。
+
+### 11.3 阶段 2 · near-pay B 端改判权来源
+
+near-pay 仓库，与 RobinWu 对齐排期。四件事：
+
+1. **认证**：`AiShopBizIdentityClient` 由 `/biz/auth/session` 改调 `/internal/auth/v1/merchant-staff`，带 `X-Internal-Token`、`X-Auth-Namespace: mch:pay:`；按令牌 SHA-256 缓存 30 秒；ai-shop 不可用回 503 `IDENTITY_UNAVAILABLE`（不放行）。
+2. **判权**：新增 `@payPerm.canBiz(merchantNo, action)`。商户号取 `X-Merchant-No`，在 `memberships` 里找该商户：`OWNER` 放行；`STAFF` 把动作换成 ai-shop 码再查（门店级动作查 `stores` 里那家店）。**动作 → 码的对照写在 near-pay 代码里**，与 ai-shop `payclient` 的 `DownstreamActions`（码 → 动作）是同一张表的反向，加一条对账测试让两边一致。
+3. **灰度**：`near-pay.biz.permission-source=host+membership`（任一来源放行）先上，日志记「只靠成员表放行」的请求；一周没有再切 `host`。
+4. **`/biz/pay/v2/memberships`**（App 的商户切换器）：改成由 `memberships` 生成，形状不变。
+
+**要确认**：B 端支付码现在只有 9 个（`mch:pay:collect`、`order:view`、`refund`、`qr`、`statement`、`app-grant`、`store-method`、`offline:record`、`offline:manage`），near-pay B 端动作有 14 个（`payment.create`、`refund.apply`、`onboarding.apply`、`member.manage`……）。对照表里没有对应码的动作（如 `onboarding.apply`、`member.manage`），店员一律不给 —— 只有店主能做。这与现在「店员靠 near-pay 成员表授权」相比是**收紧**，要用户点头（§11.6 第 2 条）。
+
+### 11.4 阶段 3 · 打开 B 端透传、下线转发入口
+
+前置：阶段 2 已上线并处在 `host+membership`。
+
+1. 两边配同一把 `shop.gateway.biz.identity.caller-token`（ai-shop）/ near-pay 对应配置，走现有密钥管理。
+2. v2 打开 `shop.gateway.biz.pay-proxy.enabled=true`，重启（约 40 秒）。
+3. 验证：白名单店主走一遍 App 的进件、补件、渠道审核、收款二维码；白名单店员按角色可见/不可见；非本人商户 403；`X-Internal-*` 伪造无效。
+4. 观察一个发布周期没有回退，再删 `BizPayOnboardingController`、`BizPayMerchantController`、`BizPayMerchantChannelController`、`BizChannelAccountClaimController`、`PayChannelAccountClaimForwarder` 与 `PayBizOnboardingRelay`/`PayBizSourceDelegation` 的委托改写；端点快照、网关接口清单同步更新。
+5. 回退：关开关重启，转发入口还在包里（第 4 步之前）。
+
+### 11.5 阶段 4、5
+
+- **阶段 4**：near-pay 切 `host`；成员表只读保留一个发布周期再删；运营端 SY03 映射同期退役。要用户确认（§7 第 3 条）。
+- **阶段 5 · C1 迁移**，按阶段 0 的结论分批，每批一个 PR：
+  - 批 1 运营 `OpsPaymentController` → `/ops/pay-ops/v1/**` 透传：`PrefixPassThrough` 多一个运营端实例；ops-web 改调新前缀；码在 near-pay `@payPerm` 与 `Perms` 两边登记一致；ai-shop 适配 controller 删掉。
+  - 批 2 B 端 `BizPaymentController` 里 near-pay v2 已有的那部分 → `/biz/pay/v2/**`；b-app 改调；响应形状不同的地方在 b-app 适配，不在网关改包体。
+  - 其余等 near-pay 补公开接口后再排。
+
+### 11.6 要用户拍板的
+
+| # | 问题 | 推荐 |
+|---|---|---|
+| 1 | 阶段 0 的范围 | 只确认 C1（170 个接口），C2 不复核 |
+| 2 | 店员在 near-pay 的动作只按 ai-shop 码给，没有对应码的动作只给店主 | 同意（收紧，但与「权限只在 ai-shop 授」一致）；需要店员做的动作，在 ai-shop 补 `mch:pay:` 码 |
+| 3 | C1 第一期只迁 near-pay 已有公开接口的两批，其余维持 ai-shop 判 | 同意 |
+| 4 | 动作 ↔ 码对照放 near-pay 代码，两边加对账测试 | 同意 |
+| 5 | 阶段 3 第 4 步（删转发入口）在打开后观察一个发布周期 | 同意 |
+
+### 11.7 风险
+
+- 店员权限收紧（§11.3）：上线后可能有店员发现做不了原来能做的事。缓解：阶段 2 灰度期日志里「只靠成员表放行」的请求就是这批人，按日志补码再切 `host`。
+- C1 初判错：阶段 0 逐条确认后才迁；每批 PR 附调用对照。
+- 两边对照表漂移：对账测试放在 near-pay（读 ai-shop 发布的码表快照），漂了 near-pay 构建红。
+
+## §12 实施计划（待 §11.6 确认后开工）
+
+| # | 任务 | 仓库 / 谁 | 产出 | 验证 | 依赖 |
+|---|---|---|---|---|---|
+| 1 | 盘点脚本加「near-pay 内部地址」栏，重新生成附录 | ai-shop / 本会话 | `inventory-pay-endpoints.py`、附录 | 生成文档闸门 | — |
+| 2 | C1 逐条确认（170 个接口）：对应公开接口、是否拼数据、结论 | ai-shop / 本会话，near-pay 只读 | 附录补两栏；批次清单 | 抽查：每个「迁」至少对一条真实调用 | 1 |
+| 3 | 码 → 动作对照导出成快照（JSON），供 near-pay 对账 | ai-shop | `DownstreamActions` 的支付表快照 + 测试 | 快照测试 | — |
+| 4 | near-pay：`merchant-staff` 客户端 + 30 秒缓存 + `canBiz` + `permission-source` 开关 + 日志 + memberships 改生成 | near-pay / RobinWu 排期 | near-pay PR | near-pay 单测（缓存、店主无成员行可操作、店员按码、`host` 下只靠成员表被拒）；对账测试 | 3、§11.6-2/4 |
+| 5 | 配凭据、部署 near-pay（`host+membership`） | 运维 + 用户 | — | `/internal/auth/v1/merchant-staff` 访问日志；near-pay 无 503 | 4、本分支合并上线 |
+| 6 | v2 打开 B 端透传，白名单验证 | ai-shop / 本会话 + 用户 | 验证记录写入 TDD | §11.4 第 3 条清单 | 5 |
+| 7 | 观察一周 →  near-pay 切 `host` | near-pay + 用户 | 配置变更 | 日志无「只靠成员表放行」 | 6、§7-3 |
+| 8 | 删 B 端转发入口与委托改写 | ai-shop | PR | 端点快照、网关接口清单、相关测试 | 6 之后一个发布周期 |
+| 9 | C1 批 1：运营 `/ops/pay-ops/v1` 透传 + ops-web 改调 + 删适配 | ai-shop（+ near-pay 码登记） | PR | 透传测试、ops-web vitest、线上白名单 | 2 |
+| 10 | C1 批 2：B 端收款/二维码等改走 `/biz/pay/v2` + b-app 改调 | ai-shop | PR | `vue-tsc`、b-app 走查 | 2、6 |
+| 11 | 剩余 C1 等 near-pay 补公开接口后再排 | — | — | — | — |
+
+可以马上做、不等别人的：1、2、3。4 起要 near-pay 排期；5、6、7 要部署窗口和用户。
