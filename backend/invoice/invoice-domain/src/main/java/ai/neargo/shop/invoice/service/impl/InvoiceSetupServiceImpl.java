@@ -8,6 +8,8 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionsVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
@@ -16,6 +18,7 @@ import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.gateway.InvoiceGateways;
+import ai.neargo.shop.invoice.gateway.QueryCapability;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
@@ -64,10 +67,12 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private final InvoiceProviderAccounts accounts;
     private final InvoiceGateways gateways;
     private final InvoiceTransmissionService transmissions;
+    private final InvoiceGatewayPolicy policy;
 
     public InvoiceSetupServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceRegimes regimes,
             ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
-            InvoiceTransmissionService transmissions) {
+            InvoiceTransmissionService transmissions, InvoiceGatewayPolicy policy) {
+        this.policy = policy;
         this.profiles = profiles;
         this.ranges = ranges;
         this.regimes = regimes;
@@ -87,8 +92,11 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     @Override
     @Transactional
     public RegimeProfileVO saveProfile(Scope scope, RegimeProfileReq req) {
-        var regime = regimes.require(req.regimeCode());
+        var regime = regimes.require(req.regimeCode() == null || req.regimeCode().isBlank()
+                ? policy.defaultRegime() : req.regimeCode());
         regime.validateSeller(req.sellerTaxId());
+        String chosen = blankToNull(req.gatewayCode());
+        if (chosen != null) policy.requireSelectable(regime.code(), chosen);
         var now = LocalDateTime.now(ZoneOffset.UTC);
         var p = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("regime_code", regime.code()));
@@ -103,7 +111,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         }
         p.setSellerTaxId(req.sellerTaxId());
         p.setSellerName(req.sellerName());
-        p.setGatewayCode(req.gatewayCode());
+        p.setGatewayCode(chosen);
         p.setMemberCarrierType(req.memberCarrierType());
         p.setAutoIssue(Boolean.TRUE.equals(req.autoIssue()));
         p.setProviderAccountCode(blankToNull(req.providerAccountCode()));
@@ -131,6 +139,8 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         if (p.getProviderAccountCode() == null)
             profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId())
                     .set("provider_account_code", null));
+        if (p.getGatewayCode() == null)   // 改回跟随市场默认
+            profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId()).set("gateway_code", null));
         // 一个主体同一时刻只开通一种税制
         var others = new IvcRegimeProfile();
         others.setStatus("SUSPENDED");
@@ -173,6 +183,17 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         r.setUpdatedAt(now);
         ranges.insert(r);
         return view(r);
+    }
+
+    @Override
+    public ProviderOptionsVO providerOptions(String regimeCode) {
+        var regime = regimes.require(regimeCode == null || regimeCode.isBlank() ? policy.defaultRegime() : regimeCode);
+        String def = policy.defaultGateway(regime.code());
+        var options = policy.selectable(regime.code()).stream().map(g -> new ProviderOptionVO(g.code(),
+                g.profile().numbering().name(), g.profile().reporting().name(), g.profile().requiresAccount(),
+                g instanceof AccountCapability, g instanceof RangeCapability, g instanceof QueryCapability,
+                g.code().equals(def))).toList();
+        return new ProviderOptionsVO(regime.code(), def, options);
     }
 
     @Override
@@ -240,7 +261,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
 
     /** 主体配的供应商须有这项能力（核验账号 / 配号段）；STUB / Turnkey / 在线给号类没有，动作无意义。 */
     private <T> T capability(IvcRegimeProfile p, Class<T> type) {
-        return gateways.capability(p.getGatewayCode(), type)
+        return gateways.capability(policy.effective(p).code(), type)
                 .orElseThrow(() -> BizException.of(ErrorCode.INVOICE_STATE_INVALID));
     }
 
@@ -267,7 +288,9 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         String current = regime.periodOf(Instant.now());
         var end = regime.periodEnd(current);
         String next = end == null ? null : regime.periodOf(end);
-        return new RegimeProfileVO(p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(), p.getGatewayCode(),
+        var gateway = policy.effective(p);
+        return new RegimeProfileVO(p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(), gateway.code(),
+                gateway.source(),
                 p.getQrKeyRef() != null, p.getMemberCarrierType(), Boolean.TRUE.equals(p.getAutoIssue()), p.getStatus(),
                 p.getProviderAccountCode(), p.getProviderSecretRef() != null, p.getProviderHoldReason(),
                 p.getProviderHeldAt(), lowWater(p), Boolean.TRUE.equals(p.getAutoFetchRanges()), current,
@@ -328,7 +351,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     /** 只有「服务商配号」的通道才能自动领号；账号暂停中（M1-2）不去打服务商。 */
     private boolean autoFetchable(IvcRegimeProfile p) {
         return Boolean.TRUE.equals(p.getAutoFetchRanges()) && p.getProviderHeldAt() == null
-                && gateways.capability(p.getGatewayCode(), RangeCapability.class).isPresent();
+                && gateways.capability(policy.effective(p).code(), RangeCapability.class).isPresent();
     }
 
     /** 业务动作：自动领号失败（服务商拒绝、号段冲突）不中断巡检，转为提醒，由人处理。 */

@@ -17,14 +17,20 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+/**
+ * 可插拔模块把自己的菜单行放在模块迁移里（发票 V10：打包排除时菜单随表一起不存在），一并扫。
+ * 主应用在前、模块在后，与 Flyway 的执行先后无关 —— 这里只收 INSERT / UPDATE / DELETE 的字面值。
+ */
+const MODULE_MIGRATION_DIRS = [join(ROOT, "backend/invoice/invoice-domain/src/main/resources/db/invoice")];
+const MIGRATION_FILES = [MIGRATION_DIR, ...MODULE_MIGRATION_DIRS].flatMap((dir) =>
+  readdirSync(dir).sort().filter((f) => f.endsWith(".sql")).map((f) => join(dir, f)));
 
 /** 从所有迁移里收 sys_function_point 的 INSERT（V62 建 78 个，V64 补 24 个） */
 function seededPoints() {
   const out: { pointCode: string; functionCode: string; group: string | null; href: string | null;
                ui: string | null; type: string }[] = [];
-  for (const f of readdirSync(MIGRATION_DIR).sort()) {
-    if (!f.endsWith(".sql")) continue;
-    const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
+  for (const f of MIGRATION_FILES) {
+    const sql = readFileSync(f, "utf8");
     // 列序见 V62：point_code, function_code, name, group_name, href,
     //             ui_perm_code, perm_code, backend_status, ui_ready,
     //             matrix_code, point_type, sort, ...
@@ -84,9 +90,8 @@ function seededPoints() {
   // Existing menu points may move without losing role grants (V426).
   // Apply literal href updates to the original point, rather than pretending
   // INSERT is the only way a menu can change.
-  for (const f of readdirSync(MIGRATION_DIR).sort()) {
-    if (!f.endsWith(".sql")) continue;
-    const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
+  for (const f of MIGRATION_FILES) {
+    const sql = readFileSync(f, "utf8");
     for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+([^;]+?)\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
       const href = /\bhref\s*=\s*'([^']+)'/.exec(m[1]!);
       if (href) for (const p of out) if (p.pointCode === m[2]) p.href = href[1]!;
@@ -94,9 +99,8 @@ function seededPoints() {
   }
   const removed = new Set<string>();
   const removedFunctions = new Set<string>();
-  for (const f of readdirSync(MIGRATION_DIR).sort()) {
-    if (!f.endsWith(".sql")) continue;
-    const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
+  for (const f of MIGRATION_FILES) {
+    const sql = readFileSync(f, "utf8");
     for (const m of sql.matchAll(/DELETE\s+FROM\s+sys_function_point\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
       removed.add(m[1]);
     }

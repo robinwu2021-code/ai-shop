@@ -22,11 +22,16 @@
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ t("salesInvoice.gateway") }}</text>
           <view class="sh-row">
-            <text v-for="g in GATEWAYS" :key="g" class="sh-chip" :class="profile.gatewayCode === g ? 'sh-chip--primary' : ''"
-              @tap="profile.gatewayCode = g">{{ t(`salesInvoice.gatewayName.${g}`) }}</text>
+            <text class="sh-chip" :class="profile.gatewayCode === '' ? 'sh-chip--primary' : ''" @tap="profile.gatewayCode = ''">{{
+              t("salesInvoice.gatewayDefault", { name: gatewayLabel(providers?.defaultGatewayCode ?? "") }) }}</text>
+            <text v-for="g in choices" :key="g.code" class="sh-chip" :class="profile.gatewayCode === g.code ? 'sh-chip--primary' : ''"
+              @tap="profile.gatewayCode = g.code">{{ gatewayLabel(g.code) }}</text>
           </view>
         </view>
-        <template v-if="profile.gatewayCode === 'CETUSTEK'">
+        <view class="sh-cell">
+          <text class="sh-hint txt-quiet">{{ t("salesInvoice.gatewayHint") }}</text>
+        </view>
+        <template v-if="chosen?.requiresAccount">
           <view class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted">{{ t("salesInvoice.providerAccountCode") }}</text>
             <input v-model="profile.providerAccountCode" maxlength="64" class="txt-body sh-num sh-fill cell-input" />
@@ -62,7 +67,7 @@
           <text class="txt-body sh-muted">{{ t("salesInvoice.rangeLowWater") }}</text>
           <input v-model="profile.rangeLowWater" type="number" maxlength="6" class="txt-body sh-num sh-fill cell-input" />
         </view>
-        <view v-if="profile.gatewayCode === 'CETUSTEK'" class="sh-cell sh-row sh-row--between">
+        <view v-if="chosen?.rangeProvided" class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ t("salesInvoice.autoFetchRanges") }}</text>
           <sh-switch v-model="profile.autoFetchRanges"></sh-switch>
         </view>
@@ -82,8 +87,8 @@
         <text class="sh-hint txt-quiet">{{ t("salesInvoice.providerHint") }}</text>
         <view v-if="providerMsg" class="sh-notice sh-mt-sm" :class="providerFailed ? 'sh-notice--danger' : 'sh-notice--success'" role="status">{{ providerMsg }}</view>
         <view class="sh-row sh-mt-sm">
-          <view class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="verifyProvider">{{ t("salesInvoice.verifyProvider") }}</view>
-          <view class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="fetchProviderRange">{{ t("salesInvoice.fetchRange") }}</view>
+          <view v-if="saved?.verifiable" class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="verifyProvider">{{ t("salesInvoice.verifyProvider") }}</view>
+          <view v-if="saved?.rangeProvided" class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="fetchProviderRange">{{ t("salesInvoice.fetchRange") }}</view>
         </view>
       </view>
 
@@ -141,18 +146,16 @@
 <script setup lang="ts">
 // 发票设置：开通税制（首期 TW_EGUI）与登记字轨号段。主体级配置，仅 biz:invoice:setup。
 // QR 加密密钥只写不读：页面只显示「已配置 / 未配置」，输入框留空表示不改。
-// 加值中心（鲸跃）：账号密码同样只写不读；号段由服务商配给，在已保存的通道是加值中心时才出现「核验 / 取号段」。
+// 供应商（TDD-发票模块 §20）：可选列表由后端按市场给出，默认「跟随平台默认」（gatewayCode 传空串），平台换供应商时自动跟随；
+// 迁移来的商户可选正在用的那家。账号输入、核验、领号段按所选供应商的能力出现，不认具体厂商；账号密码只写不读。
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { SiProfile, SiProfileReq, SiRange } from "@/api/sales-invoice";
+import type { SiProfile, SiProviderOptions, SiRange } from "@/api/sales-invoice";
 
-type Gateway = SiProfileReq["gatewayCode"];
-const GATEWAYS: readonly Gateway[] = ["STUB", "TURNKEY", "CETUSTEK"];
-
-const { t } = useI18n();
+const { t, te } = useI18n();
 const merchant = useMerchantStore();
 const loaded = ref(false);
 const failed = ref(false);
@@ -163,7 +166,9 @@ const providerMsg = ref("");
 const providerFailed = ref(false);
 const current = ref<SiProfile | null>(null);
 const ranges = ref<SiRange[]>([]);
-const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "STUB" as Gateway, qrAesKeyHex: "", memberCarrierType: "", autoIssue: false,
+const providers = ref<SiProviderOptions | null>(null);
+/** gatewayCode 空串 = 跟随平台默认 */
+const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "", qrAesKeyHex: "", memberCarrierType: "", autoIssue: false,
   providerAccountCode: "", providerUser: "", providerPassword: "", rangeLowWater: "50", autoFetchRanges: false });
 const range = reactive({ periodCode: "", track: "", startNo: "", endNo: "", storeNo: "" });
 
@@ -177,8 +182,20 @@ const rangeTone = computed(() => {
 });
 const qrKeyConfigured = computed(() => !!current.value?.qrKeyConfigured);
 const providerCredOk = computed(() => !!current.value?.providerCredentialConfigured);
-/** 以已保存的配置为准：未保存的通道切换不能拿去核验 */
-const providerMode = computed(() => current.value?.gatewayCode === "CETUSTEK");
+/** 商家可点选的供应商（默认那家由「跟随平台默认」代表） */
+const choices = computed(() => (providers.value?.options ?? []).filter((o) => !o.isDefault));
+function option(code: string | undefined) {
+  return providers.value?.options.find((o) => o.code === code) ?? null;
+}
+/** 页面上选中的（未保存）：决定是否出现账号输入、自动领号 */
+const chosen = computed(() => option(profile.gatewayCode || providers.value?.defaultGatewayCode));
+/** 已保存、当前生效的：未保存的切换不能拿去核验 / 领号 */
+const saved = computed(() => option(current.value?.gatewayCode));
+const providerMode = computed(() => !!saved.value?.requiresAccount && (saved.value.verifiable || saved.value.rangeProvided));
+function gatewayLabel(code: string) {
+  const key = `salesInvoice.gatewayName.${code}`;
+  return te(key) ? String(t(key)) : code;
+}
 const profileStatus = computed(() => current.value
   ? String(t(`salesInvoice.profileStatus.${current.value.status}`))
   : String(t("salesInvoice.notOpened")));
@@ -191,7 +208,7 @@ function fill(p: SiProfile | null) {
   current.value = p;
   profile.sellerTaxId = p?.sellerTaxId ?? "";
   profile.sellerName = p?.sellerName ?? "";
-  profile.gatewayCode = GATEWAYS.find((g) => g === p?.gatewayCode) ?? "STUB";
+  profile.gatewayCode = !p || p.gatewaySource === "DEFAULT" ? "" : p.gatewayCode;
   profile.memberCarrierType = p?.memberCarrierType ?? "";
   profile.qrAesKeyHex = "";
   profile.autoIssue = !!p?.autoIssue;
@@ -205,7 +222,8 @@ function fill(p: SiProfile | null) {
 async function load() {
   failed.value = false;
   try {
-    const [p, r] = await Promise.all([api.mSiProfile(), api.mSiRanges({})]);
+    const [p, r, g] = await Promise.all([api.mSiProfile(), api.mSiRanges({}), api.mSiProviders({})]);
+    providers.value = g;
     fill(p);
     ranges.value = r;
   } catch {
@@ -241,7 +259,7 @@ async function saveProfile() {
       gatewayCode: profile.gatewayCode,
       autoIssue: profile.autoIssue,
       ...(lowWater !== null ? { rangeLowWater: lowWater } : {}),
-      autoFetchRanges: profile.gatewayCode === "CETUSTEK" && profile.autoFetchRanges,
+      autoFetchRanges: !!chosen.value?.rangeProvided && profile.autoFetchRanges,
       ...(key ? { qrAesKeyHex: key } : {}),
       ...(carrier ? { memberCarrierType: carrier } : {}),
       ...(accountCode ? { providerAccountCode: accountCode } : {}),

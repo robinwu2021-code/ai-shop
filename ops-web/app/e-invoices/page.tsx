@@ -84,7 +84,8 @@ function Sellers({ c, verify }: { c: Copy; verify: boolean }) {
   const cols: Column<EInvoiceSeller>[] = [
     { header: c.entity, cell: (r) => r.entityNo },
     { header: c.seller, cell: (r) => <>{r.sellerName}<br/><span className="txt-caption text-muted-foreground">{r.sellerTaxId}</span></> },
-    { header: c.gateway, cell: (r) => r.gatewayCode },
+    { header: c.gateway, cell: (r) => <>{r.gatewayCode}{r.gatewaySource === "DEFAULT"
+      && <span className="txt-caption text-muted-foreground">（{c.gatewayDefault}）</span>}</> },
     { header: c.remaining, numeric: true, cell: (r) => <span className={r.currentRemaining < r.rangeLowWater ? "text-destructive" : ""}>{r.currentRemaining} / {r.rangeLowWater}</span> },
     { header: c.pending, numeric: true, cell: (r) => r.pending },
     { header: c.held, numeric: true, cell: (r) => r.held },

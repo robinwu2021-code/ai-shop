@@ -13551,7 +13551,7 @@ CREATE TABLE IF NOT EXISTS ivc_regime_profile
     regime_code VARCHAR(16) NOT NULL,
     seller_tax_id VARCHAR(32) NOT NULL,
     seller_name VARCHAR(128) NOT NULL,
-    gateway_code VARCHAR(32) NOT NULL,
+    gateway_code VARCHAR(32) NULL,
     qr_key_ref BIGINT NULL,
     member_carrier_type VARCHAR(16) NULL,
     auto_issue TINYINT NOT NULL DEFAULT 0,

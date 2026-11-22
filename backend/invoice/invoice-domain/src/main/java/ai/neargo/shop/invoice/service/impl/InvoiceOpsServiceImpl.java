@@ -44,9 +44,12 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
     private final AllowanceMapper allowances;
     private final InvoiceRegimes regimes;
 
+    private final InvoiceGatewayPolicy policy;
+
     public InvoiceOpsServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges,
             TransmissionMapper transmissions, InvoiceMapper invoices, AllowanceMapper allowances,
-            InvoiceRegimes regimes) {
+            InvoiceRegimes regimes, InvoiceGatewayPolicy policy) {
+        this.policy = policy;
         this.profiles = profiles;
         this.ranges = ranges;
         this.transmissions = transmissions;
@@ -63,7 +66,6 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
         String keyword = q.keyword() == null || q.keyword().isBlank() ? null : q.keyword().trim();
         var rows = new ArrayList<OpsSellerVO>();
         for (var p : profiles.selectList(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", tenantNo)
-                .eq(q.gatewayCode() != null, "gateway_code", q.gatewayCode())
                 .and(keyword != null, w -> w.like("seller_name", keyword).or().like("seller_tax_id", keyword)
                         .or().eq("entity_no", keyword))
                 .orderByAsc("entity_no"))) {
@@ -72,8 +74,11 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
                     : remainingByPeriod.computeIfAbsent(period, k -> byEntity(ranges.remainingByEntity(tenantNo, k)));
             var b = backlog.getOrDefault(p.getEntityNo(), Map.of());
             int low = p.getRangeLowWater() == null ? InvoiceSetupServiceImpl.DEFAULT_LOW_WATER : p.getRangeLowWater();
+            var gateway = policy.effective(p);
+            // 按生效供应商筛（跟随默认的主体库里是空值，不能在 SQL 里按列筛）
+            if (q.gatewayCode() != null && !q.gatewayCode().equals(gateway.code())) continue;
             var row = new OpsSellerVO(p.getEntityNo(), p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(),
-                    p.getGatewayCode(), p.getStatus(), p.getProviderAccountCode(), p.getProviderSecretRef() != null,
+                    gateway.code(), gateway.source(), p.getStatus(), p.getProviderAccountCode(), p.getProviderSecretRef() != null,
                     p.getProviderHoldReason(), p.getProviderHeldAt(), period,
                     num(remaining.getOrDefault(p.getEntityNo(), Map.of()).get("remaining")), low,
                     Boolean.TRUE.equals(p.getAutoFetchRanges()), num(b.get("pending")), num(b.get("held")),

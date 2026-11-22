@@ -244,6 +244,9 @@ export const RULES = [
   // 买家开票申请（按订单走），与上面那张进项票是反方向的两张票
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["POST", /^\/ops\/invoice-requests\//, "finance:invoice:verify"],
+  // 电子发票（门店当场开立的法定发票，invoice 模块）：同一批财务人员经办，复用同一对码
+  ["GET", /^\/ops\/sales-invoice/, "finance:invoice:read"],
+  ["POST", /^\/ops\/sales-invoice/, "finance:invoice:verify"],
   // 积分资金看板。**是资金表不是营销表** —— 读它的是财务
   ["GET", /^\/ops\/points\/overview$/, "finance:settle:read"],
   // 类目策略：能不能当面付、发多少积分。挂**类目**码不挂规格码 ——
@@ -448,6 +451,10 @@ export const RULES = [
   // 两者方向相反，将来若要分权（比如销项交给客服代办），得先分得开
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["*", /^\/ops\/invoice-requests/, "finance:invoice:verify"],
+  // 电子发票（销项、门店当场开立，invoice 模块）。与开票申请复用同一对码，但分开写规则：
+  // 一个是平台人工开票、一个是门店自动开立，将来分权时得分得开
+  ["GET", /^\/ops\/sales-invoice/, "finance:invoice:read"],
+  ["*", /^\/ops\/sales-invoice/, "finance:invoice:verify"],
   /*
    * 提现审批（P-12.2.1）。**全表第三处刻意不拆读写**（前两处是 store:page:audit
    * 与 fulfillment:batch:read）：提现队列的「读」就是审批动作的一半，

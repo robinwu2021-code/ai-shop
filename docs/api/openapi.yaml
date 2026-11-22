@@ -13460,8 +13460,10 @@ components:
       properties:
         carrierNo:
           type: "string"
+          description: "载具记录号（删除、设默认用它）"
         carrierType:
           "$ref": "#/components/schemas/InvoiceCarrierType"
+          description: "载具类别：3J0002 手机条码 / CQ0001 自然人凭证"
         carrierId:
           type: "string"
           description: "手机条码 `/ABC+123`，自然人凭证 `AB12345678901234`"
@@ -13469,8 +13471,10 @@ components:
           type:
             - "string"
             - "null"
+          description: "买家给的备注名，如「我的手机」；没给为空"
         isDefault:
           type: "boolean"
+          description: "是否默认载具（结账时预先选中）"
       required:
         - "carrierNo"
         - "carrierType"
@@ -13482,12 +13486,16 @@ components:
       properties:
         carrierType:
           "$ref": "#/components/schemas/InvoiceCarrierType"
+          description: "载具类别：3J0002 手机条码 / CQ0001 自然人凭证"
         carrierId:
           type: "string"
+          description: "载具号码：手机条码 `/` 加 7 码，自然人凭证 2 个英文字母加 14 位数字"
         label:
           type: "string"
+          description: "备注名；不传为空"
         makeDefault:
           type: "boolean"
+          description: "设为默认载具；不传 = 否"
       required:
         - "carrierType"
         - "carrierId"
@@ -13500,16 +13508,22 @@ components:
           description: "C 端主单号；一张主单可能拆成多家商家的子单，各自返回一条结果"
         kind:
           "$ref": "#/components/schemas/InvoiceChoiceKind"
+          description: "开法：CONSUMER 一般 / MEMBER 会员载具 / CARRIER 我的载具 / TAX_ID 打统编 / DONATE 捐赠"
         carrierType:
           "$ref": "#/components/schemas/InvoiceCarrierType"
+          description: "kind=CARRIER 时必填：载具类别"
         carrierId:
           type: "string"
+          description: "kind=CARRIER 时必填：载具号码"
         taxId:
           type: "string"
+          description: "kind=TAX_ID 时必填：买方统一编号（8 位）"
         name:
           type: "string"
+          description: "kind=TAX_ID 时必填：买方名称"
         donateCode:
           type: "string"
+          description: "kind=DONATE 时必填：爱心码（3–7 位）"
       required:
         - "orderNo"
         - "kind"
@@ -13522,6 +13536,7 @@ components:
           description: "子单号"
         outcome:
           "$ref": "#/components/schemas/InvoiceChoiceOutcome"
+          description: "这张子单的结果，见 InvoiceChoiceOutcome"
         fiscalNumber:
           type:
             - "string"
@@ -13536,8 +13551,10 @@ components:
       properties:
         lineNo:
           type: "number"
+          description: "行号，从 1 起"
         name:
           type: "string"
+          description: "品名（开立当下冻结）"
         quantity:
           type:
             - "number"
@@ -13547,14 +13564,18 @@ components:
           type:
             - "string"
             - "null"
+          description: "单位；没有为空"
         unitPriceMinor:
           type: "number"
+          description: "含税单价（最小货币单位）"
         amountMinor:
           type: "number"
+          description: "含税金额（最小货币单位）"
         taxType:
           type:
             - "string"
             - "null"
+          description: "课税别：TAXABLE 应税 / ZERO 零税率 / EXEMPT 免税"
       required:
         - "lineNo"
         - "name"
@@ -13567,14 +13588,29 @@ components:
       properties:
         allowanceNo:
           type: "string"
+          description: "折让单号"
         amountMinor:
           type: "number"
+          description: "折让金额（含税，最小货币单位）"
         taxMinor:
           type: "number"
+          description: "其中税额（最小货币单位）"
         reason:
           type: "string"
+          description: "折让原因"
         createdAt:
           type: "string"
+          description: "开立时间（ISO 8601）"
+        fiscalAllowanceNumber:
+          type:
+            - "string"
+            - "null"
+          description: "折让证明单号码；没有为空"
+        status:
+          type:
+            - "string"
+            - "null"
+          description: "ACTIVE / VOIDED（作废的折让不再计入累计折让）"
       required:
         - "allowanceNo"
         - "amountMinor"
@@ -13587,15 +13623,17 @@ components:
       properties:
         invoiceNo:
           type: "string"
+          description: "系统发票号（查详情用；票面号码见 fiscalNumber）"
         sellerName:
           type:
             - "string"
             - "null"
-          description: "营业人名称与统编（开立当下冻结）"
+          description: "营业人名称（开立当下冻结）"
         sellerTaxId:
           type:
             - "string"
             - "null"
+          description: "营业人统一编号（开立当下冻结）"
         fiscalNumber:
           type: "string"
           description: "字轨 + 8 码，如 AB12345678"
@@ -13604,62 +13642,78 @@ components:
           description: "期别：民国年 3 码 + 双月末月 2 码，如 11512 = 115 年 11-12 月"
         randomCode:
           type: "string"
+          description: "4 位随机码（对奖、查询用）"
         issuedAt:
           type: "string"
+          description: "开立时间（ISO 8601）"
         buyerType:
           type: "string"
+          description: "买受人类型：B2C 一般消费者 / B2B 打统编"
         buyerTaxId:
           type:
             - "string"
             - "null"
+          description: "打统编时的买方统一编号"
         carrierType:
           type:
             - "string"
             - "null"
+          description: "存载具时的载具类别"
         carrierId:
           type:
             - "string"
             - "null"
+          description: "存载具时的载具号码"
         donateCode:
           type:
             - "string"
             - "null"
+          description: "捐赠时的爱心码"
         printMark:
           type: "boolean"
           description: "是否印证明联（存载具 / 捐赠时为 false）"
         currency:
           type: "string"
+          description: "币种，台湾为 TWD"
         salesMinor:
           type: "number"
+          description: "应税销售额（最小货币单位；B2C 为含税）"
         zeroTaxSalesMinor:
           type:
             - "number"
             - "null"
+          description: "零税率销售额"
         freeTaxSalesMinor:
           type:
             - "number"
             - "null"
+          description: "免税销售额"
         taxMinor:
           type: "number"
+          description: "税额（B2C 为 0，税额含在销售额里）"
         totalMinor:
           type: "number"
+          description: "总计（最小货币单位）"
         allowedMinor:
           type: "number"
           description: "累计折让"
         status:
           "$ref": "#/components/schemas/BuyerInvoiceStatus"
+          description: "发票状态：ISSUED 已开立 / VOIDED 已作废"
         lines:
           anyOf:
             - type: "array"
               items:
                 "$ref": "#/components/schemas/BuyerInvoiceLine"
             - type: "null"
+          description: "明细（列表不带，详情带）"
         allowances:
           anyOf:
             - type: "array"
               items:
                 "$ref": "#/components/schemas/BuyerInvoiceAllowance"
             - type: "null"
+          description: "折让（列表不带，详情带）"
       required:
         - "invoiceNo"
         - "fiscalNumber"
@@ -13682,12 +13736,16 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/BuyerInvoice"
+          description: "本页发票，开立时间倒序"
         total:
           type: "number"
+          description: "总条数"
         page:
           type: "number"
+          description: "页码，从 1 起"
         size:
           type: "number"
+          description: "每页条数"
       required:
         - "records"
         - "total"

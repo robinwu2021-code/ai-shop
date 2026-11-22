@@ -189,8 +189,11 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
         var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", inv.getTenantNo())
                 .eq("entity_no", inv.getEntityNo()).eq("regime_code", inv.getRegimeCode()).last("LIMIT 1"));
-        var provider = profile == null ? null
-                : gateways.capability(profile.getGatewayCode(), QueryCapability.class).orElse(null);
+        // 查这张票当初送去的那家（开立时冻结），而不是主体现在生效的那家
+        var issued = transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
+                .eq("entity_no", inv.getEntityNo()).eq("message_type", "ISSUE").eq("ref_no", invoiceNo).last("LIMIT 1"));
+        var provider = profile == null || issued == null ? null
+                : gateways.capability(issued.getGatewayCode(), QueryCapability.class).orElse(null);
         if (provider == null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
         var account = accounts.of(profile).orElseThrow(
                 () -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "account_not_configured"));

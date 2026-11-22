@@ -2,6 +2,7 @@ package ai.neargo.shop.invoice.service;
 
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionsVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
@@ -23,6 +24,9 @@ public interface InvoiceSetupService {
     NumberRangeVO addRange(Scope scope, NumberRangeReq request);
 
     /** 用已存的加值中心账号查服务商侧营业人资料，统编须与本主体一致；服务商回了 QR 金钥就顺手存起来。 */
+    /** 某市场商家可选的开票供应商；{@code regimeCode} 为空取系统默认市场。 */
+    ProviderOptionsVO providerOptions(String regimeCode);
+
     ProviderVerificationVO verifyProvider(Scope scope);
 
     /** 向加值中心申请并取回一段号码入库（{@code allocation_owner=PROVIDER}）；同一段重复取回不重复入库。 */

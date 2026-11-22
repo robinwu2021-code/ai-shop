@@ -80,12 +80,14 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final ObjectProvider<SecretVault> vault;
     private final OutboxEventBus events;
     private final ObjectMapper json;
+    private final InvoiceGatewayPolicy policy;
 
     public InvoiceServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceMapper invoices,
             InvoiceLineMapper lines, AllowanceMapper allowances, TransmissionMapper transmissions,
             BuyerPreferenceMapper preferences,
             InvoiceRegimes regimes, List<InvoiceSourcePort> sourcePorts, ObjectProvider<SecretVault> vault,
-            OutboxEventBus events, ObjectMapper json) {
+            OutboxEventBus events, ObjectMapper json, InvoiceGatewayPolicy policy) {
+        this.policy = policy;
         this.profiles = profiles;
         this.ranges = ranges;
         this.invoices = invoices;
@@ -428,7 +430,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         t.setEntityNo(inv.getEntityNo());
         t.setStoreNo(inv.getStoreNo());
         t.setRegimeCode(inv.getRegimeCode());
-        t.setGatewayCode(profile.getGatewayCode());
+        t.setGatewayCode(policy.effective(profile).code());   // 开立时冻结：之后切换供应商，这张票仍走原供应商
         t.setMessageType(type);
         t.setRefNo(refNo);
         t.setPayload(json.writeValueAsString(message));

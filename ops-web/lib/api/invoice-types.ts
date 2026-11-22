@@ -4,6 +4,8 @@
  */
 
 /** 营业人一览的问题筛选 */
+/** 生效供应商的来源 */
+export type EInvoiceGatewaySource = "MERCHANT" | "DEFAULT";
 export type EInvoiceProblem = "HELD" | "OVERDUE" | "REVIEW" | "BACKLOG" | "LOW_RANGE";
 /** 上传任务状态（与后端 ivc_transmission.status 逐字一致） */
 export type EInvoiceUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "NEEDS_REVIEW";
@@ -13,8 +15,10 @@ export interface EInvoiceSeller {
   regimeCode: string;
   sellerTaxId: string;
   sellerName: string;
-  /** STUB / TURNKEY / CETUSTEK */
+  /** 当前生效的供应商 */
   gatewayCode: string;
+  /** MERCHANT 商家自选 / DEFAULT 跟随市场默认（平台改配置即切换） */
+  gatewaySource: EInvoiceGatewaySource;
   status: string;
   providerAccountCode?: string | null;
   providerCredentialConfigured: boolean;

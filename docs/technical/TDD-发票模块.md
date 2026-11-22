@@ -896,6 +896,11 @@ MySQL 9 全类 33/33、鲸跃 6/6、Turnkey 3/3、b-app `vue-tsc` 无错。
 
 MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/finance.test.ts` 退款回退分账 1 条失败，为既有、与本改动无关；`check-ops-contract`、`check-ops-orphan`、`gen-ui-catalog --check` 通过。
 
+### 18.7 数据域（已知缺口）
+
+运营端读 `ivc_*` 五张表只按租户隔离，**没有按运营会话的商家维度收窄**。发票模块可选打包，不依赖 shop-app 的数据域引擎（登记会在排除打包时注册不存在的表）。
+页面只开放给 `finance:invoice:*`（超管、财务）。要收窄照 `lgs_waybill` 的做法：控制器把会话的商家维度换成 `entityNos` 显式传给服务。理由已写入 `packages/shared/tests/ops-data-scope.test.ts`。
+
 ## §19 供应商接口层抽象（台湾 / 阿联酋多供应商）
 
 状态：已实现 · 2026-11-22 · 档位 0（纯内部重构：对外接口、错误码、库表、页面均不变）· 需求 PRD AC41 · 设计依据 [TDD-发票服务-供应商适配抽象](./TDD-发票服务-供应商适配抽象.md)（草稿）。
@@ -972,3 +977,69 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 | 回归 | `CetustekInvoiceGatewayTest` 6/6、`TurnkeyInvoiceGatewayTest` 3/3、`InvoiceServiceMysqlTest` 34/34（MySQL 9）、`BackendI18nParityTest`、`InvoiceOptionalTest` | ✅ |
 
 `ArchitectureTest`（5）与 `MpEndpointAuthTest`（1，checkout 端点）的失败为既有，与本改动无关；`MpEndpointAuthTest` 加载完整 `ShopApplication` 上下文，注册表装配正常。
+
+## §20 默认市场与供应商、商家可选
+
+状态：已实现 · 2026-11-22 · 档位 1（新端点、保存配置的两个字段放宽为可不传、新错误码 26012、迁移 V11、配置项）· 需求 PRD AC42。
+
+### 20.1 规则
+
+用哪家供应商由系统统一决定，三层：
+
+| 层 | 来源 | 说明 |
+|---|---|---|
+| 默认市场 | `shop.invoice.default-regime`（缺省 `TW_EGUI`） | 开通时不指定市场就用它 |
+| 市场默认供应商 | `shop.invoice.regimes.<市场>.default-gateway`（缺省 `STUB`） | 主体没选供应商就走它（`gateway_code` 为空）。换阶段只改这一项，没选过的主体一起切 |
+| 商家选择 | 主体配置 `gateway_code` | 从其它系统迁来、已在用某家供应商的商户可自选；必须在「本市场支持的供应商」里，否则 26012 |
+
+「本市场支持的供应商」= `shop.invoice.regimes.<市场>.gateways`（逗号分隔）里已装配的；没配则为所有声明服务该市场的供应商。默认供应商总在其中、排第一。
+
+**多家同时在用**：每条上传任务在开立时记下当时生效的供应商（`ivc_transmission.gateway_code`），之后切换默认或商家改选，已开的票仍由原供应商上报；查单也去原供应商查（取该票开立任务上的供应商）。
+
+供应商层（§19）仍不核对市场：选择与校验都在这一层完成。
+
+### 20.2 接口
+
+| 端点 | 变化 |
+|---|---|
+| `GET /biz/invoice-setup/providers?regimeCode=` | 新增，`biz:invoice:setup`。回 `{regimeCode, defaultGatewayCode, options[]}`，每项带能力：`requiresAccount`、`verifiable`、`rangeProvided`、`queryable`、`isDefault` |
+| `PUT /biz/invoice-setup/profile` | `regimeCode` 可不传（取默认市场）；`gatewayCode` 可不传或空串（跟随默认）。老调用方照传不受影响 |
+| `GET /biz/invoice-setup/profile` · `GET /ops/sales-invoice-sellers` | 加 `gatewaySource`（`MERCHANT` / `DEFAULT`）；`gatewayCode` 改为生效的供应商 |
+
+### 20.3 数据
+
+`V11__invoice_gateway_default.sql`：`ivc_regime_profile.gateway_code` 改为可空；存量 `STUB` 置空 —— 它是开通页的缺省值、不是商家的真实选择，置空后跟随默认。STUB 从未对外送出，已开的票不受影响。
+
+### 20.4 页面
+
+- 商户端发票设置：供应商选项从接口读，第一项「跟随平台默认（某某）」；账号输入、自动领号、核验 / 领号段按所选供应商的能力出现，不再认 `CETUSTEK`。
+- 运营端电子发票：「供应商」列显示生效供应商，跟随默认的标「平台默认」；按供应商筛选按生效供应商筛。
+
+### 20.5 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `service/impl/InvoiceGatewayPolicy` | 新增：默认市场、市场默认供应商、可选列表、生效供应商 |
+| `service/impl/InvoiceSetupServiceImpl` · `InvoiceServiceImpl` · `InvoiceTransmissionServiceImpl` · `InvoiceOpsServiceImpl` | 改用生效供应商；保存时校验商家所选；查单取开立时的供应商 |
+| `api/biz/BizInvoiceSetupController` · `dto/InvoiceDtos` | 新端点与字段 |
+| `db/invoice/V11__invoice_gateway_default.sql` · `schema-test.sql` | `gateway_code` 可空、存量 STUB 置空 |
+| `ErrorCode` · `messages*.properties` · `docs/api/响应格式规范.md` | 26012 |
+| b-app `api/*` · `pages/invoice-setup` · `i18n` | 读可选供应商、按能力显示 |
+| ops-web `lib/api/invoice-types.ts` · `app/e-invoices` | 生效供应商与来源 |
+| `packages/shared` 枚举登记 | `SiGatewaySource`、`EInvoiceGatewaySource` |
+
+### 20.6 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC42 | `InvoiceGatewayPolicyTest`（2）：未配置时行为同今天；改一行配置即切换默认；商家所选优先；配了支持列表只开放这些、未装配的跳过；不支持的 26012 | ✅ |
+| AC42 | `InvoiceServiceMysqlTest#ac42DefaultMarketAndProviderWithMerchantChoiceFrozenAtIssue`：可选列表与能力；不传市场 / 供应商跟随默认且库里存空；不支持的 26012；商家选 PROV 开票、改回默认再开票，两张票各自冻结在当时的供应商；查单去当时那家 | ✅ |
+| 回归 | `InvoiceServiceMysqlTest` 35/35（含 V11，迁移 11 条）、通道各测试、`BizEndpointPermTest` 新端点已登记、`BackendI18nParityTest`、b-app `vue-tsc`、ops-web `tsc` 与 `nav.test` / `design-tokens.test` | ✅ |
+
+### 20.7 一并补上的闸门（运营端与早先 C 端工作留下的）
+
+`packages/shared` 的测试此前漏跑，补齐了与电子发票相关的几处：运营端两个枚举登记；菜单↔功能点守卫一并扫 `db/invoice`；运营端权限矩阵基线与细化登记表加入 7 个电子发票端点；`响应格式规范.md` 补 26011 / 26012；C 端发票类型字段说明并重新生成 `openapi.yaml`；`ops-data-scope` 写明 `ivc_*` 为何未登记数据域（见 §18.7）。
+
+仍未处理：
+- `schema-lineage`：JS 与 Python 两个解析器对 `ivc_*` 表不一致（JS 只扫 shop-app 迁移）。改 JS 扫描面会牵出一批同名业务键分类，单独处理。
+- B 端 `openapi-b.yaml` 未能重新生成：生成器被补货模块既有端点 `mRpState` 的命名校验挡住，与发票无关。

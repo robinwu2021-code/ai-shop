@@ -93,6 +93,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -107,6 +108,7 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code jdbc:mysql://127.0.0.1:3308/?…}），每次建一个随机库、跑完删掉；没配置时跳过。
  */
 @SpringJUnitConfig(InvoiceServiceMysqlTest.Config.class)
+@TestPropertySource(properties = "shop.invoice.regimes.TW_EGUI.default-gateway=TEST")
 class InvoiceServiceMysqlTest {
 
     static final Scope SCOPE = new Scope("T1", "E1", "S1", "U1");
@@ -331,6 +333,48 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().secret(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    /**
+     * AC42：系统默认市场与供应商；商家可在该市场支持的供应商里自选（迁移过来的商户）；改回跟随默认；
+     * 开出的票冻结在当时那家，之后切换不改走别家，查单也去当时那家查。
+     */
+    @Test
+    void ac42DefaultMarketAndProviderWithMerchantChoiceFrozenAtIssue() {
+        var options = setup.providerOptions(null);
+        assertEquals("TW_EGUI", options.regimeCode(), "不传市场 = 系统默认市场");
+        assertEquals("TEST", options.defaultGatewayCode());
+        assertEquals(List.of("TEST", "PROV"), options.options().stream().map(o -> o.code()).toList(), "默认的排第一");
+        var prov = options.options().get(1);
+        assertTrue(prov.requiresAccount() && prov.verifiable() && prov.rangeProvided() && prov.queryable());
+        assertTrue(options.options().getFirst().isDefault() && !options.options().getFirst().requiresAccount());
+
+        var followed = setup.saveProfile(SCOPE, new RegimeProfileReq(null, "12345675", "示例營業人", null, null, null,
+                null, null, null, null, null, null));
+        assertEquals("TW_EGUI", followed.regimeCode());
+        assertEquals("TEST", followed.gatewayCode());
+        assertEquals("DEFAULT", followed.gatewaySource());
+        assertEquals(null, jdbc.queryForObject("SELECT gateway_code FROM ivc_regime_profile", String.class),
+                "跟随默认存空值：默认一换，它就跟着换");
+        assertCode(ErrorCode.INVOICE_GATEWAY_UNSUPPORTED, () -> setup.saveProfile(SCOPE, new RegimeProfileReq(
+                "TW_EGUI", "12345675", "示例營業人", "NOPE", null, null, null, null, null, null, null, null)));
+
+        useProvider();
+        assertEquals("MERCHANT", setup.profile(SCOPE).orElseThrow().gatewaySource());
+        sources.paid("SO1", 1_000);
+        var first = issue("SO1");
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "", null, null, null,
+                "OFFICE-1", null, null, null, null));
+        assertEquals("DEFAULT", setup.profile(SCOPE).orElseThrow().gatewaySource(), "空串 = 改回跟随默认");
+        sources.paid("SO2", 1_000);
+        var second = issue("SO2");
+        assertEquals("PROV", jdbc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
+                String.class, first.invoiceNo()), "开出的票冻结在当时的供应商");
+        assertEquals("TEST", jdbc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
+                String.class, second.invoiceNo()));
+        provider.seen.clear();
+        transmissions.checkWithProvider(SCOPE, first.invoiceNo());
+        assertEquals(1, provider.seen.size(), "查单去当时那家查，哪怕主体已换到不能查单的默认供应商");
     }
 
     @Test
@@ -935,7 +979,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(10, applied);
+            assertEquals(11, applied);
             return ds;
         }
     }
@@ -1066,7 +1110,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceGateways.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean

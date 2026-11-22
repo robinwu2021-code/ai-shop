@@ -4,11 +4,13 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderRangeReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionsVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -47,6 +49,13 @@ public class BizInvoiceSetupController {
     @PutMapping("/biz/invoice-setup/profile")
     public RegimeProfileVO saveProfile(@Valid @RequestBody RegimeProfileReq req) {
         return setup.saveProfile(BizInvoiceScope.current(), req);
+    }
+
+    /** 某市场商家可选的开票供应商（默认的排第一）；不传市场取系统默认市场。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")
+    @GetMapping("/biz/invoice-setup/providers")
+    public ProviderOptionsVO providers(@RequestParam(required = false) @Size(max = 16) String regimeCode) {
+        return setup.providerOptions(regimeCode);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")

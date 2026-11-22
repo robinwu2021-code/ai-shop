@@ -4,5 +4,5 @@ const unavailable = async (): Promise<never> => { throw Error("Sales invoices re
 export const salesInvoiceMock: SalesInvoiceApi = {
   mSiIssue: unavailable, mSiBuyerPreference: unavailable, mSiList: unavailable, mSiDetail: unavailable, mSiVoid: unavailable, mSiAllowance: unavailable, mSiRetransmit: unavailable, mSiUploadBacklog: unavailable, mSiProviderCheck: unavailable, mSiVoidAllowance: unavailable,
   mSiProfile: unavailable, mSiSaveProfile: unavailable, mSiRanges: unavailable, mSiAddRange: unavailable,
-  mSiVerifyProvider: unavailable, mSiFetchProviderRange: unavailable,
+  mSiVerifyProvider: unavailable, mSiFetchProviderRange: unavailable, mSiProviders: unavailable,
 };

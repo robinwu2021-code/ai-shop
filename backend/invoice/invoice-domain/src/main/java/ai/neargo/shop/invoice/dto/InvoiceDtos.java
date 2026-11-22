@@ -73,10 +73,12 @@ public final class InvoiceDtos {
             @Min(1) @Max(100) Integer size) {}
 
     public record RegimeProfileReq(
-            @NotBlank @Size(max = 16) String regimeCode,
+            /** 市场（税制）；不传 = 系统默认市场 */
+            @Size(max = 16) String regimeCode,
             @NotBlank @Size(max = 32) String sellerTaxId,
             @NotBlank @Size(max = 128) String sellerName,
-            @NotBlank @Size(max = 32) String gatewayCode,
+            /** 商家自选的开票供应商，须在该市场支持的供应商里；不传或空 = 跟随市场默认供应商 */
+            @Size(max = 32) String gatewayCode,
             /** 台湾 QR 加密 AES Key（32 位十六进制）；不传 = 不改已存的密钥 */
             @Pattern(regexp = "[0-9A-Fa-f]{32}") String qrAesKeyHex,
             @Size(max = 16) String memberCarrierType,
@@ -157,9 +159,23 @@ public final class InvoiceDtos {
             @Min(1) Integer page,
             @Min(1) @Max(100) Integer size) {}
 
+    /**
+     * 某市场商家可选的开票供应商（默认的排第一）。
+     *
+     * @param defaultGatewayCode 不选时跟随的市场默认供应商
+     */
+    public record ProviderOptionsVO(String regimeCode, String defaultGatewayCode, List<ProviderOptionVO> options) {}
+
+    /**
+     * @param requiresAccount 要填商家在供应商的账号
+     * @param verifiable 能核验账号；{@code rangeProvided} 由供应商配号段（能「领号段」）；{@code queryable} 能查单
+     */
+    public record ProviderOptionVO(String code, String numbering, String reporting, boolean requiresAccount,
+            boolean verifiable, boolean rangeProvided, boolean queryable, boolean isDefault) {}
+
     /** 运营端营业人一行：配置、号码余量、上传积压。 */
     public record OpsSellerVO(String entityNo, String regimeCode, String sellerTaxId, String sellerName,
-            String gatewayCode, String status, String providerAccountCode, boolean providerCredentialConfigured,
+            String gatewayCode, String gatewaySource, String status, String providerAccountCode, boolean providerCredentialConfigured,
             String providerHoldReason, LocalDateTime providerHeldAt, String currentPeriod, long currentRemaining,
             int rangeLowWater, boolean autoFetchRanges, long pending, long held, long needsReview, long dueSoon,
             long overdue) {}
@@ -182,7 +198,10 @@ public final class InvoiceDtos {
             String regimeCode,
             String sellerTaxId,
             String sellerName,
+            /** 当前生效的供应商 */
             String gatewayCode,
+            /** MERCHANT 商家自选 / DEFAULT 跟随市场默认 */
+            String gatewaySource,
             boolean qrKeyConfigured,
             String memberCarrierType,
             boolean autoIssue,

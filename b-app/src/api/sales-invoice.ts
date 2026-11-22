@@ -61,6 +61,30 @@ export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" 
 /** 号段来源：MANUAL 商家登记 / PROVIDER 加值中心配给 */
 export type SiRangeOwner = "MANUAL" | "PROVIDER";
 export type SiGatewayCode = "STUB" | "TURNKEY" | "CETUSTEK";
+/** 生效供应商的来源：MERCHANT 商家自选 / DEFAULT 跟随市场默认 */
+export type SiGatewaySource = "MERCHANT" | "DEFAULT";
+/** 本市场商家可选的一家供应商（能力决定页面出现哪些项） */
+export interface SiProviderOption {
+  code: string;
+  numbering: string;
+  reporting: string;
+  /** 要填商家在供应商的账号 */
+  requiresAccount: boolean;
+  /** 能核验账号 */
+  verifiable: boolean;
+  /** 号段由供应商配给（能「领号段」） */
+  rangeProvided: boolean;
+  /** 能向供应商查单 */
+  queryable: boolean;
+  isDefault: boolean;
+}
+export interface SiProviderOptions {
+  regimeCode: string;
+  /** 不选时跟随的市场默认供应商 */
+  defaultGatewayCode: string;
+  /** 默认的排第一 */
+  options: SiProviderOption[];
+}
 export interface SalesInvoice {
   invoiceNo: string;
   regimeCode: string;
@@ -134,7 +158,9 @@ export interface SiProfile {
   regimeCode: string;
   sellerTaxId: string;
   sellerName: string;
+  /** 当前生效的供应商 */
   gatewayCode: string;
+  gatewaySource?: SiGatewaySource;
   /** QR 密钥是否已配置（密钥本身只写不读） */
   qrKeyConfigured: boolean;
   memberCarrierType?: string | null;
@@ -164,7 +190,8 @@ export interface SiProfileReq {
   regimeCode: "TW_EGUI";
   sellerTaxId: string;
   sellerName: string;
-  gatewayCode: SiGatewayCode;
+  /** 商家自选的供应商，须在本市场可选列表里；空串 = 跟随市场默认 */
+  gatewayCode: string;
   /** 32 位十六进制；不填表示不改 */
   qrAesKeyHex?: string;
   memberCarrierType?: string;
@@ -233,6 +260,8 @@ export interface SalesInvoiceApi {
   /** 未开通时后端回 null */
   mSiProfile(): Promise<SiProfile | null>;
   mSiSaveProfile(body: SiProfileReq): Promise<SiProfile>;
+  /** 本市场商家可选的开票供应商；regimeCode 不传 = 系统默认市场 */
+  mSiProviders(q: { regimeCode?: string }): Promise<SiProviderOptions>;
   mSiRanges(q: { periodCode?: string }): Promise<SiRange[]>;
   mSiAddRange(body: SiRangeReq): Promise<SiRange>;
   /** 用已保存的加值中心账号核验；统编须一致 */

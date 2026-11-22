@@ -44,6 +44,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSiRetransmit:{method:"POST",path:"/biz/invoices/{invoiceNo}/retransmissions",auth:true,summary:"销售发票：重传待人工处理的上传"},
   mSiProfile:{method:"GET",path:"/biz/invoice-setup/profile",auth:true,summary:"发票设置：税制配置"},
   mSiSaveProfile:{method:"PUT",path:"/biz/invoice-setup/profile",auth:true,summary:"发票设置：开通 / 修改税制"},
+  mSiProviders:{method:"GET",path:"/biz/invoice-setup/providers",auth:true,summary:"发票设置：本市场可选的开票供应商"},
   mSiRanges:{method:"GET",path:"/biz/invoice-setup/ranges",auth:true,summary:"发票设置：字轨号段"},
   mSiAddRange:{method:"POST",path:"/biz/invoice-setup/ranges",auth:true,summary:"发票设置：登记字轨号段"},
   mSiVerifyProvider:{method:"POST",path:"/biz/invoice-setup/provider-verification",auth:true,summary:"发票设置：核验加值中心账号"},

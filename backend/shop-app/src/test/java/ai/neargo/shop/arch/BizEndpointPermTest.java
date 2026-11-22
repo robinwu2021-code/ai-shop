@@ -279,6 +279,7 @@ class BizEndpointPermTest {
                     put("/biz/invoice-setup/ranges", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/provider-verification", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/provider-ranges", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-setup/providers", BizPerms.INVOICE_SETUP);
                     put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/personnel/{personnelNo}/assignments", BizPerms.STORE_ADMIN);
