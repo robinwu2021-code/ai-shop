@@ -19,6 +19,8 @@ public class IvcTransmission {
     private String transmissionNo;
     private String tenantNo;
     private String entityNo;
+    /** 开立门店（V8） */
+    private String storeNo;
     private String regimeCode;
     private String gatewayCode;
     /** ISSUE / VOID / ALLOWANCE */
@@ -31,6 +33,12 @@ public class IvcTransmission {
     private LocalDateTime nextAttemptAt;
     private String lastError;
     private String gatewayRef;
+    /** 预警时点（V8，期限窗口过半） */
+    private LocalDateTime reportWarnAt;
+    /** 法定上报期限（V8） */
+    private LocalDateTime reportDeadlineAt;
+    /** 已告警级别（V8）：0 未告警 / 1 已预警 / 2 已逾期或已送达 */
+    private Integer deadlineLevel;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -20,6 +20,9 @@
           <sh-kv between :label="String(t('salesInvoice.uploadLabel'))">
             <text :class="uploadTrouble ? 'is-danger' : ''">{{ t(`salesInvoice.upload.${inv.uploadStatus}`) }}</text>
           </sh-kv>
+          <sh-kv v-if="inv.uploadDeadlineAt && inv.uploadStatus !== 'SENT'" between :label="String(t('salesInvoice.uploadDeadline'))">
+            <text class="sh-num" :class="overdue ? 'is-danger' : ''">{{ inv.uploadDeadlineAt }}{{ overdue ? ` · ${t("salesInvoice.overdue")}` : "" }}</text>
+          </sh-kv>
           <text v-if="inv.uploadStatus === 'HELD'" class="sh-hint txt-quiet">{{ t("salesInvoice.heldHint") }}</text>
           <view v-if="inv.uploadStatus === 'NEEDS_REVIEW'" class="sh-mt-sm">
             <text class="sh-hint txt-quiet">{{ t("salesInvoice.reviewHint") }}</text>
@@ -112,6 +115,11 @@ const error = ref("");
 const issued = computed(() => inv.value?.status === "ISSUED");
 const canVoid = computed(() => issued.value && merchant.can("biz:invoice:void"));
 const canSubmitPrint = computed(() => merchant.can("biz:print:submit"));
+/** 期限是 UTC ISO 时间；Date 解析后与当前时刻比 */
+const overdue = computed(() => {
+  const d = inv.value?.uploadDeadlineAt;
+  return !!d && inv.value?.uploadStatus !== "SENT" && Date.parse(d.endsWith("Z") ? d : `${d}Z`) < Date.now();
+});
 const uploadTrouble = computed(() => ["FAILED", "HELD", "NEEDS_REVIEW"].includes(inv.value?.uploadStatus ?? ""));
 const canPrint = computed(() => issued.value && !!inv.value?.printMark && canSubmitPrint.value);
 const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);

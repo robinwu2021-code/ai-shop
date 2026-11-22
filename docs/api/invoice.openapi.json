@@ -941,6 +941,34 @@
           }
         }
       }
+    },
+    "/biz/invoices/upload-backlog": {
+      "get": {
+        "summary": "本门店上传积压",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`。列表页顶部提示用：逾期、即将到期、暂停、待人工的条数（含开立、作废、折让、作废折让的上传任务）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadBacklogVO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1197,6 +1225,11 @@
           "sellerTaxId": {
             "type": "string",
             "description": "营业人统编"
+          },
+          "uploadDeadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "开立报文的法定上报期限（台湾 B2C 开立后 48 小时、B2B 7 日），UTC"
           }
         }
       },
@@ -1375,6 +1408,36 @@
           "qrKeyStored": {
             "type": "boolean",
             "description": "服务商回传的 QR 金钥已存进 secret 模块"
+          }
+        }
+      },
+      "UploadBacklogVO": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "description": "待发、发送中、退避中"
+          },
+          "held": {
+            "type": "integer",
+            "description": "账号问题暂停中"
+          },
+          "needsReview": {
+            "type": "integer",
+            "description": "服务商拒收，待人工处理"
+          },
+          "dueSoon": {
+            "type": "integer",
+            "description": "已过预警时点（期限窗口过半）、未到期限"
+          },
+          "overdue": {
+            "type": "integer",
+            "description": "已过法定期限仍未送达"
+          },
+          "oldestDeadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "未送达任务中最早的期限；无积压为空"
           }
         }
       }

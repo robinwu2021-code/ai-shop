@@ -6,6 +6,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.BuyerPreferenceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.IssueInvoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.VoidInvoiceReq;
 import ai.neargo.shop.invoice.service.InvoiceService;
@@ -67,6 +68,13 @@ public class BizInvoiceController {
     @GetMapping("/biz/invoices")
     public PageData<InvoiceVO> list(@Valid @ModelAttribute InvoiceQuery query) {
         return invoices.list(BizInvoiceScope.current(), query);
+    }
+
+    /** 本门店上传积压：待发、暂停、待人工、即将到期、已逾期（列表页顶部提示）。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_READ + "')")
+    @GetMapping("/biz/invoices/upload-backlog")
+    public UploadBacklogVO uploadBacklog() {
+        return transmissions.backlog(BizInvoiceScope.current());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_READ + "')")

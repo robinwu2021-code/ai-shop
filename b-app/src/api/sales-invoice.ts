@@ -17,6 +17,15 @@ export interface SiLine {
   /** 课税别 */
   taxType?: "TAXABLE" | "ZERO" | "EXEMPT" | null;
 }
+/** 门店上传积压：pending 含待发 / 发送中 / 退避中；dueSoon 已过预警时点；overdue 已过法定期限仍未送达 */
+export interface SiUploadBacklog {
+  pending: number;
+  held: number;
+  needsReview: number;
+  dueSoon: number;
+  overdue: number;
+  oldestDeadlineAt?: string | null;
+}
 export interface SiAllowance {
   allowanceNo: string;
   /** 含税折让 */
@@ -74,6 +83,8 @@ export interface SalesInvoice {
   status: SiStatus;
   voidReason?: string | null;
   uploadStatus: SiUploadStatus;
+  /** 开立报文的法定上报期限（台湾 B2C 48 小时、B2B 7 日） */
+  uploadDeadlineAt?: string | null;
   lines?: SiLine[];
   allowances?: SiAllowance[];
 }
@@ -187,6 +198,8 @@ export interface SalesInvoiceApi {
   mSiAllowance(invoiceNo: string, body: { amountMinor: number; reason: string }): Promise<SalesInvoice>;
   /** 作废本期折让（跨期拒绝） */
   mSiVoidAllowance(invoiceNo: string, allowanceNo: string, body: { reason: string }): Promise<SalesInvoice>;
+  /** 本门店上传积压概览 */
+  mSiUploadBacklog(): Promise<SiUploadBacklog>;
   /** 重传待人工处理的上传任务（开立 / 作废 / 折让），报文不变 */
   mSiRetransmit(invoiceNo: string): Promise<SalesInvoice>;
   /** 未开通时后端回 null */

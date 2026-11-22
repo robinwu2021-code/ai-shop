@@ -12,6 +12,7 @@ import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -190,6 +191,14 @@ public class TwEguiRegime implements InvoiceRegime {
 
     public boolean voidable(IvcInvoice invoice, Instant now) {
         return invoice.getPeriodCode().equals(periodOf(now));
+    }
+
+    /**
+     * 存证上传期限：B2C 开立、作废、折让、作废折让后 48 小时内；B2B（存证）7 日内。
+     * 依据财政部电子发票实施作业要点；不同报文同一期限，所以不看 messageType。
+     */
+    public Duration reportWindow(String messageType, IvcInvoice invoice) {
+        return "B2B".equals(invoice.getBuyerType()) ? Duration.ofDays(7) : Duration.ofHours(48);
     }
 
     /** 折让作废与发票作废同一口径：只能在折让开立的那一期内作废，跨期即已申报。 */

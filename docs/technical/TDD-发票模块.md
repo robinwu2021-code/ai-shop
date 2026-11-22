@@ -628,3 +628,56 @@ MySQL 9 全类 26/26、鲸跃 5/5、Turnkey 2/2、b-app `vue-tsc` 无错。
 
 MySQL 9 全类 28/28、鲸跃 5/5、Turnkey 3/3、b-app / c-app `vue-tsc` 无错；契约、孤儿页、i18n 孤儿词条检查通过。
 
+## §14 上报期限告警（鲸跃 M1-5）
+
+状态：已实现 · 2026-11-22 · 档位 1（`ivc_transmission` 加列、新端点、新定时任务、三语文案）· 需求 PRD AC37 · 计划见 [TDD-发票服务-总体设计 §14](./TDD-发票服务-总体设计.md) M1-5。
+
+### 14.1 期限
+
+| 项 | 规则 | 实现 |
+|---|---|---|
+| 窗口 | 台湾 B2C 开立 / 作废 / 折让 / 作废折让后 48 小时内上传；B2B（存证）7 日 | `InvoiceRegime#reportWindow`（`TwEguiRegime` 按买受人类型） |
+| 起算 | 事件发生即入队的那一刻 | `InvoiceServiceImpl#enqueue` 写 `report_deadline_at`、`report_warn_at`（窗口过半） |
+| 存量 | V8 回填：从任务创建时间按票的买受人类型算；已送达的直接标为不参与 | `V8__invoice_report_deadline.sql` |
+
+### 14.2 告警
+
+`InvoiceReportDeadlineJob`（每 10 分钟，分布式锁 `invoice-report-deadline`，与上传任务同一开关 `shop.invoice.transmission.enabled`）调 `InvoiceTransmissionService#checkDeadlines`：
+
+| 级别 | 条件 | 动作 |
+|---|---|---|
+| 1 预警 | 未送达且过了 `report_warn_at` | `deadline_level → 1`；按主体汇总一条 WARN `INVOICE_REPORT_DEADLINE_WARN` |
+| 2 逾期 | 未送达且过了 `report_deadline_at` | `deadline_level → 2`；按主体汇总一条 ERROR `INVOICE_REPORT_OVERDUE` |
+
+- 每条每级只报一次：条件更新 `deadline_level < 目标级别`，多实例同时巡检也只有一个实例报；先判逾期再判预警，直接跨两级的只报逾期。
+- 送达即退出：上传成功时 `deadline_level = 2`。`HELD`、`NEEDS_REVIEW` 仍算未送达，照样到期告警 —— 这正是需要人处理的那批。
+- 日志按主体汇总，附前 5 条业务号，供日志告警订阅；接运营站内消息仍列为后续（同 §12）。
+
+### 14.3 B 端可见
+
+- `GET /biz/invoices/upload-backlog`（`biz:invoice:read`）：本门店 `pending / held / needsReview / dueSoon / overdue / oldestDeadlineAt`。任务加了 `store_no`（V8 回填）以按门店统计。
+- 发票列表顶部：有逾期或暂停时红色、只有即将到期或待人工时黄色提示条。
+- 发票详情：未送达时显示「上传期限」，逾期标红。`InvoiceVO.uploadDeadlineAt`。
+
+### 14.4 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `db/invoice/V8__invoice_report_deadline.sql` | `store_no`、`report_warn_at`、`report_deadline_at`、`deadline_level`，回填，两个索引 |
+| `regime/InvoiceRegime` · `regime/tw/TwEguiRegime` | `reportWindow` |
+| `service/impl/InvoiceServiceImpl` | 入队时写门店与期限；详情带期限 |
+| `service/InvoiceTransmissionService(Impl)` | `checkDeadlines`、`backlog`；送达即退出巡检 |
+| `job/InvoiceReportDeadlineJob`（新） | 巡检任务与任务声明 |
+| `api/biz/BizInvoiceController` · `dto/InvoiceDtos` | 积压端点、`UploadBacklogVO`、`uploadDeadlineAt` |
+| b-app `pages/sales-invoices` · `pages/sales-invoice` · `api/*` · `i18n` | 提示条、期限展示 |
+| 测试夹具 `InvoiceServiceMysqlTest` | `@BeforeEach` 清空桩通道的 `payloads`（原先未清，用例之间会串数） |
+
+### 14.5 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC37 | `InvoiceServiceMysqlTest#ac37DeadlinesWarnOnceEscalateOnceAndBacklogIsPerStore`：B2C 窗口 48 小时；到预警点报 1 次、再巡检不重复；到期限报 1 次；积压按门店统计（他店为 0）；送达后退出积压 | ✅ |
+| AC37 | `#ac37BusinessBuyersGetSevenDaysAndJumpingStraightToOverdueReportsOnlyOnce`：B2B 窗口 168 小时；直接跨两级只报逾期 | ✅ |
+
+MySQL 9 全类 30/30、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契约、孤儿页、i18n、controller 内聚检查对发票无新增。
+

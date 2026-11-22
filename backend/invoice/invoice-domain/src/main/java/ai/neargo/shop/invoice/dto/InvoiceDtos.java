@@ -114,6 +114,13 @@ public final class InvoiceDtos {
             /** 空 = 主体内各店共用 */
             @Size(max = 64) String storeNo) {}
 
+    /**
+     * 门店上传积压。pending 含待发、发送中、退避中；dueSoon = 已过预警时点未到期限；overdue = 已过法定期限仍未送达。
+     * @param oldestDeadlineAt 未送达任务里最早的期限；没有积压为空
+     */
+    public record UploadBacklogVO(long pending, long held, long needsReview, long dueSoon, long overdue,
+            LocalDateTime oldestDeadlineAt) {}
+
     public record RegimeProfileVO(
             String regimeCode,
             String sellerTaxId,
@@ -184,8 +191,10 @@ public final class InvoiceDtos {
             long allowedMinor,
             String status,
             String voidReason,
-            /** 开立报文上传状态：PENDING / SENT / FAILED */
+            /** 开立报文上传状态：PENDING / SENDING / SENT / FAILED / HELD / NEEDS_REVIEW */
             String uploadStatus,
+            /** 开立报文的法定上报期限；已送达后仍保留（看当时是否按期） */
+            LocalDateTime uploadDeadlineAt,
             List<InvoiceLineVO> lines,
             List<AllowanceVO> allowances) {}
 }

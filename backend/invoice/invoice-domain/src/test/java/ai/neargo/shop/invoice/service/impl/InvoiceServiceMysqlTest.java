@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -124,6 +125,7 @@ class InvoiceServiceMysqlTest {
         sources.byNo.clear();
         sources.orders.clear();
         gateway.fail.set(false);
+        gateway.payloads.clear();
         provider.seen.clear();
         provider.taxId = "12345675";
         provider.failCode = null;
@@ -317,6 +319,50 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac37DeadlinesWarnOnceEscalateOnceAndBacklogIsPerStore() {
+        sources.paid("SO1", 1_000);
+        var r = issue("SO1");
+        assertEquals(48, hoursToDeadline(r.invoiceNo()), "B2C 48 小时");
+        assertTrue(invoices.get(SCOPE, r.invoiceNo()).uploadDeadlineAt() != null);
+        assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100));
+
+        jdbc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
+        assertArrayEquals(new int[] {1, 0}, transmissions.checkDeadlines(100));
+        assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100), "同一级只报一次");
+        var soon = transmissions.backlog(SCOPE);
+        assertEquals(1, soon.pending());
+        assertEquals(1, soon.dueSoon());
+
+        jdbc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
+        assertArrayEquals(new int[] {0, 1}, transmissions.checkDeadlines(100));
+        assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100));
+        var late = transmissions.backlog(SCOPE);
+        assertEquals(1, late.overdue());
+        assertEquals(0, late.dueSoon());
+        assertTrue(late.oldestDeadlineAt() != null);
+        assertEquals(0, transmissions.backlog(new Scope("T1", "E1", "S2", "U1")).pending(), "积压按门店");
+
+        assertEquals(1, transmissions.transmitDue(10));
+        var clear = transmissions.backlog(SCOPE);
+        assertEquals(0, clear.pending() + clear.overdue() + clear.dueSoon(), "送达后退出积压");
+    }
+
+    @Test
+    void ac37BusinessBuyersGetSevenDaysAndJumpingStraightToOverdueReportsOnlyOnce() {
+        sources.paid("SO1", 1_000);
+        var b2b = invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer("12345675", "示例買方", null, null, null));
+        assertEquals(168, hoursToDeadline(b2b.invoiceNo()), "B2B 7 日");
+        jdbc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 2 DAY,"
+                + " report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 DAY");
+        assertArrayEquals(new int[] {0, 1}, transmissions.checkDeadlines(100), "直接跨过两级只报逾期");
+    }
+
+    private long hoursToDeadline(String invoiceNo) {
+        return jdbc.queryForObject("SELECT TIMESTAMPDIFF(HOUR, created_at, report_deadline_at) FROM ivc_transmission"
+                + " WHERE ref_no=?", Long.class, invoiceNo);
     }
 
     @Test
@@ -721,7 +767,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(7, applied);
+            assertEquals(8, applied);
             return ds;
         }
     }

@@ -6,6 +6,7 @@ import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +63,9 @@ public interface InvoiceRegime {
 
     /** 折让的税额（含税金额中所含税额）。 */
     long allowanceTax(IvcInvoice invoice, long amountMinor);
+
+    /** 报文的法定上报窗口：从开立 / 作废 / 折让那一刻起算（台湾 B2C 48 小时、B2B 7 日）。 */
+    Duration reportWindow(String messageType, IvcInvoice invoice);
 
     /** 折让能否作废（台湾：折让所属期别仍是当期）。 */
     boolean allowanceVoidable(IvcAllowance allowance, Instant now);

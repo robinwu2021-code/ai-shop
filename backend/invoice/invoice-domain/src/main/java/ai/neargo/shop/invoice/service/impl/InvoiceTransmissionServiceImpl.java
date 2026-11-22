@@ -2,6 +2,7 @@ package ai.neargo.shop.invoice.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -138,6 +140,61 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         return n;
     }
 
+    @Override
+    public int[] checkDeadlines(int limit) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        // 先逾期再预警：一条直接跨过两级的任务只报逾期，不再补一条预警
+        int overdue = escalate(now, 2, "report_deadline_at", limit);
+        int warned = escalate(now, 1, "report_warn_at", limit);
+        return new int[] {warned, overdue};
+    }
+
+    /** 把到点且级别不足的未送达任务升到 level，按主体汇总各打一条日志（同一批问题不刷屏）。 */
+    private int escalate(LocalDateTime now, int level, String column, int limit) {
+        var due = transmissions.selectList(new QueryWrapper<IvcTransmission>().ne("status", "SENT")
+                .lt("deadline_level", level).le(column, now).orderByAsc(column).last("LIMIT " + limit));
+        var byEntity = new LinkedHashMap<String, List<IvcTransmission>>();
+        for (var t : due) {
+            // 条件更新：多实例同时巡检，每条每级只有一个实例报
+            if (transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
+                    .lt("deadline_level", level).set("deadline_level", level)) != 1) continue;
+            byEntity.computeIfAbsent(t.getTenantNo() + " " + t.getEntityNo(), k -> new ArrayList<>()).add(t);
+        }
+        byEntity.forEach((key, tasks) -> {
+            String refs = tasks.stream().limit(5).map(t -> t.getMessageType() + ":" + t.getRefNo() + "(" + t.getStatus() + ")")
+                    .collect(Collectors.joining(","));
+            if (level == 2)
+                log.error("INVOICE_REPORT_OVERDUE {} count={} refs={}", key, tasks.size(), refs);
+            else
+                log.warn("INVOICE_REPORT_DEADLINE_WARN {} count={} refs={}", key, tasks.size(), refs);
+        });
+        return byEntity.values().stream().mapToInt(List::size).sum();
+    }
+
+    @Override
+    public UploadBacklogVO backlog(Scope scope) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        var open = transmissions.selectList(new QueryWrapper<IvcTransmission>()
+                .select("status", "report_warn_at", "report_deadline_at")
+                .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
+                .ne("status", "SENT"));
+        long pending = 0, held = 0, review = 0, dueSoon = 0, overdue = 0;
+        LocalDateTime oldest = null;
+        for (var t : open) {
+            switch (t.getStatus()) {
+                case HELD -> held++;
+                case NEEDS_REVIEW -> review++;
+                default -> pending++;
+            }
+            var deadline = t.getReportDeadlineAt();
+            if (deadline == null) continue;
+            if (!deadline.isAfter(now)) overdue++;
+            else if (t.getReportWarnAt() != null && !t.getReportWarnAt().isAfter(now)) dueSoon++;
+            if (oldest == null || deadline.isBefore(oldest)) oldest = deadline;
+        }
+        return new UploadBacklogVO(pending, held, review, dueSoon, overdue, oldest);
+    }
+
     private void record(IvcTransmission t, GatewayReceipt receipt) {
         int attempts = t.getAttempts() + 1;
         var after = LocalDateTime.now(ZoneOffset.UTC);
@@ -146,7 +203,8 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         String error = receipt.error() == null ? "rejected" : receipt.error();
         String clipped = error.length() > 512 ? error.substring(0, 512) : error;
         switch (receipt.outcome()) {
-            case ACCEPTED -> update.set("status", "SENT").set("gateway_ref", receipt.gatewayRef()).set("last_error", null);
+            case ACCEPTED -> update.set("status", "SENT").set("gateway_ref", receipt.gatewayRef()).set("last_error", null)
+                    .set("deadline_level", 2);   // 已送达：退出期限巡检
             case RETRYABLE -> update.set("status", "FAILED").set("last_error", clipped)
                     .set("next_attempt_at", after.plusMinutes(Math.min(60, 1L << Math.min(attempts - 1, 6))));
             case ACCOUNT_PROBLEM -> update.set("status", HELD).set("last_error", clipped);

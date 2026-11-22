@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service;
 
+import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 
 /** 把到期的上传任务送到开票通道；失败按种类分级处理，不改发票号码与金额（TDD-发票模块 §12）。 */
@@ -13,4 +14,13 @@ public interface InvoiceTransmissionService {
 
     /** 把一张发票（含其折让）待人工处理的上传任务放回待发；没有可重传的任务时拒绝。@return 放回的条数 */
     int retry(Scope scope, String invoiceNo);
+
+    /**
+     * 期限巡检：未送达的任务到预警时点告警一次（WARN），过了法定期限再告警一次（ERROR）。
+     * @return [新预警条数, 新逾期条数]
+     */
+    int[] checkDeadlines(int limit);
+
+    /** 本门店的上传积压概览（B 端列表页提示用）。 */
+    UploadBacklogVO backlog(Scope scope);
 }

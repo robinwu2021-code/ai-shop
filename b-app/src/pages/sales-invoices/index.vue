@@ -16,6 +16,14 @@
       </view>
     </view>
 
+    <view v-if="backlog && (backlog.overdue || backlog.dueSoon || backlog.held || backlog.needsReview)"
+      class="sh-notice" :class="backlog.overdue || backlog.held ? 'sh-notice--danger' : 'sh-notice--warning'" role="alert">
+      <text v-if="backlog.overdue">{{ t("salesInvoice.backlogOverdue", { n: backlog.overdue }) }}</text>
+      <text v-else-if="backlog.dueSoon">{{ t("salesInvoice.backlogDueSoon", { n: backlog.dueSoon }) }}</text>
+      <text v-if="backlog.held"> {{ t("salesInvoice.backlogHeld", { n: backlog.held }) }}</text>
+      <text v-if="backlog.needsReview"> {{ t("salesInvoice.backlogReview", { n: backlog.needsReview }) }}</text>
+    </view>
+
     <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="reload"
       :text="String(t('salesInvoice.empty'))"></sh-empty>
     <view v-for="r in rows" :key="r.invoiceNo" class="sh-card" @tap="open(r.invoiceNo)">
@@ -45,7 +53,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { invoiceMoney } from "@/shared/sales-invoice";
-import type { SalesInvoice, SiStatus } from "@/api/sales-invoice";
+import type { SalesInvoice, SiStatus, SiUploadBacklog } from "@/api/sales-invoice";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -58,6 +66,18 @@ const status = ref<"" | SiStatus>("");
 const loaded = ref(false);
 const failed = ref(false);
 let generation = 0;
+const backlog = ref<SiUploadBacklog | null>(null);
+
+/** 积压提示失败不影响列表：拿不到就不显示 */
+async function loadBacklog() {
+  const store = merchant.storeNo;
+  try {
+    const b = await api.mSiUploadBacklog();
+    if (store === merchant.storeNo) backlog.value = b;
+  } catch {
+    backlog.value = null;
+  }
+}
 
 const statusTabs = computed(() => [
   { key: "", label: String(t("salesInvoice.allStatus")) },
@@ -89,6 +109,7 @@ async function load(append: boolean) {
 
 function reload() {
   page.value = 1;
+  if (merchant.can("biz:invoice:read")) void loadBacklog();
   return load(false);
 }
 function more() {

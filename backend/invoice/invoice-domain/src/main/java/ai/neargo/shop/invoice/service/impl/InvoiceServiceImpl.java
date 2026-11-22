@@ -404,6 +404,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         t.setTransmissionNo(BizKey.next(BizKey.INVOICE_TRANSMISSION));
         t.setTenantNo(inv.getTenantNo());
         t.setEntityNo(inv.getEntityNo());
+        t.setStoreNo(inv.getStoreNo());
         t.setRegimeCode(inv.getRegimeCode());
         t.setGatewayCode(profile.getGatewayCode());
         t.setMessageType(type);
@@ -413,6 +414,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         t.setAttempts(0);
         var now = LocalDateTime.now(ZoneOffset.UTC);
         t.setNextAttemptAt(now);
+        // 法定期限从事件发生（即入队这一刻）起算；预警在窗口过半时
+        var window = regimes.require(inv.getRegimeCode()).reportWindow(type, inv);
+        t.setReportDeadlineAt(now.plus(window));
+        t.setReportWarnAt(now.plus(window.dividedBy(2)));
+        t.setDeadlineLevel(0);
         t.setCreatedAt(now);
         t.setUpdatedAt(now);
         transmissions.insert(t);
@@ -540,7 +546,8 @@ public class InvoiceServiceImpl implements InvoiceService {
                 i.getDonateCode(), "Y".equals(i.getPrintMark()), i.getCurrency(), i.getSalesMinor(),
                 i.getZeroTaxSalesMinor(), i.getFreeTaxSalesMinor(), i.getTaxMinor(),
                 i.getTotalMinor(), i.getAllowedMinor(), i.getStatus(), i.getVoidReason(),
-                issue == null ? null : issue.getStatus(), lineViews, allowanceViews);
+                issue == null ? null : issue.getStatus(), issue == null ? null : issue.getReportDeadlineAt(),
+                lineViews, allowanceViews);
     }
 
     static String sourceKey(String sourceType, String sourceNo) {
