@@ -47,7 +47,9 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
 
     static final String CODE = "UNIVERSALEC";
     static final ProviderProfile PROFILE =
-            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true);
+            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true)
+                    .withUploads(Set.of(ProviderOperation.ISSUE, ProviderOperation.VOID, ProviderOperation.ALLOWANCE,
+                            ProviderOperation.ALLOWANCE_VOID, ProviderOperation.REVOKE));
 
     /**
      * 照规格书「ERROR_CODE 回傳訊息代號說明」逐行转写。重发时的「已存在」（开立 E02、作废 E07）视为送达；

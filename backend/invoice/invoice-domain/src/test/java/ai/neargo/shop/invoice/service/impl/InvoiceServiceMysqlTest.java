@@ -150,6 +150,10 @@ class InvoiceServiceMysqlTest {
         provider.trackFailCode = null;
         provider.revokeStates.clear();
         provider.revokeChecks.clear();
+        provider.declared = FakeProvider.DEFAULT_PROFILE;
+        provider.preflightReason = null;
+        provider.failKind = null;
+        provider.rangeQrKey = null;
         provider.queryState = QueryCapability.ProviderInvoiceStatus.State.ISSUED;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
@@ -945,6 +949,102 @@ class InvoiceServiceMysqlTest {
         assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED, () -> invoices.reissue(SCOPE, no, null));
     }
 
+    // ---- 供应商能力定义完善（TDD-发票-供应商能力定义完善） ----
+
+    /** D2：预检不通过时整笔回滚 —— 不落发票、不占号、不入上传任务。 */
+    @Test
+    void capPreflightRejectionRollsBackWithoutUsingANumber() {
+        useProvider();
+        sources.paid("SO1", 1_000);
+        provider.preflightReason = "zero-rated invoices are not supported";
+        var e = assertThrows(BizException.class, () -> issue("SO1"));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, e.errorCode());
+        assertEquals(List.of("PROV", "zero-rated invoices are not supported"), List.of(e.args()));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class), "号码没占用");
+        provider.preflightReason = null;
+        assertEquals("AB00000001", issue("SO1").fiscalNumber(), "放行后同一号码照常开出");
+    }
+
+    /** D4：账号类失败暂停该主体（与上传同一机制），核验通过即解除；其它分类不暂停。 */
+    @Test
+    void capAccountFailuresHoldTheEntityOthersDoNot() {
+        useProvider();
+        provider.failCode = "busy";
+        provider.failKind = ProviderException.Kind.UNAVAILABLE;
+        assertCode(ErrorCode.INVOICE_PROVIDER_REJECTED, () -> setup.fetchProviderRange(SCOPE, null));
+        assertEquals(null, setup.profile(SCOPE).orElseThrow().providerHoldReason(), "不可达不暂停");
+
+        provider.failCode = "invalid";
+        provider.failKind = ProviderException.Kind.ACCOUNT;
+        assertCode(ErrorCode.INVOICE_PROVIDER_REJECTED, () -> setup.fetchProviderRange(SCOPE, null));
+        assertEquals("invalid", setup.profile(SCOPE).orElseThrow().providerHoldReason(), "账号问题：暂停");
+
+        provider.failCode = null;
+        provider.failKind = null;
+        setup.verifyProvider(SCOPE);
+        assertEquals(null, setup.profile(SCOPE).orElseThrow().providerHoldReason(), "核验通过解除");
+    }
+
+    /** D6：期别窗口外直接拒绝、不打服务商；D5：领号回传的 QR 金钥只在声明 RANGE 时存。 */
+    @Test
+    void capRangeWindowAndRangeQrKeyFollowTheDeclaration() {
+        useProvider();
+        provider.declared = FakeProvider.DEFAULT_PROFILE.withRangeWindows(
+                java.util.Set.of(ai.neargo.shop.invoice.gateway.RangeWindow.CURRENT,
+                        ai.neargo.shop.invoice.gateway.RangeWindow.NEXT));
+        var e = assertThrows(BizException.class, () -> setup.fetchProviderRange(SCOPE, "11002"));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, e.errorCode());
+        assertTrue(provider.seen.isEmpty(), "窗口外不打服务商");
+
+        jdbc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
+        provider.rangeQrKey = KEY_HEX;
+        setup.fetchProviderRange(SCOPE, period);
+        assertFalse(setup.profile(SCOPE).orElseThrow().qrKeyConfigured(), "默认商家手填：领号回传的不当金钥");
+        provider.declared = provider.declared.withQrKeySource(ai.neargo.shop.invoice.gateway.QrKeySource.RANGE);
+        setup.fetchProviderRange(SCOPE, period);
+        assertTrue(setup.profile(SCOPE).orElseThrow().qrKeyConfigured(), "声明 RANGE：存进 secret");
+    }
+
+    /** D3：代号由卖方统编带出（不必填、填了别的值拒绝）；有格式要求的校验格式。 */
+    @Test
+    void capCredentialDeclarationDerivesAndValidatesTheAccountCode() {
+        provider.declared = FakeProvider.DEFAULT_PROFILE.withCredentials(List.of(
+                new ai.neargo.shop.invoice.gateway.CredentialField(
+                        ai.neargo.shop.invoice.gateway.CredentialField.Slot.ACCOUNT_CODE, "sellerId", false, null,
+                        ai.neargo.shop.invoice.gateway.CredentialField.Derived.SELLER_TAX_ID)));
+        var saved = setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null,
+                null, null, "pos", "possn", null, null));
+        assertEquals("12345675", saved.providerAccountCode(), "不填也由统编带出");
+        assertCode(ErrorCode.INVOICE_PROVIDER_ACCOUNT_INVALID, () -> setup.saveProfile(SCOPE, new RegimeProfileReq(
+                "TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null, "99999999", null, null, null, null)));
+
+        provider.declared = FakeProvider.DEFAULT_PROFILE.withCredentials(List.of(
+                new ai.neargo.shop.invoice.gateway.CredentialField(
+                        ai.neargo.shop.invoice.gateway.CredentialField.Slot.ACCOUNT_CODE, "officeId", false,
+                        "[A-Z]+-\\d+", ai.neargo.shop.invoice.gateway.CredentialField.Derived.NONE)));
+        assertEquals("OFFICE-1", setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV",
+                null, null, null, "OFFICE-1", null, null, null, null)).providerAccountCode());
+        assertCode(ErrorCode.INVOICE_PROVIDER_ACCOUNT_INVALID, () -> setup.saveProfile(SCOPE, new RegimeProfileReq(
+                "TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null, "office", null, null, null, null)));
+    }
+
+    /** D1：可选供应商带能力集合与声明；布尔字段由能力推导。 */
+    @Test
+    void capProviderOptionsExposeCapabilitiesAndDeclarations() {
+        var options = setup.providerOptions("TW_EGUI").options();
+        var prov = options.stream().filter(o -> o.code().equals("PROV")).findFirst().orElseThrow();
+        assertEquals(List.of("VERIFY_ACCOUNT", "ALLOCATE_RANGE", "QUERY_STATUS", "MANAGE_TRACKS", "REPORT_BLANK", "REVOKE"),
+                prov.capabilities());
+        assertTrue(prov.verifiable() && prov.rangeProvided() && prov.queryable() && prov.trackManageable());
+        assertEquals(List.of("ACCOUNT_CODE", "KEY_ID", "SECRET"), prov.credentials().stream().map(c -> c.slot()).toList());
+        assertEquals("MERCHANT", prov.qrKeySource());
+        assertEquals(List.of("ANY"), prov.rangeWindows());
+        var test = options.stream().filter(o -> o.code().equals("TEST")).findFirst().orElseThrow();
+        assertEquals(List.of(), test.capabilities());
+    }
+
     private void useProvider() {
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
                 "OFFICE-1", "pos-user", "pos-secret", null, null));
@@ -1338,9 +1438,33 @@ class InvoiceServiceMysqlTest {
             return "PROV";
         }
 
+        static final ProviderProfile DEFAULT_PROFILE = new ProviderProfile(java.util.Set.of("TW_EGUI"),
+                ProviderProfile.NumberingMode.PROVIDER_RANGE, ProviderProfile.ReportMode.ASYNC_UPLOAD, true)
+                .withUploads(java.util.Set.of(ai.neargo.shop.invoice.gateway.ProviderOperation.ISSUE,
+                        ai.neargo.shop.invoice.gateway.ProviderOperation.VOID,
+                        ai.neargo.shop.invoice.gateway.ProviderOperation.ALLOWANCE,
+                        ai.neargo.shop.invoice.gateway.ProviderOperation.ALLOWANCE_VOID,
+                        ai.neargo.shop.invoice.gateway.ProviderOperation.REVOKE));
+        /** 测试按需改声明（期别窗口、QR 金钥来源、凭据字段） */
+        volatile ProviderProfile declared = DEFAULT_PROFILE;
+        /** 非空 = 预检不通过的原因 */
+        volatile String preflightReason;
+        /** 能力动作失败的分类；空 = 旧写法（未分类） */
+        volatile ProviderException.Kind failKind;
+        /** 领号随段回传的 QR 金钥 */
+        volatile String rangeQrKey;
+
         public ProviderProfile profile() {
-            return new ProviderProfile(java.util.Set.of("TW_EGUI"), ProviderProfile.NumberingMode.PROVIDER_RANGE,
-                    ProviderProfile.ReportMode.ASYNC_UPLOAD, true);
+            return declared;
+        }
+
+        public java.util.Optional<String> preflight(GatewayRequest request) {
+            return java.util.Optional.ofNullable(preflightReason);
+        }
+
+        private ProviderException failure() {
+            return failKind == null ? new ProviderException(failCode, null)
+                    : new ProviderException(failKind, failCode, null, null);
         }
 
         public GatewayReceipt send(GatewayRequest request) {
@@ -1357,7 +1481,7 @@ class InvoiceServiceMysqlTest {
 
         public ProviderOffice verify(InvoiceGateway.ProviderAccount account) {
             seen.add(account);
-            if (failCode != null) throw new ProviderException(failCode, null);
+            if (failCode != null) throw failure();
             return new ProviderOffice(taxId, "示例營業人", KEY_HEX);
         }
 
@@ -1373,8 +1497,8 @@ class InvoiceServiceMysqlTest {
 
         public AllocatedRange allocate(InvoiceGateway.ProviderAccount account, String periodCode) {
             seen.add(account);
-            if (failCode != null) throw new ProviderException(failCode, null);
-            return new AllocatedRange("APPLY-1", "CD", 12_345_600, 12_345_649, "07");
+            if (failCode != null) throw failure();
+            return new AllocatedRange("APPLY-1", "CD", 12_345_600, 12_345_649, "07", rangeQrKey);
         }
 
         public AllocationMode allocationMode(InvoiceGateway.ProviderAccount account, String periodCode) {

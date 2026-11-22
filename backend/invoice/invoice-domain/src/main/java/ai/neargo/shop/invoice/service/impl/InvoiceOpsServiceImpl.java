@@ -86,7 +86,8 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
                     p.getProviderHoldReason(), p.getProviderHeldAt(), period,
                     num(remaining.getOrDefault(p.getEntityNo(), Map.of()).get("remaining")), low,
                     Boolean.TRUE.equals(p.getAutoFetchRanges()), num(b.get("pending")), num(b.get("held")),
-                    num(b.get("needsReview")), num(b.get("dueSoon")), num(b.get("overdue")));
+                    num(b.get("needsReview")), num(b.get("dueSoon")), num(b.get("overdue")),
+                    policy.capabilityNames(gateway.code()));
             if (matches(row, q.problem())) rows.add(row);
         }
         int page = q.page() == null ? 1 : q.page(), size = q.size() == null ? 20 : q.size();
@@ -141,7 +142,7 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
                     t.getStoreNo() != null ? t.getStoreNo() : inv == null ? null : inv.getStoreNo(),
                     t.getMessageType(), t.getRefNo(), invoiceNo, inv == null ? null : inv.getFiscalNumber(),
                     t.getGatewayCode(), t.getStatus(), t.getAttempts(), t.getLastError(), t.getNextAttemptAt(),
-                    t.getReportDeadlineAt(), late, t.getCreatedAt());
+                    t.getReportDeadlineAt(), late, t.getCreatedAt(), policy.capabilityNames(t.getGatewayCode()));
         }).toList();
         return PageData.of(rows, result.getTotal(), page, size);
     }

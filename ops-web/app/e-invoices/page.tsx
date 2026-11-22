@@ -1,7 +1,7 @@
 "use client";
 
 // 运营端 · 电子发票（TDD-发票模块 §18）。三个页签：营业人一览（配置、余量、积压）、上传任务、发票查询。
-// 处置按钮只在有 finance:invoice:verify 时出现；核验、领号对服务商配号段的通道（鲸跃 CETUSTEK、汎宇 UNIVERSALEC）显示，查单只有鲸跃。
+// 处置按钮只在有 finance:invoice:verify 时出现；核验、领号、查单按后端给的供应商能力集合显示（TDD-发票-供应商能力定义完善 D1），不认厂商码。
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, IS_MOCK } from "@/lib/api";
@@ -24,8 +24,8 @@ const READ = "finance:invoice:read", VERIFY = "finance:invoice:verify";
 const PROBLEMS: readonly EInvoiceProblem[] = ["HELD", "OVERDUE", "REVIEW", "BACKLOG", "LOW_RANGE"];
 const UPLOAD: readonly EInvoiceUploadStatus[] = ["PENDING", "SENDING", "SENT", "FAILED", "HELD", "NEEDS_REVIEW"];
 const GATEWAYS = ["STUB", "TURNKEY", "CETUSTEK", "UNIVERSALEC"] as const;
-/** 服务商配号段的通道：有账号核验与领号段 */
-const PROVIDER_RANGED: readonly string[] = ["CETUSTEK", "UNIVERSALEC"];
+/** 供应商能力（后端 ProviderCapability） */
+const can = (r: { capabilities?: string[] }, capability: string) => !!r.capabilities?.includes(capability);
 type Copy = typeof E_INVOICE_COPY.zh;
 type Tab = "sellers" | "transmissions" | "invoices";
 
@@ -96,11 +96,11 @@ function Sellers({ c, verify }: { c: Copy; verify: boolean }) {
     { header: c.overdue, numeric: true, cell: (r) => <span className={r.overdue ? "text-destructive" : ""}>{r.overdue}</span> },
     { header: c.holdReason, cell: (r) => r.providerHoldReason ?? "—" },
     {
-      header: c.actions, cell: (r) => verify && PROVIDER_RANGED.includes(r.gatewayCode) ? <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceVerifyProvider(r.entityNo),
-          (v) => `${r.entityNo}: ${c.verified} ${v.name ?? v.taxId}${v.qrKeyStored ? ` · ${c.qrSynced}` : ""}`, () => void q.refetch())}>{c.verify}</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceFetchRange(r.entityNo),
-          (g) => `${r.entityNo}: ${c.fetched} ${g.track} ${g.startNo}–${g.endNo}`, () => void q.refetch())}>{c.fetchRange}</Button>
+      header: c.actions, cell: (r) => verify && (can(r, "VERIFY_ACCOUNT") || can(r, "ALLOCATE_RANGE")) ? <div className="flex gap-2">
+        {can(r, "VERIFY_ACCOUNT") && <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceVerifyProvider(r.entityNo),
+          (v) => `${r.entityNo}: ${c.verified} ${v.name ?? v.taxId}${v.qrKeyStored ? ` · ${c.qrSynced}` : ""}`, () => void q.refetch())}>{c.verify}</Button>}
+        {can(r, "ALLOCATE_RANGE") && <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceFetchRange(r.entityNo),
+          (g) => `${r.entityNo}: ${c.fetched} ${g.track} ${g.startNo}–${g.endNo}`, () => void q.refetch())}>{c.fetchRange}</Button>}
       </div> : null,
     },
   ];
@@ -147,7 +147,7 @@ function Transmissions({ c, verify }: { c: Copy; verify: boolean }) {
       header: c.actions, cell: (r) => verify ? <div className="flex gap-2">
         {r.status === "NEEDS_REVIEW" && <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceRetransmit(r.invoiceNo), () => `${r.invoiceNo}: ${c.retransmitted}`, () => void q.refetch())}>{c.retransmit}</Button>}
-        {r.gatewayCode === "CETUSTEK" && r.status !== "SENT" && <Button size="sm" variant="outline" disabled={busy}
+        {can(r, "QUERY_STATUS") && r.status !== "SENT" && <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceProviderCheck(r.invoiceNo), (k) => `${r.invoiceNo}: ${c.checkResult} ${k.verdict} (${k.providerState})${k.reconciled.length ? ` · ${c.reconciled}` : ""}`, () => void q.refetch())}>{c.providerCheck}</Button>}
       </div> : null,
     },

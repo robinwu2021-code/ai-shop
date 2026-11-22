@@ -196,7 +196,25 @@ public final class InvoiceDtos {
     public record ProviderOptionVO(String code, String numbering, String reporting, boolean requiresAccount,
             boolean verifiable, boolean rangeProvided, boolean queryable, boolean isDefault,
             /** 能在本系统查配号方式、已下载字轨并上传下期字轨（汎宇） */
-            boolean trackManageable) {}
+            boolean trackManageable,
+            /** 能力集合（ProviderCapability）；上面的布尔由它推导，前端迁完后删除 */
+            List<String> capabilities,
+            /** 凭据字段声明，页面按它渲染账号输入 */
+            List<CredentialFieldVO> credentials,
+            /** QR 金钥来源：MERCHANT 商家手填 / VERIFY 核验回传 / RANGE 领号回传 */
+            String qrKeySource,
+            /** 能领号段的期别窗口：CURRENT / NEXT / ANY */
+            List<String> rangeWindows,
+            /** 支持的业务特性（InvoiceFeature），页面说明用 */
+            List<String> features) {}
+
+    /**
+     * @param slot        ACCOUNT_CODE / KEY_ID / SECRET
+     * @param labelKey    词条后缀：先找 salesInvoice.credential.&lt;供应商&gt;.&lt;labelKey&gt;，没有用通用词条
+     * @param secret      只写不读
+     * @param derivedFrom NONE / SELLER_TAX_ID（由卖方统编自动带出，页面不必填）
+     */
+    public record CredentialFieldVO(String slot, String labelKey, boolean secret, String pattern, String derivedFrom) {}
 
     /**
      * 一张发票可拿去模拟打印的打印件（证明联 / 交易明细 / 折让证明单），带打印中心认的事实引用。
@@ -211,7 +229,9 @@ public final class InvoiceDtos {
             String gatewayCode, String gatewaySource, String status, String providerAccountCode, boolean providerCredentialConfigured,
             String providerHoldReason, LocalDateTime providerHeldAt, String currentPeriod, long currentRemaining,
             int rangeLowWater, boolean autoFetchRanges, long pending, long held, long needsReview, long dueSoon,
-            long overdue) {}
+            long overdue,
+            /** 生效供应商的能力集合（ProviderCapability），运营端按它显示核验 / 领号 / 查单 */
+            List<String> capabilities) {}
 
     /** 运营端上传任务查询：status 为任务状态；overdue=true 只看已过法定期限未送达的。 */
     public record OpsTransmissionQuery(
@@ -225,7 +245,9 @@ public final class InvoiceDtos {
     public record OpsTransmissionVO(String transmissionNo, String entityNo, String storeNo, String messageType,
             String refNo, String invoiceNo, String fiscalNumber, String gatewayCode, String status, int attempts,
             String lastError, LocalDateTime nextAttemptAt, LocalDateTime reportDeadlineAt, boolean overdue,
-            LocalDateTime createdAt) {}
+            LocalDateTime createdAt,
+            /** 本任务所用供应商的能力集合 */
+            List<String> capabilities) {}
 
     public record RegimeProfileVO(
             String regimeCode,

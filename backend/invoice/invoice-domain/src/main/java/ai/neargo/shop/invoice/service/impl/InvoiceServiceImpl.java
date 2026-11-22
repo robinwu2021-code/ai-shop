@@ -28,7 +28,8 @@ import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.TransmissionMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
 import ai.neargo.shop.invoice.gateway.InvoiceGateways;
-import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
+import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
+import ai.neargo.shop.invoice.gateway.ProviderCapability;
 import ai.neargo.shop.invoice.regime.InvoiceRegime;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.service.InvoiceService;
@@ -432,8 +433,10 @@ public class InvoiceServiceImpl implements InvoiceService {
             enqueue(inv, activeProfile(scope), "REVOKE", inv.getInvoiceNo(), message);
         } else {
             var window = regime.reportWindow("REVOKE", inv);
+            String payload = json.writeValueAsString(message);
+            preflight(previous.getGatewayCode(), inv.getRegimeCode(), "REVOKE", inv.getInvoiceNo(), payload);
             transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", previous.getId())
-                    .set("payload", json.writeValueAsString(message)).set("status", "PENDING").set("attempts", 0)
+                    .set("payload", payload).set("status", "PENDING").set("attempts", 0)
                     .set("last_error", null).set("gateway_ref", null).set("next_attempt_at", now)
                     .set("report_deadline_at", now.plus(window)).set("report_warn_at", now.plus(window.dividedBy(2)))
                     .set("deadline_level", 0).set("updated_at", now));
@@ -529,10 +532,13 @@ public class InvoiceServiceImpl implements InvoiceService {
         t.setEntityNo(inv.getEntityNo());
         t.setStoreNo(inv.getStoreNo());
         t.setRegimeCode(inv.getRegimeCode());
-        t.setGatewayCode(policy.effective(profile).code());   // 开立时冻结：之后切换供应商，这张票仍走原供应商
+        String gatewayCode = policy.effective(profile).code();
+        String payload = json.writeValueAsString(message);
+        preflight(gatewayCode, inv.getRegimeCode(), type, refNo, payload);
+        t.setGatewayCode(gatewayCode);   // 开立时冻结：之后切换供应商，这张票仍走原供应商
         t.setMessageType(type);
         t.setRefNo(refNo);
-        t.setPayload(json.writeValueAsString(message));
+        t.setPayload(payload);
         t.setStatus("PENDING");
         t.setAttempts(0);
         var now = LocalDateTime.now(ZoneOffset.UTC);
@@ -704,7 +710,17 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     /** 注销走开立时冻结的供应商：它得能查注销进度（汎宇 Z11）。 */
     private boolean revokeSupported(IvcTransmission issue) {
-        return gateways.capability(issue.getGatewayCode(), RevokeStatusCapability.class).isPresent();
+        return gateways.has(issue.getGatewayCode(), ProviderCapability.REVOKE);
+    }
+
+    /**
+     * 报文入队前按供应商的映射规则预检（TDD-发票-供应商能力定义完善 D2）：不通过就抛错，整个开立 / 折让 / 注销事务回滚，
+     * 号码不占用 —— 而不是等上传时才被拒、号码已用掉还要在 48 小时内人工处理。
+     */
+    private void preflight(String gatewayCode, String regimeCode, String type, String refNo, String payload) {
+        var reason = gateways.find(gatewayCode)
+                .flatMap(g -> g.preflight(new GatewayRequest(regimeCode, type, refNo, payload, null)));
+        if (reason.isPresent()) throw BizException.of(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, gatewayCode, reason.get());
     }
 
     static String sourceKey(String sourceType, String sourceNo) {

@@ -34,6 +34,8 @@ export interface EInvoiceSeller {
   needsReview: number;
   dueSoon: number;
   overdue: number;
+  /** 生效供应商的能力集合（VERIFY_ACCOUNT / ALLOCATE_RANGE / QUERY_STATUS …），按它显示处置按钮 */
+  capabilities?: string[];
 }
 
 export interface EInvoiceSellerQuery {
@@ -54,6 +56,8 @@ export interface EInvoiceTransmission {
   invoiceNo: string;
   fiscalNumber?: string | null;
   gatewayCode: string;
+  /** 本任务所用供应商的能力集合 */
+  capabilities?: string[];
   status: EInvoiceUploadStatus;
   attempts: number;
   lastError?: string | null;

@@ -32,21 +32,22 @@
           <text class="sh-hint txt-quiet">{{ t("salesInvoice.gatewayHint") }}</text>
         </view>
         <template v-if="chosen?.requiresAccount">
-          <view class="sh-cell sh-row sh-row--between">
-            <text class="txt-body sh-muted">{{ t("salesInvoice.providerAccountCode") }}</text>
-            <input v-model="profile.providerAccountCode" maxlength="64" class="txt-body sh-num sh-fill cell-input" />
+          <view v-if="accountField" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ credentialLabel(accountField) }}</text>
+            <text v-if="accountField.derivedFrom === 'SELLER_TAX_ID'" class="txt-caption txt-quiet">{{ t("salesInvoice.credentialDerived") }}</text>
+            <input v-else v-model="profile.providerAccountCode" maxlength="64" class="txt-body sh-num sh-fill cell-input" />
           </view>
           <view class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted">{{ t("salesInvoice.provider") }}</text>
             <text class="txt-caption" :class="providerCredOk ? 'is-success' : 'is-warning'">{{ providerCredOk ? t("salesInvoice.providerCredOk") : t("salesInvoice.providerCredMissing") }}</text>
           </view>
-          <view class="sh-cell sh-row sh-row--between">
-            <text class="txt-body sh-muted">{{ t("salesInvoice.providerUser") }}</text>
+          <view v-if="keyField" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ credentialLabel(keyField) }}</text>
             <input v-model="profile.providerUser" maxlength="64" class="txt-body sh-num sh-fill cell-input"
               :placeholder="String(t('salesInvoice.providerSecretPh'))" />
           </view>
-          <view class="sh-cell sh-row sh-row--between">
-            <text class="txt-body sh-muted">{{ t("salesInvoice.providerPassword") }}</text>
+          <view v-if="secretField" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ credentialLabel(secretField) }}</text>
             <input v-model="profile.providerPassword" password maxlength="128" class="txt-body sh-num sh-fill cell-input"
               :placeholder="String(t('salesInvoice.providerSecretPh'))" />
           </view>
@@ -67,7 +68,7 @@
           <text class="txt-body sh-muted">{{ t("salesInvoice.rangeLowWater") }}</text>
           <input v-model="profile.rangeLowWater" type="number" maxlength="6" class="txt-body sh-num sh-fill cell-input" />
         </view>
-        <view v-if="chosen?.rangeProvided" class="sh-cell sh-row sh-row--between">
+        <view v-if="can(chosen, 'ALLOCATE_RANGE')" class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ t("salesInvoice.autoFetchRanges") }}</text>
           <sh-switch v-model="profile.autoFetchRanges"></sh-switch>
         </view>
@@ -87,12 +88,12 @@
         <text class="sh-hint txt-quiet">{{ t("salesInvoice.providerHint") }}</text>
         <view v-if="providerMsg" class="sh-notice sh-mt-sm" :class="providerFailed ? 'sh-notice--danger' : 'sh-notice--success'" role="status">{{ providerMsg }}</view>
         <view class="sh-row sh-mt-sm">
-          <view v-if="saved?.verifiable" class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="verifyProvider">{{ t("salesInvoice.verifyProvider") }}</view>
-          <view v-if="saved?.rangeProvided" class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="fetchProviderRange">{{ t("salesInvoice.fetchRange") }}</view>
+          <view v-if="can(saved, 'VERIFY_ACCOUNT')" class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="verifyProvider">{{ t("salesInvoice.verifyProvider") }}</view>
+          <view v-if="can(saved, 'ALLOCATE_RANGE')" class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="fetchProviderRange">{{ t("salesInvoice.fetchRange") }}</view>
         </view>
       </view>
 
-      <template v-if="saved?.trackManageable">
+      <template v-if="can(saved, 'MANAGE_TRACKS')">
         <sh-section :title="String(t('salesInvoice.trackTitle'))" pad>
           <text class="sh-hint txt-quiet">{{ t("salesInvoice.trackHint") }}</text>
         </sh-section>
@@ -204,7 +205,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { SiProfile, SiProviderOptions, SiProviderTracks, SiRange } from "@/api/sales-invoice";
+import type { SiCapability, SiCredentialField, SiCredentialSlot, SiProfile, SiProviderOption, SiProviderOptions,
+  SiProviderTracks, SiRange } from "@/api/sales-invoice";
 
 const { t, te } = useI18n();
 const merchant = useMerchantStore();
@@ -249,7 +251,26 @@ function option(code: string | undefined) {
 const chosen = computed(() => option(profile.gatewayCode || providers.value?.defaultGatewayCode));
 /** 已保存、当前生效的：未保存的切换不能拿去核验 / 领号 */
 const saved = computed(() => option(current.value?.gatewayCode));
-const providerMode = computed(() => !!saved.value?.requiresAccount && (saved.value.verifiable || saved.value.rangeProvided));
+const providerMode = computed(() => !!saved.value?.requiresAccount
+  && (can(saved.value, "VERIFY_ACCOUNT") || can(saved.value, "ALLOCATE_RANGE")));
+/** 能力以后端给的能力集合为准（TDD-发票-供应商能力定义完善 D1），不认厂商 */
+function can(o: SiProviderOption | null | undefined, capability: SiCapability) {
+  return !!o?.capabilities?.includes(capability);
+}
+/** 凭据字段按所选供应商的声明渲染（D3）：标签先找该供应商的词条，没有用通用词条 */
+function credentialOf(slot: SiCredentialSlot) {
+  return chosen.value?.credentials?.find((f) => f.slot === slot) ?? null;
+}
+const accountField = computed(() => credentialOf("ACCOUNT_CODE"));
+const keyField = computed(() => credentialOf("KEY_ID"));
+const secretField = computed(() => credentialOf("SECRET"));
+const GENERIC_LABEL: Record<SiCredentialSlot, string> = {
+  ACCOUNT_CODE: "salesInvoice.providerAccountCode", KEY_ID: "salesInvoice.providerUser", SECRET: "salesInvoice.providerPassword",
+};
+function credentialLabel(f: SiCredentialField) {
+  const key = `salesInvoice.credential.${chosen.value?.code ?? ""}.${f.labelKey}`;
+  return te(key) ? String(t(key)) : String(t(GENERIC_LABEL[f.slot]));
+}
 function gatewayLabel(code: string) {
   const key = `salesInvoice.gatewayName.${code}`;
   return te(key) ? String(t(key)) : code;
@@ -317,10 +338,11 @@ async function saveProfile() {
       gatewayCode: profile.gatewayCode,
       autoIssue: profile.autoIssue,
       ...(lowWater !== null ? { rangeLowWater: lowWater } : {}),
-      autoFetchRanges: !!chosen.value?.rangeProvided && profile.autoFetchRanges,
+      autoFetchRanges: can(chosen.value, "ALLOCATE_RANGE") && profile.autoFetchRanges,
       ...(key ? { qrAesKeyHex: key } : {}),
       ...(carrier ? { memberCarrierType: carrier } : {}),
-      ...(accountCode ? { providerAccountCode: accountCode } : {}),
+      // 由卖方统编带出的代号不送：后端按声明填，避免改了统编后旧代号对不上
+      ...(accountCode && accountField.value?.derivedFrom !== "SELLER_TAX_ID" ? { providerAccountCode: accountCode } : {}),
       ...(user ? { providerUser: user, providerPassword: password } : {}),
     }));
     uni.showToast({ title: String(t("salesInvoice.saved")), icon: "none" });

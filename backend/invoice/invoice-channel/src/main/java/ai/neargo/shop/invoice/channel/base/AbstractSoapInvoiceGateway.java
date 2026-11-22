@@ -49,7 +49,7 @@ public abstract class AbstractSoapInvoiceGateway extends AbstractInvoiceGateway 
         String result = SoapEnvelope.between(body, "<return>", "</return>");
         if (result == null) {
             if (body.contains("<return/>")) return "";
-            throw new ProviderException("no_return", null);
+            throw new ProviderException(ProviderException.Kind.UNEXPECTED, "no_return", null, null);
         }
         return SoapEnvelope.unescape(result).trim();
     }

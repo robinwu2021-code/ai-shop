@@ -57,6 +57,33 @@ class InvoiceGatewaysTest {
         assertTrue(!gateways.requiresAccount("STUB"));
     }
 
+    /** 能力定义完善 D1：能力集合由接口与声明推导；注销要「收 REVOKE」与「能查进度」两样都有。 */
+    @Test
+    void capabilitiesAreDerivedFromInterfacesAndDeclaredUploads() {
+        assertEquals(Set.of(ProviderCapability.QUERY_STATUS), gateways.capabilities("TW_PROVIDER"));
+        assertEquals(Set.of(), gateways.capabilities("STUB"));
+        assertEquals(Set.of(), gateways.capabilities("NOPE"));
+        var base = new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true);
+        var withRevoke = base.withUploads(Set.of(ProviderOperation.ISSUE, ProviderOperation.REVOKE));
+        var g = new InvoiceGateways(List.of(new Revoking("NO_UPLOAD", base), new Revoking("BOTH", withRevoke)));
+        assertTrue(!g.has("NO_UPLOAD", ProviderCapability.REVOKE), "能查进度但不收注销报文：不算能注销");
+        assertTrue(g.has("BOTH", ProviderCapability.REVOKE));
+        assertTrue(base.accepts(ProviderOperation.ISSUE) && !base.accepts(ProviderOperation.REVOKE), "默认收四类标准报文");
+        assertTrue(base.allocatable(RangeWindow.NEXT), "默认任意期别");
+        assertEquals(QrKeySource.MERCHANT, base.qrKeySource());
+        assertEquals(3, base.credentials().size(), "要账号的默认三项通用凭据");
+    }
+
+    record Revoking(String code, ProviderProfile profile) implements InvoiceGateway, RevokeStatusCapability {
+        public GatewayReceipt send(GatewayRequest request) {
+            return GatewayReceipt.accepted(code);
+        }
+
+        public RevokeState revokeStatus(ProviderAccount a, String n, LocalDate d) {
+            return RevokeState.DONE;
+        }
+    }
+
     @Test
     void ac41DuplicateCodesFailAtStartup() {
         var p = new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.LOCAL_RANGE, ReportMode.ASYNC_UPLOAD, false);

@@ -32,12 +32,13 @@ public final class HttpTransport {
         try {
             response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new ProviderException("unreachable", e);
+            throw new ProviderException(ProviderException.Kind.UNAVAILABLE, "unreachable", null, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ProviderException("interrupted", e);
+            throw new ProviderException(ProviderException.Kind.UNAVAILABLE, "interrupted", null, e);
         }
-        if (response.statusCode() / 100 != 2) throw new ProviderException("http_" + response.statusCode(), null);
+        if (response.statusCode() / 100 != 2)
+            throw new ProviderException(ProviderException.Kind.UNAVAILABLE, "http_" + response.statusCode(), null, null);
         return new Response(response.statusCode(), response.body(), response.headers().map());
     }
 

@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.gateway;
 
+import java.util.Optional;
+
 /**
  * 开票供应商 SPI 的根接口（TDD-发票模块 §19）：台湾加值中心 / Turnkey、阿联酋 Peppol 接入点服务商 …
  * 实现放 invoice-channel，每家一个包，继承所属对接形态的抽象类（{@code channel.base}）。
@@ -19,6 +21,15 @@ public interface InvoiceGateway {
     ProviderProfile profile();
 
     GatewayReceipt send(GatewayRequest request);
+
+    /**
+     * 不出网：按本供应商的映射规则检查这份报文能否送出（TDD-发票-供应商能力定义完善 D2）。
+     * 能送出返回空，否则返回原因。领域在开立 / 折让 / 注销的事务提交前调用，不通过就回滚 —— 号码不占用。
+     * 默认不检查（测试桩、文件交换类）。
+     */
+    default Optional<String> preflight(GatewayRequest request) {
+        return Optional.empty();
+    }
 
     /**
      * @param refNo   业务号（发票号 / 折让号），通道可拿来做对方系统里的订单号

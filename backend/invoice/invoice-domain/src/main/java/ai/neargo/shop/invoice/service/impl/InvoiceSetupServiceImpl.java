@@ -6,6 +6,7 @@ import ai.neargo.secret.api.SecretVault;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.CredentialFieldVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionVO;
@@ -22,9 +23,13 @@ import ai.neargo.shop.invoice.entity.IvcNumberRange;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
 import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
+import ai.neargo.shop.invoice.gateway.CredentialField;
+import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
+import ai.neargo.shop.invoice.gateway.ProviderCapability;
+import ai.neargo.shop.invoice.gateway.QrKeySource;
+import ai.neargo.shop.invoice.gateway.RangeWindow;
 import ai.neargo.shop.invoice.gateway.InvoiceGateways;
-import ai.neargo.shop.invoice.gateway.QueryCapability;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.gateway.TrackCapability;
@@ -127,7 +132,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         p.setGatewayCode(chosen);
         p.setMemberCarrierType(req.memberCarrierType());
         p.setAutoIssue(Boolean.TRUE.equals(req.autoIssue()));
-        p.setProviderAccountCode(blankToNull(req.providerAccountCode()));
+        p.setProviderAccountCode(accountCode(regime.code(), chosen, req));
         if (req.rangeLowWater() != null) p.setRangeLowWater(req.rangeLowWater());
         else if (fresh) p.setRangeLowWater(DEFAULT_LOW_WATER);
         if (req.autoFetchRanges() != null) p.setAutoFetchRanges(req.autoFetchRanges());
@@ -202,39 +207,54 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     public ProviderOptionsVO providerOptions(String regimeCode) {
         var regime = regimes.require(regimeCode == null || regimeCode.isBlank() ? policy.defaultRegime() : regimeCode);
         String def = policy.defaultGateway(regime.code());
-        var options = policy.selectable(regime.code()).stream().map(g -> new ProviderOptionVO(g.code(),
-                g.profile().numbering().name(), g.profile().reporting().name(), g.profile().requiresAccount(),
-                g instanceof AccountCapability, g instanceof RangeCapability, g instanceof QueryCapability,
-                g.code().equals(def), g instanceof TrackCapability)).toList();
+        var options = policy.selectable(regime.code()).stream().map(g -> {
+            var caps = gateways.capabilities(g.code());
+            var pf = g.profile();
+            return new ProviderOptionVO(g.code(), pf.numbering().name(), pf.reporting().name(), pf.requiresAccount(),
+                    caps.contains(ProviderCapability.VERIFY_ACCOUNT), caps.contains(ProviderCapability.ALLOCATE_RANGE),
+                    caps.contains(ProviderCapability.QUERY_STATUS), g.code().equals(def),
+                    caps.contains(ProviderCapability.MANAGE_TRACKS), policy.capabilityNames(g.code()),
+                    pf.credentials().stream().map(f -> new CredentialFieldVO(f.slot().name(), f.labelKey(), f.secret(),
+                            f.pattern(), f.derivedFrom().name())).toList(),
+                    pf.qrKeySource().name(), pf.rangeWindows().stream().sorted().map(Enum::name).toList(),
+                    pf.features().stream().sorted().map(Enum::name).toList());
+        }).toList();
         return new ProviderOptionsVO(regime.code(), def, options);
     }
 
     @Override
     public ProviderVerificationVO verifyProvider(Scope scope) {
         var p = requireProfile(scope);
-        var office = call(() -> capability(p, AccountCapability.class).verify(account(p)));
+        var office = call(p, () -> capability(p, AccountCapability.class).verify(account(p)));
         if (!p.getSellerTaxId().equals(office.taxId()))
             throw BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "tax_id_mismatch");
-        byte[] key = TwQrCipher.parseKey(office.qrKey());
-        if (key != null) {
-            var v = vault.getIfAvailable();
-            if (v == null) throw BizException.of(ErrorCode.INVOICE_KEY_UNAVAILABLE);
-            long ref = v.seal(new KeyOwner(SecretNamespace.PLATFORM, InvoiceServiceImpl.QR_KEY_OWNER, p.getId()), key)
-                    .blobId();
-            profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId()).set("qr_key_ref", ref)
-                    .set("updated_by", scope.actorNo()).set("updated_at", LocalDateTime.now(ZoneOffset.UTC)));
-        }
+        // 核验回传的金钥一律存（鲸跃 QRCode）；领号回传的只在声明 RANGE 时存，见 fetchProviderRange
+        boolean stored = storeQrKey(p, office.qrKey(), scope.actorNo());
         // 账号已证明可用：解除因认证失败造成的上传暂停，积压的任务下一轮补发
         transmissions.releaseHeld(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode());
-        return new ProviderVerificationVO(office.taxId(), office.name(), key != null);
+        return new ProviderVerificationVO(office.taxId(), office.name(), stored);
     }
 
     @Override
     public NumberRangeVO fetchProviderRange(Scope scope, String periodCode) {
         var p = requireProfile(scope);
         var regime = regimes.require(p.getRegimeCode());
-        String period = periodCode != null ? periodCode : regime.periodOf(Instant.now());
-        var got = call(() -> capability(p, RangeCapability.class).allocate(account(p), period));
+        String current = regime.periodOf(Instant.now());
+        String period = periodCode != null ? periodCode : current;
+        // 期别窗口（D6）：窗口外直接拒绝，不打服务商
+        var gatewayCode = policy.effective(p).code();
+        var declared = gateways.find(gatewayCode).map(InvoiceGateway::profile).orElse(null);
+        if (declared != null && !declared.allocatable(RangeWindow.ANY)) {
+            var end = regime.periodEnd(current);
+            var window = period.equals(current) ? RangeWindow.CURRENT
+                    : end != null && period.equals(regime.periodOf(end)) ? RangeWindow.NEXT : null;
+            if (window == null || !declared.allocatable(window))
+                throw BizException.of(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, gatewayCode, "period_window");
+        }
+        var got = call(p, () -> capability(p, RangeCapability.class).allocate(account(p), period));
+        // 领号回传的 QR 金钥只在供应商声明 RANGE 时存（语义未确认前不当金钥用，D5）
+        if (declared != null && declared.qrKeySource() == QrKeySource.RANGE && got.qrKey() != null)
+            storeQrKey(p, got.qrKey(), scope.actorNo());
         var same = ranges.selectOne(new QueryWrapper<IvcNumberRange>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("regime_code", regime.code()).eq("period_code", period)
                 .eq("track", got.track()).eq("start_no", got.startNo()).eq("end_no", got.endNo()).last("LIMIT 1"));
@@ -272,8 +292,8 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         String period = periodCode != null && !periodCode.isBlank() ? periodCode : regime.periodOf(Instant.now());
         var track = capability(p, TrackCapability.class);
         var account = account(p);
-        var mode = call(() -> track.allocationMode(account, period));
-        var downloaded = call(() -> track.downloadedTracks(account, period));
+        var mode = call(p, () -> track.allocationMode(account, period));
+        var downloaded = call(p, () -> track.downloadedTracks(account, period));
         return new ProviderTracksVO(period, mode.name(), downloaded.stream()
                 .map(t -> new ProviderTrackVO(t.invoiceType(), t.track(), t.startNo(), t.endNo())).toList());
     }
@@ -302,7 +322,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         if (books > MAX_BOOKS) throw BizException.of(ErrorCode.INVOICE_RANGE_INVALID);
         var track = capability(p, TrackCapability.class);
         var account = account(p);
-        call(() -> {
+        call(p, () -> {
             track.uploadNextTracks(account, new TrackCapability.TrackUpload(req.periodCode(), req.invoiceType(),
                     req.track(), p.getSellerTaxId(), List.copyOf(spans)));
             return null;
@@ -356,6 +376,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
                             p.getTenantNo(), p.getEntityNo(), previous, g.track, g.spans.size());
                     reported++;
                 } catch (ProviderException e) {
+                    if (e.kind() == ProviderException.Kind.ACCOUNT) hold(p, e.code());
                     String reason = e.code() == null ? "unknown" : e.code().length() > 255 ? e.code().substring(0, 255) : e.code();
                     if (!g.rangeIds.isEmpty())
                         ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", g.rangeIds)
@@ -408,6 +429,24 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         return r.getInvoiceType() == null || r.getInvoiceType().isBlank() ? "07" : r.getInvoiceType();
     }
 
+    /**
+     * 按生效供应商的凭据声明（D3）定加值中心代号：声明为由卖方统编带出的，直接用统编（填了别的值拒绝）；有格式要求的校验格式。
+     */
+    private String accountCode(String regimeCode, String chosen, RegimeProfileReq req) {
+        String input = blankToNull(req.providerAccountCode());
+        var gateway = gateways.find(chosen != null ? chosen : policy.defaultGateway(regimeCode)).orElse(null);
+        var field = gateway == null ? null : gateway.profile().credential(CredentialField.Slot.ACCOUNT_CODE);
+        if (field == null) return input;
+        if (field.derivedFrom() == CredentialField.Derived.SELLER_TAX_ID) {
+            if (input != null && !input.equals(req.sellerTaxId()))
+                throw BizException.of(ErrorCode.INVOICE_PROVIDER_ACCOUNT_INVALID, field.labelKey());
+            return req.sellerTaxId();
+        }
+        if (input != null && field.pattern() != null && !input.matches(field.pattern()))
+            throw BizException.of(ErrorCode.INVOICE_PROVIDER_ACCOUNT_INVALID, field.labelKey());
+        return input;
+    }
+
     private IvcRegimeProfile requireProfile(Scope scope) {
         var p = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("status", "ACTIVE").last("LIMIT 1"));
@@ -426,13 +465,40 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
                 () -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "account_not_configured"));
     }
 
-    private static <T> T call(Supplier<T> remote) {
+    /**
+     * 业务动作调服务商：失败按分类处置（TDD-发票-供应商能力定义完善 D4）—— 账号类失败与上传同样暂停该主体（核验通过自动解除）；
+     * 服务商原文代码交给用户对照服务商文档排查（账号错 invalid、本期已申请 exist …），有原文说明时一并带上。
+     */
+    private <T> T call(IvcRegimeProfile p, Supplier<T> remote) {
         try {
             return remote.get();
         } catch (ProviderException e) {
-            // 业务动作：服务商原文代码交给用户对照服务商文档排查（账号错 invalid、本期已申请 exist …）
-            throw BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, e.code());
+            if (e.kind() == ProviderException.Kind.ACCOUNT) hold(p, e.code());
+            throw e.detail() == null ? BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, e.code())
+                    : BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, e.code(), e.detail());
         }
+    }
+
+    /** 账号类失败：暂停该主体的上传（与上传任务同一列、同一解除方式：核验通过即 releaseHeld）。只第一次告警。 */
+    private void hold(IvcRegimeProfile p, String reason) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        String clipped = reason == null ? "account problem" : reason.length() > 256 ? reason.substring(0, 256) : reason;
+        if (profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId()).isNull("provider_held_at")
+                .set("provider_hold_reason", clipped).set("provider_held_at", now).set("updated_at", now)) == 1)
+            log.error("INVOICE_PROVIDER_HOLD tenant={} entity={} gateway={} reason={}", p.getTenantNo(), p.getEntityNo(),
+                    policy.effective(p).code(), clipped);
+    }
+
+    /** 服务商回传的 QR 金钥（32 位十六进制）存进 secret 模块；格式不对不存。@return 是否存了 */
+    private boolean storeQrKey(IvcRegimeProfile p, String raw, String actor) {
+        byte[] key = TwQrCipher.parseKey(raw);
+        if (key == null) return false;
+        var v = vault.getIfAvailable();
+        if (v == null) throw BizException.of(ErrorCode.INVOICE_KEY_UNAVAILABLE);
+        long ref = v.seal(new KeyOwner(SecretNamespace.PLATFORM, InvoiceServiceImpl.QR_KEY_OWNER, p.getId()), key).blobId();
+        profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId()).set("qr_key_ref", ref)
+                .set("updated_by", actor).set("updated_at", LocalDateTime.now(ZoneOffset.UTC)));
+        return true;
     }
 
     private static String blankToNull(String s) {

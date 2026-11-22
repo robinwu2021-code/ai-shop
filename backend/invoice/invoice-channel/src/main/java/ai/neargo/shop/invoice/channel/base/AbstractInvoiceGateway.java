@@ -7,6 +7,7 @@ import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -58,15 +59,22 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
         GatewayReceipt receipt;
         if (profile().requiresAccount() && request.account() == null) {
             receipt = GatewayReceipt.accountProblem("provider account not configured");
+        } else if (!profile().accepts(ProviderOperation.ofMessageType(request.messageType()))) {
+            receipt = GatewayReceipt.rejected("unsupported message type: " + request.messageType());
         } else {
             try {
-                receipt = upload(request, json.readTree(request.payloadJson()));
+                receipt = deliver(request, prepare(request, json.readTree(request.payloadJson())));
             } catch (UnsupportedMessageException e) {
                 receipt = GatewayReceipt.rejected(e.getMessage());
             } catch (AccountMisconfiguredException e) {
                 receipt = GatewayReceipt.accountProblem(tag() + " " + e.getMessage());
             } catch (ProviderException e) {
-                receipt = GatewayReceipt.retryable(tag() + " " + e.code());
+                String tag = tag() + " " + e.code();
+                receipt = switch (e.kind()) {
+                    case ACCOUNT -> GatewayReceipt.accountProblem(tag);
+                    case UNSUPPORTED, REJECTED -> GatewayReceipt.rejected(tag);
+                    default -> GatewayReceipt.retryable(tag);
+                };
             }
         }
         log.info("[invoice] {} {} ref={} account={} → {} {} ({}ms)", code(), request.messageType(), request.refNo(),
@@ -75,8 +83,46 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
         return receipt;
     }
 
-    /** 把一份报文送出去；{@code message} 是税制生成的报文树。 */
-    protected abstract GatewayReceipt upload(GatewayRequest request, JsonNode message);
+    /**
+     * 预检（TDD-发票-供应商能力定义完善 D2）：不出网，只跑 {@link #prepare}。报文种类不在声明里、或映射阶段拒绝（如零税率）时返回原因。
+     * 预检时没有账号也照样映射：用占位账号，账号字段不参与业务判断。
+     */
+    @Override
+    public final Optional<String> preflight(GatewayRequest request) {
+        if (!profile().accepts(ProviderOperation.ofMessageType(request.messageType())))
+            return Optional.of("unsupported message type: " + request.messageType());
+        var r = request.account() != null ? request : new GatewayRequest(request.regimeCode(), request.messageType(),
+                request.refNo(), request.payloadJson(), PREFLIGHT_ACCOUNT);
+        try {
+            prepare(r, json.readTree(r.payloadJson()));
+            return Optional.empty();
+        } catch (UnsupportedMessageException e) {
+            return Optional.of(e.getMessage());
+        }
+    }
+
+    static final ProviderAccount PREFLIGHT_ACCOUNT = new ProviderAccount("PREFLIGHT", "PREFLIGHT", "PREFLIGHT");
+
+    /**
+     * 第一步 · 准备（纯映射，不出网）：税制报文 → 厂商报文。不支持的内容抛 {@link UnsupportedMessageException}。
+     * 默认原样交给 {@link #deliver}；厂商在这里放映射，预检与真实上传共用。
+     */
+    protected Prepared prepare(GatewayRequest request, JsonNode message) {
+        return new Prepared(message, null);
+    }
+
+    /** 第二步 · 送出并判码。默认走旧的 {@link #upload}（文件交换、测试桩、样例形态仍覆盖它）。 */
+    protected GatewayReceipt deliver(GatewayRequest request, Prepared prepared) {
+        return upload(request, prepared.message());
+    }
+
+    /** 旧的一步式上传；改为覆盖 {@link #prepare} + {@link #deliver} 的厂商不必实现。 */
+    protected GatewayReceipt upload(GatewayRequest request, JsonNode message) {
+        throw new UnsupportedOperationException(code() + " must override deliver or upload");
+    }
+
+    /** @param payload 厂商报文（汎宇 Map、鲸跃 XML 文本 …），由 {@link #prepare} 产出、{@link #deliver} 使用 */
+    public record Prepared(JsonNode message, Object payload) {}
 
     /**
      * 能力动作的模板。厂商的能力方法只写一行：{@code return call(op, account, () -> 送出并解读, reply -> 读数据)}。
@@ -91,7 +137,7 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
         long start = System.nanoTime();
         if (profile().requiresAccount() && account == null) {
             log.warn("[invoice] {} {} account=- → account_missing", code(), op);
-            throw new ProviderException("account_missing", null);
+            throw new ProviderException(ProviderException.Kind.ACCOUNT, "account_missing", null, null);
         }
         ProviderReply reply;
         try {
@@ -103,8 +149,27 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
         Outcome outcome = resultCodes().classify(op.name(), reply.code());
         log.info("[invoice] {} {} account={} → {} {} ({}ms)", code(), op, accountCode(account), outcome, reply.code(),
                 elapsed(start));
-        if (outcome != Outcome.ACCEPTED) throw new ProviderException(failureCode(op, reply), null);
+        if (outcome != Outcome.ACCEPTED)
+            throw new ProviderException(failureKind(op, reply, outcome), failureCode(op, reply), failureDetail(op, reply),
+                    null);
         return read.apply(reply);
+    }
+
+    /**
+     * 能力动作失败的分类（D4）：默认按码表 —— 账号问题 → {@link ProviderException.Kind#ACCOUNT}、可重试 →
+     * {@code UNAVAILABLE}、其余 → {@code REJECTED}。厂商可改写特例（查无 → {@code NOT_FOUND}）。
+     */
+    protected ProviderException.Kind failureKind(ProviderOperation op, ProviderReply reply, Outcome outcome) {
+        return switch (outcome) {
+            case ACCOUNT_PROBLEM -> ProviderException.Kind.ACCOUNT;
+            case RETRYABLE -> ProviderException.Kind.UNAVAILABLE;
+            default -> ProviderException.Kind.REJECTED;
+        };
+    }
+
+    /** 能力动作失败时的厂商原文说明（如汎宇 MESSAGE）；默认没有。 */
+    protected String failureDetail(ProviderOperation op, ProviderReply reply) {
+        return null;
     }
 
     /** 能力动作失败时抛给领域的代码；默认是厂商结果码的小写（便于对着厂商文档查）。厂商可按动作改写成统一的词。 */

@@ -59,6 +59,11 @@ public class InvoiceGatewayPolicy {
         return out;
     }
 
+    /** 供应商的能力集合（名称、按枚举顺序），给接口与运营端用。 */
+    public List<String> capabilityNames(String code) {
+        return gateways.capabilities(code).stream().sorted().map(Enum::name).toList();
+    }
+
     /** 商家选的须在该市场支持的供应商里，否则 26012（{0} = 供应商编码）。 */
     public void requireSelectable(String regimeCode, String gatewayCode) {
         if (selectable(regimeCode).stream().noneMatch(g -> g.code().equals(gatewayCode)))

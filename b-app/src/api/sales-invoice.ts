@@ -81,6 +81,32 @@ export interface SiProviderOption {
   isDefault: boolean;
   /** 能查服务商配号方式、已下载字轨并上传下期字轨（汎宇） */
   trackManageable: boolean;
+  /** 能力集合；上面四个布尔由它推导，页面以它为准 */
+  capabilities: SiCapability[];
+  /** 凭据字段声明，账号输入按它渲染 */
+  credentials: SiCredentialField[];
+  qrKeySource: SiQrKeySource;
+  rangeWindows: SiRangeWindow[];
+  /** 支持的业务特性（ZERO_RATED / MIXED_TAX / EXEMPT / B2B / CARRIER / DONATION） */
+  features: string[];
+}
+/** 供应商能力（ProviderCapability） */
+export type SiCapability = "VERIFY_ACCOUNT" | "ALLOCATE_RANGE" | "QUERY_STATUS" | "MANAGE_TRACKS" | "REPORT_BLANK" | "REVOKE";
+/** 凭据在账号三元里的位置 */
+export type SiCredentialSlot = "ACCOUNT_CODE" | "KEY_ID" | "SECRET";
+/** QR 金钥来源：商家手填 / 核验回传 / 领号回传 */
+export type SiQrKeySource = "MERCHANT" | "VERIFY" | "RANGE";
+/** 能领号段的期别窗口 */
+export type SiRangeWindow = "CURRENT" | "NEXT" | "ANY";
+export interface SiCredentialField {
+  slot: SiCredentialSlot;
+  /** 词条后缀：先找 salesInvoice.credential.<供应商>.<labelKey>，没有用通用词条 */
+  labelKey: string;
+  /** 只写不读 */
+  secret: boolean;
+  pattern?: string | null;
+  /** NONE / SELLER_TAX_ID（由卖方统编自动带出，页面不必填） */
+  derivedFrom: "NONE" | "SELLER_TAX_ID";
 }
 /** 服务商侧配号方式：NONE 无记录 / AUTO 自动配号 / MANUAL 手动配号 */
 export type SiTrackMode = "NONE" | "AUTO" | "MANUAL";

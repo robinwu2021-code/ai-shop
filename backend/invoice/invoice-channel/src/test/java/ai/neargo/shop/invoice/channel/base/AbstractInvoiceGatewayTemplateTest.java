@@ -49,7 +49,20 @@ class AbstractInvoiceGatewayTemplateTest {
             return ResultCodeTable.builder().acceptedFor("VERIFY", "OK").accountProblem("BAD").retryable("BUSY").build();
         }
 
-        protected GatewayReceipt upload(GatewayRequest request, JsonNode message) {
+        /** 非空 = 映射阶段拒绝的原因 */
+        String rejectInPrepare;
+        int delivered;
+
+        @Override
+        protected Prepared prepare(GatewayRequest request, JsonNode message) {
+            steps.add("prepare:" + request.account().accountCode());
+            if (rejectInPrepare != null) throw new UnsupportedMessageException(rejectInPrepare);
+            return new Prepared(message, "payload");
+        }
+
+        @Override
+        protected GatewayReceipt deliver(GatewayRequest request, Prepared prepared) {
+            delivered++;
             return GatewayReceipt.accepted("x");
         }
 
@@ -108,6 +121,46 @@ class AbstractInvoiceGatewayTemplateTest {
         assertFalse(masked.contains("p&ss"));
         assertFalse(masked.contains("pos<no>"));
         assertTrue(masked.contains("A-1"), "账号代号不是密钥，保留便于排查");
+    }
+
+    /** 能力定义完善 D2：预检只跑 prepare、不送出；没账号用占位账号；不在声明里的报文直接不通过。 */
+    @Test
+    void preflight_runs_prepare_only() {
+        var issue = new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", "{}", null);
+        assertTrue(probe.preflight(issue).isEmpty());
+        assertEquals(List.of("prepare:PREFLIGHT"), probe.steps);
+        assertEquals(0, probe.delivered, "预检不出网");
+
+        probe.rejectInPrepare = "zero-rated";
+        assertEquals("zero-rated", probe.preflight(issue).orElseThrow());
+        var revoke = new GatewayRequest("TW_EGUI", "REVOKE", "INV-1", "{}", ACCOUNT);
+        assertTrue(probe.preflight(revoke).orElseThrow().contains("REVOKE"), "默认不收注销报文");
+    }
+
+    /** send = prepare + deliver；不在声明里的报文判终态、不送出；映射拒绝判终态。 */
+    @Test
+    void send_rejects_undeclared_messages_and_mapping_rejections() {
+        assertTrue(probe.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", "{}", ACCOUNT)).accepted());
+        assertEquals(1, probe.delivered);
+        assertEquals(GatewayReceipt.Outcome.FINAL,
+                probe.send(new GatewayRequest("TW_EGUI", "REVOKE", "INV-1", "{}", ACCOUNT)).outcome());
+        probe.rejectInPrepare = "zero-rated";
+        assertEquals(GatewayReceipt.Outcome.FINAL,
+                probe.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", "{}", ACCOUNT)).outcome());
+        assertEquals(1, probe.delivered, "被拒的都没送出");
+    }
+
+    /** D4：能力动作失败按码表分类。 */
+    @Test
+    void call_failures_carry_a_kind() {
+        assertEquals(ProviderException.Kind.ACCOUNT,
+                assertThrows(ProviderException.class, () -> probe.verify(ACCOUNT, "BAD")).kind());
+        assertEquals(ProviderException.Kind.UNAVAILABLE,
+                assertThrows(ProviderException.class, () -> probe.verify(ACCOUNT, "BUSY")).kind());
+        assertEquals(ProviderException.Kind.REJECTED,
+                assertThrows(ProviderException.class, () -> probe.verify(ACCOUNT, "WHAT")).kind());
+        assertEquals(ProviderException.Kind.ACCOUNT,
+                assertThrows(ProviderException.class, () -> probe.verify(null, "OK")).kind());
     }
 
     @Test

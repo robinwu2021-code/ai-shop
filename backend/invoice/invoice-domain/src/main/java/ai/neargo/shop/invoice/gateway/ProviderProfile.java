@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.gateway;
 
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -9,16 +11,83 @@ import java.util.Set;
  *
  * <p>{@code regimes} 只是声明，供列出候选供应商用；供应商层与开立流程都不据此拦截 —— 用哪家由系统统一决定。
  *
- * @param regimes 服务的税制编码（{@code TW_EGUI}、{@code AE_EINVOICE} …）；{@value #ANY_REGIME} 表示不限（测试桩）
+ * <p>TDD-发票-供应商能力定义完善：供应商另外<b>声明</b>收哪些上传报文、支持哪些业务特性、凭据字段怎么填、
+ * QR 金钥从哪来、能领哪些期别的号段。领域与页面按声明行事；四参数构造给没有专门声明的供应商（测试桩、样例）用默认值。
+ *
+ * @param regimes       服务的税制编码（{@code TW_EGUI}、{@code AE_EINVOICE} …）；{@value #ANY_REGIME} 表示不限（测试桩）
+ * @param uploads       收哪些上传报文；不在其中的报文上传直接判终态、预检不通过
+ * @param features      支持的业务特性（页面说明用；能否送出以预检为准）
+ * @param credentials   凭据字段；不要账号的供应商为空
+ * @param qrKeySource   QR 加密金钥来源
+ * @param rangeWindows  能配给号段的期别窗口（只对服务商配号有意义）
  */
 public record ProviderProfile(Set<String> regimes, NumberingMode numbering, ReportMode reporting,
-        boolean requiresAccount) {
+        boolean requiresAccount, Set<ProviderOperation> uploads, Set<InvoiceFeature> features,
+        List<CredentialField> credentials, QrKeySource qrKeySource, Set<RangeWindow> rangeWindows) {
 
     public static final String ANY_REGIME = "*";
+
+    /** 台湾加值中心与 Turnkey 都收的四类上传报文。 */
+    public static final Set<ProviderOperation> STANDARD_UPLOADS = Set.of(ProviderOperation.ISSUE, ProviderOperation.VOID,
+            ProviderOperation.ALLOWANCE, ProviderOperation.ALLOWANCE_VOID);
 
     public ProviderProfile {
         if (regimes == null || regimes.isEmpty()) throw new IllegalArgumentException("provider must serve a regime");
         regimes = Set.copyOf(regimes);
+        uploads = uploads == null ? STANDARD_UPLOADS : Set.copyOf(uploads);
+        features = features == null ? Set.copyOf(EnumSet.allOf(InvoiceFeature.class)) : Set.copyOf(features);
+        credentials = credentials == null ? (requiresAccount ? CredentialField.GENERIC : List.of()) : List.copyOf(credentials);
+        qrKeySource = qrKeySource == null ? QrKeySource.MERCHANT : qrKeySource;
+        rangeWindows = rangeWindows == null || rangeWindows.isEmpty() ? Set.of(RangeWindow.ANY) : Set.copyOf(rangeWindows);
+    }
+
+    /** 没有专门声明时的默认值：收四类标准报文、不限特性、通用凭据三项、商家手填 QR 金钥、任意期别。 */
+    public ProviderProfile(Set<String> regimes, NumberingMode numbering, ReportMode reporting, boolean requiresAccount) {
+        this(regimes, numbering, reporting, requiresAccount, null, null, null, null, null);
+    }
+
+    public ProviderProfile withUploads(Set<ProviderOperation> value) {
+        return new ProviderProfile(regimes, numbering, reporting, requiresAccount, value, features, credentials,
+                qrKeySource, rangeWindows);
+    }
+
+    public ProviderProfile withFeatures(Set<InvoiceFeature> value) {
+        return new ProviderProfile(regimes, numbering, reporting, requiresAccount, uploads, value, credentials,
+                qrKeySource, rangeWindows);
+    }
+
+    public ProviderProfile withCredentials(List<CredentialField> value) {
+        return new ProviderProfile(regimes, numbering, reporting, requiresAccount, uploads, features, value,
+                qrKeySource, rangeWindows);
+    }
+
+    public ProviderProfile withQrKeySource(QrKeySource value) {
+        return new ProviderProfile(regimes, numbering, reporting, requiresAccount, uploads, features, credentials,
+                value, rangeWindows);
+    }
+
+    public ProviderProfile withRangeWindows(Set<RangeWindow> value) {
+        return new ProviderProfile(regimes, numbering, reporting, requiresAccount, uploads, features, credentials,
+                qrKeySource, value);
+    }
+
+    /** 收不收这类上传报文。 */
+    public boolean accepts(ProviderOperation op) {
+        return op != null && uploads.contains(op);
+    }
+
+    public boolean supports(InvoiceFeature feature) {
+        return features.contains(feature);
+    }
+
+    /** 这个期别窗口能不能向服务商领号段。 */
+    public boolean allocatable(RangeWindow window) {
+        return rangeWindows.contains(RangeWindow.ANY) || rangeWindows.contains(window);
+    }
+
+    /** 某个凭据位的声明；没有返回 null。 */
+    public CredentialField credential(CredentialField.Slot slot) {
+        return credentials.stream().filter(f -> f.slot() == slot).findFirst().orElse(null);
     }
 
     public boolean supports(String regimeCode) {
