@@ -8,7 +8,8 @@ package ai.neargo.shop.invoice.gateway;
  */
 public enum ProviderOperation {
     ISSUE, VOID, ALLOWANCE, ALLOWANCE_VOID,
-    VERIFY, RANGE, QUERY;
+    VERIFY, RANGE, QUERY,
+    TRACK_MODE, TRACK_QUERY, TRACK_UPLOAD, BLANK_REPORT;
 
     /** 上传任务的 messageType → 标准动作；不认识的返回 null。 */
     public static ProviderOperation ofMessageType(String messageType) {

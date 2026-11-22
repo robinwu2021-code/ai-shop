@@ -144,6 +144,9 @@ class InvoiceServiceMysqlTest {
         provider.failCode = null;
         provider.sendCode = null;
         provider.sends.set(0);
+        provider.uploads.clear();
+        provider.blanks.clear();
+        provider.trackFailCode = null;
         provider.queryState = QueryCapability.ProviderInvoiceStatus.State.ISSUED;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
@@ -719,6 +722,82 @@ class InvoiceServiceMysqlTest {
         assertEquals(null, setup.profile(SCOPE).orElseThrow().providerHoldReason(), "可重试错误不暂停主体");
     }
 
+    /** P2-AC1/AC2：字轨查询（配号方式 + 已下载字轨）、上传下期字轨与区间校验。 */
+    @Test
+    void p2ProviderTracksQueryAndUploadValidateBeforeCallingTheProvider() {
+        useProvider();
+        var tracks = setup.providerTracks(SCOPE, null);
+        assertEquals(period, tracks.periodCode(), "不传期别取当期");
+        assertEquals("MANUAL", tracks.allocationMode());
+        assertEquals(List.of(new ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackVO("07", "AB", 0, 99)), tracks.tracks());
+
+        String next = TwPeriods.periodOf(TwPeriods.periodEnd(period));
+        var ok = setup.uploadProviderTracks(SCOPE, trackReq(next, 10_000_050, 10_050_099));
+        assertEquals(1001, ok.books(), "10000050–10050099 共 50050 号");
+        var sent = provider.uploads.getFirst();
+        assertEquals(next, sent.periodCode());
+        assertEquals("12345675", sent.sellerTaxId(), "分配统编 = 卖方统编");
+        assertEquals(10_000_050, sent.ranges().getFirst().startNo());
+
+        provider.uploads.clear();
+        assertCode(ErrorCode.INVOICE_RANGE_INVALID, () -> setup.uploadProviderTracks(SCOPE, trackReq(period, 0, 49)));
+        assertCode(ErrorCode.INVOICE_RANGE_INVALID, () -> setup.uploadProviderTracks(SCOPE, trackReq(next, 1, 50)));
+        assertCode(ErrorCode.INVOICE_RANGE_INVALID, () -> setup.uploadProviderTracks(SCOPE, trackReq(next, 0, 48)));
+        assertCode(ErrorCode.INVOICE_RANGE_INVALID,
+                () -> setup.uploadProviderTracks(SCOPE, trackReq(next, 0, 50 * 10_000 - 1)));   // 超过 9999 本
+        assertTrue(provider.uploads.isEmpty(), "不合规不打服务商");
+
+        provider.trackFailCode = "失敗：字軌區間不存在";
+        var e = assertThrows(BizException.class, () -> setup.uploadProviderTracks(SCOPE, trackReq(next, 0, 49)));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_REJECTED, e.errorCode());
+        assertEquals(List.of("失敗：字軌區間不存在"), List.of(e.args()));
+    }
+
+    /** P2-AC3：上一期未用号码按字轨合并上报一次；失败记原因，下轮重试。 */
+    @Test
+    void p2BlankRangesAreReportedOncePerRangeAndRetriedOnFailure() {
+        useProvider();
+        jdbc.update("UPDATE ivc_number_range SET next_no=21");      // AB 1–50 用掉 1–20
+        var after = TwPeriods.periodEnd(period).plus(Duration.ofHours(1));   // 下一期开始后：上一期 = period
+
+        provider.trackFailCode = "S030";
+        assertEquals(0, setup.reportBlankRanges(after));
+        assertEquals("S030", jdbc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class),
+                "失败记原因");
+        assertEquals(null, jdbc.queryForObject("SELECT blank_reported_at FROM ivc_number_range", Object.class));
+
+        provider.trackFailCode = null;
+        assertEquals(1, setup.reportBlankRanges(after));
+        var report = provider.blanks.getFirst();
+        assertEquals(period, report.periodCode());
+        assertEquals("AB", report.track());
+        assertEquals("07", report.invoiceType());
+        assertEquals("12345675", report.sellerTaxId());
+        assertEquals(List.of(new ai.neargo.shop.invoice.gateway.TrackCapability.TrackRange("07", "AB", 21, 50)),
+                report.ranges(), "只报未用的 21–50");
+        assertEquals(null, jdbc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class));
+
+        assertEquals(0, setup.reportBlankRanges(after), "同一段不重复上报");
+        assertEquals(0, setup.reportBlankRanges(Instant.now()), "当期还没结束：上一期没有号段");
+        assertEquals(1, provider.blanks.size());
+    }
+
+    /** P2-AC4/AC5：供应商没有字轨能力时接口拒绝、巡检跳过；可选列表带 trackManageable。 */
+    @Test
+    void p2ProvidersWithoutTrackCapabilityAreRejectedAndSkipped() {
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> setup.providerTracks(SCOPE, null));
+        assertEquals(0, setup.reportBlankRanges(TwPeriods.periodEnd(period).plus(Duration.ofHours(1))));
+        var options = setup.providerOptions("TW_EGUI").options();
+        assertTrue(options.stream().anyMatch(o -> o.code().equals("PROV") && o.trackManageable()));
+        assertTrue(options.stream().anyMatch(o -> o.code().equals("TEST") && !o.trackManageable()));
+    }
+
+    private static ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadReq trackReq(String periodCode, int start,
+            int end) {
+        return new ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadReq(periodCode, "07", "AB",
+                List.of(new ai.neargo.shop.invoice.dto.InvoiceDtos.TrackSpanReq(start, end)));
+    }
+
     private void useProvider() {
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
                 "OFFICE-1", "pos-user", "pos-secret", null, null));
@@ -1031,7 +1110,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(11, applied);
+            assertEquals(12, applied);
             return ds;
         }
     }
@@ -1092,7 +1171,11 @@ class InvoiceServiceMysqlTest {
     }
 
     /** 加值中心桩：记下收到的账号，核验回固定统编与 QR 金钥，配号回固定一段。 */
-    static final class FakeProvider implements InvoiceGateway, AccountCapability, RangeCapability, QueryCapability {
+    static final class FakeProvider implements InvoiceGateway, AccountCapability, RangeCapability, QueryCapability,
+            ai.neargo.shop.invoice.gateway.TrackCapability, ai.neargo.shop.invoice.gateway.BlankRangeCapability {
+        final List<ai.neargo.shop.invoice.gateway.TrackCapability.TrackUpload> uploads = new ArrayList<>();
+        final List<ai.neargo.shop.invoice.gateway.BlankRangeCapability.BlankReport> blanks = new ArrayList<>();
+        volatile String trackFailCode;
         final List<InvoiceGateway.ProviderAccount> seen = new ArrayList<>();
         volatile String taxId = "12345675";
         volatile String failCode;
@@ -1141,6 +1224,30 @@ class InvoiceServiceMysqlTest {
             seen.add(account);
             if (failCode != null) throw new ProviderException(failCode, null);
             return new AllocatedRange("APPLY-1", "CD", 12_345_600, 12_345_649, "07");
+        }
+
+        public AllocationMode allocationMode(InvoiceGateway.ProviderAccount account, String periodCode) {
+            seen.add(account);
+            if (trackFailCode != null) throw new ProviderException(trackFailCode, null);
+            return AllocationMode.MANUAL;
+        }
+
+        public List<TrackRange> downloadedTracks(InvoiceGateway.ProviderAccount account, String periodCode) {
+            seen.add(account);
+            if (trackFailCode != null) throw new ProviderException(trackFailCode, null);
+            return List.of(new TrackRange("07", "AB", 0, 99));
+        }
+
+        public void uploadNextTracks(InvoiceGateway.ProviderAccount account, TrackUpload upload) {
+            seen.add(account);
+            if (trackFailCode != null) throw new ProviderException(trackFailCode, null);
+            uploads.add(upload);
+        }
+
+        public void reportBlank(InvoiceGateway.ProviderAccount account, BlankReport report) {
+            seen.add(account);
+            if (trackFailCode != null) throw new ProviderException(trackFailCode, null);
+            blanks.add(report);
         }
     }
 

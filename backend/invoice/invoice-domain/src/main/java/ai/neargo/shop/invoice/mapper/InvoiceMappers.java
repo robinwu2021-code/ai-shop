@@ -55,6 +55,13 @@ public final class InvoiceMappers {
                 + " GROUP BY entity_no")
         List<Map<String, Object>> remainingByEntity(@Param("tenant") String tenant, @Param("period") String period);
 
+        /** 某期还有未用号码、尚未做空白上报的号段（期末空白字轨上报用）。 */
+        @Select("SELECT * FROM ivc_number_range WHERE tenant_no=#{tenant} AND entity_no=#{entity}"
+                + " AND regime_code=#{regime} AND period_code=#{period} AND next_no<=end_no"
+                + " AND blank_reported_at IS NULL ORDER BY track, start_no")
+        List<IvcNumberRange> blankCandidates(@Param("tenant") String tenant, @Param("entity") String entity,
+                @Param("regime") String regime, @Param("period") String period);
+
         /** 同主体同税制同期同字轨内是否有重叠号段。 */
         @Select("SELECT COUNT(*) FROM ivc_number_range WHERE tenant_no=#{tenant} AND entity_no=#{entity}"
                 + " AND regime_code=#{regime} AND period_code=#{period} AND track=#{track}"

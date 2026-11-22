@@ -5,11 +5,15 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionsVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTracksVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -26,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * B 端发票设置：开通税制、登记字轨号段。主体级配置，仅持 {@code biz:invoice:setup} 的人可改。
  *
  * <p>QR 加密密钥与加值中心账号密码只能写不能读：响应里只回「是否已配置」，本身进 secret 模块。
- * 加值中心（鲸跃）模式下号段由服务商配给：先核验账号，再按期取回号段。
+ * 加值中心（鲸跃、汎宇）模式下号段由服务商配给：先核验账号，再按期取回号段；汎宇另可查配号方式、已下载字轨并上传下期字轨。
  */
 @Profile("api")
 @RestController
@@ -74,6 +78,20 @@ public class BizInvoiceSetupController {
     @PostMapping("/biz/invoice-setup/provider-verification")
     public ProviderVerificationVO verifyProvider() {
         return setup.verifyProvider(BizInvoiceScope.current());
+    }
+
+    /** 服务商侧某期配号方式与已下载字轨（汎宇 Z33 / Z31）；不传期别取当期。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")
+    @GetMapping("/biz/invoice-setup/provider-tracks")
+    public ProviderTracksVO providerTracks(@RequestParam(required = false) @Pattern(regexp = "\\d{5}") String periodCode) {
+        return setup.providerTracks(BizInvoiceScope.current(), periodCode);
+    }
+
+    /** 向服务商上传下一期字轨（汎宇 Z32）。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")
+    @PostMapping("/biz/invoice-setup/provider-tracks")
+    public ProviderTrackUploadVO uploadProviderTracks(@Valid @RequestBody ProviderTrackUploadReq req) {
+        return setup.uploadProviderTracks(BizInvoiceScope.current(), req);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_SETUP + "')")

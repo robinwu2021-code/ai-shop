@@ -50,13 +50,16 @@ public class InvoiceRangeWatermarkJob implements JobHandler {
     @Bean
     public JobDeclaration invoiceRangeWatermarkDeclaration() {
         return new JobDeclaration(name(), "发票号段水位巡检",
-                "本期剩余号码低于提醒值或用尽时提醒；期末前下期还没号段时提醒；开了自动领号的向加值中心领号",
+                "本期剩余号码低于提醒值或用尽时提醒；期末前下期还没号段时提醒；开了自动领号的向加值中心领号；"
+                        + "上一期未用号码向支持空白字轨的加值中心上报（汎宇 E0402）",
                 "invoice-domain", "20 5/30 * * * *", true, 540, 600, true, false);
     }
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        int[] r = setup.watchRanges(Instant.now(), Duration.ofDays(prefetchDays));
-        return JobResult.ok("alerts=" + r[0] + " fetched=" + r[1]);
+        var now = Instant.now();
+        int[] r = setup.watchRanges(now, Duration.ofDays(prefetchDays));
+        int blank = setup.reportBlankRanges(now);
+        return JobResult.ok("alerts=" + r[0] + " fetched=" + r[1] + " blank=" + blank);
     }
 }

@@ -104,6 +104,28 @@ public final class InvoiceDtos {
     /** @param periodCode 期别（如 11512）；不传 = 当期 */
     public record ProviderRangeReq(@Pattern(regexp = "\\d{5}") String periodCode) {}
 
+    /**
+     * 服务商侧某期字轨（TDD-发票-加值中心模板-鲸跃与汎宇 §4）。
+     * @param allocationMode NONE 无配号记录 / AUTO 自动配号 / MANUAL 手动配号
+     */
+    public record ProviderTracksVO(String periodCode, String allocationMode, List<ProviderTrackVO> tracks) {}
+
+    public record ProviderTrackVO(String invoiceType, String track, int startNo, int endNo) {}
+
+    /** 上传下期字轨：一期一字轨一批，号码 8 位、不含字轨。 */
+    public record ProviderTrackUploadReq(
+            @NotBlank @Pattern(regexp = "\\d{5}") String periodCode,
+            @NotBlank @Pattern(regexp = "0[78]") String invoiceType,
+            @NotBlank @Pattern(regexp = "[A-Z]{2}") String track,
+            @NotNull @Size(min = 1, max = 20) List<@Valid @NotNull TrackSpanReq> ranges) {}
+
+    public record TrackSpanReq(
+            @NotNull @Min(0) @Max(99_999_999) Integer startNo,
+            @NotNull @Min(0) @Max(99_999_999) Integer endNo) {}
+
+    /** @param books 本次上传的本数（50 号一本） */
+    public record ProviderTrackUploadVO(String periodCode, String track, int books) {}
+
     /** 加值中心账号核验结果；{@code qrKeyStored} = 服务商回传的 QR 金钥已存进 secret 模块。 */
     public record ProviderVerificationVO(String taxId, String name, boolean qrKeyStored) {}
 
@@ -172,7 +194,9 @@ public final class InvoiceDtos {
      * @param verifiable 能核验账号；{@code rangeProvided} 由供应商配号段（能「领号段」）；{@code queryable} 能查单
      */
     public record ProviderOptionVO(String code, String numbering, String reporting, boolean requiresAccount,
-            boolean verifiable, boolean rangeProvided, boolean queryable, boolean isDefault) {}
+            boolean verifiable, boolean rangeProvided, boolean queryable, boolean isDefault,
+            /** 能在本系统查配号方式、已下载字轨并上传下期字轨（汎宇） */
+            boolean trackManageable) {}
 
     /**
      * 一张发票可拿去模拟打印的打印件（证明联 / 交易明细 / 折让证明单），带打印中心认的事实引用。

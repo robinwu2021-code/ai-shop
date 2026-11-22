@@ -13,7 +13,8 @@ import tools.jackson.databind.ObjectMapper;
  * 账号凭据写在报文体里，没有签名或整体加密；回包统一包在 {@code {"<回包根>":{…}}} 里。
  *
  * <p>本层管：POST JSON、取回包根、空值归一（{@code null} / {@code "null"} / 空串都当没有）、
- * 结果码缺省时按「回复标志」归一（成功 → {@link #successCode()}，否则 {@code REPLY<标志>}）、原文留痕打码。
+ * 结果码缺省时按「回复标志」归一（成功 → {@link #successCode()}，否则 {@code REPLY<标志>}）、原文留痕打码；
+ * 标量字段进 {@code data}，数组 / 对象字段以 JSON 文本进 {@code data}。
  * 厂商类只给回包根与字段名、报文映射、码表。
  */
 public abstract class AbstractPlainJsonInvoiceGateway extends AbstractHttpApiInvoiceGateway {
@@ -63,8 +64,12 @@ public abstract class AbstractPlainJsonInvoiceGateway extends AbstractHttpApiInv
         if (code == null) code = replySuccessValue().equals(reply) ? successCode() : "REPLY" + (reply == null ? "" : reply);
         var data = new LinkedHashMap<String, String>();
         for (var e : root.properties()) {
-            String v = value(root, e.getKey());
-            if (v != null && e.getValue().isValueNode()) data.put(e.getKey(), v);
+            if ((e.getValue().isArray() || e.getValue().isObject())) {
+                data.put(e.getKey(), e.getValue().toString());   // 数组 / 对象以 JSON 文本给厂商自己解析（如汎宇 Z31 的 INVOICE_DATA）
+            } else {
+                String v = value(root, e.getKey());
+                if (v != null) data.put(e.getKey(), v);
+            }
         }
         String ref = referenceField() == null ? null : value(root, referenceField());
         return new ApiOutcome(code, ref, data);

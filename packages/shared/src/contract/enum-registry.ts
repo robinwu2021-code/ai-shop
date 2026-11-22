@@ -585,6 +585,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "折让单状态（ivc_allowance.status，V7）。VOIDED 后累计折让回退、折让证明单不再出纸、G0501 上传。" },
   { decl: "b-app:SiRangeOwner", dom: "finance", shape: "CLASS", verdict: "OK", words: ["MANUAL", "PROVIDER"],
     note: "字轨号段来源（ivc_number_range.allocation_owner，V5）。MANUAL 商家在 B 端登记；PROVIDER 由加值中心（鲸跃）配给。" },
+  { decl: "b-app:SiTrackMode", dom: "finance", shape: "CLASS", verdict: "OK", words: ["NONE", "AUTO", "MANUAL"],
+    note: "服务商侧配号方式（TrackCapability.AllocationMode，汎宇 Z33：0 无记录 / 1 自动 / 2 手动）。只读展示，不落库。" },
   { decl: "b-app:SiGatewayCode", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STUB", "TURNKEY", "CETUSTEK", "UNIVERSALEC"],
     note: "发票开票通道（ivc_regime_profile.gateway_code）。与后端 InvoiceGateway#code 一致；加值中心签约后各加一个码（CETUSTEK = 鲸跃，UNIVERSALEC = 汎宇）。" },
   { decl: "b-app:SiGatewaySource", dom: "finance", shape: "CLASS", verdict: "OK", words: ["MERCHANT", "DEFAULT"],

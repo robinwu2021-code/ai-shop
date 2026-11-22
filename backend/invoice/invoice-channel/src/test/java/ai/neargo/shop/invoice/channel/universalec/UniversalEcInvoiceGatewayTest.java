@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
@@ -12,6 +13,7 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
+import ai.neargo.shop.invoice.gateway.TrackCapability;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -335,6 +337,90 @@ class UniversalEcInvoiceGatewayTest {
 
         replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"A01\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗:資料庫中,無發票配號可用\"}}");
         assertEquals("nodata", assertThrows(ProviderException.class, () -> gateway.allocate(ACCOUNT, "11512")).code());
+    }
+
+    // ---- P2：字轨与空白字轨 ----
+
+    @Test
+    void track_mode_uses_z33() {
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z33\",\"REPLY\":\"1\",\"MESSAGE\":\"成功\",\"YEAR_MONTH\":\"11602\","
+                + "\"INVSTATUS\":\"2\",\"ERROR_CODE\":\"0000\"}}");
+        assertEquals(TrackCapability.AllocationMode.MANUAL, gateway.allocationMode(ACCOUNT, "11602"));
+        JsonNode z = lastRequest().path("Invoice");
+        assertEquals("Z33", z.path("INVOICE_CODE").asText());
+        assertEquals("11602", z.path("YEAR_MONTH").asText());
+        assertEquals("12345675", z.path("SELLERID").asText());
+        assertEquals("1001", z.path("POSID").asText());
+        assertEquals("secret-possn-xyz", z.path("POSSN").asText());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z33\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗：查無發票期別配號\"}}");
+        assertEquals(TrackCapability.AllocationMode.NONE, gateway.allocationMode(ACCOUNT, "11602"), "查無 = 无配号记录");
+    }
+
+    @Test
+    void downloaded_tracks_use_z31_and_drop_placeholders() {
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z31\",\"REPLY\":\"1\",\"MESSAGE\":\"成功\",\"ERROR_CODE\":\"0000\","
+                + "\"INVOICE_DATA\":[{\"YEAR_MONTH\":\"11512\",\"TYPE\":\"07\",\"INVOICE_TRACK\":\"AB\","
+                + "\"INVOICE_START\":\"00000000\",\"INVOICE_END\":\"00000099\"},"
+                + "{\"YEAR_MONTH\":\"11512\",\"TYPE\":\"07\",\"INVOICE_TRACK\":\"00\","
+                + "\"INVOICE_START\":\"00000000\",\"INVOICE_END\":\"00000000\"}]}}");
+        var tracks = gateway.downloadedTracks(ACCOUNT, "11512");
+        assertEquals(List.of(new TrackCapability.TrackRange("07", "AB", 0, 99)), tracks);
+        assertEquals("Z31", lastRequest().path("Invoice").path("INVOICE_CODE").asText());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z31\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗：查無已下載的發票期別字軌\"}}");
+        assertTrue(gateway.downloadedTracks(ACCOUNT, "11512").isEmpty());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z31\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗：POS 機不存在\"}}");
+        assertEquals("失敗：POS 機不存在",
+                assertThrows(ProviderException.class, () -> gateway.downloadedTracks(ACCOUNT, "11512")).code(),
+                "其余失败把汎宇说明交给用户");
+    }
+
+    @Test
+    void upload_next_tracks_uses_z32() {
+        replies.add(reply("0000"));
+        gateway.uploadNextTracks(ACCOUNT, new TrackCapability.TrackUpload("11602", "07", "AB", "12345675",
+                List.of(new TrackCapability.TrackRange("07", "AB", 10000050, 10050099))));
+        JsonNode z = lastRequest().path("Invoice");
+        assertEquals("Z32", z.path("INVOICE_CODE").asText());
+        assertEquals("11602", z.path("YEAR_MONTH").asText());
+        assertEquals("07", z.path("INVOICE_TYPE").asText());
+        assertEquals("AB", z.path("INVOICE_TRACK").asText());
+        assertEquals("2026-11-22 10:00:00", z.path("SYSTIME").asText());
+        JsonNode item = z.path("INVOICE_ITEM").get(0);
+        assertEquals("12345675", item.path("COMP_ID").asText());
+        assertEquals("10000050", item.path("INVOICE_START").asText());
+        assertEquals("10050099", item.path("INVOICE_END").asText());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z32\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗：字軌區間不存在\"}}");
+        assertThrows(ProviderException.class, () -> gateway.uploadNextTracks(ACCOUNT,
+                new TrackCapability.TrackUpload("11602", "07", "AB", "12345675",
+                        List.of(new TrackCapability.TrackRange("07", "AB", 0, 49)))));
+    }
+
+    @Test
+    void report_blank_uses_e0402_with_eight_digit_numbers() {
+        replies.add(reply("0000"));
+        gateway.reportBlank(ACCOUNT, new BlankRangeCapability.BlankReport("11512", "07", "AB", "12345675",
+                List.of(new TrackCapability.TrackRange("07", "AB", 742200, 742210),
+                        new TrackCapability.TrackRange("07", "AB", 992150, 992150))));
+        JsonNode e = lastRequest().path("Invoice");
+        assertEquals("E0402", e.path("INVOICE_CODE").asText());
+        assertEquals("secret-possn-xyz", e.path("POSSN").asText());
+        assertEquals("12345675", e.path("Main").path("HeadBan").asText());
+        assertEquals("12345675", e.path("Main").path("BranchBan").asText());
+        assertEquals("07", e.path("Main").path("InvoiceType").asText());
+        assertEquals("11512", e.path("Main").path("YearMonth").asText());
+        assertEquals("AB", e.path("Main").path("InvoiceTrack").asText());
+        JsonNode items = e.path("Details").path("BranchTrackBlankItem");
+        assertEquals("00742200", items.get(0).path("InvoiceBeginNo").asText());
+        assertEquals("00742210", items.get(0).path("InvoiceEndNo").asText());
+        assertEquals("00992150", items.get(1).path("InvoiceBeginNo").asText());
+
+        replies.add(reply("S030"));
+        assertThrows(ProviderException.class, () -> gateway.reportBlank(ACCOUNT,
+                new BlankRangeCapability.BlankReport("11512", "07", "AB", "12345675", List.of())));
     }
 
     // ---- helpers & fixtures ----

@@ -78,6 +78,36 @@ export interface SiProviderOption {
   /** 能向供应商查单 */
   queryable: boolean;
   isDefault: boolean;
+  /** 能查服务商配号方式、已下载字轨并上传下期字轨（汎宇） */
+  trackManageable: boolean;
+}
+/** 服务商侧配号方式：NONE 无记录 / AUTO 自动配号 / MANUAL 手动配号 */
+export type SiTrackMode = "NONE" | "AUTO" | "MANUAL";
+export interface SiProviderTrack {
+  /** 07 一般税额 / 08 特种税额 */
+  invoiceType: string | null;
+  track: string;
+  startNo: number;
+  endNo: number;
+}
+export interface SiProviderTracks {
+  periodCode: string;
+  allocationMode: SiTrackMode;
+  tracks: SiProviderTrack[];
+}
+export interface SiTrackUploadReq {
+  /** 只能是下一期 */
+  periodCode: string;
+  invoiceType: "07" | "08";
+  track: string;
+  /** 每段 50 号的整倍数，合计不超过 9999 本 */
+  ranges: { startNo: number; endNo: number }[];
+}
+export interface SiTrackUploadResult {
+  periodCode: string;
+  track: string;
+  /** 本数（50 号一本） */
+  books: number;
 }
 export interface SiProviderOptions {
   regimeCode: string;
@@ -281,4 +311,8 @@ export interface SalesInvoiceApi {
   mSiVerifyProvider(): Promise<SiProviderVerification>;
   /** 向加值中心取号段；periodCode 不传 = 当期 */
   mSiFetchProviderRange(body: { periodCode?: string }): Promise<SiRange>;
+  /** 服务商侧配号方式与已下载字轨；periodCode 不传 = 当期（仅 trackManageable 的供应商） */
+  mSiProviderTracks(q: { periodCode?: string }): Promise<SiProviderTracks>;
+  /** 向服务商上传下一期字轨 */
+  mSiUploadProviderTracks(body: SiTrackUploadReq): Promise<SiTrackUploadResult>;
 }

@@ -2,6 +2,8 @@ package ai.neargo.shop.invoice.channel.universalec;
 
 import ai.neargo.shop.invoice.channel.base.AbstractInvoiceGateway.UnsupportedMessageException;
 import ai.neargo.shop.invoice.channel.tw.TwMappingRules;
+import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
+import ai.neargo.shop.invoice.gateway.TrackCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -151,6 +153,70 @@ final class UniversalEcMessages {
         x.put("ACCOUNT", ZEROS16);
         x.put("APPID", ZEROS16);
         return Map.of("INDEX", x);
+    }
+
+    /** Z31 查询已下载字轨 / Z33 查询配号方式：同一形状，期别为民国年 + 双月。 */
+    static Map<String, Object> periodQuery(String code, String periodCode, ProviderAccount account, String sysTime) {
+        var x = new LinkedHashMap<String, Object>();
+        x.put("INVOICE_CODE", code);
+        x.put("YEAR_MONTH", periodCode);
+        x.put("POSID", account.keyId());
+        x.put("POSSN", account.secret());
+        x.put("SELLERID", account.accountCode());
+        x.put("SYSTIME", sysTime);
+        return Map.of("Invoice", x);
+    }
+
+    /** Z32 上传下期字轨：一期一字轨一批；无总分支机构时分配统编 = 卖方统编。 */
+    static Map<String, Object> uploadTracks(TrackCapability.TrackUpload u, ProviderAccount account, String sysTime) {
+        var x = new LinkedHashMap<String, Object>();
+        x.put("INVOICE_CODE", "Z32");
+        x.put("POSID", account.keyId());
+        x.put("SELLERID", account.accountCode());
+        x.put("POSSN", account.secret());
+        x.put("SYSTIME", sysTime);
+        x.put("YEAR_MONTH", u.periodCode());
+        x.put("INVOICE_TYPE", u.invoiceType());
+        x.put("INVOICE_TRACK", u.track());
+        var items = new ArrayList<Map<String, Object>>();
+        for (var r : u.ranges()) {
+            var i = new LinkedHashMap<String, Object>();
+            i.put("COMP_ID", u.sellerTaxId());
+            i.put("INVOICE_START", no8(r.startNo()));
+            i.put("INVOICE_END", no8(r.endNo()));
+            items.add(i);
+        }
+        x.put("INVOICE_ITEM", items);
+        return Map.of("Invoice", x);
+    }
+
+    /** E0402 空白未使用字轨：无总分支机构时总公司与分支机构统编都填卖方统编。 */
+    static Map<String, Object> blankTracks(BlankRangeCapability.BlankReport b, ProviderAccount account) {
+        var x = new LinkedHashMap<String, Object>();
+        x.put("INVOICE_CODE", "E0402");
+        x.put("POSSN", account.secret());
+        x.put("POSID", account.keyId());
+        x.put("SELLERID", account.accountCode());
+        var main = new LinkedHashMap<String, Object>();
+        main.put("HeadBan", b.sellerTaxId());
+        main.put("BranchBan", b.sellerTaxId());
+        main.put("InvoiceType", b.invoiceType());
+        main.put("YearMonth", b.periodCode());
+        main.put("InvoiceTrack", b.track());
+        x.put("Main", main);
+        var items = new ArrayList<Map<String, Object>>();
+        for (var r : b.ranges()) {
+            var i = new LinkedHashMap<String, Object>();
+            i.put("InvoiceBeginNo", no8(r.startNo()));
+            i.put("InvoiceEndNo", no8(r.endNo()));
+            items.add(i);
+        }
+        x.put("Details", Map.of("BranchTrackBlankItem", items));
+        return Map.of("Invoice", x);
+    }
+
+    static String no8(int n) {
+        return "%08d".formatted(n);
     }
 
     private static LinkedHashMap<String, Object> cancelHead(String code, ProviderAccount account) {

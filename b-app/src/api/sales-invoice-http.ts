@@ -23,4 +23,6 @@ export const salesInvoiceHttp: SalesInvoiceApi = {
   mSiAddRange: (body) => http.post(E.mSiAddRange.path, body),
   mSiVerifyProvider: () => http.post(E.mSiVerifyProvider.path, {}),
   mSiFetchProviderRange: (body) => http.post(E.mSiFetchProviderRange.path, body),
+  mSiProviderTracks: (q) => http.get(E.mSiProviderTracks.path, q),
+  mSiUploadProviderTracks: (body) => http.post(E.mSiUploadProviderTracks.path, body),
 };

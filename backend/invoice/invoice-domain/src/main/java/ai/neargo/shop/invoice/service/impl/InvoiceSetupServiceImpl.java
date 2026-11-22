@@ -10,17 +10,23 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderOptionsVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackUploadVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTrackVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTracksVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
 import ai.neargo.shop.invoice.entity.IvcNumberRange;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.gateway.InvoiceGateways;
 import ai.neargo.shop.invoice.gateway.QueryCapability;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
+import ai.neargo.shop.invoice.gateway.TrackCapability;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -44,6 +50,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ai.neargo.shop.invoice.regime.InvoiceRegime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 /**
  * 税制开通与号段登记。一个主体同一时刻只开通一种税制（首期只有台湾）；换税制即把原配置停用。
@@ -192,7 +201,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         var options = policy.selectable(regime.code()).stream().map(g -> new ProviderOptionVO(g.code(),
                 g.profile().numbering().name(), g.profile().reporting().name(), g.profile().requiresAccount(),
                 g instanceof AccountCapability, g instanceof RangeCapability, g instanceof QueryCapability,
-                g.code().equals(def))).toList();
+                g.code().equals(def), g instanceof TrackCapability)).toList();
         return new ProviderOptionsVO(regime.code(), def, options);
     }
 
@@ -250,6 +259,114 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         r.setUpdatedAt(now);
         ranges.insert(r);
         return view(r);
+    }
+
+    @Override
+    public ProviderTracksVO providerTracks(Scope scope, String periodCode) {
+        var p = requireProfile(scope);
+        var regime = regimes.require(p.getRegimeCode());
+        String period = periodCode != null && !periodCode.isBlank() ? periodCode : regime.periodOf(Instant.now());
+        var track = capability(p, TrackCapability.class);
+        var account = account(p);
+        var mode = call(() -> track.allocationMode(account, period));
+        var downloaded = call(() -> track.downloadedTracks(account, period));
+        return new ProviderTracksVO(period, mode.name(), downloaded.stream()
+                .map(t -> new ProviderTrackVO(t.invoiceType(), t.track(), t.startNo(), t.endNo())).toList());
+    }
+
+    /** 50 号一本；汎宇 Z32 一批不超过 9999 本。 */
+    static final int BOOK = 50, MAX_BOOKS = 9999;
+
+    @Override
+    public ProviderTrackUploadVO uploadProviderTracks(Scope scope, ProviderTrackUploadReq req) {
+        var p = requireProfile(scope);
+        var regime = regimes.require(p.getRegimeCode());
+        var end = regime.periodEnd(regime.periodOf(Instant.now()));
+        String next = end == null ? null : regime.periodOf(end);
+        // 服务商只收下一期要用的字轨；本期已在用、往期已结束
+        if (!req.periodCode().equals(next)) throw BizException.of(ErrorCode.INVOICE_RANGE_INVALID);
+        long numbers = 0;
+        var spans = new ArrayList<TrackCapability.TrackRange>();
+        for (var r : req.ranges()) {
+            regime.validateRange(req.periodCode(), req.track(), r.startNo(), r.endNo());
+            int count = r.endNo() - r.startNo() + 1;
+            if (r.startNo() % BOOK != 0 || count % BOOK != 0) throw BizException.of(ErrorCode.INVOICE_RANGE_INVALID);
+            numbers += count;
+            spans.add(new TrackCapability.TrackRange(req.invoiceType(), req.track(), r.startNo(), r.endNo()));
+        }
+        int books = (int) (numbers / BOOK);
+        if (books > MAX_BOOKS) throw BizException.of(ErrorCode.INVOICE_RANGE_INVALID);
+        var track = capability(p, TrackCapability.class);
+        var account = account(p);
+        call(() -> {
+            track.uploadNextTracks(account, new TrackCapability.TrackUpload(req.periodCode(), req.invoiceType(),
+                    req.track(), p.getSellerTaxId(), List.copyOf(spans)));
+            return null;
+        });
+        log.info("INVOICE_TRACKS_UPLOADED tenant={} entity={} period={} track={} books={}", p.getTenantNo(),
+                p.getEntityNo(), req.periodCode(), req.track(), books);
+        return new ProviderTrackUploadVO(req.periodCode(), req.track(), books);
+    }
+
+    @Override
+    public int reportBlankRanges(Instant now) {
+        int reported = 0;
+        for (var p : profiles.selectList(new QueryWrapper<IvcRegimeProfile>().eq("status", "ACTIVE"))) {
+            if (p.getProviderHeldAt() != null) continue;   // 账号暂停中不去打服务商
+            var blank = gateways.capability(policy.effective(p).code(), BlankRangeCapability.class);
+            if (blank.isEmpty()) continue;
+            var regime = regimes.require(p.getRegimeCode());
+            String previous = previousPeriod(regime, now);
+            if (previous == null) continue;
+            var candidates = ranges.blankCandidates(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode(), previous);
+            if (candidates.isEmpty()) continue;
+            var account = accounts.of(p);
+            if (account.isEmpty()) continue;
+            // 同一字轨、同一发票类别一批报
+            var groups = new LinkedHashMap<String, List<IvcNumberRange>>();
+            for (var r : candidates)
+                groups.computeIfAbsent(r.getTrack() + "|" + invoiceType(r), k -> new ArrayList<>()).add(r);
+            for (var g : groups.values()) {
+                var first = g.getFirst();
+                var spans = g.stream().map(r -> new TrackCapability.TrackRange(invoiceType(r), r.getTrack(),
+                        r.getNextNo(), r.getEndNo())).toList();
+                var ids = g.stream().map(IvcNumberRange::getId).toList();
+                var at = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+                try {
+                    blank.get().reportBlank(account.get(), new BlankRangeCapability.BlankReport(previous,
+                            invoiceType(first), first.getTrack(), p.getSellerTaxId(), spans));
+                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", ids)
+                            .set("blank_reported_at", at).set("blank_report_error", null).set("updated_at", at));
+                    log.info("INVOICE_BLANK_REPORTED tenant={} entity={} period={} track={} ranges={}",
+                            p.getTenantNo(), p.getEntityNo(), previous, first.getTrack(), spans.size());
+                    reported++;
+                } catch (ProviderException e) {
+                    String reason = e.code() == null ? "unknown" : e.code().length() > 255 ? e.code().substring(0, 255) : e.code();
+                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", ids)
+                            .set("blank_report_error", reason).set("updated_at", at));
+                    log.warn("INVOICE_BLANK_REPORT_FAILED tenant={} entity={} period={} track={} code={}",
+                            p.getTenantNo(), p.getEntityNo(), previous, first.getTrack(), reason);
+                }
+            }
+        }
+        return reported;
+    }
+
+    /** 上一期：从 now 往回退到期别变化为止（期别长度由税制决定，这里不假设两个月）。 */
+    private static String previousPeriod(InvoiceRegime regime, Instant now) {
+        String current = regime.periodOf(now);
+        if (current == null) return null;
+        Instant t = now;
+        for (int i = 0; i < 400; i++) {
+            t = t.minus(Duration.ofDays(1));
+            String p = regime.periodOf(t);
+            if (!current.equals(p)) return p;
+        }
+        return null;
+    }
+
+    private static String invoiceType(IvcNumberRange r) {
+        return r.getInvoiceType() == null || r.getInvoiceType().isBlank() ? "07" : r.getInvoiceType();
     }
 
     private IvcRegimeProfile requireProfile(Scope scope) {

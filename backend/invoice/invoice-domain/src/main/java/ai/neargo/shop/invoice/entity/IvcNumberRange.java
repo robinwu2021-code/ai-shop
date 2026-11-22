@@ -35,6 +35,10 @@ public class IvcNumberRange {
     private String applyId;
     /** 服务商回传的发票种类（V5） */
     private String invoiceType;
+    /** 期末空白未使用号码已上报服务商的时间（V12）；null = 未报 */
+    private LocalDateTime blankReportedAt;
+    /** 最近一次空白上报失败的原因（V12）；成功后清空 */
+    private String blankReportError;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

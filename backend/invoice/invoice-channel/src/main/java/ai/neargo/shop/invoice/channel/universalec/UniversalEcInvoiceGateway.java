@@ -4,17 +4,21 @@ import ai.neargo.shop.invoice.channel.base.AbstractPlainJsonInvoiceGateway;
 import ai.neargo.shop.invoice.channel.base.HttpTransport;
 import ai.neargo.shop.invoice.channel.base.ResultCodeTable;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
+import ai.neargo.shop.invoice.gateway.TrackCapability;
 import ai.neargo.shop.invoice.regime.tw.TwPeriods;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,13 +34,14 @@ import tools.jackson.databind.ObjectMapper;
  * <p><b>账号</b>：{@code accountCode} = SELLERID（营业人统编），{@code keyId} = POSID，{@code secret} = POSSN（通道金钥）。
  *
  * <p><b>动作</b>：开立 C0401、作废 C0501、折让 D0401N、折让作废 D0501（报文见 {@link UniversalEcMessages}）；
- * 核验 Y01；领号段当期 A01 / 下期 C01。汎宇没有发票状态查询，不实现查单。
+ * 核验 Y01；领号段当期 A01 / 下期 C01；字轨管理 Z33 配号方式 / Z31 已下载字轨 / Z32 上传下期字轨；空白字轨 E0402。
+ * 汎宇没有发票状态查询，不实现查单；注销 C0701 / Z11 另起一期。
  *
  * <p><b>地址</b>：{@code shop.invoice.universalec.url}，默认测试机；正式机为 {@code https://eposw.einvoice.com.tw/GetInvoice.ashx}。
  */
 @Component
 public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
-        implements AccountCapability, RangeCapability {
+        implements AccountCapability, RangeCapability, TrackCapability, BlankRangeCapability {
 
     static final String CODE = "UNIVERSALEC";
     static final ProviderProfile PROFILE =
@@ -158,14 +163,79 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
                 });
     }
 
-    /** 汎宇的失败只有「失败 + 中文说明」：核验失败统一报 invalid（账号），领号失败统一报 nodata（无配号可用）。 */
+    /** Z33：1 自动配号、2 手动配号、0 或「查無」为无配号记录。 */
+    @Override
+    public AllocationMode allocationMode(ProviderAccount account, String periodCode) {
+        return call(ProviderOperation.TRACK_MODE, account,
+                () -> noDataAsEmpty(exchange(account, "Z33",
+                        UniversalEcMessages.periodQuery("Z33", periodCode, account, now()))),
+                r -> switch (r.data().getOrDefault("INVSTATUS", "0")) {
+                    case "1" -> AllocationMode.AUTO;
+                    case "2" -> AllocationMode.MANUAL;
+                    default -> AllocationMode.NONE;
+                });
+    }
+
+    /** Z31：回 INVOICE_DATA 数组；没有资料时汎宇填字轨 00 / 号码 00000000，过滤掉。 */
+    @Override
+    public List<TrackRange> downloadedTracks(ProviderAccount account, String periodCode) {
+        return call(ProviderOperation.TRACK_QUERY, account,
+                () -> noDataAsEmpty(exchange(account, "Z31",
+                        UniversalEcMessages.periodQuery("Z31", periodCode, account, now()))),
+                r -> {
+                    String data = r.data().get("INVOICE_DATA");
+                    if (data == null) return List.of();
+                    var out = new ArrayList<TrackRange>();
+                    try {
+                        for (JsonNode d : json.readTree(data)) {
+                            String track = d.path("INVOICE_TRACK").asText();
+                            if (track.isBlank() || "00".equals(track)) continue;
+                            out.add(new TrackRange(d.path("TYPE").asText(null), track,
+                                    Integer.parseInt(d.path("INVOICE_START").asText().trim()),
+                                    Integer.parseInt(d.path("INVOICE_END").asText().trim())));
+                        }
+                    } catch (RuntimeException e) {
+                        throw new ProviderException("unexpected", e);
+                    }
+                    return List.copyOf(out);
+                });
+    }
+
+    /** Z32：只接受下一期（领域已校验区间）；汎宇收下后约 15 分钟排程配号。 */
+    @Override
+    public void uploadNextTracks(ProviderAccount account, TrackUpload upload) {
+        call(ProviderOperation.TRACK_UPLOAD, account,
+                () -> exchange(account, "Z32", UniversalEcMessages.uploadTracks(upload, account, now())), r -> null);
+    }
+
+    /** E0402：同一期别、字轨、发票类别的未用区间一次报。 */
+    @Override
+    public void reportBlank(ProviderAccount account, BlankReport report) {
+        call(ProviderOperation.BLANK_REPORT, account,
+                () -> exchange(account, "E0402", UniversalEcMessages.blankTracks(report, account)), r -> null);
+    }
+
+    /**
+     * 汎宇的失败只有「REPLY + 中文说明」：核验失败统一报 invalid（账号），领号失败统一报 nodata（无配号可用）；
+     * 其余动作有说明就把说明交给用户（如「失敗：字軌區間不存在」），便于对照汎宇文档。
+     */
     @Override
     protected String failureCode(ProviderOperation op, ProviderReply reply) {
         return switch (op) {
             case VERIFY -> "invalid";
             case RANGE -> "nodata";
-            default -> super.failureCode(op, reply);
+            default -> {
+                String msg = reply.data().get("MESSAGE");
+                yield msg == null ? super.failureCode(op, reply) : msg.length() > 120 ? msg.substring(0, 120) : msg;
+            }
         };
+    }
+
+    /** 查询类动作汎宇用「失敗：查無…」表示没有资料：当作成功的空结果，而不是错误。 */
+    private static ProviderReply noDataAsEmpty(ProviderReply r) {
+        String msg = r.data().get("MESSAGE");
+        if (!"0000".equals(r.code()) && msg != null && msg.contains("查無")) return new ProviderReply("0000", null, Map.of(), null);
+        return r;
     }
 
     private String now() {

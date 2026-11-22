@@ -1,6 +1,6 @@
 # TDD-发票-加值中心模板-鲸跃与汎宇
 
-状态：**P1 已实现 · P2 / P3 待做** · 档位：1（供应商层内部重构 + 新增能力接口；新增能力的领域落点与页面在 P2 另列契约）
+状态：**P1、P2 已实现 · 注销与 P3 真机联调待做** · 档位：1（供应商层内部重构 + 新增能力接口；新增能力的领域落点与页面在 P2 另列契约）
 关联：[TDD-发票模块](./TDD-发票模块.md) §19（供应商接口层）· [TDD-发票服务-供应商适配抽象](./TDD-发票服务-供应商适配抽象.md)（目标形态）·
 [TDD-发票-汎宇接入](./TDD-发票-汎宇接入.md)（汎宇首批）
 创建：2026-11-22 · 最后更新：2026-11-22
@@ -227,7 +227,7 @@ P2 本期做**字轨管理**与**空白字轨上报**；**注销（C0701 / Z11�
 | 期 | 内容 | 验收 |
 |---|---|---|
 | **P1 模板化**（已实现） | 基础发票类加 `call` 能力模板、留痕打码；SOAP / HTTP 形态接入 `traceWire`；新增 `AbstractPlainJsonInvoiceGateway`、`channel.tw.TwMappingRules`；鲸跃、汎宇的能力方法迁到 `call` | **测试断言一行不改**：鲸跃 7/7、汎宇 19/19、Turnkey、base 全绿；新增 `AbstractInvoiceGatewayTemplateTest`（步骤顺序、打码、异常归类） |
-| P2 汎宇补全 | 字轨（Z31/Z32/Z33）与空白字轨（E0402）能力、领域服务、B 端页面（§4）；注销 C0701/Z11 暂缓 | 每个功能码一条假服务测试；领域服务测试；b-app / ops-web 类型检查 |
+| **P2 汎宇补全**（已实现） | 字轨（Z31/Z32/Z33）与空白字轨（E0402）能力、领域服务、B 端页面（§4）；注销 C0701/Z11 暂缓 | 每个功能码一条假服务测试；领域服务测试；b-app / ops-web 类型检查 |
 | P3 真机联调 | 汎宇测试机、鲸跃（经 UME166 隧道）各走一遍：开立、作废、折让、折让作废、核验、领号；汎宇再走字轨与空白字轨 | 结果贴回本节 |
 
 ---
@@ -268,6 +268,44 @@ P2 本期做**字轨管理**与**空白字轨上报**；**注销（C0701 / Z11�
 新增 invoice-channel/.../universalec/*（改继承 PlainJson，能力走 call）
 新增 invoice-channel/src/test/.../base/AbstractInvoiceGatewayTemplateTest.java
 ```
+
+### P2 对账
+
+| AC | 测试 | 跑过 |
+|---|---|---|
+| P2-AC1 字轨查询，「查無」为空 | `UniversalEcInvoiceGatewayTest#track_mode_uses_z33` · `#downloaded_tracks_use_z31_and_drop_placeholders` · `InvoiceServiceMysqlTest#p2ProviderTracksQueryAndUploadValidateBeforeCallingTheProvider` | ✅ |
+| P2-AC2 上传下期字轨与区间校验 | `UniversalEcInvoiceGatewayTest#upload_next_tracks_uses_z32` · `InvoiceServiceMysqlTest#p2ProviderTracksQueryAndUploadValidateBeforeCallingTheProvider` | ✅ |
+| P2-AC3 空白字轨上报一次、失败重试 | `UniversalEcInvoiceGatewayTest#report_blank_uses_e0402_with_eight_digit_numbers` · `InvoiceServiceMysqlTest#p2BlankRangesAreReportedOncePerRangeAndRetriedOnFailure` | ✅ |
+| P2-AC4 / AC5 无能力拒绝与跳过、`trackManageable` | `InvoiceServiceMysqlTest#p2ProvidersWithoutTrackCapabilityAreRejectedAndSkipped` | ✅ |
+| 页面 | b-app `vue-tsc --noEmit`、ops-web `tsc --noEmit` | ✅ 0 错 |
+
+运行（2026-11-22）：invoice-channel 9 类 49 条全过；invoice-domain 7 类 58 条全过，其中 `InvoiceServiceMysqlTest` 40 条连本机 MySQL 9.7（3308，随机库）。
+
+闸门：`gen-ui-catalog`、`check-app-contract`、`check-app-orphan`、`check-i18n-orphan`、`check-rtl-physical`、`check-ops-contract`、`check-enums` 通过。
+`check-app-backend-orphan`、`check-controller-cohesion`、`check-sql-portability`、`check-generated-docs`、`check-shared-guards`、`check-enum-fields` 失败，
+在干净的 HEAD 上同样失败，失败项均不涉及发票（c-app 端点、`BizPayOnboardingController` / `BizStockReplenishmentController`、`SchemaDriftTest` 等）。
+**`check-generated-docs` 因 `mRpState`（库存补货）挡在 B 端 OpenAPI 生成前，本次新增的两个 B 端端点未能进生成文档**，那条修好后重跑生成器即可。
+
+P2 改动文件：
+
+```
+新增 invoice-domain/.../gateway/TrackCapability.java、BlankRangeCapability.java
+修改 invoice-domain/.../gateway/ProviderOperation.java
+修改 invoice-domain/.../service/InvoiceSetupService.java、impl/InvoiceSetupServiceImpl.java
+修改 invoice-domain/.../api/biz/BizInvoiceSetupController.java、dto/InvoiceDtos.java、entity/IvcNumberRange.java、
+     mapper/InvoiceMappers.java、job/InvoiceRangeWatermarkJob.java
+新增 invoice-domain/src/main/resources/db/invoice/V12__invoice_blank_report.sql
+修改 invoice-domain/src/test/.../InvoiceServiceMysqlTest.java（迁移数 11 → 12、FakeProvider 加两项能力、3 条 P2 测试）
+修改 shop-app/src/test/resources/schema-test.sql（ivc_number_range 两列）
+修改 invoice-channel/.../base/AbstractPlainJsonInvoiceGateway.java（数组字段进 data）
+修改 invoice-channel/.../universalec/UniversalEcInvoiceGateway.java、UniversalEcMessages.java、UniversalEcInvoiceGatewayTest.java（+4 条）
+修改 b-app/src/api/sales-invoice.ts、sales-invoice-http.ts、endpoints.ts、mocks/sales-invoice.ts、pages/invoice-setup/index.vue、i18n/locale/{zh-CN,en,ar}.ts
+修改 packages/shared/src/contract/enum-registry.ts（SiTrackMode）
+```
+
+P2 偏差：
+- 运营端未加字轨入口（§4 原稿提到），本期只做 B 端设置页；运营端有需要再加。
+- 「上一期」由税制按天回退求得（不假设两个月），空白上报只看上一期 —— 更早的期别已过法定上报期限，不自动补报。
 
 ### 偏差说明
 - 原稿 §1 的 `map / exchange / parse` 三钩子会牵动五种形态，按用户确认改为「上传不动、能力加 `call`」。

@@ -13591,6 +13591,8 @@ CREATE TABLE IF NOT EXISTS ivc_number_range
     allocation_owner VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
     apply_id VARCHAR(64) NULL,
     invoice_type VARCHAR(4) NULL,
+    blank_reported_at DATETIME NULL,
+    blank_report_error VARCHAR(255) NULL,
     CONSTRAINT uk_ivc_number_range_no UNIQUE (tenant_no, range_no),
     CONSTRAINT uk_ivc_number_range UNIQUE (tenant_no, entity_no, regime_code, period_code, track, start_no),
     CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999 AND next_no >= start_no AND next_no <= end_no + 1)

@@ -92,6 +92,56 @@
         </view>
       </view>
 
+      <template v-if="saved?.trackManageable">
+        <sh-section :title="String(t('salesInvoice.trackTitle'))" pad>
+          <text class="sh-hint txt-quiet">{{ t("salesInvoice.trackHint") }}</text>
+        </sh-section>
+        <view class="sh-cells">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.period") }}</text>
+            <input v-model="track.periodCode" type="number" maxlength="5" class="txt-body sh-num sh-fill cell-input"
+              :placeholder="String(t('salesInvoice.periodPh'))" />
+          </view>
+          <view v-if="tracks" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.trackModeLabel") }} · {{ tracks.periodCode }}</text>
+            <text class="txt-body">{{ t(`salesInvoice.trackMode.${tracks.allocationMode}`) }}</text>
+          </view>
+          <view v-for="(r, i) in tracks?.tracks ?? []" :key="i" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-num">{{ r.track }} {{ r.startNo }}–{{ r.endNo }}</text>
+            <text class="txt-caption txt-quiet">{{ r.invoiceType ?? "" }}</text>
+          </view>
+          <view v-if="tracks && !tracks.tracks.length" class="sh-cell">
+            <text class="sh-hint txt-quiet">{{ t("salesInvoice.trackEmpty") }}</text>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.invoiceType") }}</text>
+            <view class="sh-row">
+              <text v-for="ty in INVOICE_TYPES" :key="ty" class="sh-chip" :class="track.invoiceType === ty ? 'sh-chip--primary' : ''"
+                @tap="track.invoiceType = ty">{{ ty }}</text>
+            </view>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.track") }}</text>
+            <input v-model="track.track" maxlength="2" class="txt-body sh-num sh-fill cell-input" placeholder="AB" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.startNo") }}</text>
+            <input v-model="track.startNo" type="number" maxlength="8" class="txt-body sh-num sh-fill cell-input" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ t("salesInvoice.endNo") }}</text>
+            <input v-model="track.endNo" type="number" maxlength="8" class="txt-body sh-num sh-fill cell-input" />
+          </view>
+        </view>
+        <view class="sh-card sh-mt-sm">
+          <view v-if="trackMsg" class="sh-notice sh-mb-sm" :class="trackFailed ? 'sh-notice--danger' : 'sh-notice--success'" role="status">{{ trackMsg }}</view>
+          <view class="sh-row">
+            <view class="sh-btn sh-btn--soft sh-fill" :class="busy ? 'is-disabled' : ''" @tap="queryTracks">{{ t("salesInvoice.trackQuery") }}</view>
+            <view class="sh-btn sh-fill" :class="busy ? 'is-disabled' : ''" @tap="uploadTracks">{{ t("salesInvoice.trackUpload") }}</view>
+          </view>
+        </view>
+      </template>
+
       <sh-section :title="String(t('salesInvoice.ranges'))" pad></sh-section>
       <view v-if="current?.currentPeriod" class="sh-notice" :class="rangeTone" role="status">
         <text>{{ t("salesInvoice.rangeCurrent", { period: current.currentPeriod, n: current.currentRemaining ?? 0 }) }}</text>
@@ -148,12 +198,13 @@
 // QR 加密密钥只写不读：页面只显示「已配置 / 未配置」，输入框留空表示不改。
 // 供应商（TDD-发票模块 §20）：可选列表由后端按市场给出，默认「跟随平台默认」（gatewayCode 传空串），平台换供应商时自动跟随；
 // 迁移来的商户可选正在用的那家。账号输入、核验、领号段按所选供应商的能力出现，不认具体厂商；账号密码只写不读。
+// 服务商字轨（TDD-发票-加值中心模板-鲸跃与汎宇 §4）：已保存的供应商有字轨能力（汎宇）才出现；上传只针对下一期。
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { SiProfile, SiProviderOptions, SiRange } from "@/api/sales-invoice";
+import type { SiProfile, SiProviderOptions, SiProviderTracks, SiRange } from "@/api/sales-invoice";
 
 const { t, te } = useI18n();
 const merchant = useMerchantStore();
@@ -171,6 +222,13 @@ const providers = ref<SiProviderOptions | null>(null);
 const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "", qrAesKeyHex: "", memberCarrierType: "", autoIssue: false,
   providerAccountCode: "", providerUser: "", providerPassword: "", rangeLowWater: "50", autoFetchRanges: false });
 const range = reactive({ periodCode: "", track: "", startNo: "", endNo: "", storeNo: "" });
+/** 服务商字轨（仅 trackManageable 的供应商）：查询用期别（空 = 当期）；上传固定为下一期 */
+const INVOICE_TYPES = ["07", "08"] as const;
+const track = reactive<{ periodCode: string; invoiceType: (typeof INVOICE_TYPES)[number]; track: string; startNo: string; endNo: string }>(
+  { periodCode: "", invoiceType: "07", track: "", startNo: "", endNo: "" });
+const tracks = ref<SiProviderTracks | null>(null);
+const trackMsg = ref("");
+const trackFailed = ref(false);
 
 /** 本期用尽标红、低于提醒值标黄 */
 const rangeTone = computed(() => {
@@ -335,6 +393,49 @@ async function fetchProviderRange() {
   } catch (e) {
     providerFailed.value = true;
     providerMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function queryTracks() {
+  if (busy.value) return;
+  busy.value = true;
+  trackMsg.value = "";
+  try {
+    const period = track.periodCode.trim();
+    tracks.value = await api.mSiProviderTracks(period ? { periodCode: period } : {});
+  } catch (e) {
+    trackFailed.value = true;
+    trackMsg.value = message(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function uploadTracks() {
+  if (busy.value) return;
+  const next = current.value?.nextPeriod;
+  if (!next || !track.track.trim() || track.startNo === "" || track.endNo === "") {
+    trackFailed.value = true;
+    trackMsg.value = String(t("salesInvoice.required"));
+    return;
+  }
+  busy.value = true;
+  trackMsg.value = "";
+  try {
+    const got = await api.mSiUploadProviderTracks({
+      periodCode: next,
+      invoiceType: track.invoiceType,
+      track: track.track.trim().toUpperCase(),
+      ranges: [{ startNo: Number(track.startNo), endNo: Number(track.endNo) }],
+    });
+    trackFailed.value = false;
+    trackMsg.value = String(t("salesInvoice.trackUploaded", { track: got.track, books: got.books }));
+    Object.assign(track, { track: "", startNo: "", endNo: "" });
+  } catch (e) {
+    trackFailed.value = true;
+    trackMsg.value = message(e);
   } finally {
     busy.value = false;
   }
