@@ -3,7 +3,7 @@
 状态：已实现（后端、证明联打印、B 端页面、自动开立、混合课税、Turnkey 通道；运营端与回执回写见 §7 后续）
 档位：2 · 依据：[PRD-发票开立与打印](../requirements/PRD-发票开立与打印.md) §4 ·
 决策：[ADR-063](./ADR/ADR-063-发票独立成模块与税制SPI.md)
-创建：2026-11-21 · 最后更新：2026-11-21
+创建：2026-11-21 · 最后更新：2026-11-23
 
 ---
 
@@ -1212,3 +1212,15 @@ PR #34 压缩合入 main（`4f9890796`），从该提交构建发布。只带发
 - 上线后默认不对外送票：`shop.invoice.transmission.enabled`、`range-watch.enabled` 未配（关），默认供应商为模拟通道；没有商家开通发票设置前没有开票行为。
 - **以后再发发票迁移**：同样要临时授 CREATE / ALTER / INDEX，用完收回。
 - **未验证**：登录后的运营端「电子发票」页与 B 端发票页（没有运营 / 商家会话，未代输口令）。
+
+### §23.1 打印件下载路由（2026-11-23，用户：「你改，我放行」）
+
+App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artifacts?…` 拼上 `/shop-api-v2` 后在公网是 nginx 404：166 的 `ai-shop-ops-v2.locations.conf` 只转发了 `/shop-api-v2/biz/`、`/mp/` 等，末尾 `location ^~ /shop-api-v2/ { return 404; }` 兜底。后端与 §23 的包都不用动。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| 166 nginx `/etc/nginx/snippets/ai-shop-ops-v2.locations.conf` | 在 `location ^~ /shop-api-v2/biz/` 之前加精确匹配 `location = /shop-api-v2/private/print-artifacts` → `http://192.168.3.80:18180/private/print-artifacts`，请求头与 biz 段一致，`proxy_read_timeout 60s`、`Cache-Control: no-store`；`nginx -t` 通过后 reload | 删掉该块，或 `cp -p …locations.conf.before-print-artifacts-20261123 …locations.conf`，`nginx -t` 后 `nginx -s reload` |
+
+- 只开这一个精确路径，`/shop-api-v2/private/` 下其它路径仍走兜底 404。链接本身有 60 秒签名，不带登录态。
+- 探测：`/shop-api-v2/private/print-artifacts?key=x&expires=1&signature=bad` → 后端 422，`code=82001`、`data.key=print.downloadExpired`（不再是 nginx 404）；`/shop-api-v2/biz/invoices/X/print-facts` 401；`/ops-shop-v2/` 200；旧 `/shop-api` 照常应答。
+- 已通知商户 App 发票打印会话复测下载。**未验证**：用真实发票走完「模拟 → 导出 → 授权 → 取字节」，需要指向 `/shop-api-v2` 的 debug 包与用户本人登录。
