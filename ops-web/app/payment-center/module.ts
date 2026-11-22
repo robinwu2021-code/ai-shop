@@ -26,7 +26,9 @@ export type PayCenterTabKey =
   // P8
   | "merchant-members" | "association-repairs"
   // P10
-  | "credentials" | "audit-events";
+  | "credentials" | "audit-events"
+  // P12 开放 API
+  | "app-applications" | "api-catalog" | "platform-keys";
 
 export interface PayCenterTab {
   key: PayCenterTabKey;
@@ -55,7 +57,10 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   // 收款接入的查看码：near-pay OpsCollectionEntryController 用 pay:collection-entry:view（2026-11-20 核对）
   { key: "access", perm: "pay:collection-entry:view", group: "channel", zh: "收款接入", en: "Collection entries" },
   { key: "terminals", perm: "pay:terminal:view", group: "channel", zh: "支付终端", en: "Terminals" },
+  // P12（TDD-支付中心运营页面 §2.16）：开放 API 接入申请（SY11）→ 接入应用（SY05）→ API 清单与调用模拟（SY12/SY13）
+  { key: "app-applications", perm: "pay:app:view", group: "channel", zh: "接入申请", en: "API applications" },
   { key: "apps", perm: "pay:app:view", group: "channel", zh: "接入应用", en: "Open apps" },
+  { key: "api-catalog", perm: "pay:app:view", group: "channel", zh: "API 清单", en: "API catalog" },
   { key: "channel-costs", perm: "pay:channel-cost:view", group: "rates", zh: "渠道成本", en: "Channel costs" },
   { key: "commission-rules", perm: "pay:fee-plan:view", group: "rates", zh: "佣金规则", en: "Commission rules" },
   { key: "ledger-entries", perm: "pay:fund-account:view", group: "funds", zh: "资金流水", en: "Ledger" },
@@ -70,6 +75,8 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "settings", perm: "pay:channel:view", group: "config", zh: "经营设置", en: "Operating settings" },
   // P10（TDD-支付中心运营页面 §2.15）：凭证管理（near-pay 凭证中心）、审计事件（只读）
   { key: "credentials", perm: "pay:credential:view", group: "config", zh: "凭证管理", en: "Credentials" },
+  // P12：开放平台密钥（RSA 方案的平台签名 / 加密密钥）
+  { key: "platform-keys", perm: "pay:credential:view", group: "config", zh: "开放平台密钥", en: "Open platform keys" },
   // 支付运维：渠道调用与监控告警各两个页签（菜单 TDD §2.2：一个菜单项最多 2 个页签）
   { key: "alert-events", perm: "pay:alert-event:view", group: "ops", zh: "告警事件", en: "Alert events" },
   { key: "alert-rules", perm: "pay:alert-rule:view", group: "ops", zh: "告警规则", en: "Alert rules" },

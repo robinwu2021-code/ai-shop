@@ -2,7 +2,7 @@
 
 状态：P0–P3a 已提交并已上线 v2（39bea6a65，near-pay P3a 已上线）；P4（商户与进件原生化、支付中心独立成模块）进行中（§2.9–§2.10）；P3b / P3c 待 near-pay 补接口
 档位：1 · 依据：[TDD-支付中心菜单整合](TDD-支付中心菜单整合.md)（菜单、权限码、岗位）+ 用户 2026-11-20 页面要求
-创建：2026-11-20 · 最后更新：2026-11-20
+创建：2026-11-20 · 最后更新：2026-11-22（P12 开放 API，§2.17）
 
 ## 一句话
 
@@ -379,6 +379,24 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **测试**：`p11.test.ts` 6 条；ops-web 全量 159 个文件 1437 条通过；lint 无报错。
 - **统计**：本期范围 277 / 277。
 
+### 2.17 P12 开放 API 运营页面（2026-11-22，由 near-pay 开放 API 上线会话发起）
+
+背景：near-pay 开放 API（商户接入、HMAC 默认 + RSA 可选、API 清单、调用模拟）2026-11-22 已发布 UME 正式（.80 `nearpay-prod`，库 V135，对外 `https://tpay.neargo.ai/openapi/v1`）。用户定：运营端统一走网关、用本模块配置，不用 near-pay 自己的 `/oms`。契约照 near-pay `develop/s1` `a1c5da09`：`OpsAppApplicationController`、`OpsAppKeyController`、`OpsPlatformKeyController`、`docs/api/openapi-pay-open.yaml` v1.2。
+
+| AC | 内容 | 落点 |
+|---|---|---|
+| P12-1 | 接入申请（SY11）列表 / 详情 / 提交 / 批准 / 驳回 / 撤回；提交人不得审核、只能撤回；批准后建草稿应用并可跳到「接入应用」 | 新页签 `app-applications`（`app-applications-tab.tsx`）· `api.appApplications` |
+| P12-2 | 接入应用显示签名方案；RSA 应用上传商家公钥（挑战 → 持有证明签名 → 上传，登记为已核验，启用两人走凭证管理）；泄露应急锁定；近 7 天密钥用量；新增应用可选签名方案；RSA 应用只签发 APP_DATA_KEY | `apps-tab.tsx` + `app-keys.tsx` · `api.apps.keyChallenge / uploadPublicKey / emergencyLock / keyUsage` |
+| P12-3 | 开放平台密钥：已公布公钥列表、生成签名 / 加密密钥（草稿）、核验与两人启用（复用凭证管理详情，PLATFORM_OPEN） | 新页签 `platform-keys`（`platform-keys-tab.tsx`）· `api.platformKeys` |
+| P12-4 | API 清单（SY12）+ 调用模拟（SY13）：浏览器内按 P1 签名、P3 加密，出可直接执行的 curl；对外地址 `https://tpay.neargo.ai/openapi/v1`，按 `/openapi/v1/...` 签名；生产无沙箱 → 真实实例只做签名预览，mock 下发给浏览器内 mock 网关并按 P2 验响应 | 新页签 `api-catalog`（`api-catalog-tab.tsx`、`api-simulator.tsx`）· `_api/open-api-{catalog,signer,sim,gateway}.ts` |
+| P12-5 | 菜单与权限：支付中心下三个入口；权限码 `pay:app:*`、`pay:credential:*` 已由 V686 登记，权限由 near-pay 用令牌自判 | `V688__ops_payment_center_open_api_menu.sql`、`platform-menu-aliases.json`、`platform-nav.ts` |
+
+- **契约**：新增 near-pay 端点 11 个，全部封装并在页面使用（`scripts/pay-center-wiring.py` 本期范围 289 / 289）。`/app-applications` 列表 near-pay 只认精确 `applicationNo` / `merchantNo`：搜索框以 `AAP` 开头按申请单号查，否则按商户号查。挑战、上传公钥、平台密钥生成不带自动幂等号（一次性 / 后端不去重）；提交申请、审核、应急锁定带。
+- **对外基址**：`NEXT_PUBLIC_OPEN_API_BASE`（默认 `https://tpay.neargo.ai/openapi/v1`，只收 https）。签名的 PATH = 基址路径 + 接口相对路径。
+- **密钥处理**：AppSecret、EncryptKey、私钥只在抽屉组件内存，不进草稿、查询缓存、curl、运营接口；生产不收 RSA 私钥（商家侧签名）。mock 演示密钥对只在内存。
+- **菜单**：V688 只新增 3 个 MENU 点（sort 554–556）。授权 SUPER_ADMIN；接入申请、API 清单继承「接入应用」点位的岗位，开放平台密钥继承「凭证管理」（敏感，V687 只授超管）。试点账号要能提交 / 审核，须在角色里授 `pay:app:manage` / `pay:app:approve`（另一人审核）。
+- **不做**：运营端发真实开放 API 请求（生产无沙箱）；推送（P4）解密演示。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。
@@ -614,3 +632,10 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 | 审核待办 / 支付订单 | 0 条 / 151 条，无报错；支付中心菜单 24 项 ✅ |
 
 - **约定**：支付中心改动先合 main，发布一律从 main 打包；其他会话发布前先合最新 main。
+
+### P12 · 开放 API 运营页面（2026-11-22，分支 `feat/pay-center-open-api`，基于 origin/main `1f7967452`）
+
+- **文件**：`_api/{api,types,mock}.ts`（三组端点与 mock 状态机）、`_api/open-api-{catalog,signer,sim,gateway}.ts`（照搬 near-pay `lib/open-api/{catalog,signer,simulator}.ts`，路径改为相对对外基址）、`app-applications-tab.tsx`、`platform-keys-tab.tsx`、`api-catalog-tab.tsx`、`api-simulator.tsx`、`app-keys.tsx`、`apps-tab.tsx`、`credentials-tab.tsx`（导出 `CredentialDetailView` 供平台密钥复用）、`p12-copy.ts`、`p10-copy.ts`（归属类型 PLATFORM_OPEN）、`module.ts`、`page.tsx`；菜单 `V688`、`schema-test.sql`（生成器重放）、`platform-menu-aliases.json`、`platform-nav.ts`、两份菜单文案；3 份生成文档。与 §2.17 一致。
+- **偏差**：SY12 与 SY13 合成一个页签（`api-catalog`，「调用模拟」是行操作抽屉）——支付中心页签统一是「表格 + 行操作」，模拟总是针对某一个接口。
+- **测试**：`p12.test.ts` 14 条（HTTP 映射 3、mock 状态机 5、契约测试向量 P1/P2/P3 与 `/open/pay/v1` ↔ `/openapi/v1` 两种前缀 3、mock 网关 3）；`payment-center-page.test.ts` 自动覆盖 3 个新页签（页头、表格行、「查看」抽屉）。ops-web vitest 161 个文件 1458 条全过；`tsc`、`eslint --quiet` 无报错；`next build`（`NEXT_PUBLIC_USE_MOCK=0`）通过；`check-generated-docs` 27 个生成器最新；`gen-ui-catalog --check` 最新。
+- **未做**：未在浏览器实机走查（本机 dev server 端口为多会话共用）；未部署。

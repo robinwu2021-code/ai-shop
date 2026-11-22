@@ -191,6 +191,16 @@
   },
   {
     "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_APP_APPLICATIONS",
+    "href": "/payment-center?tab=app-applications",
+    "label": "接入申请",
+    "perm": "pay:app:view",
+    "group": "渠道接入",
+    "ready": true,
+    "sourcePoint": "OPS_FINANCE__PAYCENTER_APPS"
+  },
+  {
+    "functionKey": "finance",
     "pointCode": "OPS_FINANCE__PAYCENTER_APPS",
     "href": "/payment-center?tab=apps",
     "label": "接入应用",
@@ -198,7 +208,17 @@
     "group": "渠道接入",
     "ready": true,
     "sourcePoint": null
+  },  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_API_CATALOG",
+    "href": "/payment-center?tab=api-catalog",
+    "label": "API 清单",
+    "perm": "pay:app:view",
+    "group": "渠道接入",
+    "ready": true,
+    "sourcePoint": "OPS_FINANCE__PAYCENTER_APPS"
   },
+
   {
     "functionKey": "finance",
     "pointCode": "OPS_FINANCE__PAYCENTER_DATA_SCOPES",
@@ -238,7 +258,17 @@
     "group": "支付配置",
     "ready": true,
     "sourcePoint": null
+  },  {
+    "functionKey": "finance",
+    "pointCode": "OPS_FINANCE__PAYCENTER_PLATFORM_KEYS",
+    "href": "/payment-center?tab=platform-keys",
+    "label": "开放平台密钥",
+    "perm": "pay:credential:view",
+    "group": "支付配置",
+    "ready": true,
+    "sourcePoint": "OPS_FINANCE__PAYCENTER_CREDENTIALS"
   },
+
   {
     "functionKey": "finance",
     "pointCode": "OPS_FINANCE__PAYCENTER_ALERT_EVENTS",
