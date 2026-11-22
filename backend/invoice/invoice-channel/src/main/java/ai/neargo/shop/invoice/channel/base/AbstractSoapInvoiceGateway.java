@@ -43,8 +43,9 @@ public abstract class AbstractSoapInvoiceGateway extends AbstractInvoiceGateway 
     protected final String soap(String operation, ProviderAccount account, Map<String, String> fields) {
         var all = authFields(account);
         all.putAll(fields);
-        String body = transport.post(endpoint, "text/xml;charset=UTF-8", SoapEnvelope.build(namespace(), operation, all),
-                extraHeaders()).body();
+        String envelope = SoapEnvelope.build(namespace(), operation, all);
+        String body = transport.post(endpoint, "text/xml;charset=UTF-8", envelope, extraHeaders()).body();
+        traceWire(operation, account, envelope, body);
         String result = SoapEnvelope.between(body, "<return>", "</return>");
         if (result == null) {
             if (body.contains("<return/>")) return "";

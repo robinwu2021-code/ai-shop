@@ -5,7 +5,10 @@ import ai.neargo.shop.invoice.channel.base.HttpTransport;
 import ai.neargo.shop.invoice.channel.base.ResultCodeTable;
 import ai.neargo.shop.invoice.channel.base.SoapEnvelope;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.channel.tw.TwMappingRules;
+import ai.neargo.shop.invoice.channel.tw.TwMappingRules.IssueMode;
 import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
@@ -50,6 +53,9 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
     static final ProviderProfile PROFILE =
             new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true);
 
+    /** 能力回包解读为成功时的内部码（鲸跃没有成功码，成功即数据本身）。 */
+    static final String OK = "OK";
+
     /**
      * 照 UME {@code StatusCode} 与鲸跃回码说明逐行转写。{@code S1 / C1 / A1}（「上传失败」，语义待鲸跃确认）未登记，
      * 按需人工处理；确认可重试后再改表。折让作废 C3 =「没有该折让单号码可作废」同样按需人工。
@@ -59,13 +65,16 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
             .acceptedFor("VOID", "C0", "C5")
             .acceptedFor("ALLOWANCE", "A0", "A6")
             .acceptedFor("ALLOWANCE_VOID", "C0", "C4")
+            .acceptedFor("VERIFY", OK)      // 能力动作：回包解读为成功（见 reply）
+            .acceptedFor("RANGE", OK)
+            .acceptedFor("QUERY", OK)
             .accountProblem("invalid")      // 认证错误：officeid / posno / posid 不对
             .retryable("error")             // 鲸跃系统错误
             .build();
 
     private static final String NS = "http://webservice.cetustek.com/";
     private static final Set<String> FAILURES = Set.of("ERROR", "INVALID", "EXIST", "NODATA", "NOTAKE");
-    private static final String CONSUMER_ID = "0000000000";
+    private static final String CONSUMER_ID = TwMappingRules.CONSUMER_ID;
 
     private final String hostHeader;
 
@@ -134,13 +143,14 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         return receipt(type, result, request.refNo());
     }
 
+    /** 账号核验：QueryOfficeInfo 回营业人 XML（统编、名称、QRCode）或失败词。 */
     @Override
     public ProviderOffice verify(ProviderAccount account) {
-        String result = soap("QueryOfficeInfo", account, Map.of());
-        failIfCode(result);
-        String id = SoapEnvelope.between(result, "<ID>", "</ID>");
-        if (id == null) throw new ProviderException("unexpected", null);
-        return new ProviderOffice(id.trim(), text(result, "Name"), text(result, "QRCode"));
+        return call(ProviderOperation.VERIFY, account, () -> reply(soap("QueryOfficeInfo", account, Map.of())), r -> {
+            String id = SoapEnvelope.between(r.raw(), "<ID>", "</ID>");
+            if (id == null) throw new ProviderException("unexpected", null);
+            return new ProviderOffice(id.trim(), text(r.raw(), "Name"), text(r.raw(), "QRCode"));
+        });
     }
 
     /**
@@ -152,43 +162,51 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         var fields = new LinkedHashMap<String, String>();
         fields.put("invoicenumber", fiscalNumber);
         fields.put("invoicedate", invoiceDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd")));
-        String result = soap("QueryInvoiceStatus", account, fields);
-        var state = switch (result.toUpperCase(Locale.ROOT)) {
+        return call(ProviderOperation.QUERY, account, () -> {
+            String result = soap("QueryInvoiceStatus", account, fields);
+            String code = switch (result.toUpperCase(Locale.ROOT)) {
+                case "0", "1", "2", "3", "NODATA" -> OK;
+                case "INVALID", "ERROR" -> result;
+                default -> "unexpected:" + result;     // 不认识的回码不猜：未登记 → 终态
+            };
+            return ProviderReply.of(code, result);
+        }, r -> new ProviderInvoiceStatus(switch (r.raw().toUpperCase(Locale.ROOT)) {
             case "0" -> ProviderInvoiceStatus.State.ISSUED;
             case "1" -> ProviderInvoiceStatus.State.VOIDED;
             case "2" -> ProviderInvoiceStatus.State.PARTIALLY_ALLOWED;
             case "3" -> ProviderInvoiceStatus.State.FULLY_ALLOWED;
-            case "NODATA" -> ProviderInvoiceStatus.State.NOT_FOUND;
-            case "INVALID", "ERROR" -> throw new ProviderException(result.toLowerCase(Locale.ROOT), null);
-            default -> throw new ProviderException("unexpected:" + result, null);
-        };
-        return new ProviderInvoiceStatus(state, result);
+            default -> ProviderInvoiceStatus.State.NOT_FOUND;
+        }, r.raw()));
     }
 
+    /** 领号段两步：ApplyInvoiceNumber 取申请号 → TakeInvoiceNumber 取 {@code 字轨;起;迄;类别}。两步都走能力模板。 */
     @Override
     public AllocatedRange allocate(ProviderAccount account, String periodCode) {
         int even = Integer.parseInt(periodCode.substring(3));
         var apply = new LinkedHashMap<String, String>();
         apply.put("year", periodCode.substring(0, 3));
         apply.put("month", "%02d-%02d".formatted(even - 1, even));
-        String applyId = soap("ApplyInvoiceNumber", account, apply);
-        failIfCode(applyId);
-        String taken = soap("TakeInvoiceNumber", account, Map.of("applyid", applyId));
-        failIfCode(taken);
-        // prefix;start;end;invoiceType，如 AB;12345600;12345649;07
-        String[] parts = taken.split(";");
-        if (parts.length < 3) throw new ProviderException("unexpected", null);
-        try {
-            return new AllocatedRange(applyId, parts[0].trim(), Integer.parseInt(parts[1].trim()),
-                    Integer.parseInt(parts[2].trim()), parts.length > 3 ? parts[3].trim() : null);
-        } catch (NumberFormatException e) {
-            throw new ProviderException("unexpected", e);
-        }
+        String applyId = call(ProviderOperation.RANGE, account,
+                () -> reply(soap("ApplyInvoiceNumber", account, apply)), ProviderReply::raw);
+        return call(ProviderOperation.RANGE, account,
+                () -> reply(soap("TakeInvoiceNumber", account, Map.of("applyid", applyId))), r -> {
+                    // prefix;start;end;invoiceType，如 AB;12345600;12345649;07
+                    String[] parts = r.raw().split(";");
+                    if (parts.length < 3) throw new ProviderException("unexpected", null);
+                    try {
+                        return new AllocatedRange(applyId, parts[0].trim(), Integer.parseInt(parts[1].trim()),
+                                Integer.parseInt(parts[2].trim()), parts.length > 3 ? parts[3].trim() : null);
+                    } catch (NumberFormatException e) {
+                        throw new ProviderException("unexpected", e);
+                    }
+                });
     }
 
-    private static void failIfCode(String result) {
-        if (result.isEmpty()) throw new ProviderException("nodata", null);
-        if (FAILURES.contains(result.toUpperCase(Locale.ROOT))) throw new ProviderException(result.toLowerCase(Locale.ROOT), null);
+    /** 鲸跃的能力回包：失败时整串就是失败词（invalid / error / exist / nodata / notake），空回包按 nodata；其余为成功的数据。 */
+    private static ProviderReply reply(String result) {
+        if (result.isEmpty()) return ProviderReply.of("nodata", result);
+        if (FAILURES.contains(result.toUpperCase(Locale.ROOT))) return ProviderReply.of(result, result);
+        return ProviderReply.of(OK, result);
     }
 
     private static String text(String xml, String tag) {
@@ -200,7 +218,7 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
 
     static String invoiceXml(JsonNode m, String orderId) {
         JsonNode main = m.path("Main"), amount = m.path("Amount"), buyer = main.path("Buyer");
-        if ("2".equals(amount.path("TaxType").asText()) || amount.path("ZeroTaxSalesAmount").asLong() != 0)
+        if (TwMappingRules.zeroRated(m))
             throw new UnsupportedMessageException("zero-rated invoices are not supported on Cetustek");
         String date = day(main.path("InvoiceDate").asText());
         var x = new Xml("Invoice");
@@ -209,15 +227,15 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         x.put("InvoiceTime", main.path("InvoiceTime").asText());
         x.put("OrderId", orderId);
         x.put("OrderDate", date);
-        boolean b2b = !CONSUMER_ID.equals(buyer.path("Identifier").asText());
-        if (b2b) {
+        if (TwMappingRules.b2b(buyer)) {
             x.put("BuyerIdentifier", buyer.path("Identifier").asText());
             x.put("BuyerName", buyer.path("Name").asText());
         }
         x.put("InvoiceType", main.path("InvoiceType").asText("07"));
         x.put("TaxType", amount.path("TaxType").asText());
         x.put("TaxRate", amount.path("TaxRate").asText("0.05"));
-        boolean donate = main.hasNonNull("NPOBAN"), carrier = main.hasNonNull("CarrierType");
+        var mode = TwMappingRules.issueMode(main);
+        boolean donate = mode == IssueMode.DONATE, carrier = mode == IssueMode.CARRIER;
         x.put("DonateMark", donate ? "1" : carrier ? "0" : "2");
         if (carrier) {
             x.put("CarrierType", main.path("CarrierType").asText());
@@ -274,7 +292,7 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         x.put("InvoiceNumber", item.path("OriginalInvoiceNumber").asText());
         x.put("InvoiceDate", day(item.path("OriginalInvoiceDate").asText()));
         x.put("InvoiceTime", m.path("ext").path("OriginalInvoiceTime").asText(""));
-        if (!CONSUMER_ID.equals(buyer.path("Identifier").asText())) {
+        if (TwMappingRules.b2b(buyer)) {
             x.put("BuyerIdentifier", buyer.path("Identifier").asText());
             x.put("BuyerName", buyer.path("Name").asText());
         }
@@ -317,8 +335,7 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
 
     /** {@code 20261121} → {@code 2026/11/21}。 */
     static String day(String yyyymmdd) {
-        if (yyyymmdd.length() != 8) return yyyymmdd;
-        return yyyymmdd.substring(0, 4) + "/" + yyyymmdd.substring(4, 6) + "/" + yyyymmdd.substring(6);
+        return TwMappingRules.date(yyyymmdd, '/');
     }
 
     /** 只拼固定元素名，值一律转义。 */

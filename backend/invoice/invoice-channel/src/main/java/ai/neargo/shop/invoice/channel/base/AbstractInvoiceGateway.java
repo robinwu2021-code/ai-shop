@@ -1,29 +1,50 @@
 package ai.neargo.shop.invoice.channel.base;
 
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
+import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 所有供应商的模板基类（TDD-发票模块 §19）。{@link #send} 是 final：
- * 账号核对 → 解析报文 → 交给厂商 {@link #upload} → 异常归类。
+ * 所有供应商的模板基类（TDD-发票模块 §19；TDD-发票-加值中心模板-鲸跃与汎宇 §1）。两个入口都是 final：
+ *
+ * <ul>
+ *   <li><b>上传</b> {@link #send}：账号核对 → 解析报文 → 交给厂商 {@link #upload} → 异常归类 → 留痕</li>
+ *   <li><b>能力动作</b> {@link #call}（核验、领号、查单 …）：账号核对 → 厂商组请求并经形态层送出、解读回包 →
+ *       按码表判定 → 留痕 → 成功交给厂商读数据，失败抛 {@link ProviderException}</li>
+ * </ul>
  *
  * <p><b>不核对市场</b>：用哪家供应商由系统统一决定（商家选择或系统指定，落在主体配置上），
  * 供应商层只管把交来的报文送出去。
  *
+ * <p>上传的异常归类：
  * <ul>
  *   <li>要账号却没给 → {@code ACCOUNT_PROBLEM}（上传任务据此暂停该主体）</li>
  *   <li>{@link AccountMisconfiguredException}（密钥长度不对、解不开回包）→ {@code ACCOUNT_PROBLEM}</li>
- *   <li>{@link UnsupportedMessageException}（厂商不支持这类票，如鲸跃的零税率）→ {@code FINAL}，不送半对的票</li>
+ *   <li>{@link UnsupportedMessageException}（厂商不支持这类票，如零税率）→ {@code FINAL}，不送半对的票</li>
  *   <li>{@link ProviderException}（不可达、HTTP 非 2xx）→ {@code RETRYABLE}，原报文留着下一轮补发；
  *       可能已送达的情况由查单对账兜底（§16），供应商对同一号码的重复上传回「已处理过」</li>
  * </ul>
  *
- * 子类按对接形态再分（SOAP / 加密接口 / 签名接口 / 网络接入点 / 文件交换），厂商类只写映射与码表。
+ * <p><b>留痕</b>：每次调用记一行（供应商、动作、账号代号、结果码、耗时）；线上原文只在 DEBUG 级别记，
+ * 且账号的密钥值（{@link #secretValues}）一律打码 —— 打码写在基类而不是让厂商各自记得，漏一次就是一次凭据泄露。
+ *
+ * 子类按对接形态再分（SOAP / 明文 JSON / 加密接口 / 签名接口 / 网络接入点 / 文件交换），厂商类只写映射、码表与能力。
  */
 public abstract class AbstractInvoiceGateway implements InvoiceGateway {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractInvoiceGateway.class);
+    static final String MASK = "******";
 
     protected final ObjectMapper json;
 
@@ -33,37 +54,138 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
 
     @Override
     public final GatewayReceipt send(GatewayRequest request) {
-        if (profile().requiresAccount() && request.account() == null)
-            return GatewayReceipt.accountProblem("provider account not configured");
-        try {
-            return upload(request, json.readTree(request.payloadJson()));
-        } catch (UnsupportedMessageException e) {
-            return GatewayReceipt.rejected(e.getMessage());
-        } catch (AccountMisconfiguredException e) {
-            return GatewayReceipt.accountProblem(code().toLowerCase(Locale.ROOT) + " " + e.getMessage());
-        } catch (ProviderException e) {
-            return GatewayReceipt.retryable(code().toLowerCase(Locale.ROOT) + " " + e.code());
+        long start = System.nanoTime();
+        GatewayReceipt receipt;
+        if (profile().requiresAccount() && request.account() == null) {
+            receipt = GatewayReceipt.accountProblem("provider account not configured");
+        } else {
+            try {
+                receipt = upload(request, json.readTree(request.payloadJson()));
+            } catch (UnsupportedMessageException e) {
+                receipt = GatewayReceipt.rejected(e.getMessage());
+            } catch (AccountMisconfiguredException e) {
+                receipt = GatewayReceipt.accountProblem(tag() + " " + e.getMessage());
+            } catch (ProviderException e) {
+                receipt = GatewayReceipt.retryable(tag() + " " + e.code());
+            }
         }
+        log.info("[invoice] {} {} ref={} account={} → {} {} ({}ms)", code(), request.messageType(), request.refNo(),
+                accountCode(request.account()), receipt.outcome(),
+                receipt.accepted() ? receipt.gatewayRef() : receipt.error(), elapsed(start));
+        return receipt;
     }
 
     /** 把一份报文送出去；{@code message} 是税制生成的报文树。 */
     protected abstract GatewayReceipt upload(GatewayRequest request, JsonNode message);
+
+    /**
+     * 能力动作的模板。厂商的能力方法只写一行：{@code return call(op, account, () -> 送出并解读, reply -> 读数据)}。
+     *
+     * @param exchange 厂商组请求、经形态层送出、把回包解读成 {@link ProviderReply}（结果码 + 数据）
+     * @param read     判定为成功后，从回包读出能力接口要的结果；读不出时自己抛 {@link ProviderException}
+     * @throws ProviderException 没配账号（{@code account_missing}）、不可达（形态层抛出）、结果码非成功（{@link #failureCode}）
+     */
+    protected final <T> T call(ProviderOperation op, ProviderAccount account, Supplier<ProviderReply> exchange,
+            Function<ProviderReply, T> read) {
+        Objects.requireNonNull(op, "op");
+        long start = System.nanoTime();
+        if (profile().requiresAccount() && account == null) {
+            log.warn("[invoice] {} {} account=- → account_missing", code(), op);
+            throw new ProviderException("account_missing", null);
+        }
+        ProviderReply reply;
+        try {
+            reply = exchange.get();
+        } catch (ProviderException e) {
+            log.warn("[invoice] {} {} account={} → {} ({}ms)", code(), op, accountCode(account), e.code(), elapsed(start));
+            throw e;
+        }
+        Outcome outcome = resultCodes().classify(op.name(), reply.code());
+        log.info("[invoice] {} {} account={} → {} {} ({}ms)", code(), op, accountCode(account), outcome, reply.code(),
+                elapsed(start));
+        if (outcome != Outcome.ACCEPTED) throw new ProviderException(failureCode(op, reply), null);
+        return read.apply(reply);
+    }
+
+    /** 能力动作失败时抛给领域的代码；默认是厂商结果码的小写（便于对着厂商文档查）。厂商可按动作改写成统一的词。 */
+    protected String failureCode(ProviderOperation op, ProviderReply reply) {
+        return reply.code() == null ? "unexpected" : reply.code().toLowerCase(Locale.ROOT);
+    }
 
     /** 厂商的结果码表；没有同步结果码的形态（文件交换）可不覆盖。 */
     protected ResultCodeTable resultCodes() {
         return ResultCodeTable.builder().build();
     }
 
+    /** 留痕时要打码的值；默认账号的密钥标识与密钥都打码（鲸跃 posno / posid，汎宇 POSID / POSSN）。 */
+    protected Set<String> secretValues(ProviderAccount account) {
+        if (account == null) return Set.of();
+        var s = new java.util.HashSet<String>();
+        if (account.keyId() != null && !account.keyId().isBlank()) s.add(account.keyId());
+        if (account.secret() != null && !account.secret().isBlank()) s.add(account.secret());
+        return s;
+    }
+
+    /** 形态层送出后调：线上原文按 DEBUG 记，密钥值打码。 */
+    protected final void traceWire(String operation, ProviderAccount account, String request, String response) {
+        if (!log.isDebugEnabled()) return;
+        log.debug("[invoice] {} {} >>> {}", code(), operation, mask(request, account));
+        log.debug("[invoice] {} {} <<< {}", code(), operation, mask(response, account));
+    }
+
+    /** 把文本里出现的密钥值替换成掩码；XML 转义后的写法也一并打码（SOAP 信封里是转义后的值）。 */
+    protected final String mask(String text, ProviderAccount account) {
+        if (text == null) return null;
+        String out = text;
+        for (String v : secretValues(account)) {
+            String escaped = SoapEnvelope.escape(v);
+            if (!escaped.equals(v)) out = out.replace(escaped, MASK);
+            out = out.replace(v, MASK);
+        }
+        return out;
+    }
+
     /** 按码表把结果码变成回执；成功的回执号形如 {@code CETUSTEK:S0:INV-1}。 */
     protected final GatewayReceipt receipt(String messageType, String resultCode, String refNo) {
         String code = ResultCodeTable.normalize(resultCode);
-        String tag = code().toLowerCase(Locale.ROOT) + " " + resultCode;
+        String tag = tag() + " " + resultCode;
         return switch (resultCodes().classify(messageType, resultCode)) {
             case ACCEPTED -> GatewayReceipt.accepted(code() + ":" + code + ":" + refNo);
             case RETRYABLE -> GatewayReceipt.retryable(tag);
             case ACCOUNT_PROBLEM -> GatewayReceipt.accountProblem(tag);
             case FINAL -> GatewayReceipt.rejected(tag);
         };
+    }
+
+    private String tag() {
+        return code().toLowerCase(Locale.ROOT);
+    }
+
+    private static String accountCode(ProviderAccount account) {
+        return account == null ? "-" : account.accountCode();
+    }
+
+    private static long elapsed(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    /**
+     * 厂商回包的标准化：结果码 + 供应商单号 + 标准数据（厂商自定键）+ 原文。
+     * 原文只给厂商的 {@code read} 用（如鲸跃 XML），不进日志。
+     */
+    public record ProviderReply(String code, String providerRef, Map<String, String> data, String raw) {
+        public ProviderReply {
+            data = data == null ? Map.of() : Map.copyOf(data);
+        }
+
+        public static ProviderReply of(String code, String raw) {
+            return new ProviderReply(code, null, Map.of(), raw);
+        }
+
+        @Override
+        public String toString() {
+            return "ProviderReply[" + code + "]";
+        }
     }
 
     /** 厂商不支持这类报文（映射阶段拒绝）。 */

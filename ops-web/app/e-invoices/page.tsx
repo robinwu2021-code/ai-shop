@@ -1,7 +1,7 @@
 "use client";
 
 // 运营端 · 电子发票（TDD-发票模块 §18）。三个页签：营业人一览（配置、余量、积压）、上传任务、发票查询。
-// 处置按钮只在有 finance:invoice:verify 时出现；鲸跃专属动作（核验、领号、查单）只对 CETUSTEK 通道显示。
+// 处置按钮只在有 finance:invoice:verify 时出现；核验、领号对服务商配号段的通道（鲸跃 CETUSTEK、汎宇 UNIVERSALEC）显示，查单只有鲸跃。
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, IS_MOCK } from "@/lib/api";
@@ -23,7 +23,9 @@ import { E_INVOICE_COPY } from "./copy";
 const READ = "finance:invoice:read", VERIFY = "finance:invoice:verify";
 const PROBLEMS: readonly EInvoiceProblem[] = ["HELD", "OVERDUE", "REVIEW", "BACKLOG", "LOW_RANGE"];
 const UPLOAD: readonly EInvoiceUploadStatus[] = ["PENDING", "SENDING", "SENT", "FAILED", "HELD", "NEEDS_REVIEW"];
-const GATEWAYS = ["STUB", "TURNKEY", "CETUSTEK"] as const;
+const GATEWAYS = ["STUB", "TURNKEY", "CETUSTEK", "UNIVERSALEC"] as const;
+/** 服务商配号段的通道：有账号核验与领号段 */
+const PROVIDER_RANGED: readonly string[] = ["CETUSTEK", "UNIVERSALEC"];
 type Copy = typeof E_INVOICE_COPY.zh;
 type Tab = "sellers" | "transmissions" | "invoices";
 
@@ -94,7 +96,7 @@ function Sellers({ c, verify }: { c: Copy; verify: boolean }) {
     { header: c.overdue, numeric: true, cell: (r) => <span className={r.overdue ? "text-destructive" : ""}>{r.overdue}</span> },
     { header: c.holdReason, cell: (r) => r.providerHoldReason ?? "—" },
     {
-      header: c.actions, cell: (r) => verify && r.gatewayCode === "CETUSTEK" ? <div className="flex gap-2">
+      header: c.actions, cell: (r) => verify && PROVIDER_RANGED.includes(r.gatewayCode) ? <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceVerifyProvider(r.entityNo),
           (v) => `${r.entityNo}: ${c.verified} ${v.name ?? v.taxId}${v.qrKeyStored ? ` · ${c.qrSynced}` : ""}`, () => void q.refetch())}>{c.verify}</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => api.eInvoiceFetchRange(r.entityNo),

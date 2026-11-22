@@ -61,7 +61,7 @@ export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" 
 /** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
 /** 号段来源：MANUAL 商家登记 / PROVIDER 加值中心配给 */
 export type SiRangeOwner = "MANUAL" | "PROVIDER";
-export type SiGatewayCode = "STUB" | "TURNKEY" | "CETUSTEK";
+export type SiGatewayCode = "STUB" | "TURNKEY" | "CETUSTEK" | "UNIVERSALEC";
 /** 生效供应商的来源：MERCHANT 商家自选 / DEFAULT 跟随市场默认 */
 export type SiGatewaySource = "MERCHANT" | "DEFAULT";
 /** 本市场商家可选的一家供应商（能力决定页面出现哪些项） */

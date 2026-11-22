@@ -34,6 +34,7 @@ public abstract class AbstractHttpApiInvoiceGateway extends AbstractInvoiceGatew
         var request = seal(account, operation, payload);
         var response = transport.post(resolve(path(operation)), request.contentType(), request.body(),
                 request.headers());
+        traceWire(operation, account, request.body(), response.body());
         return open(account, operation, response);
     }
 
