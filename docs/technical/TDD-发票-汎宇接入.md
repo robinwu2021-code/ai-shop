@@ -96,6 +96,11 @@
 | D0401N（ALLOWANCE） | ALLOWANCENUMBER / ALLOWANCEDATE / IDENTIFIER / NAME / ALLOWANCETYPE=2 / TAXAMOUNT / TOTALAMOUNT / PRODUCTITEM[]（原发票日期、号码、品名、数量、单价、金额、税额、序号、课税别）。用 D0401N 而不是 D0401：D0401 的「原明细排列序号」必填，税制的折让报文没有这一项，不编造 |
 | D0501（ALLOWANCE_VOID） | 同 C0501 字段，INVOICE_NUMBER 填折让单号，ALLOWANCETYPE=2 |
 
+**B2B 明细用未税（2026-11-22 补）**：打统编时应税明细的单价 / 金额送未税 —— 依据汎宇《POS API 測試注意事項》
+（有统编：75 → 71，批注「F0401才用未稅」）。逐行 ÷1.05 四舍五入，尾差放在最后一条应税明细，使合计等于主档应税销售额；
+免税、零税率明细与 B2C 不变。改在税制 `TwEguiRegime#message`，鲸跃、Turnkey 的 B2B 报文同样变为未税明细。
+测试：`InvoiceServiceMysqlTest#b2bTaxableLinesAreSentUntaxedAndAddUpToTheSalesAmount`。
+
 ### 结果码表（`ERROR_CODE`）
 
 | 分类 | 码 |

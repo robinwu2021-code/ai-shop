@@ -254,14 +254,18 @@ public class TwEguiRegime implements InvoiceRegime {
                 main.put("RandomNumber", inv.getRandomCode());
                 m.put("Main", main);
                 var items = new ArrayList<Map<String, Object>>();
-                for (var l : lines) {
+                // 打统编：应税明细送未税（主档应税销售额已是未税，明细要与它对得上）
+                long[] net = b2b ? untaxedLineAmounts(lines, dollars(inv.getSalesMinor())) : null;
+                for (int i = 0; i < lines.size(); i++) {
+                    var l = lines.get(i);
                     var d = new LinkedHashMap<String, Object>();
                     d.put("Description", l.getName());
                     d.put("Quantity", l.getQuantity().stripTrailingZeros().toPlainString());
                     if (l.getUnit() != null) d.put("Unit", l.getUnit());
-                    d.put("UnitPrice", yuan(l.getUnitPriceMinor()).toPlainString());
+                    boolean untaxed = net != null && InvoiceSourcePort.Line.TAXABLE.equals(l.getTaxType());
+                    d.put("UnitPrice", untaxed ? unitPrice(net[i], l.getQuantity()) : yuan(l.getUnitPriceMinor()).toPlainString());
                     d.put("TaxType", migTaxType(l.getTaxType()));
-                    d.put("Amount", Long.toString(dollars(l.getAmountMinor())));
+                    d.put("Amount", Long.toString(untaxed ? net[i] : dollars(l.getAmountMinor())));
                     d.put("SequenceNumber", Integer.toString(l.getLineNo()));
                     items.add(d);
                 }
@@ -373,6 +377,36 @@ public class TwEguiRegime implements InvoiceRegime {
     }
 
     /** 含税整元金额里的 5% 营业税：总计 − round(总计 / 1.05)。 */
+    /**
+     * 打统编（B2B）时各明细送出的金额（元）：应税明细为未税金额（逐行 ÷1.05 四舍五入，尾差放在最后一条应税明细，
+     * 使合计等于主档应税销售额 {@code salesDollars}）；免税、零税率明细为原金额。
+     * 依据汎宇《POS API 測試注意事項》：有统编时明细单价 / 金额用未税（75 → 71），「F0401才用未稅」。
+     */
+    static long[] untaxedLineAmounts(List<IvcInvoiceLine> lines, long salesDollars) {
+        long[] out = new long[lines.size()];
+        long sum = 0;
+        int last = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            long gross = dollars(lines.get(i).getAmountMinor());
+            if (InvoiceSourcePort.Line.TAXABLE.equals(lines.get(i).getTaxType())) {
+                out[i] = gross - taxIn(gross);
+                sum += out[i];
+                last = i;
+            } else {
+                out[i] = gross;
+            }
+        }
+        if (last >= 0) out[last] += salesDollars - sum;
+        return out;
+    }
+
+    /** 未税单价 = 未税金额 ÷ 数量，最多 4 位小数（去掉尾零）。 */
+    private static String unitPrice(long netDollars, BigDecimal quantity) {
+        if (quantity == null || quantity.signum() == 0) return Long.toString(netDollars);
+        return BigDecimal.valueOf(netDollars).divide(quantity, 4, RoundingMode.HALF_UP).stripTrailingZeros()
+                .toPlainString();
+    }
+
     static long taxIn(long totalDollars) {
         long net = BigDecimal.valueOf(totalDollars).multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(105), 0, RoundingMode.HALF_UP).longValue();

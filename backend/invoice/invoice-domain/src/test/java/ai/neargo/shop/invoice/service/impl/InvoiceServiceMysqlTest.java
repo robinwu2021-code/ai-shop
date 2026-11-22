@@ -245,6 +245,57 @@ class InvoiceServiceMysqlTest {
         assertTrue(payload.matches("(?s).*\"ZeroTaxSalesAmount\":\\s*200.*"), payload);
     }
 
+    /**
+     * 打统编（B2B）时上传报文的应税明细用未税单价 / 金额（汎宇《POS API 測試注意事項》「F0401才用未稅」：有统编 75 → 71）；
+     * 免税、零税率明细不变；应税明细未税金额合计等于主档应税销售额，尾差放在最后一条应税明细。B2C 仍送含税。
+     */
+    @Test
+    void b2bTaxableLinesAreSentUntaxedAndAddUpToTheSalesAmount() throws Exception {
+        sources.byNo.put("MIX", new InvoiceSourcePort.InvoiceSource("FOOD", "TWD", Instant.now(), 15_000,
+                List.of(line("咖啡", 7_500, InvoiceSourcePort.Line.TAXABLE),
+                        line("書籍", 7_500, InvoiceSourcePort.Line.EXEMPT)), null));
+        var mix = json(payloadOf(invoices.issue(SCOPE, "SUB_ORDER", "MIX", new Buyer("22099131", null, null, null, null))
+                .invoiceNo()));
+        var items = mix.path("Details").path("ProductItem");
+        assertEquals("71", items.get(0).path("UnitPrice").asText(), "应税明细未税");
+        assertEquals("71", items.get(0).path("Amount").asText());
+        assertEquals("75", items.get(1).path("UnitPrice").asText(), "免税明细不变");
+        assertEquals("75", items.get(1).path("Amount").asText());
+        assertEquals(71, mix.path("Amount").path("SalesAmount").asLong());
+        assertEquals(75, mix.path("Amount").path("FreeTaxSalesAmount").asLong());
+        assertEquals(4, mix.path("Amount").path("TaxAmount").asLong());
+        assertEquals(150, mix.path("Amount").path("TotalAmount").asLong());
+
+        // 逐行四舍五入合计 99，主档 100：尾差进最后一条应税明细；数量 2 时单价 = 未税金额 / 数量
+        sources.byNo.put("ROUND", new InvoiceSourcePort.InvoiceSource("FOOD", "TWD", Instant.now(), 10_500,
+                List.of(line("甲", 3_300, InvoiceSourcePort.Line.TAXABLE), line("乙", 3_300, InvoiceSourcePort.Line.TAXABLE),
+                        new InvoiceSourcePort.Line("丙", "丙", BigDecimal.valueOf(2), null, 1_950, 3_900,
+                                InvoiceSourcePort.Line.TAXABLE)), null));
+        var round = json(payloadOf(invoices.issue(SCOPE, "SUB_ORDER", "ROUND",
+                new Buyer("22099131", null, null, null, null)).invoiceNo()));
+        var r = round.path("Details").path("ProductItem");
+        assertEquals(List.of("31", "31", "38"), List.of(r.get(0).path("Amount").asText(), r.get(1).path("Amount").asText(),
+                r.get(2).path("Amount").asText()));
+        assertEquals("19", r.get(2).path("UnitPrice").asText(), "38 / 2");
+        assertEquals(100, round.path("Amount").path("SalesAmount").asLong());
+        assertEquals(5, round.path("Amount").path("TaxAmount").asLong());
+
+        sources.byNo.put("B2C", new InvoiceSourcePort.InvoiceSource("FOOD", "TWD", Instant.now(), 7_500,
+                List.of(line("咖啡", 7_500, InvoiceSourcePort.Line.TAXABLE)), null));
+        var b2c = json(payloadOf(issue("B2C").invoiceNo())).path("Details").path("ProductItem").get(0);
+        assertEquals("75", b2c.path("UnitPrice").asText(), "B2C 仍送含税");
+        assertEquals("75", b2c.path("Amount").asText());
+    }
+
+    private String payloadOf(String invoiceNo) {
+        return jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
+                String.class, invoiceNo);
+    }
+
+    private static tools.jackson.databind.JsonNode json(String text) {
+        return JsonMapper.builder().build().readTree(text);
+    }
+
     @Test
     void ac6ProofSnapshotCarriesCodesAndPrintCenterIsWoken() {
         sources.paid("SO1", 105_000);
