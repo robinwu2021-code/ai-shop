@@ -467,3 +467,34 @@ near-pay 正式库里非 MERCHANT_ADMIN 的成员行（CASHIER、STORE_MANAGER�
 同次跑过：`PayDownstreamActionsTest` 3/3、`ArchitectureTest` 27（跳过 1）。生成文档：新常量让静态常量清单与 glossary 漂，已重新生成；闸门 `✓ 27 个生成器的产物都是最新的`。
 
 **交给 near-pay（阶段 2）的输入**：调 `merchant-staff` 时传 `X-Auth-Namespace: mch:pay:,biz:finance,biz:store:admin`；动作换算按 `docs/api/pay-member-actions.json`（`owner` 为店主全部动作，`codes` 为码 → 动作），对账测试读这份文件。
+| 2026-11-22 | §12 第 1、2 步完成（阶段 0 盘点），见 §16 |
+
+## §16 阶段 0 盘点结论（2026-11-22，用户：「接着做盘点」）
+
+产物：[附录](TDD-支付三端经网关透传与权限归属-附录-入口盘点.md) 第 1 部分（机器盘点，新增「standalone 下」与「near-pay 内部地址」两栏）、第 2 部分（逐个结论）；脚本 `scripts/inventory-pay-endpoints.py` 同时产出两部分，结论人工维护在脚本的 `CONCLUSIONS` 里，代码变了重跑，新出现的 C1 标「未定」。
+
+### 16.1 怎么判的
+
+1. **standalone 下到底走哪条路**：每个支付客户端看 `payclient/impl` 里有没有 `Remote<服务>`。有 = 远程（经 near-pay 内部接口）；没有 = 只有同进程实现，业务在 ai-shop 进程里跑。注意 `OpsPayChannelAppServiceImpl` 的 `embedded` 条件只在注释里，实际两种形态都装配。
+2. **远程的调了什么**：从 `Remote*` 调用的方法（含 `api::method` 方法引用）对到 `PayInternalApi` / `PayBizInternalApi` / `PayOpsInternalApi` 上的 `@XxxExchange`，再解析地址常量。运营 `OpsPaymentController` 21 个接口对上 21 条内部地址，核对无漏。
+3. **near-pay 有没有公开的同功能接口**：对 near-pay `develop/s1` 的 `/biz/pay/v2`（`BizCollectionController`、`BizQrCodeV2Controller`、`BizAppGrantController`、`BizTerminalController` 等 13 个）与 `/pay-ops/v1`（订单、退款、异常、通知、收款码 5 个 controller，判权用同一组 `Perms.PAY_*`）逐条比。
+
+### 16.2 结论（C1 共 170 个接口）
+
+| 结论 | 接口数 | 是什么 |
+|---|---:|---|
+| **迁** | 17 | 运营 `OpsPaymentController` 10 个（订单 2、退款 2、异常 3、通知 2、停用收款码 1 → near-pay `/pay-ops/v1`）；B 端 `BizPaymentController` 7 个（代客收款 1、收款码 3、第三方授权 3 → near-pay `/biz/pay/v2`） |
+| **等补** | 75 | near-pay 只有内部接口：B 端退款、对账单、收款单、付款链接、收款状态、门店付款方式（16）；运营应用、请求日志、收款码列表、平台密钥（11）；权益（21）、储值治理与结算（24）、费率规则（3） |
+| **改判 C2** | 78 | standalone 下在 ai-shop 进程里执行：积分（运营 46 + C 端 2）、结算应付/统计/提现/银行流水（13）、通道主数据（3）、开通申请与进件查询（4）、订单积分（7）、应收汇总（1）、门店功能开关（2） |
+
+**和 §11.2 初步判断的差别**：运营 `OpsPaymentController` 不是整类可迁，只有 10 个；应用、请求日志、平台密钥在 near-pay `/pay-ops/v2` 支付中心里也没有同名资源（支付中心有 `apps`、`credentials`、`request-logs`，但口径是支付中心自己的，与 ai-shop 这几页对不上，按「等补」处理，迁之前要逐页比字段）。另外运营端积分、结算这批 C1 初判其实全在 ai-shop 进程里，改判 C2 后「第一期不动」的范围不变，但理由从「near-pay 补不划算」变成「接口本来就是 ai-shop 提供的」。
+
+### 16.3 对计划的影响（§12 第 9、10 步细化）
+
+| 批 | 后端 | 前端要改的地方 | 前置 |
+|---|---|---|---|
+| 批 1 运营 | 运营端透传多挂一个前缀 `/ops/pay-ops/v1/**` → near-pay `/pay-ops/v1/**`（`PrefixPassThrough` 新实例，开关默认关）；`OpsPaymentController` 删这 10 个 | ops-web `app/pay-ops/{orders,refunds,exceptions,notifies,qr-codes}` 五页、`lib/api/https/payops.ts`；支付中心「退款」页签不再借道 `/ops/payments/refunds`（`app/payment-center/_api/api.ts` 第 459 行注释那条） | near-pay `/pay-ops/v1` 由 `AiShopOpsSessionFilter` 认 ai-shop 令牌（已是） |
+| 批 2 B 端 | `BizPaymentController` 删这 7 个（等阶段 3 打开 B 端透传后） | b-app `pay-collect`、`pay-qrcodes`、`pay-grants` 三页；App（`ai-shop-bapp`）收款与收款码（`/biz/payment/collection`、`/biz/payment/qr-code`，App 不调第三方授权）。形状差异：收款码停用由 PUT `/disabled` 变 POST `/disable`；授权按 `appNo` 而不是 `id` | 阶段 3；near-pay 判权按 §13.3（`payment.create`、`qrcode.manage`、`app.grant*`） |
+| 等补 | 无 | 无 | 给 near-pay 的补接口清单：B 端退款、对账单、收款单（含沙箱/正式环境路由）、付款链接、收款状态、门店付款方式；运营应用、请求日志、收款码列表、平台密钥；权益、储值、费率规则。排期由 near-pay 定 |
+
+验证：`python3 scripts/inventory-pay-endpoints.py .` 输出与附录一致；生成文档闸门通过。
