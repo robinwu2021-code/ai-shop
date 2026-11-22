@@ -1121,6 +1121,26 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 实测中另发现分支既有问题（与发票无关）：库存模块关闭时 `InventoryAvailabilityPortImpl` 无条件装配，后端起不来；实测时以开启库存模块绕过。
 B 端 `openapi-b.yaml` 仍因补货模块既有端点的命名校验无法重新生成（§20.7）。
 
+### 21.7 按最新代码复测（2026-11-22，HEAD 02cac2dc8）
+
+供应商层改造（§19 之后的模板化、汎宇接入、能力目录 / 开立前预检 / 失败分类）落地后，在 HEAD 的干净检出上重跑：
+
+| 项 | 结果 |
+|---|---|
+| 后端 print-domain / print-channel / invoice-domain / invoice-channel 全部测试（连 MySQL 9.7） | ✅ 7 + 53 + 69 + 62 = 191，0 失败 0 跳过（含 `PrintDatabaseAcceptanceTest` 11、`InvoiceServiceMysqlTest` 50、`CetustekInvoiceGatewayTest` 10、`UniversalEcInvoiceGatewayTest` 30） |
+| 交接样例 PDF（`docs/handoff/invoice-print-mock-2026-11-22/pdf/`）用最新渲染器重生成 | ✅ 5 份逐字节一致，交接包不用换 |
+| H5 实测：证明联 58 原卷宽、交易明细 80 A4、折让证明单 80 A4、「重新打开」换新授权并释放旧 blob、切换打印件清掉旧 PDF | ✅ |
+| H5 实测：深链 / 刷新带不存在的发票号 | ✅ 出错态 + 重试，提示「发票不存在」（26005），「生成 PDF」不可点 |
+
+复测修正（打印模拟页，契约不变）：
+
+1. **条件编译下沉**（闸门「pages/ 下没有 #ifdef」）：H5 取 blob / 其它端系统查看器移到 `b-app/src/ports/pdf-view.ts`，内嵌 iframe 移到 `components/biz/biz-pdf-frame.vue`。
+2. **出错与空分开**（闸门「失败长得像空」）：取打印件失败给 `factsFailed` + `<sh-empty :failed @retry>`，不再显示成「没有可打印的打印件」。
+3. **深链 / 刷新误退回样例**：`onLoad` 时权限还没拉，`can("biz:invoice:read")` 恒为 false，带了发票号也落到样例模式。先 `ensureScope()` 再判权。
+
+`packages/shared` 闸门由 43 条失败降到 41 条，没有新增；剩下的都不涉及发票打印（其中 `api/sales-invoice.ts` 的 `derivedFrom` 内联联合与 `schema-lineage` 的 ivc 表 JS/Py 解析分叉属发票模块，不在本页范围）。
+仍未覆盖：「用真实发票」模式的完整生成（独立库里没有可开票的子订单），同 §21.6。
+
 ## §22 鲸跃真实账号联调（2026-11-22）
 
 ### 22.1 网络

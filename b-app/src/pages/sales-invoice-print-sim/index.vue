@@ -14,7 +14,7 @@
 
       <view v-if="mode === 'INVOICE'" class="sh-cell sh-stack">
         <text class="txt-body sh-muted">{{ t("salesInvoice.printSimDoc") }}</text>
-        <text v-if="factsLoaded && !facts.length" class="sh-hint txt-quiet">{{ t("salesInvoice.printSimNoDocs") }}</text>
+        <sh-empty v-if="!facts.length" compact :pending="!factsLoaded" :failed="factsFailed" :text="t('salesInvoice.printSimNoDocs')" @retry="loadFacts"></sh-empty>
         <view class="sh-row sh-wrap">
           <text v-for="(f, i) in facts" :key="f.scene + f.docNo" class="sh-chip" :class="factIndex === i ? 'sh-chip--primary' : ''"
             @tap="factIndex = i">{{ docLabel(f.scene) }}<text v-if="f.scene === 'INVOICE_ALLOWANCE'" class="sh-num"> {{ f.docNo }}</text></text>
@@ -49,24 +49,21 @@
       <view v-if="ready" class="sh-btn sh-btn--soft" :class="busy ? 'is-disabled' : ''" @tap="openPdf">{{ t("salesInvoice.printSimOpen") }}</view>
     </view>
 
-    <!-- #ifdef H5 -->
-    <view v-if="pdfUrl" class="sh-card pdf-frame-wrap">
-      <iframe :src="pdfUrl" class="pdf-frame" :title="String(t('salesInvoice.printSimTitle'))"></iframe>
-    </view>
-    <!-- #endif -->
+    <view v-if="pdfUrl"><biz-pdf-frame :src="pdfUrl" :title="String(t('salesInvoice.printSimTitle'))"></biz-pdf-frame></view>
   </sh-scaffold>
 </template>
 
 <script setup lang="ts">
 // 发票打印模拟（TDD-发票模块 §21）：证明联 / 交易明细 / 折让证明单生成 PDF 直接看，不出纸、不建正式打印任务。
 // 数据：从发票详情进来时默认用这张票冻结的打印内容（factRef 来自 /biz/invoices/{no}/print-facts），否则用场景样例。
-// 流程：POST /biz/print/simulations（pdfEnabled）→ 轮询导出就绪 → 申请 60 秒下载授权 → H5 内嵌显示，App / 小程序用系统查看器。
+// 流程：POST /biz/print/simulations（pdfEnabled）→ 轮询导出就绪 → 申请 60 秒下载授权 → 显示（端差异在 ports/pdf-view）。
 import { computed, ref, watch } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { callPrint, decodeFrozen, PrintCommands, type ExportView } from "@/api/print";
 import type { SiPrintFact } from "@/api/sales-invoice";
+import { openPdf as showPdf, releasePdf } from "@/ports/pdf-view";
 import { operationFailureText, printErrorText } from "@/shared/print-center";
 import { useMerchantStore } from "@/stores/merchant";
 
@@ -83,6 +80,7 @@ const invoiceNo = ref("");
 const mode = ref<"SAMPLE" | "INVOICE">("SAMPLE");
 const facts = ref<SiPrintFact[]>([]);
 const factsLoaded = ref(false);
+const factsFailed = ref(false);
 const factIndex = ref(0);
 const sampleScene = ref<string>("INVOICE_PROOF");
 const width = ref(58);
@@ -104,9 +102,7 @@ function keepWidth(list: readonly number[]) {
 }
 watch(widths, keepWidth, { immediate: true });
 function clearPdf() {
-  // #ifdef H5
-  if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
-  // #endif
+  releasePdf(pdfUrl.value);
   pdfUrl.value = "";
 }
 watch([scene, width, profile, mode], () => { ready.value = null; clearPdf(); });
@@ -119,17 +115,27 @@ function message(e: unknown) {
   return printErrorText(e, t, te, String(t("salesInvoice.failed")));
 }
 
-onLoad(async (q) => {
-  invoiceNo.value = String(q?.invoiceNo ?? "");
-  if (!invoiceNo.value || !merchant.can("biz:invoice:read")) return;
-  mode.value = "INVOICE";
+async function loadFacts() {
+  factsLoaded.value = false;
+  factsFailed.value = false;
   try {
     facts.value = await api.mSiPrintFacts(invoiceNo.value);
   } catch (e) {
+    factsFailed.value = true;
     error.value = message(e);
   } finally {
     factsLoaded.value = true;
   }
+}
+
+onLoad(async (q) => {
+  invoiceNo.value = String(q?.invoiceNo ?? "");
+  if (!invoiceNo.value) return;
+  // 刷新 / 深链进来时权限还没拉：先等 scope，否则 can() 恒为 false，会误退回样例
+  await merchant.ensureScope().catch(() => null);
+  if (!merchant.can("biz:invoice:read")) return;
+  mode.value = "INVOICE";
+  loadFacts();
 });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -184,32 +190,16 @@ async function openPdf() {
     const grant = await callPrint<{ url: string }>("E04", undefined, { exportNo: v.exportNo });
     const base = import.meta.env.VITE_API_BASE || "";
     const url = grant.url.startsWith("/") ? base + grant.url : grant.url;
-    // #ifdef H5
-    // 下载接口回的是附件 + 禁止嵌入（X-Frame-Options: DENY）：取成本页的 blob 地址再交给 iframe
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(String(t("printCenter.downloadFailed")));
-    const blob = new Blob([await res.blob()], { type: "application/pdf" });
-    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
-    pdfUrl.value = URL.createObjectURL(blob);
-    // #endif
-    // #ifndef H5
-    uni.downloadFile({
-      url,
-      success: (r) => {
-        if (r.statusCode !== 200) { error.value = String(t("printCenter.downloadFailed")); return; }
-        uni.openDocument({ filePath: r.tempFilePath, fileType: "pdf", showMenu: true,
-          fail: () => { error.value = String(t("printCenter.downloadFailed")); } });
-      },
-      fail: () => { error.value = String(t("printCenter.downloadFailed")); },
-    });
-    // #endif
+    let shown: string;
+    try {
+      shown = await showPdf(url);
+    } catch {
+      throw new Error(String(t("printCenter.downloadFailed")));
+    }
+    clearPdf();
+    pdfUrl.value = shown;
   } catch (e) {
     error.value = message(e);
   }
 }
 </script>
-
-<style scoped>
-.pdf-frame-wrap { padding: 0; overflow: hidden; }
-.pdf-frame { width: 100%; height: 70vh; border: 0; display: block; }
-</style>
