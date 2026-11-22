@@ -1193,3 +1193,22 @@ neargo 本地（本分支后端 + 独立测试库）以生产组走完：B 端�
 | 查单（QueryInvoiceStatus） | **1**（已作废） | ✅ 与本地 `VOIDED` 一致（CONSISTENT） |
 
 未覆盖：领号段（TakeInvoiceNumber）这次没有再调 —— 为了不多占号码；号段领取的新逻辑（期别窗口、QR 金钥只在声明 RANGE 时存）由 `CetustekInvoiceGatewayTest` 覆盖。
+
+## §23 发布到 v2（2026-11-22 18:47–19:03 GST，用户：「合并到主分支并部署到服务器」「只合发票模块」）
+
+PR #34 压缩合入 main（`4f9890796`），从该提交构建发布。只带发票这一段，`codex/food-next01` 上的美业、餐饮补货、服务工单不在内。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-main-4f9890796.jar`（sha256 前缀 `9f984873c4f05840`，149 008 484 字节），`run.sh` 标签 `main-4f9890796`；依赖比上一版多 `invoice-domain`、`invoice-channel`、`core-3.5.3`（条码 / QR） | `cp releases/run-before-main-4f9890796.sh run.sh && ./run.sh all restart`（发票表留在库里无害，旧包不读） |
+| 正式库 `ai_shop_ume` | 新建 `ivc_flyway_history`，发票链 0 → **V14**（14 条，全部成功），`ivc_*` 9 张表；菜单点 `OPS_FINANCE__E_INVOICES` 在「经营财务 · 应付发票」sort 105 | 不需要 |
+| 运营端页面 | 166 `/data/www/ai-shop-ops-v2/releases/main-4f9890796`（tgz sha256 前缀 `b49ca644697f7945`），`current` 已切 | `ln -sfn /data/www/ai-shop-ops-v2/releases/main-4bfa8e769 /data/www/ai-shop-ops-v2/current` |
+
+**第一次发布失败**：14:47:38 UTC 切新包后，应用账号 `ai_shop_ume@192.168.3.80` 只有增删改查，建 `ivc_flyway_history` 被拒（`CREATE command denied`），启动失败；14:52 回退 `main-d585ccea4`，14:53:36 恢复。v2 中断约 6 分钟；库无任何改动。
+
+**第二次**：db61 mysql9 容器内以 root 临时授 `CREATE, ALTER, INDEX ON ai_shop_ume.*`（14:58:50 UTC，发票迁移只用这三类：建表 8、改表 15、建 / 删索引 4）→ 14:59:04 切新包，15:00:24 `Successfully applied 14 migrations`，15:00:34 `Started ShopApplication in 86.7 seconds`（中断约 90 秒）→ 15:00:46 收回授权，`SHOW GRANTS` 回到只有增删改查。
+
+- 探测（不带令牌）：`/actuator/health` 200；`/biz/invoices`、`/biz/invoice-setup/providers`、`/ops/sales-invoices`、`/biz/payment/orders`、`/ops/pay-ops/v2/apps` 均 401；公网 `https://tw.neargo.ai/ops-shop-v2/{,e-invoices/,payment-center/}` 200。
+- 上线后默认不对外送票：`shop.invoice.transmission.enabled`、`range-watch.enabled` 未配（关），默认供应商为模拟通道；没有商家开通发票设置前没有开票行为。
+- **以后再发发票迁移**：同样要临时授 CREATE / ALTER / INDEX，用完收回。
+- **未验证**：登录后的运营端「电子发票」页与 B 端发票页（没有运营 / 商家会话，未代输口令）。
