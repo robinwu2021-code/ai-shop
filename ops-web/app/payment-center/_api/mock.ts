@@ -304,6 +304,8 @@ export function createMockPayCenterApi(): PayCenterApi {
 
   return {
     source: "mock",
+    // mock 里「我」就是 admin（与各状态机里的操作人一致）
+    me: () => run(() => ({ operatorNo: "admin", roles: ["SUPER_ADMIN"] })),
     orders: {
       list: (q) => pageOf(orders.filter((o) => (q.needsAttention ? o.followupStatus === "ESCALATED" : true)), { ...q, needsAttention: undefined }, ["payOrderNo", "outOrderNo"]),
       detail: (no) => run(() => {

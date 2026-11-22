@@ -13,9 +13,8 @@ import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
 import { APPROVAL_STATUSES, APPROVAL_VIEWS, type ApprovalRow, type ApprovalTask } from "@/app/payment-center/_api/types";
-import { useAuth } from "@/lib/auth";
 import { fmtTime } from "@/lib/utils";
-import { DetailLoader, MiniTable, reasonField, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
+import { DetailLoader, MiniTable, reasonField, usePayOperatorNo, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
 
 const NAME = "approvals";
 /** 详情的 allowedActions → 底栏按钮（review 拆成同意 / 驳回两个） */
@@ -23,7 +22,7 @@ const DETAIL_KEYS: Record<string, string[]> = { claim: ["claim"], review: ["reje
 
 export function ApprovalsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
-  const me = useAuth((s) => s.username);
+  const me = usePayOperatorNo();
   const operator = useDraftOperator();
   const run = useRun(NAME);
   const statusMap = useStatusMap("ap", APPROVAL_STATUSES, { APPROVED: "success", REJECTED: "danger", PENDING_FIRST: "info", PENDING_SECOND: "info" });

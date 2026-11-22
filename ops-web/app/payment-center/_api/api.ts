@@ -54,6 +54,8 @@ export interface ChannelCostSave { reason: string; payChannel: string; payMethod
 
 export interface PayCenterApi {
   source: "http" | "mock";
+  /** 当前运营在 near-pay 的身份（/me/access）：审批、告警、接入申请里的人都按 operatorNo（员工号，如 ST-…）记，不是登录名 */
+  me(): Promise<{ operatorNo: string; roles?: string[] }>;
   orders: {
     list(q: Q): Promise<PayPage<OrderRow>>;
     detail(no: string): Promise<Detail<OrderDetail>>;
@@ -529,6 +531,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
         ? c.get<OnboardingDraft>(`/onboardings/${e(no)}/draft`) : null));
   };
   return {
+    me: () => c.get("/me/access"),
     source: "http",
     orders: {
       list: (q) => c.page("/orders", q),

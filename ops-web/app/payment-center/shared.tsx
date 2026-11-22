@@ -43,6 +43,17 @@ export function useTabList<T, F extends Record<string, string | boolean>>(
   };
 }
 
+/**
+ * 当前运营在 near-pay 的员工号（/me/access 的 operatorNo）。审批的申请人 / 认领人、告警认领人、接入申请提交人
+ * 在 near-pay 都记员工号（ST-…），拿登录名比永远不相等 —— 「批准」「释放」「撤回」这类「是不是我」的按钮要用它判断。
+ * 取不到时返回 null（按钮按「不是我」处理，不会误放开）。
+ */
+export function usePayOperatorNo(): string | null {
+  const api = usePayCenterApi();
+  const q = useQuery({ queryKey: [KEY, "me", api.source], queryFn: () => api.me(), staleTime: 10 * 60_000, retry: false });
+  return q.data?.operatorNo ?? null;
+}
+
 /** 让本页签（及打开中的详情）重新取数。 */
 export function useRefresh(name: string) {
   const qc = useQueryClient();
