@@ -92,6 +92,7 @@ class CetustekInvoiceGatewayTest {
         assertEquals("1050", text(inv, "SaleAmount"));
         assertEquals("1100", text(inv, "TotalAmount"));
         assertEquals("5", text(inv, "PayWay"));
+        assertEquals("", text(inv, "MailSend"), "与 UME 一致送空值；鲸跃正式环境对 N 回 M:MailSend");
         assertEquals(2, inv.getElementsByTagName("ProductItem").getLength());
         assertEquals("咖啡 <大杯> & 糖", inv.getElementsByTagName("Description").item(0).getTextContent());
         assertEquals("", inv.getElementsByTagName("DType").item(0).getTextContent());

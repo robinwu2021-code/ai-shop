@@ -1144,4 +1144,18 @@ JDK HttpClient 默认禁止改 Host，需以 `-Djdk.httpclient.allowRestrictedHe
 neargo 本地（本分支后端 + 独立测试库）以生产组走完：B 端保存配置 → 账号封存进 secret 模块 → 「核验账号」经隧道发 SOAP →
 统编与配置一致、QR 金钥回传并封存。证明 SOAP 信封、认证参数顺序（officeid / posno / posid）、回包解析在真实鲸跃上成立。
 
-未做：开票、作废、领号段 —— 生产账号会产生真实法定发票与号码，需另行确认号码后进行。
+### 22.3 开票、作废、查单（生产，商家代号 50766768）
+
+| 步骤 | 鲸跃回码 | 结果 |
+|---|---|---|
+| 领号段（ApplyInvoiceNumber → TakeInvoiceNumber） | — | 期别 11512 · 字轨 HR · 22644550–22644799（250 张，服务商配给） |
+| 开立 HR22644550（B2C，100 元，来源为测试库里的渠道子单） | 首次 `M:MailSend` → 修正后 **S0** | 首次按规则转「待人工」、不自动重发；修正后经「重传」送达 |
+| 当期作废 | **C0** | 送达 |
+| 查单（QueryInvoiceStatus） | **1**（已作废） | 与本地 `VOIDED` 一致（CONSISTENT） |
+
+**修正**：`MailSend` 原送 `N`，鲸跃正式环境拒收（`M:MailSend`）；改为与 UME 一致送空值。鲸跃 XML 在发送时由报文生成，所以已开立的票直接重传即可，不用重开。
+
+**留下的号码**：HR22644551–22644799 共 249 张属于 創科系統有限公司 115 年 11–12 月，未使用；期末须用掉或按空白未使用字轨处理。
+
+**联调环境要点**（本地）：上传任务是 `@Scheduled`，只在 `worker` 进程里跑（`worker` 无 HTTP），需与 `api` 进程分开起，并开 `shop.job.enabled`、`shop.invoice.transmission.enabled`；
+密钥模块要 `shop.secret.env` 与注入的主密钥，否则保存加值中心账号时拒绝封存。

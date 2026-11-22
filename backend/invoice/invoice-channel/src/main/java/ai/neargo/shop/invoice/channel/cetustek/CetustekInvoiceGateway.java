@@ -226,7 +226,8 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         }
         if (donate) x.put("NPOBAN", main.path("NPOBAN").asText());
         x.put("RandomNumber", main.path("RandomNumber").asText());
-        x.put("MailSend", "N");
+        // 与 UME 一致送空值：鲸跃正式环境对 "N" 回 M:MailSend（2026-11-22 實測拒收）
+        x.put("MailSend", "");
         x.put("SaleAmount", amount.path("SalesAmount").asText());
         x.put("FreeTaxSalesAmount", amount.path("FreeTaxSalesAmount").asText());
         x.put("ZeroTaxSalesAmount", amount.path("ZeroTaxSalesAmount").asText());
