@@ -66,6 +66,20 @@ describe("P12 · HTTP 映射（OpsAppApplicationController / OpsAppKeyController
   });
 });
 
+describe("数据范围 · 提交启用审批（near-pay DataScopeSubject）", () => {
+  it("DATA_SCOPE_ENABLE / ENABLE，冻结版本 = 当前版本 + 1，带幂等号", async () => {
+    const { f, api } = httpApi({ approvalNo: "AP1" });
+    await api.approvals.submit({ subjectType: "DATA_SCOPE_ENABLE", subjectRef: "DSA90145CF72E34A40", subjectRevision: 1, action: "ENABLE", reason: "开放 API 试点" });
+    expect(call(f, 0)).toMatchObject({ url: "/pay/approvals", method: "POST", body: { subjectType: "DATA_SCOPE_ENABLE", subjectRef: "DSA90145CF72E34A40", subjectRevision: 1, action: "ENABLE" } });
+    expect(call(f, 0).body.requestNo).toMatch(/^ops-/);
+  });
+
+  it("页面：草稿行有「提交启用审批」，按 DATA_SCOPE_ENABLE 提交", async () => {
+    const src = (await import("node:fs")).readFileSync(new URL("./data-scopes-tab.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/key: "submitEnable"[\s\S]*subjectType: "DATA_SCOPE_ENABLE"[\s\S]*action: "ENABLE"/);
+  });
+});
+
 describe("P12 · mock 状态机", () => {
   it("★ 提交人不得审核、只能撤回；他人批准即建草稿应用（签名方案带过去）", async () => {
     const api = createMockPayCenterApi();
