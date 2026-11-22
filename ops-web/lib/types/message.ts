@@ -341,6 +341,8 @@ export interface NotifyPushTask {
 }
 
 export interface NotifyLog {
+  /** 实际提交正文；历史或渠道不提供最终正文时为空。仅运营发送记录可读 */
+  content?: string | null;
   /** 触达记录号 */
   notifyNo: string;
   /** 通道 */

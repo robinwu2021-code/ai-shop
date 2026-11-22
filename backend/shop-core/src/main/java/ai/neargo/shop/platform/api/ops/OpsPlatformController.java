@@ -4,6 +4,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.platform.IndustryService;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import ai.neargo.shop.platform.dto.IndustryVO;
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
@@ -121,8 +123,8 @@ public class OpsPlatformController {
      * 也该得到成功，而不是一个 401 让前端以为没退掉。只吊销请求头里那一个令牌。
      */
     @PostMapping("/ops/auth/logout")
-    public void logout(jakarta.servlet.http.HttpServletRequest request) {
-        opsService.logout(ai.neargo.shop.auth.AbstractTokenAuthFilter.bearer(request));
+    public void logout(@RequestHeader(name = "Authorization", required = false) String authorization) {
+        opsService.logout(AbstractTokenAuthFilter.bearer(authorization));
     }
 
     @GetMapping("/ops/auth/me")

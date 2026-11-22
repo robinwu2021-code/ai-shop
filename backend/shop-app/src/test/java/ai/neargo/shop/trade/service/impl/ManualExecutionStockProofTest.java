@@ -55,6 +55,18 @@ class ManualExecutionStockProofTest {
     }
 
     @Test
+    void unresolvedStockReturnsThePublicRetryErrorWithoutInternalReasonArguments() {
+        var pending = new Disposition(original, operation, Outcome.PENDING, CurrentState.MISSING,
+                List.of(), null, Instant.EPOCH, null);
+        for (Disposition proof : java.util.Arrays.asList(null, pending)) {
+            var denied = assertThrows(BizException.class,
+                    () -> ServiceExecutionServiceImpl.requireStock(original, operation, proof));
+            assertEquals(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, denied.errorCode());
+            assertEquals(0, denied.args().length);
+        }
+    }
+
+    @Test
     void changedSkuOrEmptyOwnerLinesCannotSatisfyFrozenManifest() {
         assertThrows(BizException.class, () -> check(Outcome.APPLIED, CurrentState.ALLOCATED,
                 List.of(line("ROW", "OTHER", 2, 0, 0, CurrentState.ALLOCATED))));

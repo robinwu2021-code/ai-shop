@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.notify;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * 通道回执。短信与邮件共用。
  *
@@ -11,7 +13,17 @@ package ai.neargo.shop.spi.notify;
  *                      <b>找通道对账靠它</b>，桩实现为空
  * @param templateCode  短信为实际用的模板号；邮件留空（主题另记）
  */
-public record SendResult(String providerMsgId, String templateCode) {
+public record SendResult(String providerMsgId, String templateCode,
+                         @JsonIgnore String content) {
+    public SendResult(String providerMsgId, String templateCode) {
+        this(providerMsgId, templateCode, null);
+    }
+
+    /** 正文仅供受保护的发送记录使用，不能随回执进入App接口或应用日志。 */
+    @Override public String toString() {
+        return "SendResult[providerMsgId=" + providerMsgId + ", templateCode=" + templateCode + "]";
+    }
+
 
     public static SendResult none() {
         return new SendResult(null, null);

@@ -65,14 +65,14 @@ public class NotifyLoggingSmsPort implements SmsPort {
             OutboxLease.check();
             SendResult r = OtpScenes.LOGIN.equals(scene) ? delegate.sendOtp(phone, code)
                     : delegate.sendOtpForScene(phone, code, scene, bizType, operatorNo);
-            writer.write(SysNotifyLog.SMS, bizType, phone, r.templateCode(),
-                    logicalTemplate, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
+            writer.writeWithContent(SysNotifyLog.SMS, bizType, phone, r.templateCode(),
+                    logicalTemplate, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo, r.content());
             return r;
         } catch (OutboxLeaseLostException e) {
             throw e;
         } catch (RuntimeException e) {
-            writer.write(SysNotifyLog.SMS, bizType, phone, null,
-                    logicalTemplate, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+            writer.writeWithContent(SysNotifyLog.SMS, bizType, phone, null,
+                    logicalTemplate, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo, e instanceof SmsException sms ? sms.content() : null);
             throw e;
         }
     }
@@ -87,14 +87,14 @@ public class NotifyLoggingSmsPort implements SmsPort {
         try {
             OutboxLease.check();
             SendResult r = delegate.sendOrderPaid(phone, subOrderNo, amountYuan);
-            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
-                    TPL_SMS_ORDER_PAID, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_ORDER_PAID, SysNotifyLog.SENT, null, r.providerMsgId(), null, r.content());
             return r;
         } catch (OutboxLeaseLostException e) {
             throw e;
         } catch (RuntimeException e) {
-            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
-                    TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
+                    TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null, e instanceof SmsException sms ? sms.content() : null);
             throw e;
         }
     }
@@ -104,14 +104,14 @@ public class NotifyLoggingSmsPort implements SmsPort {
         try {
             OutboxLease.check();
             SendResult r = delegate.sendAfterSaleApplied(phone, afterSaleNo);
-            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
-                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.SENT, null, r.providerMsgId(), null, r.content());
             return r;
         } catch (OutboxLeaseLostException e) {
             throw e;
         } catch (RuntimeException e) {
-            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
-                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.FAILED, e.getMessage(), null, null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
+                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.FAILED, e.getMessage(), null, null, e instanceof SmsException sms ? sms.content() : null);
             throw e;
         }
     }
@@ -125,14 +125,14 @@ public class NotifyLoggingSmsPort implements SmsPort {
         try {
             OutboxLease.check();
             SendResult r = delegate.sendShipToRecipient(phone, receiverName, trackUrl);
-            writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, r.templateCode(),
-                    TPL_SMS_SHIP, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_SHIP, SysNotifyLog.SENT, null, r.providerMsgId(), null, r.content());
             return r;
         } catch (OutboxLeaseLostException e) {
             throw e;
         } catch (RuntimeException e) {
-            writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, null,
-                    TPL_SMS_SHIP, SysNotifyLog.FAILED, e.getMessage(), null, null);
+            writer.writeWithContent(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, null,
+                    TPL_SMS_SHIP, SysNotifyLog.FAILED, e.getMessage(), null, null, e instanceof SmsException sms ? sms.content() : null);
             throw e;
         }
     }

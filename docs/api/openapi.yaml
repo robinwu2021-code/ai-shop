@@ -445,6 +445,9 @@ components:
     PickingRow:
       type: "object"
       properties:
+        buyerCount:
+          type: "number"
+          description: "合并拣货行覆盖的买家数；不同于商品总数量"
         goodsNo:
           type: "string"
           description: "商品单号"
@@ -2119,6 +2122,12 @@ components:
     Quote:
       type: "object"
       properties:
+        requestNo:
+          type: "string"
+          description: "本报价所属的求团需求编号"
+        status:
+          type: "string"
+          description: "报价生命周期状态（有效、撤回或毁约），服务端返回原码"
         quoteNo:
           type: "string"
           description: "报价单号"
@@ -2207,6 +2216,11 @@ components:
     GroupRequest:
       type: "object"
       properties:
+        chosenQuote:
+          anyOf:
+            - "$ref": "#/components/schemas/Quote"
+            - type: "null"
+          description: "已选中的商家报价；未选中时为空"
         requestNo:
           type: "string"
           description: "求团需求单号"
@@ -4934,9 +4948,84 @@ components:
         - "MEDIUM"
         - "LARGE"
       description: "商家分层。为「流量起来后引入大商家」预留，一期只用 SMALL（ADR-004 §7）"
+    MerchantSessionIdentity:
+      type: "object"
+      properties:
+        identityNo:
+          type: "string"
+          description: "身份业务编号"
+        type:
+          type: "string"
+          description: "身份类别，取服务端当前协议值"
+        merchantNo:
+          type: "string"
+          description: "所属商家编号"
+        merchantName:
+          type: "string"
+          description: "所属商家展示名"
+        entityCount:
+          type: "number"
+          description: "该身份能访问的经营实体数"
+        role:
+          type: "string"
+          description: "身份角色展示码"
+        roleCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "授予该身份的角色码集合"
+        storeCount:
+          type: "number"
+          description: "该身份能访问的门店数"
+      required:
+        - "identityNo"
+        - "type"
+        - "merchantNo"
+        - "merchantName"
+        - "entityCount"
+        - "role"
+        - "roleCodes"
+        - "storeCount"
+      additionalProperties: false
+      description: "正式认证接口选择的身份，与门店授权角色分别保存。"
     MerchantProfile:
       type: "object"
       properties:
+        industry:
+          type:
+            - "string"
+            - "null"
+          description: "经营行业代码；旧档案未填写时为空"
+        description:
+          type:
+            - "string"
+            - "null"
+          description: "商家介绍；旧档案未填写时为空"
+        currentStoreNo:
+          type:
+            - "string"
+            - "null"
+          description: "当前会话选中的门店，没有可进入门店时为空"
+        account:
+          type:
+            - "string"
+            - "null"
+          description: "登录账号标识，支持手机或邮箱"
+        subjectKind:
+          type:
+            - "string"
+            - "null"
+          description: "会话主体类别（USR个人账号 / MCH商家身份）"
+        currentIdentity:
+          anyOf:
+            - "$ref": "#/components/schemas/MerchantSessionIdentity"
+            - type: "null"
+          description: "当前选中的登录身份；账号尚未进入商家身份时为空"
+        userNo:
+          type:
+            - "string"
+            - "null"
+          description: "账号用户编号，用于跨身份保留个人设置"
         merchantNo:
           type: "string"
           description: "商家单号"
@@ -4989,7 +5078,6 @@ components:
         - "phone"
         - "isPickupPoint"
       additionalProperties: false
-      description: "登录后的商家会话"
     MerchantLoginResp:
       type: "object"
       properties:
@@ -5466,6 +5554,51 @@ components:
     Entity:
       type: "object"
       properties:
+        review:
+          type:
+            - "string"
+            - "null"
+          description: "当前渠道/平台审核状态，按服务端状态码返回"
+        applyNo:
+          type:
+            - "string"
+            - "null"
+          description: "当前进件申请编号；未申请时为空"
+        rejectReason:
+          type:
+            - "string"
+            - "null"
+          description: "审核驳回原因"
+        taxNo:
+          type:
+            - "string"
+            - "null"
+          description: "税号或统一编号"
+        owner:
+          type:
+            - "string"
+            - "null"
+          description: "证照持有人展示名"
+        platformReview:
+          type:
+            - "string"
+            - "null"
+          description: "平台资料审核状态，与支付进件状态分开"
+        draftVersion:
+          type:
+            - "number"
+            - "null"
+          description: "当前草稿资料版本，尚无草稿时为空"
+        approvedProfileVersion:
+          type:
+            - "number"
+            - "null"
+          description: "已审核通过的资料版本"
+        payMerchantNo:
+          type:
+            - "string"
+            - "null"
+          description: "已绑定的支付商户编号，尚未进件时为空"
         entityNo:
           type: "string"
           description: "商家主体号"
@@ -5758,6 +5891,20 @@ components:
     SettleBill:
       type: "object"
       properties:
+        businessMode:
+          "$ref": "#/components/schemas/BusinessMode"
+          description: "自营/第三方经营模式，决定是否展示进项票流程"
+        invoiceStatus:
+          type: "string"
+          description: "进项票审核状态；第三方为NO_INVOICE"
+        paymentRef:
+          type:
+            - "string"
+            - "null"
+          description: "网银等实际付款凭证编号；未付款时为空"
+        pointsFeeMinor:
+          type: "number"
+          description: "本单积分活动费用，最小货币单位；不并入履约费"
         batchDocumentNo:
           type:
             - "string"
@@ -5874,6 +6021,40 @@ components:
     MySettleBatch:
       type: "object"
       properties:
+        entityNo:
+          type: "string"
+          description: "结算批次所属经营主体"
+        periodFrom:
+          type: "number"
+          description: "结算周期起点，Unix毫秒"
+        freezeExpireAt:
+          type:
+            - "number"
+            - "null"
+          description: "冻结截止时刻，Unix毫秒；无冻结时为空"
+        grossMinor:
+          type: "number"
+          description: "本批结算基数，最小货币单位"
+        reconScope:
+          type:
+            - "string"
+            - "null"
+          description: "对账范围标识，服务端冻结值"
+        blockedAt:
+          type:
+            - "number"
+            - "null"
+          description: "挂起时刻，Unix毫秒；未挂起时为空"
+        decidedBy:
+          type:
+            - "string"
+            - "null"
+          description: "最近一次人工处置人员编号"
+        decideRemark:
+          type:
+            - "string"
+            - "null"
+          description: "最近一次人工处置备注"
         documentNo:
           type:
             - "string"
@@ -7947,6 +8128,25 @@ components:
     GeoReverseResult:
       type: "object"
       properties:
+        adcode:
+          type:
+            - "string"
+            - "null"
+          description: "逆地理结果对应的行政区代码"
+        township:
+          type:
+            - "string"
+            - "null"
+          description: "街道/乡镇名称"
+        latE6:
+          type: "number"
+          description: "服务端返回的纬度，百万分之一度"
+        lngE6:
+          type: "number"
+          description: "服务端返回的经度，百万分之一度"
+        coordSys:
+          type: "string"
+          description: "本条坐标系标识；不能按客户端所在地猜测"
         recommend:
           type: "string"
           description: "带楼盘/门牌的人话版地址。**端上填这个**"
@@ -7961,6 +8161,11 @@ components:
     GeoTip:
       type: "object"
       properties:
+        coordSys:
+          type:
+            - "string"
+            - "null"
+          description: "本条坐标系标识，与latE6/lngE6一起使用"
         name:
           type: "string"
           description: "名称"
@@ -8429,6 +8634,39 @@ components:
     CommunityApply:
       type: "object"
       properties:
+        kind:
+          type:
+            - "string"
+            - "null"
+          description: "提报地点的种类，与地点目录一致"
+        originCode:
+          type:
+            - "string"
+            - "null"
+          description: "对应官方聚落/地点的来源编号"
+        located:
+          type: "boolean"
+          description: "服务端是否已确认坐标定位"
+        latE6:
+          type:
+            - "number"
+            - "null"
+          description: "已确认纬度，百万分之一度"
+        lngE6:
+          type:
+            - "number"
+            - "null"
+          description: "已确认经度，百万分之一度"
+        fallbackLatE6:
+          type:
+            - "number"
+            - "null"
+          description: "定位失败时用户提交的参考纬度，不代表已确认定位"
+        fallbackLngE6:
+          type:
+            - "number"
+            - "null"
+          description: "定位失败时用户提交的参考经度"
         applyNo:
           type: "string"
           description: "提报单业务键"
@@ -8974,6 +9212,16 @@ components:
     StoreProfile:
       type: "object"
       properties:
+        contactName:
+          type:
+            - "string"
+            - "null"
+          description: "门店联系人；历史门店未设置时为空"
+        contactPhone:
+          type:
+            - "string"
+            - "null"
+          description: "门店联系电话；与登录账号手机号分开"
         announcement:
           type: "string"
           description: "店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04）"

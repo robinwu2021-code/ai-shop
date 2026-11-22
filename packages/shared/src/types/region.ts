@@ -14,6 +14,16 @@ import type { Pickup } from "./fulfillment";
 
 /** 逆地理编码结果（P2）：recommend 是带楼盘/门牌的人话版 */
 export interface GeoReverseResult {
+  /** 逆地理结果对应的行政区代码 */
+  adcode?: string | null;
+  /** 街道/乡镇名称 */
+  township?: string | null;
+  /** 服务端返回的纬度，百万分之一度 */
+  latE6?: number;
+  /** 服务端返回的经度，百万分之一度 */
+  lngE6?: number;
+  /** 本条坐标系标识；不能按客户端所在地猜测 */
+  coordSys?: string;
   /** 带楼盘/门牌的人话版地址。**端上填这个** */
   recommend: string;
   /** 地址 */
@@ -25,6 +35,8 @@ export interface GeoReverseResult {
  * 后端没配 Web 服务 key 时返回空数组，端上就当没有这个功能。
  */
 export interface GeoTip {
+  /** 本条坐标系标识，与latE6/lngE6一起使用 */
+  coordSys?: string | null;
   /** 名称 */
   name: string;
   /** 地址 */
@@ -317,6 +329,20 @@ export interface ServiceArea {
  * 端上别拿它去当社区用 —— 待审的小区不在任何选点列表里。
  */
 export interface CommunityApply {
+  /** 提报地点的种类，与地点目录一致 */
+  kind?: string | null;
+  /** 对应官方聚落/地点的来源编号 */
+  originCode?: string | null;
+  /** 服务端是否已确认坐标定位 */
+  located?: boolean;
+  /** 已确认纬度，百万分之一度 */
+  latE6?: number | null;
+  /** 已确认经度，百万分之一度 */
+  lngE6?: number | null;
+  /** 定位失败时用户提交的参考纬度，不代表已确认定位 */
+  fallbackLatE6?: number | null;
+  /** 定位失败时用户提交的参考经度 */
+  fallbackLngE6?: number | null;
   /** 提报单业务键 */
   applyNo: string;
   /** 提报的商家 */

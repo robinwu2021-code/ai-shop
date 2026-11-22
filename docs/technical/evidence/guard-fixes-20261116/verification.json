@@ -1,0 +1,48 @@
+{
+  "status": "AFFECTED_VALIDATION_PASS",
+  "sharedGuards": {
+    "tests": 731,
+    "failures": 0,
+    "baseline": 0
+  },
+  "opsGuards": {
+    "tests": 1273,
+    "failures": 0
+  },
+  "generatedChecks": 26,
+  "bAndCTypes": "PASS",
+  "headDependencyRegression": {
+    "tests": 2,
+    "failures": 0
+  },
+  "javaTargeted": {
+    "initialValidation": 32,
+    "permissionAlignment": 7,
+    "entityLedgerMysql": 1,
+    "authBearerParser": 13,
+    "appBoundaryAndNativeCases": 63,
+    "architectureOptionalCaseSkipped": 1,
+    "finalCreationScopeRetest": 13,
+    "failures": 0,
+    "errors": 0
+  },
+  "nativeMysql": "127.0.0.1:3308 / MySQL 9.7.4",
+  "review": "No pending P1/P2; RR metadata P2 addressed with native regressions",
+  "noSkipGateFlags": true,
+  "noExpandedFailureBaselines": true,
+  "nativeReuse": "Full native run on 1952f93a7 exposed 2 failures and 28 fixture errors; unchanged passing modules reused, all failed and affected classes retested after fixes. Default pre-push still runs full ordinary regression and food gate.",
+  "runtimeSourceHashes": {
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/MerchantPortImpl.java": "5fe0998b0a03f5cf26d1a62942b00728b74e87bc624119d5b68948252c2f38a4",
+    "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/AbstractTokenAuthFilter.java": "53a6eca9350af4e2c648b3f732d601dae532d57676680cbd7919c672b9361158",
+    "backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java": "a1953053d7ba1eb28d3b29a188b267c978429b169ec398a05e5226e10001e61c"
+  },
+  "fullRegression": {
+    "status": "STOPPED_BY_USER",
+    "instruction": "停止测试，提交修复",
+    "lastObservedCompletedTests": 277,
+    "lastObservedFailures": 0,
+    "lastObservedErrors": 0,
+    "affectedRegressions": "PASS",
+    "publishing": "Prior authorized push and main merge; no further test hooks"
+  }
+}

@@ -67,6 +67,31 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // Current DTOs (PersonnelVO/ResourceVO, GuestRegistrationPort, OperatingEntityModels.View and
+  // PairedTransferService.View) expose strings; no finite TypeScript declaration exists in any client.
+  // Booking/command/schedule domains are server-owned protocols. Register the backend domains without
+  // inventing a client type or equating paired transfers to the four-state ordinary TransferStatus.
+  { concept: "跨账本成对调拨状态", field: "inv_paired_transfer.status", backend: { ddl: ["inv_paired_transfer", "status"] }, clients: [] },
+  { concept: "访客登记认领状态", field: "mbr_guest_registration.state", backend: { ddl: ["mbr_guest_registration", "state"] }, clients: [] },
+  { concept: "资源持有过期协议", field: "mch_booking_hold.expiration_policy", backend: { ddl: ["mch_booking_hold", "expiration_policy"] }, clients: [] },
+  { concept: "资源持有生命周期", field: "mch_booking_hold.status", backend: { ddl: ["mch_booking_hold", "status"] }, clients: [] },
+  { concept: "经营组织状态", field: "mch_operating_entity.status", backend: { ddl: ["mch_operating_entity", "status"] }, clients: [] },
+  { concept: "业务人员状态", field: "mch_personnel.status", backend: { ddl: ["mch_personnel", "status"] }, clients: [] },
+  { concept: "业务岗位分配状态", field: "mch_personnel_position.status", backend: { ddl: ["mch_personnel_position", "status"] }, clients: [] },
+  { concept: "人员服务资格状态", field: "mch_personnel_skill.status", backend: { ddl: ["mch_personnel_skill", "status"] }, clients: [] },
+  { concept: "人员门店任职状态", field: "mch_personnel_store.status", backend: { ddl: ["mch_personnel_store", "status"] }, clients: [] },
+  { concept: "规范资源类别", field: "mch_resource.resource_type", backend: { ddl: ["mch_resource", "resource_type"] }, clients: [] },
+  { concept: "规范资源状态", field: "mch_resource.status", backend: { ddl: ["mch_resource", "status"] }, clients: [] },
+  { concept: "资源持久命令结果", field: "mch_resource_command.status", backend: { ddl: ["mch_resource_command", "status"] }, clients: [] },
+  { concept: "资源班表规则状态", field: "mch_schedule_rule.status", backend: { ddl: ["mch_schedule_rule", "status"] }, clients: [] },
+  // Frozen column comments are examples/legacy BOOKING values, not the complete current domains.
+  { concept: "受控业务岗位", field: "mch_personnel_position.position_code",
+    backend: { literal: ["TECHNICIAN", "ASSISTANT", "CONSULTANT", "WAITER", "CHEF", "CASHIER", "RECEPTIONIST"],
+      why: "AssignPersonnelReq.POSITIONS is the seven-code input whitelist; the frozen DDL comment only gives WAITER/TECHNICIAN as examples." }, clients: [] },
+  { concept: "资源命令动作（按command_kind分族）", field: "mch_resource_command.action",
+    backend: { literal: ["RESERVE", "PROTECT", "CONFIRM", "RENEW", "RELEASE", "EXPIRE", "RECONCILE", "REPLACE",
+      "START", "SEAL_START", "CHANGE", "END", "COMPLETE_CLEANING", "VALIDATE_WORKFLOW"],
+      why: "V621 ck_resource_command_action defines disjoint BOOKING_V1 and OCCUPATION_V1 action domains; the original column comment only describes BOOKING_V1. ResourceCommandService.Action implements the BOOKING subset." }, clients: [] },
   { concept: "门店开业审核来源", field: "mch_store.operational_source", backend: { ddl: ["mch_store", "operational_source"] }, clients: [{ file: "ops-web/lib/types/store.ts", type: "StoreOperationalReviewSource" }] },
   // NULL preserves legacy fulfillment ownership; SERVICE_EXECUTION selects the managed execution owner.
   // This internal routing fact is not exposed as a finite client field.
@@ -893,6 +918,8 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  { key: "mbr_guest_registration.contact_cipher", why: "AES-GCM names the encryption algorithm for opaque contact ciphertext, not stored enum alternatives; member credentials are never exposed as a customer fact." },
+  { key: "mbr_guest_registration.claim_token_cipher", why: "AES-GCM names the encryption algorithm for opaque claim-token ciphertext, not stored enum alternatives; this credential is internal to the member owner." },
   // 测试身份白名单（TDD-测试身份白名单登录）：只在运营端「测试号」页签维护，端上类型 ops-web TestIdentityType 已登记
   { key: "usr_test_identity.identity_type", why: "测试白名单身份类型（PHONE / EMAIL），只有运营端一页使用，具名类型 TestIdentityType 已进枚举登记表" },
   // 进销存独立服务平台层（V16，TDD-进销存独立服务与多业态 §2.4）：服务间内部取值，没有任何端上类型

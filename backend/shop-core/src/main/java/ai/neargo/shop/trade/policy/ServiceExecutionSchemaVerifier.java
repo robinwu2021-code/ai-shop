@@ -2,6 +2,8 @@ package ai.neargo.shop.trade.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.datasource.DataSourceUtils;
@@ -33,6 +35,7 @@ import javax.sql.DataSource;
 /** Per-use physical owner inspection keeps optional execution damage from becoming an unfenced legacy write. */
 @Component
 public final class ServiceExecutionSchemaVerifier {
+    private static final Logger log = LoggerFactory.getLogger(ServiceExecutionSchemaVerifier.class);
     private static final String DESCRIPTOR = "META-INF/shop/manual-service-execution-schema.json";
     private static final String MIGRATION = "db/migration/V604__manual_service_execution_authority.sql";
     private static final Set<String> TABLES = Set.of(
@@ -106,7 +109,8 @@ public final class ServiceExecutionSchemaVerifier {
     /** New execution cannot start using absent or damaged authority, regardless of provider feature flags. */
     public void requireAvailable() {
         if (installation() != Installation.INSTALLED) {
-            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
+            log.warn("EXECUTION_SCHEMA_UNAVAILABLE");
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
         }
     }
 

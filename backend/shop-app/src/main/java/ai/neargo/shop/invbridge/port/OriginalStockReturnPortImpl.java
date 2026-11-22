@@ -3,6 +3,8 @@ package ai.neargo.shop.invbridge.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.invbridge.OriginalMirrorRestore;
 import ai.neargo.shop.product.port.StockPortImpl;
@@ -20,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Persisted manual source selects the original owner even after a primary-authority configuration change. */
 @Component
 public final class OriginalStockReturnPortImpl implements OriginalStockReturnPort {
+    private static final Logger log = LoggerFactory.getLogger(OriginalStockReturnPortImpl.class);
     private final ManualAdmissionMapper admissions;
     private final StockPortImpl platform;
     private final ObjectProvider<OriginalMirrorRestore> mirrors;
@@ -92,6 +95,7 @@ public final class OriginalStockReturnPortImpl implements OriginalStockReturnPor
     }
 
     private static BizException unavailable() {
-        return BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        log.warn("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
     }
 }

@@ -293,6 +293,78 @@ describe("对账血缘", () => {
     expect(resolveReference(tables, from, col)).toEqual(ref(from, col, to, toCol));
   });
 
+  it("新领域身份保留原根、来源作用域与版本上下文", () => {
+    const local = [...tenant, { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }];
+    const cases = [
+      ref("ord_checkout_confirmation", "guest_no", "mbr_guest_registration", "guest_no", local),
+      ref("ord_channel_preparation", "admission_no", "ord_channel_import", "admission_no", local),
+      ref("ord_channel_import", "preparation_no", "ord_channel_preparation", "preparation_no",
+        [...local, { from: "admission_no", to: "admission_no" }]),
+      ref("ord_channel_import", "policy_no", "ord_channel_policy", "policy_no",
+        [...local, { from: "channel_store_key", to: "channel_store_key" }]),
+      ref("ord_channel_after_sale_line", "decision_no", "ord_channel_after_sale", "decision_no",
+        [...local, { from: "admission_no", to: "admission_no" }]),
+      ref("retail_channel_order_source", "party_no", "retail_channel_party", "party_no",
+        [...local, { from: "channel_store_key", to: "channel_store_key" }]),
+      ref("ord_channel_fulfillment_evidence", "fulfillment_no", "ord_industry_fulfillment", "fulfillment_no",
+        [...local, { from: "order_no", to: "order_no" }, { from: "sub_order_no", to: "sub_order_no" }]),
+      ref("rtl_channel_selection", "revision_no", "rtl_channel_selection_revision", "revision_no",
+        [{ from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" },
+          { from: "selection_no", to: "selection_no" }]),
+      ref("rtl_channel_selection_draft", "selection_no", "rtl_channel_selection", "selection_no",
+        [{ from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }]),
+      ref("ord_offline_record_event", "record_no", "ord_offline_record"),
+      ref("mch_operating_entity", "owner_user_no", "usr_account", "user_no"),
+      ref("mch_resource_occupation", "owner_no", "mch_booking_owner", "owner_no", local),
+      ref("mch_resource_occupation", "execution_no", "ord_service_execution", "execution_no", local),
+      ref("mch_resource_occupation_segment", "resource_no", "mch_resource", "resource_no",
+        [...tenant, { from: "entity_no", to: "entity_no" }]),
+      ref("pmt_brand_cost_fact", "source_no", "pmt_brand_cost_source", "source_no",
+        [...tenant, { from: "source_type", to: "source_type" }]),
+      ref("pmt_brand_coupon_command", "source_no", "pmt_brand_coupon_source", "source_no",
+        [...tenant, { from: "management_no", to: "management_no" }, { from: "brand_no", to: "brand_no" },
+          { from: "entity_no", to: "entity_no" }]),
+    ];
+    for (const expected of cases) {
+      expect(resolveReference(tables, expected.from, expected.col), `${expected.from}.${expected.col}`).toEqual(expected);
+      // A reference cannot survive loss of one part of its real source scope.
+      for (const pair of expected.scope) {
+        const incomplete = new Map(tables);
+        const source = tables.get(expected.from);
+        incomplete.set(expected.from, { ...source, cols: source.cols.filter((c: any) => c.name !== pair.from) });
+        expect(resolveReference(incomplete, expected.from, expected.col)).toBeNull();
+      }
+    }
+  });
+
+  it("规划命令、原库存凭证与独立授权族不伪造成全局外键", () => {
+    const protocols: Record<string, string[]> = {
+      resource_command_no: ["ord_service_execution", "prd_execution_retention", "prd_execution_retention_route"],
+      planned_resource_command_no: ["mch_booking_owner", "mch_resource_command", "mch_resource_occupation"],
+      confirmation_operation_no: ["prd_stock_lock", "prd_execution_retention"],
+      source_confirmation_no: ["prd_execution_retention", "prd_execution_retention_route"],
+      retention_no: ["prd_execution_retention", "prd_execution_retention_route"],
+      authorization_no: ["ord_ent_authorization", "ord_external_certificate_use"],
+      owner_user_no: ["mch_entity", "mch_store_entity_claim"],
+      resource_no: ["mbr_brand_audience_snapshot", "pmt_brand_cost_snapshot"],
+      revision_no: ["ord_channel_fulfillment_evidence"],
+      receipt_no: ["ord_channel_fulfillment_evidence"],
+      party_no: ["ord_industry_order_source"],
+      preparation_no: ["pts_refund_preparation_line"],
+      record_no: ["sv_statement"],
+      plan_no: ["ord_food_stock_bridge_command"],
+      request_no: ["mch_store_opening_request", "mch_entity_creation_request"],
+    };
+    for (const [col, sources] of Object.entries(protocols)) for (const from of sources) {
+      expect(schema.get(from)?.has(col), `${from}.${col} really exists`).toBe(true);
+      expect(resolveReference(tables, from, col), `${from}.${col}`).toBeNull();
+    }
+    const extended = new Map(tables);
+    extended.set("unreviewed_guest", { cols: ["guest_no", "tenant_no", "entity_no", "store_no"].map(name => ({ name })), uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_guest", "guest_no")).toBeNull();
+    expect(unclassifiedBusinessKeys(extended).some((entry: string) => entry.startsWith("guest_no（"))).toBe(true);
+  });
+
   it("统一打印及品牌角色键归属不因抽取 resolver 而丢失", () => {
     expect(KEY_OWNERS.active_job_no).toEqual({ table: "prn_job", col: "job_no" });
     expect(KEY_OWNERS.from_brand_no).toEqual({ table: "mch_brand", col: "brand_no" });

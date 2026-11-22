@@ -59,6 +59,37 @@ class MitakeSmsGatewayTest {
     @AfterEach void stop() { if (server != null) server.stop(0); }
     private MitakeSmsGateway gateway() { return new MitakeSmsGateway(config.toString(), endpoint, new MockEnvironment()); }
 
+    @Test void receiptContentMatchesSubmittedBody() {
+        var env = new MockEnvironment().withProperty("shop.sms.mitake.otp-scenes.LOGIN", "登入 {code}：測試\n勿外傳");
+        var result = new MitakeSmsGateway(config.toString(), endpoint, env).sendOtp("0912345678", "123456");
+        assertEquals("登入 123456：測試\n勿外傳", result.content());
+        assertEquals(form.get().get("smbody"), result.content());
+        assertFalse(result.toString().contains("123456"));
+    }
+
+    @Test void failureContentMatchesSubmittedBody() {
+        response.set("statuscode=e");
+        var rejected = assertThrows(SmsException.class, () -> gateway().sendOtp("0912345678", "123456"));
+        assertEquals(form.get().get("smbody"), rejected.content());
+        assertFalse(rejected.toString().contains("123456"));
+        httpStatus.set(503);
+        var http = assertThrows(SmsException.class, () -> gateway().sendOtp("0912345678", "654321"));
+        assertEquals(form.get().get("smbody"), http.content());
+        server.stop(0);
+        var transport = assertThrows(SmsException.class, () -> gateway().sendOtp("0912345678", "112233"));
+        assertTrue(transport.content().contains("112233"));
+        assertFalse(transport.toString().contains("112233"));
+    }
+
+    @Test void contentIsNotSerializedOrPrinted() throws Exception {
+        var result = gateway().sendOtp("0912345678", "123456");
+        String json = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(result);
+        assertFalse(json.contains("content"));
+        assertFalse(json.contains("123456"));
+        assertFalse(result.toString().contains(result.content()));
+        assertEquals("#00000013", result.providerMsgId());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"0912345678", "+886912345678", "886912345678", "+8860912345678", "+886 912-345.678"})
     void taiwanNumbersBecomeLocalMobileAndUseUtf8Form(String phone) {

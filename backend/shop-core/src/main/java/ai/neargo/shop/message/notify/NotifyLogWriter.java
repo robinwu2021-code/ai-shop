@@ -62,6 +62,20 @@ public class NotifyLogWriter {
     public void write(String channel, String bizType, String targetPlain, String templateCode,
                       String templateNo, String status, String error, String providerMsgId,
                       String operatorNo, String provider) {
+        write(channel, bizType, targetPlain, templateCode, templateNo, status, error,
+                providerMsgId, operatorNo, provider, null);
+    }
+
+    public void writeWithContent(String channel, String bizType, String targetPlain, String templateCode,
+                                String templateNo, String status, String error, String providerMsgId,
+                                String operatorNo, String content) {
+        write(channel, bizType, targetPlain, templateCode, templateNo, status, error,
+                providerMsgId, operatorNo, defaultProvider(channel), content);
+    }
+
+    private void write(String channel, String bizType, String targetPlain, String templateCode,
+                       String templateNo, String status, String error, String providerMsgId,
+                       String operatorNo, String provider, String content) {
         try {
             SysNotifyLog row = new SysNotifyLog();
             row.setNotifyNo(BizKey.next(BizKey.NOTIFY_LOG));
@@ -73,6 +87,7 @@ public class NotifyLogWriter {
             row.setTemplateCode(truncate(templateCode, 64));
             row.setTemplateNo(truncate(templateNo, 64));
             row.setStatus(status);
+            row.setContent(content);
             row.setError(truncate(error, 512));
             row.setProviderMsgId(truncate(providerMsgId, 64));
             row.setOperatorNo(operatorNo);
@@ -85,8 +100,8 @@ public class NotifyLogWriter {
             else { OutboxChannelOutcomes.unrecorded(); }
         } catch (RuntimeException e) {
             OutboxChannelOutcomes.unrecorded();
-            log.error("[notify] 写发送记录失败 channel={} biz={} —— 不影响发送本身",
-                    channel, bizType, e);
+            log.error("[notify] 写发送记录失败 channel={} biz={} failure={} —— 不影响发送本身",
+                    channel, bizType, e.getClass().getSimpleName());
         }
     }
 

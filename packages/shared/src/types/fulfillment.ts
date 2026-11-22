@@ -172,6 +172,8 @@ export interface AppointmentSlot {
 
 /** 分拣单的一行：按商品汇总，团长照着这个点数 */
 export interface PickingRow {
+  /** 合并拣货行覆盖的买家数；不同于商品总数量 */
+  buyerCount?: number;
   /** 商品单号 */
   goodsNo: string;
   /** SKU 单号。分拣按 SKU 汇总，不是按商品 */

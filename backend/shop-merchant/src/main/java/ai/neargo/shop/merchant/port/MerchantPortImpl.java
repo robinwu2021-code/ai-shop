@@ -1557,16 +1557,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         var shell = pendingLicenseEntityOf(ownerUserNo, actor != null, true);
         if (shell.isPresent()) {
             // 同一待补证壳的重试必须是同一市场；换了市场不能复用旧壳（它的免费期币种已冻结）
-            if (cmd.market() != null) {
-                MchEntity existing = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
-                        Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get()).last("limit 1")));
-                if (existing != null && !cmd.market().equals(existing.getMarket()))
+            if (cmd.market() != null || cmd.entityName() != null) {
+                MchEntity prior = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                        Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get())
+                                .last(actor != null ? "limit 1" + defaultStoreCurrentLock : "limit 1")));
+                if (cmd.market() != null && prior != null && !cmd.market().equals(prior.getMarket()))
                     throw BizException.of(ErrorCode.BAD_REQUEST);
-            }
-            if (cmd.entityName() != null) {
-                var prior = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
-                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get())));
-                if (prior == null || !entityName.equals(prior.getName()))
+                if (cmd.entityName() != null && (prior == null || !entityName.equals(prior.getName())))
                     throw BizException.of(ErrorCode.CONFLICT);
             }
             var row = defaultStoreOf(shell.get(), actor != null);
@@ -1735,8 +1732,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .in(MchEntity::getEntityNo, ownedEntityNos)
                         .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
+                        // The outer locking read does not make a nested EXISTS current in MySQL.
+                        // A replay inside an older RR snapshot must also see the committed store.
                         .apply(requireStore, "EXISTS (SELECT 1 FROM mch_store s WHERE s.entity_no=mch_entity.entity_no "
-                                + "AND s.tenant_no=mch_entity.tenant_no AND s.is_default=1 AND s.deleted=0)")
+                                + "AND s.tenant_no=mch_entity.tenant_no AND s.is_default=1 AND s.deleted=0"
+                                + (current ? defaultStoreCurrentLock : "") + ")")
                         .last(current ? "limit 1 for share" : "limit 1")));
         return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
     }

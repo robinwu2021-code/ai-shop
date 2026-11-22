@@ -87,8 +87,9 @@ public class MitakeSmsGateway implements SmsPort {
         requireOtpScene(scene);
         String mobile = Phones.taiwanMobile(phone);
         if (mobile == null) throw new SmsException("mitake_invalid_tw_mobile", false);
+        String content = otpTemplates.get(scene).replace("{code}", code);
         var params = Map.of("username", username, "password", password, "dstaddr", mobile,
-                "smbody", otpTemplates.get(scene).replace("{code}", code));
+                "smbody", content);
         String form = params.entrySet().stream().map(e -> encode(e.getKey()) + "=" + encode(e.getValue()))
                 .collect(Collectors.joining("&"));
         HttpResponse<String> response;
@@ -98,13 +99,18 @@ public class MitakeSmsGateway implements SmsPort {
                     .POST(HttpRequest.BodyPublishers.ofString(form, StandardCharsets.UTF_8)).build(),
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new SmsException("mitake_transport_outcome_unknown", false);
+            throw new SmsException("mitake_transport_outcome_unknown", false, content);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new SmsException("mitake_transport_interrupted", false);
+            throw new SmsException("mitake_transport_interrupted", false, content);
         }
-        if (response.statusCode() != 200) throw new SmsException("mitake_http_failure", false);
-        return receipt(response.body(), scene);
+        if (response.statusCode() != 200) throw new SmsException("mitake_http_failure", false, content);
+        try {
+            SendResult result = receipt(response.body(), scene);
+            return new SendResult(result.providerMsgId(), result.templateCode(), content);
+        } catch (SmsException e) {
+            throw new SmsException(e.getMessage(), e.retryable(), content);
+        }
     }
 
     private static String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }

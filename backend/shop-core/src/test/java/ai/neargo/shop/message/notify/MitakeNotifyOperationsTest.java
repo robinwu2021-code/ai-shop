@@ -24,16 +24,19 @@ class MitakeNotifyOperationsTest {
             var mapper = mock(NotifyLogMapper.class);
             when(mapper.insert(any(SysNotifyLog.class))).thenReturn(1);
             var gateway = mock(SmsPort.class);
-            when(gateway.sendOtp("0912345678", "123456")).thenReturn(SendResult.of("#00000013", "MITAKE_LOGIN"));
+            when(gateway.sendOtp("0912345678", "123456")).thenReturn(new SendResult("#00000013", "MITAKE_LOGIN", "【NearShop】登入驗證碼：123456，請勿提供給他人。"));
             var port = new NotifyLoggingSmsPort(gateway, new NotifyLogWriter(mapper, credentials(provider)));
             port.sendOtp("0912345678", "123456");
-            when(gateway.sendOtp("0912345678", "123456")).thenThrow(new SmsPort.SmsException("mitake_rejected:e", false));
+            when(gateway.sendOtp("0912345678", "123456")).thenThrow(new SmsPort.SmsException("mitake_rejected:e", false, "拒絕正文：654321"));
             assertThrows(SmsPort.SmsException.class, () -> port.sendOtp("0912345678", "123456"));
             var captor = ArgumentCaptor.forClass(SysNotifyLog.class);
             verify(mapper, times(2)).insert(captor.capture());
             assertEquals(provider.toUpperCase(java.util.Locale.ROOT), captor.getAllValues().getFirst().getProvider());
             assertEquals(provider.toUpperCase(java.util.Locale.ROOT), captor.getAllValues().getLast().getProvider());
             assertEquals("#00000013", captor.getAllValues().getFirst().getProviderMsgId());
+            assertEquals("【NearShop】登入驗證碼：123456，請勿提供給他人。", captor.getAllValues().getFirst().getContent());
+            assertEquals("拒絕正文：654321", captor.getAllValues().getLast().getContent());
+            assertEquals("091****5678", captor.getAllValues().getFirst().getTarget());
             assertEquals(SysNotifyLog.SENT, captor.getAllValues().getFirst().getStatus());
             assertEquals(SysNotifyLog.FAILED, captor.getAllValues().getLast().getStatus());
         }

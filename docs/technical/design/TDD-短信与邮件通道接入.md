@@ -1,3 +1,47 @@
+# 2026-11-16 发送正文留档增量
+
+状态：已实现并部署166，正式认证接口闭环验证通过。用户要求数据库发送记录保存具体发送内容，随后从本人测试手机号的记录取码验证正常登录。
+
+## §0 需求与设计对账
+
+| AC | 设计落点 | 验证 |
+|---|---|---|
+| 三竹短信保存实际提交正文（包含本次要求的验证码） | sys_notify_log.content；MitakeSmsGateway从同一smbody返回快照 | receiptContentMatchesSubmittedBody / failureContentMatchesSubmittedBody |
+| 成功、拒绝及传输失败均可排查，未提交/历史记录不编造正文 | SendResult与SmsException携带可空content；日志装饰器写入 | MitakeNotifyOperationsTest；迁移原生MySQL9验证 |
+| 运营端查看内容；App不返回内容、日志不输出正文 | 既有message:template:read；列表详情；SendResult.content标注JsonIgnore且toString省略正文 | contentIsNotSerializedOrPrinted；OPS类型检查 |
+
+## §1 范围与契约
+
+复用现有sys_notify_log，V678追加可空TEXT content，历史行NULL。当前166唯一真实SMS通道MITAKE提交纯文本，因此正文与UTF-8表单smbody完全一致；ALI采用供应商托管模板、桩以及其他渠道当前仍无可验证的最终正文，保持NULL并在界面提示“未保存正文”，不将模板参数冒充实际文本。不改变OTP生命周期、准入、验证码、限流或鉴权。手机号继续掩码。正文按用户要求保留验证码，仅在既有受保护运营记录与数据库可读，不写stdout、不开放App取码接口。SENT含义仍是供应商受理，并非手机送达。
+
+## §2 实施计划（writing-plans / inline executing-plans）
+
+- [x] shop-base SendResult增加可空content并保留双参构造兼容；SmsException保存失败正文但message/toString不带正文。
+- [x] shop-notify MitakeSmsGateway复用同一个smbody快照；shop-core NotifyLoggingSmsPort/NotifyLogWriter/SysNotifyLog落库；V678及schema-test追加字段。
+- [x] ops-web NotifyLog类型和发送记录详情展示，三语沿用现有PageCopy机制，无历史正文时明确留空。
+- [x] 统一运行受影响Maven测试、OPS类型/契约检查、MySQL9迁移；独立复核；保留当前166其他代码与配置做增量发布。
+- [x] 166通过与App相同的正式接口发一条短信，数据库内存取码后正常认证验码；记录脱敏结果，不保存真实验证码到仓库。
+
+## §5 验证记录
+
+本地Maven受影响测试61例，0失败/错误，1例私有配置可选测试跳过；writer日志脱敏调整后追加8例通过。OPS tsc通过、4个文件31项相关测试通过；按166部署参数NEXT_PUBLIC_API_BASE=/ops-shop、BASE_PATH=/ops-shop、USE_MOCK=0使用webpack构建及产物检查通过。默认Turbopack因既有node_modules外部符号链接失败，按项目既有webpack部署方式完成，无业务代码变更。
+
+MySQL9.7.4（127.0.0.1:3308）独立临时库：V678升级成功，历史正文仍NULL，繁体中文及验证码测试文本精确回读；测试库已删除。候选包回环运行验证通过，只发送到127.0.0.1。独立代码审查无P1/P2。生产首次启动因运行账号无ALTER权限失败；确认无部分字段后，仅清除本次失败的V678历史，临时授权单表ALTER后由Flyway正常应用V678，随后撤销权限（验证剩余0条）。未篡改成功迁移记录，未修改历史迁移。166实施前最高版本677，jar SHA-256 3f26e599bb4536a2dc76cfe5a12c0b11de76d9e7d96bbb93d7119b5a8f700693。
+
+166真实短信：2026-11-16 19:24:49 CST，尾号4233，NL261116ZPGRADF592 / MITAKE / SENT / 0551769990。实际正文已保存；仅在验证进程内从数据库读取验证码，PHONE_OTP验证成功，选择NEW_OWNER正常注册登录，账号和门店列表回读成功（未创建门店），随后退出本次验证会话。真实验证码与token未写入仓库。模拟器当时已在新增经营实体页面，因此保留页面及已有输入，通过相同的生产认证接口验收；不将API验证称为本轮App人工登录验证。SENT只证明供应商受理，未据此宣称最终手机送达。
+
+166最终验收：API/OPS均UP、重启计数0、环境变量与挂载逐项相同；通过正常OPS登录按既有权限读取正文成功，验证会话已正常退出。运营静态页面已原子切换，公开/messages/页面与构建逐字节相同，30个引用资产均HTTP200。发布锁已释放，旧jar与旧容器保留用于回退。首次失败自动回退完成后再次发布成功。证据：[sms-content-20261116](../evidence/sms-content-20261116/release.json)。历史记录不回填，ALI/其他未取得实际正文的通道仍NULL。
+
+推送检查：26个生成器通过，普通pre-push在共享守卫728项/15失败及OPS守卫904项/2失败处拦截；未绕过、未扩大失败基线，后端分支仍仅本地提交。具体失败见[push-gate.json](../evidence/sms-content-20261116/push-gate.json)。本批相关测试与生产闭环结果单独有效，不将其当作全库守卫通过。App验收文档9452735已正常推送Codeup。
+
+## §6 实现对账
+
+代码提交f4da6995d：24 files changed, 213 insertions(+), 32 deletions(-)。生成schema-test按脚本重新生成，保留相同可空TEXT语义，文档索引与OPS UI规范统计同步生成。
+
+实际改动：shop-base SendResult/SmsPort；shop-notify MitakeSmsGateway及测试；shop-core日志实体、writer、SMS装饰器及测试；shop-app V678与schema-test；ops-web消息类型/文案/详情。build_overlay.py增加notify-content档案，仅覆盖本批6个声明类与V678，不覆盖现有业务类、旧迁移或环境变量。
+
+---
+
 # TDD-短信与邮件通道接入
 
 状态：**已实现**（除 §8 T6 的「存哈希」一半，理由见 §9）

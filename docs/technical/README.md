@@ -814,7 +814,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [TDD-零元订单支付](./design/TDD-零元订单支付.md) | **已实现** · 2026-09-20 · 关联 TDD-微信发货信息录入 |
 | [TDD 预约/资源域 · 多行业完整方案](./design/TDD-预约资源域-多行业完整方案.md) | **草稿 · 待确认** · 创建 2026-08-28 |
 | [TDD 餐饮包（FOOD）—— 业务场景与工作流](./design/TDD-餐饮包-场景与工作流.md) | **草稿 · 待确认** · 创建 2026-08-27 |
-| [Beauty/unified source migration mapping implementation](./design/beauty-unified-migration-integration-report.md) | — |
+| [Beauty/unified source migration mapping implementation](./design/beauty-unified-migration-integration-report.md) | 源码迁移映射报告 · 已完成本文所列文件映射与字节核对；不代表数据库已应用迁移。 |
 | [TDD-ops-主菜单合并](./design/ops/TDD-ops-主菜单合并.md) | **已验收**（库 + 真实登录态的界面两侧都验过）· 创建 2026-09-09 · 最后更新 2026-09-09 |
 | [运营代办入驻：表格与弹框](./design/ops/TDD-ops-代办入驻表格与弹框.md) | 已实现；部署与验收证据见本文各次发布记录。 |
 | [TDD · 运营端 · 功能开关与菜单状态](./design/ops/TDD-ops-功能开关与菜单状态.md) | **已实现**（AC1/AC2 单测 + AC3/AC4 闸门；AC2 现场验过）· 创建 2026-09-09 |
@@ -824,11 +824,11 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [UI 推送阻塞修复 · 2026-10-28](./design/reviews/b-app-ui/2026-10-28-push-repairs.md) | 修复已实现并通过提交前检查；正式远端推送仍受完整 pre-push 门禁约束，结果以 Git 远端分支及本地门禁回执为准。 |
 | [B 端 UI 本地提交范围 · 2026-10-26](./design/reviews/b-app-ui/commit-scope.md) | 历史提交范围记录；后续修复与推送检查以 push-checks.md 为准。 |
 | [B 端 UI 推送检查 · 2026-10-26](./design/reviews/b-app-ui/push-checks.md) | 2026-10-26的历史检查记录；2026-10-28已获授权继续修复跨模块阻塞，修复与验证见 2026-10-28记录 及 Git 日志。 |
-| [C04b3 FIX1 scoped independent review](./design/reviews/beauty-preparation-source-review-fix1.md) | — |
-| [C04b3 FIX2 scoped independent review](./design/reviews/beauty-preparation-source-review-fix2.md) | — |
-| [C04b3 independent specification and quality review](./design/reviews/beauty-preparation-source-review.md) | — |
-| [C04c-c1 FIX1 限定复审](./design/reviews/beauty-resource-occupation-source-review-fix1.md) | — |
-| [C04c-c1 独立 SPEC / QUALITY source review](./design/reviews/beauty-resource-occupation-source-review.md) | — |
+| [C04b3 FIX1 scoped independent review](./design/reviews/beauty-preparation-source-review-fix1.md) | 历史源码复审 · REQUEST CHANGES，剩余fixture问题已转fix2复审；本文不声明运行结果。 |
+| [C04b3 FIX2 scoped independent review](./design/reviews/beauty-preparation-source-review-fix2.md) | 源码复审通过 · F1已处理，SPEC/QUALITY PASS；运行验证和部署仍由主执行流程确认。 |
+| [C04b3 independent specification and quality review](./design/reviews/beauty-preparation-source-review.md) | 历史源码评审 · REQUEST CHANGES；后续处理见fix1/fix2报告，本文保留原始问题证据。 |
+| [C04c-c1 FIX1 限定复审](./design/reviews/beauty-resource-occupation-source-review-fix1.md) | 源码复审通过 · SPEC PASS / QUALITY APPROVED；仅source stage，不代表运行测试或部署通过。 |
+| [C04c-c1 独立 SPEC / QUALITY source review](./design/reviews/beauty-resource-occupation-source-review.md) | 历史源码评审 · NEEDS_FIXES；四项问题的后续结论见fix1报告，本文保留原始发现。 |
 | [业务库存与进销存：领域、流程及前后端优化方案](./design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md) | 历史设计，当前实施状态以现行TDD为准。 |
 | [门店储值：Android真机装包与基础验证](./design/reviews/门店储值-Android真机装包-2026-10-20.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |
 | [门店储值 A批存量盘点](./design/reviews/门店储值-A批存量盘点.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |
@@ -888,9 +888,9 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [美业系统 Controller、Service 与 Mapper 方法清单](./design/美业系统-Controller-Service-Mapper方法清单.md) | 方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。 |
 | [美业系统 Java 类与方法清单](./design/美业系统-Java类与方法清单.md) | 方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。 |
 | [美业 Java 项目结构与类职责](./design/美业系统-Java项目结构与类职责.md) | 目标目录与实际实施对照 · 2026-10-24 · Task59代码接线已实现，实际部署后置；全表不代表全部完成。 |
-| [美业实际资源占用：C04c实施细化](./design/美业系统-实际资源占用实施细化.md) | — |
+| [美业实际资源占用：C04c实施细化](./design/美业系统-实际资源占用实施细化.md) | C04c实施设计与决策记录 · 保留分片交付和源码评审边界，不以方案推断部署或运行验收完成。 |
 | [美业系统开发任务对照索引](./design/美业系统-开发任务对照索引.md) | 任务定义基线 · 2026-10-20 · 实际实施进度以执行入口的记录为准，本索引不推断工程、接口或迁移已交付。 |
-| [C04b3 bounded consumption implementation manifest — provisional source preflight](./design/美业系统-执行准备与库存消费实施细化.md) | — |
+| [C04b3 bounded consumption implementation manifest — provisional source preflight](./design/美业系统-执行准备与库存消费实施细化.md) | 临时源码预检报告 · 2026-10-29快照；本文不构成接受、编译通过或运行验收的检查点。 |
 | [美业与共用人员资源数据库字段字典](./design/美业系统-数据库字段字典.md) | 原41项目标基线保留；Task58正式V1–V8共28项私表，增量另列 · 2026-10-24 |
 | [美业与共用人员资源数据库结构设计](./design/美业系统-数据库结构设计.md) | 原41项目标设计基线保留，正式V1–V4与23私表增量见末节 · 2026-10-22；未访问生产数据库。 |
 | [美业系统新旧方案对比](./design/美业系统-新旧方案对比-2026-10-20.md) | 评审草稿 · 创建：2026-10-20 · 在新版独立方案形成后进行对照，不修改旧稿。 |
@@ -920,7 +920,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [进销存 · 真机验证清单](./design/进销存-真机验证清单.md) | **已执行 · 2026-08-29 23:35** —— 九条跑了八条，一条因线上数据构造不出正例 |
 | [进销存 · 统一业务逻辑与设计评审（数据库 / API / 代码）](./design/进销存-统一逻辑与设计评审.md) | 评审稿（2026-10-30，基于提交 `1726ee1ce`）。 |
 | [进销存独立服务 · API 文档](./design/进销存独立服务-API文档.md) | v1（2026-10-30）。本文同时是接口说明和「组织边界」能力的契约。 |
-| [进销存独立服务 · `InventoryClient` 调用文档](./design/进销存独立服务-客户端调用文档.md) | — |
+| [进销存独立服务 · `InventoryClient` 调用文档](./design/进销存独立服务-客户端调用文档.md) | 客户端使用说明 · 适用inventory-client 1.0.0-SNAPSHOT；接口语义以同目录API文档为准。 |
 | [门店与证照：产品方案](./design/门店与证照-产品方案.md) | **产品方案已确认（2026-08-25），待技术方案** |
 | [门店与证照：技术方案](./design/门店与证照-技术方案.md) | **待评审** |
 | [零售基础数据与核心能力边界](./design/零售基础数据与核心能力边界.md) | 边界提案，待评审 · 2026-10-20 · 第二步：基于共用能力整理，以零售基础数据与标准商业闭环划定核心。 |
@@ -928,14 +928,14 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [预约/资源域 V2.0 · 设计规格书](./design/预约资源域V2-设计规格书.md) | **草稿 · 待确认** · 创建 2026-08-28 |
 | [餐饮与商品订单基座的扩展边界与契约](./design/餐饮与商品订单基座-扩展边界与契约.md) | 待评审 · 创建 2026-10-19 · 本轮仅整理模块关系与接入契约。 |
 | [餐饮功能验收标准与证据矩阵](./design/餐饮功能验收标准与证据矩阵.md) | 本轮代码重点复核与映射用例验收已记录；完整跨 owner HTTP、真实外部依赖及生产启用仍按各项边界另行验收。 |
-| [餐饮后端统一开发方案](./design/餐饮后端统一实施/00-统一开发方案与执行顺序.md) | — |
-| [餐饮后端统一实施：数据库审查与设计](./design/餐饮后端统一实施/01-数据库审查与设计.md) | — |
-| [餐饮后端统一实施：API 审查与清单](./design/餐饮后端统一实施/02-API审查与清单.md) | — |
-| [餐饮后端统一实施：代码清单与开发方案](./design/餐饮后端统一实施/03-代码清单与开发方案.md) | — |
-| [餐饮本地库存同步到进销存：当前实现与启用流程](./design/餐饮后端统一实施/04-可选进销存库存同步方案.md) | — |
-| [餐饮后端一次性编码：待开发 API、数据库与代码清单](./design/餐饮后端统一实施/05-待开发API数据库代码与任务清单.md) | — |
-| [餐饮后端统一实施进度](./design/餐饮后端统一实施/06-编码实施进度.md) | — |
-| [验收记录与发布边界](./design/餐饮后端统一实施/07-验收记录与发布边界.md) | — |
+| [餐饮后端统一开发方案](./design/餐饮后端统一实施/00-统一开发方案与执行顺序.md) | 历史开发方案 · 前批实现已进入06/07交付记录，当前剩余任务以08分模块实施方案为准。 |
+| [餐饮后端统一实施：数据库审查与设计](./design/餐饮后端统一实施/01-数据库审查与设计.md) | 历史数据库设计 · 4886f460b静态审查快照；当前迁移及发布结果见06/07，不将候选结构视为线上事实。 |
+| [餐饮后端统一实施：API 审查与清单](./design/餐饮后端统一实施/02-API审查与清单.md) | 历史API审查与候选合同 · 4886f460b快照；当前实现及部署结果见06/07，不将拟新增路径视为可调用。 |
+| [餐饮后端统一实施：代码清单与开发方案](./design/餐饮后端统一实施/03-代码清单与开发方案.md) | 历史实施设计 · 计划类名与修改清单保留作设计依据，当前实现进度见06、07及08。 |
+| [餐饮本地库存同步到进销存：当前实现与启用流程](./design/餐饮后端统一实施/04-可选进销存库存同步方案.md) | 已实现并记录发布边界 · 446cf7799集成版已部署，独立接收拓扑仅本地验证，生产同步尚未启用。 |
+| [餐饮后端一次性编码：待开发 API、数据库与代码清单](./design/餐饮后端统一实施/05-待开发API数据库代码与任务清单.md) | 历史编码台账 · 2026-10-29方案已被后续实施推进，当前剩余工作以08为准。 |
+| [餐饮后端统一实施进度](./design/餐饮后端统一实施/06-编码实施进度.md) | 已编码并部分部署 · 2026-10-30集成基线446cf7799已发布，真实门店、独立进程与报表按本文边界继续验收。 |
+| [验收记录与发布边界](./design/餐饮后端统一实施/07-验收记录与发布边界.md) | 验收与发布边界记录 · 仅确认本文矩阵所列证据，真实支付退款、硬件及后置联动仍按原约定。 |
 | [餐饮剩余功能：分模块实施方案与API、数据库、代码清单](./design/餐饮后端统一实施/08-剩余功能分模块实施方案.md) | — |
 | [餐饮系统API设计](./design/餐饮系统-API设计.md) | 代码已交付；专项验证见验收矩阵；生产部署已核验；终端、真实设备和跨owner完整营业验收仍待完成。报表生产未启用，本批未发布支付资金能力。后文V15、H5/PI |
 | [餐饮系统Controller、Service与Mapper方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md) | 静态源码投影，编译、专项测试和部署证据见本批交付验证。 |

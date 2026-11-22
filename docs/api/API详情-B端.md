@@ -892,6 +892,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `kind` | `string,null` | 否 | 提报地点的种类，与地点目录一致 |
+| `originCode` | `string,null` | 否 | 对应官方聚落/地点的来源编号 |
+| `located` | `boolean` | 否 | 服务端是否已确认坐标定位 |
+| `latE6` | `number,null` | 否 | 已确认纬度，百万分之一度 |
+| `lngE6` | `number,null` | 否 | 已确认经度，百万分之一度 |
+| `fallbackLatE6` | `number,null` | 否 | 定位失败时用户提交的参考纬度，不代表已确认定位 |
+| `fallbackLngE6` | `number,null` | 否 | 定位失败时用户提交的参考经度 |
 | `applyNo` | `string` | 是 | 提报单业务键 |
 | `merchantNo` | `string` | 是 | 提报的商家 |
 | `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
@@ -1518,6 +1525,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `adcode` | `string,null` | 否 | 逆地理结果对应的行政区代码 |
+| `township` | `string,null` | 否 | 街道/乡镇名称 |
+| `latE6` | `number` | 否 | 服务端返回的纬度，百万分之一度 |
+| `lngE6` | `number` | 否 | 服务端返回的经度，百万分之一度 |
+| `coordSys` | `string` | 否 | 本条坐标系标识；不能按客户端所在地猜测 |
 | `recommend` | `string` | 是 | 带楼盘/门牌的人话版地址。**端上填这个** |
 | `address` | `string` | 是 | 地址 |
 
@@ -2830,6 +2842,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -6406,6 +6419,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string,null` | 否 | 经营行业代码；旧档案未填写时为空 |
+| `description` | `string,null` | 否 | 商家介绍；旧档案未填写时为空 |
+| `currentStoreNo` | `string,null` | 否 | 当前会话选中的门店，没有可进入门店时为空 |
+| `account` | `string,null` | 否 | 登录账号标识，支持手机或邮箱 |
+| `subjectKind` | `string,null` | 否 | 会话主体类别（USR个人账号 / MCH商家身份） |
+| `currentIdentity` | [`MerchantSessionIdentity`](#merchantsessionidentity) \| `null` | 否 | 当前选中的登录身份；账号尚未进入商家身份时为空 |
+| `userNo` | `string,null` | 否 | 账号用户编号，用于跨身份保留个人设置 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -6636,6 +6656,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string,null` | 否 | 经营行业代码；旧档案未填写时为空 |
+| `description` | `string,null` | 否 | 商家介绍；旧档案未填写时为空 |
+| `currentStoreNo` | `string,null` | 否 | 当前会话选中的门店，没有可进入门店时为空 |
+| `account` | `string,null` | 否 | 登录账号标识，支持手机或邮箱 |
+| `subjectKind` | `string,null` | 否 | 会话主体类别（USR个人账号 / MCH商家身份） |
+| `currentIdentity` | [`MerchantSessionIdentity`](#merchantsessionidentity) \| `null` | 否 | 当前选中的登录身份；账号尚未进入商家身份时为空 |
+| `userNo` | `string,null` | 否 | 账号用户编号，用于跨身份保留个人设置 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -6664,6 +6691,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string,null` | 否 | 经营行业代码；旧档案未填写时为空 |
+| `description` | `string,null` | 否 | 商家介绍；旧档案未填写时为空 |
+| `currentStoreNo` | `string,null` | 否 | 当前会话选中的门店，没有可进入门店时为空 |
+| `account` | `string,null` | 否 | 登录账号标识，支持手机或邮箱 |
+| `subjectKind` | `string,null` | 否 | 会话主体类别（USR个人账号 / MCH商家身份） |
+| `currentIdentity` | [`MerchantSessionIdentity`](#merchantsessionidentity) \| `null` | 否 | 当前选中的登录身份；账号尚未进入商家身份时为空 |
+| `userNo` | `string,null` | 否 | 账号用户编号，用于跨身份保留个人设置 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -9705,6 +9739,8 @@ App 外收款合计　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `contactName` | `string,null` | 否 | 门店联系人；历史门店未设置时为空 |
+| `contactPhone` | `string,null` | 否 | 门店联系电话；与登录账号手机号分开 |
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `announcementUntil` | `number,null` | 否 | 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」—— 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是 「商家看是空的、买家看到的是昨天的货」。 |
 | `announcementRecent` | `string`\[\] | 否 | 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 |
@@ -9744,6 +9780,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `contactName` | `string,null` | 否 | 门店联系人；历史门店未设置时为空 |
+| `contactPhone` | `string,null` | 否 | 门店联系电话；与登录账号手机号分开 |
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `announcementUntil` | `number,null` | 否 | 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」—— 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是 「商家看是空的、买家看到的是昨天的货」。 |
 | `announcementRecent` | `string`\[\] | 否 | 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 |
@@ -10501,6 +10539,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `contactName` | `string,null` | 否 | 门店联系人；历史门店未设置时为空 |
+| `contactPhone` | `string,null` | 否 | 门店联系电话；与登录账号手机号分开 |
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `announcementUntil` | `number,null` | 否 | 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」—— 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是 「商家看是空的、买家看到的是昨天的货」。 |
 | `announcementRecent` | `string`\[\] | 否 | 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 |
@@ -10536,6 +10576,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `contactName` | `string,null` | 否 | 门店联系人；历史门店未设置时为空 |
+| `contactPhone` | `string,null` | 否 | 门店联系电话；与登录账号手机号分开 |
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `announcementUntil` | `number,null` | 否 | 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」—— 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是 「商家看是空的、买家看到的是昨天的货」。 |
 | `announcementRecent` | `string`\[\] | 否 | 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 |
@@ -13129,6 +13171,13 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `kind` | `string,null` | 否 | 提报地点的种类，与地点目录一致 |
+| `originCode` | `string,null` | 否 | 对应官方聚落/地点的来源编号 |
+| `located` | `boolean` | 否 | 服务端是否已确认坐标定位 |
+| `latE6` | `number,null` | 否 | 已确认纬度，百万分之一度 |
+| `lngE6` | `number,null` | 否 | 已确认经度，百万分之一度 |
+| `fallbackLatE6` | `number,null` | 否 | 定位失败时用户提交的参考纬度，不代表已确认定位 |
+| `fallbackLngE6` | `number,null` | 否 | 定位失败时用户提交的参考经度 |
 | `applyNo` | `string` | 是 | 提报单业务键 |
 | `merchantNo` | `string` | 是 | 提报的商家 |
 | `merchantName` | `string` | 是 | 商家名。运营看着一串 M20260811… 判断不了任何事 |
@@ -13436,6 +13485,15 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `review` | `string,null` | 否 | 当前渠道/平台审核状态，按服务端状态码返回 |
+| `applyNo` | `string,null` | 否 | 当前进件申请编号；未申请时为空 |
+| `rejectReason` | `string,null` | 否 | 审核驳回原因 |
+| `taxNo` | `string,null` | 否 | 税号或统一编号 |
+| `owner` | `string,null` | 否 | 证照持有人展示名 |
+| `platformReview` | `string,null` | 否 | 平台资料审核状态，与支付进件状态分开 |
+| `draftVersion` | `number,null` | 否 | 当前草稿资料版本，尚无草稿时为空 |
+| `approvedProfileVersion` | `number,null` | 否 | 已审核通过的资料版本 |
+| `payMerchantNo` | `string,null` | 否 | 已绑定的支付商户编号，尚未进件时为空 |
 | `entityNo` | `string` | 是 | 商家主体号 |
 | `name` | `string` | 是 | 执照上的名称。**待补证照时它是老板随手填的店名**—— 补齐执照、审核通过后被执照上的正式名称覆盖 |
 | `status` | [`MerchantStatus`](#merchantstatus) | 是 | ACTIVE 营业中 / PENDING_LICENSE 待补证照 / SUSPENDED、BANNED 已停业。 **端上照它给下一步**：待补证照给「去补执照」，已停业给客服入口 |
@@ -13550,6 +13608,11 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `adcode` | `string,null` | 否 | 逆地理结果对应的行政区代码 |
+| `township` | `string,null` | 否 | 街道/乡镇名称 |
+| `latE6` | `number` | 否 | 服务端返回的纬度，百万分之一度 |
+| `lngE6` | `number` | 否 | 服务端返回的经度，百万分之一度 |
+| `coordSys` | `string` | 否 | 本条坐标系标识；不能按客户端所在地猜测 |
 | `recommend` | `string` | 是 | 带楼盘/门牌的人话版地址。**端上填这个** |
 | `address` | `string` | 是 | 地址 |
 
@@ -13559,6 +13622,7 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `coordSys` | `string,null` | 否 | 本条坐标系标识，与latE6/lngE6一起使用 |
 | `name` | `string` | 是 | 名称 |
 | `address` | `string,null` | 否 | 地址 |
 | `adcode` | `string,null` | 否 | 国标 6 位区县码，与 sys_region 同口径 |
@@ -13825,6 +13889,7 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `chosenQuote` | [`Quote`](#quote) \| `null` | 否 | 已选中的商家报价；未选中时为空 |
 | `requestNo` | `string` | 是 | 求团需求单号 |
 | `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
@@ -15174,10 +15239,15 @@ SKU 组件：一件 SKU 交付哪些东西
 
 ### MerchantProfile
 
-登录后的商家会话
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `industry` | `string,null` | 否 | 经营行业代码；旧档案未填写时为空 |
+| `description` | `string,null` | 否 | 商家介绍；旧档案未填写时为空 |
+| `currentStoreNo` | `string,null` | 否 | 当前会话选中的门店，没有可进入门店时为空 |
+| `account` | `string,null` | 否 | 登录账号标识，支持手机或邮箱 |
+| `subjectKind` | `string,null` | 否 | 会话主体类别（USR个人账号 / MCH商家身份） |
+| `currentIdentity` | [`MerchantSessionIdentity`](#merchantsessionidentity) \| `null` | 否 | 当前选中的登录身份；账号尚未进入商家身份时为空 |
+| `userNo` | `string,null` | 否 | 账号用户编号，用于跨身份保留个人设置 |
 | `merchantNo` | `string` | 是 | 商家单号 |
 | `name` | `string` | 是 | 店铺名 |
 | `logo` | `string` | 是 | 店铺 logo |
@@ -15205,6 +15275,21 @@ SKU 组件：一件 SKU 交付哪些东西
 | `perms` | `string`\[\] | 是 | 这个角色带的权限码。老板那行是 `["*"]`（全部），别按长度当权限数 |
 | `permLabels` | `string`\[\] | 是 | 与 `perms` 一一对应的中文短说明 |
 | `usedBy` | `number` | 是 | 几个人在用。删除按钮据此禁用，并且要显示出来 |
+
+### MerchantSessionIdentity
+
+正式认证接口选择的身份，与门店授权角色分别保存。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `identityNo` | `string` | 是 | 身份业务编号 |
+| `type` | `string` | 是 | 身份类别，取服务端当前协议值 |
+| `merchantNo` | `string` | 是 | 所属商家编号 |
+| `merchantName` | `string` | 是 | 所属商家展示名 |
+| `entityCount` | `number` | 是 | 该身份能访问的经营实体数 |
+| `role` | `string` | 是 | 身份角色展示码 |
+| `roleCodes` | `string`\[\] | 是 | 授予该身份的角色码集合 |
+| `storeCount` | `number` | 是 | 该身份能访问的门店数 |
 
 ### MerchantSpecDim
 
@@ -15392,6 +15477,14 @@ SKU 组件：一件 SKU 交付哪些东西
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `entityNo` | `string` | 否 | 结算批次所属经营主体 |
+| `periodFrom` | `number` | 否 | 结算周期起点，Unix毫秒 |
+| `freezeExpireAt` | `number,null` | 否 | 冻结截止时刻，Unix毫秒；无冻结时为空 |
+| `grossMinor` | `number` | 否 | 本批结算基数，最小货币单位 |
+| `reconScope` | `string,null` | 否 | 对账范围标识，服务端冻结值 |
+| `blockedAt` | `number,null` | 否 | 挂起时刻，Unix毫秒；未挂起时为空 |
+| `decidedBy` | `string,null` | 否 | 最近一次人工处置人员编号 |
+| `decideRemark` | `string,null` | 否 | 最近一次人工处置备注 |
 | `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `batchNo` | `string` | 是 | 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 |
 | `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不合批** |
@@ -15950,6 +16043,7 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `buyerCount` | `number` | 否 | 合并拣货行覆盖的买家数；不同于商品总数量 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `skuNo` | `string` | 是 | SKU 单号。分拣按 SKU 汇总，不是按商品 |
 | `title` | `string` | 是 | 商品标题 |
@@ -16225,6 +16319,8 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `requestNo` | `string` | 否 | 本报价所属的求团需求编号 |
+| `status` | `string` | 否 | 报价生命周期状态（有效、撤回或毁约），服务端返回原码 |
 | `quoteNo` | `string` | 是 | 报价单号 |
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 报价商家。`breachCount` 会在报价卡上公示 —— 事后信用替代事前审核 |
 | `priceMinor` | `number` | 是 | 报价单价 |
@@ -16930,6 +17026,10 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `businessMode` | [`BusinessMode`](#businessmode) | 否 | 自营/第三方经营模式，决定是否展示进项票流程 |
+| `invoiceStatus` | `string` | 否 | 进项票审核状态；第三方为NO_INVOICE |
+| `paymentRef` | `string,null` | 否 | 网银等实际付款凭证编号；未付款时为空 |
+| `pointsFeeMinor` | `number` | 否 | 本单积分活动费用，最小货币单位；不并入履约费 |
 | `batchDocumentNo` | `string,null` | 否 | Human-facing settlement batch number; absent for historical unmapped batches. |
 | `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `settleNo` | `string` | 是 | 结算单号 |
@@ -18046,6 +18146,8 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `contactName` | `string,null` | 否 | 门店联系人；历史门店未设置时为空 |
+| `contactPhone` | `string,null` | 否 | 门店联系电话；与登录账号手机号分开 |
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
 | `announcementUntil` | `number,null` | 否 | 公告失效时刻（epoch 毫秒）。**空 = 长期有效**。 过期由服务端读时判断，端上拿到的 `announcement` 已经是「此刻该显示的」—— 端上不要自己再判一次：两处判断迟早会不一致，而不一致的表现是 「商家看是空的、买家看到的是昨天的货」。 |
 | `announcementRecent` | `string`\[\] | 否 | 最近用过的公告，最多 5 条，按最近使用排序。服务端维护，端上只读 |

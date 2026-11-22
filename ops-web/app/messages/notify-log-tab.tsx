@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input, Select } from "@/components/ui/input";
+import { Drawer } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
@@ -46,6 +47,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   const [targetInput, setTargetInput] = useState("");
   const [target, setTarget] = useState("");
   const [testOpen, setTestOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<NotifyLog | null>(null);
   /*
    * 外发 / 站内信**分两张表**，不合并。
    * 外发答「发出去了吗」（有失败态、排查去通道后台查回执），
@@ -145,6 +147,9 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
               {r.error && <div className="txt-caption text-muted-foreground">{r.error}</div>}
             </div>,
     },
+    { header: c.nlContent, cell: (r: NotifyLog) => r.content != null
+        ? <Button variant="ghost" size="sm" onClick={() => setSelectedLog(r)}>{c.nlViewContent}</Button>
+        : <span className="txt-caption text-muted-foreground">{c.nlContentEmpty}</span> },
     { header: c.nlColMsgId, cell: (r: NotifyLog) => <span className="txt-caption">{r.providerMsgId ?? "-"}</span> },
     {
       header: c.nlColOperator,
@@ -157,6 +162,10 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
 
   return (
     <div className="space-y-4">
+      <Drawer open={selectedLog !== null} onOpenChange={(open) => { if (!open) setSelectedLog(null); }}
+              title={c.nlContent} desc={selectedLog ? `${selectedLog.target} · ${fmtTime(selectedLog.createdAt)}` : undefined}>
+        <pre className="whitespace-pre-wrap break-words font-sans txt-body">{selectedLog?.content}</pre>
+      </Drawer>
       {/* U4：两条说明合成一条 —— 站内信那句降为次要文字，不再单占一个 Notice */}
       <HelpNote>
         {c.nlNotice}

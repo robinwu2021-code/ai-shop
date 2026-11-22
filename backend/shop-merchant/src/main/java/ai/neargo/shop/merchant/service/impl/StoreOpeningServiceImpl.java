@@ -45,7 +45,6 @@ public class StoreOpeningServiceImpl implements StoreOpeningService {
         } else {
             var source=choices.sources().stream().filter(s->entityNo.equals(s.entityNo()) && sourceStoreNo.equals(s.storeNo())).findFirst()
                 .orElseThrow(()->BizException.of(ErrorCode.FORBIDDEN));
-            if(!source.canCreate()) throw BizException.of(ErrorCode.STORE_QUOTA_EXCEEDED);
             if(!source.market().equals(command.market())) throw BizException.of(ErrorCode.BAD_REQUEST);
             var result=stores.create(entityNo,new StoreAdminService.CreateCommand(command.storeName(),command.address(),command.businessTypeCode(),requestNo,null));
             createdEntity=entityNo; createdStore=result.storeNo();

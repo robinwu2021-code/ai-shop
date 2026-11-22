@@ -44,6 +44,13 @@ class NotifyLoggingPortTest {
         }
 
         @Override
+        public void writeWithContent(String channel, String bizType, String targetPlain, String templateCode,
+                                     String templateNo, String status, String error, String providerMsgId,
+                                     String operatorNo, String content) {
+            write(channel, bizType, targetPlain, templateCode, templateNo, status, error, providerMsgId, operatorNo);
+        }
+
+        @Override
         public void write(String channel, String bizType, String targetPlain, String templateCode,
                           String templateNo, String status, String error, String providerMsgId,
                           String operatorNo) {
