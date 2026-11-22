@@ -14,6 +14,7 @@ import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -49,6 +50,10 @@ public class TwEguiRegime implements InvoiceRegime {
 
     public String periodOf(Instant at) {
         return TwPeriods.periodOf(at);
+    }
+
+    public ZoneId zone() {
+        return TwPeriods.TAIPEI;
     }
 
     public Instant periodEnd(String periodCode) {

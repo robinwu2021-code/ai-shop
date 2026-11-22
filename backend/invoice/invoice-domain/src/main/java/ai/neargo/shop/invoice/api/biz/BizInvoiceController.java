@@ -6,6 +6,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.BuyerPreferenceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.IssueInvoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.VoidInvoiceReq;
@@ -100,6 +101,16 @@ public class BizInvoiceController {
     public InvoiceVO voidAllowance(@PathVariable String invoiceNo, @PathVariable String allowanceNo,
             @Valid @RequestBody VoidInvoiceReq req) {
         return invoices.voidAllowance(BizInvoiceScope.current(), invoiceNo, allowanceNo, req.reason());
+    }
+
+    /**
+     * 向加值中心（鲸跃）查这张票的状态并对账：服务商已收到而本地未标送达的上传补记为已送达；
+     * 不一致且无待补传时告警。会改上传任务状态，所以是 POST、要开票权限。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
+    @PostMapping("/biz/invoices/{invoiceNo}/provider-checks")
+    public ProviderCheckVO checkWithProvider(@PathVariable String invoiceNo) {
+        return transmissions.checkWithProvider(BizInvoiceScope.current(), invoiceNo);
     }
 
     /**

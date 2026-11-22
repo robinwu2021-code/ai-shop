@@ -17,6 +17,18 @@ export interface SiLine {
   /** 课税别 */
   taxType?: "TAXABLE" | "ZERO" | "EXEMPT" | null;
 }
+/** 向服务商查单结果。providerState / expectedState：ISSUED / VOIDED / PARTIALLY_ALLOWED / FULLY_ALLOWED / NOT_FOUND */
+export interface SiProviderCheck {
+  providerState: string;
+  /** 服务商原文（鲸跃 0 / 1 / 2 / 3 / nodata） */
+  providerCode: string;
+  expectedState: string;
+  /** CONSISTENT 一致 / PENDING_UPLOAD 还有未送达的上传 / MISMATCH 不一致 */
+  verdict: string;
+  /** 本次补记为已送达的上传（ISSUE / VOID） */
+  reconciled: string[];
+  checkedAt: string;
+}
 /** 门店上传积压：pending 含待发 / 发送中 / 退避中；dueSoon 已过预警时点；overdue 已过法定期限仍未送达 */
 export interface SiUploadBacklog {
   pending: number;
@@ -212,6 +224,8 @@ export interface SalesInvoiceApi {
   mSiAllowance(invoiceNo: string, body: { amountMinor: number; reason: string }): Promise<SalesInvoice>;
   /** 作废本期折让（跨期拒绝） */
   mSiVoidAllowance(invoiceNo: string, allowanceNo: string, body: { reason: string }): Promise<SalesInvoice>;
+  /** 向服务商查单并对账（会把服务商已收到的上传补记为已送达） */
+  mSiProviderCheck(invoiceNo: string): Promise<SiProviderCheck>;
   /** 本门店上传积压概览 */
   mSiUploadBacklog(): Promise<SiUploadBacklog>;
   /** 重传待人工处理的上传任务（开立 / 作废 / 折让），报文不变 */

@@ -3,6 +3,8 @@ package ai.neargo.shop.invoice.channel.cetustek;
 import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
 import java.net.URI;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -16,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * 鯨躍（Cetustek）加值中心通道，代码 {@code CETUSTEK}。协议与字段沿用 UME invoice-web 的
  * {@code CetustekInvoiceServiceImpl}：开立 UploadInvoice、作废 UploadCancelInvoice、折让 UploadAllowance、折让作废 UploadCancelAllowance，
- * 账号核验 QueryOfficeInfo，号段 ApplyInvoiceNumber → TakeInvoiceNumber。
+ * 账号核验 QueryOfficeInfo，号段 ApplyInvoiceNumber → TakeInvoiceNumber，查单 QueryInvoiceStatus。
  *
  * <p><b>报文</b>：税制给的是 MIG 树（见 {@code TwEguiRegime#message}），这里按鲸跃的扁平 XML 重排：
  * 日期 {@code yyyy/MM/dd}；B2C 不带买方识别码；纸本 / 载具 / 捐赠的 DonateMark 分别是 2 / 0 / 1；
@@ -102,6 +104,28 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         String id = CetustekSoapClient.between(result, "<ID>", "</ID>");
         if (id == null) throw new ProviderException("unexpected", null);
         return new ProviderOffice(id.trim(), text(result, "Name"), text(result, "QRCode"));
+    }
+
+    /**
+     * 查单（UME {@code CetustekInvoiceServiceImpl#queryInvoiceStatus}）：回 0 已开立 / 1 已作废 / 2 部分折让 / 3 完全折让；
+     * {@code nodata} 视为鲸跃侧没有这张票。日期格式沿用上传的 {@code yyyy/MM/dd}（待鲸跃确认，TDD-发票模块 §16）。
+     */
+    @Override
+    public ProviderInvoiceStatus queryStatus(ProviderAccount account, String fiscalNumber, LocalDate invoiceDate) {
+        var fields = new LinkedHashMap<String, String>();
+        fields.put("invoicenumber", fiscalNumber);
+        fields.put("invoicedate", invoiceDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd")));
+        String result = soap.call("QueryInvoiceStatus", account, fields);
+        var state = switch (result.toUpperCase(Locale.ROOT)) {
+            case "0" -> ProviderInvoiceStatus.State.ISSUED;
+            case "1" -> ProviderInvoiceStatus.State.VOIDED;
+            case "2" -> ProviderInvoiceStatus.State.PARTIALLY_ALLOWED;
+            case "3" -> ProviderInvoiceStatus.State.FULLY_ALLOWED;
+            case "NODATA" -> ProviderInvoiceStatus.State.NOT_FOUND;
+            case "INVALID", "ERROR" -> throw new ProviderException(result.toLowerCase(Locale.ROOT), null);
+            default -> throw new ProviderException("unexpected:" + result, null);
+        };
+        return new ProviderInvoiceStatus(state, result);
     }
 
     @Override

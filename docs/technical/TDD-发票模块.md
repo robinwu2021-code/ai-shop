@@ -730,3 +730,59 @@ MySQL 9 全类 30/30、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契�
 
 MySQL 9 全类 32/32、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契约、孤儿页、i18n 检查通过；定时任务 / 架构 / 权限守卫失败数与改动前一致，均不涉及发票。
 
+## §16 向服务商查单与对账（鲸跃 M1-3）
+
+状态：已实现 · 2026-11-22 · 档位 1（新端点、通道接口加方法、三语文案）· 需求 PRD AC39 · 计划见 [TDD-发票服务-总体设计 §14](./TDD-发票服务-总体设计.md) M1-3。
+
+### 16.1 鲸跃接口（照 UME `CetustekInvoiceServiceImpl#queryInvoiceStatus`）
+
+`QueryInvoiceStatus(officeid, posno, posid, invoicenumber, invoicedate)` → `<return>`：
+
+| 回码 | 含义 | `ProviderInvoiceStatus.State` |
+|---|---|---|
+| `0` | 已开立 | `ISSUED` |
+| `1` | 已作废 | `VOIDED` |
+| `2` | 已开立，部分折让 | `PARTIALLY_ALLOWED` |
+| `3` | 完全折让 | `FULLY_ALLOWED` |
+| `nodata` | 查无此票 | `NOT_FOUND` |
+| `invalid` / `error` | 认证错误 / 系统错误 | 抛 `ProviderException` → 26011 |
+| 其它 | 未知 | 抛 `ProviderException("unexpected:…")`，不猜 |
+
+`invoicedate` 用 `yyyy/MM/dd`（与上传一致；UME 源码未写明，**待鲸跃确认**）。2026-11-22 经 UME166 隧道对正式地址发占位账号请求，回 `QueryInvoiceStatusResponse / InValid`，接口名与参数名在真服务上成立。
+
+### 16.2 对账规则
+
+`POST /biz/invoices/{invoiceNo}/provider-checks`（`biz:invoice:issue`）→ `InvoiceTransmissionService#checkWithProvider`：
+
+| 情况 | 处理 |
+|---|---|
+| 鲸跃不是 `NOT_FOUND`，本地开立上传未 `SENT`（超时、`S1` 待人工等） | 补记 `SENT`，`gateway_ref = CETUSTEK:QUERY:<回码>`，退出期限巡检；INFO `INVOICE_TRANSMISSION_RECONCILED` |
+| 鲸跃 `VOIDED`，本地作废上传未 `SENT` | 同上补记 |
+| 鲸跃状态 = 按本地推出的应有状态（作废 → `VOIDED`；无折让 → `ISSUED`；部分 / 全额折让 → `PARTIALLY / FULLY_ALLOWED`） | `CONSISTENT` |
+| 不一致，但这张票（含折让）还有未送达的上传 | `PENDING_UPLOAD`：差异只是还没补传 |
+| 不一致，且没有待补传 | `MISMATCH`，ERROR `INVOICE_PROVIDER_MISMATCH`，需人工与鲸跃核对 |
+
+- 折让上传不按查单补记：鲸跃只回「部分 / 完全折让」，对不上是哪一张折让。
+- 只对服务商类通道（鲸跃）开放；STUB / Turnkey 回 26008。
+
+### 16.3 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `gateway/InvoiceProviderGateway` | `queryStatus` + `ProviderInvoiceStatus` |
+| `channel/cetustek/CetustekInvoiceGateway` | `QueryInvoiceStatus` 实现 |
+| `regime/InvoiceRegime` · `TwEguiRegime` | `zone()`（开立日按税制时区） |
+| `service/InvoiceTransmissionService(Impl)` | `checkWithProvider` |
+| `api/biz/BizInvoiceController` · `dto/InvoiceDtos` | 端点、`ProviderCheckVO` |
+| b-app `pages/sales-invoice` · `api/*` · `i18n` | 「向服务商查询状态」按钮与结论提示 |
+
+### 16.4 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC39 | `CetustekInvoiceGatewayTest#ac39QueryStatusSendsNumberAndDateAndMapsCetustekCodes`：信封、号码与日期；0/1/2/3/nodata 映射；invalid、未知码抛异常 | ✅ |
+| AC39 | `InvoiceServiceMysqlTest#ac39ProviderCheckReconcilesDeliveredUploadsAndFlagsMismatches`：STUB 通道 26008；`S1` 待人工后查单补记为已送达且不重复补记；本地已送达而鲸跃查无 → MISMATCH；本地作废未送达 → PENDING_UPLOAD；鲸跃已作废 → 补记作废；认证失败 26011；票不存在 26005 | ✅ |
+| AC39 | 经 UME166 实连：`QueryInvoiceStatus` 回 `InValid`（占位账号） | ✅ |
+
+MySQL 9 全类 33/33、鲸跃 6/6、Turnkey 3/3、b-app `vue-tsc` 无错。
+

@@ -2,7 +2,13 @@ package ai.neargo.shop.invoice.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
+import ai.neargo.shop.invoice.entity.IvcInvoice;
+import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderInvoiceStatus.State;
+import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
+import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
@@ -17,6 +23,7 @@ import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -59,12 +66,17 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
     private final AllowanceMapper allowances;
     private final InvoiceProviderAccounts accounts;
     private final Map<String, InvoiceGateway> gateways;
+    private final InvoiceMapper invoices;
+    private final InvoiceRegimes regimes;
 
     public InvoiceTransmissionServiceImpl(TransmissionMapper transmissions, RegimeProfileMapper profiles,
-            AllowanceMapper allowances, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways) {
+            AllowanceMapper allowances, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways,
+            InvoiceMapper invoices, InvoiceRegimes regimes) {
         this.transmissions = transmissions;
         this.profiles = profiles;
         this.allowances = allowances;
+        this.invoices = invoices;
+        this.regimes = regimes;
         this.accounts = accounts;
         this.gateways = gateways.stream().collect(Collectors.toMap(InvoiceGateway::code, Function.identity()));
     }
@@ -169,6 +181,67 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                 log.warn("INVOICE_REPORT_DEADLINE_WARN {} count={} refs={}", key, tasks.size(), refs);
         });
         return byEntity.values().stream().mapToInt(List::size).sum();
+    }
+
+    @Override
+    public ProviderCheckVO checkWithProvider(Scope scope, String invoiceNo) {
+        var inv = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("invoice_no", invoiceNo));
+        if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
+        var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", inv.getTenantNo())
+                .eq("entity_no", inv.getEntityNo()).eq("regime_code", inv.getRegimeCode()).last("LIMIT 1"));
+        if (profile == null || !(gateways.get(profile.getGatewayCode()) instanceof InvoiceProviderGateway provider))
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        var account = accounts.of(profile).orElseThrow(
+                () -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "account_not_configured"));
+        var day = LocalDate.ofInstant(inv.getIssuedAt().toInstant(ZoneOffset.UTC),
+                regimes.require(inv.getRegimeCode()).zone());
+        InvoiceProviderGateway.ProviderInvoiceStatus status;
+        try {
+            status = provider.queryStatus(account, inv.getFiscalNumber(), day);
+        } catch (ProviderException e) {
+            // 业务动作：服务商拒绝或不可达，原文代码交给用户
+            throw BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, e.code());
+        }
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        var tasks = transmissions.selectList(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
+                .eq("entity_no", inv.getEntityNo()).in("message_type", "ISSUE", "VOID").eq("ref_no", invoiceNo));
+        // 补记：服务商已有这张票 → 开立已送达；服务商已作废 → 作废也已送达（鲸跃收到的就是我们发的那份报文）
+        var reconciled = new ArrayList<String>();
+        for (var t : tasks) {
+            boolean delivered = "ISSUE".equals(t.getMessageType()) ? status.state() != State.NOT_FOUND
+                    : status.state() == State.VOIDED;
+            if (delivered && !"SENT".equals(t.getStatus()) && transmissions.update(null,
+                    new UpdateWrapper<IvcTransmission>().eq("id", t.getId()).ne("status", "SENT").set("status", "SENT")
+                            .set("gateway_ref", t.getGatewayCode() + ":QUERY:" + status.rawCode())
+                            .set("last_error", null).set("deadline_level", 2).set("updated_at", now)) == 1) {
+                reconciled.add(t.getMessageType());
+                log.info("INVOICE_TRANSMISSION_RECONCILED tenant={} entity={} type={} ref={} provider={}",
+                        t.getTenantNo(), t.getEntityNo(), t.getMessageType(), invoiceNo, status.rawCode());
+            }
+        }
+        State expected = "VOIDED".equals(inv.getStatus()) ? State.VOIDED
+                : inv.getAllowedMinor() == 0 ? State.ISSUED
+                : inv.getAllowedMinor() < inv.getTotalMinor() ? State.PARTIALLY_ALLOWED : State.FULLY_ALLOWED;
+        String verdict;
+        if (status.state() == expected) verdict = "CONSISTENT";
+        else if (hasUnsent(inv)) verdict = "PENDING_UPLOAD";
+        else {
+            verdict = "MISMATCH";
+            log.error("INVOICE_PROVIDER_MISMATCH tenant={} entity={} invoice={} fiscal={} local={} provider={}",
+                    inv.getTenantNo(), inv.getEntityNo(), invoiceNo, inv.getFiscalNumber(), expected, status.rawCode());
+        }
+        return new ProviderCheckVO(status.state().name(), status.rawCode(), expected.name(), verdict, reconciled, now);
+    }
+
+    /** 这张票（含其折让）是否还有未送达的上传任务：有的话差异只是还没补传完。 */
+    private boolean hasUnsent(IvcInvoice inv) {
+        var refs = new ArrayList<String>();
+        refs.add(inv.getInvoiceNo());
+        allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())
+                .eq("invoice_no", inv.getInvoiceNo())).forEach(a -> refs.add(a.getAllowanceNo()));
+        return transmissions.selectCount(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
+                .eq("entity_no", inv.getEntityNo()).in("ref_no", refs).ne("status", "SENT")) > 0;
     }
 
     @Override

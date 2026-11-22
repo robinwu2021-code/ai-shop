@@ -8,6 +8,7 @@ import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,9 @@ public interface InvoiceRegime {
 
     /** 开立时刻所属的申报期别（号段按期别配给）。 */
     String periodOf(Instant at);
+
+    /** 票面日期与期别所用的时区（台湾 Asia/Taipei）。 */
+    ZoneId zone();
 
     /** 期别结束的时刻（不含）；无期别的地区返回 null。下一期 = {@code periodOf(periodEnd(p))}。 */
     Instant periodEnd(String periodCode);

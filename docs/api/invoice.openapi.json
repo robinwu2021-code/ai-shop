@@ -979,6 +979,42 @@
           }
         }
       }
+    },
+    "/biz/invoices/{invoiceNo}/provider-checks": {
+      "post": {
+        "summary": "向服务商查单并对账",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`。调鲸跃 QueryInvoiceStatus：服务商已有这张票而本地开立上传未标送达的补记为已送达，服务商已作废而本地作废上传未标送达的同样补记；与本地不一致且无待补传任务时告警 INVOICE_PROVIDER_MISMATCH。通道不是加值中心类回 26008，服务商拒绝 / 不可达回 26011（参数为原文代码）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCheckVO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1472,6 +1508,38 @@
             "type": "string",
             "format": "date-time",
             "description": "未送达任务中最早的期限；无积压为空"
+          }
+        }
+      },
+      "ProviderCheckVO": {
+        "type": "object",
+        "properties": {
+          "providerState": {
+            "type": "string",
+            "description": "服务商侧：ISSUED / VOIDED / PARTIALLY_ALLOWED / FULLY_ALLOWED / NOT_FOUND"
+          },
+          "providerCode": {
+            "type": "string",
+            "description": "服务商原文（鲸跃 0 / 1 / 2 / 3 / nodata）"
+          },
+          "expectedState": {
+            "type": "string",
+            "description": "按本地状态应有的服务商状态"
+          },
+          "verdict": {
+            "type": "string",
+            "description": "CONSISTENT / PENDING_UPLOAD（本地还有未送达的上传）/ MISMATCH（需人工核对）"
+          },
+          "reconciled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "本次补记为已送达的上传（ISSUE / VOID）"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

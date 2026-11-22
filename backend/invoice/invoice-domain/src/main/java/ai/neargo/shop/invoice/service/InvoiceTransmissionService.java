@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service;
 
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 
@@ -20,6 +21,12 @@ public interface InvoiceTransmissionService {
      * @return [新预警条数, 新逾期条数]
      */
     int[] checkDeadlines(int limit);
+
+    /**
+     * 向加值中心查一张发票的状态并对账：服务商已收到而本地上传任务未标送达的，补记为已送达；
+     * 与本地状态不一致且没有待补传的任务时告警。只对服务商类通道（鲸跃）可用。
+     */
+    ProviderCheckVO checkWithProvider(Scope scope, String invoiceNo);
 
     /** 本门店的上传积压概览（B 端列表页提示用）。 */
     UploadBacklogVO backlog(Scope scope);

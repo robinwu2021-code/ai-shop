@@ -132,6 +132,7 @@ class InvoiceServiceMysqlTest {
         provider.failCode = null;
         provider.sendCode = null;
         provider.sends.set(0);
+        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null, null, null));
@@ -320,6 +321,44 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac39ProviderCheckReconcilesDeliveredUploadsAndFlagsMismatches() {
+        sources.paid("SO1", 1_000);
+        var r = issue("SO1");
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> transmissions.checkWithProvider(SCOPE, r.invoiceNo()));
+
+        useProvider();
+        sources.paid("SO2", 1_000);
+        var r2 = issue("SO2");
+        provider.sendCode = "S1";   // 上传回「失败」→ 待人工；实际上鲸跃已收到
+        transmissions.transmitDue(10);
+        assertEquals("NEEDS_REVIEW", invoices.get(SCOPE, r2.invoiceNo()).uploadStatus());
+
+        var check = transmissions.checkWithProvider(SCOPE, r2.invoiceNo());
+        assertEquals(List.of("ISSUE"), check.reconciled(), "鲸跃已有这张票：补记已送达");
+        assertEquals("CONSISTENT", check.verdict());
+        assertEquals("SENT", invoices.get(SCOPE, r2.invoiceNo()).uploadStatus());
+        assertEquals(List.of(), transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).reconciled(), "已送达不重复补记");
+
+        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.NOT_FOUND;
+        assertEquals("MISMATCH", transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).verdict(),
+                "本地已送达、鲸跃查无此票：告警");
+
+        invoices.voidInvoice(SCOPE, r2.invoiceNo(), "開錯");
+        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
+        assertEquals("PENDING_UPLOAD", transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).verdict(),
+                "作废还没送达：差异只是待补传");
+        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.VOIDED;
+        var voided = transmissions.checkWithProvider(SCOPE, r2.invoiceNo());
+        assertEquals(List.of("VOID"), voided.reconciled());
+        assertEquals("CONSISTENT", voided.verdict());
+
+        provider.failCode = "invalid";
+        var e = assertThrows(BizException.class, () -> transmissions.checkWithProvider(SCOPE, r2.invoiceNo()));
+        assertEquals(ErrorCode.INVOICE_PROVIDER_REJECTED, e.errorCode());
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> transmissions.checkWithProvider(SCOPE, "NOPE"));
     }
 
     @Test
@@ -909,6 +948,16 @@ class InvoiceServiceMysqlTest {
             seen.add(account);
             if (failCode != null) throw new ProviderException(failCode, null);
             return new ProviderOffice(taxId, "示例營業人", KEY_HEX);
+        }
+
+        volatile InvoiceProviderGateway.ProviderInvoiceStatus.State queryState =
+                InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
+
+        public ProviderInvoiceStatus queryStatus(InvoiceGateway.ProviderAccount account, String fiscalNumber,
+                java.time.LocalDate invoiceDate) {
+            seen.add(account);
+            if (failCode != null) throw new ProviderException(failCode, null);
+            return new ProviderInvoiceStatus(queryState, queryState.name());
         }
 
         public AllocatedRange allocate(InvoiceGateway.ProviderAccount account, String periodCode) {

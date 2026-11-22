@@ -9,6 +9,7 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderInvoiceStatus;
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
@@ -194,6 +195,30 @@ class CetustekInvoiceGatewayTest {
         assertEquals("invalid", assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT)).code());
         returns.add("exist");
         assertEquals("exist", assertThrows(ProviderException.class, () -> gateway.allocate(ACCOUNT, "11512")).code());
+    }
+
+    @Test
+    void ac39QueryStatusSendsNumberAndDateAndMapsCetustekCodes() throws Exception {
+        returns.add("0");
+        assertEquals(ProviderInvoiceStatus.State.ISSUED,
+                gateway.queryStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21)).state());
+        Document q = parse(requests.getFirst());
+        assertEquals(1, q.getElementsByTagNameNS("http://webservice.cetustek.com/", "QueryInvoiceStatus").getLength());
+        assertEquals("AB12345678", text(q, "invoicenumber"));
+        assertEquals("2026/11/21", text(q, "invoicedate"));
+        for (var c : java.util.List.of(new String[] {"1", "VOIDED"}, new String[] {"2", "PARTIALLY_ALLOWED"},
+                new String[] {"3", "FULLY_ALLOWED"}, new String[] {"nodata", "NOT_FOUND"})) {
+            returns.add(c[0]);
+            assertEquals(c[1], gateway.queryStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21))
+                    .state().name(), c[0]);
+        }
+        returns.add("InValid");
+        assertEquals("invalid", assertThrows(ProviderException.class,
+                () -> gateway.queryStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21))).code());
+        returns.add("9");
+        assertEquals("unexpected:9", assertThrows(ProviderException.class,
+                () -> gateway.queryStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21))).code(),
+                "不认识的回码不猜");
     }
 
     @Test

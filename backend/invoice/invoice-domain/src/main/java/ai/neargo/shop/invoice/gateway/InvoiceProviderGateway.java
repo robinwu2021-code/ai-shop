@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.gateway;
 
+import java.time.LocalDate;
+
 /**
  * 需要商家账号的加值中心通道（鲸跃等）：除了上传，还负责核验账号与配给字轨号段。
  *
@@ -17,6 +19,18 @@ public interface InvoiceProviderGateway extends InvoiceGateway {
      * @param periodCode 期别，如 {@code 11512}（民国 115 年 11-12 月）
      */
     AllocatedRange allocate(ProviderAccount account, String periodCode);
+
+    /**
+     * 查一张发票在服务商侧的状态（鲸跃 QueryInvoiceStatus）。账号无效 / 服务商故障时抛 {@link ProviderException}。
+     *
+     * @param invoiceDate 开立日（税制时区）
+     */
+    ProviderInvoiceStatus queryStatus(ProviderAccount account, String fiscalNumber, LocalDate invoiceDate);
+
+    /** 服务商侧发票状态；{@code rawCode} 是服务商原文，便于对照文档。 */
+    record ProviderInvoiceStatus(State state, String rawCode) {
+        public enum State { ISSUED, VOIDED, PARTIALLY_ALLOWED, FULLY_ALLOWED, NOT_FOUND }
+    }
 
     /**
      * @param qrKey 服务商回传的 QR 加密金钥原文（鲸跃 QRCode）；没给为空

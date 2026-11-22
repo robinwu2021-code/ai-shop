@@ -24,6 +24,13 @@
             <text class="sh-num" :class="overdue ? 'is-danger' : ''">{{ inv.uploadDeadlineAt }}{{ overdue ? ` · ${t("salesInvoice.overdue")}` : "" }}</text>
           </sh-kv>
           <text v-if="inv.uploadStatus === 'HELD'" class="sh-hint txt-quiet">{{ t("salesInvoice.heldHint") }}</text>
+          <view v-if="merchant.can('biz:invoice:issue')" class="sh-mt-sm">
+            <view class="sh-btn sh-btn--soft sh-btn--sm" :class="busy ? 'is-disabled' : ''" @tap="checkProvider">{{ t("salesInvoice.providerCheck") }}</view>
+            <view v-if="check" class="sh-notice sh-mt-sm" :class="check.verdict === 'MISMATCH' ? 'sh-notice--danger' : check.verdict === 'PENDING_UPLOAD' ? 'sh-notice--warning' : 'sh-notice--success'" role="status">
+              <text>{{ t(`salesInvoice.verdict.${check.verdict}`, { state: t(`salesInvoice.providerState.${check.providerState}`) }) }}</text>
+              <text v-if="check.reconciled.length"> {{ t("salesInvoice.reconciled") }}</text>
+            </view>
+          </view>
           <view v-if="inv.uploadStatus === 'NEEDS_REVIEW'" class="sh-mt-sm">
             <text class="sh-hint txt-quiet">{{ t("salesInvoice.reviewHint") }}</text>
             <view v-if="merchant.can('biz:invoice:issue')" class="sh-btn sh-btn--soft sh-btn--sm sh-mt-sm"
@@ -100,7 +107,7 @@ import { operationFailureText, printErrorText } from "@/shared/print-center";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { invoiceMinor, invoiceMoney } from "@/shared/sales-invoice";
-import type { SalesInvoice } from "@/api/sales-invoice";
+import type { SalesInvoice, SiProviderCheck } from "@/api/sales-invoice";
 
 const { t, te } = useI18n();
 const merchant = useMerchantStore();
@@ -120,6 +127,7 @@ const overdue = computed(() => {
   const d = inv.value?.uploadDeadlineAt;
   return !!d && inv.value?.uploadStatus !== "SENT" && Date.parse(d.endsWith("Z") ? d : `${d}Z`) < Date.now();
 });
+const check = ref<SiProviderCheck | null>(null);
 const uploadTrouble = computed(() => ["FAILED", "HELD", "NEEDS_REVIEW"].includes(inv.value?.uploadStatus ?? ""));
 const canPrint = computed(() => issued.value && !!inv.value?.printMark && canSubmitPrint.value);
 const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);
@@ -183,6 +191,21 @@ async function voidAllowance(allowanceNo: string) {
   const reason = (await prompt({ title: String(t("salesInvoice.voidReason")), maxlength: 60 }))?.trim();
   if (!reason) return;
   await run(() => api.mSiVoidAllowance(i.invoiceNo, allowanceNo, { reason }), String(t("salesInvoice.done")));
+}
+
+async function checkProvider() {
+  const i = inv.value;
+  if (!i || busy.value) return;
+  busy.value = true;
+  error.value = "";
+  try {
+    check.value = await api.mSiProviderCheck(i.invoiceNo);
+    if (check.value.reconciled.length) inv.value = await api.mSiDetail(i.invoiceNo);
+  } catch (e) {
+    error.value = message(e);
+  } finally {
+    busy.value = false;
+  }
 }
 
 async function retransmit() {

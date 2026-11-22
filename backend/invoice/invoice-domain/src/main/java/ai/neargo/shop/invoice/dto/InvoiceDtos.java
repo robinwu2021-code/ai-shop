@@ -125,6 +125,18 @@ public final class InvoiceDtos {
     public record UploadBacklogVO(long pending, long held, long needsReview, long dueSoon, long overdue,
             LocalDateTime oldestDeadlineAt) {}
 
+    /**
+     * 向服务商查单的结果。
+     *
+     * @param providerState 服务商侧：ISSUED / VOIDED / PARTIALLY_ALLOWED / FULLY_ALLOWED / NOT_FOUND
+     * @param providerCode 服务商原文（鲸跃 0 / 1 / 2 / 3 / nodata）
+     * @param expectedState 按本地状态应有的服务商状态
+     * @param verdict CONSISTENT 一致 / PENDING_UPLOAD 本地还有未送达的上传（差异待补传后消失）/ MISMATCH 不一致，需人工核对
+     * @param reconciled 本次据服务商状态补记为已送达的上传任务（ISSUE / VOID）
+     */
+    public record ProviderCheckVO(String providerState, String providerCode, String expectedState, String verdict,
+            List<String> reconciled, LocalDateTime checkedAt) {}
+
     public record RegimeProfileVO(
             String regimeCode,
             String sellerTaxId,
