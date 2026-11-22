@@ -5,6 +5,8 @@ import ai.neargo.shop.invoice.channel.base.HttpTransport;
 import ai.neargo.shop.invoice.channel.base.ResultCodeTable;
 import ai.neargo.shop.invoice.channel.base.SoapEnvelope;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.gateway.CredentialField;
+import ai.neargo.shop.invoice.gateway.InvoiceFeature;
 import ai.neargo.shop.invoice.channel.tw.TwMappingRules;
 import ai.neargo.shop.invoice.channel.tw.TwMappingRules.IssueMode;
 import ai.neargo.shop.invoice.gateway.ProviderException;
@@ -12,13 +14,17 @@ import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
+import ai.neargo.shop.invoice.gateway.QrKeySource;
 import ai.neargo.shop.invoice.gateway.QueryCapability;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
+import ai.neargo.shop.invoice.gateway.RangeWindow;
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -50,8 +56,20 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
         implements AccountCapability, RangeCapability, QueryCapability {
 
     static final String CODE = "CETUSTEK";
+    /**
+     * 能力声明（TDD-发票-供应商能力定义完善）：收四类标准报文（没有注销）；零税率不支持（缺通关方式栏位，映射阶段拒绝）；
+     * 凭据 officeid / posno / posid（后两项只写不读）；QR 金钥在核验时回传；号段任意期别可领。
+     */
     static final ProviderProfile PROFILE =
-            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true);
+            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true)
+                    .withUploads(ProviderProfile.STANDARD_UPLOADS)
+                    .withFeatures(EnumSet.complementOf(EnumSet.of(InvoiceFeature.ZERO_RATED)))
+                    .withCredentials(List.of(
+                            new CredentialField(CredentialField.Slot.ACCOUNT_CODE, "officeId", false, null, null),
+                            new CredentialField(CredentialField.Slot.KEY_ID, "posNo", true, null, null),
+                            new CredentialField(CredentialField.Slot.SECRET, "posId", true, null, null)))
+                    .withQrKeySource(QrKeySource.VERIFY)
+                    .withRangeWindows(Set.of(RangeWindow.ANY));
 
     /** 能力回包解读为成功时的内部码（鲸跃没有成功码，成功即数据本身）。 */
     static final String OK = "OK";
@@ -130,17 +148,33 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
     }
 
     @Override
-    protected GatewayReceipt upload(GatewayRequest request, JsonNode m) {
+    protected Prepared prepare(GatewayRequest request, JsonNode m) {
         String type = request.messageType();
-        String result = switch (type) {
-            case "ISSUE" -> soap("UploadInvoice", request.account(), Map.of("invoicexml", invoiceXml(m, request.refNo())));
-            case "VOID" -> soap("UploadCancelInvoice", request.account(), Map.of("invoicexml", cancelXml(m)));
-            case "ALLOWANCE" -> soap("UploadAllowance", request.account(), Map.of("allowancexml", allowanceXml(m)));
-            case "ALLOWANCE_VOID" ->
-                    soap("UploadCancelAllowance", request.account(), Map.of("allowancexml", cancelAllowanceXml(m)));
+        var call = switch (type) {
+            case "ISSUE" -> new SoapCall("UploadInvoice", Map.of("invoicexml", invoiceXml(m, request.refNo())));
+            case "VOID" -> new SoapCall("UploadCancelInvoice", Map.of("invoicexml", cancelXml(m)));
+            case "ALLOWANCE" -> new SoapCall("UploadAllowance", Map.of("allowancexml", allowanceXml(m)));
+            case "ALLOWANCE_VOID" -> new SoapCall("UploadCancelAllowance", Map.of("allowancexml", cancelAllowanceXml(m)));
             default -> throw new UnsupportedMessageException("Unsupported message type: " + type);
         };
-        return receipt(type, result, request.refNo());
+        return new Prepared(m, call);
+    }
+
+    @Override
+    protected GatewayReceipt deliver(GatewayRequest request, Prepared prepared) {
+        var call = (SoapCall) prepared.payload();
+        return receipt(request.messageType(), soap(call.operation(), request.account(), call.fields()), request.refNo());
+    }
+
+    /** 一次 SOAP 上传：操作名 + 参数（内层 XML 已按鲸跃格式排好）。 */
+    record SoapCall(String operation, Map<String, String> fields) {}
+
+    /** 失败分类：nodata（查无此票、无号可领）→ 查无；其余按码表。 */
+    @Override
+    protected ProviderException.Kind failureKind(ProviderOperation op, ProviderReply reply,
+            GatewayReceipt.Outcome outcome) {
+        if ("NODATA".equalsIgnoreCase(reply.code())) return ProviderException.Kind.NOT_FOUND;
+        return super.failureKind(op, reply, outcome);
     }
 
     /** 账号核验：QueryOfficeInfo 回营业人 XML（统编、名称、QRCode）或失败词。 */

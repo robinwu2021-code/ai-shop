@@ -165,3 +165,25 @@ public class ProviderException extends RuntimeException {
 | 预检与真实上传判据不一致 | 两者调用同一个 `prepare`，没有第二套规则 |
 | `INVOICE_PROVIDER_REJECTED` 参数变化影响已有端上提示 | 第一批保留原参数位置（第 0 位仍是厂商码），只追加 |
 | 账号类失败自动暂停可能误伤 | 只对码表明确登记为账号问题的码（鲸跃 `invalid`、汎宇 `S020/S022/S024/S026`）生效；核验通过自动解除，与上传暂停同一机制 |
+
+---
+
+## §5 对账（实现后）
+
+| 设计 | 落点 | 测试 |
+|---|---|---|
+| D1 能力目录 | `ProviderCapability`、`InvoiceGateways#capabilities / has`；`ProviderOptionVO / OpsSellerVO / OpsTransmissionVO.capabilities`；b-app 设置页、运营端电子发票页按能力渲染 | `InvoiceGatewaysTest#capabilitiesAreDerivedFromInterfacesAndDeclaredUploads` · `InvoiceServiceMysqlTest#capProviderOptionsExposeCapabilitiesAndDeclarations` |
+| D2 预检 | `InvoiceGateway#preflight`；基础类 `prepare / deliver`；`InvoiceServiceImpl#preflight`（入队前） | `AbstractInvoiceGatewayTemplateTest#preflight_runs_prepare_only · #send_rejects_undeclared_messages_and_mapping_rejections` · `InvoiceServiceMysqlTest#capPreflightRejectionRollsBackWithoutUsingANumber` · 两家 `#capPreflight…` |
+| D3 凭据字段 | `CredentialField`；`InvoiceSetupServiceImpl#accountCode`；b-app 按声明渲染 | `InvoiceServiceMysqlTest#capCredentialDeclarationDerivesAndValidatesTheAccountCode` · 两家 `#capDeclares…` |
+| D4 失败分类 | `ProviderException.Kind`；基础类 `failureKind / failureDetail`；`InvoiceSetupServiceImpl#call / hold` | `AbstractInvoiceGatewayTemplateTest#call_failures_carry_a_kind` · `InvoiceServiceMysqlTest#capAccountFailuresHoldTheEntityOthersDoNot` · 两家 `#capFailures…` |
+| D5 QR 金钥来源 | `QrKeySource`；`AllocatedRange.qrKey`；领号仅 RANGE 时存 | `InvoiceServiceMysqlTest#capRangeWindowAndRangeQrKeyFollowTheDeclaration` · 汎宇 `#capAllocatedRangeCarriesTheReturnedQrKey` |
+| D6 期别窗口 | `RangeWindow`；`InvoiceSetupServiceImpl#fetchProviderRange` 先判窗口 | 同上 |
+
+运行（2026-11-22）：invoice-channel + invoice-domain 131 条全过（`InvoiceServiceMysqlTest` 连本机 MySQL 9.7）；**鲸跃 7 条、汎宇 26 条原有测试断言一行未改**；
+`BackendI18nParityTest` 6/6；b-app `vue-tsc`、ops-web `tsc` 0 错；契约、i18n 孤儿、RTL、枚举闸门通过。
+`ArchitectureTest` 5 条失败均为既有（merchantbridge、inventory、trade、food、portal），与发票无关。
+
+### 偏差说明
+- 基础提交里先给汎宇声明「收 REVOKE」：基础类开始按声明拒收未登记的报文，不先声明汎宇的注销测试会红；两家其余声明在厂商提交里。
+- `INVOICE_PROVIDER_REJECTED` 有原文说明时追加第 1 位参数（`detail`），第 0 位仍是厂商码，已有提示不受影响。
+- 核验回传的 QR 金钥仍一律存（与改造前一致）；只有领号回传的按声明 `RANGE` 才存。

@@ -6,6 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
+import ai.neargo.shop.invoice.gateway.CredentialField;
+import ai.neargo.shop.invoice.gateway.InvoiceFeature;
+import ai.neargo.shop.invoice.gateway.ProviderOperation;
+import ai.neargo.shop.invoice.gateway.QrKeySource;
+import ai.neargo.shop.invoice.gateway.RangeWindow;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
@@ -472,6 +477,65 @@ class UniversalEcInvoiceGatewayTest {
         replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z11\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗: 請確認 POS 機已註冊且無停用\"}}");
         assertThrows(ProviderException.class,
                 () -> gateway.revokeStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21)));
+    }
+
+    // ---- 供应商能力定义完善（TDD-发票-供应商能力定义完善） ----
+
+    /** 汎宇的声明：标准报文 + 注销、不支持零税率、SELLERID 由统编带出、只能领当期 / 下期、QR 金钥待确认前商家手填。 */
+    @Test
+    void capDeclaresWhatUniversalEcSupports() {
+        var p = gateway.profile();
+        assertTrue(p.accepts(ProviderOperation.REVOKE) && p.accepts(ProviderOperation.ISSUE));
+        assertFalse(p.supports(InvoiceFeature.ZERO_RATED));
+        var seller = p.credential(CredentialField.Slot.ACCOUNT_CODE);
+        assertEquals("sellerId", seller.labelKey());
+        assertEquals(CredentialField.Derived.SELLER_TAX_ID, seller.derivedFrom());
+        assertTrue("12345675".matches(seller.pattern()));
+        assertEquals("posSn", p.credential(CredentialField.Slot.SECRET).labelKey());
+        assertTrue(p.allocatable(RangeWindow.CURRENT) && p.allocatable(RangeWindow.NEXT));
+        assertFalse(p.allocatable(RangeWindow.ANY));
+        assertEquals(QrKeySource.MERCHANT, p.qrKeySource());
+    }
+
+    /** 预检只跑映射、不出网：零税率当场说不行；开立、注销放行。 */
+    @Test
+    void capPreflightUsesTheSameMappingWithoutCallingUniversalEc() {
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "ISSUE", "AB12345678", ISSUE, null)).isEmpty());
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "REVOKE", "AB12345678", REVOKE, null)).isEmpty());
+        var zero = ISSUE.replace("\"ZeroTaxSalesAmount\":0", "\"ZeroTaxSalesAmount\":50");
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "ISSUE", "AB12345678", zero, null)).isPresent());
+        assertTrue(requests.isEmpty(), "预检不打汎宇");
+    }
+
+    /** 失败分类：Y01 失败 → 账号；A01 无配号 → 查无；期别窗口外 → 不支持；其它带汎宇原文说明。 */
+    @Test
+    void capFailuresCarryAKindAndTheChineseMessage() {
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Y01\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗: 請確認 POS 機已註冊且無停用\"}}");
+        var v = assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT));
+        assertEquals(ProviderException.Kind.ACCOUNT, v.kind());
+        assertEquals("失敗: 請確認 POS 機已註冊且無停用", v.detail());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"A01\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗:資料庫中,無發票配號可用\"}}");
+        assertEquals(ProviderException.Kind.NOT_FOUND,
+                assertThrows(ProviderException.class, () -> gateway.allocate(ACCOUNT, "11512")).kind());
+        assertEquals(ProviderException.Kind.UNSUPPORTED,
+                assertThrows(ProviderException.class, () -> gateway.allocate(ACCOUNT, "11510")).kind());
+
+        replies.add(reply("S020"));
+        assertEquals(ProviderException.Kind.ACCOUNT,
+                assertThrows(ProviderException.class, () -> gateway.downloadedTracks(ACCOUNT, "11512")).kind());
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z32\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗：字軌區間不存在\"}}");
+        var z = assertThrows(ProviderException.class, () -> gateway.uploadNextTracks(ACCOUNT,
+                new TrackCapability.TrackUpload("11602", "07", "AB", "12345675",
+                        List.of(new TrackCapability.TrackRange("07", "AB", 0, 49)))));
+        assertEquals("失敗：字軌區間不存在", z.detail());
+    }
+
+    /** 领号回包的 QRCodeASKey 随号段带回（是否当金钥用由声明决定）。 */
+    @Test
+    void capAllocatedRangeCarriesTheReturnedQrKey() {
+        replies.add(range("A01", "11512", "DC", "51705750", "51705799"));
+        assertEquals("5F2BF5EEA62517788999A08024437", gateway.allocate(ACCOUNT, "11512").qrKey());
     }
 
     // ---- helpers & fixtures ----

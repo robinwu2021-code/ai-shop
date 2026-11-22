@@ -5,12 +5,16 @@ import ai.neargo.shop.invoice.channel.base.HttpTransport;
 import ai.neargo.shop.invoice.channel.base.ResultCodeTable;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
 import ai.neargo.shop.invoice.gateway.BlankRangeCapability;
+import ai.neargo.shop.invoice.gateway.CredentialField;
+import ai.neargo.shop.invoice.gateway.InvoiceFeature;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.ProviderOperation;
 import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
+import ai.neargo.shop.invoice.gateway.QrKeySource;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
+import ai.neargo.shop.invoice.gateway.RangeWindow;
 import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
 import ai.neargo.shop.invoice.gateway.TrackCapability;
 import ai.neargo.shop.invoice.regime.tw.TwPeriods;
@@ -20,6 +24,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,10 +51,23 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
         implements AccountCapability, RangeCapability, TrackCapability, BlankRangeCapability, RevokeStatusCapability {
 
     static final String CODE = "UNIVERSALEC";
+    /**
+     * 能力声明（TDD-发票-供应商能力定义完善）：四类标准报文 + 注销；零税率不支持（缺零税率原因与通关方式，映射阶段拒绝）；
+     * 凭据 SELLERID（就是卖方统编，自动带出）/ POSID / POSSN（后两项只写不读）；QR 金钥：A01 / C01 回 QRCodeASKey，
+     * 语义未经汎宇确认前按商家手填；号段只有当期（A01）与下期（C01）可领。
+     */
     static final ProviderProfile PROFILE =
             new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true)
                     .withUploads(Set.of(ProviderOperation.ISSUE, ProviderOperation.VOID, ProviderOperation.ALLOWANCE,
-                            ProviderOperation.ALLOWANCE_VOID, ProviderOperation.REVOKE));
+                            ProviderOperation.ALLOWANCE_VOID, ProviderOperation.REVOKE))
+                    .withFeatures(EnumSet.complementOf(EnumSet.of(InvoiceFeature.ZERO_RATED)))
+                    .withCredentials(List.of(
+                            new CredentialField(CredentialField.Slot.ACCOUNT_CODE, "sellerId", false, "\\d{8}",
+                                    CredentialField.Derived.SELLER_TAX_ID),
+                            new CredentialField(CredentialField.Slot.KEY_ID, "posId", true, null, null),
+                            new CredentialField(CredentialField.Slot.SECRET, "posSn", true, null, null)))
+                    .withQrKeySource(QrKeySource.MERCHANT)
+                    .withRangeWindows(Set.of(RangeWindow.CURRENT, RangeWindow.NEXT));
 
     /**
      * 照规格书「ERROR_CODE 回傳訊息代號說明」逐行转写。重发时的「已存在」（开立 E02、作废 E07）视为送达；
@@ -123,7 +141,7 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
     }
 
     @Override
-    protected GatewayReceipt upload(GatewayRequest request, JsonNode message) {
+    protected Prepared prepare(GatewayRequest request, JsonNode message) {
         String type = request.messageType();
         ProviderAccount account = request.account();
         Map<String, Object> payload = switch (type) {
@@ -134,7 +152,14 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
             case "REVOKE" -> UniversalEcMessages.revoke(message, account, now());
             default -> throw new UnsupportedMessageException("Unsupported message type: " + type);
         };
-        var reply = exchange(account, type, payload);
+        return new Prepared(message, payload);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected GatewayReceipt deliver(GatewayRequest request, Prepared prepared) {
+        String type = request.messageType();
+        var reply = exchange(request.account(), type, (Map<String, Object>) prepared.payload());
         String code = reply.code();
         String msg = reply.data().get("MESSAGE");
         if ("REVOKE".equals(type) && !"0000".equals(code) && msg != null && msg.contains("尚未上傳")) code = "NOT_UPLOADED";
@@ -172,16 +197,18 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
         String current = TwPeriods.periodOf(clock.instant());
         String next = TwPeriods.periodOf(TwPeriods.periodEnd(current));
         String fn = periodCode.equals(current) ? "A01" : periodCode.equals(next) ? "C01" : null;
-        if (fn == null) throw new ProviderException("period_unsupported", null);
+        if (fn == null) throw ProviderException.of(ProviderException.Kind.UNSUPPORTED, "period_unsupported");
         return call(ProviderOperation.RANGE, account,
                 () -> exchange(account, fn, UniversalEcMessages.index(fn, account, now())), r -> {
                     var d = r.data();
-                    if (!periodCode.equals(d.get("TAXMONTH"))) throw new ProviderException("period_mismatch", null);
+                    if (!periodCode.equals(d.get("TAXMONTH")))
+                        throw ProviderException.of(ProviderException.Kind.UNEXPECTED, "period_mismatch");
                     String track = d.get("INVOICEHEADER");
                     try {
                         String start = d.get("INVOICESTART").trim();
                         return new AllocatedRange(CODE + ":" + periodCode + ":" + track + start, track,
-                                Integer.parseInt(start), Integer.parseInt(d.get("INVOICEEND").trim()), d.get("TYPE"));
+                                Integer.parseInt(start), Integer.parseInt(d.get("INVOICEEND").trim()), d.get("TYPE"),
+                                d.get("QRCodeASKey"));
                     } catch (RuntimeException e) {
                         throw new ProviderException("unexpected", e);
                     }
@@ -254,6 +281,27 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
                 yield msg == null ? super.failureCode(op, reply) : msg.length() > 120 ? msg.substring(0, 120) : msg;
             }
         };
+    }
+
+    /**
+     * 失败分类：Y01 失败只有一种原因（POS 未注册或已停用）→ 账号问题；A01 / C01 失败（無發票配號可用）→ 查无；
+     * 其余按码表（S020 等账号码 → 账号问题，S01x / S03x → 不可达）。
+     */
+    @Override
+    protected ProviderException.Kind failureKind(ProviderOperation op, ProviderReply reply,
+            GatewayReceipt.Outcome outcome) {
+        if (outcome == GatewayReceipt.Outcome.ACCOUNT_PROBLEM) return ProviderException.Kind.ACCOUNT;
+        return switch (op) {
+            case VERIFY -> ProviderException.Kind.ACCOUNT;
+            case RANGE -> ProviderException.Kind.NOT_FOUND;
+            default -> super.failureKind(op, reply, outcome);
+        };
+    }
+
+    /** 汎宇的中文说明原样带上（如「失敗：字軌區間不存在」）。 */
+    @Override
+    protected String failureDetail(ProviderOperation op, ProviderReply reply) {
+        return reply.data().get("MESSAGE");
     }
 
     /** 查询类动作汎宇用「失敗：查無…」表示没有资料：当作成功的空结果，而不是错误。 */

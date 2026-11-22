@@ -9,7 +9,13 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.channel.base.SoapEnvelope;
+import ai.neargo.shop.invoice.gateway.CredentialField;
+import ai.neargo.shop.invoice.gateway.InvoiceFeature;
 import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.ProviderOperation;
+import ai.neargo.shop.invoice.gateway.ProviderProfile;
+import ai.neargo.shop.invoice.gateway.QrKeySource;
+import ai.neargo.shop.invoice.gateway.RangeWindow;
 import ai.neargo.shop.invoice.gateway.QueryCapability.ProviderInvoiceStatus;
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayInputStream;
@@ -237,6 +243,50 @@ class CetustekInvoiceGatewayTest {
         server.stop(0);
         var e = assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT));
         assertEquals("unreachable", e.code());
+    }
+
+    // ---- 供应商能力定义完善（TDD-发票-供应商能力定义完善） ----
+
+    /** 鲸跃的声明：四类标准报文（不收注销）、不支持零税率、officeid / posno / posid、核验回 QR 金钥、任意期别。 */
+    @Test
+    void capDeclaresWhatCetustekSupports() {
+        var p = gateway.profile();
+        assertEquals(ProviderProfile.STANDARD_UPLOADS, p.uploads());
+        assertFalse(p.accepts(ProviderOperation.REVOKE));
+        assertFalse(p.supports(InvoiceFeature.ZERO_RATED));
+        assertTrue(p.supports(InvoiceFeature.EXEMPT) && p.supports(InvoiceFeature.CARRIER));
+        assertEquals(java.util.List.of("officeId", "posNo", "posId"), p.credentials().stream().map(CredentialField::labelKey).toList());
+        assertFalse(p.credential(CredentialField.Slot.ACCOUNT_CODE).secret());
+        assertTrue(p.credential(CredentialField.Slot.SECRET).secret());
+        assertEquals(QrKeySource.VERIFY, p.qrKeySource());
+        assertTrue(p.allocatable(RangeWindow.ANY));
+    }
+
+    /** 预检只跑映射、不出网：零税率当场说不行，正常报文放行。 */
+    @Test
+    void capPreflightUsesTheSameMappingWithoutCallingCetustek() {
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, null)).isEmpty());
+        var zero = ISSUE.replace("\"TaxType\":\"1\",\"TaxRate\"", "\"TaxType\":\"2\",\"TaxRate\"");
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", zero, null)).isPresent());
+        assertTrue(gateway.preflight(new GatewayRequest("TW_EGUI", "REVOKE", "INV-1", VOID, null)).isPresent(),
+                "鲸跃不收注销");
+        assertTrue(requests.isEmpty(), "预检不打鲸跃");
+    }
+
+    /** 失败分类：invalid → 账号问题，nodata → 查无，error → 不可达。 */
+    @Test
+    void capFailuresCarryAKind() {
+        returns.add("InValid");
+        assertEquals(ProviderException.Kind.ACCOUNT, assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT)).kind());
+        returns.add("");
+        assertEquals(ProviderException.Kind.NOT_FOUND,
+                assertThrows(ProviderException.class, () -> gateway.allocate(ACCOUNT, "11512")).kind());
+        returns.add("error");
+        assertEquals(ProviderException.Kind.UNAVAILABLE,
+                assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT)).kind());
+        server.stop(0);
+        assertEquals(ProviderException.Kind.UNAVAILABLE,
+                assertThrows(ProviderException.class, () -> gateway.verify(ACCOUNT)).kind(), "连不上");
     }
 
     static Document parse(String xml) throws Exception {
