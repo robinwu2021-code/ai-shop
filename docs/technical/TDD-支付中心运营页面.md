@@ -656,3 +656,11 @@ PR #28 压缩合入 main（`b58dfa600`），从该提交构建发布。near-pay 
 - .80 主机公钥不在本机 known_hosts：经 166 与跳板机两条路径各 `ssh-keyscan` 一次，结果一致后用临时 known_hosts 连接。
 - 探测（不带令牌）：.80 `/actuator/health` 200；`/ops/pay-ops/v2/{apps,app-applications,platform-keys}`、`/biz/payment/orders` 401；公网 `https://tw.neargo.ai/ops-shop-v2/payment-center/` 200，页面 chunk 含新页签。
 - **未验证**：登录后的三个新页签与透传调用（浏览器里没有运营会话，未代输口令）。试点 robin 提交 / neara 审核需各自角色有 `pay:app:manage` / `pay:app:approve`。
+
+### P12 · 试点授权种子 V689 发布到 v2（2026-11-22 17:04–17:06 CST，用户：「停止测试，直接提交，目前核心是支付」）
+
+- PR #30 压缩合入 main（`d585ccea4`）。推送跳过了 pre-push（用户同意）；此前单独跑过：后端全量 9224 条、餐饮 1264 条、ops-web 1458 条，均 0 红。
+- .80 `releases/shop-app-main-d585ccea4.jar`（sha256 前缀 `08bc6a0e2eaea7b4`），依赖清单与上一版相同（201 个），`run.sh` 标签 `main-d585ccea4`。`ai_shop_ume` 688 → **689**（0.150 s）。
+- 中断 13:04:55–13:06:25 UTC（约 90 秒，`Started ShopApplication in 86.2 seconds`）；health 200，运营 / B 端支付接口未登录 401。
+- 回退：`cp releases/run-before-main-d585ccea4.sh run.sh && ./run.sh all restart`（旧包不认 V689，角色数据留在库里无害；要撤授权在「角色与权限」页删两个角色）。
+- **未验证**：两个账号实际拿到角色（无正式库只读通道）；robin / neara 登录后应在支付中心看到接入申请、接入应用、API 清单、凭证管理、开放平台密钥。角色缓存 60 秒，已登录的无需重登。
