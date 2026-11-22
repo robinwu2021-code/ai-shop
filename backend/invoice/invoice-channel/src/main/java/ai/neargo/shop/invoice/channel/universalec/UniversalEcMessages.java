@@ -88,7 +88,31 @@ final class UniversalEcMessages {
 
     /** F0501 → C0501。 */
     static Map<String, Object> voidInvoice(JsonNode m, ProviderAccount account, String sysTime) {
-        var x = cancelHead("C0501", account);
+        return cancelInvoice("C0501", m, account, sysTime);
+    }
+
+    /** F0701 → C0701 注销（字段与作废同形）。 */
+    static Map<String, Object> revoke(JsonNode m, ProviderAccount account, String sysTime) {
+        return cancelInvoice("C0701", m, account, sysTime);
+    }
+
+    /** Z11 查注销流程状态。 */
+    static Map<String, Object> revokeStatus(String fiscalNumber, String invoiceDate, ProviderAccount account,
+            String sysTime) {
+        var x = new LinkedHashMap<String, Object>();
+        x.put("FUNCTIONCODE", "Z11");
+        x.put("SELLERID", account.accountCode());
+        x.put("POSID", account.keyId());
+        x.put("POSSN", account.secret());
+        x.put("INVOICE_NUMBER", fiscalNumber);
+        x.put("INVOICE_DATE", invoiceDate);
+        x.put("SYSTIME", sysTime);
+        x.put("REMARK", "");
+        return Map.of("INDEX", x);
+    }
+
+    private static Map<String, Object> cancelInvoice(String code, JsonNode m, ProviderAccount account, String sysTime) {
+        var x = cancelHead(code, account);
         x.put("INVOICE_NUMBER", m.path("CancelInvoiceNumber").asText());
         x.put("INVOICE_DATE", day(m.path("InvoiceDate").asText()));
         cancelTail(x, m, account, sysTime);

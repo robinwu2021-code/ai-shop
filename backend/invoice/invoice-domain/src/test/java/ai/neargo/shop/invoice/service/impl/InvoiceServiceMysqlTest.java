@@ -39,6 +39,7 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateways;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.QueryCapability;
+import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
@@ -147,6 +148,8 @@ class InvoiceServiceMysqlTest {
         provider.uploads.clear();
         provider.blanks.clear();
         provider.trackFailCode = null;
+        provider.revokeStates.clear();
+        provider.revokeChecks.clear();
         provider.queryState = QueryCapability.ProviderInvoiceStatus.State.ISSUED;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
@@ -798,6 +801,150 @@ class InvoiceServiceMysqlTest {
                 List.of(new ai.neargo.shop.invoice.dto.InvoiceDtos.TrackSpanReq(start, end)));
     }
 
+    // ---- 注销与同号重开（TDD-发票-注销与同号重开） ----
+
+    static final Duration TEN_MIN = Duration.ofMinutes(10), DAY = Duration.ofHours(24), FIVE_DAYS = Duration.ofDays(5);
+
+    /** 每次查进度前把注销中的发票 updated_at 拨回，模拟「距上次检查已超过间隔」。 */
+    private int[] checkRevocationsNow() {
+        jdbc.update("UPDATE ivc_invoice SET updated_at = DATE_SUB(updated_at, INTERVAL 1 HOUR) WHERE status='REVOKING'");
+        return transmissions.checkRevocations(Instant.now(), TEN_MIN, DAY, FIVE_DAYS);
+    }
+
+    private String issuedAndSent(String sourceNo) {
+        sources.paid(sourceNo, 1_000);
+        var no = issue(sourceNo).invoiceNo();
+        transmissions.transmitDue(10);
+        return no;
+    }
+
+    /** AC1 / AC2 / AC5：前置校验、注销中冻结作废折让打印、REVOKE 任务入队。 */
+    @Test
+    void revokeChecksPreconditionsFreezesTheInvoiceAndQueuesF0701() {
+        useProvider();
+        sources.paid("SO1", 1_000);
+        var no = issue("SO1").invoiceNo();
+        assertFalse(invoices.get(SCOPE, no).revocable(), "开立还没送达");
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.revoke(SCOPE, no, "買方填錯"));
+        transmissions.transmitDue(10);
+        assertTrue(invoices.get(SCOPE, no).revocable());
+
+        var v = invoices.revoke(SCOPE, no, "買方填錯");
+        assertEquals("REVOKING", v.status());
+        assertEquals("買方填錯", v.revocation().reason());
+        assertFalse(v.revocable());
+        var payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='REVOKE' AND ref_no=?",
+                String.class, no);
+        assertTrue(payload.contains("F0701") && payload.contains("買方填錯"), payload);   // JSON 列会重排空白
+
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.revoke(SCOPE, no, "again"));
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.voidInvoice(SCOPE, no, "x"));
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.allowance(SCOPE, no, 100, "x"));
+        assertTrue(invoices.printFacts(SCOPE, no).isEmpty(), "注销中不出证明联与明细");
+
+        var withAllowance = issuedAndSent("SO2");
+        invoices.allowance(SCOPE, withAllowance, 100, "退一份");
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.revoke(SCOPE, withAllowance, "x"));
+    }
+
+    /** AC2：开票时的供应商不支持注销（TEST 桩）时拒绝。 */
+    @Test
+    void revokeIsRejectedWhenTheFrozenGatewayCannotRevoke() {
+        sources.paid("SO1", 1_000);
+        var no = issue("SO1").invoiceNo();
+        transmissions.transmitDue(10);
+        assertFalse(invoices.get(SCOPE, no).revocable());
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.revoke(SCOPE, no, "x"));
+    }
+
+    /** AC3 / AC4：进度 PENDING → DONE 释放号码；同号重开生成新票并互相关联；不能重开两次；不取新号。 */
+    @Test
+    void revokedInvoiceIsReissuedUnderTheSameNumber() {
+        useProvider();
+        var no = issuedAndSent("SO1");
+        var fiscal = invoices.get(SCOPE, no).fiscalNumber();
+        int nextBefore = jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class);
+        invoices.revoke(SCOPE, no, "買方填錯");
+        assertArrayEquals(new int[] {0, 0, 0}, checkRevocationsNow(), "注销报文还没送达：不查");
+        transmissions.transmitDue(10);
+
+        assertArrayEquals(new int[] {0, 0, 0}, checkRevocationsNow(), "PENDING：不动");
+        provider.revokeStates.add(RevokeStatusCapability.RevokeState.DONE);
+        assertArrayEquals(new int[] {1, 0, 0}, checkRevocationsNow());
+        assertEquals(fiscal + "@" + TwPeriods.local(Instant.now()).toLocalDate(), provider.revokeChecks.getLast());
+        assertEquals("REVOKED", invoices.get(SCOPE, no).status());
+        assertEquals(null, jdbc.queryForObject("SELECT active_fiscal_key FROM ivc_invoice WHERE invoice_no=?", String.class, no));
+
+        var fresh = invoices.reissue(SCOPE, no, new Buyer("53212539", "示例買方股份有限公司", null, null, null));
+        assertEquals(fiscal, fresh.fiscalNumber(), "同号重开");
+        assertNotEquals(no, fresh.invoiceNo());
+        assertEquals("ISSUED", fresh.status());
+        assertEquals("B2B", fresh.buyerType());
+        assertEquals(no, fresh.revocation().revisedFromInvoiceNo());
+        assertEquals(fresh.invoiceNo(), invoices.get(SCOPE, no).revocation().revisedToInvoiceNo());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
+                Integer.class, fresh.invoiceNo()));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice WHERE fiscal_number=?", Integer.class, fiscal));
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.reissue(SCOPE, no, null));
+        assertEquals(nextBefore, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class),
+                "重开不取新号");
+    }
+
+    /** AC3：服务商注销失败回到已开立并可再次注销（复用同一条 REVOKE 任务）；上传被拒同样回到已开立。 */
+    @Test
+    void failedRevocationReturnsToIssuedAndCanBeRevokedAgain() {
+        useProvider();
+        var no = issuedAndSent("SO1");
+        invoices.revoke(SCOPE, no, "第一次");
+        transmissions.transmitDue(10);
+        provider.revokeStates.add(RevokeStatusCapability.RevokeState.FAILED);
+        assertArrayEquals(new int[] {0, 1, 0}, checkRevocationsNow());
+        var back = invoices.get(SCOPE, no);
+        assertEquals("ISSUED", back.status());
+        assertEquals("provider revoke failed", back.revocation().revokeError());
+        assertTrue(back.revocable());
+
+        invoices.revoke(SCOPE, no, "第二次");
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='REVOKE'", Integer.class));
+        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM ivc_transmission WHERE message_type='REVOKE'", String.class));
+        provider.sendCode = "S040";
+        transmissions.transmitDue(10);
+        var rejected = invoices.get(SCOPE, no);
+        assertEquals("ISSUED", rejected.status(), "注销上传被拒：回到已开立");
+        assertTrue(rejected.revocation().revokeError().contains("S040"), rejected.revocation().revokeError());
+    }
+
+    /** AC7：注销中超时、期末未重开各提醒一次；期末已注销未重开的号码进空白上报；AC4：跨期不能重开。 */
+    @Test
+    void revocationAlertsCrossPeriodReissueAndBlankReport() {
+        useProvider();
+        var no = issuedAndSent("SO1");
+        var fiscal = invoices.get(SCOPE, no).fiscalNumber();
+        invoices.revoke(SCOPE, no, "x");
+        transmissions.transmitDue(10);
+        jdbc.update("UPDATE ivc_invoice SET revoke_requested_at = DATE_SUB(revoke_requested_at, INTERVAL 2 DAY)");
+        assertArrayEquals(new int[] {0, 0, 1}, checkRevocationsNow(), "注销中超过 24 小时");
+        assertArrayEquals(new int[] {0, 0, 0}, checkRevocationsNow(), "只提醒一次");
+
+        provider.revokeStates.add(RevokeStatusCapability.RevokeState.DONE);
+        checkRevocationsNow();
+        var end = TwPeriods.periodEnd(period);
+        assertArrayEquals(new int[] {0, 0, 1}, transmissions.checkRevocations(end.minus(Duration.ofDays(1)), TEN_MIN, DAY,
+                FIVE_DAYS), "期末前未重开提醒");
+        assertArrayEquals(new int[] {0, 0, 0}, transmissions.checkRevocations(end.minus(Duration.ofHours(1)), TEN_MIN, DAY,
+                FIVE_DAYS));
+
+        assertEquals(1, setup.reportBlankRanges(end.plus(Duration.ofHours(1))));
+        var spans = provider.blanks.getFirst().ranges();
+        int n = Integer.parseInt(fiscal.substring(2));
+        assertTrue(spans.contains(new ai.neargo.shop.invoice.gateway.TrackCapability.TrackRange("07", "AB", n, n)),
+                "已注销未重开的号码作空白上报：" + spans);
+        assertEquals(0, setup.reportBlankRanges(end.plus(Duration.ofHours(1))), "只报一次");
+
+        jdbc.update("UPDATE ivc_invoice SET period_code='11002' WHERE invoice_no=?", no);
+        assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED, () -> invoices.reissue(SCOPE, no, null));
+    }
+
     private void useProvider() {
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
                 "OFFICE-1", "pos-user", "pos-secret", null, null));
@@ -1110,7 +1257,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(12, applied);
+            assertEquals(13, applied);
             return ds;
         }
     }
@@ -1172,7 +1319,11 @@ class InvoiceServiceMysqlTest {
 
     /** 加值中心桩：记下收到的账号，核验回固定统编与 QR 金钥，配号回固定一段。 */
     static final class FakeProvider implements InvoiceGateway, AccountCapability, RangeCapability, QueryCapability,
-            ai.neargo.shop.invoice.gateway.TrackCapability, ai.neargo.shop.invoice.gateway.BlankRangeCapability {
+            ai.neargo.shop.invoice.gateway.TrackCapability, ai.neargo.shop.invoice.gateway.BlankRangeCapability,
+            RevokeStatusCapability {
+        /** Z11 依次回的进度；空 = PENDING */
+        final java.util.Deque<RevokeState> revokeStates = new java.util.concurrent.ConcurrentLinkedDeque<>();
+        final List<String> revokeChecks = new ArrayList<>();
         final List<ai.neargo.shop.invoice.gateway.TrackCapability.TrackUpload> uploads = new ArrayList<>();
         final List<ai.neargo.shop.invoice.gateway.BlankRangeCapability.BlankReport> blanks = new ArrayList<>();
         volatile String trackFailCode;
@@ -1242,6 +1393,14 @@ class InvoiceServiceMysqlTest {
             seen.add(account);
             if (trackFailCode != null) throw new ProviderException(trackFailCode, null);
             uploads.add(upload);
+        }
+
+        public RevokeState revokeStatus(InvoiceGateway.ProviderAccount account, String fiscalNumber,
+                java.time.LocalDate invoiceDate) {
+            seen.add(account);
+            revokeChecks.add(fiscalNumber + "@" + invoiceDate);
+            var next = revokeStates.poll();
+            return next == null ? RevokeState.PENDING : next;
         }
 
         public void reportBlank(InvoiceGateway.ProviderAccount account, BlankReport report) {

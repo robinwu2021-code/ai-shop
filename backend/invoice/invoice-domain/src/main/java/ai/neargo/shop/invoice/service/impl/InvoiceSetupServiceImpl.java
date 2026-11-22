@@ -17,6 +17,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderTracksVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderVerificationVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
+import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcNumberRange;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
@@ -27,6 +28,7 @@ import ai.neargo.shop.invoice.gateway.QueryCapability;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.gateway.TrackCapability;
+import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -77,10 +79,12 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private final InvoiceGateways gateways;
     private final InvoiceTransmissionService transmissions;
     private final InvoiceGatewayPolicy policy;
+    private final InvoiceMapper invoices;
 
     public InvoiceSetupServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceRegimes regimes,
             ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
-            InvoiceTransmissionService transmissions, InvoiceGatewayPolicy policy) {
+            InvoiceTransmissionService transmissions, InvoiceGatewayPolicy policy, InvoiceMapper invoices) {
+        this.invoices = invoices;
         this.policy = policy;
         this.profiles = profiles;
         this.ranges = ranges;
@@ -319,37 +323,72 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
             String previous = previousPeriod(regime, now);
             if (previous == null) continue;
             var candidates = ranges.blankCandidates(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode(), previous);
-            if (candidates.isEmpty()) continue;
+            // 已注销、到期末仍未重开的号码也是空白号码（TDD-发票-注销与同号重开 §3.4，Q1 假设）
+            var revoked = invoices.selectList(new QueryWrapper<IvcInvoice>().eq("tenant_no", p.getTenantNo())
+                    .eq("entity_no", p.getEntityNo()).eq("regime_code", p.getRegimeCode()).eq("period_code", previous)
+                    .eq("status", "REVOKED").isNull("revised_to_invoice_no").isNull("blank_reported_at"));
+            if (candidates.isEmpty() && revoked.isEmpty()) continue;
             var account = accounts.of(p);
             if (account.isEmpty()) continue;
             // 同一字轨、同一发票类别一批报
-            var groups = new LinkedHashMap<String, List<IvcNumberRange>>();
+            var groups = new LinkedHashMap<String, BlankGroup>();
             for (var r : candidates)
-                groups.computeIfAbsent(r.getTrack() + "|" + invoiceType(r), k -> new ArrayList<>()).add(r);
+                groups.computeIfAbsent(r.getTrack() + "|" + invoiceType(r), k -> new BlankGroup(r.getTrack(), invoiceType(r)))
+                        .add(r);
+            for (var inv : revoked) {
+                var range = ranges.selectOne(new QueryWrapper<IvcNumberRange>().eq("tenant_no", inv.getTenantNo())
+                        .eq("range_no", inv.getRangeNo()).last("LIMIT 1"));
+                String track = inv.getFiscalNumber().substring(0, 2), type = range == null ? "07" : invoiceType(range);
+                groups.computeIfAbsent(track + "|" + type, k -> new BlankGroup(track, type)).add(inv);
+            }
             for (var g : groups.values()) {
-                var first = g.getFirst();
-                var spans = g.stream().map(r -> new TrackCapability.TrackRange(invoiceType(r), r.getTrack(),
-                        r.getNextNo(), r.getEndNo())).toList();
-                var ids = g.stream().map(IvcNumberRange::getId).toList();
                 var at = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
                 try {
                     blank.get().reportBlank(account.get(), new BlankRangeCapability.BlankReport(previous,
-                            invoiceType(first), first.getTrack(), p.getSellerTaxId(), spans));
-                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", ids)
-                            .set("blank_reported_at", at).set("blank_report_error", null).set("updated_at", at));
-                    log.info("INVOICE_BLANK_REPORTED tenant={} entity={} period={} track={} ranges={}",
-                            p.getTenantNo(), p.getEntityNo(), previous, first.getTrack(), spans.size());
+                            g.invoiceType, g.track, p.getSellerTaxId(), List.copyOf(g.spans)));
+                    if (!g.rangeIds.isEmpty())
+                        ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", g.rangeIds)
+                                .set("blank_reported_at", at).set("blank_report_error", null).set("updated_at", at));
+                    if (!g.invoiceIds.isEmpty())
+                        invoices.update(null, new UpdateWrapper<IvcInvoice>().in("id", g.invoiceIds)
+                                .set("blank_reported_at", at));
+                    log.info("INVOICE_BLANK_REPORTED tenant={} entity={} period={} track={} spans={}",
+                            p.getTenantNo(), p.getEntityNo(), previous, g.track, g.spans.size());
                     reported++;
                 } catch (ProviderException e) {
                     String reason = e.code() == null ? "unknown" : e.code().length() > 255 ? e.code().substring(0, 255) : e.code();
-                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", ids)
-                            .set("blank_report_error", reason).set("updated_at", at));
+                    if (!g.rangeIds.isEmpty())
+                        ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", g.rangeIds)
+                                .set("blank_report_error", reason).set("updated_at", at));
                     log.warn("INVOICE_BLANK_REPORT_FAILED tenant={} entity={} period={} track={} code={}",
-                            p.getTenantNo(), p.getEntityNo(), previous, first.getTrack(), reason);
+                            p.getTenantNo(), p.getEntityNo(), previous, g.track, reason);
                 }
             }
         }
         return reported;
+    }
+
+    /** 一批空白上报：同字轨同发票类别的号段余号与已注销未重开的单号。 */
+    private static final class BlankGroup {
+        final String track, invoiceType;
+        final List<TrackCapability.TrackRange> spans = new ArrayList<>();
+        final List<Long> rangeIds = new ArrayList<>(), invoiceIds = new ArrayList<>();
+
+        BlankGroup(String track, String invoiceType) {
+            this.track = track;
+            this.invoiceType = invoiceType;
+        }
+
+        void add(IvcNumberRange r) {
+            spans.add(new TrackCapability.TrackRange(invoiceType, track, r.getNextNo(), r.getEndNo()));
+            rangeIds.add(r.getId());
+        }
+
+        void add(IvcInvoice inv) {
+            int n = Integer.parseInt(inv.getFiscalNumber().substring(2));
+            spans.add(new TrackCapability.TrackRange(invoiceType, track, n, n));
+            invoiceIds.add(inv.getId());
+        }
     }
 
     /** 上一期：从 now 往回退到期别变化为止（期别长度由税制决定，这里不假设两个月）。 */

@@ -77,7 +77,7 @@ public interface InvoiceRegime {
     /** 折让能否作废（台湾：折让所属期别仍是当期）。 */
     boolean allowanceVoidable(IvcAllowance allowance, Instant now);
 
-    /** 上传报文；messageType 为 ISSUE / VOID / ALLOWANCE / ALLOWANCE_VOID。 */
+    /** 上传报文；messageType 为 ISSUE / VOID / ALLOWANCE / ALLOWANCE_VOID / REVOKE（注销，台湾 F0701）。 */
     Map<String, Object> message(
             String messageType, IvcInvoice invoice, List<IvcInvoiceLine> lines, IvcAllowance allowance);
 

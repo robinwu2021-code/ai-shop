@@ -11,11 +11,13 @@ import ai.neargo.shop.invoice.gateway.ProviderProfile;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
 import ai.neargo.shop.invoice.gateway.RangeCapability;
+import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
 import ai.neargo.shop.invoice.gateway.TrackCapability;
 import ai.neargo.shop.invoice.regime.tw.TwPeriods;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +37,13 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p><b>动作</b>：开立 C0401、作废 C0501、折让 D0401N、折让作废 D0501（报文见 {@link UniversalEcMessages}）；
  * 核验 Y01；领号段当期 A01 / 下期 C01；字轨管理 Z33 配号方式 / Z31 已下载字轨 / Z32 上传下期字轨；空白字轨 E0402。
- * 汎宇没有发票状态查询，不实现查单；注销 C0701 / Z11 另起一期。
+ * 注销 C0701（上传类 REVOKE）与进度 Z11。汎宇没有发票状态查询，不实现查单。
  *
  * <p><b>地址</b>：{@code shop.invoice.universalec.url}，默认测试机；正式机为 {@code https://eposw.einvoice.com.tw/GetInvoice.ashx}。
  */
 @Component
 public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
-        implements AccountCapability, RangeCapability, TrackCapability, BlankRangeCapability {
+        implements AccountCapability, RangeCapability, TrackCapability, BlankRangeCapability, RevokeStatusCapability {
 
     static final String CODE = "UNIVERSALEC";
     static final ProviderProfile PROFILE =
@@ -55,6 +57,8 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
             .accepted("0000")
             .acceptedFor("ISSUE", "E02")
             .acceptedFor("VOID", "E07")
+            .acceptedFor("REVOKE", "S038", "S042")   // 已注销成功 / 已有注销资料：重发幂等
+            .retryable("NOT_UPLOADED")               // C0701「發票尚未上傳至財政部」：汎宇转财政部是异步的，稍后再送
             .accountProblem("S020", "S022", "S024", "S026")
             .retryable("S010", "S012", "S030", "S032", "S034", "REPLY0")
             .build();
@@ -125,9 +129,28 @@ public class UniversalEcInvoiceGateway extends AbstractPlainJsonInvoiceGateway
             case "VOID" -> UniversalEcMessages.voidInvoice(message, account, now());
             case "ALLOWANCE" -> UniversalEcMessages.allowance(message, account, now());
             case "ALLOWANCE_VOID" -> UniversalEcMessages.voidAllowance(message, account, now());
+            case "REVOKE" -> UniversalEcMessages.revoke(message, account, now());
             default -> throw new UnsupportedMessageException("Unsupported message type: " + type);
         };
-        return receipt(type, exchange(account, type, payload).code(), request.refNo());
+        var reply = exchange(account, type, payload);
+        String code = reply.code();
+        String msg = reply.data().get("MESSAGE");
+        if ("REVOKE".equals(type) && !"0000".equals(code) && msg != null && msg.contains("尚未上傳")) code = "NOT_UPLOADED";
+        return receipt(type, code, request.refNo());
+    }
+
+    /** Z11：STATUSCODE 1 已完成注销 / 2 尚未完成 / 3 注销失败。 */
+    @Override
+    public RevokeState revokeStatus(ProviderAccount account, String fiscalNumber, LocalDate invoiceDate) {
+        return call(ProviderOperation.REVOKE_STATUS, account,
+                () -> exchange(account, "Z11", UniversalEcMessages.revokeStatus(fiscalNumber, invoiceDate.toString(),
+                        account, now())),
+                r -> switch (r.data().getOrDefault("STATUSCODE", "")) {
+                    case "1" -> RevokeState.DONE;
+                    case "2" -> RevokeState.PENDING;
+                    case "3" -> RevokeState.FAILED;
+                    default -> throw new ProviderException("unexpected", null);
+                });
     }
 
     /** Y01 取系统时间：汎宇确认 POS 已注册且未停用即回 REPLY=1。 */

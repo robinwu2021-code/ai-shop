@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.ReissueReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.RevokeReq;
 
 /**
  * B 端发票：按来源单开票、查询、作废、折让（TDD-发票模块 §2.1）。
@@ -97,6 +99,24 @@ public class BizInvoiceController {
     @PostMapping("/biz/invoices/{invoiceNo}/void")
     public InvoiceVO voidInvoice(@PathVariable String invoiceNo, @Valid @RequestBody VoidInvoiceReq req) {
         return invoices.voidInvoice(BizInvoiceScope.current(), invoiceNo, req.reason());
+    }
+
+    /** 注销（TDD-发票-注销与同号重开）：开错了的票撤回，完成后可用原号码重开。与作废同属处置类权限。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")
+    @PostMapping("/biz/invoices/{invoiceNo}/revocation")
+    public InvoiceVO revoke(@PathVariable String invoiceNo,
+            @Valid @RequestBody RevokeReq req) {
+        return invoices.revoke(BizInvoiceScope.current(), invoiceNo, req.reason());
+    }
+
+    /** 同号重开：已注销的票用原号码重开一张；买受人不传沿用原票。返回新票。重开即开立，要开票权限。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
+    @PostMapping("/biz/invoices/{invoiceNo}/reissue")
+    public InvoiceVO reissue(@PathVariable String invoiceNo,
+            @Valid @RequestBody(required = false) ReissueReq req) {
+        var b = req == null ? null : req.buyer();
+        var buyer = b == null ? null : new Buyer(b.taxId(), b.name(), b.carrierType(), b.carrierId(), b.donateCode());
+        return invoices.reissue(BizInvoiceScope.current(), invoiceNo, buyer);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")

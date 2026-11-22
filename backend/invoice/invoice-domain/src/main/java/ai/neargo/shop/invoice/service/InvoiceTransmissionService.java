@@ -3,6 +3,8 @@ package ai.neargo.shop.invoice.service;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
+import java.time.Duration;
+import java.time.Instant;
 
 /** 把到期的上传任务送到开票通道；失败按种类分级处理，不改发票号码与金额（TDD-发票模块 §12）。 */
 public interface InvoiceTransmissionService {
@@ -27,6 +29,15 @@ public interface InvoiceTransmissionService {
      * 与本地状态不一致且没有待补传的任务时告警。只对服务商类通道（鲸跃）可用。
      */
     ProviderCheckVO checkWithProvider(Scope scope, String invoiceNo);
+
+    /**
+     * 注销进度巡检（TDD-发票-注销与同号重开 §3.2）：注销中且注销报文已送达的发票，每隔 {@code interval} 向服务商查一次；
+     * 完成 → REVOKED（释放号码与来源单），失败 → 回到 ISSUED；超过 {@code pendingAlert} 仍未结束告警一次；
+     * 已注销未重开且距期末不足 {@code reissueAlertBefore} 时提醒一次。
+     * @return [完成数, 失败数, 告警数]
+     */
+    int[] checkRevocations(Instant now, Duration interval, Duration pendingAlert,
+            Duration reissueAlertBefore);
 
     /** 本门店的上传积压概览（B 端列表页提示用）。 */
     UploadBacklogVO backlog(Scope scope);

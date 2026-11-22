@@ -204,6 +204,8 @@ function Invoices({ c, verify }: { c: Copy; verify: boolean }) {
         <option value="">{c.invoiceStatusAll}</option>
         <option value="ISSUED">ISSUED</option>
         <option value="VOIDED">VOIDED</option>
+        <option value="REVOKING">REVOKING</option>
+        <option value="REVOKED">REVOKED</option>
       </Select></label>
       <Button type="submit">{c.search}</Button>
     </form>

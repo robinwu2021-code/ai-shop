@@ -12,6 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  * 发票上传：台湾 B2C 开立后 48 小时内必须上传，每分钟扫一次到期任务。
@@ -28,6 +30,16 @@ public class InvoiceTransmissionJob implements JobHandler {
 
     @Value("${shop.invoice.transmission.limit:200}")
     private int limit;
+
+    /** 注销进度查询间隔、注销中告警阈值、期末前未重开提醒提前量（TDD-发票-注销与同号重开 §4） */
+    @Value("${shop.invoice.revoke.check-interval-minutes:10}")
+    private int revokeCheckMinutes;
+
+    @Value("${shop.invoice.revoke.pending-alert-hours:24}")
+    private int revokePendingAlertHours;
+
+    @Value("${shop.invoice.revoke.reissue-alert-days:5}")
+    private int reissueAlertDays;
 
     public InvoiceTransmissionJob(InvoiceTransmissionService transmissions, JobSupport jobs) {
         this.transmissions = transmissions;
@@ -48,12 +60,15 @@ public class InvoiceTransmissionJob implements JobHandler {
     @Bean
     public JobDeclaration invoiceTransmissionDeclaration() {
         return new JobDeclaration(name(), "发票上传",
-                "把开立、作废、折让的发票报文送到开票通道；失败按退避重试同一报文，不重新取号",
+                "把开立、作废、折让、注销的发票报文送到开票通道；失败按退避重试同一报文，不重新取号；查注销进度",
                 "invoice-domain", "15 * * * * *", true, 240, 300, true, false);
     }
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        return JobResult.ok("sent=" + transmissions.transmitDue(limit));
+        int sent = transmissions.transmitDue(limit);
+        int[] r = transmissions.checkRevocations(Instant.now(), Duration.ofMinutes(revokeCheckMinutes),
+                Duration.ofHours(revokePendingAlertHours), Duration.ofDays(reissueAlertDays));
+        return JobResult.ok("sent=" + sent + " revoked=" + r[0] + " revokeFailed=" + r[1] + " revokeAlerts=" + r[2]);
     }
 }

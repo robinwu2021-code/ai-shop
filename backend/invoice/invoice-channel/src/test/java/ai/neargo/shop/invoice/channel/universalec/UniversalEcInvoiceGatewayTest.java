@@ -423,6 +423,57 @@ class UniversalEcInvoiceGatewayTest {
                 new BlankRangeCapability.BlankReport("11512", "07", "AB", "12345675", List.of())));
     }
 
+    // ---- 注销 ----
+
+    @Test
+    void revoke_posts_c0701() {
+        assertTrue(send("REVOKE", "AB12345678", REVOKE).accepted());
+        JsonNode v = lastRequest().path("Invoice");
+        assertEquals("C0701", v.path("INVOICE_CODE").asText());
+        assertEquals("AB12345678", v.path("INVOICE_NUMBER").asText());
+        assertEquals("2026-11-21", v.path("INVOICE_DATE").asText());
+        assertEquals("0000000000", v.path("BUYERID").asText());
+        assertEquals("12345675", v.path("SELLERID").asText());
+        assertEquals("2026-11-22", v.path("CANCEL_DATE").asText());
+        assertEquals("買方統編填錯", v.path("CANCEL_REASON").asText());
+        assertEquals("secret-possn-xyz", v.path("POSSN").asText());
+    }
+
+    @Test
+    void revoke_duplicate_codes_are_accepted_and_not_uploaded_is_retryable() {
+        for (String code : List.of("S038", "S042")) {
+            replies.add(reply(code));
+            assertTrue(send("REVOKE", "AB12345678", REVOKE).accepted(), code + " 重发幂等");
+        }
+        for (String code : List.of("S040", "S044", "S049")) {
+            replies.add(reply(code));
+            assertEquals(Outcome.FINAL, send("REVOKE", "AB12345678", REVOKE).outcome(), code);
+        }
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"C0701\",\"REPLY\":\"-1\","
+                + "\"MESSAGE\":\"失敗：上傳的註銷發票號碼不存在/發票尚未上傳至財政部\"}}");
+        assertEquals(Outcome.RETRYABLE, send("REVOKE", "AB12345678", REVOKE).outcome(), "汎宇转财政部是异步的");
+        replies.add(reply("S038"));
+        assertEquals(Outcome.FINAL, send("VOID", "AB12345678", VOID).outcome(), "S038 只对注销算送达");
+    }
+
+    @Test
+    void revoke_status_maps_z11() {
+        for (var c : List.of(new String[] {"1", "DONE"}, new String[] {"2", "PENDING"}, new String[] {"3", "FAILED"})) {
+            replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z11\",\"REPLY\":\"1\",\"MESSAGE\":\"成功\",\"STATUSCODE\":\""
+                    + c[0] + "\",\"ERROR_CODE\":\"0000\"}}");
+            assertEquals(c[1], gateway.revokeStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21)).name());
+        }
+        JsonNode z = lastRequest().path("INDEX");
+        assertEquals("Z11", z.path("FUNCTIONCODE").asText());
+        assertEquals("AB12345678", z.path("INVOICE_NUMBER").asText());
+        assertEquals("2026-11-21", z.path("INVOICE_DATE").asText());
+        assertEquals("secret-possn-xyz", z.path("POSSN").asText());
+
+        replies.add("{\"INDEX\":{\"FUNCTIONCODE\":\"Z11\",\"REPLY\":\"0\",\"MESSAGE\":\"失敗: 請確認 POS 機已註冊且無停用\"}}");
+        assertThrows(ProviderException.class,
+                () -> gateway.revokeStatus(ACCOUNT, "AB12345678", java.time.LocalDate.of(2026, 11, 21)));
+    }
+
     // ---- helpers & fixtures ----
 
     private GatewayReceipt send(String type, String refNo, String payload) {
@@ -477,6 +528,9 @@ class UniversalEcInvoiceGatewayTest {
     static final String VOID = """
             {"mig":"F0501","CancelInvoiceNumber":"AB12345678","InvoiceDate":"20261121","BuyerId":"0000000000",
              "SellerId":"12345675","CancelDate":"20261122","CancelTime":"09:00:00","CancelReason":"開錯"}""";
+    static final String REVOKE = """
+            {"mig":"F0701","CancelInvoiceNumber":"AB12345678","InvoiceDate":"20261121","BuyerId":"0000000000",
+             "SellerId":"12345675","CancelDate":"20261122","CancelTime":"09:00:00","CancelReason":"買方統編填錯"}""";
     static final String ALLOWANCE_VOID = """
             {"mig":"G0501","CancelAllowanceNumber":"AB1234567801","AllowanceDate":"20261122","BuyerId":"0000000000",
              "SellerId":"12345675","CancelDate":"20261123","CancelTime":"10:00:00","CancelReason":"開錯"}""";

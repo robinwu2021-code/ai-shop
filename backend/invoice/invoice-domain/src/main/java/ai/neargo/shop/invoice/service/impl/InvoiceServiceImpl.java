@@ -27,6 +27,8 @@ import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.TransmissionMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
+import ai.neargo.shop.invoice.gateway.InvoiceGateways;
+import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
 import ai.neargo.shop.invoice.regime.InvoiceRegime;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.service.InvoiceService;
@@ -55,6 +57,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.dao.DuplicateKeyException;
 
 /**
  * 开立主流程（TDD-发票模块 §2.5）。与税制无关：编号、金额口径、证明联、报文全部问 {@link InvoiceRegime}。
@@ -81,13 +84,15 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final OutboxEventBus events;
     private final ObjectMapper json;
     private final InvoiceGatewayPolicy policy;
+    private final InvoiceGateways gateways;
 
     public InvoiceServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceMapper invoices,
             InvoiceLineMapper lines, AllowanceMapper allowances, TransmissionMapper transmissions,
             BuyerPreferenceMapper preferences,
             InvoiceRegimes regimes, List<InvoiceSourcePort> sourcePorts, ObjectProvider<SecretVault> vault,
-            OutboxEventBus events, ObjectMapper json, InvoiceGatewayPolicy policy) {
+            OutboxEventBus events, ObjectMapper json, InvoiceGatewayPolicy policy, InvoiceGateways gateways) {
         this.policy = policy;
+        this.gateways = gateways;
         this.profiles = profiles;
         this.ranges = ranges;
         this.invoices = invoices;
@@ -108,7 +113,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
-        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer);
+        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null);
     }
 
     /**
@@ -117,8 +122,20 @@ public class InvoiceServiceImpl implements InvoiceService {
      */
     private InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo,
             BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf) {
+        return issue(scope, sourceType, sourceNo, buyerOf, null);
+    }
+
+    /**
+     * @param revisedFrom 非空 = 同号重开（TDD-发票-注销与同号重开 §3.3）：不取号，用这张已注销票的号码、号段与期别；
+     *                    同来源已有有效发票时拒绝而不是回原票
+     */
+    private InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo,
+            BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf, IvcInvoice revisedFrom) {
         var existing = active(scope, sourceType, sourceNo);
-        if (existing != null) return receipt(existing);
+        if (existing != null) {
+            if (revisedFrom != null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+            return receipt(existing);
+        }
         var profile = activeProfile(scope);
         var regime = regimes.require(profile.getRegimeCode());
         var port = sources.get(sourceType);
@@ -133,14 +150,29 @@ public class InvoiceServiceImpl implements InvoiceService {
         var amounts = regime.amounts(source.lines(), buyer);
 
         Instant now = Instant.now();
-        var range = ranges.lockUsable(scope.tenantNo(), scope.entityNo(), regime.code(), regime.periodOf(now),
-                scope.storeNo());
-        if (range == null) throw BizException.of(ErrorCode.INVOICE_NUMBER_EXHAUSTED);
-        // 同来源的并发请求都排在同一号段锁后面；拿到锁后用锁定读再看一次，后到的直接回原发票，不取号
-        existing = invoices.lockActive(scope.tenantNo(), scope.entityNo(), sourceKey(sourceType, sourceNo));
-        if (existing != null) return receipt(existing);
-        int number = range.getNextNo();
-        ranges.advance(range.getId());
+        String fiscalNumber, rangeNo, periodCode;
+        if (revisedFrom == null) {
+            var range = ranges.lockUsable(scope.tenantNo(), scope.entityNo(), regime.code(), regime.periodOf(now),
+                    scope.storeNo());
+            if (range == null) throw BizException.of(ErrorCode.INVOICE_NUMBER_EXHAUSTED);
+            // 同来源的并发请求都排在同一号段锁后面；拿到锁后用锁定读再看一次，后到的直接回原发票，不取号
+            existing = invoices.lockActive(scope.tenantNo(), scope.entityNo(), sourceKey(sourceType, sourceNo));
+            if (existing != null) return receipt(existing);
+            int number = range.getNextNo();
+            ranges.advance(range.getId());
+            fiscalNumber = regime.fiscalNumber(range.getTrack(), number);
+            rangeNo = range.getRangeNo();
+            periodCode = range.getPeriodCode();
+        } else {
+            // 同号重开只能在原票期别内；号码不再取，并发重开靠有效号码唯一键挡住
+            if (!regime.periodOf(now).equals(revisedFrom.getPeriodCode()))
+                throw BizException.of(ErrorCode.INVOICE_VOID_PERIOD_CLOSED);
+            existing = invoices.lockActive(scope.tenantNo(), scope.entityNo(), sourceKey(sourceType, sourceNo));
+            if (existing != null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+            fiscalNumber = revisedFrom.getFiscalNumber();
+            rangeNo = revisedFrom.getRangeNo();
+            periodCode = revisedFrom.getPeriodCode();
+        }
 
         var inv = new IvcInvoice();
         inv.setInvoiceNo(BizKey.next(BizKey.INVOICE));
@@ -152,9 +184,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         inv.setSourceType(sourceType);
         inv.setSourceNo(sourceNo);
         inv.setActiveSourceKey(sourceKey(sourceType, sourceNo));
-        inv.setFiscalNumber(regime.fiscalNumber(range.getTrack(), number));
-        inv.setRangeNo(range.getRangeNo());
-        inv.setPeriodCode(range.getPeriodCode());
+        inv.setFiscalNumber(fiscalNumber);
+        inv.setActiveFiscalKey(fiscalNumber);
+        inv.setRangeNo(rangeNo);
+        inv.setPeriodCode(periodCode);
+        inv.setRevokeAlerted(0);
+        if (revisedFrom != null) inv.setRevisedFromInvoiceNo(revisedFrom.getInvoiceNo());
         inv.setRandomCode(regime.randomCode());
         inv.setSellerTaxId(profile.getSellerTaxId());
         inv.setSellerName(profile.getSellerName());
@@ -205,7 +240,17 @@ public class InvoiceServiceImpl implements InvoiceService {
                 InvoicePrintSourceFactsPortImpl.TYPE, inv.getInvoiceNo(), occurred, inv, regime.detail(inv),
                 detailLines(inv, rows)));
         inv.setDetailSnapshotHash(PrintHashes.sha256(inv.getDetailSnapshot()));
-        invoices.insert(inv);
+        try {
+            invoices.insert(inv);
+        } catch (DuplicateKeyException e) {
+            // 只有同号重开会撞有效号码键：另一个请求已经用这个号重开了
+            if (revisedFrom != null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+            throw e;
+        }
+        if (revisedFrom != null && invoices.update(null, new UpdateWrapper<IvcInvoice>().eq("id", revisedFrom.getId())
+                .eq("status", "REVOKED").isNull("revised_to_invoice_no").set("revised_to_invoice_no", inv.getInvoiceNo())
+                .set("updated_at", inv.getIssuedAt())) != 1)
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
         rows.forEach(lines::insert);
         enqueue(inv, profile, "ISSUE", inv.getInvoiceNo(), regime.message("ISSUE", inv, rows, null));
         // 打印中心按门店的场景策略决定是否自动出纸：证明联只在应印时唤醒，交易明细每张都唤醒
@@ -355,6 +400,57 @@ public class InvoiceServiceImpl implements InvoiceService {
         enqueue(inv, activeProfile(scope), "VOID", inv.getInvoiceNo(),
                 regime.message("VOID", inv, List.of(), null));
         return view(inv, true);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceVO revoke(Scope scope, String invoiceNo, String reason) {
+        var inv = require(scope, invoiceNo);
+        if (!"ISSUED".equals(inv.getStatus()) || inv.getAllowedMinor() > 0)
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        var regime = regimes.require(inv.getRegimeCode());
+        if (!regime.voidable(inv, Instant.now())) throw BizException.of(ErrorCode.INVOICE_VOID_PERIOD_CLOSED);
+        var issue = issueTransmission(inv);
+        // 服务商要求原票已上传；开立时冻结的供应商须能查注销进度
+        if (issue == null || !"SENT".equals(issue.getStatus()) || !revokeSupported(issue))
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        int updated = invoices.update(null, new UpdateWrapper<IvcInvoice>().eq("id", inv.getId())
+                .eq("status", "ISSUED").eq("allowed_minor", 0)
+                .set("status", "REVOKING").set("revoke_reason", reason).set("revoke_requested_at", now)
+                .set("revoke_error", null).set("revoke_alerted", 0).set("updated_at", now));
+        if (updated != 1) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        inv.setStatus("REVOKING");
+        inv.setRevokeReason(reason);
+        inv.setRevokeRequestedAt(now);
+        inv.setRevokeError(null);
+        // 失败回到 ISSUED 后可再次注销：上一次的 REVOKE 任务按唯一键 (message_type, ref_no) 只能有一条，换成新报文重发
+        var previous = transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
+                .eq("message_type", "REVOKE").eq("ref_no", inv.getInvoiceNo()));
+        var message = regime.message("REVOKE", inv, List.of(), null);
+        if (previous == null) {
+            enqueue(inv, activeProfile(scope), "REVOKE", inv.getInvoiceNo(), message);
+        } else {
+            var window = regime.reportWindow("REVOKE", inv);
+            transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", previous.getId())
+                    .set("payload", json.writeValueAsString(message)).set("status", "PENDING").set("attempts", 0)
+                    .set("last_error", null).set("gateway_ref", null).set("next_attempt_at", now)
+                    .set("report_deadline_at", now.plus(window)).set("report_warn_at", now.plus(window.dividedBy(2)))
+                    .set("deadline_level", 0).set("updated_at", now));
+        }
+        return view(inv, true);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceVO reissue(Scope scope, String invoiceNo, Buyer buyer) {
+        var original = require(scope, invoiceNo);
+        if (!"REVOKED".equals(original.getStatus()) || original.getRevisedToInvoiceNo() != null)
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        Buyer chosen = buyer != null ? buyer : new Buyer(original.getBuyerTaxId(), original.getBuyerName(),
+                original.getCarrierType(), original.getCarrierId(), original.getDonateCode());
+        var r = issue(scope, original.getSourceType(), original.getSourceNo(), (profile, source) -> chosen, original);
+        return view(require(scope, r.invoiceNo()), true);
     }
 
     @Override
@@ -568,8 +664,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private InvoiceVO view(IvcInvoice i, boolean detail) {
-        var issue = transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", i.getTenantNo())
-                .eq("message_type", "ISSUE").eq("ref_no", i.getInvoiceNo()));
+        var issue = issueTransmission(i);
         List<InvoiceLineVO> lineViews = List.of();
         List<AllowanceVO> allowanceViews = List.of();
         if (detail) {
@@ -585,6 +680,12 @@ public class InvoiceServiceImpl implements InvoiceService {
                             a.getStatus() == null ? "ACTIVE" : a.getStatus(), a.getVoidReason(), a.getVoidedAt()))
                     .toList();
         }
+        boolean revocable = "ISSUED".equals(i.getStatus()) && i.getAllowedMinor() == 0 && issue != null
+                && "SENT".equals(issue.getStatus()) && revokeSupported(issue)
+                && regimes.require(i.getRegimeCode()).voidable(i, Instant.now());
+        var revocation = i.getRevokeRequestedAt() == null && i.getRevisedFromInvoiceNo() == null ? null
+                : new InvoiceDtos.RevocationVO(i.getRevokeReason(), i.getRevokeRequestedAt(), i.getRevokedAt(),
+                        i.getRevokeError(), i.getRevisedFromInvoiceNo(), i.getRevisedToInvoiceNo());
         return new InvoiceVO(i.getInvoiceNo(), i.getRegimeCode(), i.getIndustryCode(), i.getSellerName(),
                 i.getSellerTaxId(), i.getSourceType(),
                 i.getSourceNo(), i.getStoreNo(), i.getFiscalNumber(), i.getPeriodCode(), i.getRandomCode(),
@@ -593,7 +694,17 @@ public class InvoiceServiceImpl implements InvoiceService {
                 i.getZeroTaxSalesMinor(), i.getFreeTaxSalesMinor(), i.getTaxMinor(),
                 i.getTotalMinor(), i.getAllowedMinor(), i.getStatus(), i.getVoidReason(),
                 issue == null ? null : issue.getStatus(), issue == null ? null : issue.getReportDeadlineAt(),
-                lineViews, allowanceViews);
+                lineViews, allowanceViews, revocable, revocation);
+    }
+
+    private IvcTransmission issueTransmission(IvcInvoice i) {
+        return transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", i.getTenantNo())
+                .eq("message_type", "ISSUE").eq("ref_no", i.getInvoiceNo()));
+    }
+
+    /** 注销走开立时冻结的供应商：它得能查注销进度（汎宇 Z11）。 */
+    private boolean revokeSupported(IvcTransmission issue) {
+        return gateways.capability(issue.getGatewayCode(), RevokeStatusCapability.class).isPresent();
     }
 
     static String sourceKey(String sourceType, String sourceNo) {

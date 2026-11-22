@@ -69,7 +69,7 @@ public final class InvoiceDtos {
 
     public record InvoiceQuery(
             @Pattern(regexp = "[0-9]{5}") String periodCode,
-            @Pattern(regexp = "ISSUED|VOIDED") String status,
+            @Pattern(regexp = "ISSUED|VOIDED|REVOKING|REVOKED") String status,
             @Min(1) Integer page,
             @Min(1) @Max(100) Integer size) {}
 
@@ -170,7 +170,7 @@ public final class InvoiceDtos {
             @Size(max = 64) String storeNo,
             @Size(max = 32) String fiscalNumber,
             @Pattern(regexp = "[0-9]{5}") String periodCode,
-            @Pattern(regexp = "ISSUED|VOIDED") String status,
+            @Pattern(regexp = "ISSUED|VOIDED|REVOKING|REVOKED") String status,
             @Min(1) Integer page,
             @Min(1) @Max(100) Integer size) {}
 
@@ -313,5 +313,22 @@ public final class InvoiceDtos {
             /** 开立报文的法定上报期限；已送达后仍保留（看当时是否按期） */
             LocalDateTime uploadDeadlineAt,
             List<InvoiceLineVO> lines,
-            List<AllowanceVO> allowances) {}
+            List<AllowanceVO> allowances,
+            /** 现在能否注销（已开立、无折让、开立已送达、本期内、供应商支持注销） */
+            boolean revocable,
+            /** 注销与同号重开（TDD-发票-注销与同号重开）；从未注销过且不是重开票时为空 */
+            RevocationVO revocation) {}
+
+    /**
+     * @param revisedFromInvoiceNo 本票是哪张注销票的同号重开
+     * @param revisedToInvoiceNo   本票注销后重开成了哪张
+     * @param revokeError          最近一次注销失败原因（服务商流程失败或上传被拒）
+     */
+    public record RevocationVO(String reason, LocalDateTime requestedAt, LocalDateTime revokedAt, String revokeError,
+            String revisedFromInvoiceNo, String revisedToInvoiceNo) {}
+
+    public record RevokeReq(@NotBlank @Size(max = 128) String reason) {}
+
+    /** 同号重开：买受人不传则沿用原票。 */
+    public record ReissueReq(@Valid BuyerReq buyer) {}
 }

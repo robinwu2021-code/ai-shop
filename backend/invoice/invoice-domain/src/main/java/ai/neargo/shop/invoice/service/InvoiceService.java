@@ -48,6 +48,15 @@ public interface InvoiceService {
 
     InvoiceVO allowance(Scope scope, String invoiceNo, long amountMinor, String reason);
 
+    /**
+     * 注销（TDD-发票-注销与同号重开 §3.1）：已开立、无折让、开立已送达、本期内、供应商支持注销时，
+     * 发票转 REVOKING 并生成 REVOKE 上传任务；完成与否由 {@code InvoiceTransmissionService#checkRevocations} 推进。
+     */
+    InvoiceVO revoke(Scope scope, String invoiceNo, String reason);
+
+    /** 同号重开（§3.3）：已注销、未重开、仍在原期别；买受人为空则沿用原票。返回新票。 */
+    InvoiceVO reissue(Scope scope, String invoiceNo, Buyer buyer);
+
     /** 作废一张本期折让；累计折让回退，生成 ALLOWANCE_VOID 上传任务。 */
     InvoiceVO voidAllowance(Scope scope, String invoiceNo, String allowanceNo, String reason);
 }

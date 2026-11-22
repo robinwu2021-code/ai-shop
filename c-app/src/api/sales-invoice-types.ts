@@ -17,7 +17,8 @@ export type InvoiceChoiceKind = "CONSUMER" | "MEMBER" | "CARRIER" | "TAX_ID" | "
 export type InvoiceChoiceOutcome = "SAVED" | "ISSUED" | "ALREADY_ISSUED" | "NOT_ENABLED" | "MEMBER_CARRIER_UNAVAILABLE";
 
 /** 发票状态：已开立 / 已作废 */
-export type BuyerInvoiceStatus = "ISSUED" | "VOIDED";
+/** REVOKING 注销中 / REVOKED 已注销（商家注销后可同号重开一张新票） */
+export type BuyerInvoiceStatus = "ISSUED" | "VOIDED" | "REVOKING" | "REVOKED";
 
 export interface InvoiceCarrier {
   /** 载具记录号（删除、设默认用它） */

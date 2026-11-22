@@ -7,7 +7,7 @@
       <view class="sh-card">
         <view class="sh-row sh-row--between">
           <text class="txt-title sh-num">{{ inv.fiscalNumber }}</text>
-          <text class="sh-chip" :class="inv.status === 'VOIDED' ? 'sh-chip--danger' : 'sh-chip--primary'">{{ t(`salesInvoice.status.${inv.status}`) }}</text>
+          <text class="sh-chip" :class="inv.status === 'ISSUED' ? 'sh-chip--primary' : inv.status === 'REVOKING' ? '' : 'sh-chip--danger'">{{ t(`salesInvoice.status.${inv.status}`) }}</text>
         </view>
         <view class="sh-mt-md">
           <sh-kv between :label="String(t('salesInvoice.period'))"><text class="sh-num">{{ inv.periodCode }}</text></sh-kv>
@@ -37,6 +37,20 @@
               :class="busy ? 'is-disabled' : ''" @tap="retransmit">{{ t("salesInvoice.retransmit") }}</view>
           </view>
           <sh-kv v-if="inv.voidReason" between :label="String(t('salesInvoice.voidReason'))"><text>{{ inv.voidReason }}</text></sh-kv>
+          <template v-if="inv.revocation">
+            <sh-kv v-if="inv.revocation.reason" between :label="String(t('salesInvoice.revokeReason'))"><text>{{ inv.revocation.reason }}</text></sh-kv>
+            <sh-kv v-if="inv.revocation.requestedAt" between :label="String(t('salesInvoice.revokeRequestedAt'))"><text class="sh-num">{{ inv.revocation.requestedAt }}</text></sh-kv>
+            <sh-kv v-if="inv.revocation.revokedAt" between :label="String(t('salesInvoice.revokedAt'))"><text class="sh-num">{{ inv.revocation.revokedAt }}</text></sh-kv>
+            <sh-kv v-if="inv.revocation.revisedFromInvoiceNo" between :label="String(t('salesInvoice.revisedFrom'))">
+              <text class="sh-num txt-primary" @tap="openInvoice(inv.revocation.revisedFromInvoiceNo)">{{ inv.revocation.revisedFromInvoiceNo }}</text>
+            </sh-kv>
+            <sh-kv v-if="inv.revocation.revisedToInvoiceNo" between :label="String(t('salesInvoice.revisedTo'))">
+              <text class="sh-num txt-primary" @tap="openInvoice(inv.revocation.revisedToInvoiceNo)">{{ inv.revocation.revisedToInvoiceNo }}</text>
+            </sh-kv>
+            <view v-if="inv.status === 'ISSUED' && inv.revocation.revokeError" class="sh-notice sh-notice--danger sh-mt-sm" role="alert">{{
+              t("salesInvoice.revokeError", { reason: inv.revocation.revokeError }) }}</view>
+          </template>
+          <text v-if="inv.status === 'REVOKING'" class="sh-hint txt-quiet">{{ t("salesInvoice.revokePendingHint") }}</text>
         </view>
         <view class="sh-mt-md">
           <sh-kv between :label="String(t('salesInvoice.sales'))"><text class="sh-num">{{ invoiceMoney(inv.salesMinor, inv.currency) }}</text></sh-kv>
@@ -89,13 +103,16 @@
         <view v-if="canSimulate" class="sh-btn sh-btn--soft" @tap="openPrintSim">{{ t("salesInvoice.printSimTitle") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft" @tap="allowance">{{ t("salesInvoice.allowance") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft is-danger" @tap="voidInvoice">{{ t("salesInvoice.void") }}</view>
+        <view v-if="canRevoke" class="sh-btn sh-btn--soft is-danger" @tap="revokeInvoice">{{ t("salesInvoice.revoke") }}</view>
+        <view v-if="canReissue" class="sh-btn" @tap="reissueInvoice">{{ t("salesInvoice.reissue") }}</view>
       </view>
     </template>
   </sh-scaffold>
 </template>
 
 <script setup lang="ts">
-// 销售发票详情：号码、期别、随机码、买受人与上传状态；作废（当期）、开折让、打印证明联。
+// 销售发票详情：号码、期别、随机码、买受人与上传状态；作废（当期）、开折让、打印证明联；
+// 注销与同号重开（TDD-发票-注销与同号重开）：能否注销由后端给 revocable，注销完成后可用原号码重开。
 // 证明联、交易明细、折让证明单都走共享打印中心（来源 INVOICE / INVOICE_ALLOWANCE）。
 // 证明联法定只有一张正本：重复提交只回原请求，再要一张走补印（票面标「補印」），不提供加印。
 import { computed, ref } from "vue";
@@ -122,6 +139,11 @@ const error = ref("");
 
 const issued = computed(() => inv.value?.status === "ISSUED");
 const canVoid = computed(() => issued.value && merchant.can("biz:invoice:void"));
+/** 注销：后端按前置条件给出 revocable（本期、无折让、已上传、供应商支持）；与作废同一权限 */
+const canRevoke = computed(() => !!inv.value?.revocable && merchant.can("biz:invoice:void"));
+/** 同号重开：已注销、还没重开；重开即开立 */
+const canReissue = computed(() => inv.value?.status === "REVOKED" && !inv.value.revocation?.revisedToInvoiceNo
+  && merchant.can("biz:invoice:issue"));
 const canSubmitPrint = computed(() => merchant.can("biz:print:submit"));
 /** 期限是 UTC ISO 时间；Date 解析后与当前时刻比 */
 const overdue = computed(() => {
@@ -137,7 +159,8 @@ const canReprint = computed(() => issued.value && !!inv.value?.printMark
   && merchant.can("biz:print:reprint") && merchant.can("biz:print:read"));
 /** 打印模拟：生成 PDF 看版面，不出纸（TDD-发票模块 §21） */
 const canSimulate = computed(() => merchant.can("biz:print:simulate") && merchant.can("biz:print:export"));
-const actionable = computed(() => canPrint.value || canPrintDetail.value || canReprint.value || canVoid.value || merchant.can("biz:print:read") || canSimulate.value);
+const actionable = computed(() => canPrint.value || canPrintDetail.value || canReprint.value || canVoid.value || canRevoke.value
+  || canReissue.value || merchant.can("biz:print:read") || canSimulate.value);
 const buyerText = computed(() => {
   const i = inv.value;
   if (!i) return "";
@@ -185,6 +208,33 @@ async function voidInvoice() {
   const reason = (await prompt({ title: String(t("salesInvoice.voidReason")), maxlength: 60 }))?.trim();
   if (!reason) return;
   await run(() => api.mSiVoid(i.invoiceNo, { reason }), String(t("salesInvoice.done")));
+}
+
+async function revokeInvoice() {
+  const i = inv.value;
+  if (!i) return;
+  if (!await confirm({ title: String(t("salesInvoice.revokeTitle")), hint: String(t("salesInvoice.revokeHint")), danger: true })) return;
+  const reason = (await prompt({ title: String(t("salesInvoice.revokeReason")), maxlength: 60 }))?.trim();
+  if (!reason) return;
+  await run(() => api.mSiRevoke(i.invoiceNo, { reason }), String(t("salesInvoice.done")));
+}
+
+async function reissueInvoice() {
+  const i = inv.value;
+  if (!i) return;
+  if (!await confirm({ title: String(t("salesInvoice.reissueTitle")), hint: String(t("salesInvoice.reissueHint")) })) return;
+  let fresh: SalesInvoice | null = null;
+  await run(async () => { fresh = await api.mSiReissue(i.invoiceNo, {}); return null; }, String(t("salesInvoice.done")));
+  const created = fresh as SalesInvoice | null;
+  if (created) openInvoice(created.invoiceNo, true);
+}
+
+/** 原票与重开票互相跳转；重开后用新票替换当前页 */
+function openInvoice(no: string | null | undefined, replace = false) {
+  if (!no) return;
+  const url = `${ROUTES.salesInvoice}?invoiceNo=${encodeURIComponent(no)}`;
+  if (replace) uni.redirectTo({ url });
+  else uni.navigateTo({ url });
 }
 
 async function voidAllowance(allowanceNo: string) {

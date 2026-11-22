@@ -53,7 +53,8 @@ export interface SiAllowance {
   voidReason?: string | null;
   voidedAt?: string | null;
 }
-export type SiStatus = "ISSUED" | "VOIDED";
+/** REVOKING 注销中（等服务商流程）/ REVOKED 已注销（可同号重开） */
+export type SiStatus = "ISSUED" | "VOIDED" | "REVOKING" | "REVOKED";
 /** 折让单状态：作废后累计折让回退、证明单不再出纸 */
 export type SiAllowanceStatus = "ACTIVE" | "VOIDED";
 /** HELD = 账号问题暂停（核验账号后自动恢复）；NEEDS_REVIEW = 服务商拒收，待人工处理后重传 */
@@ -154,6 +155,21 @@ export interface SalesInvoice {
   uploadDeadlineAt?: string | null;
   lines?: SiLine[];
   allowances?: SiAllowance[];
+  /** 现在能否注销（已开立、无折让、开立已送达、本期内、供应商支持注销） */
+  revocable?: boolean;
+  /** 注销与同号重开；从未注销过且不是重开票时为空 */
+  revocation?: SiRevocation | null;
+}
+export interface SiRevocation {
+  reason?: string | null;
+  requestedAt?: string | null;
+  revokedAt?: string | null;
+  /** 最近一次注销失败原因 */
+  revokeError?: string | null;
+  /** 本票是哪张注销票的同号重开 */
+  revisedFromInvoiceNo?: string | null;
+  /** 本票注销后重开成了哪张 */
+  revisedToInvoiceNo?: string | null;
 }
 export interface SiPage {
   records: SalesInvoice[];
@@ -289,6 +305,10 @@ export interface SalesInvoiceApi {
   mSiDetail(invoiceNo: string): Promise<SalesInvoice>;
   /** 当期作废 */
   mSiVoid(invoiceNo: string, body: { reason: string }): Promise<SalesInvoice>;
+  /** 注销（开错了的票撤回，完成后可用原号码重开） */
+  mSiRevoke(invoiceNo: string, body: { reason: string }): Promise<SalesInvoice>;
+  /** 已注销的票同号重开；buyer 不传沿用原票。返回新票 */
+  mSiReissue(invoiceNo: string, body: { buyer?: SiBuyer }): Promise<SalesInvoice>;
   mSiAllowance(invoiceNo: string, body: { amountMinor: number; reason: string }): Promise<SalesInvoice>;
   /** 作废本期折让（跨期拒绝） */
   mSiVoidAllowance(invoiceNo: string, allowanceNo: string, body: { reason: string }): Promise<SalesInvoice>;

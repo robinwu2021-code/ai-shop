@@ -287,6 +287,18 @@ public class TwEguiRegime implements InvoiceRegime {
                 m.put("CancelTime", TIME.format(voided));
                 m.put("CancelReason", inv.getVoidReason());
             }
+            case "REVOKE" -> {
+                // F0701 注销：字段与 F0501 同形；时间取提交注销的那一刻
+                m.put("mig", "F0701");
+                var revoked = TwPeriods.local(inv.getRevokeRequestedAt().toInstant(ZoneOffset.UTC));
+                m.put("CancelInvoiceNumber", inv.getFiscalNumber());
+                m.put("InvoiceDate", DAY.format(issued));
+                m.put("BuyerId", b2b ? inv.getBuyerTaxId() : "0000000000");
+                m.put("SellerId", inv.getSellerTaxId());
+                m.put("CancelDate", DAY.format(revoked));
+                m.put("CancelTime", TIME.format(revoked));
+                m.put("CancelReason", inv.getRevokeReason());
+            }
             case "ALLOWANCE" -> {
                 m.put("mig", "G0401");
                 var at = TwPeriods.local(allowance.getCreatedAt().toInstant(ZoneOffset.UTC));

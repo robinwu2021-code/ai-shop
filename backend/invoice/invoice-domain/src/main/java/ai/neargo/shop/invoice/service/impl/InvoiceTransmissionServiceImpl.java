@@ -7,6 +7,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.gateway.ProviderException;
 import ai.neargo.shop.invoice.gateway.QueryCapability;
+import ai.neargo.shop.invoice.gateway.RevokeStatusCapability;
 import ai.neargo.shop.invoice.gateway.QueryCapability.ProviderInvoiceStatus.State;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -35,6 +36,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  * 上传任务的唯一执行者（重试只在这里，不在通道、不在开立流程）。
@@ -291,6 +294,81 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
             }
         }
         transmissions.update(null, update);
+        // 注销被服务商拒收（终态）：发票回到已开立，可改正后再次注销（TDD-发票-注销与同号重开 §3.2）
+        if ("REVOKE".equals(t.getMessageType()) && receipt.outcome() == GatewayReceipt.Outcome.FINAL)
+            invoices.update(null, new UpdateWrapper<IvcInvoice>().eq("tenant_no", t.getTenantNo())
+                    .eq("invoice_no", t.getRefNo()).eq("status", "REVOKING").set("status", "ISSUED")
+                    .set("revoke_error", clipped.length() > 255 ? clipped.substring(0, 255) : clipped)
+                    .set("updated_at", after));
+    }
+
+    @Override
+    public int[] checkRevocations(Instant now, Duration interval, Duration pendingAlert,
+            Duration reissueAlertBefore) {
+        var at = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+        int done = 0, failed = 0, alerts = 0;
+        // ① 注销中、注销报文已送达、距上次检查超过 interval 的，向服务商查进度
+        for (var inv : invoices.selectList(new QueryWrapper<IvcInvoice>().eq("status", "REVOKING")
+                .le("updated_at", at.minus(interval)).orderByAsc("revoke_requested_at").last("LIMIT 200"))) {
+            var t = transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
+                    .eq("message_type", "REVOKE").eq("ref_no", inv.getInvoiceNo()));
+            if (t == null || !"SENT".equals(t.getStatus())) continue;
+            var capability = gateways.capability(t.getGatewayCode(), RevokeStatusCapability.class).orElse(null);
+            var profile = profileOf(t);
+            var account = profile == null ? null : accounts.of(profile).orElse(null);
+            if (capability == null || account == null) continue;
+            RevokeStatusCapability.RevokeState state;
+            try {
+                state = capability.revokeStatus(account, inv.getFiscalNumber(),
+                        LocalDate.ofInstant(inv.getIssuedAt().toInstant(ZoneOffset.UTC), regimes.require(inv.getRegimeCode()).zone()));
+            } catch (ProviderException e) {
+                log.warn("INVOICE_REVOKE_STATUS_FAILED tenant={} invoice={} code={}", inv.getTenantNo(),
+                        inv.getInvoiceNo(), e.code());
+                continue;
+            }
+            var base = new UpdateWrapper<IvcInvoice>().eq("id", inv.getId()).eq("status", "REVOKING");
+            switch (state) {
+                case DONE -> {
+                    // 号码与来源单一起释放：可同号重开，也可按来源重新开立
+                    if (invoices.update(null, base.set("status", "REVOKED").set("active_source_key", null)
+                            .set("active_fiscal_key", null).set("revoked_at", at).set("updated_at", at)) == 1) {
+                        done++;
+                        log.info("INVOICE_REVOKED tenant={} invoice={} fiscal={}", inv.getTenantNo(),
+                                inv.getInvoiceNo(), inv.getFiscalNumber());
+                    }
+                }
+                case FAILED -> {
+                    if (invoices.update(null, base.set("status", "ISSUED")
+                            .set("revoke_error", "provider revoke failed").set("updated_at", at)) == 1) {
+                        failed++;
+                        log.error("INVOICE_REVOKE_FAILED tenant={} invoice={} fiscal={}", inv.getTenantNo(),
+                                inv.getInvoiceNo(), inv.getFiscalNumber());
+                    }
+                }
+                case PENDING -> {
+                    boolean overdue = inv.getRevokeRequestedAt() != null
+                            && !inv.getRevokeRequestedAt().isAfter(at.minus(pendingAlert))
+                            && (inv.getRevokeAlerted() == null || inv.getRevokeAlerted() < 1);
+                    invoices.update(null, base.set("updated_at", at).set(overdue, "revoke_alerted", 1));
+                    if (overdue) {
+                        alerts++;
+                        log.error("INVOICE_REVOKE_PENDING_TOO_LONG tenant={} invoice={} fiscal={} since={}",
+                                inv.getTenantNo(), inv.getInvoiceNo(), inv.getFiscalNumber(), inv.getRevokeRequestedAt());
+                    }
+                }
+            }
+        }
+        // ② 已注销、未重开、期末将至：提醒一次（不重开的号码期末作空白号码上报）
+        for (var inv : invoices.selectList(new QueryWrapper<IvcInvoice>().eq("status", "REVOKED")
+                .isNull("revised_to_invoice_no").lt("revoke_alerted", 2).last("LIMIT 200"))) {
+            var end = regimes.require(inv.getRegimeCode()).periodEnd(inv.getPeriodCode());
+            if (end == null || now.isBefore(end.minus(reissueAlertBefore)) || !now.isBefore(end)) continue;
+            invoices.update(null, new UpdateWrapper<IvcInvoice>().eq("id", inv.getId()).set("revoke_alerted", 2));
+            alerts++;
+            log.warn("INVOICE_REVOKED_NOT_REISSUED tenant={} invoice={} fiscal={} periodEnd={}", inv.getTenantNo(),
+                    inv.getInvoiceNo(), inv.getFiscalNumber(), end);
+        }
+        return new int[] {done, failed, alerts};
     }
 
     /** 只有第一次把主体标为暂停的那个执行者打告警日志，避免同一问题刷屏。 */

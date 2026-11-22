@@ -57,8 +57,20 @@ public class IvcInvoice {
     private Long allowedMinor;
     private String taxType;
     private Integer taxRateBp;
-    /** ISSUED / VOIDED */
+    /** ISSUED / VOIDED / REVOKING 注销中 / REVOKED 已注销（V13） */
     private String status;
+    /** 有效号码键（V13）：已注销置空，号码可同号重开；其余状态 = fiscalNumber */
+    private String activeFiscalKey;
+    private String revokeReason;
+    private LocalDateTime revokeRequestedAt;
+    private LocalDateTime revokedAt;
+    private String revokeError;
+    /** 0 未告警 / 1 注销超时已告警 / 2 期末未重开已告警 */
+    private Integer revokeAlerted;
+    private String revisedFromInvoiceNo;
+    private String revisedToInvoiceNo;
+    /** 已注销未重开的号码期末作空白号码上报的时间（V13） */
+    private LocalDateTime blankReportedAt;
     private String voidReason;
     private LocalDateTime voidedAt;
     private String voidedBy;

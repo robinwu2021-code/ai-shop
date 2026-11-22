@@ -30,7 +30,7 @@
     <view v-for="r in rows" :key="r.invoiceNo" class="sh-card" @tap="open(r.invoiceNo)">
       <view class="sh-row sh-row--between">
         <text class="txt-strong sh-num">{{ r.fiscalNumber }}</text>
-        <text class="sh-chip" :class="r.status === 'VOIDED' ? 'sh-chip--danger' : 'sh-chip--primary'">{{ t(`salesInvoice.status.${r.status}`) }}</text>
+        <text class="sh-chip" :class="r.status === 'ISSUED' ? 'sh-chip--primary' : r.status === 'REVOKING' ? '' : 'sh-chip--danger'">{{ t(`salesInvoice.status.${r.status}`) }}</text>
       </view>
       <view class="sh-row sh-row--between sh-mt-xs">
         <text class="txt-caption txt-quiet sh-num">{{ r.periodCode }} · {{ r.issuedAt }}</text>
@@ -84,6 +84,8 @@ const statusTabs = computed(() => [
   { key: "", label: String(t("salesInvoice.allStatus")) },
   { key: "ISSUED", label: String(t("salesInvoice.status.ISSUED")) },
   { key: "VOIDED", label: String(t("salesInvoice.status.VOIDED")) },
+  { key: "REVOKING", label: String(t("salesInvoice.status.REVOKING")) },
+  { key: "REVOKED", label: String(t("salesInvoice.status.REVOKED")) },
 ]);
 
 async function load(append: boolean) {

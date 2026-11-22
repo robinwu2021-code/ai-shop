@@ -115,6 +115,8 @@ export const OUTCOME_KEY: Record<InvoiceChoiceOutcome, string> = {
 export const STATUS_KEY: Record<BuyerInvoiceStatus, string> = {
   ISSUED: "salesInvoice.status.issued",
   VOIDED: "salesInvoice.status.voided",
+  REVOKING: "salesInvoice.status.revoking",
+  REVOKED: "salesInvoice.status.revoked",
 };
 
 /** 发票存到哪里 / 给了谁：一句话，列表与详情共用 */

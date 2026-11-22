@@ -37,6 +37,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSiList:{method:"GET",path:"/biz/invoices",auth:true,summary:"销售发票：本店分页"},
   mSiDetail:{method:"GET",path:"/biz/invoices/{invoiceNo}",auth:true,summary:"销售发票：详情"},
   mSiVoid:{method:"POST",path:"/biz/invoices/{invoiceNo}/void",auth:true,summary:"销售发票：当期作废"},
+  mSiRevoke:{method:"POST",path:"/biz/invoices/{invoiceNo}/revocation",auth:true,summary:"销售发票：注销"},
+  mSiReissue:{method:"POST",path:"/biz/invoices/{invoiceNo}/reissue",auth:true,summary:"销售发票：注销后同号重开"},
   mSiAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances",auth:true,summary:"销售发票：开折让"},
   mSiVoidAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void",auth:true,summary:"销售发票：作废折让"},
   mSiPrintFacts:{method:"GET",path:"/biz/invoices/{invoiceNo}/print-facts",auth:true,summary:"销售发票：可模拟打印的打印件"},
