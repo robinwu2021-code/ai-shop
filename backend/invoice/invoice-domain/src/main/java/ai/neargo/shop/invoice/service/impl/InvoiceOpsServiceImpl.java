@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -59,13 +60,16 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
     }
 
     @Override
-    public PageData<OpsSellerVO> sellers(String tenantNo, OpsSellerQuery q) {
+    public PageData<OpsSellerVO> sellers(String tenantNo, Set<String> entityNos, OpsSellerQuery q) {
+        int pageNo = q.page() == null ? 1 : q.page(), pageSize = q.size() == null ? 20 : q.size();
+        if (entityNos != null && entityNos.isEmpty()) return PageData.of(List.of(), 0, pageNo, pageSize);
         var now = LocalDateTime.now(ZoneOffset.UTC);
         var backlog = byEntity(transmissions.backlogByEntity(tenantNo, now));
         var remainingByPeriod = new HashMap<String, Map<String, Map<String, Object>>>();
         String keyword = q.keyword() == null || q.keyword().isBlank() ? null : q.keyword().trim();
         var rows = new ArrayList<OpsSellerVO>();
         for (var p : profiles.selectList(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", tenantNo)
+                .in(entityNos != null, "entity_no", entityNos)
                 .and(keyword != null, w -> w.like("seller_name", keyword).or().like("seller_tax_id", keyword)
                         .or().eq("entity_no", keyword))
                 .orderByAsc("entity_no"))) {
@@ -103,12 +107,14 @@ public class InvoiceOpsServiceImpl implements InvoiceOpsService {
     }
 
     @Override
-    public PageData<OpsTransmissionVO> transmissions(String tenantNo, OpsTransmissionQuery q) {
+    public PageData<OpsTransmissionVO> transmissions(String tenantNo, Set<String> entityNos, OpsTransmissionQuery q) {
         var now = LocalDateTime.now(ZoneOffset.UTC);
         int page = q.page() == null ? 1 : q.page(), size = q.size() == null ? 20 : q.size();
+        if (entityNos != null && entityNos.isEmpty()) return PageData.of(List.of(), 0, page, size);
         boolean overdueOnly = Boolean.TRUE.equals(q.overdue());
         var result = transmissions.selectPage(new Page<>(page, size), new QueryWrapper<IvcTransmission>()
-                .eq("tenant_no", tenantNo).eq(q.entityNo() != null, "entity_no", q.entityNo())
+                .eq("tenant_no", tenantNo).in(entityNos != null, "entity_no", entityNos)
+                .eq(q.entityNo() != null, "entity_no", q.entityNo())
                 .eq(q.status() != null, "status", q.status())
                 .ne(overdueOnly, "status", "SENT").le(overdueOnly, "report_deadline_at", now)
                 .orderByAsc("report_deadline_at", "id"));

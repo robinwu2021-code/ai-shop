@@ -5,6 +5,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsSellerQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsSellerVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionVO;
+import java.util.Set;
 
 /**
  * 运营端跨主体视图（TDD-发票模块 §18）：营业人一览（配置、号码余量、上传积压）与上传任务清单。
@@ -12,7 +13,9 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionVO;
  */
 public interface InvoiceOpsService {
 
-    PageData<OpsSellerVO> sellers(String tenantNo, OpsSellerQuery query);
+    /** @param entityNos 运营会话可见的主体；null = 不限，空集 = 一个都看不到 */
+    PageData<OpsSellerVO> sellers(String tenantNo, Set<String> entityNos, OpsSellerQuery query);
 
-    PageData<OpsTransmissionVO> transmissions(String tenantNo, OpsTransmissionQuery query);
+    /** @param entityNos 同上 */
+    PageData<OpsTransmissionVO> transmissions(String tenantNo, Set<String> entityNos, OpsTransmissionQuery query);
 }

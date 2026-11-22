@@ -298,9 +298,12 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public PageData<InvoiceVO> listForOps(String tenantNo, InvoiceDtos.OpsInvoiceQuery query) {
+    public PageData<InvoiceVO> listForOps(String tenantNo, java.util.Set<String> entityNos,
+            InvoiceDtos.OpsInvoiceQuery query) {
         int page = query.page() == null ? 1 : query.page(), size = query.size() == null ? 20 : query.size();
+        if (entityNos != null && entityNos.isEmpty()) return PageData.of(List.of(), 0, page, size);
         var result = invoices.selectPage(new Page<>(page, size), new QueryWrapper<IvcInvoice>().eq("tenant_no", tenantNo)
+                .in(entityNos != null, "entity_no", entityNos)
                 .eq(query.entityNo() != null, "entity_no", query.entityNo())
                 .eq(query.storeNo() != null, "store_no", query.storeNo())
                 .eq(query.fiscalNumber() != null, "fiscal_number", query.fiscalNumber())

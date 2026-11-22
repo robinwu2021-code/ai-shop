@@ -36,7 +36,8 @@ public interface InvoiceService {
     InvoiceVO voidInvoice(Scope scope, String invoiceNo, String reason);
 
     /** 运营端：跨主体查发票（租户内）。 */
-    PageData<InvoiceVO> listForOps(String tenantNo, InvoiceDtos.OpsInvoiceQuery query);
+    /** @param entityNos 运营会话可见的主体；null = 不限，空集 = 一个都看不到 */
+    PageData<InvoiceVO> listForOps(String tenantNo, java.util.Set<String> entityNos, InvoiceDtos.OpsInvoiceQuery query);
 
     /** 运营端：按发票单号取开票范围（主体 + 门店），供运营代为处置时组 Scope。 */
     Scope scopeOf(String tenantNo, String invoiceNo, String actorNo);

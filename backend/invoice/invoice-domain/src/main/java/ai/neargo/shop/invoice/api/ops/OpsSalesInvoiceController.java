@@ -2,6 +2,8 @@ package ai.neargo.shop.invoice.api.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeVO;
@@ -36,6 +38,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>权限复用 {@code finance:invoice:*}</b>：经办的是开票申请那同一批财务人员；看用 read，动服务商、
  * 改任务状态用 verify。处置动作与 B 端走同一套服务 —— 运营只是替商家点那一下，规则一字不差。
  *
+ * <p><b>数据域</b>：按运营会话的商家维度收窄（{@link OpsEntityScope}）。列表只出范围内的主体；
+ * 代处置动作对范围外的主体 / 发票按「不存在」回（26001 / 26005），不泄露它存在与否。
+ *
  * <p>与 {@code /ops/invoice-requests}（平台人工开票申请，trade 域）是两件事：那边是事后申请、人工回填票号，
  * 这边是门店当场开的法定电子发票。
  */
@@ -60,7 +65,7 @@ public class OpsSalesInvoiceController {
     @GetMapping("/ops/sales-invoice-sellers")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public PageData<OpsSellerVO> sellers(@Valid @ModelAttribute OpsSellerQuery query) {
-        return ops.sellers(tenant(), query);
+        return ops.sellers(tenant(), OpsEntityScope.current(), query);
     }
 
     /** 代商家核验加值中心账号；通过即解除认证失败造成的上传暂停（与 B 端同一规则）。 */
@@ -81,13 +86,13 @@ public class OpsSalesInvoiceController {
     @GetMapping("/ops/sales-invoice-transmissions")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public PageData<OpsTransmissionVO> transmissions(@Valid @ModelAttribute OpsTransmissionQuery query) {
-        return ops.transmissions(tenant(), query);
+        return ops.transmissions(tenant(), OpsEntityScope.current(), query);
     }
 
     @GetMapping("/ops/sales-invoices")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public PageData<InvoiceVO> invoices(@Valid @ModelAttribute OpsInvoiceQuery query) {
-        return invoices.listForOps(tenant(), query);
+        return invoices.listForOps(tenant(), OpsEntityScope.current(), query);
     }
 
     /** 代商家重传待人工处理的上传（报文不变）。 */
@@ -111,12 +116,17 @@ public class OpsSalesInvoiceController {
     }
 
     private static Scope entityScope(String entityNo) {
+        if (!OpsEntityScope.allows(OpsEntityScope.current(), entityNo))
+            throw BizException.of(ErrorCode.INVOICE_REGIME_NOT_ENABLED);   // 与「该主体没开通」同一个回答
         var user = SecurityUtils.requireUser();
         return new Scope(user.tenantNo(), entityNo, "*", user.userNo());
     }
 
     private Scope invoiceScope(String invoiceNo) {
         var user = SecurityUtils.requireUser();
-        return invoices.scopeOf(user.tenantNo(), invoiceNo, user.userNo());
+        var scope = invoices.scopeOf(user.tenantNo(), invoiceNo, user.userNo());
+        if (!OpsEntityScope.allows(OpsEntityScope.current(), scope.entityNo()))
+            throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);           // 与「没有这张票」同一个回答
+        return scope;
     }
 }

@@ -335,6 +335,31 @@ class InvoiceServiceMysqlTest {
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
     }
 
+    /** AC40（数据域，§18.7）：运营会话只看自己商家范围内的主体；空范围一个都看不到；不限则全部可见。 */
+    @Test
+    void ac40OpsViewsAreNarrowedToTheStaffMerchantScope() {
+        var e2 = new Scope("T1", "E2", "S9", "U1");
+        setup.saveProfile(e2, new RegimeProfileReq("TW_EGUI", "53212539", "第二家", "TEST", null, null, null,
+                null, null, null, null, null));
+        sources.paid("SO1", 1_000);
+        var r = issue("SO1");   // E1 的一张票与一条上传任务
+        var sellerQ = new OpsSellerQuery(null, null, null, null, null);
+        var taskQ = new OpsTransmissionQuery(null, null, null, null, null);
+        var invoiceQ = new OpsInvoiceQuery(null, null, null, null, null, null, null);
+
+        assertEquals(List.of("E1", "E2"), ops.sellers("T1", null, sellerQ).records().stream()
+                .map(OpsSellerVO::entityNo).toList(), "不限 = 全部");
+        assertEquals(List.of("E2"), ops.sellers("T1", Set.of("E2"), sellerQ).records().stream()
+                .map(OpsSellerVO::entityNo).toList());
+        assertEquals(0, ops.transmissions("T1", Set.of("E2"), taskQ).total(), "E1 的任务对 E2 范围不可见");
+        assertEquals(0, invoices.listForOps("T1", Set.of("E2"), invoiceQ).total());
+        assertEquals(1, ops.transmissions("T1", Set.of("E1"), taskQ).total());
+        assertEquals(r.invoiceNo(), invoices.listForOps("T1", Set.of("E1"), invoiceQ).records().getFirst().invoiceNo());
+        assertEquals(0, ops.sellers("T1", Set.of(), sellerQ).total(), "只配了社区 / 自提点维度 = 一个都看不到");
+        assertEquals(0, ops.transmissions("T1", Set.of(), taskQ).total());
+        assertEquals(0, invoices.listForOps("T1", Set.of(), invoiceQ).total());
+    }
+
     /**
      * AC42：系统默认市场与供应商；商家可在该市场支持的供应商里自选（迁移过来的商户）；改回跟随默认；
      * 开出的票冻结在当时那家，之后切换不改走别家，查单也去当时那家查。
@@ -388,7 +413,7 @@ class InvoiceServiceMysqlTest {
         jdbc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE"
                 + " WHERE message_type = 'ISSUE'");
 
-        var all = ops.sellers("T1", new OpsSellerQuery(null, null, null, null, null)).records();
+        var all = ops.sellers("T1", null, new OpsSellerQuery(null, null, null, null, null)).records();
         assertEquals(List.of("E1", "E2"), all.stream().map(OpsSellerVO::entityNo).toList());
         var e1 = all.getFirst();
         assertEquals(2, e1.pending(), "开立 + 折让两条未送达");
@@ -404,17 +429,17 @@ class InvoiceServiceMysqlTest {
         jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), provider_hold_reason = 'x'"
                 + " WHERE entity_no = 'E2'");
         assertEquals(List.of("E2"), entities(new OpsSellerQuery(null, "HELD", null, null, null)));
-        assertEquals(1, ops.sellers("T1", new OpsSellerQuery(null, null, null, 2, 1)).records().size(), "分页");
+        assertEquals(1, ops.sellers("T1", null, new OpsSellerQuery(null, null, null, 2, 1)).records().size(), "分页");
 
-        var late = ops.transmissions("T1", new OpsTransmissionQuery(null, null, true, null, null)).records();
+        var late = ops.transmissions("T1", null, new OpsTransmissionQuery(null, null, true, null, null)).records();
         assertEquals(1, late.size());
         assertEquals(r.fiscalNumber(), late.getFirst().fiscalNumber());
         assertTrue(late.getFirst().overdue());
-        var allowanceTask = ops.transmissions("T1", new OpsTransmissionQuery("E1", null, null, null, null)).records()
+        var allowanceTask = ops.transmissions("T1", null, new OpsTransmissionQuery("E1", null, null, null, null)).records()
                 .stream().filter(t -> "ALLOWANCE".equals(t.messageType())).findFirst().orElseThrow();
         assertEquals(r.invoiceNo(), allowanceTask.invoiceNo(), "折让任务对回原发票");
 
-        assertEquals(1, invoices.listForOps("T1", new OpsInvoiceQuery(null, null, r.fiscalNumber(), null, null, null,
+        assertEquals(1, invoices.listForOps("T1", null, new OpsInvoiceQuery(null, null, r.fiscalNumber(), null, null, null,
                 null)).total());
         assertEquals(new Scope("T1", "E1", "S1", "OPS1"), invoices.scopeOf("T1", r.invoiceNo(), "OPS1"));
         assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> invoices.scopeOf("T1", "NOPE", "OPS1"));
@@ -426,7 +451,7 @@ class InvoiceServiceMysqlTest {
     }
 
     private List<String> entities(OpsSellerQuery q) {
-        return ops.sellers("T1", q).records().stream().map(OpsSellerVO::entityNo).toList();
+        return ops.sellers("T1", null, q).records().stream().map(OpsSellerVO::entityNo).toList();
     }
 
     @Test

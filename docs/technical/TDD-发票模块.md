@@ -896,10 +896,20 @@ MySQL 9 全类 33/33、鲸跃 6/6、Turnkey 3/3、b-app `vue-tsc` 无错。
 
 MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/finance.test.ts` 退款回退分账 1 条失败，为既有、与本改动无关；`check-ops-contract`、`check-ops-orphan`、`gen-ui-catalog --check` 通过。
 
-### 18.7 数据域（已知缺口）
+### 18.7 数据域：按运营会话的商家维度收窄
 
-运营端读 `ivc_*` 五张表只按租户隔离，**没有按运营会话的商家维度收窄**。发票模块可选打包，不依赖 shop-app 的数据域引擎（登记会在排除打包时注册不存在的表）。
-页面只开放给 `finance:invoice:*`（超管、财务）。要收窄照 `lgs_waybill` 的做法：控制器把会话的商家维度换成 `entityNos` 显式传给服务。理由已写入 `packages/shared/tests/ops-data-scope.test.ts`。
+发票模块可选打包，不依赖 shop-app 的数据域引擎（`ivc_*` 登记进 `DataScopeRegistration` 会在排除打包时注册不存在的表）。
+所以照物流运单（`OpsShipmentController#entityScope`）在控制器里显式算范围 —— `api/ops/OpsEntityScope`：
+
+| 会话数据域 | 可见主体 |
+|---|---|
+| 没有 / 全部 | 不限 |
+| 配了商家维度 | 只看这些主体 |
+| 只配了社区 / 自提点维度 | 一个都看不到（发票表上没有这两列，与引擎「缺锚点」同口径） |
+
+- 列表（营业人、上传任务、发票）：服务按 `entityNos` 加 `entity_no IN (…)`，空集直接回空页。
+- 代处置动作：范围外的主体回 26001（与「该主体没开通」同答），范围外的发票回 26005（与「没有这张票」同答），不泄露其存在。
+- 测试：`OpsEntityScopeTest`（会话 → 主体集合）、`InvoiceServiceMysqlTest#ac40OpsViewsAreNarrowedToTheStaffMerchantScope`（不限 / 限定 / 空集三种）。
 
 ## §19 供应商接口层抽象（台湾 / 阿联酋多供应商）
 
@@ -1038,7 +1048,7 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 
 ### 20.7 一并补上的闸门（运营端与早先 C 端工作留下的）
 
-`packages/shared` 的测试此前漏跑，补齐了与电子发票相关的几处：运营端两个枚举登记；菜单↔功能点守卫一并扫 `db/invoice`；运营端权限矩阵基线与细化登记表加入 7 个电子发票端点；`响应格式规范.md` 补 26011 / 26012；C 端发票类型字段说明并重新生成 `openapi.yaml`；`ops-data-scope` 写明 `ivc_*` 为何未登记数据域（见 §18.7）。
+`packages/shared` 的测试此前漏跑，补齐了与电子发票相关的几处：运营端两个枚举登记；菜单↔功能点守卫一并扫 `db/invoice`；运营端权限矩阵基线与细化登记表加入 7 个电子发票端点；`响应格式规范.md` 补 26011 / 26012；C 端发票类型字段说明并重新生成 `openapi.yaml`；`ops-data-scope` 写明 `ivc_*` 为何未登记数据域、范围如何显式收窄（见 §18.7）。
 
 仍未处理：
 - `schema-lineage`：JS 与 Python 两个解析器对 `ivc_*` 表不一致（JS 只扫 shop-app 迁移）。改 JS 扫描面会牵出一批同名业务键分类，单独处理。
