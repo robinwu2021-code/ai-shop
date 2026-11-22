@@ -98,8 +98,18 @@ const scene = computed(() => fact.value?.scene ?? sampleScene.value);
 const widths = computed(() => WIDTHS[scene.value] ?? [58]);
 const canGenerate = computed(() => mode.value === "SAMPLE" || !!fact.value);
 
-watch(widths, (w) => { if (!w.includes(width.value)) width.value = w[0] ?? 58; }, { immediate: true });
-watch([scene, width, profile, mode], () => { ready.value = null; pdfUrl.value = ""; });
+// 取第一项用 find 而不用下标：这一行原先的下标写法被 UnoCSS 预转换误当成类名改写，vite 报 Cannot split a chunk
+function keepWidth(list: readonly number[]) {
+  if (!list.includes(width.value)) width.value = list.find(() => true) ?? 58;
+}
+watch(widths, keepWidth, { immediate: true });
+function clearPdf() {
+  // #ifdef H5
+  if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
+  // #endif
+  pdfUrl.value = "";
+}
+watch([scene, width, profile, mode], () => { ready.value = null; clearPdf(); });
 
 function docLabel(s: string) {
   return String(t(`salesInvoice.printSimDocs.${s}`));
@@ -140,7 +150,7 @@ async function generate() {
   busy.value = true;
   error.value = "";
   ready.value = null;
-  pdfUrl.value = "";
+  clearPdf();
   try {
     const f = fact.value;
     const op = await commands.run("S01", {
@@ -175,7 +185,12 @@ async function openPdf() {
     const base = import.meta.env.VITE_API_BASE || "";
     const url = grant.url.startsWith("/") ? base + grant.url : grant.url;
     // #ifdef H5
-    pdfUrl.value = url;
+    // 下载接口回的是附件 + 禁止嵌入（X-Frame-Options: DENY）：取成本页的 blob 地址再交给 iframe
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(t("printCenter.downloadFailed")));
+    const blob = new Blob([await res.blob()], { type: "application/pdf" });
+    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
+    pdfUrl.value = URL.createObjectURL(blob);
     // #endif
     // #ifndef H5
     uni.downloadFile({

@@ -1102,5 +1102,21 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 | AC43 | `PrintDatabaseAcceptanceTest#invoiceDocumentsSimulateToReadyPdfWithoutProductionJobs`：三种发票打印件（58 原卷宽 / 80 A4 / 58 原卷宽）样例模拟 → 模拟 PASSED、PDF READY 有页数、不建正式任务 | ✅ |
 | 回归 | `#sampleSimulationAndPdfExportNeverCreateProductionJobs`（修正后）；`InvoiceServiceMysqlTest` 37/37；b-app `vue-tsc` 无错、vitest 410/410；`gen-ui-catalog --check` | ✅ |
 
-未覆盖：没有在浏览器里跑整条页面流程（共用的开发服务未启动）；「用真实发票」的打印事实模拟（FACT 来源经发票的打印事实端口取快照）没有端到端测，只验了 factRef 与冻结内容一致。
+### 21.6 浏览器实测（2026-11-22）
+
+本分支后端 + b-app H5，连 3308 上本分支迁移建出的独立库（不碰共用库），以演示商户店主登录：
+
+| 场景 | 结果 |
+|---|---|
+| 证明联 · 58 mm · 原卷宽 | ✅ PDF 内嵌显示：标题、期别、号码、随机码、总计、卖方统编、一维条码、左右 QR；页眉标「模拟预览，不代表真实出纸」 |
+| 交易明细 · 80 mm · A4 | ✅ A4 纸上的 80 mm 明细，品项、合计、载具去向 |
+| 切换打印件 | ✅ 证明联只给 58 mm；切到明细出现 80 mm；切换即清掉上一份 PDF |
+
+实测发现并修正两处：
+
+1. **页面打不开**：脚本里「标识符 + 方括号下标」被 UnoCSS 预转换误当成类名改写，vite 报 `Cannot split a chunk that has already been edited`（注释里写方括号同样触发）。改用 `find` 取第一项。
+2. **PDF 空白**：签名下载接口回 `attachment` + `X-Frame-Options: DENY`，且挂在不处理 CORS 的打印设备过滤链上。给 `/private/print-artifacts` 单开一条过滤链（`PrintSecurityConfiguration#printArtifactDownloadChain`，同设备链的鉴权过滤器 + `/biz` 同一份 CORS 白名单），H5 用 `fetch` 取成 blob 地址再内嵌；`attachment` 与 `DENY` 不变。curl 复核：白名单来源带 `Access-Control-Allow-Origin`，外来来源 403，坏签名仍 422。
+
+未覆盖：「用真实发票」模式没有实测 —— 独立库里没有已付款的子订单可开票；FACT 来源只验了 factRef 与冻结内容一致（MySQL 测试）。
+实测中另发现分支既有问题（与发票无关）：库存模块关闭时 `InventoryAvailabilityPortImpl` 无条件装配，后端起不来；实测时以开启库存模块绕过。
 B 端 `openapi-b.yaml` 仍因补货模块既有端点的命名校验无法重新生成（§20.7）。
