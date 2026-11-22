@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="12">
+  <title>平台开票流程</title>
+  <desc>平台统一开票流程的九个固定阶段：开通、备号、受理、定号、落票、生效、交付、上报、确认与恢复，以及反向操作与对账期末。橙色格是供应商变化点（定号、生效、上报），格内分别写鲸跃与绿界的走法；其余阶段对任何供应商相同。结果一律经 InvoiceOutcomeService 回写。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="600" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">平台开票流程：固定阶段 + 三个变化点（橙色）</text>
+  <text x="24" y="50" fill="#475569">每个橙色格：上行 = 鲸跃（预领号段、本地开、事后上传）　下行 = 绿界（开立时在线给号、开即上报）</text>
+
+  <!-- row 1: setup -->
+  <rect x="24" y="70" width="300" height="70" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="36" y="92" font-weight="600">0 开通</text>
+  <text x="36" y="110">营业人 → 账户（商家自填 / 平台代维护）</text>
+  <text x="36" y="126">→ 核验通过即启用（不审核）→ 门店绑定</text>
+  <rect x="344" y="70" width="300" height="70" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="356" y="92" font-weight="600">0′ 备号（号段类才有）</text>
+  <text x="356" y="110">鲸跃：Apply → Take，入号段表</text>
+  <text x="356" y="126" fill="#475569">绿界：不需要</text>
+  <path d="M324 105 H344" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- row 2: main flow -->
+  <rect x="24" y="170" width="170" height="96" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="36" y="192" font-weight="600">1 受理</text>
+  <text x="36" y="210">认调用方</text>
+  <text x="36" y="226">来源幂等</text>
+  <text x="36" y="242">读金额 · 冻结路由</text>
+  <text x="36" y="258">税制校验与算税</text>
+
+  <rect x="214" y="170" width="190" height="96" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="226" y="192" font-weight="600">2 定号（V1）</text>
+  <text x="226" y="212">鲸跃：号段 FOR UPDATE 取号</text>
+  <text x="226" y="228">　　　+ 本地随机码</text>
+  <text x="226" y="248" fill="#475569">绿界：生成 RelateNumber</text>
+  <text x="226" y="262" fill="#475569">　　　票号留空</text>
+
+  <rect x="424" y="170" width="160" height="96" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="436" y="192" font-weight="600">3 落票（本地事务）</text>
+  <text x="436" y="212">鲸跃：已开立</text>
+  <text x="436" y="228">　+ 待上传任务</text>
+  <text x="436" y="248" fill="#475569">绿界：开立中（占位）</text>
+
+  <rect x="604" y="170" width="190" height="96" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="616" y="192" font-weight="600">4 生效（V3）</text>
+  <text x="616" y="212">鲸跃：提交即生效</text>
+  <text x="616" y="232" fill="#475569">绿界：同步 Issue</text>
+  <text x="616" y="248" fill="#475569">回号→生效 / 拒绝→失败</text>
+  <text x="616" y="262" fill="#475569">超时→未知（锁来源单）</text>
+
+  <rect x="814" y="170" width="162" height="96" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="826" y="192" font-weight="600">5 交付</text>
+  <text x="826" y="212">冻结证明联</text>
+  <text x="826" y="228">打印中心出纸</text>
+  <text x="826" y="244">载具 / 捐赠不印</text>
+  <text x="826" y="260">通知核心</text>
+
+  <path d="M194 218 H214 M404 218 H424 M584 218 H604 M794 218 H814" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M494 140 V170" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="502" y="160" fill="#9a3412">取号用</text>
+
+  <!-- row 3 -->
+  <rect x="604" y="300" width="372" height="80" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="616" y="322" font-weight="600">6 上报（V2）</text>
+  <text x="616" y="342">鲸跃：上传任务 UploadInvoice，S0/S2 即已上报</text>
+  <text x="616" y="362" fill="#475569">绿界：阶段 4 已同时上报，直接标记</text>
+  <path d="M895 266 V300" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="214" y="300" width="370" height="80" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="226" y="322" font-weight="600">7 确认与恢复</text>
+  <text x="226" y="342">回执 · 查单 · 未知态恢复（绿界 GetIssue(RelateNumber)）</text>
+  <text x="226" y="362">上报期限告警（台湾 B2C 48 小时）</text>
+  <path d="M604 340 H584" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="24" y="300" width="170" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="36" y="322" font-weight="600">9 对账与期末</text>
+  <text x="36" y="342">本地 ↔ 供应商</text>
+  <text x="36" y="362">未上报 / 未知 / 号段剩余</text>
+  <path d="M214 340 H194" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- reverse -->
+  <rect x="24" y="410" width="952" height="70" rx="8" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="36" y="432" font-weight="600" fill="#9d174d">8 反向：作废 / 折让 / 折让作废 —— 用原票冻结的账户，走 3 → 7</text>
+  <text x="36" y="452">鲸跃：UploadCancelInvoice / UploadAllowance / UploadCancelAllowance，异步上传（C0·C5 / A0·A6 视为成功）</text>
+  <text x="36" y="470" fill="#475569">绿界：Invalid / Allowance / AllowanceInvalid，同步完成后才落状态</text>
+
+  <!-- outcome -->
+  <rect x="24" y="510" width="952" height="70" rx="8" fill="#ecfeff" stroke="#06b6d4"/>
+  <text x="36" y="534" font-weight="600" fill="#0e7490">InvoiceOutcomeService.apply —— 唯一结果入口</text>
+  <text x="36" y="554">供应商结果只有三种：Accepted（含「已处理过」）· Rejected（可 / 不可重试）· Unknown（超时断线）</text>
+  <text x="36" y="570" fill="#475569">同为「拒绝」：号段类 = 票已开没报上去 → 告警修复；在线类 = 票没开成 → 可重开。差异由编号方式决定，不由供应商名决定</text>
+</svg>
