@@ -25,6 +25,14 @@ public abstract class AbstractSoapInvoiceGateway extends AbstractInvoiceGateway 
     /** 厂商命名空间，如 {@code http://webservice.cetustek.com/}。 */
     protected abstract String namespace();
 
+    /**
+     * 额外请求头。经隧道 / 代理访问按虚拟主机区分站点的厂商时用来带 {@code Host}（JDK HttpClient 默认禁止改 Host，
+     * 要同时以 {@code -Djdk.httpclient.allowRestrictedHeaders=host} 启动）。默认没有。
+     */
+    protected Map<String, String> extraHeaders() {
+        return Map.of();
+    }
+
     /** 每个操作都带的认证参数，按顺序（鲸跃：officeid / posno / posid）。 */
     protected abstract LinkedHashMap<String, String> authFields(ProviderAccount account);
 
@@ -36,7 +44,7 @@ public abstract class AbstractSoapInvoiceGateway extends AbstractInvoiceGateway 
         var all = authFields(account);
         all.putAll(fields);
         String body = transport.post(endpoint, "text/xml;charset=UTF-8", SoapEnvelope.build(namespace(), operation, all),
-                Map.of()).body();
+                extraHeaders()).body();
         String result = SoapEnvelope.between(body, "<return>", "</return>");
         if (result == null) {
             if (body.contains("<return/>")) return "";

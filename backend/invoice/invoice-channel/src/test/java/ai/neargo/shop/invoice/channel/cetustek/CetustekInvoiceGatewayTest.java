@@ -222,6 +222,15 @@ class CetustekInvoiceGatewayTest {
                 "不认识的回码不猜");
     }
 
+    /** 经 SSH 隧道转发时带 Host（鲸跃按虚拟主机区分站点）；不配则不带。 */
+    @Test
+    void ac28HostHeaderIsSentOnlyWhenConfigured() {
+        var tunnel = new CetustekInvoiceGateway(URI.create("http://127.0.0.1:18081/InvoiceEntitySync/InvoiceAPI"),
+                Duration.ofSeconds(5), " invoice.cetustek.com.tw ", JsonMapper.builder().build());
+        assertEquals(java.util.Map.of("Host", "invoice.cetustek.com.tw"), tunnel.extraHeaders());
+        assertEquals(java.util.Map.of(), gateway.extraHeaders());
+    }
+
     @Test
     void ac28UnreachableProviderIsAProviderException() {
         server.stop(0);

@@ -1120,3 +1120,28 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 未覆盖：「用真实发票」模式没有实测 —— 独立库里没有已付款的子订单可开票；FACT 来源只验了 factRef 与冻结内容一致（MySQL 测试）。
 实测中另发现分支既有问题（与发票无关）：库存模块关闭时 `InventoryAvailabilityPortImpl` 无条件装配，后端起不来；实测时以开启库存模块绕过。
 B 端 `openapi-b.yaml` 仍因补货模块既有端点的命名校验无法重新生成（§20.7）。
+
+## §22 鲸跃真实账号联调（2026-11-22）
+
+### 22.1 网络
+
+鲸跃只放行台湾出口：经 ume-app166 打 SSH 隧道（本地端口 → 鲸跃主机 80）。鲸跃按虚拟主机区分站点，经隧道访问必须带
+`Host`：新增配置 `shop.invoice.cetustek.host-header`（`AbstractSoapInvoiceGateway#extraHeaders`，鲸跃覆盖），
+JDK HttpClient 默认禁止改 Host，需以 `-Djdk.httpclient.allowRestrictedHeaders=host` 启动。直连台湾出口的部署不配，行为不变。
+
+| 配置 | 联调值 |
+|---|---|
+| `shop.invoice.cetustek.url` | `http://127.0.0.1:<隧道端口>/InvoiceEntitySync/InvoiceAPI` |
+| `shop.invoice.cetustek.host-header` | 鲸跃主机名 |
+
+### 22.2 结果
+
+| 账号来源 | 鲸跃主机 | 商家代号 | `QueryOfficeInfo` |
+|---|---|---|---|
+| `ai_shop_ume.stg_ume_invoice_accounts`（UME dev / uat 集群） | `invoice.cetustek.com.tw` | 50765634 | `InValid`：本地 neargo 与服务器直发 SOAP 结果一致，账号本身已不可用 |
+| 生产组 | `ve.ei.com.tw` | 50766768 | ✅ 统编 50766768「創科系統有限公司」 |
+
+neargo 本地（本分支后端 + 独立测试库）以生产组走完：B 端保存配置 → 账号封存进 secret 模块 → 「核验账号」经隧道发 SOAP →
+统编与配置一致、QR 金钥回传并封存。证明 SOAP 信封、认证参数顺序（officeid / posno / posid）、回包解析在真实鲸跃上成立。
+
+未做：开票、作废、领号段 —— 生产账号会产生真实法定发票与号码，需另行确认号码后进行。

@@ -39,7 +39,8 @@ import tools.jackson.databind.ObjectMapper;
  * 认证失败（invalid）交给上传任务暂停该主体；不认识的码不自动重发。
  *
  * <p><b>网络</b>：鲸跃只放行台湾出口（本机直连 TCP 被拒），线上实例部署在台湾机房；
- * 地址取 {@code shop.invoice.cetustek.url}，默认 UME 一直在用的正式地址。
+ * 地址取 {@code shop.invoice.cetustek.url}，默认 UME 一直在用的正式地址。经 SSH 隧道从台湾机器转发时，
+ * 地址写隧道本地端口，并配 {@code shop.invoice.cetustek.host-header=invoice.cetustek.com.tw}（鲸跃按虚拟主机区分站点）。
  */
 @Component
 public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
@@ -66,15 +67,28 @@ public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
     private static final Set<String> FAILURES = Set.of("ERROR", "INVALID", "EXIST", "NODATA", "NOTAKE");
     private static final String CONSUMER_ID = "0000000000";
 
+    private final String hostHeader;
+
     @Autowired
     public CetustekInvoiceGateway(
             @Value("${shop.invoice.cetustek.url:http://invoice.cetustek.com.tw/InvoiceEntitySync/InvoiceAPI}") String url,
-            @Value("${shop.invoice.cetustek.timeout-seconds:20}") int timeoutSeconds, ObjectMapper json) {
-        this(URI.create(url), Duration.ofSeconds(timeoutSeconds), json);
+            @Value("${shop.invoice.cetustek.timeout-seconds:20}") int timeoutSeconds,
+            @Value("${shop.invoice.cetustek.host-header:}") String hostHeader, ObjectMapper json) {
+        this(URI.create(url), Duration.ofSeconds(timeoutSeconds), hostHeader, json);
     }
 
     CetustekInvoiceGateway(URI endpoint, Duration timeout, ObjectMapper json) {
+        this(endpoint, timeout, "", json);
+    }
+
+    CetustekInvoiceGateway(URI endpoint, Duration timeout, String hostHeader, ObjectMapper json) {
         super(endpoint, new HttpTransport(timeout), json);
+        this.hostHeader = hostHeader == null ? "" : hostHeader.trim();
+    }
+
+    @Override
+    protected Map<String, String> extraHeaders() {
+        return hostHeader.isEmpty() ? Map.of() : Map.of("Host", hostHeader);
     }
 
     @Override
