@@ -66,6 +66,24 @@ describe("P12 · HTTP 映射（OpsAppApplicationController / OpsAppKeyController
   });
 });
 
+describe("「是不是我」按 near-pay 员工号判断（/me/access），不按登录名", () => {
+  it("HTTP：me() 取 /me/access；mock 的我是 admin", async () => {
+    const { f, api } = httpApi({ operatorNo: "ST-NEARA", roles: ["SUPER_ADMIN"] });
+    expect((await api.me()).operatorNo).toBe("ST-NEARA");
+    expect(call(f, 0).url).toBe("/pay/me/access");
+    expect((await createMockPayCenterApi().me()).operatorNo).toBe("admin");
+  });
+
+  it("审核待办、告警、接入申请都不再拿登录名比认领人 / 申请人 / 提交人", async () => {
+    const fs = await import("node:fs");
+    for (const file of ["approvals-tab.tsx", "alerts-tab.tsx", "app-applications-tab.tsx"]) {
+      const src = fs.readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
+      expect(src, file).toContain("usePayOperatorNo()");
+      expect(src, file).not.toMatch(/useAuth\(\(s\) => s\.username\)/);
+    }
+  });
+});
+
 describe("数据范围 · 提交启用审批（near-pay DataScopeSubject）", () => {
   it("DATA_SCOPE_ENABLE / ENABLE，冻结版本 = 当前版本 + 1，带幂等号", async () => {
     const { f, api } = httpApi({ approvalNo: "AP1" });

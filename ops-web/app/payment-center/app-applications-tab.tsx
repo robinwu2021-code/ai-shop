@@ -17,7 +17,7 @@ import { payCenterHref } from "@/app/payment-center/module";
 import { APPLICATION_STATUSES, OPEN_SCOPES, SIGN_TYPES, type AppApplicationRow, type SignType } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { useCopy, fill } from "@/lib/use-copy";
-import { DetailLoader, amt, csv, joinCsv, options, reasonField, toMinor, useInstanceCurrency, usePc, useRun, useTabList } from "./shared";
+import { DetailLoader, amt, csv, joinCsv, options, reasonField, toMinor, useInstanceCurrency, usePayOperatorNo, usePc, useRun, useTabList } from "./shared";
 import { P12_COPY, type P12Copy } from "./p12-copy";
 import { p8Map } from "./members-tab";
 
@@ -29,13 +29,14 @@ export function AppApplicationsTab({ header }: { header: React.ReactNode }) {
   const m = useCopy(P12_COPY);
   const run = useRun(NAME);
   const me = useDraftOperator();
+  const operatorNo = usePayOperatorNo();
   const cur = useInstanceCurrency();
   const router = useRouter();
   const statusMap = React.useMemo(() => p8Map(m, "st_aap", APPLICATION_STATUSES, { SUBMITTED: "warning", APPROVED: "success", REJECTED: "danger" }), [m]);
   const list = useTabList<AppApplicationRow, { status: string }>(NAME, { status: "" }, (api, q) => api.appApplications.list(q));
   const { api } = list;
   const pending = (r: AppApplicationRow | null) => !!r && r.status === "SUBMITTED";
-  const mine = (r: AppApplicationRow | null) => !!r && !!me && r.submittedBy === me;
+  const mine = (r: AppApplicationRow | null) => !!r && !!operatorNo && r.submittedBy === operatorNo;
   const decide = (action: "approve" | "reject" | "withdraw") => (r: AppApplicationRow | null, reason: string) =>
     run(() => api.appApplications.decide(r!.applicationNo, action, { expectedVersion: r!.version, reason }));
   const scopeText = (s: string[]) => s.map((x) => label(m, `scope_${x}`)).join(" / ");
