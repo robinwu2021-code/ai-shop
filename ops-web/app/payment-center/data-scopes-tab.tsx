@@ -1,7 +1,8 @@
 "use client";
 
 // 数据范围（SY04，菜单上挂在「平台设置 · 权限管理」）。行操作：查看 · 编辑（抽屉，改完回草稿）· 启用（理由弹框，审批码，
-// 录入人不能自己启用 —— near-pay 域内强制）· 撤销（强确认 + 理由）。页面级：新增委托（抽屉）。
+// 录入人不能自己启用 —— near-pay 域内强制）· 提交启用审批（near-pay 开了审批闸门时，启用须先有已批准的 DATA_SCOPE_ENABLE 审批，
+// 批准后在「审核待办」执行或回到这里点启用）· 撤销（强确认 + 理由）。页面级：新增委托（抽屉）。
 // 数据范围 DTO 没有 version 字段，版本取自详情 —— 所以命令前先取详情。
 import * as React from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -84,7 +85,7 @@ export function DataScopesTab({ header }: { header: React.ReactNode }) {
               { label: c.enabledBy, value: r.enabledBy },
               { label: c.reasonField, value: r.reason, full: true },
             ] }]}
-            actions={<DetailActions ctx={ctx} keys={["revoke", "enable", "edit"]} />}
+            actions={<DetailActions ctx={ctx} keys={["revoke", "submitEnable", "enable", "edit"]} />}
           />
         );
       },
@@ -93,6 +94,12 @@ export function DataScopesTab({ header }: { header: React.ReactNode }) {
       key: "edit", label: c.edit, kind: "drawer", perm: "pay:data-scope:manage", width: "w-[560px]", title: () => c.editScopeTitle,
       visible: (r) => !!r && ["DRAFT", "ACTIVE", "EXPIRED"].includes(r.status),
       render: (ctx) => <ScopeEditForm row={ctx.row!} draft={draft("edit", ctx.row!.scopeNo)} onDone={ctx.back ?? ctx.close} typeMap={typeMap} fundsMap={fundsMap} />,
+    },
+    {
+      // near-pay DataScopeSubject：subjectType DATA_SCOPE_ENABLE、action ENABLE、冻结版本 = 当前版本 + 1；提交码 pay:data-scope:manage
+      key: "submitEnable", label: c.submitScopeApproval, kind: "dialog", perm: "pay:data-scope:manage", visible: (r) => r?.status === "DRAFT",
+      confirm: () => ({ title: c.submitScopeApprovalTitle, desc: c.submitScopeApprovalDesc, reasonHint: c.reasonHint }),
+      run: (r, reason) => run(async () => api.approvals.submit({ subjectType: "DATA_SCOPE_ENABLE", subjectRef: r!.scopeNo, subjectRevision: (await versionOf(r!.scopeNo)) + 1, action: "ENABLE", reason }), c.submitScopeApprovalDone),
     },
     {
       key: "enable", label: c.enable, kind: "dialog", perm: "pay:data-scope:approve", visible: (r) => r?.status === "DRAFT",
