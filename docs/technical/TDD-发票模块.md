@@ -898,14 +898,14 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 
 ## §19 供应商接口层抽象（台湾 / 阿联酋多供应商）
 
-状态：已实现 · 2026-11-22 · 档位 1（新错误码 26012 与三语文案；无新端点、无新表）· 需求 PRD AC41 · 设计依据 [TDD-发票服务-供应商适配抽象](./TDD-发票服务-供应商适配抽象.md)（草稿）。
+状态：已实现 · 2026-11-22 · 档位 0（纯内部重构：对外接口、错误码、库表、页面均不变）· 需求 PRD AC41 · 设计依据 [TDD-发票服务-供应商适配抽象](./TDD-发票服务-供应商适配抽象.md)（草稿）。
 
 ### 19.1 分层
 
 | 层 | 位置 | 内容 |
 |---|---|---|
 | 接口（领域定义） | `invoice-domain` · `gateway` | `InvoiceGateway`（上传）+ `ProviderProfile`（地区、编号方式、上报方式、要不要账号）；能力接口 `AccountCapability` / `RangeCapability` / `QueryCapability`；`ProviderException`；注册表 `InvoiceGateways` |
-| 模板基类 | `invoice-channel` · `channel.base` | `AbstractInvoiceGateway`：`send` 为 final，地区核对 → 账号核对 → 解析报文 → 厂商 `upload` → 异常归类；`ResultCodeTable` 结果码表（数据） |
+| 模板基类 | `invoice-channel` · `channel.base` | `AbstractInvoiceGateway`：`send` 为 final，账号核对 → 解析报文 → 厂商 `upload` → 异常归类；`ResultCodeTable` 结果码表（数据） |
 | 形态抽象类 | 同上 | `AbstractSoapInvoiceGateway`（SOAP）· `AbstractHttpApiInvoiceGateway` 下分 `AbstractEncryptedApiInvoiceGateway`（AES-CBC 整体加密）与 `AbstractSignedApiInvoiceGateway`（明文 + 签名）· `AbstractNetworkInvoiceGateway`（Peppol 接入点，继承签名接口）· `AbstractFileExchangeInvoiceGateway`（落文件）；公共件 `HttpTransport`、`SoapEnvelope`、`AesCbcCipher` |
 | 厂商 | `channel.<厂商>` | 只写报文映射、码表、实现哪些能力 |
 
@@ -922,17 +922,16 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 
 | 情况 | 回执 |
 |---|---|
-| 供应商不服务该税制 | `FINAL`，不发请求 |
 | 要账号却没配 | `ACCOUNT_PROBLEM` → 暂停该主体（§12） |
 | 厂商不支持这类报文（鲸跃零税率、网络里没有「作废」） | `FINAL`，不送半对的票 |
 | 密钥配错（AES 密钥长度、解不开回包） | `ACCOUNT_PROBLEM` |
 | 不可达、HTTP 非 2xx（`ProviderException`） | `RETRYABLE`，原报文下一轮补发；可能已送达的由查单兜底（§16） |
 | 供应商结果码 | 查厂商码表：先按报文种类、再查通用码；**未登记一律 `FINAL`**；同码重复登记启动即失败 |
 
-### 19.3 主体选供应商
+### 19.3 用哪家供应商：系统统一决定
 
-`saveProfile` 调 `InvoiceGateways#requireFor(gatewayCode, regimeCode)`：未装配、不服务该税制，或编号方式不是号段类（`LOCAL_RANGE` / `PROVIDER_RANGE`），回 **26012 `INVOICE_GATEWAY_UNSUPPORTED`**（{0} = 供应商编码）。
-此前这里不校验，主体可以选一个不服务本地区的通道，直到上传时才失败。
+供应商由系统统一决定 —— 商家在 B 端选择，或平台指定，都落在主体配置的 `gateway_code` 上。供应商层与开立流程**不核对市场**：
+`ProviderProfile.regimes` 只是声明，`InvoiceGateways#forRegime` 据此列出候选，不做拦截。`saveProfile` 的校验与改动前一致。
 
 领域不再 `instanceof` 具体通道：要不要取账号看 `profile().requiresAccount()`，核验 / 领号 / 查单按能力从注册表取，没有该能力回 26008（与此前一致）。
 
@@ -943,7 +942,7 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 | `InvoiceProvider` + 按动作拆的 `IssueCapability` … + `ProviderInvoker` + 命令对象 | 保留 `InvoiceGateway#send(GatewayRequest)` 作上传入口，只把上传之外的动作拆成能力接口 | 内嵌模块的开立是「本地取号 + 异步上传报文」，上传入口按报文种类已足够；命令对象等在线给号落地时再引入 |
 | `CredentialSet`（任意字段）+ `ivc_provider_credential_field` | `ProviderAccount(accountCode, keyId, secret)` 三元 | 已覆盖鲸跃、绿界 / 蓝新、签名接口与接入点的凭据形状；不新增表。secret 里的 JSON 键沿用 user / password，已封存数据不迁移 |
 | `ProviderCallRecorder` 调用留痕 | 未做 | 需 `ivc_provider_call_log` 表，留待独立服务阶段 |
-| 编号方式 `PROVIDER_ONLINE` / `LOCAL_SEQUENCE` | 已声明，注册表拒绝主体选用 | 开立主流程目前只支持号段；绿界（在线给号）与阿联酋（自编连续号）各需一段开立流程改造 |
+| 编号方式 `PROVIDER_ONLINE` / `LOCAL_SEQUENCE` | 只声明 | 开立主流程目前只支持号段；绿界（在线给号）与阿联酋（自编连续号）各需一段开立流程改造 |
 
 ### 19.5 尚未覆盖（接阿联酋 / 绿界前要做）
 
@@ -957,20 +956,19 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 |---|---|
 | `gateway/InvoiceGateway` | 加 `profile()`；`ProviderAccount` 字段改为 `keyId` / `secret` |
 | `gateway/{ProviderProfile, AccountCapability, RangeCapability, QueryCapability, ProviderException, InvoiceGateways}` | 新增；删除 `InvoiceProviderGateway` |
-| `service/impl/InvoiceTransmissionServiceImpl` · `InvoiceSetupServiceImpl` · `InvoiceProviderAccounts` | 改用注册表与能力；`saveProfile` 校验供应商 |
+| `service/impl/InvoiceTransmissionServiceImpl` · `InvoiceSetupServiceImpl` · `InvoiceProviderAccounts` | 改用注册表与能力 |
 | `channel/base/*` | 新增模板、码表、传输与五个形态类 |
 | `channel/cetustek` · `turnkey` · `stub` | 迁到对应形态类；删除 `CetustekSoapClient`、`CetustekResultCodes` |
-| `shop-base` `ErrorCode` · `shop-app` `messages*.properties` | 26012 与三语文案 |
 
 ### 19.7 测试
 
 | AC | 测试 | 结果 |
 |---|---|---|
-| AC41 | `InvoiceGatewaysTest`（4）：按地区列出；按能力取用；选用时地区不符 / 未装配 / 在线给号 / 自编连续号均 26012；编码重复启动失败 | ✅ |
-| AC41 | `AbstractInvoiceGatewayTest`（2）：地区不符不调厂商、无账号、不可达、不支持的报文、密钥配错 | ✅ |
+| AC41 | `InvoiceGatewaysTest`（3）：按声明的地区列出候选；按能力取用；编码重复启动失败 | ✅ |
+| AC41 | `AbstractInvoiceGatewayTest`（2）：不核对市场、无账号不调厂商、不可达、不支持的报文、密钥配错 | ✅ |
 | AC41 | `ResultCodeTableTest`（2）、`AesCbcCipherTest`（2，与 openssl 独立算出的密文一致） | ✅ |
 | AC41 | `EncryptedApiInvoiceGatewayTest`（2）：样例加密厂商对本机假服务，报文用账号密钥加密、回包解密分类、外层拒绝为账号问题 | ✅ |
-| AC41 | `NetworkInvoiceGatewayTest`（2）：样例阿联酋接入点，投递外层、HMAC 签名、受理号、只收阿联酋税制 | ✅ |
+| AC41 | `NetworkInvoiceGatewayTest`（2）：样例阿联酋接入点，投递外层、HMAC 签名、受理号、接入点码表 | ✅ |
 | 回归 | `CetustekInvoiceGatewayTest` 6/6、`TurnkeyInvoiceGatewayTest` 3/3、`InvoiceServiceMysqlTest` 34/34（MySQL 9）、`BackendI18nParityTest`、`InvoiceOptionalTest` | ✅ |
 
 `ArchitectureTest`（5）与 `MpEndpointAuthTest`（1，checkout 端点）的失败为既有，与本改动无关；`MpEndpointAuthTest` 加载完整 `ShopApplication` 上下文，注册表装配正常。

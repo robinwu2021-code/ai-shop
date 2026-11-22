@@ -50,9 +50,8 @@ class TurnkeyInvoiceGatewayTest {
     }
 
     @Test
-    void otherRegimesAndUnknownMessagesAreRefused() {
+    void unknownMessagesAreRefused() {
         var gateway = new TurnkeyInvoiceGateway(root.toString(), "{mig}", JsonMapper.builder().build());
-        assertFalse(gateway.send(req("AE_VAT", "ISSUE", "{\"mig\":\"F0401\"}")).accepted());
         assertFalse(gateway.send(req("TW_EGUI", "ISSUE", "{\"mig\":\"X9999\"}")).accepted());
     }
 

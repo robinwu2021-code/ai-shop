@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
 import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
 import java.time.LocalDate;
@@ -13,7 +11,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-/** 供应商注册表：按地区列出、按能力取用、主体选供应商时核对地区与编号方式（PRD AC41）。 */
+/** 供应商注册表：按声明的地区列出候选、按能力取用、编码重复启动失败（PRD AC41）。 */
 class InvoiceGatewaysTest {
 
     record Plain(String code, ProviderProfile profile) implements InvoiceGateway {
@@ -57,17 +55,6 @@ class InvoiceGatewaysTest {
         assertTrue(gateways.capability("NOPE", QueryCapability.class).isEmpty());
         assertTrue(gateways.requiresAccount("AE_ASP"));
         assertTrue(!gateways.requiresAccount("STUB"));
-    }
-
-    @Test
-    void ac41ProfileMayOnlyPickAnInstalledProviderOfItsRegionWithSupportedNumbering() {
-        assertEquals("TW_PROVIDER", gateways.requireFor("TW_PROVIDER", "TW_EGUI").code());
-        assertEquals("STUB", gateways.requireFor("STUB", "AE_EINVOICE").code());
-        for (var bad : List.of(new String[] {"AE_ASP", "TW_EGUI"}, new String[] {"NOPE", "TW_EGUI"},
-                new String[] {"TW_ONLINE", "TW_EGUI"}, new String[] {"AE_ASP", "AE_EINVOICE"})) {
-            var e = assertThrows(BizException.class, () -> gateways.requireFor(bad[0], bad[1]), bad[0]);
-            assertEquals(ErrorCode.INVOICE_GATEWAY_UNSUPPORTED, e.errorCode(), bad[0]);
-        }
     }
 
     @Test

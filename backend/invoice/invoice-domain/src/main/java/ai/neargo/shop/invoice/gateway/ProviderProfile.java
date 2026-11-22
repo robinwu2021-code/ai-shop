@@ -7,6 +7,8 @@ import java.util.Set;
  *
  * <p>编号方式与上报方式是<b>声明</b>，不进继承树：同一种对接形态里既有服务商配号段的（鲸跃），也有开立时在线给号的（绿界）。
  *
+ * <p>{@code regimes} 只是声明，供列出候选供应商用；供应商层与开立流程都不据此拦截 —— 用哪家由系统统一决定。
+ *
  * @param regimes 服务的税制编码（{@code TW_EGUI}、{@code AE_EINVOICE} …）；{@value #ANY_REGIME} 表示不限（测试桩）
  */
 public record ProviderProfile(Set<String> regimes, NumberingMode numbering, ReportMode reporting,

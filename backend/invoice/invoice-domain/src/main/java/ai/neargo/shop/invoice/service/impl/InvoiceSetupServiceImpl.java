@@ -89,7 +89,6 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     public RegimeProfileVO saveProfile(Scope scope, RegimeProfileReq req) {
         var regime = regimes.require(req.regimeCode());
         regime.validateSeller(req.sellerTaxId());
-        gateways.requireFor(req.gatewayCode(), regime.code());
         var now = LocalDateTime.now(ZoneOffset.UTC);
         var p = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("regime_code", regime.code()));

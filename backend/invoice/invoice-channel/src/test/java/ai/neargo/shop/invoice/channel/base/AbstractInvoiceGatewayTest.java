@@ -15,7 +15,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 模板基类的 {@code send}：每家厂商都一样的那几条底线 —— 地区不对不送、要账号没账号算账号问题、
+ * 模板基类的 {@code send}：每家厂商都一样的那几条底线 —— 不核对市场（由系统统一决定用哪家）、要账号没账号算账号问题、
  * 不支持的报文不送半对的票、密钥配错算账号问题、不可达按可重试（TDD-发票模块 §19）。
  */
 class AbstractInvoiceGatewayTest {
@@ -52,10 +52,10 @@ class AbstractInvoiceGatewayTest {
     }
 
     @Test
-    void ac41RegionAndAccountAreCheckedBeforeTheVendorIsCalled() {
-        assertEquals(Outcome.FINAL, send("TW_EGUI", ACCOUNT).outcome(), "阿联酋的供应商不收台湾的票");
-        assertEquals(null, probe.lastMessage);
+    void ac41AccountIsCheckedBeforeTheVendorIsCalledButMarketIsNot() {
         assertEquals(Outcome.ACCOUNT_PROBLEM, send("AE_EINVOICE", null).outcome());
+        assertEquals(null, probe.lastMessage, "没账号不调厂商");
+        assertEquals(Outcome.ACCEPTED, send("TW_EGUI", ACCOUNT).outcome(), "市场由系统统一决定，供应商层不拦");
         assertEquals(Outcome.ACCEPTED, send("AE_EINVOICE", ACCOUNT).outcome());
         assertEquals(1, probe.lastMessage.path("n").asInt(), "报文解析好再交给厂商");
     }

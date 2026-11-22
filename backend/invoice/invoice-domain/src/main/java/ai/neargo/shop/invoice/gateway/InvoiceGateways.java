@@ -1,7 +1,5 @@
 package ai.neargo.shop.invoice.gateway;
 
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -36,18 +34,9 @@ public class InvoiceGateways {
         return find(code).map(g -> g.profile().requiresAccount()).orElse(false);
     }
 
-    /** 服务某税制（地区）的供应商，按编码排序。 */
+    /** 声明服务某税制（地区）的供应商，按编码排序 —— 供系统指定 / 商家选择时列出候选，不做强制校验。 */
     public List<InvoiceGateway> forRegime(String regimeCode) {
         return byCode.values().stream().filter(g -> g.profile().supports(regimeCode))
                 .sorted(Comparator.comparing(InvoiceGateway::code)).toList();
-    }
-
-    /**
-     * 主体选用的供应商须：已装配、服务该税制、编号方式开立主流程支持（目前只有号段类）。
-     * 否则抛 {@code INVOICE_GATEWAY_UNSUPPORTED}，{0} = 供应商编码。
-     */
-    public InvoiceGateway requireFor(String code, String regimeCode) {
-        return find(code).filter(g -> g.profile().supports(regimeCode) && g.profile().numbering().usesRanges())
-                .orElseThrow(() -> BizException.of(ErrorCode.INVOICE_GATEWAY_UNSUPPORTED, String.valueOf(code)));
     }
 }

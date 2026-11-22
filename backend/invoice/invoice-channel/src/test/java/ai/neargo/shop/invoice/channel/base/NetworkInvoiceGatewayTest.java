@@ -20,7 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 网络接入点形态（阿联酋 Peppol ASP）：用一个样例接入点验证外层投递报文、HMAC 签名头、受理码表、只收阿联酋税制。
+ * 网络接入点形态（阿联酋 Peppol ASP）：用一个样例接入点验证外层投递报文、HMAC 签名头、受理码表。
  * 真实接入点的路径、文档格式（PINT AE）与码表待选定服务商后按其文档填。
  */
 class NetworkInvoiceGatewayTest {
@@ -108,9 +108,7 @@ class NetworkInvoiceGatewayTest {
     }
 
     @Test
-    void ac41OnlyServesTheUaeRegimeAndClassifiesAccessPointCodes() {
-        assertEquals(Outcome.FINAL, asp.send(issue("TW_EGUI")).outcome());
-        assertEquals(0, http.requests.size(), "地区不对，连请求都不发");
+    void ac41ClassifiesAccessPointCodes() {
         http.replies.add("{\"status\":\"UNAUTHORIZED\"}");
         assertEquals(Outcome.ACCOUNT_PROBLEM, asp.send(issue("AE_EINVOICE")).outcome());
         http.replies.add("{\"status\":\"BUSY\"}");

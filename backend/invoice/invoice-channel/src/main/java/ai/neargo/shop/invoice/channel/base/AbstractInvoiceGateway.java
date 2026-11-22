@@ -8,10 +8,12 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * 所有供应商的模板基类（TDD-发票模块 §19）。{@link #send} 是 final：
- * 税制核对 → 账号核对 → 解析报文 → 交给厂商 {@link #upload} → 异常归类。
+ * 账号核对 → 解析报文 → 交给厂商 {@link #upload} → 异常归类。
+ *
+ * <p><b>不核对市场</b>：用哪家供应商由系统统一决定（商家选择或系统指定，落在主体配置上），
+ * 供应商层只管把交来的报文送出去。
  *
  * <ul>
- *   <li>不服务该税制 → {@code FINAL}（配置错误，重发也一样）</li>
  *   <li>要账号却没给 → {@code ACCOUNT_PROBLEM}（上传任务据此暂停该主体）</li>
  *   <li>{@link AccountMisconfiguredException}（密钥长度不对、解不开回包）→ {@code ACCOUNT_PROBLEM}</li>
  *   <li>{@link UnsupportedMessageException}（厂商不支持这类票，如鲸跃的零税率）→ {@code FINAL}，不送半对的票</li>
@@ -31,8 +33,6 @@ public abstract class AbstractInvoiceGateway implements InvoiceGateway {
 
     @Override
     public final GatewayReceipt send(GatewayRequest request) {
-        if (!profile().supports(request.regimeCode()))
-            return GatewayReceipt.rejected(code() + " does not serve " + request.regimeCode());
         if (profile().requiresAccount() && request.account() == null)
             return GatewayReceipt.accountProblem("provider account not configured");
         try {
