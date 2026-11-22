@@ -17989,6 +17989,22 @@ VALUES
     ('FINANCE', 'OPS_FINANCE__TAB_PAYABLES', 'OPS', NOW(), NOW()),
     ('FINANCE', 'OPS_FINANCE__TAB_PURCHASE_INVOICES', 'OPS', NOW(), NOW()),
     ('FINANCE', 'OPS_FINANCE__TAB_BUYER_INVOICES', 'OPS', NOW(), NOW());
+-- 发票模块 db/invoice/V10：运营端「电子发票」菜单（手工搬入，与生成器输出一致）
+INSERT IGNORE INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__E_INVOICES', 'OPS_FINANCE', '电子发票', '应付与发票',
+       '/e-invoices', 'finance:invoice:read', 'finance:invoice:read',
+       'IMPLEMENTED', 1, 'P-12.2', 'MENU', 58, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'OPS_FINANCE__E_INVOICES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'SUPER_ADMIN'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
 INSERT IGNORE INTO sys_function
     (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
 VALUES ('OPS_INVENTORY', '进销存', 'OPS', 'Boxes', '/inventory', 45, 1, NOW(), NOW());

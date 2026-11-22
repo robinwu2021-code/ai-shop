@@ -107,6 +107,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   供应商收款账户: { en: "Supplier payout accounts" },
   进项票: { en: "Purchase invoices" },
   买家开票申请: { en: "Buyer invoice requests" },
+  电子发票: { en: "E-invoices" },
   规格模板维护: { en: "Spec templates" },
   通用规格: { en: "Universal specs" },
   专用规格: { en: "Dedicated specs" },

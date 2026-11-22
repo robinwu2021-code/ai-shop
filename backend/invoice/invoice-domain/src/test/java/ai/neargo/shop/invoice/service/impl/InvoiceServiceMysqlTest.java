@@ -27,6 +27,10 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceChoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.SaveCarrierReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsInvoiceQuery;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsSellerQuery;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsSellerVO;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
@@ -114,6 +118,7 @@ class InvoiceServiceMysqlTest {
     @Autowired OutboxEventBus events;
     @Autowired JdbcTemplate jdbc;
     @Autowired InvoiceMapper invoiceRows;
+    @Autowired ai.neargo.shop.invoice.service.InvoiceOpsService ops;
     @Autowired ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper allowanceRows;
 
     String period;
@@ -321,6 +326,58 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac40OpsSeesEverySellerWithBacklogAndRangesAndFiltersByProblem() {
+        var e2 = new Scope("T1", "E2", "S9", "U9");
+        setup.saveProfile(e2, new RegimeProfileReq("TW_EGUI", "53212539", "第二家", "PROV", null, null, null,
+                "OFFICE-2", "u", "p", null, null));
+        sources.paid("SO1", 105_000);
+        var r = issue("SO1");
+        invoices.allowance(SCOPE, r.invoiceNo(), 30_000, "退一杯");
+        jdbc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE"
+                + " WHERE message_type = 'ISSUE'");
+
+        var all = ops.sellers("T1", new OpsSellerQuery(null, null, null, null, null)).records();
+        assertEquals(List.of("E1", "E2"), all.stream().map(OpsSellerVO::entityNo).toList());
+        var e1 = all.getFirst();
+        assertEquals(2, e1.pending(), "开立 + 折让两条未送达");
+        assertEquals(1, e1.overdue());
+        assertEquals(50, e1.currentRemaining() + 1, "AB 1–50 已用掉 1 张");
+        assertEquals(0, all.get(1).currentRemaining());
+
+        assertEquals(List.of("E1"), entities(new OpsSellerQuery(null, "OVERDUE", null, null, null)));
+        assertEquals(List.of("E1", "E2"), entities(new OpsSellerQuery(null, "LOW_RANGE", null, null, null)),
+                "E1 剩 49 < 50，E2 没号段");
+        assertEquals(List.of("E2"), entities(new OpsSellerQuery("PROV", null, null, null, null)));
+        assertEquals(List.of("E2"), entities(new OpsSellerQuery(null, null, "53212539", null, null)));
+        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), provider_hold_reason = 'x'"
+                + " WHERE entity_no = 'E2'");
+        assertEquals(List.of("E2"), entities(new OpsSellerQuery(null, "HELD", null, null, null)));
+        assertEquals(1, ops.sellers("T1", new OpsSellerQuery(null, null, null, 2, 1)).records().size(), "分页");
+
+        var late = ops.transmissions("T1", new OpsTransmissionQuery(null, null, true, null, null)).records();
+        assertEquals(1, late.size());
+        assertEquals(r.fiscalNumber(), late.getFirst().fiscalNumber());
+        assertTrue(late.getFirst().overdue());
+        var allowanceTask = ops.transmissions("T1", new OpsTransmissionQuery("E1", null, null, null, null)).records()
+                .stream().filter(t -> "ALLOWANCE".equals(t.messageType())).findFirst().orElseThrow();
+        assertEquals(r.invoiceNo(), allowanceTask.invoiceNo(), "折让任务对回原发票");
+
+        assertEquals(1, invoices.listForOps("T1", new OpsInvoiceQuery(null, null, r.fiscalNumber(), null, null, null,
+                null)).total());
+        assertEquals(new Scope("T1", "E1", "S1", "OPS1"), invoices.scopeOf("T1", r.invoiceNo(), "OPS1"));
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> invoices.scopeOf("T1", "NOPE", "OPS1"));
+
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_function_point"
+                + " WHERE point_code = 'OPS_FINANCE__E_INVOICES' AND href = '/e-invoices'", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_point"
+                + " WHERE point_code = 'OPS_FINANCE__E_INVOICES'", Integer.class), "超管与财务");
+    }
+
+    private List<String> entities(OpsSellerQuery q) {
+        return ops.sellers("T1", q).records().stream().map(OpsSellerVO::entityNo).toList();
     }
 
     @Test
@@ -861,10 +918,19 @@ class InvoiceServiceMysqlTest {
                     + " updated_at DATETIME(3), version BIGINT)");
             jdbc.update("INSERT INTO mch_role(entity_no,builtin,role_code,deleted,perms,version) VALUES"
                     + " ('*',1,'MANAGER',0,'[\"biz:print:read\"]',0),('*',1,'CLERK',0,'[]',0)");
+            // V10 运营端菜单写平台的功能点 / 角色点：放两张与平台同形（只含用到的列与唯一键）的表
+            jdbc.execute("CREATE TABLE sys_function_point (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                    + " point_code VARCHAR(64) NOT NULL UNIQUE, function_code VARCHAR(64), name VARCHAR(64),"
+                    + " group_name VARCHAR(64), href VARCHAR(255), ui_perm_code VARCHAR(64), perm_code VARCHAR(64),"
+                    + " backend_status VARCHAR(32), ui_ready TINYINT, matrix_code VARCHAR(32), point_type VARCHAR(16),"
+                    + " sort INT, created_at DATETIME, updated_at DATETIME)");
+            jdbc.execute("CREATE TABLE sys_role_point (id BIGINT AUTO_INCREMENT PRIMARY KEY, role_code VARCHAR(64),"
+                    + " point_code VARCHAR(64), end_code VARCHAR(16), created_at DATETIME, updated_at DATETIME,"
+                    + " UNIQUE KEY uk_role_point (role_code, point_code, end_code))");
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(9, applied);
+            assertEquals(10, applied);
             return ds;
         }
     }
@@ -985,7 +1051,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean

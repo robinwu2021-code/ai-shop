@@ -1,4 +1,5 @@
 import { printHttp } from "./https/print";
+import { eInvoiceHttp } from "./https/invoice";
 // 真实后端实现（组合根）。按域切片在 lib/api/https/*.ts，端点前缀统一 /ops/**。
 // 切片之间方法名不得重叠（后者会静默覆盖前者），由 contract.test.ts 断言。
 import type { Api } from "./contract";
@@ -54,10 +55,11 @@ export const HTTP_SLICES = {
   content: contentHttp,
   system: systemHttp,
   commerce: commerceHttp,
+  eInvoice: eInvoiceHttp,
 } as const;
 
 export const httpApi: Api = {
   ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp, ...payOpsHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
-  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp, ...commerceHttp,
+  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp, ...commerceHttp, ...eInvoiceHttp,
 };

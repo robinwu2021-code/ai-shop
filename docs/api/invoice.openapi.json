@@ -1015,6 +1015,337 @@
           }
         }
       }
+    },
+    "/ops/sales-invoice-sellers": {
+      "get": {
+        "summary": "营业人一览（配置、本期余量、上传积压）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。problem：HELD 上传暂停 / OVERDUE 逾期 / REVIEW 待人工 / BACKLOG 有积压 / LOW_RANGE 余量低于水位。",
+        "parameters": [
+          {
+            "name": "gatewayCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "problem",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HELD",
+                "OVERDUE",
+                "REVIEW",
+                "BACKLOG",
+                "LOW_RANGE"
+              ]
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsSellerPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-sellers/{entityNo}/provider-verifications": {
+      "post": {
+        "summary": "代商家核验加值中心账号",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。通过即解除认证失败造成的上传暂停。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVerificationVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-sellers/{entityNo}/provider-ranges": {
+      "post": {
+        "summary": "代商家向加值中心领号段",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。请求体可省；periodCode 省略取本期。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "periodCode": {
+                    "type": "string",
+                    "pattern": "[0-9]{5}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-transmissions": {
+      "get": {
+        "summary": "上传任务（跨商家）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。overdue=true 只看已过法定期限未送达的；折让类任务的 invoiceNo / fiscalNumber 取其原发票。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "SENDING",
+                "SENT",
+                "FAILED",
+                "HELD",
+                "NEEDS_REVIEW"
+              ]
+            }
+          },
+          {
+            "name": "overdue",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsTransmissionPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices": {
+      "get": {
+        "summary": "发票查询（跨商家）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fiscalNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "periodCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "[0-9]{5}"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ISSUED",
+                "VOIDED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices/{invoiceNo}/retransmissions": {
+      "post": {
+        "summary": "代商家重传待人工处理的上传",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。报文不变。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices/{invoiceNo}/provider-checks": {
+      "post": {
+        "summary": "代商家向服务商查单并对账",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。规则同 `/biz/invoices/{invoiceNo}/provider-checks`。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCheckVO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1540,6 +1871,162 @@
           "checkedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "OpsSellerVO": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "regimeCode": {
+            "type": "string"
+          },
+          "sellerTaxId": {
+            "type": "string"
+          },
+          "sellerName": {
+            "type": "string"
+          },
+          "gatewayCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "providerAccountCode": {
+            "type": "string"
+          },
+          "providerCredentialConfigured": {
+            "type": "boolean"
+          },
+          "providerHoldReason": {
+            "type": "string"
+          },
+          "providerHeldAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currentPeriod": {
+            "type": "string"
+          },
+          "currentRemaining": {
+            "type": "integer"
+          },
+          "rangeLowWater": {
+            "type": "integer"
+          },
+          "autoFetchRanges": {
+            "type": "boolean"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "needsReview": {
+            "type": "integer"
+          },
+          "dueSoon": {
+            "type": "integer"
+          },
+          "overdue": {
+            "type": "integer"
+          }
+        }
+      },
+      "OpsTransmissionVO": {
+        "type": "object",
+        "properties": {
+          "transmissionNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "messageType": {
+            "type": "string"
+          },
+          "refNo": {
+            "type": "string"
+          },
+          "invoiceNo": {
+            "type": "string"
+          },
+          "fiscalNumber": {
+            "type": "string"
+          },
+          "gatewayCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reportDeadlineAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OpsSellerPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsSellerVO"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "OpsTransmissionPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsTransmissionVO"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
           }
         }
       }

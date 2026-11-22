@@ -137,6 +137,47 @@ public final class InvoiceDtos {
     public record ProviderCheckVO(String providerState, String providerCode, String expectedState, String verdict,
             List<String> reconciled, LocalDateTime checkedAt) {}
 
+    // ---- 运营端（TDD-发票模块 §18） ----
+
+    /** 运营端发票查询：跨主体；主体 / 门店 / 号码都可选。 */
+    public record OpsInvoiceQuery(
+            @Size(max = 64) String entityNo,
+            @Size(max = 64) String storeNo,
+            @Size(max = 32) String fiscalNumber,
+            @Pattern(regexp = "[0-9]{5}") String periodCode,
+            @Pattern(regexp = "ISSUED|VOIDED") String status,
+            @Min(1) Integer page,
+            @Min(1) @Max(100) Integer size) {}
+
+    /** 运营端营业人一览的筛选：problem = HELD 暂停 / OVERDUE 逾期 / REVIEW 待人工 / BACKLOG 有积压 / LOW_RANGE 号码不足。 */
+    public record OpsSellerQuery(
+            @Size(max = 32) String gatewayCode,
+            @Pattern(regexp = "HELD|OVERDUE|REVIEW|BACKLOG|LOW_RANGE") String problem,
+            @Size(max = 64) String keyword,
+            @Min(1) Integer page,
+            @Min(1) @Max(100) Integer size) {}
+
+    /** 运营端营业人一行：配置、号码余量、上传积压。 */
+    public record OpsSellerVO(String entityNo, String regimeCode, String sellerTaxId, String sellerName,
+            String gatewayCode, String status, String providerAccountCode, boolean providerCredentialConfigured,
+            String providerHoldReason, LocalDateTime providerHeldAt, String currentPeriod, long currentRemaining,
+            int rangeLowWater, boolean autoFetchRanges, long pending, long held, long needsReview, long dueSoon,
+            long overdue) {}
+
+    /** 运营端上传任务查询：status 为任务状态；overdue=true 只看已过法定期限未送达的。 */
+    public record OpsTransmissionQuery(
+            @Size(max = 64) String entityNo,
+            @Pattern(regexp = "PENDING|SENDING|SENT|FAILED|HELD|NEEDS_REVIEW") String status,
+            Boolean overdue,
+            @Min(1) Integer page,
+            @Min(1) @Max(100) Integer size) {}
+
+    /** 运营端上传任务一行；invoiceNo / fiscalNumber 为所属发票（折让类任务取其原发票）。 */
+    public record OpsTransmissionVO(String transmissionNo, String entityNo, String storeNo, String messageType,
+            String refNo, String invoiceNo, String fiscalNumber, String gatewayCode, String status, int attempts,
+            String lastError, LocalDateTime nextAttemptAt, LocalDateTime reportDeadlineAt, boolean overdue,
+            LocalDateTime createdAt) {}
+
     public record RegimeProfileVO(
             String regimeCode,
             String sellerTaxId,

@@ -8,6 +8,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.invoice.dto.InvoiceDtos;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceLineVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
@@ -292,6 +293,27 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public InvoiceVO get(Scope scope, String invoiceNo) {
         return view(require(scope, invoiceNo), true);
+    }
+
+    @Override
+    public PageData<InvoiceVO> listForOps(String tenantNo, InvoiceDtos.OpsInvoiceQuery query) {
+        int page = query.page() == null ? 1 : query.page(), size = query.size() == null ? 20 : query.size();
+        var result = invoices.selectPage(new Page<>(page, size), new QueryWrapper<IvcInvoice>().eq("tenant_no", tenantNo)
+                .eq(query.entityNo() != null, "entity_no", query.entityNo())
+                .eq(query.storeNo() != null, "store_no", query.storeNo())
+                .eq(query.fiscalNumber() != null, "fiscal_number", query.fiscalNumber())
+                .eq(query.periodCode() != null, "period_code", query.periodCode())
+                .eq(query.status() != null, "status", query.status())
+                .orderByDesc("issued_at", "id"));
+        return PageData.of(result.getRecords().stream().map(i -> view(i, false)).toList(), result.getTotal(), page,
+                size);
+    }
+
+    @Override
+    public Scope scopeOf(String tenantNo, String invoiceNo, String actorNo) {
+        var inv = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", tenantNo).eq("invoice_no", invoiceNo));
+        if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
+        return new Scope(tenantNo, inv.getEntityNo(), inv.getStoreNo(), actorNo);
     }
 
     @Override

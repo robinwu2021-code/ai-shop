@@ -2046,7 +2046,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 165,
+      "count": 166,
       "domains": [
         {
           "name": "经营看板",
@@ -3312,6 +3312,19 @@
             },
             {
               "app": "ops-web",
+              "route": "/e-invoices",
+              "title": "电子发票",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/e-invoices"
+            },
+            {
+              "app": "ops-web",
               "route": "/finance?tab=payout-accounts",
               "title": "供应商收款账户",
               "domain": "结算与资金",
@@ -4291,5 +4304,5 @@
       ]
     }
   ],
-  "total": 344
+  "total": 345
 }

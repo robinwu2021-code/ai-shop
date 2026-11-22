@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.service;
 
+import ai.neargo.shop.invoice.dto.InvoiceDtos;
+
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
@@ -32,6 +34,12 @@ public interface InvoiceService {
     PageData<InvoiceVO> list(Scope scope, InvoiceQuery query);
 
     InvoiceVO voidInvoice(Scope scope, String invoiceNo, String reason);
+
+    /** 运营端：跨主体查发票（租户内）。 */
+    PageData<InvoiceVO> listForOps(String tenantNo, InvoiceDtos.OpsInvoiceQuery query);
+
+    /** 运营端：按发票单号取开票范围（主体 + 门店），供运营代为处置时组 Scope。 */
+    Scope scopeOf(String tenantNo, String invoiceNo, String actorNo);
 
     InvoiceVO allowance(Scope scope, String invoiceNo, long amountMinor, String reason);
 

@@ -9,6 +9,9 @@ import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
 import ai.neargo.shop.invoice.entity.IvcUserCarrier;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -45,6 +48,12 @@ public final class InvoiceMappers {
                 + " AND entity_no=#{entity} AND regime_code=#{regime} AND period_code=#{period} AND status='ACTIVE'")
         long remaining(@Param("tenant") String tenant, @Param("entity") String entity,
                 @Param("regime") String regime, @Param("period") String period);
+
+        /** 运营端：某期各主体可用号码数（键：entityNo / remaining）。 */
+        @Select("SELECT entity_no AS entityNo, COALESCE(SUM(end_no - next_no + 1), 0) AS remaining"
+                + " FROM ivc_number_range WHERE tenant_no=#{tenant} AND period_code=#{period} AND status='ACTIVE'"
+                + " GROUP BY entity_no")
+        List<Map<String, Object>> remainingByEntity(@Param("tenant") String tenant, @Param("period") String period);
 
         /** 同主体同税制同期同字轨内是否有重叠号段。 */
         @Select("SELECT COUNT(*) FROM ivc_number_range WHERE tenant_no=#{tenant} AND entity_no=#{entity}"
@@ -84,6 +93,16 @@ public final class InvoiceMappers {
     }
 
     public interface TransmissionMapper extends BaseMapper<IvcTransmission> {
+
+        /** 运营端：按主体汇总未送达任务（键：entityNo / pending / held / needsReview / dueSoon / overdue）。 */
+        @Select("SELECT entity_no AS entityNo,"
+                + " SUM(CASE WHEN status IN ('PENDING','SENDING','FAILED') THEN 1 ELSE 0 END) AS pending,"
+                + " SUM(CASE WHEN status='HELD' THEN 1 ELSE 0 END) AS held,"
+                + " SUM(CASE WHEN status='NEEDS_REVIEW' THEN 1 ELSE 0 END) AS needsReview,"
+                + " SUM(CASE WHEN report_deadline_at <= #{now} THEN 1 ELSE 0 END) AS overdue,"
+                + " SUM(CASE WHEN report_warn_at <= #{now} AND report_deadline_at > #{now} THEN 1 ELSE 0 END) AS dueSoon"
+                + " FROM ivc_transmission WHERE tenant_no=#{tenant} AND status<>'SENT' GROUP BY entity_no")
+        List<Map<String, Object>> backlogByEntity(@Param("tenant") String tenant, @Param("now") LocalDateTime now);
     }
 
     public interface BuyerPreferenceMapper extends BaseMapper<IvcBuyerPreference> {

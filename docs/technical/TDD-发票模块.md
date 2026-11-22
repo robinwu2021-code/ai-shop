@@ -829,3 +829,69 @@ MySQL 9 全类 33/33、鲸跃 6/6、Turnkey 3/3、b-app `vue-tsc` 无错。
 
 排除形态只用于打包部署；全量测试按默认形态跑（pre-push 不变）。
 
+
+## §18 运营端电子发票
+
+状态：已实现 · 2026-11-22 · 档位 1（新端点、菜单行迁移、运营端页面与文案）· 需求 PRD AC40。
+
+### 18.1 调用方案
+
+运营端由发票模块直接提供 controller（`@Profile("ops")`），用运营权限码判权，不经 shop-app 转一层：
+
+| 端 | 谁提供接口 | 判权 |
+|---|---|---|
+| 运营 | 发票模块 `api/ops/OpsSalesInvoiceController` | `finance:invoice:read` / `finance:invoice:verify`（复用开票申请那批财务码） |
+| B 端 | 发票模块 `api/biz/*` | `biz:invoice:*` |
+| C 端 | 发票模块 `api/mp/*`；随单开票经订单模块事件 | 登录态 |
+
+处置动作调的是 B 端同一批服务方法（`verifyProvider`、`fetchProviderRange`、`retry`、`checkWithProvider`），运营只是替商家点那一下。
+主体级动作用 `Scope(tenant, entityNo, "*", 运营账号)`；单票动作由 `InvoiceService#scopeOf` 从发票反查主体与门店。
+
+### 18.2 端点
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/ops/sales-invoice-sellers` | read | 营业人一览；`problem` = HELD / OVERDUE / REVIEW / BACKLOG / LOW_RANGE |
+| POST | `/ops/sales-invoice-sellers/{entityNo}/provider-verifications` | verify | 代核验加值中心账号，通过即解暂停 |
+| POST | `/ops/sales-invoice-sellers/{entityNo}/provider-ranges` | verify | 代领号段 |
+| GET | `/ops/sales-invoice-transmissions` | read | 上传任务；`overdue=true` 只看逾期 |
+| GET | `/ops/sales-invoices` | read | 发票跨商家查询 |
+| POST | `/ops/sales-invoices/{invoiceNo}/retransmissions` | verify | 重传待人工的上传 |
+| POST | `/ops/sales-invoices/{invoiceNo}/provider-checks` | verify | 向服务商查单对账 |
+
+营业人一览的积压与余量各一条聚合 SQL（`TransmissionMapper#backlogByEntity`、`NumberRangeMapper#remainingByEntity`），按主体合并后在内存筛选分页 —— 营业人数以百计，不值得为 `problem` 拼动态 SQL。
+单票详情端点不做：页面列表行已带全部字段，孤儿接口闸门（`check-ops-orphan`）也不允许没有调用方的端点。
+
+### 18.3 菜单
+
+`db/invoice/V10__invoice_ops_menu.sql` 写 `OPS_FINANCE__E_INVOICES`（结算与资金 › 应付与发票，`/e-invoices`，P-12.2）及超管、财务两行角色授权。
+菜单行放在发票模块自己的迁移里：打包排除发票时，菜单随表一起不存在。为此 `ops-web/lib/nav.test.ts` 的「每个叶子在迁移里有菜单行」一并扫 `db/invoice`。
+
+### 18.4 页面（`ops-web/app/e-invoices`）
+
+三个页签：营业人 · 上传任务 · 发票查询。无 `finance:invoice:verify` 时只读；核验、领号段只对 CETUSTEK 通道显示，查单在上传任务页只对 CETUSTEK 且未送达的任务显示。
+演示模式（mock）不造发票数据，页面保持关闭。
+
+### 18.5 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `api/ops/OpsSalesInvoiceController` | 新增 |
+| `service/InvoiceOpsService(Impl)` | 营业人一览、上传任务 |
+| `service/InvoiceService(Impl)` | `listForOps`、`scopeOf` |
+| `mapper/InvoiceMappers` | `backlogByEntity`、`remainingByEntity` |
+| `dto/InvoiceDtos` | `OpsSellerQuery/VO`、`OpsTransmissionQuery/VO`、`OpsInvoiceQuery` |
+| `db/invoice/V10__invoice_ops_menu.sql` · shop-app `schema-test.sql` | 菜单行与授权 |
+| ops-web `lib/api/{invoice-types,contracts,https,mocks}/invoice.ts` · `contract/http/mock.ts` | 接口层 |
+| ops-web `app/e-invoices/{page,copy}.tsx` · `lib/nav.ts` · `lib/point-codes.ts` · `lib/i18n/nav-labels.ts` · `lib/nav.test.ts` | 页面、菜单叶子、功能点码、英文名、菜单行闸门扫描面 |
+| `docs/api/invoice.openapi.json` · 生成的界面清单 / 运营端功能清单 / 运营端规范 | 文档 |
+
+### 18.6 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC40 | `InvoiceServiceMysqlTest#ac40OpsSeesEverySellerWithBacklogAndRangesAndFiltersByProblem`：跨商家看到每个营业人、积压与余量计数、按问题筛 | ✅ |
+| AC40 | `OpsEndpointPermTest`（5/5）：新端点都带 `@perm.can` | ✅ |
+| AC40 | ops-web `nav.test.ts`、`design-tokens.test.ts`：菜单行、功能点码、可见性基线、英文名、分页与空态规范 | ✅ |
+
+MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/finance.test.ts` 退款回退分账 1 条失败，为既有、与本改动无关；`check-ops-contract`、`check-ops-orphan`、`gen-ui-catalog --check` 通过。
