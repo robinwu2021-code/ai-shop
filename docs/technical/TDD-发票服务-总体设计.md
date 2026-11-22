@@ -153,6 +153,8 @@ shop-app   · invoicebridge             核心侧来源适配与自动开立消�
 
 ### 3.2 包规划（`ai.neargo.shop.invoice.*`）
 
+> **以 [TDD-发票服务-代码结构与类清单](./TDD-发票服务-代码结构与类清单.md) 为准**：该清单按 java.md §七 修正了本节四处（controller 包为 `invoice.api.*`、按分层分包、Mapper 集合、`InvoiceSellerService`）。本表保留为按职责的阅读视图。
+
 | 模块 | 包 | 主要类 |
 |---|---|---|
 | invoice-channel | `channel.api` | `ProviderAccountContext`、`ProviderCommand`（`IssueCommand` / `VoidCommand` / `AllowanceCommand` / `AllowanceVoidCommand` / `QueryCommand` / `RangeCommand` / `VerifyCommand`）、`ProviderResult`（`Accepted` / `Rejected` / `Unknown`）、`ProviderOperation` |
