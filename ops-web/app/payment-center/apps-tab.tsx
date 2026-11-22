@@ -2,6 +2,7 @@
 
 // 接入应用（SY05）。行操作：查看（基本 + 门店授权）· 编辑 / 授权范围 / 回调地址（三个抽屉，各管一件事）· 核验回调（抽屉，审批码）
 // · 启用 / 恢复（理由弹框，审批码）· 暂停（理由弹框）· 吊销（强确认）· 签发密钥（抽屉，明文只显示一次）。页面级：新增（抽屉）。
+// P12（开放 API）：签名方案展示；RSA 应用上传商家公钥（持有证明）；泄露应急锁定（强确认）；详情里看近 7 天密钥用量。
 import * as React from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -14,14 +15,21 @@ import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
 import { APP_STATUSES, type AppGrant, type AppRow } from "@/app/payment-center/_api/types";
 import { fmtTime, money } from "@/lib/utils";
+import { notify } from "@/lib/notify";
 import { DetailLoader, MiniTable, csv, fromMinor, joinCsv, options, reasonField, toMinor, usePayCenterApi, useRefresh, useRun, useStatusMap, useTabList, usePc, amt, useInstanceCurrency } from "./shared";
 import { SecretOnce } from "./secret-once";
 import { GrantRevokeButton } from "./p9-panels";
+import { useCopy, fill } from "@/lib/use-copy";
+import { P12_COPY } from "./p12-copy";
+import { KeyUsageTable, PublicKeyUpload } from "./app-keys";
+import { SIGN_TYPES, type SignType } from "@/app/payment-center/_api/types";
 
 const NAME = "apps";
 
 export function AppsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
+  const m = useCopy(P12_COPY);
+  const signOf = (r: AppRow) => r.signType ?? "HMAC";
   const operator = useDraftOperator();
   const run = useRun(NAME);
   const statusMap = useStatusMap("app", APP_STATUSES, { ACTIVE: "success", SUSPENDED: "warning", REVOKED: "danger" });
@@ -35,6 +43,9 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
   const draft = (action: string, id?: string) => (operator ? { operator, page: "pay-apps", action, id } : null);
   const st = (...s: string[]) => (r: AppRow | null) => !!r && s.includes(r.status);
   const cmd = (action: "enable" | "resume" | "suspend" | "revoke") => (r: AppRow | null, reason: string) => run(() => api.apps.command(r!.appNo, action, { expectedVersion: r!.version, reason }));
+
+  const notifyLocked = (r: { revokedVersions: string[]; refundLimitBefore: number; refundLimitAfter: number }) =>
+    notify.info(fill(m.emergencyLocked, { n: r.revokedVersions.length, before: amt(r.refundLimitBefore, cur), after: amt(r.refundLimitAfter, cur) }));
 
   const actions: ActionSpec<AppRow>[] = [
     {
@@ -53,6 +64,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
                 { label: c.merchantNo, value: a.merchantNo },
                 { label: c.environment, value: <StatusBadge value={a.environment} map={envMap} /> },
                 { label: c.credentialStatusLabel, value: <StatusBadge value={a.credentialStatus} map={credMap} /> },
+                { label: m.signType, value: (m as unknown as Record<string, string>)[`signType_${signOf(a)}`] },
                 { label: c.scopes, value: joinCsv(a.scopes), full: true },
                 { label: c.notifyUrl, value: <span className="break-all">{a.notifyUrl}</span>, full: true },
                 { label: c.callbackDomains, value: joinCsv(a.callbackDomains) },
@@ -69,8 +81,9 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
                 { header: c.colStatus, cell: (x) => x.status },
                 { header: "", cell: (x) => <GrantRevokeButton api={api} grant={x} run={run} /> },
               ]} /> },
+              { title: m.keyUsage, content: <KeyUsageTable api={api} appNo={a.appNo} name={NAME} /> },
             ];
-            return <DetailBody sections={sections} actions={<DetailActions ctx={ctx} keys={["revoke", "suspend", "issueKey", "callback", "scopes", "verifyCallback", "enable", "resume", "edit"]} />} />;
+            return <DetailBody sections={sections} actions={<DetailActions ctx={ctx} keys={["revoke", "emergencyLock", "suspend", "issueKey", "publicKey", "callback", "scopes", "verifyCallback", "enable", "resume", "edit"]} />} />;
           }}
         </DetailLoader>
       ),
@@ -130,8 +143,16 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
       confirm: (r) => ({ title: c.appRevokeTitle, desc: c.appRevokeDesc, danger: true, requireText: r?.appNo, reasonHint: c.reasonHint }), run: cmd("revoke") },
     {
       key: "issueKey", label: c.issueKey, kind: "drawer", perm: "pay:credential:manage", title: () => c.issueKeyTitle, visible: (r) => !!r && r.status !== "REVOKED",
-      render: (ctx) => <IssueKey appNo={ctx.row!.appNo} onDone={ctx.back ?? ctx.close} />,
+      render: (ctx) => <IssueKey appNo={ctx.row!.appNo} signType={signOf(ctx.row!)} onDone={ctx.back ?? ctx.close} />,
     },
+    {
+      key: "publicKey", label: m.publicKey, kind: "drawer", perm: "pay:credential:manage", width: "w-[640px]", title: () => m.publicKeyTitle,
+      visible: (r) => !!r && r.status !== "REVOKED" && signOf(r) === "RSA",
+      render: (ctx) => <PublicKeyUpload api={api} app={ctx.row!} run={run} onDone={ctx.back ?? ctx.close} />,
+    },
+    { key: "emergencyLock", label: m.emergencyLock, kind: "dialog", perm: "pay:credential:approve", danger: true, visible: (r) => !!r && r.status !== "REVOKED",
+      confirm: (r) => ({ title: m.emergencyLockTitle, desc: m.emergencyLockDesc, danger: true, requireText: r?.appNo, reasonHint: c.reasonHint }),
+      run: async (r, reason) => { notifyLocked(await run(() => api.apps.emergencyLock(r!.appNo, reason))); } },
   ];
 
   const pageActions: ActionSpec<AppRow>[] = [{
@@ -149,14 +170,15 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
           { key: "callbackDomains", label: c.callbackDomains, required: true, help: c.domainsHelp },
           { key: "rateLimitQps", label: c.rateLimit, type: "number", required: true, min: 1 },
           { key: "dailyRefundLimit", label: c.dailyRefundLimit, type: "number", required: true, min: 0 },
+          { key: "signType", label: m.signType, type: "select", required: true, help: m.signTypeHelp, options: options(SIGN_TYPES, (v) => (m as unknown as Record<string, string>)[`signType_${v}`]) },
           reasonField(c),
         ]}
-        initial={{ name: "", purpose: "", ownerKind: "MERCHANT", merchantNo: "", environment: "SANDBOX", scopes: "", notifyUrl: "", callbackDomains: "", rateLimitQps: 10, dailyRefundLimit: 0, reason: "" }}
+        initial={{ name: "", purpose: "", ownerKind: "MERCHANT", merchantNo: "", environment: "SANDBOX", scopes: "", notifyUrl: "", callbackDomains: "", rateLimitQps: 10, dailyRefundLimit: 0, signType: "HMAC", reason: "" }}
         draft={draft("create")}
         onSubmit={(v) => run(() => api.apps.create({
           name: String(v.name), purpose: String(v.purpose), ownerKind: String(v.ownerKind), merchantNo: v.ownerKind === "MERCHANT" ? String(v.merchantNo).trim() : null,
           environment: String(v.environment), scopes: csv(v.scopes), notifyUrl: String(v.notifyUrl).trim(), callbackDomains: csv(v.callbackDomains), ipWhitelist: "",
-          rateLimitQps: Number(v.rateLimitQps), dailyRefundLimitMinor: toMinor(v.dailyRefundLimit), reason: String(v.reason),
+          rateLimitQps: Number(v.rateLimitQps), dailyRefundLimitMinor: toMinor(v.dailyRefundLimit), signType: String(v.signType) as SignType, reason: String(v.reason),
         }))}
         onDone={ctx.close} />
     ),
@@ -167,6 +189,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
     { header: c.appName, cell: (r) => r.name },
     { header: c.ownerKind, cell: (r) => `${ownerMap[r.ownerKind]?.label ?? r.ownerKind}${r.merchantNo ? ` · ${r.merchantNo}` : ""}` },
     { header: c.environment, cell: (r) => <StatusBadge value={r.environment} map={envMap} /> },
+    { header: m.signType, cell: (r) => signOf(r) },
     { header: c.callbackStatus, cell: (r) => <StatusBadge value={r.callbackStatus} map={cbMap} /> },
     { header: c.credentialStatusLabel, cell: (r) => <StatusBadge value={r.credentialStatus} map={credMap} /> },
     { header: c.colStatus, cell: (r) => <StatusBadge value={r.status} map={statusMap} /> },
@@ -197,11 +220,12 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
 }
 
 /** 签发：先选密钥类型（简单选择，不是表单 —— 不需要草稿），生成后明文只显示一次 */
-function IssueKey({ appNo, onDone }: { appNo: string; onDone: () => void }) {
+function IssueKey({ appNo, signType, onDone }: { appNo: string; signType: SignType; onDone: () => void }) {
   const c = usePc();
   const api = usePayCenterApi();
   const refresh = useRefresh(NAME);
-  const [type, setType] = React.useState<"APP_SECRET" | "APP_DATA_KEY">("APP_SECRET");
+  // RSA 应用不签发 AppSecret（签名用商家公钥），只签发推送解密用的 APP_DATA_KEY
+  const [type, setType] = React.useState<"APP_SECRET" | "APP_DATA_KEY">(signType === "RSA" ? "APP_DATA_KEY" : "APP_SECRET");
   return (
     <SecretOnce
       note={c.issueKeyNote}
@@ -209,7 +233,7 @@ function IssueKey({ appNo, onDone }: { appNo: string; onDone: () => void }) {
       shownHint={c.secretShownOnce}
       extra={<label className="mb-4 block"><span className="mb-1 block txt-label text-muted-foreground">{c.credentialType}</span>
         <Select className="w-full" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-          <option value="APP_SECRET">APP_SECRET</option>
+          {signType !== "RSA" && <option value="APP_SECRET">APP_SECRET</option>}
           <option value="APP_DATA_KEY">APP_DATA_KEY</option>
         </Select></label>}
       generate={async () => {

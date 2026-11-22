@@ -13,6 +13,7 @@ import type {
   TrialChannel, TrialPreparation, TrialCommand, TestSession,
   PosConfigView, PosSave, UatRun, UatManifest, PosMode, SoftPosBinding, SoftPosRegistration,
   CredentialTypeRow, CredentialPolicy, CredentialPolicySave, CredentialRow, CredentialDetail, CredentialAccessLog, CredentialVersion, CredentialVersionEntry, CredentialBindingRow, AuditEventRow,
+  AppApplicationRow, AppApplicationSubmit, AppKeyChallenge, AppPublicKeyAdded, AppPublicKeyUpload, EmergencyLockResult, KeyUsageRow, PlatformKeyGenerated, PlatformKeyRow, PlatformKeyUsage, SignType,
   ChannelAccountUpdate, QualificationPrepare, ClaimCommandReceipt, TerminalCredentialReference, TerminalRetirement, AlertMetric, ReversalRecheck,
   MerchantMemberRow, MemberCreate, ProfileRevisionRow, MerchantWorkspace, AssistedOperation, DraftCommandOutcome, RepairRow, RepairCreate,
   AdapterRow, BindingImpact, ChannelAccountClaim, ChannelAccountDetail, ChannelAccountRegister, ChannelAccountRow, ChannelKeyEntry, ClaimResolve, EscalatedRow, PaymentMethodRow, StoreBinding,
@@ -45,7 +46,7 @@ export interface TerminalSave {
   expectedVersion: number; reason: string; name: string; merchantNo: string; storeNo: string; payChannel: string; payMerchantNo: string;
   channelTerminalNo: string; serialNo: string; model: string; connectionMode: string; productCodes: string[]; receiptName: string; remark: string; dailyRefundLimitMinor: number;
 }
-export interface AppCreate { name: string; purpose: string; ownerKind: string; merchantNo: string | null; environment?: string; scopes: string[]; notifyUrl: string; callbackDomains: string[]; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
+export interface AppCreate { name: string; purpose: string; ownerKind: string; merchantNo: string | null; environment?: string; scopes: string[]; notifyUrl: string; callbackDomains: string[]; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string; signType?: SignType }
 export interface AppUpdate { expectedVersion: number; name: string; purpose: string; ipWhitelist: string; rateLimitQps: number; dailyRefundLimitMinor: number; reason: string }
 export interface AlertRuleSave { expectedVersion: number; name: string; metric: string; scopeType: string; scopeRef: string | null; operator: string; threshold: string; windowSeconds: number; minSampleCount: number; consecutiveBreaches: number; severity: string; notifyTargets: string[]; reason: string }
 
@@ -360,6 +361,26 @@ export interface PayCenterApi {
     verifyCallback(no: string, body: Cmd & { evidenceRef: string }): Promise<ActionResult>;
     command(no: string, action: "enable" | "resume" | "suspend" | "revoke", c: Cmd): Promise<ActionResult>;
     issueCredential(no: string, body: { credentialType: "APP_SECRET" | "APP_DATA_KEY"; reason: string }): Promise<CredentialIssued>;
+    /** P12 · RSA 应用的商家公钥：先取持有证明挑战，再带签名上传（near-pay OpsAppKeyController；pay:credential:manage） */
+    keyChallenge(no: string): Promise<AppKeyChallenge>;
+    uploadPublicKey(no: string, body: AppPublicKeyUpload): Promise<AppPublicKeyAdded>;
+    /** P12 · 泄露应急：吊销全部签名密钥版本 + 日退款上限置 0；可重复执行（pay:credential:approve） */
+    emergencyLock(no: string, reason: string): Promise<EmergencyLockResult>;
+    /** P12 · 近 N 天各签名密钥版本的调用量（默认 7 天） */
+    keyUsage(no: string, days?: number): Promise<KeyUsageRow[]>;
+  };
+  /** P12 · 开放 API 接入申请（SY11）：运营代商户提交、他人审核；批准即建 DRAFT 应用（near-pay OpsAppApplicationController） */
+  appApplications: {
+    list(q: Q): Promise<PayPage<AppApplicationRow>>;
+    detail(no: string): Promise<Detail<AppApplicationRow>>;
+    submit(body: AppApplicationSubmit): Promise<Detail<AppApplicationRow>>;
+    /** approve / reject：提交人不得审核；withdraw：仅提交人 */
+    decide(no: string, action: "approve" | "reject" | "withdraw", c: Cmd): Promise<ActionResult>;
+  };
+  /** P12 · 开放平台密钥（RSA 方案）：已公布的公钥 + 生成新版本（DRAFT）；核验、两人启用、吊销走 credentials（PLATFORM_OPEN） */
+  platformKeys: {
+    list(): Promise<PlatformKeyRow[]>;
+    generate(usage: PlatformKeyUsage, reason: string): Promise<PlatformKeyGenerated>;
   };
   traces: {
     requestLogs(q: Q): Promise<PayPage<RequestLogRow>>;
@@ -773,6 +794,11 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       command: (no, action, cmd) => c.command(`/apps/${e(no)}/${action}`, { ...cmd }),
       // 签发没有幂等号与版本（near-pay OpsCredentialController）；明文只在这次响应里出现
       issueCredential: (no, body) => c.command(`/apps/${e(no)}/credentials`, { ...body }, { idempotent: false }),
+      // 挑战每次都要新的（一次性）；上传体里是公钥与签名，挑战本身已防重放 —— 两者都不带自动幂等号
+      keyChallenge: (no) => c.command(`/apps/${e(no)}/public-keys/challenge`, {}, { idempotent: false }),
+      uploadPublicKey: (no, body) => c.command(`/apps/${e(no)}/public-keys`, { ...body }, { idempotent: false }),
+      emergencyLock: (no, reason) => c.command(`/apps/${e(no)}/emergency-lock`, { reason }),
+      keyUsage: async (no, days = 7) => (await c.get<KeyUsageRow[] | null>(`/apps/${e(no)}/key-usage`, { days })) ?? [],
     },
     traces: {
       requestLogs: (q) => c.page("/request-logs", q),
@@ -858,6 +884,21 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
       list: (q) => c.page("/commission-rules", q),
       detail: (no) => detailOf(c, `/commission-rules/${e(no)}`),
       create: (body) => c.command("/commission-rules", { ...body }),
+    },
+    appApplications: {
+      // near-pay 只认精确的 applicationNo / merchantNo：搜索框按前缀分流
+      list: ({ keyword, ...q }) => c.page("/app-applications", { ...q, ...(typeof keyword === "string" && keyword.trim() ? (/^AAP/i.test(keyword.trim()) ? { applicationNo: keyword.trim() } : { merchantNo: keyword.trim() }) : {}) }),
+      detail: (no) => detailOf(c, `/app-applications/${e(no)}`),
+      // 幂等号由请求体决定：超时重提同一份申请不会建两张
+      submit: async (body) => {
+        const d = (await c.command("/app-applications", { ...body })) as Detail<AppApplicationRow>;
+        return { ...d, version: Number(d.version ?? 0), allowedActions: d.allowedActions ?? [], timeline: d.timeline ?? [] };
+      },
+      decide: (no, action, cmd) => c.command(`/app-applications/${e(no)}/${action}`, { ...cmd }),
+    },
+    platformKeys: {
+      list: async () => (await c.get<PlatformKeyRow[] | null>("/platform-keys")) ?? [],
+      generate: (usage, reason) => c.command(`/platform-keys/${usage}/generate`, { reason }, { idempotent: false }),
     },
     dataScopes: {
       ...crud<DataScopeRow, ScopeSave>("/data-scopes"),

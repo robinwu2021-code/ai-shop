@@ -125,12 +125,13 @@ export function CredentialsTab({ header }: { header: React.ReactNode }) {
   );
 }
 
-function CredentialDetailView({ api, keyId, run }: { api: PayCenterApi; keyId: number; run: Run }) {
+/** 也给「开放平台密钥」页签用（PLATFORM_OPEN 的核验 / 两人启用）：name 决定刷新哪个页签的查询 */
+export function CredentialDetailView({ api, keyId, run, name = NAME }: { api: PayCenterApi; keyId: number; run: Run; name?: string }) {
   const c = usePc();
   const m = useCopy(P10_COPY);
   const vMap = React.useMemo(() => p8Map(m, "st_cv", CREDENTIAL_VERSION_STATUSES, { ACTIVE: "success", VERIFIED: "info", DRAFT: "warning", ROTATING: "info", REVOKED: "danger" }), [m]);
   return (
-    <DetailLoader name={NAME} id={String(keyId)} load={() => api.credentials.detail(keyId)}>
+    <DetailLoader name={name} id={String(keyId)} load={() => api.credentials.detail(keyId)}>
       {(d) => {
         const r = d.record; const p = d.policy;
         return <DetailBody sections={[
@@ -166,7 +167,7 @@ function CredentialDetailView({ api, keyId, run }: { api: PayCenterApi; keyId: n
             { header: m.approvalRef, cell: (e) => e.approvalRef ?? "—" },
             { header: m.accessedAt, cell: (e) => fmtTime(e.occurredAt) },
           ]} /> },
-          { title: m.sectionAccessLogs, content: <DetailLoader name={NAME} id={`${keyId}:access`} load={() => api.credentials.accessLogs(keyId)}>{(logs) => <MiniTable rows={logs} rowKey={(l) => `${l.accessType}:${l.accessedAt}:${l.accessorNo}`} empty={m.noLogs} columns={[
+          { title: m.sectionAccessLogs, content: <DetailLoader name={name} id={`${keyId}:access`} load={() => api.credentials.accessLogs(keyId)}>{(logs) => <MiniTable rows={logs} rowKey={(l) => `${l.accessType}:${l.accessedAt}:${l.accessorNo}`} empty={m.noLogs} columns={[
             { header: m.accessType, cell: (l) => l.accessType },
             { header: m.accessor, cell: (l) => `${l.accessorNo} · ${l.accessorRole}` },
             { header: m.approvalRef, cell: (l) => l.approvalRef ?? "—" },
