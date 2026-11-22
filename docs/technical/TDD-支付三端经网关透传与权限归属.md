@@ -252,7 +252,7 @@ EndpointSnapshotTest             Tests run: 1,  Failures: 0, Errors: 0
 
 生成文档闸门 `node scripts/check-generated-docs.mjs`：新端点与新常量让 4 份产物漂了（网关接口清单 `/internal` 167→168、后端分层清单 Controller 455→456、静态常量清单与 glossary 多 `PayBizPassThrough.PREFIX`），已重新生成并一起提交。没有跑全量后端测试与 pre-push 全套。
 
-## §11 剩余阶段实施方案（2026-11-22，用户：「基于文档先出方案，然后给出计划」；待确认）
+## §11 剩余阶段实施方案（2026-11-22，用户：「基于文档先出方案，然后给出计划」；已确认，见 §14）
 
 阶段 1 已落地（§10）。本节把阶段 0、2–5 细化到可以开工的程度；计划见 §12。依据：§3–§5、附录盘点、near-pay `develop/s1` 现状（`backend/pay/pay-svc/.../identity/`）。
 
@@ -326,7 +326,7 @@ near-pay 仓库，与 RobinWu 对齐排期。四件事：
 - C1 初判错：阶段 0 逐条确认后才迁；每批 PR 附调用对照。
 - 两边对照表漂移：对账测试放在 near-pay（读 ai-shop 发布的码表快照），漂了 near-pay 构建红。
 
-## §12 实施计划（待 §11.6 确认后开工）
+## §12 实施计划（已确认，见 §14）
 
 | # | 任务 | 仓库 / 谁 | 产出 | 验证 | 依赖 |
 |---|---|---|---|---|---|
@@ -344,7 +344,7 @@ near-pay 仓库，与 RobinWu 对齐排期。四件事：
 
 可以马上做、不等别人的：1、2、3。4 起要 near-pay 排期；5、6、7 要部署窗口和用户。
 
-## §13 B 端 App 的菜单、权限、角色在透传下的梳理（2026-11-22，用户：「同时要考虑在 B 端 App 上的菜单，权限，角色定义判断」；待确认）
+## §13 B 端 App 的菜单、权限、角色在透传下的梳理（2026-11-22，用户：「同时要考虑在 B 端 App 上的菜单，权限，角色定义判断」；已确认，见 §14）
 
 依据（只读核对）：ai-shop `BizPerms`、`BizContext`、`b-app/src/pages/me`、`b-app/src/api`；App `ai-shop-bapp` `origin/main` `9cc7f65`（`apps/merchant_app/lib`）；near-pay `MerchantRole`、`/biz/pay/v2` 各 controller。
 
@@ -447,3 +447,23 @@ near-pay 正式库里非 MERCHANT_ADMIN 的成员行（CASHIER、STORE_MANAGER�
 | 4+ | near-pay 实现 13.3、13.4（并入原第 4 步） | near-pay | 每个动作店主/店长/店员/无码四种身份各一条 | 3b、3c |
 | 6+ | 白名单验证加：店员有/无 `biz:finance` 看进件入口；店员有/无 `mch:pay:qr` 管收款码；店员不能复核退款、不能激活设备 | ai-shop + 用户 | App 模拟器走查 | 6 |
 | 6++ | App 店员视角走查（已检索：不读 `memberships.role`） | ai-shop-bapp | 模拟器走查 | 6 |
+
+## §14 确认记录
+
+| 日期 | 事件 |
+|---|---|
+| 2026-11-22 | 用户：「按推荐项定」。§11.6 第 1–5 条、§13.8 第 6–8 条全部按推荐项确认：阶段 0 只确认 C1；店员在 near-pay 的动作只按 ai-shop 码给；C1 第一期只迁两批；对照放 near-pay 代码、两边对账测试；打开透传后观察一个发布周期再删转发入口；§13.3 对照表（退款复核、设备激活只给店主）；`biz:finance` 店员可进件；店员 `memberships.role` 回 `STAFF`。§11、§12、§13 由「待确认」转为「已确认」 |
+| 2026-11-22 | §12 第 3b、3c 步完成（本地分支，未推送），见 §15 |
+
+## §15 第 3b、3c 步实现记录（2026-11-22）
+
+| 步 | 改动 | 测试（真实输出） |
+|---|---|---|
+| 3b `merchant-staff` 多前缀 | `OperatorIdentityEndpoint.filter` 接受逗号分隔的多个前缀，任一命中即保留，空白忽略；单个前缀行为不变（运营端共用） | `OperatorIdentityEndpointTest` 5/5（新增 `multipleNamespaces`）；`MerchantStaffIdentityEndpointTest` 7/7（改用 `mch:pay:,biz:finance,biz:store:admin`，店员多回 `biz:finance`） |
+| 3c 对照表 | 新增 `payclient.PayMemberActions`（§13.3 的表：8 个码 → 16 个动作），导出 `docs/api/pay-member-actions.json` 供 near-pay 对账 | `PayMemberActionsTest` 4/4：near-pay 每个动作恰好一个码能给、店主得全部；只给店主的 5 个动作挂在不可勾选的 `biz:store:admin` 上，其余码都可勾选；预置角色换出的动作（店长 `payment.create/close/query`、店员 `payment.query`）；导出物与代码一致 |
+
+偏差：§12 第 3 步原写「码 → 动作对照导出成快照，用 `DownstreamActions` 的支付表」。核对后那张表（`PayDownstreamActions`）是「码 → 支付内部入口的动作」（`CREATE_ONLINE` 一套），与 near-pay 公开 B 端接口的动作（`payment.create` 一套）不是一个词表，所以另建 `PayMemberActions`；两张表各管一条调用路径，互不替代。
+
+同次跑过：`PayDownstreamActionsTest` 3/3、`ArchitectureTest` 27（跳过 1）。生成文档：新常量让静态常量清单与 glossary 漂，已重新生成；闸门 `✓ 27 个生成器的产物都是最新的`。
+
+**交给 near-pay（阶段 2）的输入**：调 `merchant-staff` 时传 `X-Auth-Namespace: mch:pay:,biz:finance,biz:store:admin`；动作换算按 `docs/api/pay-member-actions.json`（`owner` 为店主全部动作，`codes` 为码 → 动作），对账测试读这份文件。

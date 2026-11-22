@@ -39,7 +39,8 @@ import org.springframework.http.ResponseEntity;
 class MerchantStaffIdentityEndpointTest {
 
     private static final String CALLER = "pay-biz-caller";
-    private static final String NS = "mch:pay:";
+    /** near-pay 阶段 2 要传的前缀（§13.5） */
+    private static final String NS = "mch:pay:,biz:finance,biz:store:admin";
 
     private final TokenStore tokens = mock(TokenStore.class);
     private final MerchantEntityService entities = mock(MerchantEntityService.class);
@@ -111,7 +112,7 @@ class MerchantStaffIdentityEndpointTest {
         when(entities.myEntities("U-STAFF")).thenReturn(List.of());
         when(resolver.resolveAuthenticated(eq(staff), eq("S-A"))).thenReturn(new BizContext("E-SHOP", Set.of(), Set.of(),
                 Set.of("S-A", "S-B"), "S-A", false, Map.of(),
-                Map.of("S-A", Set.of("mch:pay:order:view", "mch:pay:refund", "biz:order:view"),
+                Map.of("S-A", Set.of("mch:pay:order:view", "mch:pay:refund", "biz:order:view", "biz:finance"),
                         "S-B", Set.of("mch:pay:order:view"))));
         when(resolver.resolveAuthenticated(eq(staff), eq("S-1"))).thenReturn(new BizContext("E-OWN", Set.of(), Set.of(),
                 Set.of("S-1"), "S-1", false, Map.of(), Map.of("S-1", Set.of("biz:order:view"))));
@@ -122,10 +123,10 @@ class MerchantStaffIdentityEndpointTest {
         Map<String, Object> row = rows.getFirst();
         assertThat(row.get("payMerchantNo")).isEqualTo("PM-SHOP");
         assertThat(row.get("role")).isEqualTo("STAFF");
-        assertThat(row.get("perms")).isEqualTo(List.of("mch:pay:order:view", "mch:pay:refund"));
+        assertThat(row.get("perms")).isEqualTo(List.of("biz:finance", "mch:pay:order:view", "mch:pay:refund"));
         assertThat(row.get("storeScope")).isEqualTo("STORES");
         assertThat(row.get("stores")).isEqualTo(List.of(
-                Map.of("storeNo", "S-A", "perms", List.of("mch:pay:order:view", "mch:pay:refund")),
+                Map.of("storeNo", "S-A", "perms", List.of("biz:finance", "mch:pay:order:view", "mch:pay:refund")),
                 Map.of("storeNo", "S-B", "perms", List.of("mch:pay:order:view"))));
     }
 

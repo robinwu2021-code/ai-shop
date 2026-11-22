@@ -57766,6 +57766,134 @@
       "module": "shop-gateway"
     },
     {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_CREATE",
+      "type": "String",
+      "value": "\"payment.create\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_QUERY",
+      "type": "String",
+      "value": "\"payment.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_CLOSE",
+      "type": "String",
+      "value": "\"payment.close\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "REFUND_APPLY",
+      "type": "String",
+      "value": "\"refund.apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "REFUND_REVIEW",
+      "type": "String",
+      "value": "\"refund.review\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "DEVICE_ACTIVATE",
+      "type": "String",
+      "value": "\"device.activate\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "QRCODE_MANAGE",
+      "type": "String",
+      "value": "\"qrcode.manage\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STORE_LEDGER_READ",
+      "type": "String",
+      "value": "\"store.ledger.read\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STATEMENT_READ",
+      "type": "String",
+      "value": "\"statement.read\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "ONBOARDING_APPLY",
+      "type": "String",
+      "value": "\"onboarding.apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "ONBOARDING_QUERY",
+      "type": "String",
+      "value": "\"onboarding.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "MEMBER_MANAGE",
+      "type": "String",
+      "value": "\"member.manage\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STORE_BIND",
+      "type": "String",
+      "value": "\"store.bind\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "APP_GRANT_QUERY",
+      "type": "String",
+      "value": "\"app.grant.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "APP_GRANT",
+      "type": "String",
+      "value": "\"app.grant\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "MERCHANT_LINK",
+      "type": "String",
+      "value": "\"merchant.link\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
       "host": "PayServiceApplyRequests",
       "name": "PERM",
       "type": "String",

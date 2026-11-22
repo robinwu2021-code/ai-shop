@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>店主：名下主体关联的支付商户，{@code role=OWNER}、{@code perms=["*"]}、{@code storeScope=ALL}；</li>
  *   <li>店员：按门店给码，{@code stores=[{storeNo, perms}]}，{@code perms} 是各店的并集；按 {@code X-Auth-Namespace}
- *       （支付传 {@code mch:pay:}）筛完一个码都没有的主体不出现；</li>
+ *       （支付传 {@code mch:pay:,biz:finance,biz:store:admin}，§13.5）筛完一个码都没有的主体不出现；</li>
  *   <li>主体没关联支付商户的不出现；带了 {@code X-Pay-Merchant-No} 只回那一个商户。</li>
  * </ul>
  *
