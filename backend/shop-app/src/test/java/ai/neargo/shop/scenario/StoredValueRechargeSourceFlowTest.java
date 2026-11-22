@@ -326,7 +326,7 @@ class StoredValueRechargeSourceFlowTest {
     }
     @Test void merchantHttpHandlesReceiptProgressAndEnforcesExplicitStorePermissions() throws Exception {
         var mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "126" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+        String phone = "196" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String consumer = TestLogin.consumer(mvc, json, otp, phone);
         String operator = tokens.of(Realm.CONSUMER).get(consumer).orElseThrow().user().userNo();
         jdbc.update("UPDATE mch_entity SET owner_user_no=? WHERE entity_no=?", operator, entity);

@@ -329,12 +329,13 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Transactional
     public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
                               String role, boolean granted) {
-        ownership.lockAndCheck("MAIN", merchantNo, storeNo);
         MchAccount a = require(merchantNo, mchAccountNo);
-        // 只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工
+        // 只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工。
+        // 先判存在再加锁：锁检查对别家的店报 CONFLICT，等于确认这个号存在
         if (!storeNames(merchantNo).containsKey(storeNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        ownership.lockAndCheck("MAIN", merchantNo, storeNo);
         /*
          * 角色必须是**这家商家可用的**角色（V71 起含自定义）。
          *

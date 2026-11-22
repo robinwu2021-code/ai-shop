@@ -3,6 +3,7 @@ package ai.neargo.shop.channel.ai.port;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -68,6 +69,6 @@ class ScopePromptParseTest {
     @Test
     @DisplayName("没配模型时 extractScope 直接 null，不发请求")
     void disabledReturnsNull() {
-        assertThat(new GoodsVisionGateway("", "m", "", 25, false).extractScope("全国发货")).isNull();
+        assertThat(new GoodsVisionGateway("", "m", "", 25, false, new MockEnvironment()).extractScope("全国发货")).isNull();
     }
 }

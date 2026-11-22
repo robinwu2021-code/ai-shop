@@ -303,6 +303,8 @@ export interface DescribeGoodsRes {
 }
 
 export interface GoodsTextParse {
+  /** 模型识别出的商品名，置信度不足时为空 */
+  title?: string | null;
   /** 规格维度草稿（LLM 归类，P1 空） */
   specs: { name: string; options: string[] }[];
   /** 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule */

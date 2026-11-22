@@ -54,7 +54,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 没登记过印刷量的店 printed 给 null —— 与「印了 0 张」不是一回事")
     void unregisteredPrintedIsNullNotZero() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130001", "店铺码测试店A", "CM-QR-A");
+        String merchantNo = approvedMerchantNo("19600130001", "店铺码测试店A", "CM-QR-A");
         storeCodeService.ensureFor(merchantNo);
 
         String admin = opsLogin("admin", "admin123");
@@ -71,7 +71,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 登记两次印刷 → printed 累加；冲减补负数行而不是改历史")
     void printedAccumulatesAndSupportsNegative() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130002", "店铺码测试店B", "CM-QR-B");
+        String merchantNo = approvedMerchantNo("19600130002", "店铺码测试店B", "CM-QR-B");
         storeCodeService.ensureFor(merchantNo);
         String admin = opsLogin("admin", "admin123");
 
@@ -89,7 +89,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("登记 0 张被拒 —— 它既不是印了也不是冲减，留一行只是噪声")
     void zeroQtyRejected() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130003", "店铺码测试店C", "CM-QR-C");
+        String merchantNo = approvedMerchantNo("19600130003", "店铺码测试店C", "CM-QR-C");
         String admin = opsLogin("admin", "admin123");
         mvc().perform(post("/ops/stores/" + merchantNo + "/qrcode/print")
                         .header("Authorization", "Bearer " + admin)
@@ -101,7 +101,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 扫过码之后 scanCount 是真的（埋点与店铺码页读的是同一份数据）")
     void scanCountComesFromRealVisits() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130004", "店铺码测试店D", "CM-QR-D");
+        String merchantNo = approvedMerchantNo("19600130004", "店铺码测试店D", "CM-QR-D");
         String code = storeCodeService.ensureFor(merchantNo);
 
         mvc().perform(get("/mp/store/by-code").param("storeCode", code)
@@ -135,7 +135,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 两家分店发出来的是两个码，扫哪家算哪家")
     void eachStoreGetsItsOwnCode() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130005", "一店一码测试店", "CM-QR-E");
+        String merchantNo = approvedMerchantNo("19600130005", "一店一码测试店", "CM-QR-E");
         String branch = extraStore(merchantNo, "南门店");
 
         String defaultCode = storeCodeService.ensureForStore(merchantNo, null);
@@ -170,7 +170,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 分店的码图不会拿主体那张 —— 码与图不同源等于把客流算到别家")
     void branchAcodeIsNotTheEntityOne() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130008", "码图同源测试店", "CM-QR-H");
+        String merchantNo = approvedMerchantNo("19600130008", "码图同源测试店", "CM-QR-H");
         String branch = extraStore(merchantNo, "码图分店");
 
         // 主体上先放一张「旧图」——V298 之前所有店共用的就是它
@@ -200,7 +200,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 分店海报取分店的码图 —— 与默认店那张不是同一张")
     void posterFollowsTheStore() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130009", "海报门店测试店", "CM-QR-P");
+        String merchantNo = approvedMerchantNo("19600130009", "海报门店测试店", "CM-QR-P");
         String branch = extraStore(merchantNo, "海报分店");
         storeCodeService.ensureForStore(merchantNo, branch);
         storeCodeService.ensureForStore(merchantNo, null);
@@ -234,7 +234,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ 运营发码幂等；换码没给理由被拒，给了才换且新旧码不同")
     void opsIssueIsIdempotentAndReissueNeedsReason() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130006", "发码测试店", "CM-QR-F");
+        String merchantNo = approvedMerchantNo("19600130006", "发码测试店", "CM-QR-F");
         String admin = opsLogin("admin", "admin123");
 
         String first = issue(admin, merchantNo);
@@ -263,7 +263,7 @@ class StoreQrcodeFlowTest {
     @Test
     @DisplayName("★ codeless=true 只列还没发码的店，发完就从这张单子上消失")
     void codelessListsStoresNeedingACode() throws Exception {
-        String merchantNo = approvedMerchantNo("12600130007", "待发码测试店", "CM-QR-G");
+        String merchantNo = approvedMerchantNo("19600130007", "待发码测试店", "CM-QR-G");
         String branch = extraStore(merchantNo, "还没发码的分店");
         String admin = opsLogin("admin", "admin123");
 

@@ -59,7 +59,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 激活后就有一家默认店，新建的不抢默认标")
     void defaultStoreExistsAndStaysUnique() throws Exception {
-        String token = merchant("12600129001", "门店测试店A");
+        String token = merchant("19600129001", "门店测试店A");
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
         TestPlan.grantPro(mvc(), json, planMapper, token);
 
@@ -84,7 +84,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 超出额度直接拒 —— 建出来却打不开的店比拒绝更难解释")
     void quotaIsEnforced() throws Exception {
-        String token = merchant("12600129002", "门店测试店B");
+        String token = merchant("19600129002", "门店测试店B");
         // 额度按住 3：默认店 + 二店 + 三店 刚好占满，四店必须被拒。
         // 这里要的是「撞到闸门」这个局面，与 PRO 的真实额度（V221 起是 10）无关 ——
         // 用 10 就得先建九家店，测试变慢，且看不出这一条在守什么。
@@ -115,7 +115,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 默认店不能停用 —— 停掉之后「这个主体的店在哪」就没有答案了")
     void defaultStoreCannotBeDisabled() throws Exception {
-        String token = merchant("12600129003", "门店测试店C");
+        String token = merchant("19600129003", "门店测试店C");
         TestPlan.grantPro(mvc(), json, planMapper, token);
         String def = storeNoOf(token, 0);
 
@@ -136,7 +136,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 换收款号只能挑本主体已开通的 —— 换到收不了款的号上，下一单就失败")
     void payMerchantMustBeOwnAndActive() throws Exception {
-        String token = merchant("12600129004", "门店测试店D");
+        String token = merchant("19600129004", "门店测试店D");
         String def = storeNoOf(token, 0);
 
         // 还没进件成功：任何号都挂不上
@@ -163,8 +163,8 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("别家的门店号一律 404 —— 403 等于确认这个号存在")
     void othersStoreIsNotFound() throws Exception {
-        String a = merchant("12600129005", "门店测试店E");
-        String b = merchant("12600129006", "门店测试店F");
+        String a = merchant("19600129005", "门店测试店E");
+        String b = merchant("19600129006", "门店测试店F");
         String bStore = storeNoOf(b, 0);
 
         mvc().perform(post("/biz/store/" + bStore + "/rename").header("Authorization", "Bearer " + a)
@@ -177,7 +177,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 加员工不发密码、不建 C 端账号 —— 他用自己的手机号验证码登录")
     void addStaffThenLogin() throws Exception {
-        String token = merchant("12600129007", "员工测试店A");
+        String token = merchant("19600129007", "员工测试店A");
 
         mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -211,7 +211,7 @@ class StoreAndStaffFlowTest {
          * 只断言 status=DISABLED 是不够的：那一版的 status 也是 DISABLED。
          * 必须拿**他手里那个真令牌**再打一次，才分得出「停用了」和「以为停用了」。
          */
-        String token = merchant("12600129030", "停用踢会话店");
+        String token = merchant("19600129030", "停用踢会话店");
         String staffNo = addStaff(token, "13600009911");
 
         String staffToken = TestLogin.merchantStaff(mvc(), json, otpStore, "13600009911");
@@ -241,7 +241,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 员工离职再回来是常事 —— 重复添加要重新启用，不是报「已存在」")
     void reAddReactivates() throws Exception {
-        String token = merchant("12600129008", "员工测试店B");
+        String token = merchant("19600129008", "员工测试店B");
         String no = addStaff(token, "13600002345");
 
         mvc().perform(post("/biz/staff/" + no + "/status").header("Authorization", "Bearer " + token)
@@ -260,7 +260,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 老板不能被停用 —— 那是个能把自己锁在门外的按钮")
     void ownerCannotBeDisabled() throws Exception {
-        String token = merchant("12600129009", "员工测试店C");
+        String token = merchant("19600129009", "员工测试店C");
         String body = mvc().perform(get("/biz/staff").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         var owner = json.readTree(body).get("data").get(0);
@@ -275,7 +275,7 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 逐店授权：A 店店长可以同时是 B 店店员")
     void perStoreRoles() throws Exception {
-        String token = merchant("12600129010", "员工测试店D");
+        String token = merchant("19600129010", "员工测试店D");
         TestPlan.grantPro(mvc(), json, planMapper, token);
         String storeA = storeNoOf(token, 0);
         String storeB = create(token, "二店", "");
@@ -299,8 +299,8 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工")
     void cannotGrantOthersStore() throws Exception {
-        String a = merchant("12600129011", "员工测试店E");
-        String b = merchant("12600129012", "员工测试店F");
+        String a = merchant("19600129011", "员工测试店E");
+        String b = merchant("19600129012", "员工测试店F");
         String staff = addStaff(a, "13600004567");
         String bStore = storeNoOf(b, 0);
 
@@ -333,9 +333,9 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★★ 加一个角色不能冲掉已有的 —— 一人一店可多角色")
     void grantingOneRoleKeepsTheOthers() throws Exception {
-        String biz = merchant("12600240001", "多角色店");
+        String biz = merchant("19600240001", "多角色店");
         String store = defaultStoreNo(biz);
-        String staff = addStaff(biz, "12600240002");
+        String staff = addStaff(biz, "19600240002");
 
         grant(biz, staff, store, "CLERK");
         grant(biz, staff, store, "COURIER");
@@ -353,9 +353,9 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 撤销一个角色只掉那一个，剩下的还在")
     void revokingOneRoleKeepsTheOthers() throws Exception {
-        String biz = merchant("12600240010", "撤角色店");
+        String biz = merchant("19600240010", "撤角色店");
         String store = defaultStoreNo(biz);
-        String staff = addStaff(biz, "12600240011");
+        String staff = addStaff(biz, "19600240011");
 
         grant(biz, staff, store, "CLERK");
         grant(biz, staff, store, "COURIER");
@@ -367,9 +367,9 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 撤到一个不剩 = 从这家店移除他")
     void revokingLastRoleRemovesHimFromStore() throws Exception {
-        String biz = merchant("12600240020", "移除店");
+        String biz = merchant("19600240020", "移除店");
         String store = defaultStoreNo(biz);
-        String staff = addStaff(biz, "12600240021");
+        String staff = addStaff(biz, "19600240021");
 
         grant(biz, staff, store, "CLERK");
         revoke(biz, staff, store, "CLERK");
@@ -380,9 +380,9 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★★ 撤销再授予同一个角色不能 500 —— 逻辑删的行还占着唯一键")
     void revokeThenGrantAgainWorks() throws Exception {
-        String biz = merchant("12600240040", "撤了再加店");
+        String biz = merchant("19600240040", "撤了再加店");
         String store = defaultStoreNo(biz);
-        String staff = addStaff(biz, "12600240041");
+        String staff = addStaff(biz, "19600240041");
 
         grant(biz, staff, store, "COURIER");
         revoke(biz, staff, store, "COURIER");
@@ -400,9 +400,9 @@ class StoreAndStaffFlowTest {
     @Test
     @DisplayName("★ 重复授予同一个角色是幂等的 —— 不该长出两行")
     void grantingSameRoleTwiceIsIdempotent() throws Exception {
-        String biz = merchant("12600240030", "幂等店");
+        String biz = merchant("19600240030", "幂等店");
         String store = defaultStoreNo(biz);
-        String staff = addStaff(biz, "12600240031");
+        String staff = addStaff(biz, "19600240031");
 
         grant(biz, staff, store, "PICKER");
         grant(biz, staff, store, "PICKER");

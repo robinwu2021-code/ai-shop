@@ -401,3 +401,146 @@ export interface StoreMethodSave { expectedVersion: number; eligibilityRevision:
 // ── 门店同步事件：near-pay OpsStoreDtos.StoreSyncEventDto ──
 export interface StoreSyncEvent { eventNo: string; sourceSystem: string; eventId: string; channel: string; revision: number; outcome: string; issue: string | null; createdAt: number }
 
+
+// ════ P8（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+export const MEMBER_STATUSES = ["ACTIVE", "SUSPENDED", "REVOKED"] as const;
+export const MEMBER_ROLES = ["CASHIER", "STORE_MANAGER", "MERCHANT_ADMIN"] as const;
+export const MEMBER_SUBJECT_TYPES = ["MCH_ACCOUNT", "USER"] as const;
+/** near-pay OpsMemberController · MerchantMemberDto */
+export interface MerchantMemberRow {
+  membershipNo: string; merchantNo: string; sourceSystem: string; subjectType: string; subjectRef: string; role: string;
+  storeScope: "ALL" | "LISTED"; storeNos: string[]; actions: string[]; status: string; validUntil: number | null; grantedBy: string; revokeReason: string | null;
+}
+export interface MemberCreate { merchantNo: string; subjectType: string; subjectRef: string; reason: string }
+
+export const PROFILE_REVIEW_STATUSES = ["SUBMITTED", "APPROVED", "REJECTED", "NEED_MORE", "SUPERSEDED"] as const;
+/** near-pay OpsMerchantController · ProfileRevisionDto（列表是数组，不分页） */
+export interface ProfileRevisionRow {
+  revisionNo: string; revision: number; purpose: string; market: string; sourceProfileRevision: number; profile: Record<string, string>;
+  materials: { kind: string; ref: string; purpose: string }[]; profileHash: string; reviewStatus: string; submittedBy: string; submittedAt: number;
+  reviewedBy: string | null; reviewedAt: number | null; reviewReason: string | null; approvalNo: string | null; version: number;
+}
+/** near-pay MerchantWorkspaceDto.WorkspaceSection；summaryJson 是 JSON 字符串 */
+export interface WorkspaceSection { key: string; title: string; module: string; status: "READY" | "NOT_READY"; count: number | null; summaryJson: string | null }
+export interface MerchantWorkspace { merchant: { merchantNo: string; displayName: string; status: string }; sections: WorkspaceSection[] }
+/** 代填资料超时后按请求号取回执（OperationView） */
+export interface AssistedOperation { requestNo: string; action: "SAVE" | "SUBMIT"; appliedVersion: number | null; current: AssistedProfileView }
+/** 进件草稿命令是否已生效（OnboardingDraftService.Outcome；未知请求号也回 applied:false） */
+export interface DraftCommandOutcome { requestNo: string; applied: boolean }
+
+export const REPAIR_STATUSES = ["PENDING_APPROVAL", "APPROVED", "REJECTED", "CANCELLED", "EXPIRED", "EXECUTED"] as const;
+/** near-pay OpsSourceAssociationRepairController · RepairDto */
+export interface RepairRow {
+  repairNo: string; requestNo: string; merchantNo: string; linkNo: string; sourceSystem: string; sourceScope: string;
+  fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number; status: string;
+  approvalNo: string | null; approvalStatus: string | null; approvalVersion: number | null; requestedBy: string; executedBy: string | null; executedAt: number | null;
+  beforeSnapshot: Record<string, unknown> | null; afterSnapshot: Record<string, unknown> | null; createdAt: number; version: number;
+}
+/** expectedVersion 是商户来源关联（指向 from 主体）的版本，不是修复单版本 */
+export interface RepairCreate { merchantNo: string; fromOperatingEntityId: string; toOperatingEntityId: string; storeNos: string[]; evidence: string; expectedVersion: number }
+
+// ════ P9（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+/** 渠道账户坐标修改（只在 UNVERIFIED；改完核验退回 PENDING）。channelMerchantId 在详情里是脱敏的，必须重新填 */
+export interface ChannelAccountUpdate {
+  expectedVersion: number; channelMerchantId: string; subMerchantId: string | null; accountMode: string; fundsPath: string;
+  parentPayMerchantNo: string | null; evidenceRef: string | null; reason: string;
+}
+/** 沙箱试运行资质准备（只 NEWEBPAY_TEST 账户；建出 DRAFT，经 CHANNEL_QUALIFICATION 审批生效） */
+export interface QualificationPrepare {
+  evidenceNo: string; revision: number; productCode: string; protocolEvidence: string; trialEvidence: string; enablementEvidence: string;
+  returnUrl: string; notifyUrl: string; validUntil: string; reason: string;
+}
+export interface ClaimCommandReceipt { requestNo: string; outcome: "SUCCEEDED" | "REJECTED"; result: unknown | null; failure: { code: number; reasonCode: string; message: string } | null }
+export interface TerminalCredentialReference { terminalNo: string; credentialRef: string | null; keyId: number | null }
+export interface TerminalRetirement { terminalNo: string; serialNo: string; deviceStatus: string; retirementStatus: string; version: number }
+export interface AlertMetric { metric: string; title: string; unit: string; scopeTypes: string[]; defaultWindowSeconds: number; eventDriven: boolean }
+export type ReversalRecheck = "VERIFIED" | "PENDING" | "DEFERRED";
+
+// ════ P10（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
+
+export const CREDENTIAL_OWNER_TYPES = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"] as const;
+export const CREDENTIAL_VERSION_STATUSES = ["DRAFT", "VERIFIED", "ACTIVE", "ROTATING", "REVOKED"] as const;
+export const CREDENTIAL_EXPIRY_STATES = ["NONE", "OK", "EXPIRING", "EXPIRED"] as const;
+export interface CredentialTypeRow { credentialType: string; ownerType: string; counterparty: string | null; purpose: string; algorithm: string; materialType: "COMPOSITE" | "SYMMETRIC_SECRET" | "PRIVATE_KEY" | "PUBLIC_KEY"; materialFields: string[]; generated: boolean }
+export interface CredentialPolicy { ownerType: string; env: string; maxAgeDays: number; warnBeforeDays: number; overlapDays: number; dualControl: boolean; verifyBeforeEnable: boolean; revealOnIssueOnly: boolean; version: number }
+export interface CredentialPolicySave { expectedVersion: number; maxAgeDays: number; warnBeforeDays: number; overlapDays: number; verifyBeforeEnable: boolean; reason: string }
+/** 列表行只有元数据、指纹与前缀，从不带明文 */
+export interface CredentialRow {
+  keyId: number; credentialType: string; ownerType: string; ownerRef: string; name: string; counterparty: string | null; purpose: string; algorithm: string;
+  materialType: string; env: string; status: string; currentVersion: number; currentFingerprint: string | null; expiresAt: number | null; expiryState: string; pendingVersions: number; lastUsedAt: number | null;
+}
+export interface CredentialVersion {
+  versionIndex: number; status: string; fingerprint: string; displayPrefix: string; externalKeyId: string | null; source: string; validFrom: number | null; validTo: number | null;
+  enteredBy: string; verifiedAt: number | null; verifyEvidence: string | null; enabledBy: string | null; enabledAt: number | null; overlapUntil: number | null;
+  revokedBy: string | null; revokedAt: number | null; revokeReason: string | null;
+}
+export interface CredentialEvent { eventType: string; versionIndex: number | null; operatorNo: string; approvalRef: string | null; reason: string; occurredAt: number }
+/** near-pay CredentialDetailDto（不是通用 Detail）；allowedActions 大写：GENERATE / ADD_VERSION / VERIFY / ENABLE / REVOKE */
+export interface CredentialDetail { record: CredentialRow; versions: CredentialVersion[]; policy: CredentialPolicy; events: CredentialEvent[]; allowedActions: string[] }
+export interface CredentialAccessLog { accessType: string; accessorNo: string; accessorRole: string; reason: string; approvalRef: string | null; accessedAt: number }
+/** 版本录入：明文字段只写不读，不进本地草稿 */
+export interface CredentialVersionEntry { secret?: string; hashKey?: string; hashIv?: string; publicMaterial?: string; externalKeyId?: string; validTo?: number; reason: string }
+export interface CredentialBindingRow { keyId: number | null; source: "SEC" | "ENV"; consumerType: string; consumerRef: string; consumerName: string; field: string; channel: string; status: string; environment: string; transactions: number; lastFrozenAt: number | null }
+
+/** near-pay OpsAuditController · AuditEventDto；before / after 是脱敏后的 JSON 字符串 */
+export interface AuditEventRow {
+  auditNo: string; requestId: string; operatorNo: string; roleNos: string[]; face: string; resourceType: string; resourceNo: string; action: string; result: string;
+  reason: string | null; approvalRef: string | null; beforeSummary: string | null; afterSummary: string | null; occurredAt: number;
+}
+
+// ════ P11（渠道专属能力：测试渠道、PayBy；《支付中心-渠道专属能力运营需求》；契约 near-pay da3ced2a4） ════
+
+export type TrialChannel = "newebpay" | "linepay";
+/** 试运行准备信息（GET /channel-accounts/{}/newebpay-trial | linepay-trial） */
+export interface TrialPreparation { payMerchantNo: string; accountVersion: number; products: string[]; enablementEvidence: string }
+/** 试运行资格草稿（expectedVersion 是渠道账户版本；有效期 ≤24 小时；entry 只收 H5 / API） */
+export interface TrialCommand {
+  expectedVersion: number; evidenceNo: string; revision: number; productCode: string; entry: "H5" | "API";
+  protocolEvidence: string; returnUrl: string; notifyUrl: string; validUntil: string; reason: string;
+}
+/** 测试收款会话（沙箱 H5 或 PayBy SGS）：固定小额，同一请求号复用同一笔单 */
+export interface TestSession { payOrderNo: string; checkoutUrl: string; expireAt: number }
+
+export const POS_MODES = ["PLATFORM_PROXY", "TERMINAL_DIRECT"] as const;
+export type PosMode = (typeof POS_MODES)[number];
+export const POS_STATES = ["DRAFT", "VERIFIED", "PUBLISHED", "DISABLED", "SUPERSEDED"] as const;
+export interface PosSettings {
+  environment: "SANDBOX" | "PRODUCTION"; allowedModes: PosMode[]; defaultMode: PosMode; protocolVersion: string; contractVersion: string;
+  readerKitVersion: string; firmwareVersion: string; queryContractRef: string; certificationRefs: Partial<Record<PosMode, string>>;
+}
+/** 绑定只回「凭据是否已关联」，不回凭据引用 */
+export interface PosBindingView {
+  bindingId: number; bindingVersion: number; status: string; physicalSn: string; deviceId: string; channelMerchantNo: string; channelStoreNo: string; channelTerminalNo: string;
+  issuerCode: string; issuerType: string; payeeMemberId: string | null; deviceKeyVersion: string; queryKeyVersion: string; deviceCredentialLinked: boolean; queryCredentialLinked: boolean;
+  activationRef: string; authorizationRef: string;
+}
+export interface PosModeReport { mode: PosMode; ready: boolean; checks: Record<string, boolean>; reasons: string[] }
+/** near-pay PosOpsModels.View */
+export interface PosConfigView {
+  id: number; terminalNo: string; state: string; version: number; baseTerminalVersion: number; targetTerminalVersion: number; settings: PosSettings; binding: PosBindingView | null;
+  configuredBy: string; verifiedBy: string | null; reviewEvidenceRef: string | null; stale: boolean; canPublish: boolean; modes: Partial<Record<PosMode, PosModeReport>>;
+  runtime: { ready: boolean; canReceivePayments: boolean; reasons: string[] } | null; audit: Record<string, unknown>[];
+}
+export interface PosBindingInput {
+  issuerCode: string; issuerType: string; channelMerchantNo: string; channelStoreNo: string; deviceId: string; channelTerminalNo: string; payeeMemberId: string | null;
+  deviceKeyRef: string | null; deviceKeyVersion: string; queryCredentialRef: string | null; queryKeyVersion: string; activationRef: string; authorizationRef: string;
+}
+/** 新建草稿 configurationId 为 null、expectedVersion 为 0；expectedTerminalVersion 是终端版本 */
+export interface PosSave { expectedTerminalVersion: number; configurationId: number | null; expectedVersion: number; reason: string; settings: PosSettings; binding: PosBindingInput }
+export const UAT_CASES = Array.from({ length: 20 }, (_, i) => `D${String(i + 1).padStart(2, "0")}`);
+export const UAT_RESULTS = ["PASS", "FAIL", "NOT_APPLICABLE"] as const;
+export interface UatEvidence { caseCode: string; result: string; evidenceRef: string; executionNo: string | null; recordedBy: string; recordedAt: string }
+/** near-pay PosAcceptanceModels.Run */
+export interface UatRun {
+  runNo: string; version: number; state: "COLLECTING" | "ACCEPTED"; mode: PosMode; createdBy: string; reviewedBy: string | null; reviewEvidenceRef: string | null; stale: boolean;
+  identity: Record<string, unknown>; identityHash: string; cases: UatEvidence[]; blockers: string[]; reviewerEligible: boolean;
+}
+export interface UatManifest { schemaVersion: number; kind: string; runNo: string; state: string; identity: Record<string, unknown>; identityHash: string; requiredCases: string[]; cases: UatEvidence[] }
+/** near-pay TerminalExecutionModels.Binding（SoftPOS）：没有幂等号与版本 */
+export interface SoftPosBinding {
+  id: number; terminal: string; store: string; accountId: number; physicalDevice: string; epoch: string; providerMid: string; providerTid: string;
+  packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; configVersion: number; status: "DRAFT" | "REVOKED"; validUntil: string;
+}
+export interface SoftPosRegistration { packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; validUntil: string; reason: string }

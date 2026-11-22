@@ -145,7 +145,7 @@ class WxNotifyFlowTest {
         buyAndPay(token, "wxn-arrive");
         dispatcher.dispatchPending();   // 先消化 ORDER_PAID，别和到货事件混在一批里断言
 
-        String biz = loginAsOwnerOf("M0001", "12700127101");
+        String biz = loginAsOwnerOf("M0001", "19700127101");
         markArrived(biz, subOrderNoOf(token));
         dispatcher.dispatchPending();
 
@@ -177,7 +177,7 @@ class WxNotifyFlowTest {
         String token = ai.neargo.shop.support.TestLogin.consumerByWechat(mvc(), json, openId);
 
         subscribe(token, TPL_ARRIVED, true);
-        String biz = loginAsOwnerOf("M0001", "12700127102");
+        String biz = loginAsOwnerOf("M0001", "19700127102");
 
         buyAndPay(token, "wxn-quota-a");
         dispatcher.dispatchPending();
@@ -202,7 +202,7 @@ class WxNotifyFlowTest {
 
         buyAndPay(token, "wxn-noauth");
         dispatcher.dispatchPending();
-        String biz = loginAsOwnerOf("M0001", "12700127103");
+        String biz = loginAsOwnerOf("M0001", "19700127103");
         markArrived(biz, subOrderNoOf(token));
         dispatcher.dispatchPending();
 
@@ -227,7 +227,7 @@ class WxNotifyFlowTest {
 
         buyAndPay(token, "wxn-reject");
         dispatcher.dispatchPending();
-        String biz = loginAsOwnerOf("M0001", "12700127104");
+        String biz = loginAsOwnerOf("M0001", "19700127104");
         markArrived(biz, subOrderNoOf(token));
         dispatcher.dispatchPending();
 
@@ -299,7 +299,7 @@ class WxNotifyFlowTest {
 
         // 两单一起标到货（一车货一次登记）
         JsonNode records = orders(token);
-        String biz = loginAsOwnerOf("M0001", "12700127105");
+        String biz = loginAsOwnerOf("M0001", "19700127105");
         markArrived(biz, records.get(0).get("orderNo").asString(),
                 records.get(1).get("orderNo").asString());
         dispatcher.dispatchPending();

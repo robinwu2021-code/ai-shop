@@ -11,13 +11,16 @@ import { Button } from "@/components/ui/button";
 import type { ActionSpec } from "@/components/ui/action-host";
 import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell } from "@/app/payment-center/_kit/pay-kit";
-import { MERCHANT_STATUSES, PROFILE_STATUSES, VERIFY_STATUSES, type MerchantRow, type ProfileRevision, type SourceLink } from "@/app/payment-center/_api/types";
+import { MERCHANT_STATUSES, PROFILE_STATUSES, VERIFY_STATUSES, type MerchantRow, type SourceLink } from "@/app/payment-center/_api/types";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, joinCsv, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
 import { merchantExtraSections, useMerchantPageActions, useMerchantRowActions, useMws } from "./merchant-workspace";
+import { merchantP8Sections } from "./merchant-p8";
+import { P8_COPY } from "./p8-copy";
+import { useCopy } from "@/lib/use-copy";
 import { ChannelAccountsPanel, useCac } from "./channel-accounts";
 
 const NAME = "merchants";
@@ -32,6 +35,7 @@ export function MerchantsTab({ header }: { header: React.ReactNode }) {
   const list = useTabList<MerchantRow, { status: string; profileStatus: string }>(NAME, { status: "", profileStatus: "" }, (api, q) => api.merchants.list(q));
   const { api } = list;
   const mw = useMws();
+  const p8 = useCopy(P8_COPY);
   const ca = useCac();
   const workspace = useMerchantRowActions(api, run);
   const pageActions = useMerchantPageActions(api, run);
@@ -65,13 +69,7 @@ export function MerchantsTab({ header }: { header: React.ReactNode }) {
                     { header: c.verifyStatus, cell: (r) => <StatusBadge value={r.verifyStatus} map={verifyMap} /> },
                     { header: c.colUpdated, cell: (r) => fmtTime(r.verifiedAt) },
                   ]} /> },
-                  { title: c.sectionProfiles, content: <MiniTable<ProfileRevision> rows={d.record.profiles} rowKey={(r) => r.revisionNo} empty={c.emptyProfiles} columns={[
-                    { header: c.revision, cell: (r) => r.revision },
-                    { header: c.purpose, cell: (r) => r.purpose },
-                    { header: c.colStatus, cell: (r) => <StatusBadge value={r.reviewStatus} map={profileMap} /> },
-                    { header: c.submittedBy, cell: (r) => r.submittedBy ?? "—" },
-                    { header: c.submittedAt, cell: (r) => fmtTime(r.submittedAt) },
-                  ]} /> },
+                  ...merchantP8Sections(api, m.merchantNo, c, p8),
                   ...merchantExtraSections(api, m.merchantNo, c, mw),
                 ]}
                 actions={<DetailActions ctx={ctx} keys={DETAIL_ACTIONS} />}

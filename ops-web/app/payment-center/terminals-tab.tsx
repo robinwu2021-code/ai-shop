@@ -3,6 +3,11 @@
 // 支付终端（OP08）。行操作：查看（基本 + 就绪检查）· 编辑（抽屉）· 核验（抽屉：凭证编号；核验人 ≠ 配置人）· 启用 / 停用（理由弹框）
 // · 生成激活码（抽屉，一次性明文）· 挂失（强确认，无请求体）· 退役（强确认 + 理由）。页面级：新增（抽屉）。
 import * as React from "react";
+import { useCopy } from "@/lib/use-copy";
+import { TerminalCredRetire } from "./p9-panels";
+import { P9_COPY } from "./p9-copy";
+import { P11_COPY } from "./p11-copy";
+import { PosConfigSection, SoftPosSection, isNewebpayTerminal, isPaybyTerminal } from "./p11-terminal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DetailActions, DetailBody } from "@/components/ui/detail-drawer";
@@ -59,6 +64,8 @@ export function TerminalsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
   const operator = useDraftOperator();
   const run = useRun(NAME);
+  const m9 = useCopy(P9_COPY);
+  const m11 = useCopy(P11_COPY);
   const cfgMap = useStatusMap("tcfg", TERMINAL_CONFIG_STATUSES, { ENABLED: "success" });
   const verifyMap = useStatusMap("tverify", ["UNVERIFIED", "VERIFIED"], { VERIFIED: "success", UNVERIFIED: "warning" });
   const deviceMap = useStatusMap("device", DEVICE_STATUSES, { ACTIVE: "success", LOST: "danger", RETIRED: "muted" });
@@ -70,7 +77,7 @@ export function TerminalsTab({ header }: { header: React.ReactNode }) {
 
   const actions: ActionSpec<TerminalRow>[] = [
     {
-      key: "view", label: c.view, kind: "drawer", width: "w-[560px]", title: () => c.terminalDetailTitle,
+      key: "view", label: c.view, kind: "drawer", width: "w-[860px]", title: () => c.terminalDetailTitle,
       render: (ctx) => {
         const r = ctx.row!;
         return (
@@ -95,6 +102,9 @@ export function TerminalsTab({ header }: { header: React.ReactNode }) {
                 { label: c.verifiedBy, value: r.verifiedBy },
                 { label: c.credentialRefLabel, value: r.credentialRef, full: true },
               ] },
+              { title: m9.sectionCredRetire, content: <TerminalCredRetire api={api} no={r.terminalNo} /> },
+              ...(isPaybyTerminal(r) ? [{ title: m11.posTitle, content: <PosConfigSection api={api} terminal={r} run={run} /> }] : []),
+              ...(isNewebpayTerminal(r) ? [{ title: m11.softposTitle, content: <SoftPosSection api={api} terminal={r} run={run} /> }] : []),
               { title: c.readiness, fields: [
                 { label: c.canReceive, value: yesNo(r.readiness?.canReceivePayments, c) },
                 { label: c.readinessReasons, value: r.readiness?.reasons.join("、") || "—", full: true },

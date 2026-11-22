@@ -298,6 +298,87 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 
 不是代码问题、需要业务决定的：门店 830（收款码无扫码链接同因）、834（两者名称都标「舊·待下架」）该下架还是挂到主体 `M261113Y3QW5XKEFW` 的新商户（near-pay 里还没有）；测试店 835（主体 `M261119TS0PN0XBK9` 在 near-pay 无商户，`UNLINKED_ENTITY`）。
 
+### 2.15 P8–P10 对接补齐（2026-11-21 用户：「给出对接计划，先完成页面，再对接，再测试」「确认，然后自动执行所有任务」）
+
+依据《支付中心对接完整性测试方案》：near-pay `/pay-ops/v2` 321 个接口，已接 212、只封装 2、未接 107（`scripts/pay-center-wiring.py`）。
+
+**范围（用户确认）**
+- **A 核心运营闭环（约 64 个，本节做）**：分 P8–P10 三批，每批按「页面（mock）→ 对接（HTTP、权限码、菜单）→ 测试（vitest、Chrome）」走完再做下一批。
+- **B 渠道专属（37 个，暂不做）**：易特付虚拟账户 15、PayBy POS 及验收 13、SoftPOS 3、测试渠道试用 / 注册 / 会话 6。等业务确认上线渠道后再排。
+- **C 不在前端提供（8 个）**：near-pay 权限映射与资源 7 个（权限由 ai-shop 决定，ADR-061 / 支付运营权限在服务内判）；`/me/access` 已由顶栏入口使用。
+- **不接**：`POST /channel-accounts/{}/close`。near-pay 不在允许的操作里开放，前端保留「未开放」说明。
+
+**批次**
+
+| 批 | 业务域 | 落点 | 接口 |
+|---|---|---|---|
+| P8 | 商户 | 商户详情：资料版本列表、工作台、关闭商户；代办建档结果查询；**新页签「商户成员」** | 11 |
+| P8 | 审核 | 「审批流程」页签加新建 / 编辑 / 复制 / 发布 / 停用；审核待办加候选人、任务审核 | 7 |
+| P8 | 门店 | 渠道绑定加「重新绑定」；**新页签「来源关联修复」**（申请、审批、执行、驳回） | 7 |
+| P8 | 进件 | 草稿命令状态查询 | 1 |
+| P9 | 渠道 | 渠道账户编辑、恢复；资质新建与详情；认领附件与命令状态；终端凭证引用、退役信息；应用撤销门店授权 | 11 |
+| P9 | 订单 / 告警 | 告警事件「冲正回查」；告警规则详情；告警指标 | 3 |
+| P9 | 资金对账 | 对账差异匹配、调整申请；储值交易详情；**新页签「渠道账单」** | 9 |
+| P10 | 平台设置 | **新页签「凭证管理」**（类型、策略、凭证、版本生成 / 启用 / 撤销 / 校验、访问日志、绑定）；**新页签「审计事件」**；佣金规则详情 | 16 |
+
+**每批的契约动作**
+- 新页签：`module.ts` 登记（先进 `PENDING_MENU`），`platform-nav.ts` 加叶子，迁移加菜单功能点（V687 起，授权 SUPER_ADMIN），重跑 `gen-ui-catalog.py`。
+- 新权限码：`perm-map`、shop `Perms` 与功能点迁移；`FunctionPointPermAlignmentTest`、near-pay `OpsV2PermissionCoverageTest` 要通过。
+- 文案：`-copy.ts` 简体、繁体、英文；新枚举进枚举登记。
+- 网关：`/ops/pay-ops/v2` 整体透传，不改。
+- 每批结束重跑 `scripts/pay-center-wiring.py`，更新测试方案的对照表。
+
+**P8 实现（2026-11-21，分支 `feat/pay-center-p8-20261121`）**
+
+契约逐个从 near-pay `da3ced2a4` 源码核对。调整如下：
+
+- **near-pay 未开放，不做**（固定回 409 `CAPABILITY_NOT_READY`）：关闭商户（随 BM09/BM18）、审批流新建 / 编辑 / 复制 / 发布 / 停用（随 S3）、审核任务候选人（无员工目录）。
+- **按等价能力处理**：`POST /approval-tasks/{}/review` 与现有 `/approvals/{}/review` 重复，不另做。
+- **门店换绑执行**：`POST /stores/{}/bindings/{}/rebind` 是换绑审批通过后的执行。需要 `pay:store-binding:approve`，登记人不能自己执行，返回新绑定号。做成渠道绑定里「执行换绑」按钮。
+- **超时恢复（接口层，页面无感）**：建商户、代填资料保存与提交、进件草稿保存 / 确认 / 提交遇到网络中断或 5xx 时，按同一个幂等号查回执（`/merchant-creations/by-request/{}`、`/assisted-profile/operations/{}`、`/draft/commands/{}`）。查到就当成功，否则原样报错。
+- **资料版本**：商户详情原有「资料版本」改用 `GET /merchants/{}/profile-revisions`，多出审核人、审核意见、审批号；新增「工作台」段（`GET /workspace`）。
+- **新页签**「商户成员」「关联修复」：菜单 V687（排序 550 / 551，授权 SUPER_ADMIN 并从商户列表继承查看）。成员的状态命令先取详情拿版本（列表不带版本）。修复单审批用审批版本，执行用修复单版本。
+- **权限码**：后端早已登记（V686），前端 `perm-map` 补 `pay:member:view|manage`、`pay:merchant:repair`、`pay:merchant:repair:approve`。
+
+**结果**：`scripts/pay-center-wiring.py` 统计本期范围 267 个接口，已接 230（86%）；未开放 7、不提供 10、暂缓 37 单列。测试：`p8.test.ts` 9 条，ops-web 全量通过；后端 `FunctionPointPermAlignmentTest`、`OpsPermConfigFlowTest`、`FunctionModuleSyncTest`、`PayOpsPermissionCodesTest` 通过。
+
+**P9 / P10 实现（2026-11-21，同一分支）**
+
+契约同样从 near-pay `da3ced2a4` 核对，线上开关从 166 只读核对。
+
+- **P9 渠道**：
+  - 渠道账户「修改坐标」（`PUT /channel-accounts/{}`，只在 UNVERIFIED，改完核验退回 PENDING；渠道商户号要重填、不存草稿）。
+  - 蓝新测试渠道「准备沙箱试运行」资质（`POST /channel-accounts/{}/qualifications`，建 DRAFT 经审批生效）；资质展开改取 `GET /channel-qualifications/{}`。
+  - 终端详情「凭证与退役」（凭证引用需 `pay:credential:view`，没有就不发请求）。
+  - 应用门店授权「撤销」（版本是授权版本）。
+- **P9 告警与资产**：
+  - 告警规则的指标说明来自 `GET /alert-metrics`。
+  - 告警事件「冲正回查」（无请求体、不带幂等号，结果 VERIFIED / PENDING / DEFERRED）。
+  - 储值交易查看改取详情。
+- **超时恢复**：认领处理也走回执（`/channel-account-claims/{}/commands/{}`）。回执明确「被拒」时把原因交给页面，不再当作查不到。
+- **P10**：
+  - 新页签「凭证管理」：列表、详情（版本 / 策略 / 操作记录 / 访问记录）、登记、录入版本、生成（明文只显示一次）、核验 / 启用 / 撤销、轮换策略、使用情况。录入与生成不带自动幂等号，避免密钥材料进请求体指纹。
+  - 新页签「审计事件」（只读）。
+  - 佣金规则查看改取详情。
+  - 两个页签都只授 SUPER_ADMIN（V687 排序 552 / 553）。
+- **不做（已核对）**：
+  - 对账差异匹配 / 调整申请：near-pay 固定 409。
+  - 渠道账单 6 个：线上未开 `shop.pay.channel-bill.enabled`，控制器不加载；回执下载也是空文件。
+  - 账户恢复：已由审批执行完成，`/resume` 等价。
+  - 认领附件：随认领详情返回。
+- **权限码**：前端补 `pay:credential:view|approve`、`pay:audit:view`（后端 V686 早已登记）。
+
+**结果**：`scripts/pay-center-wiring.py` 统计本期范围 257 个接口已接 257（100%）；near-pay 未开放 15、不在运营端提供 12、渠道专属暂缓 37 单列。测试：P8 9 条 + P9 7 条 + P10 6 条，ops-web 全量 158 个文件 1431 条通过；后端菜单 / 权限测试通过。
+
+### 2.16 P11 渠道专属能力（2026-11-21 用户：「按建议顺序做」）
+
+需求从运营管理（查看、审核、处置）角度整理，见《支付中心-渠道专属能力运营需求》。范围：测试渠道试运行续期、收款入口测试单（沙箱 H5 / PayBy SGS）、PayBy POS 执行配置与验收批次、蓝新 SoftPOS 绑定；易特付虚拟账户暂缓（线上接口未加载、缺列表接口）。
+
+- **不新增菜单**：全部挂在渠道账户、收款接入、支付终端已有详情里。终端详情抽屉加宽到 860。
+- **权限码**：都在已登记范围内，`pay:terminal:verify` 等已在 `perm-map`；没有新迁移。
+- **测试**：`p11.test.ts` 6 条；ops-web 全量 159 个文件 1437 条通过；lint 无报错。
+- **统计**：本期范围 277 / 277。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。
@@ -512,3 +593,24 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - 完整测试：pay-channel 610、pay-domain 3706（665 跳过）、pay-guard 128、pay-portal 286 全过；`ChannelAccountDomainIntegrationTest` 过。
 - Chrome（用户会话）：商户列表 0.7 s / 0.6 s（原 12.7–20 s）、门店 2.6 s（原 13–17 s）、渠道账户 0.3 s（原 6–17 s），总数不变；按资料状态筛选仍 12.6 s（设计如此）。测试渠道账户资质 200（NEWEBPAY_TEST 5 条、LINEPAY_TEST 4 条，界面正常）；允许操作不再含 `close`。日志：重启后 `rebuild deferred` 0 次，830/834 各记两行「展示为空」后停止。
 - 注意：`NEWEBPAY_TEST` 唯一生效的资格 `LYD_MPG_RENEW_20261120:1` 有效期到 2026-11-21 12:44（浏览器时区），到期后该测试账户试运行收款会被拒。
+
+### 前端被覆盖后从 main 重新发布（2026-11-21 14:3x CST）
+
+- **发现**：13:03 另一会话的 retail 发布把 `current` 切到 `retail-tier-b7fe7ee36`，后端换成 `shop-app-4bc6c4cf2.jar`。两个提交都没推送。后端核对：shop-app 自身类、V686 以及 11 个嵌套库与 `58c006c82` 一致，只差 `StoreFeatureMatrix`（retail），支付与网关代码都在。前端核对：有支付中心，但缺 P7（`method-preferences`、`sync-events`）和 IAM 支付范围说明。Chrome 实测门店详情只有「基本信息 / 归属记录」。
+- **根因**：支付中心只在功能分支，从别的分支发布就会冲掉。
+- **处理**：
+  - 最新 main 合入分支（1726ef126）。冲突 4 处：交接文档取 main，3 份生成物重新生成；`check-generated-docs` 27 个生成器全部最新；ops-web `tsc` 通过、vitest 1405 条全过。
+  - PR #22 压缩合入 main（`d055d9696`，与 1726ef126 内容一致）。
+  - 推送用了 `--no-verify`，用户同意。被跳过的只有 3 条 commerce 测试：`CommerceMigrationIsolationTest.hostHistoryAndLaterHostVersionStayIndependentAcrossRestarts`、`MallFulfillmentMysqlTest.migratedLegacyTask*` ×2。它们在纯 origin/main（fb4ef9a82）上同样失败，来自 d0a4316d8 的 `V14__industry_catalog_tiers.sql`（1062 主键重复，迁移数断言 13≠14），待 RobinWu 修。
+- **构建参数**：在原有参数基础上必须加 `NEXT_PUBLIC_NEARPAY_ACCESS_URL=/ops-shop-v2/ops/pay-ops/v2/me/access`，否则顶栏「支付运营」会探测旧的 `/oms-api/...`。retail 版就用了这个参数。和 retail 版比过页面清单与文案，没有 retail 独有的前端源码。
+- **发布**：`releases/main-1726ef126`（tgz sha256 前缀 `e78c4ff466c044ea`），只原子切换 `current` 软链，不重启。回退：`ln -sfn …/releases/retail-tier-b7fe7ee36`。
+- **Chrome 验证**（用户会话）：
+
+| 页面 | 结果 |
+|---|---|
+| 门店详情（Oscar Retail QA 1121） | 收款码（暂无，可新建）、支付方式 5 项及不可改原因、同步事件 1 条「已生效」✅ |
+| 渠道账户（`PM0E0F6CC8F7454D75` · ALIPAY） | 转移、资质页签都在，空状态和表单正常 ✅ |
+| 顶栏权限探测 | `/ops-shop-v2/ops/pay-ops/v2/me/access` 返回 200 ✅ |
+| 审核待办 / 支付订单 | 0 条 / 151 条，无报错；支付中心菜单 24 项 ✅ |
+
+- **约定**：支付中心改动先合 main，发布一律从 main 打包；其他会话发布前先合最新 main。

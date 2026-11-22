@@ -1331,6 +1331,13 @@ class MallFulfillmentMysqlTest {
                     part);
             db.jdbc.execute("DROP TABLE mall_category");
             db.jdbc.execute("ALTER TABLE mall_sku_component DROP COLUMN title");
+            // Current code seeds the BASE/GROWTH tiers that V14 adds; a pre-V14 database only had
+            // the legacy tiers, so remove them and let the real migration create them.
+            db.jdbc.update(
+                    "DELETE v FROM sys_industry_plan_version v JOIN sys_industry_plan p"
+                            + " ON p.tenant_no=v.tenant_no AND p.plan_no=v.plan_no"
+                            + " WHERE p.tier_code IN ('BASE','GROWTH')");
+            db.jdbc.update("DELETE FROM sys_industry_plan WHERE tier_code IN ('BASE','GROWTH')");
             db.migrate();
             assertEquals(
                     1,

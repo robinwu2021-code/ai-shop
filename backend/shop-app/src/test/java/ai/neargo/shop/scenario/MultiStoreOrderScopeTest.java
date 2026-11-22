@@ -97,7 +97,7 @@ class MultiStoreOrderScopeTest {
     @DisplayName("★ 首页经营台跟着门店切换走 —— 切到没单的分店，今日/本月单数要归零")
     void dashboardFollowsCurrentStore() throws Exception {
         /*
-         * ★ 手机号必须是**本仓没人用过的**：12600180003 已经被
+         * ★ 手机号必须是**本仓没人用过的**：19600180003 已经被
          * StoreScopedVisibilityFlowTest.defaultStoreKeepsTheOrderWhenItServes 占着。
          * 撞号时两个类各建各的商家、却拿到同一条记录，先跑的那个把门店与坐标留给后跑的 ——
          * 表现是「单独跑绿、全量红」，而报错指向的是**对方**那条用例，与真因毫无关系。

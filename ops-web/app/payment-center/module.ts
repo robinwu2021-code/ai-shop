@@ -22,7 +22,11 @@ export type PayCenterTabKey =
   | "approval-flows" | "settings"
   // P3a
   | "attempts" | "ledger-entries" | "settlements" | "withdrawals" | "payouts" | "recon-diffs"
-  | "sv-accounts" | "sv-transactions" | "channel-costs" | "commission-rules";
+  | "sv-accounts" | "sv-transactions" | "channel-costs" | "commission-rules"
+  // P8
+  | "merchant-members" | "association-repairs"
+  // P10
+  | "credentials" | "audit-events";
 
 export interface PayCenterTab {
   key: PayCenterTabKey;
@@ -38,6 +42,9 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "merchants", perm: "pay:merchant:view", group: "merchant", zh: "商户档案", en: "Merchants" },
   { key: "stores", perm: "pay:store:view", group: "merchant", zh: "支付门店", en: "Stores" },
   { key: "merchant-changes", perm: "pay:merchant:view", group: "merchant", zh: "商户变更", en: "Merchant changes" },
+  // P8（TDD-支付中心运营页面 §2.15）：商户成员（BM03）、来源关联修复
+  { key: "merchant-members", perm: "pay:member:view", group: "merchant", zh: "商户成员", en: "Merchant members" },
+  { key: "association-repairs", perm: "pay:merchant:view", group: "merchant", zh: "关联修复", en: "Association repairs" },
   { key: "onboardings", perm: "pay:onboarding:view", group: "merchant", zh: "渠道进件", en: "Onboarding" },
   { key: "orders", perm: "pay:order:view", group: "trade", zh: "支付订单", en: "Payments" },
   { key: "exceptions", perm: "pay:order:view", group: "trade", zh: "异常交易", en: "Exceptions" },
@@ -61,12 +68,15 @@ export const PAY_CENTER_TABS: readonly PayCenterTab[] = [
   { key: "data-scopes", perm: "pay:data-scope:view", group: "settings", zh: "数据范围", en: "Data scope" },
   { key: "approval-flows", perm: "pay:approval-flow:view", group: "config", zh: "审批流程", en: "Approval flows" },
   { key: "settings", perm: "pay:channel:view", group: "config", zh: "经营设置", en: "Operating settings" },
+  // P10（TDD-支付中心运营页面 §2.15）：凭证管理（near-pay 凭证中心）、审计事件（只读）
+  { key: "credentials", perm: "pay:credential:view", group: "config", zh: "凭证管理", en: "Credentials" },
   // 支付运维：渠道调用与监控告警各两个页签（菜单 TDD §2.2：一个菜单项最多 2 个页签）
   { key: "alert-events", perm: "pay:alert-event:view", group: "ops", zh: "告警事件", en: "Alert events" },
   { key: "alert-rules", perm: "pay:alert-rule:view", group: "ops", zh: "告警规则", en: "Alert rules" },
   { key: "channel-calls", perm: "pay:trace:view", group: "ops", zh: "渠道调用", en: "Channel calls" },
   { key: "channel-callbacks", perm: "pay:trace:view", group: "ops", zh: "渠道回调", en: "Channel callbacks" },
   { key: "request-logs", perm: "pay:trace:view", group: "ops", zh: "请求日志", en: "Request logs" },
+  { key: "audit-events", perm: "pay:audit:view", group: "ops", zh: "审计事件", en: "Audit events" },
 ];
 
 export const PAY_CENTER_GROUP_LABEL: Record<PayCenterTab["group"], { zh: string; en: string }> = {

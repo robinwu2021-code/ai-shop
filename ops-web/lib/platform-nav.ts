@@ -35,8 +35,8 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
       ...(settings.children ?? []).filter(l => l.group === '基础配置'),
       pick('/finance?tab=pay-channels', '渠道费率'),
       ...settingsRest.slice(0, lastAccess + 1), pc('data-scopes'), ...settingsRest.slice(lastAccess + 1),
-      pc('approval-flows'), pc('settings'),
-      pc('alert-events'), pc('alert-rules'), pc('channel-calls'), pc('channel-callbacks'), pc('request-logs'),
+      pc('approval-flows'), pc('settings'), pc('credentials'),
+      pc('alert-events'), pc('alert-rules'), pc('channel-calls'), pc('channel-callbacks'), pc('request-logs'), pc('audit-events'),
     ] },
     { ...mall, label: '平台商城', pinBottom: false },
     { key: 'customers', label: '客户管理', icon: 'Users', modules: ['dashboard', 'customer', 'member', 'merchant'], href: '/customers?tab=overview', match: ['/customers'],
@@ -47,7 +47,7 @@ export function platformNav(nav: NavSection[] = NAV): NavSection[] {
     { key: 'paymentMerchant', label: '支付中心', icon: 'Landmark', modules: ['pay'], href: '/payment-center', match: ['/payment-center'],
       children: [
         pc('approvals'),
-        pc('merchants', '支付商户'), pc('stores'), pc('onboardings', '支付商户'), pc('merchant-changes'),
+        pc('merchants', '支付商户'), pc('stores'), pc('onboardings', '支付商户'), pc('merchant-changes'), pc('merchant-members'), pc('association-repairs'),
         pc('orders', '交易'), pc('exceptions', '交易'), pc('attempts'), pc('refunds'),
         pc('channels', '渠道接入'), pc('products'), pc('access'), pc('terminals'), pc('apps'),
         // P3a（V685）：费率 / 资金结算 / 对账 / 会员资产；P3b、P3c 的页面接口出来再进

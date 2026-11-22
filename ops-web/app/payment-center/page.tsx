@@ -21,6 +21,7 @@ import { MerchantsTab } from "./merchants-tab";
 import { StoresTab } from "./stores-tab";
 import { OnboardingsTab } from "./onboardings-tab";
 import { ApprovalsTab } from "./approvals-tab";
+import { TwChannelHealth } from "./tw-health";
 import { ChannelsTab } from "./channels-tab";
 import { ProductsTab } from "./products-tab";
 import { AccessTab } from "./access-tab";
@@ -29,6 +30,10 @@ import { MerchantChangesTab } from "./merchant-changes-tab";
 import { RefundsTab } from "./refunds-tab";
 import { TerminalsTab } from "./terminals-tab";
 import { AppsTab } from "./apps-tab";
+import { MembersTab } from "./members-tab";
+import { RepairsTab } from "./repairs-tab";
+import { CredentialsTab } from "./credentials-tab";
+import { AuditTab } from "./audit-tab";
 import { ChannelCallbacksTab, ChannelCallsTab, RequestLogsTab } from "./traces-tab";
 import { AlertEventsTab, AlertRulesTab } from "./alerts-tab";
 import { ApprovalFlowsTab, SettingsTab } from "./config-tabs";
@@ -55,6 +60,10 @@ const TAB_COMPONENT: Record<PayCenterTabKey, React.ComponentType<{ header: React
   refunds: RefundsTab,
   terminals: TerminalsTab,
   apps: AppsTab,
+  "merchant-members": MembersTab,
+  "association-repairs": RepairsTab,
+  credentials: CredentialsTab,
+  "audit-events": AuditTab,
   "request-logs": RequestLogsTab,
   "channel-calls": ChannelCallsTab,
   "channel-callbacks": ChannelCallbacksTab,
@@ -97,7 +106,9 @@ function PaymentCenterInner() {
       </div>
     );
   }
-  const header = <TabHeader tabs={tabs} value={active} onChange={(k) => router.replace(payCenterHref(k as PayCenterTabKey))} />;
+  const tabHeader = <TabHeader tabs={tabs} value={active} onChange={(k) => router.replace(payCenterHref(k as PayCenterTabKey))} />;
+  // 台湾主流渠道健康卡片只挂在默认落地的审核待办（《支付中心-台湾主流渠道运营需求》§4.3）
+  const header = active === "approvals" ? <>{tabHeader}<TwChannelHealth /></> : tabHeader;
   const Tab = TAB_COMPONENT[active];
   return <Tab key={active} header={header} />;
 }

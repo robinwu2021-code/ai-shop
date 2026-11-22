@@ -71,7 +71,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★ 单店：解析出主体默认收款号，与改造前一致")
     void singleStoreResolvesEntityAccount() throws Exception {
-        String biz = merchant("12600210001", "单店结算铺");
+        String biz = merchant("19600210001", "单店结算铺");
         String pm = activatePayment(biz, null);
 
         // 不传门店、传默认门店，解析结果必须一样 —— 单店时两个维度恒等
@@ -82,7 +82,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★ 两家店不配号 = 合并结算：解析出同一个收款号")
     void storesWithoutOwnAccountShareOne() throws Exception {
-        String biz = merchant("12600210010", "合并结算·总店");
+        String biz = merchant("19600210010", "合并结算·总店");
         String pm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
@@ -96,7 +96,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★ 分店单独进件 + 挂号 = 分开结算：两家店解析出不同收款号")
     void storeWithOwnAccountSettlesSeparately() throws Exception {
-        String biz = merchant("12600210020", "分开结算·总店");
+        String biz = merchant("19600210020", "分开结算·总店");
         String entityPm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -116,7 +116,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★ 改门店收款号，已生成的流水快照不跟着变 —— 否则退款会从新账户扣")
     void changingAccountDoesNotRewriteHistory() throws Exception {
-        String biz = merchant("12600210030", "改号测试店");
+        String biz = merchant("19600210030", "改号测试店");
         String entityPm = activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -166,7 +166,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ F01 支付宝的单只取支付宝号 —— 不按渠道过滤时会取到先建的微信号，打款打错账户")
     void resolvesByChannel() throws Exception {
-        String biz = merchant("12600210080", "双渠道店");
+        String biz = merchant("19600210080", "双渠道店");
         String m = merchantNo(biz);
         String store = defaultStoreNo(biz);
         String wechat = activatePayment(biz, null);
@@ -182,7 +182,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ F01 兜底不取别家门店的专属号 —— A 店没配号时，B 店单独进件的号不是 A 的")
     void fallbackNeverBorrowsAnotherStoresAccount() throws Exception {
-        String biz = merchant("12600210081", "专属号店");
+        String biz = merchant("19600210081", "专属号店");
         String m = merchantNo(biz);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -199,7 +199,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★ F01 线下 / 免单不经通道：不按渠道过滤，但取号顺序确定（最早建的），且同样不借别店专属号")
     void offlineKeepsEntityDefaultDeterministically() throws Exception {
-        String biz = merchant("12600210082", "线下店");
+        String biz = merchant("19600210082", "线下店");
         String m = merchantNo(biz);
         String store = defaultStoreNo(biz);
         String wechat = activatePayment(biz, null);
@@ -224,7 +224,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ F02 能力 / 额度与结算解析到同一个收款号 —— 门店绑了微信号，能力却从支付宝那行读，支付方式与额度就判错")
     void capabilityFollowsTheSameAccountAsSettlement() throws Exception {
-        String biz = merchant("12600210084", "一处解析店");
+        String biz = merchant("19600210084", "一处解析店");
         String m = merchantNo(biz);
         String store = defaultStoreNo(biz);
         String wechat = activatePayment(biz, null);
@@ -250,11 +250,11 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ F02 · R26 门店换了主体，不再认旧主体为它进件的号 —— 只按 store_no 查会把新主体的钱打进旧主体")
     void storeMovedToAnotherEntityDropsOldEntitysAccount() throws Exception {
-        String oldBiz = merchant("12600210085", "旧主体");
+        String oldBiz = merchant("19600210085", "旧主体");
         TestPlan.grantPro(mvc(), json, planMapper, oldBiz);
         String movingStore = createStore(oldBiz, "要搬走的店");
         activatePayment(oldBiz, movingStore);
-        String newBiz = merchant("12600210086", "新主体");
+        String newBiz = merchant("19600210086", "新主体");
         String newM = merchantNo(newBiz);
         jdbc.update("UPDATE mch_store SET entity_no=? WHERE store_no=?", newM, movingStore);
 
@@ -268,7 +268,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ F03 B 店专属号不能绑给 A 店 —— 绑上之后 A 店的钱进了 B 店的结算账户")
     void cannotBindAnotherStoresAccount() throws Exception {
-        String biz = merchant("12600210083", "绑号校验店");
+        String biz = merchant("19600210083", "绑号校验店");
         String storeA = defaultStoreNo(biz);
         String entityPm = activatePayment(biz, null);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -288,7 +288,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★ 结算流水落 store_no：门店报表按它聚合，与打给谁无关")
     void billCarriesStoreDimension() throws Exception {
-        String biz = merchant("12600210040", "门店统计店");
+        String biz = merchant("19600210040", "门店统计店");
         activatePayment(biz, null);
         String goodsNo = listedGoods(biz, 5);
         String skuNo = firstSku(goodsNo);
@@ -304,7 +304,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★ 没有门店归属的存量流水，按门店筛时不能消失 —— 商家会以为钱没了")
     void legacyBillsWithoutStoreStaySkVisible() throws Exception {
-        String biz = merchant("12600210060", "存量流水店");
+        String biz = merchant("19600210060", "存量流水店");
         activatePayment(biz, null);
         String goodsNo = listedGoods(biz, 5);
         String skuNo = firstSku(goodsNo);
@@ -341,7 +341,7 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★★★ 门店收窄：站在 B 店只看得到 B 店的钱，allStores=true 才看得到 A 店的")
     void storeScopeActuallyNarrows() throws Exception {
-        String biz = merchant("12600210070", "收窄判据店");
+        String biz = merchant("19600210070", "收窄判据店");
         activatePayment(biz, null);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
@@ -404,8 +404,8 @@ class StoreSettleFlowTest {
     @Test
     @DisplayName("★ 别家主体的门店不能拿来开进件 —— 404 而不是 403")
     void cannotOpenPaymentForOthersStore() throws Exception {
-        String mine = merchant("12600210050", "本主体");
-        String other = merchant("12600210051", "别家主体");
+        String mine = merchant("19600210050", "本主体");
+        String other = merchant("19600210051", "别家主体");
         String othersStore = defaultStoreNo(other);
 
         mvc().perform(post("/biz/merchant/payment/store/" + othersStore)

@@ -72,6 +72,7 @@ class ZeroAmountPayFlowTest {
             OrdOrder o = new OrdOrder();
             o.setOrderNo(orderNo);
             o.setUserNo(buyer);
+            o.setIdentityRevision(1L);
             o.setStatus(OrdOrder.WAIT_PAY);
             o.setPayAmount(payable);
             orderMapper.insert(o);
@@ -79,6 +80,7 @@ class ZeroAmountPayFlowTest {
             sub.setSubOrderNo("SUB-" + orderNo);
             sub.setOrderNo(orderNo);
             sub.setUserNo(o.getUserNo());
+            sub.setIdentityRevision(1L);
             sub.setEntityNo("E-ZERO-" + seq);
             sub.setStatus(OrdOrder.WAIT_PAY);
             sub.setPayAmount(payable);

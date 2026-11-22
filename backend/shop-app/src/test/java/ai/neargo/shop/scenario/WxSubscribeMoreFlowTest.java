@@ -225,7 +225,7 @@ class WxSubscribeMoreFlowTest {
     @Test
     @DisplayName("★★ 商家在小程序里上报授权 → 额度记在他 C 端的 user_no 上（发送时按它查 openid）（AC8）")
     void bizSubscribeLandsOnSameUserNo() throws Exception {
-        String phone = "12600139001";
+        String phone = "19600139001";
         String btk = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         String ctk = TestLogin.consumer(mvc(), json, otpStore, phone);
         String userNo = json.readTree(mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + ctk))

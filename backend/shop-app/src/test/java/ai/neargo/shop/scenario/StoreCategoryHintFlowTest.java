@@ -63,7 +63,7 @@ class StoreCategoryHintFlowTest {
     @Test
     @DisplayName("★★★ 类目在兄弟门店下：提示要说「切门店」，并且切过去就能上架（不是永久下架）")
     void categoryLivingInASiblingStoreTellsHimToSwitchStores() throws Exception {
-        String biz = merchant("12600181001", "两家店各卖各的商家");
+        String biz = merchant("19600181001", "两家店各卖各的商家");
         TestPlan.grantQuota(planMapper, merchantNoOf(biz), 3);
 
         String storeA = defaultStoreNo(biz);

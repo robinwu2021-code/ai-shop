@@ -3,6 +3,7 @@ package ai.neargo.shop.channel.ai.port;
 import ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.util.List;
 
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GoodsDescribePromptTest {
 
     /** 不连模型，只拼提示词 —— enabled=false 也不影响 describePrompt */
-    private final GoodsVisionGateway gw = new GoodsVisionGateway("", "m", "", 25, false);
+    private final GoodsVisionGateway gw = new GoodsVisionGateway("", "m", "", 25, false, new MockEnvironment());
 
     private static final List<ParamKV> PERSIMMON = List.of(
             new ParamKV("产地", "山西运城临猗"),

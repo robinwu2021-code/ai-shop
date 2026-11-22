@@ -81,7 +81,7 @@ class PrintBrowserAcceptanceServerTest {
         // Even a user pressing probe in this isolated test cannot contact a printer vendor.
         when(vendor.call(any(), any(), any())).thenReturn(json.readTree("{\"ret\":1,\"msg\":\"BROWSER_TEST_NO_VENDOR\"}"));
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        String phone = "12600825901";
+        String phone = "19600825901";
         String consumer = TestLogin.consumer(mvc, json, otp, phone);
         var application = mvc.perform(post("/mp/merchant/apply")
                         .header("Authorization", "Bearer " + consumer).contentType(MediaType.APPLICATION_JSON)
@@ -160,10 +160,10 @@ class PrintBrowserAcceptanceServerTest {
         manifest.put("rechargeNo", first.rechargeNo());
         assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM biz_print_fact WHERE source_no=?", Long.class, first.rechargeNo()));
         // A same-store wallet-only employee exercises real API authorization, not an owner bypass.
-        manifest.put("walletToken", sourceStaff(mvc, entity, store, "PRINT-BROWSER-WALLET", "12600825904", false,
+        manifest.put("walletToken", sourceStaff(mvc, entity, store, "PRINT-BROWSER-WALLET", "19600825904", false,
                 "[\"pay:sv:recharge:read\",\"pay:sv:account:read\",\"biz:print:read\",\"biz:print:simulate\",\"biz:print:export\"]"));
         try (var f = new ai.neargo.shop.support.BasicRefundFixture(context)) {
-            String customer = f.login("12600825905");
+            String customer = f.login("19600825905");
             var created = f.request(customer, "/mp/order", "{\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":3}],"
                     + "\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":0}");
             assertEquals(0, created.path("code").asInt(), created.toString());
@@ -186,7 +186,7 @@ class PrintBrowserAcceptanceServerTest {
             String refundStore = jdbc.queryForObject("SELECT store_no FROM ord_sub_order WHERE sub_order_no=?", String.class, sub);
             manifest.put("refundNo", no); manifest.put("refundOrderNo", payNo); manifest.put("refundSubOrderNo", sub);
             manifest.put("refundEntityNo", "M0001"); manifest.put("refundStoreNo", refundStore);
-            manifest.put("refundToken", sourceStaff(mvc, "M0001", refundStore, "PRINT-BROWSER-REFUND", "12600825906", true, "[]"));
+            manifest.put("refundToken", sourceStaff(mvc, "M0001", refundStore, "PRINT-BROWSER-REFUND", "19600825906", true, "[]"));
         }
     }
 
@@ -207,7 +207,7 @@ class PrintBrowserAcceptanceServerTest {
     }
 
     private Map<String, String> otherMerchant(MockMvc mvc, String operator) throws Exception {
-        String phone = "12600825902", name = "打印浏览器另一商家";
+        String phone = "19600825902", name = "打印浏览器另一商家";
         String consumer = TestLogin.consumer(mvc, json, otp, phone);
         var application = mvc.perform(post("/mp/merchant/apply")
                         .header("Authorization", "Bearer " + consumer).contentType(MediaType.APPLICATION_JSON)
@@ -226,7 +226,7 @@ class PrintBrowserAcceptanceServerTest {
     }
 
     private String restrictedStaff(MockMvc mvc, String owner, String store) throws Exception {
-        String phone = "12600825903";
+        String phone = "19600825903";
         var response = mvc.perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
                         .header("X-Store-No", store).contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("loginPhone", phone, "displayName", "无打印权配送员"))))
