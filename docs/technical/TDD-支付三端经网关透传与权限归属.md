@@ -1,6 +1,6 @@
 # TDD · 支付三端经网关透传，权限由提供接口的服务判
 
-状态：方案定稿（2026-11-22，用户：「形成方案以及交接文档」）；§7 按推荐项写入正文，用户可随时改选；未实现。
+状态：方案定稿（2026-11-22，用户：「形成方案以及交接文档」）；§7 按推荐项写入正文，用户可随时改选。**阶段 1（本仓库）已实现，开关默认关、未部署**（2026-11-22，见 §10）；阶段 2 起未做。
 交接：[docs/handoff/pay-gateway-proxy-2026-11-22](../handoff/pay-gateway-proxy-2026-11-22/README.md)。
 附录：[入口盘点](TDD-支付三端经网关透传与权限归属-附录-入口盘点.md)（`scripts/inventory-pay-endpoints.py` 生成）。
 档位：2（权限归属与入口变更：ai-shop 网关路由、统一认证接口、near-pay 判权来源；前端基址）。
@@ -190,3 +190,64 @@ near-pay 的 `/internal/pay/v1|v2/**`（形态 C 调的那些）维持 ADR-045�
 - **统一认证接口不可用**：near-pay 回 503（已有 `IDENTITY_UNAVAILABLE` 处理），不会放行；缓存 30 秒能挡住短暂抖动。
 - **撤权生效延迟**：最长 30 秒（缓存期），与运营端一致。
 - **C1 初判错**：把有 ai-shop 业务的接口当薄转调迁走，会丢数据。阶段 0 必须逐个确认后才迁。
+
+## §10 阶段 1 实现记录（2026-11-22，分支 `feat/pay-gateway-proxy-s1-20261122`，用户：「根据最新的交接文档和方案，这里统一网关的调整」）
+
+只做本仓库的阶段 1：开关默认关，线上行为不变；没有部署，没有动任何环境。
+
+### 10.1 改动（对 §8 逐行）
+
+| §8 的行 | 实际改动 |
+|---|---|
+| 透传注册按端配置；`PayOpsPassThrough` 改为其一个实例；新增 `PayBizPassThrough` | 新增 `gateway.core.proxy.PrefixPassThrough`（一条整前缀透传：前缀、目标服务、目标前缀、该端追加的请求头）；`PayOpsPassThrough` 改成它的实例，行为不变；新增 `gateway.biz.PayBizPassThrough`（`/biz/pay/v2/**` → 支付 `/biz/pay/v2/**`） |
+| 去掉客户端带来的 `X-Internal-*` | 透传只转白名单请求头，`X-Internal-*` 本来就不在白名单里，不需要另写剥离逻辑；B 端追加 `X-Merchant-No`、`X-Store-No`、`X-Trace-Id`（与原转发入口 `BizOnboardingForwarder` 放行的一致）。响应头白名单补上 `Pragma`、`X-Content-Type-Options`、`Content-Security-Policy`、`X-Frame-Options`（进件附件这类私密文件要带着它们回去，两端共用） |
+| `/internal/auth/v1/merchant-staff` | 新增 `portal.internal.MerchantStaffIdentityEndpoint`，凭据 `shop.gateway.biz.identity.caller-token`（与运营端那把分开）。主体→支付商户的查找从 `PayBizSourceDelegation` 抽成 `payMerchantOf`，来源委托与本接口共用 |
+| 开关 `shop.gateway.biz.pay-proxy.enabled` | 默认关（不配即关） |
+| 阶段 3 下线 forwarder | 不在本阶段 |
+| ADR-060 修订 | 方案分支已写，本阶段不再改 |
+
+### 10.2 与方案不同的地方
+
+1. **透传要挂两条链。** v2 上 `shop.pay.biz-onboarding.enabled=true`，`/biz/pay/v2/**` 由 `PayBizOnboardingConfiguration` 的 `@Order(0)` 专用链认证（库里的商户会话），根本不进 B 端主链。所以透传过滤器挂在「认证这个前缀的那条链」的授权之后：开了进件就是专用链，没开就是 B 端主链。认证口径因此与现在完全一样。
+2. **B 端权限码的命名空间是 `mch:pay:`，不是 `pay:`。** §3.2 的示例写的是 `X-Auth-Namespace: pay:`，但 B 端支付码是 `mch:pay:order:view`、`mch:pay:refund` 这一套（`IntegrationRegistry` 里支付的两个命名空间是 `mch:pay:` 与 `pay:`）。接口照运营端那样按请求头筛，near-pay 阶段 2 要传 `mch:pay:`。
+3. **店员的码按门店给。** B 端的角色是「人 × 门店」的，同一个人在两家店可以是两个角色。接口每行多 `storeScope`（店主 `ALL`、店员 `STORES`）与 `stores=[{storeNo, perms}]`，`perms` 是各店并集；near-pay 判门店级动作时应按 `stores` 取。店员在这个主体下一个支付码都没有，这一行不出现。码取 `BizContext#effectivePerms()`，与 `/biz/**` 判权同源（含自定义角色）。
+4. **开关关时不是 404。** §6 写「开关关：404」，那是运营端的情形；B 端关时 `/biz/pay/v2/**` 仍由现有转发入口处理，测试改为断言不装透传。
+5. **两个开关不写进 `application.yml`。** 运营端的 `pay-ops-proxy.enabled` 与 `identity.caller-token` 也没写，服务器上按环境变量配；沿用同一做法，不配就是关 / 403。
+
+### 10.3 打开前的条件（阶段 3）
+
+`PayBizPassThrough` 打开后不再改写商户号、不加来源委托头。near-pay 没改成调 `merchant-staff` 判权之前打开，**店主会失去来源委托带来的全权**（near-pay 退回只按自己的成员表判）。所以顺序必须是：near-pay 阶段 2 上线并配好 `shop.gateway.biz.identity.caller-token` → 再开 `shop.gateway.biz.pay-proxy.enabled`。
+
+### 10.4 测试（§6 对账）
+
+| §6 验收 | 测试 | 结果 |
+|---|---|---|
+| 无令牌或别的端令牌：网关 401，下游无请求 | `PayBizPassThroughTest.anonymousStopsAtGateway`、`otherEndTokenRejected`；进件专用链 `PayBizOnboardingHttpTest.passThroughOnForwardsVerbatimAfterSameAuthentication`（无令牌、已吊销令牌） | 通过 |
+| 方法、路径、查询串、`Authorization`、请求体、下游错误码与包体原样往返；App 选的 `X-Merchant-No` 带过去 | `PayBizPassThroughTest.merchantForwardedVerbatim`；同上进件专用链用例；上传、文件流沿用 `PassThroughInvokerTest` | 通过 |
+| 客户端伪造 `X-Internal-*`：被去掉 | 同上两条（`X-Internal-Caller`、`X-Internal-Credential` 下游为空） | 通过 |
+| 开关关：不装透传，现有转发照旧 | `PayBizPassThroughOffTest.offByDefault`；`PayBizOnboardingHttpTest.switchOffDoesNotCreateRelay…` 加了一条断言；进件专用链其余 10 条转发用例照常 | 通过 |
+| 运营端透传改成通用件后行为不变 | `PayOpsPassThroughTest`（3）、`PayOpsPassThroughOffTest`（1） | 通过 |
+| `merchant-staff`：店主名下商户回 `*`（含没门店的主体）；店员按店回角色码；非成员 / 没关联支付的主体不出现；解析器回落到别的主体不算；指定商户号只回那一个；过期或别端令牌 401；凭据不对或没配 403；查关联失败 503 | `MerchantStaffIdentityEndpointTest` 7 条 | 通过 |
+| 来源委托抽出 `payMerchantOf` 后不变 | `PayBizSourceDelegationTest`（7） | 通过 |
+| 新端点守住内部入口规矩 | `InternalEndpointTokenTest`、`CommonPackageIsolationTest`、`ArchitectureTest`、`EndpointSnapshotTest` | 通过 |
+| near-pay 侧（缓存、`host` 模式、店主无需成员记录） | 阶段 2，near-pay 仓库 | 未做 |
+
+运行记录（本机，`mvn -o -pl shop-app -am test -Dtest=…`）：
+
+```
+PayBizPassThroughTest            Tests run: 4,  Failures: 0, Errors: 0
+PayBizPassThroughOffTest         Tests run: 1,  Failures: 0, Errors: 0
+PayBizOnboardingHttpTest         Tests run: 11, Failures: 0, Errors: 0
+PayOpsPassThroughTest            Tests run: 3,  Failures: 0, Errors: 0
+PayOpsPassThroughOffTest         Tests run: 1,  Failures: 0, Errors: 0
+PassThroughInvokerTest           Tests run: 5,  Failures: 0, Errors: 0
+MerchantStaffIdentityEndpointTest Tests run: 7, Failures: 0, Errors: 0
+OperatorIdentityEndpointTest     Tests run: 4,  Failures: 0, Errors: 0
+PayBizSourceDelegationTest       Tests run: 7,  Failures: 0, Errors: 0
+ArchitectureTest                 Tests run: 27, Failures: 0, Errors: 0, Skipped: 1
+InternalEndpointTokenTest        Tests run: 1,  Failures: 0, Errors: 0
+CommonPackageIsolationTest       Tests run: 3,  Failures: 0, Errors: 0
+EndpointSnapshotTest             Tests run: 1,  Failures: 0, Errors: 0
+```
+
+生成文档闸门 `node scripts/check-generated-docs.mjs`：新端点与新常量让 4 份产物漂了（网关接口清单 `/internal` 167→168、后端分层清单 Controller 455→456、静态常量清单与 glossary 多 `PayBizPassThrough.PREFIX`），已重新生成并一起提交。没有跑全量后端测试与 pre-push 全套。

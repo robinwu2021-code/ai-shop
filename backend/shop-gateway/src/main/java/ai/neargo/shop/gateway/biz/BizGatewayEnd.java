@@ -24,6 +24,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -61,7 +62,13 @@ public class BizGatewayEnd extends AbstractGatewayEnd {
 
     @Bean
     @Order(1)
-    SecurityFilterChain merchantChain(HttpSecurity http, SpringSecurityAdapter adapter) throws Exception {
+    SecurityFilterChain merchantChain(HttpSecurity http, SpringSecurityAdapter adapter,
+                                      ObjectProvider<PayBizPassThrough> payBiz) throws Exception {
+        // B 端支付接口透传：放在授权之后，走到它的都已是商户会话；开关关时没有这个 bean（TDD-支付三端经网关透传与权限归属 §3.1）
+        PayBizPassThrough passThrough = payBiz.getIfAvailable();
+        if (passThrough != null) {
+            http.addFilterAfter(passThrough.filter(), AuthorizationFilter.class);
+        }
         return adapter.install(http, spec());
     }
 

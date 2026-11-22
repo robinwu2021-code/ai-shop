@@ -47,7 +47,7 @@
 | 阶段 | 做什么 | 谁 | 前置 |
 |---|---|---|---|
 | 0 | 把附录的 C1/C2 初判逐个人工确认（near-pay 有无公开对应接口、ai-shop 有无拼数据） | 本仓库 | 无 |
-| 1 | 透传注册按端配置；B 端 `/biz/pay/v2/**` 透传（开关 `shop.gateway.biz.pay-proxy.enabled` 默认关）；`/internal/auth/v1/merchant-staff` | 本仓库 | 无，不依赖 near-pay |
+| 1 | ~~透传注册按端配置；B 端 `/biz/pay/v2/**` 透传（开关 `shop.gateway.biz.pay-proxy.enabled` 默认关）；`/internal/auth/v1/merchant-staff`~~ **已完成**（分支 `feat/pay-gateway-proxy-s1-20261122`，未部署；见 TDD §10。near-pay 要传 `X-Auth-Namespace: mch:pay:`，按 `stores` 判门店级动作） | 本仓库 | 无，不依赖 near-pay |
 | 2 | near-pay B 端改调新认证接口 + 缓存；`canBiz` 判权；`near-pay.biz.permission-source=host+membership` | near-pay（与 RobinWu 对齐排期） | 阶段 1 上线 |
 | 3 | 开 B 端透传开关；下线 4 个 B 端转发 controller 与委托改写 | 本仓库 | 阶段 1 |
 | 4 | 观察一周无「只靠成员表通过」后切 `host`，成员表只读保留一个周期 | near-pay + 用户 | 阶段 2 |

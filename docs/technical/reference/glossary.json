@@ -57598,6 +57598,14 @@
       "module": "shop-core"
     },
     {
+      "host": "PayBizPassThrough",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/biz/pay/v2\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
       "host": "SessionStoreKinds",
       "name": "GLOBAL",
       "type": "String",

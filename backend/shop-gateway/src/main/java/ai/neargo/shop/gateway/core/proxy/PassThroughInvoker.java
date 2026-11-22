@@ -16,6 +16,7 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,19 +42,34 @@ public class PassThroughInvoker extends AbstractServiceInvoker {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
     static final List<String> REQUEST_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Accept-Language", "X-Request-Id");
-    static final List<String> RESPONSE_HEADERS = List.of("Content-Type", "Content-Disposition", "Cache-Control", "X-Request-Id");
+    static final List<String> RESPONSE_HEADERS = List.of("Content-Type", "Content-Disposition", "Cache-Control", "Pragma",
+            "X-Content-Type-Options", "Content-Security-Policy", "X-Frame-Options", "X-Request-Id");
 
     private final ServiceLocator locator;
     private final HttpClient client;
     private final Duration readTimeout;
+    private final List<String> requestHeaders;
 
     public PassThroughInvoker(ServiceLocator locator) {
-        this(locator, READ_TIMEOUT);
+        this(locator, List.of());
+    }
+
+    /**
+     * @param extraRequestHeaders 这一端下游还要的请求头，追加在 {@link #REQUEST_HEADERS} 之后
+     *                            （B 端：App 选中的 {@code X-Merchant-No}、{@code X-Store-No}）
+     */
+    public PassThroughInvoker(ServiceLocator locator, List<String> extraRequestHeaders) {
+        this(locator, READ_TIMEOUT, extraRequestHeaders);
     }
 
     PassThroughInvoker(ServiceLocator locator, Duration readTimeout) {
+        this(locator, readTimeout, List.of());
+    }
+
+    private PassThroughInvoker(ServiceLocator locator, Duration readTimeout, List<String> extraRequestHeaders) {
         this.locator = locator;
         this.readTimeout = readTimeout;
+        this.requestHeaders = Stream.concat(REQUEST_HEADERS.stream(), extraRequestHeaders.stream()).toList();
         this.client = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
     }
 
@@ -92,7 +108,7 @@ public class PassThroughInvoker extends AbstractServiceInvoker {
                 .timeout(readTimeout)
                 .method(request.getMethod(), body.length == 0
                         ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body));
-        for (String name : REQUEST_HEADERS) {
+        for (String name : requestHeaders) {
             String value = request.getHeader(name);
             if (value != null && !value.isBlank()) {
                 outbound.header(name, value);
