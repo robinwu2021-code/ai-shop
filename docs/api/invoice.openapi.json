@@ -1,0 +1,2232 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "发票 B 端接口（ADR-063）",
+    "version": "1.0.0",
+    "description": "多行业发票开立与台湾电子发票证明联。设计见 docs/technical/TDD-发票模块.md。证明联打印与补印走打印中心 /biz/print/requests（来源类型 INVOICE、场景 INVOICE_PROOF）。 C 端 /mp 部分见 TDD §8（载具优先）。"
+  },
+  "paths": {
+    "/biz/invoices": {
+      "post": {
+        "summary": "按来源单开票（同来源返回原发票）",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInvoiceReq"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "本店发票分页",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "periodCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "[0-9]{5}"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ISSUED",
+                "VOIDED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}": {
+      "get": {
+        "summary": "发票详情（明细、上传状态、折让）",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/void": {
+      "post": {
+        "summary": "当期作废",
+        "description": "权限 `biz:invoice:void`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "作废原因"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/allowances": {
+      "post": {
+        "summary": "开折让",
+        "description": "权限 `biz:invoice:void`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amountMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "含税折让金额（最小货币单位）"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "折让原因"
+                  }
+                },
+                "required": [
+                  "amountMinor",
+                  "reason"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/profile": {
+      "get": {
+        "summary": "本主体税制配置",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegimeProfileVO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "开通 / 修改税制",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 选的供应商不在该市场支持的供应商里回 26012（参数为供应商编码）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegimeProfileVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "regimeCode": {
+                    "type": "string",
+                    "description": "市场（税制）；不传 = 系统默认市场"
+                  },
+                  "sellerTaxId": {
+                    "type": "string",
+                    "description": "卖方统一编号"
+                  },
+                  "sellerName": {
+                    "type": "string",
+                    "description": "营业人名称"
+                  },
+                  "gatewayCode": {
+                    "type": "string",
+                    "description": "商家自选的开票供应商，须在该市场支持的供应商里（否则 26012）；不传或空串 = 跟随市场默认供应商"
+                  },
+                  "qrAesKeyHex": {
+                    "type": "string",
+                    "description": "财政部 QR 加密 AES Key（32 位十六进制），只写不读"
+                  },
+                  "memberCarrierType": {
+                    "type": "string",
+                    "description": "会员载具类别号"
+                  },
+                  "autoIssue": {
+                    "type": "boolean",
+                    "description": "付款成功后按预存买受人自动开立；不传 = 关"
+                  },
+                  "providerAccountCode": {
+                    "type": "string",
+                    "description": "加值中心分给商家的代号（鲸跃 officeid）；不传 = 清空"
+                  },
+                  "providerUser": {
+                    "type": "string",
+                    "description": "加值中心账号（鲸跃 posno），只写不读；与 providerPassword 同传才更新"
+                  },
+                  "providerPassword": {
+                    "type": "string",
+                    "description": "加值中心密码（鲸跃 posid），只写不读，进 secret 模块"
+                  },
+                  "rangeLowWater": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000,
+                    "description": "本期剩余号码提醒值；不传 = 不改（新开通默认 50）"
+                  },
+                  "autoFetchRanges": {
+                    "type": "boolean",
+                    "description": "余量不足 / 期末前自动向加值中心领号；不传 = 不改；只对服务商配号的通道（鲸跃）生效"
+                  }
+                },
+                "required": [
+                  "sellerTaxId",
+                  "sellerName"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/ranges": {
+      "get": {
+        "summary": "字轨号段",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "periodCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NumberRangeVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "登记字轨号段",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "regimeCode": {
+                    "type": "string",
+                    "description": "税制"
+                  },
+                  "periodCode": {
+                    "type": "string",
+                    "description": "期别，如 11512"
+                  },
+                  "track": {
+                    "type": "string",
+                    "description": "字轨两字母"
+                  },
+                  "startNo": {
+                    "type": "integer"
+                  },
+                  "endNo": {
+                    "type": "integer"
+                  },
+                  "storeNo": {
+                    "type": "string",
+                    "description": "空 = 主体内各店共用"
+                  }
+                },
+                "required": [
+                  "regimeCode",
+                  "periodCode",
+                  "track",
+                  "startNo",
+                  "endNo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/buyer-preferences": {
+      "put": {
+        "summary": "付款前预存买受人（载具 / 统编 / 捐赠），自动开立时使用",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`，主体取登录上下文。按主体税制校验，同一来源以最后一次为准。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sourceType",
+                  "sourceNo",
+                  "buyer"
+                ],
+                "properties": {
+                  "sourceType": {
+                    "type": "string",
+                    "description": "来源类型，SUB_ORDER"
+                  },
+                  "sourceNo": {
+                    "type": "string",
+                    "description": "来源单号"
+                  },
+                  "buyer": {
+                    "type": "object",
+                    "properties": {
+                      "taxId": {
+                        "type": "string",
+                        "description": "买方统编（打统编）"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "买方名称"
+                      },
+                      "carrierType": {
+                        "type": "string",
+                        "description": "载具类别：3J0002 手机条码 / CQ0001 自然人凭证 / 会员载具"
+                      },
+                      "carrierId": {
+                        "type": "string",
+                        "description": "载具号码"
+                      },
+                      "donateCode": {
+                        "type": "string",
+                        "description": "爱心码"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包，data 为空"
+          }
+        }
+      }
+    },
+    "/mp/invoice-carrier": {
+      "get": {
+        "summary": "我的常用载具",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CarrierVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "保存常用载具（第一个或 makeDefault 成为默认）",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarrierVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "carrierType",
+                  "carrierId"
+                ],
+                "properties": {
+                  "carrierType": {
+                    "type": "string",
+                    "description": "3J0002 / CQ0001"
+                  },
+                  "carrierId": {
+                    "type": "string",
+                    "description": "号码"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "名字"
+                  },
+                  "makeDefault": {
+                    "type": "boolean",
+                    "description": "设为默认"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/invoice-carrier/{carrierNo}/delete": {
+      "post": {
+        "summary": "删除常用载具",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "carrierNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoice/choice": {
+      "put": {
+        "summary": "给自己的订单选发票开法",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChoiceResultVO"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderNo",
+                  "kind"
+                ],
+                "properties": {
+                  "orderNo": {
+                    "type": "string",
+                    "description": "主订单号"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "CONSUMER / MEMBER / CARRIER / TAX_ID / DONATE"
+                  },
+                  "carrierType": {
+                    "type": "string",
+                    "description": "CARRIER 时"
+                  },
+                  "carrierId": {
+                    "type": "string",
+                    "description": "CARRIER 时"
+                  },
+                  "taxId": {
+                    "type": "string",
+                    "description": "TAX_ID 时"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "TAX_ID 时可填"
+                  },
+                  "donateCode": {
+                    "type": "string",
+                    "description": "DONATE 时"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoice": {
+      "get": {
+        "summary": "我的发票（跨商家）",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mp/sales-invoice/{invoiceNo}": {
+      "get": {
+        "summary": "我的发票详情",
+        "description": "要登录；买家身份只取登录态，入参不收用户号。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/provider-verification": {
+      "post": {
+        "summary": "核验加值中心账号",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 用已保存的账号查询服务商侧营业人资料，统编须一致；服务商回了 QR 金钥即存入 secret 模块。 服务商拒绝时回 26011（参数为服务商原文代码，如 invalid / exist）；主体通道不是加值中心时回 26008。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVerificationVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/provider-ranges": {
+      "post": {
+        "summary": "向加值中心取字轨号段",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 申请并取回一段号码入库（allocationOwner=PROVIDER，主体内各店共用）；同一段重复取回只入库一次。 服务商拒绝时回 26011（参数为服务商原文代码，如 invalid / exist）；主体通道不是加值中心时回 26008。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "periodCode": {
+                    "type": "string",
+                    "description": "期别（5 位，如 11512）；不传 = 当期"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/retransmissions": {
+      "post": {
+        "summary": "重传待人工处理的上传",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`。把这张发票（含其折让）状态为 NEEDS_REVIEW 的上传任务放回待发，报文不变原样再发；没有可重传的任务回 26008。账号问题造成的 HELD 不走这里 —— 核验账号通过即自动恢复。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void": {
+      "post": {
+        "summary": "作废折让",
+        "description": "权限 `biz:invoice:void`；门店取 `X-Store-No`。只能作废本期折让（跨期回 26006）；已作废回 26008；折让不属于该发票回 26005。作废后累计折让回退（全部折让作废后发票本身可作废），折让证明单不再出纸，生成 G0501 上传任务（鲸跃 UploadCancelAllowance）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "allowanceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "内部折让单号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "作废原因"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/upload-backlog": {
+      "get": {
+        "summary": "本门店上传积压",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`。列表页顶部提示用：逾期、即将到期、暂停、待人工的条数（含开立、作废、折让、作废折让的上传任务）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadBacklogVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/provider-checks": {
+      "post": {
+        "summary": "向服务商查单并对账",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`。调鲸跃 QueryInvoiceStatus：服务商已有这张票而本地开立上传未标送达的补记为已送达，服务商已作废而本地作废上传未标送达的同样补记；与本地不一致且无待补传任务时告警 INVOICE_PROVIDER_MISMATCH。通道不是加值中心类回 26008，服务商拒绝 / 不可达回 26011（参数为原文代码）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCheckVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-sellers": {
+      "get": {
+        "summary": "营业人一览（配置、本期余量、上传积压）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。problem：HELD 上传暂停 / OVERDUE 逾期 / REVIEW 待人工 / BACKLOG 有积压 / LOW_RANGE 余量低于水位。",
+        "parameters": [
+          {
+            "name": "gatewayCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "problem",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HELD",
+                "OVERDUE",
+                "REVIEW",
+                "BACKLOG",
+                "LOW_RANGE"
+              ]
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsSellerPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-sellers/{entityNo}/provider-verifications": {
+      "post": {
+        "summary": "代商家核验加值中心账号",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。通过即解除认证失败造成的上传暂停。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVerificationVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-sellers/{entityNo}/provider-ranges": {
+      "post": {
+        "summary": "代商家向加值中心领号段",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。请求体可省；periodCode 省略取本期。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "periodCode": {
+                    "type": "string",
+                    "pattern": "[0-9]{5}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoice-transmissions": {
+      "get": {
+        "summary": "上传任务（跨商家）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。overdue=true 只看已过法定期限未送达的；折让类任务的 invoiceNo / fiscalNumber 取其原发票。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "SENDING",
+                "SENT",
+                "FAILED",
+                "HELD",
+                "NEEDS_REVIEW"
+              ]
+            }
+          },
+          {
+            "name": "overdue",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsTransmissionPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices": {
+      "get": {
+        "summary": "发票查询（跨商家）",
+        "description": "权限 `finance:invoice:read`；租户取登录上下文，跨商家。",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fiscalNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "periodCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "[0-9]{5}"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ISSUED",
+                "VOIDED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices/{invoiceNo}/retransmissions": {
+      "post": {
+        "summary": "代商家重传待人工处理的上传",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。报文不变。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/sales-invoices/{invoiceNo}/provider-checks": {
+      "post": {
+        "summary": "代商家向服务商查单并对账",
+        "description": "权限 `finance:invoice:verify`；与 B 端同一服务、同一规则，运营代商家操作，操作人记运营账号。规则同 `/biz/invoices/{invoiceNo}/provider-checks`。",
+        "parameters": [
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCheckVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/providers": {
+      "get": {
+        "summary": "本市场商家可选的开票供应商",
+        "description": "权限 `biz:invoice:setup`。regimeCode 不传取系统默认市场（shop.invoice.default-regime）。默认供应商（shop.invoice.regimes.<市场>.default-gateway）排第一；可选范围取 shop.invoice.regimes.<市场>.gateways，没配则为所有声明服务该市场的供应商。各项能力决定页面出现账号输入、核验、领号段。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regimeCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 16
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderOptionsVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoices/{invoiceNo}/print-facts": {
+      "get": {
+        "summary": "本张发票可模拟打印的打印件",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`。应印的证明联（ISSUED 且 printMark）、交易明细（ISSUED）、未作废的折让证明单；作废的发票不出证明联与明细。factRef 原样作为 `POST /biz/print/simulations` 的 source.factRef（发票打印模拟页用，不出纸、不建正式打印任务）。别店的发票回 26005。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoicePrintFactVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "IssueInvoiceReq": {
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "type": "string",
+            "description": "来源类型，首期 SUB_ORDER（零售/餐饮/美业共用）"
+          },
+          "sourceNo": {
+            "type": "string",
+            "description": "来源单号"
+          },
+          "buyer": {
+            "type": "object",
+            "properties": {
+              "taxId": {
+                "type": "string",
+                "description": "买方统编（打统编）"
+              },
+              "name": {
+                "type": "string",
+                "description": "买方名称"
+              },
+              "carrierType": {
+                "type": "string",
+                "description": "载具类别：3J0002 手机条码 / CQ0001 自然人凭证 / 会员载具"
+              },
+              "carrierId": {
+                "type": "string",
+                "description": "载具号码"
+              },
+              "donateCode": {
+                "type": "string",
+                "description": "爱心码"
+              }
+            }
+          }
+        },
+        "required": [
+          "sourceType",
+          "sourceNo"
+        ]
+      },
+      "InvoiceLineVO": {
+        "type": "object",
+        "properties": {
+          "lineNo": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "description": "品名"
+          },
+          "quantity": {
+            "type": "string",
+            "description": "数量"
+          },
+          "unit": {
+            "type": "string",
+            "description": "单位"
+          },
+          "unitPriceMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "单价"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "含税金额"
+          },
+          "taxType": {
+            "type": "string",
+            "description": "课税别 TAXABLE / ZERO / EXEMPT"
+          }
+        }
+      },
+      "AllowanceVO": {
+        "type": "object",
+        "properties": {
+          "allowanceNo": {
+            "type": "string",
+            "description": "折让单号"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "含税折让"
+          },
+          "taxMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "其中税额"
+          },
+          "reason": {
+            "type": "string",
+            "description": "原因"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "时间"
+          },
+          "fiscalAllowanceNumber": {
+            "type": "string",
+            "description": "对外折让单号（发票号码 + 两位序号）"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / VOIDED"
+          },
+          "voidReason": {
+            "type": "string",
+            "description": "作废原因"
+          },
+          "voidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "作废时间"
+          }
+        }
+      },
+      "InvoiceVO": {
+        "type": "object",
+        "properties": {
+          "invoiceNo": {
+            "type": "string",
+            "description": "内部单号"
+          },
+          "regimeCode": {
+            "type": "string",
+            "description": "税制"
+          },
+          "industryCode": {
+            "type": "string",
+            "description": "行业"
+          },
+          "sourceType": {
+            "type": "string",
+            "description": "来源类型"
+          },
+          "sourceNo": {
+            "type": "string",
+            "description": "来源单号"
+          },
+          "storeNo": {
+            "type": "string",
+            "description": "门店"
+          },
+          "fiscalNumber": {
+            "type": "string",
+            "description": "法定发票号码"
+          },
+          "periodCode": {
+            "type": "string",
+            "description": "期别"
+          },
+          "randomCode": {
+            "type": "string",
+            "description": "随机码"
+          },
+          "issuedAt": {
+            "type": "string",
+            "description": "开立时间"
+          },
+          "buyerType": {
+            "type": "string",
+            "description": "B2C / B2B"
+          },
+          "buyerTaxId": {
+            "type": "string",
+            "description": "买方统编"
+          },
+          "carrierType": {
+            "type": "string",
+            "description": "载具类别"
+          },
+          "carrierId": {
+            "type": "string",
+            "description": "载具号码"
+          },
+          "donateCode": {
+            "type": "string",
+            "description": "爱心码"
+          },
+          "printMark": {
+            "type": "boolean",
+            "description": "是否印证明联"
+          },
+          "currency": {
+            "type": "string",
+            "description": "币种"
+          },
+          "salesMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "应税销售额（台湾 B2C 为含税）"
+          },
+          "zeroTaxSalesMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "零税率销售额"
+          },
+          "freeTaxSalesMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "免税销售额"
+          },
+          "taxMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税额"
+          },
+          "totalMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "总计"
+          },
+          "allowedMinor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "累计折让"
+          },
+          "status": {
+            "type": "string",
+            "description": "ISSUED / VOIDED"
+          },
+          "voidReason": {
+            "type": "string",
+            "description": "作废原因"
+          },
+          "uploadStatus": {
+            "type": "string",
+            "description": "开立报文上传状态：PENDING / SENDING / SENT / FAILED（可重试，退避中）/ HELD（账号认证失败，主体上传已暂停，核验账号后自动恢复）/ NEEDS_REVIEW（服务商拒收，待人工处理后重传）"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineVO"
+            }
+          },
+          "allowances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllowanceVO"
+            }
+          },
+          "sellerName": {
+            "type": "string",
+            "description": "营业人名称（开立当下冻结）"
+          },
+          "sellerTaxId": {
+            "type": "string",
+            "description": "营业人统编"
+          },
+          "uploadDeadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "开立报文的法定上报期限（台湾 B2C 开立后 48 小时、B2B 7 日），UTC"
+          }
+        }
+      },
+      "InvoicePage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceVO"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "RegimeProfileVO": {
+        "type": "object",
+        "properties": {
+          "regimeCode": {
+            "type": "string",
+            "description": "税制"
+          },
+          "sellerTaxId": {
+            "type": "string",
+            "description": "卖方统编"
+          },
+          "sellerName": {
+            "type": "string",
+            "description": "营业人名称"
+          },
+          "gatewayCode": {
+            "type": "string",
+            "description": "当前生效的供应商"
+          },
+          "gatewaySource": {
+            "type": "string",
+            "enum": [
+              "MERCHANT",
+              "DEFAULT"
+            ],
+            "description": "MERCHANT 商家自选 / DEFAULT 跟随市场默认"
+          },
+          "qrKeyConfigured": {
+            "type": "boolean",
+            "description": "QR 密钥是否已配置"
+          },
+          "memberCarrierType": {
+            "type": "string",
+            "description": "会员载具类别号"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / SUSPENDED"
+          },
+          "autoIssue": {
+            "type": "boolean",
+            "description": "付款成功后自动开立"
+          },
+          "providerAccountCode": {
+            "type": "string",
+            "description": "加值中心商家代号"
+          },
+          "providerCredentialConfigured": {
+            "type": "boolean",
+            "description": "加值中心账号密码是否已保存"
+          },
+          "providerHoldReason": {
+            "type": "string",
+            "description": "上传暂停原因（账号认证失败时系统写入，核验通过后清空）；空 = 正常"
+          },
+          "providerHeldAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "暂停时间"
+          },
+          "rangeLowWater": {
+            "type": "integer",
+            "description": "本期剩余号码提醒值（默认 50）"
+          },
+          "autoFetchRanges": {
+            "type": "boolean",
+            "description": "余量不足 / 期末前自动向加值中心领号"
+          },
+          "currentPeriod": {
+            "type": "string",
+            "description": "本期期别"
+          },
+          "currentRemaining": {
+            "type": "integer",
+            "description": "本期可用号码数（主体内全部有效号段，含门店专用）"
+          },
+          "nextPeriod": {
+            "type": "string",
+            "description": "下一期期别"
+          },
+          "nextRemaining": {
+            "type": "integer",
+            "description": "下一期已备号码数"
+          }
+        }
+      },
+      "NumberRangeVO": {
+        "type": "object",
+        "properties": {
+          "rangeNo": {
+            "type": "string",
+            "description": "号段单号"
+          },
+          "regimeCode": {
+            "type": "string",
+            "description": "税制"
+          },
+          "storeNo": {
+            "type": "string",
+            "description": "* = 共用"
+          },
+          "periodCode": {
+            "type": "string",
+            "description": "期别"
+          },
+          "track": {
+            "type": "string",
+            "description": "字轨"
+          },
+          "startNo": {
+            "type": "integer"
+          },
+          "endNo": {
+            "type": "integer"
+          },
+          "nextNo": {
+            "type": "integer"
+          },
+          "remaining": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / EXHAUSTED"
+          },
+          "allocationOwner": {
+            "type": "string",
+            "description": "MANUAL 商家登记 / PROVIDER 加值中心配给"
+          }
+        }
+      },
+      "CarrierVO": {
+        "type": "object",
+        "properties": {
+          "carrierNo": {
+            "type": "string",
+            "description": "载具记录号"
+          },
+          "carrierType": {
+            "type": "string",
+            "description": "3J0002 手机条码 / CQ0001 自然人凭证"
+          },
+          "carrierId": {
+            "type": "string",
+            "description": "载具号码"
+          },
+          "label": {
+            "type": "string",
+            "description": "买家起的名字"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "默认载具"
+          }
+        }
+      },
+      "ChoiceResultVO": {
+        "type": "object",
+        "properties": {
+          "sourceNo": {
+            "type": "string",
+            "description": "子单号"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "SAVED / ISSUED / ALREADY_ISSUED / NOT_ENABLED / MEMBER_CARRIER_UNAVAILABLE"
+          },
+          "fiscalNumber": {
+            "type": "string",
+            "description": "已开立时的发票号码"
+          }
+        }
+      },
+      "ProviderVerificationVO": {
+        "type": "object",
+        "properties": {
+          "taxId": {
+            "type": "string",
+            "description": "服务商侧的营业人统编（须与本主体一致）"
+          },
+          "name": {
+            "type": "string",
+            "description": "服务商侧的营业人名称"
+          },
+          "qrKeyStored": {
+            "type": "boolean",
+            "description": "服务商回传的 QR 金钥已存进 secret 模块"
+          }
+        }
+      },
+      "UploadBacklogVO": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "description": "待发、发送中、退避中"
+          },
+          "held": {
+            "type": "integer",
+            "description": "账号问题暂停中"
+          },
+          "needsReview": {
+            "type": "integer",
+            "description": "服务商拒收，待人工处理"
+          },
+          "dueSoon": {
+            "type": "integer",
+            "description": "已过预警时点（期限窗口过半）、未到期限"
+          },
+          "overdue": {
+            "type": "integer",
+            "description": "已过法定期限仍未送达"
+          },
+          "oldestDeadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "未送达任务中最早的期限；无积压为空"
+          }
+        }
+      },
+      "ProviderCheckVO": {
+        "type": "object",
+        "properties": {
+          "providerState": {
+            "type": "string",
+            "description": "服务商侧：ISSUED / VOIDED / PARTIALLY_ALLOWED / FULLY_ALLOWED / NOT_FOUND"
+          },
+          "providerCode": {
+            "type": "string",
+            "description": "服务商原文（鲸跃 0 / 1 / 2 / 3 / nodata）"
+          },
+          "expectedState": {
+            "type": "string",
+            "description": "按本地状态应有的服务商状态"
+          },
+          "verdict": {
+            "type": "string",
+            "description": "CONSISTENT / PENDING_UPLOAD（本地还有未送达的上传）/ MISMATCH（需人工核对）"
+          },
+          "reconciled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "本次补记为已送达的上传（ISSUE / VOID）"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OpsSellerVO": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "regimeCode": {
+            "type": "string"
+          },
+          "sellerTaxId": {
+            "type": "string"
+          },
+          "sellerName": {
+            "type": "string"
+          },
+          "gatewayCode": {
+            "type": "string",
+            "description": "当前生效的供应商"
+          },
+          "gatewaySource": {
+            "type": "string",
+            "enum": [
+              "MERCHANT",
+              "DEFAULT"
+            ],
+            "description": "MERCHANT 商家自选 / DEFAULT 跟随市场默认"
+          },
+          "status": {
+            "type": "string"
+          },
+          "providerAccountCode": {
+            "type": "string"
+          },
+          "providerCredentialConfigured": {
+            "type": "boolean"
+          },
+          "providerHoldReason": {
+            "type": "string"
+          },
+          "providerHeldAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currentPeriod": {
+            "type": "string"
+          },
+          "currentRemaining": {
+            "type": "integer"
+          },
+          "rangeLowWater": {
+            "type": "integer"
+          },
+          "autoFetchRanges": {
+            "type": "boolean"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "needsReview": {
+            "type": "integer"
+          },
+          "dueSoon": {
+            "type": "integer"
+          },
+          "overdue": {
+            "type": "integer"
+          }
+        }
+      },
+      "OpsTransmissionVO": {
+        "type": "object",
+        "properties": {
+          "transmissionNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "messageType": {
+            "type": "string"
+          },
+          "refNo": {
+            "type": "string"
+          },
+          "invoiceNo": {
+            "type": "string"
+          },
+          "fiscalNumber": {
+            "type": "string"
+          },
+          "gatewayCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reportDeadlineAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OpsSellerPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsSellerVO"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "OpsTransmissionPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsTransmissionVO"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "ProviderOptionVO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "numbering": {
+            "type": "string",
+            "enum": [
+              "LOCAL_RANGE",
+              "PROVIDER_RANGE",
+              "PROVIDER_ONLINE",
+              "LOCAL_SEQUENCE"
+            ]
+          },
+          "reporting": {
+            "type": "string",
+            "enum": [
+              "ASYNC_UPLOAD",
+              "FILE_DROP",
+              "NETWORK_DELIVERY",
+              "SYNC_ON_ISSUE"
+            ]
+          },
+          "requiresAccount": {
+            "type": "boolean"
+          },
+          "verifiable": {
+            "type": "boolean"
+          },
+          "rangeProvided": {
+            "type": "boolean"
+          },
+          "queryable": {
+            "type": "boolean"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProviderOptionsVO": {
+        "type": "object",
+        "properties": {
+          "regimeCode": {
+            "type": "string"
+          },
+          "defaultGatewayCode": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderOptionVO"
+            }
+          }
+        }
+      },
+      "PrintFactRef": {
+        "type": "object",
+        "properties": {
+          "tenantNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "factNo": {
+            "type": "string"
+          },
+          "bizRevision": {
+            "type": "string"
+          },
+          "scene": {
+            "type": "string"
+          },
+          "snapshotHash": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoicePrintFactVO": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "INVOICE_PROOF",
+              "INVOICE_DETAIL",
+              "INVOICE_ALLOWANCE"
+            ]
+          },
+          "docNo": {
+            "type": "string",
+            "description": "发票号或折让单号"
+          },
+          "factRef": {
+            "$ref": "#/components/schemas/PrintFactRef"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="12">
+  <title>供应商适配类图</title>
+  <desc>三层：接口层（InvoiceProvider 与能力接口，领域定义）；抽象层（AbstractInvoiceProvider 模板基类，下分 SOAP、HTTP 接口（再分加密与签名）、文件交换、网络接入点五个形态抽象类）；厂商层（鲸跃继承 SOAP，绿界与蓝新继承加密接口，光贸与大陆服务商继承签名接口，Turnkey 继承文件交换，Peppol 接入点继承网络接入点，Stub 直接继承基类）。编号方式不进继承树，由能力接口与 ProviderProfile 声明。</desc>
+  <defs>
+    <marker id="inh" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M0 0L12 6L0 12z" fill="#ffffff" stroke="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="640" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">供应商适配：接口 → 模板基类 → 形态抽象类 → 厂商</text>
+
+  <!-- layer labels -->
+  <text x="24" y="62" font-weight="600" fill="#854d0e">接口层 · invoice-domain gateway</text>
+  <text x="24" y="196" font-weight="600" fill="#3730a3">抽象层 · invoice-channel base</text>
+  <text x="24" y="470" font-weight="600" fill="#9a3412">厂商层 · invoice-channel 各厂商包</text>
+
+  <!-- interfaces -->
+  <rect x="24" y="72" width="250" height="80" rx="6" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="36" y="92" font-weight="600">«interface» InvoiceProvider</text>
+  <text x="36" y="112">code() · profile()</text>
+  <text x="36" y="130" fill="#475569">ProviderProfile：地区 / 编号方式 /</text>
+  <text x="36" y="146" fill="#475569">上报方式 / 凭据字段</text>
+  <rect x="294" y="72" width="682" height="80" rx="6" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="306" y="92" font-weight="600">«interface» 能力接口（厂商只实现自己有的）</text>
+  <text x="306" y="112">IssueCapability · VoidCapability · AllowanceCapability · AllowanceVoidCapability</text>
+  <text x="306" y="130">QueryCapability · RangeCapability · AccountCapability · PrintDataCapability</text>
+  <text x="306" y="146" fill="#475569">参数 ProviderCall = 账户上下文（无密钥）+ 现取凭据 + 追踪号；返回 ProviderResult</text>
+
+  <!-- base -->
+  <rect x="300" y="206" width="400" height="74" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="312" y="226" font-weight="600">«abstract» AbstractInvoiceProvider</text>
+  <text x="312" y="246">final execute()：现取凭据 → 按能力分发 → 异常归类 → 留痕</text>
+  <text x="312" y="264" fill="#475569">abstract resultCodes() · final classify()</text>
+  <path d="M500 206 V170 H150 V152" stroke="#475569" stroke-width="1.3" fill="none" stroke-dasharray="5 3" marker-end="url(#inh)"/>
+
+  <!-- family abstracts -->
+  <rect x="24" y="320" width="176" height="86" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="34" y="340" font-weight="600">AbstractSoap…</text>
+  <text x="34" y="358">namespace()</text>
+  <text x="34" y="374">authFields()</text>
+  <text x="34" y="392" fill="#475569">invoke() → &lt;return&gt;</text>
+
+  <rect x="216" y="300" width="300" height="56" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="226" y="320" font-weight="600">AbstractHttpApi…</text>
+  <text x="226" y="340" fill="#475569">path() · seal() · open() · callApi()</text>
+  <rect x="216" y="372" width="146" height="64" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="224" y="392" font-weight="600" font-size="11">AbstractEncryptedApi</text>
+  <text x="224" y="410">cipher() · envelope()</text>
+  <text x="224" y="426" fill="#475569">AES 整体加密</text>
+  <rect x="370" y="372" width="146" height="64" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="378" y="392" font-weight="600" font-size="11">AbstractSignedApi</text>
+  <text x="378" y="410">signer() · envelope()</text>
+  <text x="378" y="426" fill="#475569">明文 + 签名</text>
+  <path d="M289 372 V356 M443 372 V356" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="532" y="320" width="196" height="86" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="542" y="340" font-weight="600">AbstractFileExchange…</text>
+  <text x="542" y="358">render() · target()</text>
+  <text x="542" y="374">parseReceipt()</text>
+  <text x="542" y="392" fill="#475569">drop()：原子写文件</text>
+
+  <rect x="744" y="320" width="232" height="86" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="754" y="340" font-weight="600">AbstractNetwork…（预留）</text>
+  <text x="754" y="358">toNetworkDocument()</text>
+  <text x="754" y="374">parseAcknowledgement()</text>
+  <text x="754" y="392" fill="#475569">继承 HttpApi（未画）</text>
+
+  <path d="M112 320 V292 H300" stroke="#475569" stroke-width="1.3" fill="none" marker-end="url(#inh)"/>
+  <path d="M366 300 V280" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+  <path d="M630 320 V292 H700" stroke="#475569" stroke-width="1.3" fill="none" marker-end="url(#inh)"/>
+  <path d="M860 320 V250 H700" stroke="#475569" stroke-width="1.3" fill="none" marker-end="url(#inh)"/>
+
+  <!-- vendors -->
+  <rect x="24" y="480" width="176" height="64" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="34" y="500" font-weight="600" font-size="11">CetustekInvoiceProvider</text>
+  <text x="34" y="518">鲸跃 · 服务商配号段</text>
+  <text x="34" y="534" fill="#475569">已实现，待迁</text>
+  <path d="M112 480 V406" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="216" y="480" width="146" height="64" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="224" y="500" font-weight="600" font-size="11">EcpayInvoiceProvider</text>
+  <text x="224" y="518">绿界 · 在线给号</text>
+  <text x="224" y="534" fill="#475569">EzpayInvoiceProvider</text>
+  <path d="M289 480 V436" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="370" y="480" width="146" height="64" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="378" y="500" font-weight="600" font-size="11">AmegoInvoiceProvider</text>
+  <text x="378" y="518">光贸（待核实）</text>
+  <text x="378" y="534" fill="#475569">大陆数电票服务商</text>
+  <path d="M443 480 V436" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="532" y="480" width="196" height="64" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="542" y="500" font-weight="600">TurnkeyInvoiceProvider</text>
+  <text x="542" y="518">财政部 · 商家自领号段</text>
+  <text x="542" y="534" fill="#475569">已实现，待迁</text>
+  <path d="M630 480 V406" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="744" y="480" width="232" height="64" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="754" y="500" font-weight="600">PeppolAspInvoiceProvider</text>
+  <text x="754" y="518">AE / EU 接入点（预留）</text>
+  <text x="754" y="534" fill="#475569">营业人自编连续号</text>
+  <path d="M860 480 V406" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <rect x="744" y="206" width="232" height="44" rx="6" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="754" y="226" font-weight="600">StubInvoiceProvider</text>
+  <text x="754" y="242" fill="#475569">直接继承基类，全部能力</text>
+  <path d="M744 228 H700" stroke="#475569" stroke-width="1.3" marker-end="url(#inh)"/>
+
+  <!-- note -->
+  <rect x="24" y="566" width="952" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="588" font-weight="600">编号方式不进继承树</text>
+  <text x="36" y="608" fill="#334155">同为 SOAP 或加密接口，可能配号段也可能在线给号 —— 由 ProviderProfile.numberingMode 与实现的能力接口声明，领域的 NumberingStrategy 据此走分支</text>
+</svg>

@@ -15,7 +15,8 @@ const MOVED = [
 const REPORTING_HREFS = new Set(["/mall?tab=global-orders", "/mall?tab=global-claims", "/mall?tab=cash-summary", "/mall?tab=cash-details"]);
 // 接口资源（V680，TDD-网关层与统一权限 §2.23）：挂 system:param:read 的新叶子，有这个码的角色各多这一条
 const API_RESOURCE_HREF = "/system?tab=apiResource";
-const ADDED_HREFS = new Set([...REPORTING_HREFS, API_RESOURCE_HREF]);
+// 发票模块的「电子发票」（/e-invoices，invoice V10 / V14）与报表、API 资源一样是本次快照之后新增的菜单点
+const ADDED_HREFS = new Set([...REPORTING_HREFS, API_RESOURCE_HREF, "/e-invoices"]);
 const LEGACY_ADMISSION_HREFS = new Set(["/merchants?tab=on-behalf", "/merchants?tab=self-operated"]);
 const canonicalHrefs = (values: string[]) => [...new Set(values.map(href => LEGACY_ADMISSION_HREFS.has(href) ? "/merchants" : href))].sort();
 const settings = () => NAV.find(s => s.key === "iam")!;
@@ -36,7 +37,8 @@ describe("platform settings incremental migration", () => {
       href: l.href, perm: l.perm, ready: l.ready, phase: l.phase, soon: l.soon, gated: l.gated, matrix: l.matrix,
     })).sort((a, b) => a.href.localeCompare(b.href));
     expect(identities(before as NavSection[])).toHaveLength(151);
-    expect(identities(NAV)).toHaveLength(154);
+    // 155 = 154 + 发票模块的「电子发票」
+    expect(identities(NAV)).toHaveLength(155);
     const admission = NAV.flatMap(s => s.children ?? []).find(l => l.href === "/merchants")!;
     expect(admission.legacyHrefs).toEqual([...LEGACY_ADMISSION_HREFS]);
     expect(admission.anyPerms).toEqual(["merchant:apply:audit", "merchant:apply:onbehalf", "merchant:selfop:create"]);

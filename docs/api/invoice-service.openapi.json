@@ -1,0 +1,2349 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "发票服务 · 营业人、供应商账户与凭据（设计稿）",
+    "version": "0.1.0-draft",
+    "description": "商家自填（managedBy=MERCHANT，B 端）与平台代维护（managedBy=PLATFORM，运营端）两种凭据维护方式，不设审核。设计见 docs/technical/TDD-发票服务-总体设计.md §13。开票、作废、折让等票据接口见 docs/api/invoice.openapi.json。"
+  },
+  "tags": [
+    {
+      "name": "B端 · 发票设置"
+    },
+    {
+      "name": "运营端 · 供应商"
+    },
+    {
+      "name": "运营端 · 账户与营业人"
+    }
+  ],
+  "paths": {
+    "/biz/invoice-setup/providers": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "可用供应商与凭据字段",
+        "x-permission": "biz:invoice:setup",
+        "description": "本地区可用（地区已开通、能力已启用）的供应商，带录入表单字段定义",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "regionCode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码，如 TW"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/sellers": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "本主体各地区营业人",
+        "x-permission": "biz:invoice:setup",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SellerVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/sellers/{regionCode}": {
+      "put": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "建 / 改营业人",
+        "x-permission": "biz:invoice:setup",
+        "description": "不存在则建；QR 金钥只写不读，营业人下有平台代维护账户时由运营维护",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "regionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SellerReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26004,
+          26012,
+          26010
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "本主体全部账户",
+        "x-permission": "biz:invoice:setup",
+        "description": "含平台代维护的账户（editable=false，只读）",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "regionCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码，可空"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "状态，可空"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "新建账户（商家自填）",
+        "x-permission": "biz:invoice:setup",
+        "description": "managedBy=MERCHANT。保存首版凭据为 PENDING 后立即核验：通过 → 账户 ACTIVE、凭据 CURRENT，营业人无默认绑定时自动绑定 '*'；不通过 → 账户保持 ONBOARDING，返回 200 + 账户视图（credential.pending.status=FAILED）。供应商不支持核验时直接 ACTIVE。不设审核",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26001,
+          26013,
+          26014,
+          26011,
+          26010
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "账户详情",
+        "x-permission": "biz:invoice:setup",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26005
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}/credentials": {
+      "put": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "轮换凭据",
+        "x-permission": "biz:invoice:setup",
+        "description": "新凭据存为 PENDING → 自动核验 → 通过则切为 CURRENT、旧版本 RETIRED；失败则旧版本继续服务。仅 managedBy=MERCHANT",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialRotateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26013,
+          26011,
+          26010
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}/verifications": {
+      "post": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "重新核验",
+        "x-permission": "biz:invoice:setup",
+        "description": "用当前凭据核验；鲸跃会同步回传 QR 金钥。仅 managedBy=MERCHANT",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26011,
+          26008
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}/status": {
+      "put": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "启用 / 暂停 / 关闭",
+        "x-permission": "biz:invoice:setup",
+        "description": "ACTIVE 需凭据已核验通过（或供应商无核验能力）；CLOSED 前须无绑定、无未完成上传、无未知态票。仅 managedBy=MERCHANT",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountStatusReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008,
+          26014,
+          26015
+        ]
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}/events": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "账户事件",
+        "x-permission": "biz:invoice:setup",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "页码，从 1 起"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "每页条数，≤100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountEventPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/accounts/{accountNo}/ranges": {
+      "post": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "向供应商领号段",
+        "x-permission": "biz:invoice:setup",
+        "description": "仅号段类供应商（鲸跃）；同一段重复取回只入库一次。仅 managedBy=MERCHANT",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangeFetchReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008,
+          26011,
+          26009
+        ]
+      }
+    },
+    "/biz/invoice-setup/bindings": {
+      "get": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "门店 → 账户绑定",
+        "x-permission": "biz:invoice:setup",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BindingVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/bindings/{storeNo}": {
+      "put": {
+        "tags": [
+          "B端 · 发票设置"
+        ],
+        "summary": "改门店绑定",
+        "x-permission": "biz:invoice:setup",
+        "description": "storeNo='*' 为营业人级默认；只影响之后的新票，已开的票沿原账户作废 / 折让。目标账户须为 MERCHANT 且 ACTIVE",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "当前门店；主体取登录上下文，入参不收主体号"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "门店号或 *"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BindingVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008
+        ]
+      }
+    },
+    "/invoice-ops/v1/providers": {
+      "get": {
+        "tags": [
+          "运营端 · 供应商"
+        ],
+        "summary": "供应商列表",
+        "x-permission": "ops:invoice:provider",
+        "description": "含地区开通、能力、凭据字段定义",
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/providers/{providerCode}": {
+      "put": {
+        "tags": [
+          "运营端 · 供应商"
+        ],
+        "summary": "改供应商开关与地址",
+        "x-permission": "ops:invoice:provider",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "providerCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "供应商码"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderUpdateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/providers/{providerCode}/regions/{regionCode}": {
+      "put": {
+        "tags": [
+          "运营端 · 供应商"
+        ],
+        "summary": "开通 / 关闭某地区",
+        "x-permission": "ops:invoice:provider",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "providerCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "供应商码"
+          },
+          {
+            "name": "regionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderRegionReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/sellers": {
+      "get": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "营业人查询",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "主体号"
+          },
+          {
+            "name": "regionCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SellerVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/sellers/{entityNo}/{regionCode}": {
+      "put": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "代建 / 代改营业人",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "主体号"
+          },
+          {
+            "name": "regionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "地区码"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SellerReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26004,
+          26012,
+          26010
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts": {
+      "get": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "账户查询",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "主体号"
+          },
+          {
+            "name": "providerCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "供应商"
+          },
+          {
+            "name": "managedBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MERCHANT / PLATFORM"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "状态"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "页码"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "每页 ≤100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "代建账户（平台代维护）",
+        "x-permission": "ops:invoice:account",
+        "description": "managedBy=PLATFORM；流程同 B 端新建：首版凭据 PENDING → 核验通过即 ACTIVE，不设审核",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpsAccountCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26001,
+          26013,
+          26014,
+          26011,
+          26010
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts/imports": {
+      "post": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "批量导入账户",
+        "x-permission": "ops:invoice:account",
+        "description": "存量迁移（如 UME 鲸跃账号）；逐行独立处理与返回，一行失败不影响其它行；managedBy=PLATFORM",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountImportReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountImportResultVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}": {
+      "get": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "账户详情",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26005
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/credentials": {
+      "put": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "轮换凭据",
+        "x-permission": "ops:invoice:account",
+        "description": "仅 managedBy=PLATFORM；规则同 B 端",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialRotateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26013,
+          26011,
+          26010
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/verifications": {
+      "post": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "核验",
+        "x-permission": "ops:invoice:account",
+        "description": "任一维护方的账户都可触发（不改凭据）",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26011,
+          26008
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/status": {
+      "put": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "改状态",
+        "x-permission": "ops:invoice:account",
+        "description": "PLATFORM 账户可设任意状态；MERCHANT 账户只允许设 SUSPENDED（止损）",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountStatusReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008,
+          26014,
+          26015
+        ]
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/management": {
+      "put": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "接管 / 交还",
+        "x-permission": "ops:invoice:account",
+        "description": "只改 managedBy 并记事件；凭据、状态、绑定、号段都不动",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/events": {
+      "get": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "账户事件",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "页码"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "每页 ≤100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountEventPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/accounts/{accountNo}/ranges": {
+      "post": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "代领号段",
+        "x-permission": "ops:invoice:account",
+        "description": "仅 managedBy=PLATFORM 且号段类供应商",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "accountNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "账户业务号"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangeFetchReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NumberRangeVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008,
+          26011,
+          26009
+        ]
+      }
+    },
+    "/invoice-ops/v1/bindings": {
+      "get": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "门店绑定查询",
+        "x-permission": "ops:invoice:account",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "主体号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BindingVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice-ops/v1/bindings/{entityNo}/{storeNo}": {
+      "put": {
+        "tags": [
+          "运营端 · 账户与营业人"
+        ],
+        "summary": "代改门店绑定",
+        "x-permission": "ops:invoice:account",
+        "description": "目标账户须为 PLATFORM 且 ACTIVE；只影响之后的新票",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "幂等键，同键重复提交返回首次结果"
+          },
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "主体号"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "门店号或 *"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包 {code, message, data}；此处为 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BindingVO"
+                }
+              }
+            }
+          }
+        },
+        "x-errors": [
+          26012,
+          26008
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CredentialFieldVO": {
+        "type": "object",
+        "properties": {
+          "fieldCode": {
+            "type": "string",
+            "description": "字段码，如 office_id / pos_no / hash_key"
+          },
+          "labelKey": {
+            "type": "string",
+            "description": "多语文案键"
+          },
+          "secret": {
+            "type": "boolean",
+            "description": "true = 只写不读，回显为掩码"
+          },
+          "accountCode": {
+            "type": "boolean",
+            "description": "true = 该字段即账户代号 providerAccountCode"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "格式正则，可空"
+          },
+          "maxLength": {
+            "type": "integer"
+          },
+          "sortNo": {
+            "type": "integer"
+          }
+        }
+      },
+      "ProviderVO": {
+        "type": "object",
+        "properties": {
+          "providerCode": {
+            "type": "string",
+            "description": "CETUSTEK / ECPAY / TURNKEY / STUB"
+          },
+          "name": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string",
+            "description": "VALUE_ADDED_CENTER / GOV_DIRECT / ASP / TEST"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / DISABLED"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "已开通地区码"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderProductVO"
+            }
+          },
+          "credentialFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialFieldVO"
+            },
+            "description": "录入表单字段，按 sortNo 排序"
+          }
+        }
+      },
+      "ProviderProductVO": {
+        "type": "object",
+        "properties": {
+          "regionCode": {
+            "type": "string"
+          },
+          "docType": {
+            "type": "string",
+            "description": "B2C / B2B"
+          },
+          "numberingMode": {
+            "type": "string",
+            "description": "LOCAL_RANGE / PROVIDER_RANGE / PROVIDER_ONLINE / LOCAL_SEQUENCE"
+          },
+          "reportMode": {
+            "type": "string",
+            "description": "ASYNC_UPLOAD / SYNC_ON_ISSUE / FILE_DROP"
+          },
+          "supportsVoid": {
+            "type": "boolean"
+          },
+          "supportsAllowance": {
+            "type": "boolean"
+          },
+          "supportsAllowanceVoid": {
+            "type": "boolean"
+          },
+          "supportsQuery": {
+            "type": "boolean"
+          },
+          "supportsVerify": {
+            "type": "boolean"
+          },
+          "printMode": {
+            "type": "string",
+            "description": "LOCAL / PROVIDER_URL"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProviderUpdateReq": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / DISABLED",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
+          },
+          "sandboxEndpoint": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "productionEndpoint": {
+            "type": "string",
+            "maxLength": 255
+          }
+        }
+      },
+      "ProviderRegionReq": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SellerReq": {
+        "type": "object",
+        "properties": {
+          "taxId": {
+            "type": "string",
+            "description": "统编 / TRN，按地区税制校验",
+            "maxLength": 32
+          },
+          "legalName": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "autoIssue": {
+            "type": "boolean",
+            "description": "付款成功后自动开立；不传 = 关"
+          },
+          "memberCarrierType": {
+            "type": "string",
+            "description": "会员载具类别号；不传 = 清空",
+            "maxLength": 16
+          },
+          "qrAesKeyHex": {
+            "type": "string",
+            "description": "QR 加密金钥（32 位十六进制），只写不读；不传 = 不改",
+            "pattern": "^[0-9A-Fa-f]{32}$"
+          }
+        },
+        "required": [
+          "taxId",
+          "legalName"
+        ]
+      },
+      "SellerVO": {
+        "type": "object",
+        "properties": {
+          "sellerNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "regionCode": {
+            "type": "string"
+          },
+          "regimeCode": {
+            "type": "string"
+          },
+          "taxId": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "autoIssue": {
+            "type": "boolean"
+          },
+          "memberCarrierType": {
+            "type": "string"
+          },
+          "qrKey": {
+            "type": "object",
+            "properties": {
+              "configured": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "description": "MERCHANT / PLATFORM / PROVIDER"
+              },
+              "fingerprint": {
+                "type": "string"
+              }
+            },
+            "description": "QR 金钥只回状态"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / SUSPENDED"
+          },
+          "qrKeyEditable": {
+            "type": "boolean",
+            "description": "当前调用方能否改 QR 金钥（营业人下有平台代维护账户时只能运营改）"
+          }
+        }
+      },
+      "CredentialInput": {
+        "type": "object",
+        "properties": {},
+        "description": "凭据键值：键为 credentialFields 的 fieldCode；秘密字段只写不读。缺必填 / 多余键 / 格式不符 → 26013",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "AccountCreateReq": {
+        "type": "object",
+        "properties": {
+          "regionCode": {
+            "type": "string",
+            "description": "地区，如 TW"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "SANDBOX",
+              "PRODUCTION"
+            ]
+          },
+          "credentials": {
+            "$ref": "#/components/schemas/CredentialInput"
+          }
+        },
+        "required": [
+          "regionCode",
+          "providerCode",
+          "environment",
+          "credentials"
+        ]
+      },
+      "OpsAccountCreateReq": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string",
+            "description": "主体业务号"
+          },
+          "regionCode": {
+            "type": "string"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "SANDBOX",
+              "PRODUCTION"
+            ]
+          },
+          "credentials": {
+            "$ref": "#/components/schemas/CredentialInput"
+          }
+        },
+        "required": [
+          "entityNo",
+          "regionCode",
+          "providerCode",
+          "environment",
+          "credentials"
+        ]
+      },
+      "CredentialRotateReq": {
+        "type": "object",
+        "properties": {
+          "credentials": {
+            "$ref": "#/components/schemas/CredentialInput"
+          }
+        },
+        "required": [
+          "credentials"
+        ]
+      },
+      "AccountStatusReq": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ManagementReq": {
+        "type": "object",
+        "properties": {
+          "managedBy": {
+            "type": "string",
+            "enum": [
+              "MERCHANT",
+              "PLATFORM"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "managedBy",
+          "reason"
+        ]
+      },
+      "CredentialStateVO": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "有 CURRENT 版本"
+          },
+          "version": {
+            "type": "integer",
+            "description": "CURRENT 版本号"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "masks": {
+            "type": "object",
+            "properties": {},
+            "description": "字段码 → 掩码",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "pending": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string",
+                "description": "PENDING / FAILED"
+              },
+              "verifyError": {
+                "type": "string"
+              }
+            },
+            "description": "最近一次提交但未生效的版本；没有则为 null"
+          }
+        }
+      },
+      "AccountVO": {
+        "type": "object",
+        "properties": {
+          "accountNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "sellerNo": {
+            "type": "string"
+          },
+          "regionCode": {
+            "type": "string"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "providerAccountCode": {
+            "type": "string",
+            "description": "鲸跃 officeid / 绿界 MerchantID"
+          },
+          "managedBy": {
+            "type": "string",
+            "description": "MERCHANT / PLATFORM"
+          },
+          "status": {
+            "type": "string",
+            "description": "ONBOARDING / ACTIVE / ISSUE_STOPPED / SUSPENDED / CLOSED"
+          },
+          "editable": {
+            "type": "boolean",
+            "description": "当前调用方能否改凭据 / 状态 / 绑定（后端按 managedBy 算好）"
+          },
+          "credential": {
+            "$ref": "#/components/schemas/CredentialStateVO"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verifiedTaxId": {
+            "type": "string"
+          },
+          "lastVerifyError": {
+            "type": "string"
+          },
+          "boundStores": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "绑定的门店，'*' = 营业人级默认"
+          },
+          "createdVia": {
+            "type": "string",
+            "description": "BIZ / OPS"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccountPage": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountVO"
+            }
+          }
+        }
+      },
+      "VerificationVO": {
+        "type": "object",
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "taxId": {
+            "type": "string",
+            "description": "供应商侧统编"
+          },
+          "name": {
+            "type": "string",
+            "description": "供应商侧营业人名称"
+          },
+          "qrKeyStored": {
+            "type": "boolean",
+            "description": "供应商回传的 QR 金钥已存入营业人"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "未通过时的供应商原文代码"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AccountVO"
+          }
+        }
+      },
+      "BindingVO": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "'*' = 营业人级默认"
+          },
+          "regionCode": {
+            "type": "string"
+          },
+          "accountNo": {
+            "type": "string"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BindingReq": {
+        "type": "object",
+        "properties": {
+          "accountNo": {
+            "type": "string"
+          },
+          "regionCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountNo",
+          "regionCode"
+        ]
+      },
+      "AccountEventVO": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string"
+          },
+          "operatorType": {
+            "type": "string",
+            "description": "BIZ / OPS / SYSTEM"
+          },
+          "operatorNo": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "object",
+            "properties": {},
+            "description": "掩码后的差异，不含凭据"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccountEventPage": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountEventVO"
+            }
+          }
+        }
+      },
+      "RangeFetchReq": {
+        "type": "object",
+        "properties": {
+          "periodCode": {
+            "type": "string",
+            "description": "期别（5 位，如 11512）；不传 = 当期",
+            "pattern": "^\\d{5}$"
+          }
+        }
+      },
+      "NumberRangeVO": {
+        "type": "object",
+        "properties": {
+          "rangeNo": {
+            "type": "string"
+          },
+          "accountNo": {
+            "type": "string"
+          },
+          "periodCode": {
+            "type": "string"
+          },
+          "track": {
+            "type": "string"
+          },
+          "startNo": {
+            "type": "integer"
+          },
+          "endNo": {
+            "type": "integer"
+          },
+          "nextNo": {
+            "type": "integer"
+          },
+          "remaining": {
+            "type": "integer"
+          },
+          "allocationOwner": {
+            "type": "string",
+            "description": "MANUAL / PROVIDER"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / EXHAUSTED"
+          }
+        }
+      },
+      "AccountImportReq": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAccountCreateReq"
+            },
+            "description": "每行等同一次 POST /invoice-ops/v1/accounts；最多 200 行"
+          }
+        },
+        "required": [
+          "rows"
+        ]
+      },
+      "AccountImportResultVO": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "accountNo": {
+                  "type": "string"
+                },
+                "errorCode": {
+                  "type": "integer"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-error-codes": {
+    "26001": {
+      "key": "INVOICE_REGIME_NOT_ENABLED",
+      "when": "地区未开通或营业人不存在"
+    },
+    "26004": {
+      "key": "INVOICE_BUYER_INVALID",
+      "when": "统编 / TRN 格式不符（沿用码）"
+    },
+    "26005": {
+      "key": "INVOICE_NOT_FOUND",
+      "when": "账户不存在或不属于本主体"
+    },
+    "26008": {
+      "key": "INVOICE_STATE_INVALID",
+      "when": "当前状态不允许（如未核验就启用、非号段类领号段）"
+    },
+    "26009": {
+      "key": "INVOICE_RANGE_INVALID",
+      "when": "号段与已有号段重叠或格式不符"
+    },
+    "26010": {
+      "key": "INVOICE_KEY_UNAVAILABLE",
+      "when": "密钥服务不可用"
+    },
+    "26011": {
+      "key": "INVOICE_PROVIDER_REJECTED {0}",
+      "when": "供应商拒绝或不可达，{0} 为供应商原文代码"
+    },
+    "26012": {
+      "key": "INVOICE_ACCOUNT_MANAGED_ELSEWHERE",
+      "when": "账户不归当前调用方维护（新增）"
+    },
+    "26013": {
+      "key": "INVOICE_CREDENTIAL_INVALID {0}",
+      "when": "凭据字段缺失 / 多余 / 格式不符，{0} 为字段码（新增）"
+    },
+    "26014": {
+      "key": "INVOICE_ACCOUNT_DUPLICATE",
+      "when": "同营业人同供应商同环境已有启用账户（新增）"
+    },
+    "26015": {
+      "key": "INVOICE_ACCOUNT_IN_USE",
+      "when": "账户仍有绑定 / 未完成上传 / 未知态票，不能关闭（新增）"
+    }
+  }
+}

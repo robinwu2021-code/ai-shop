@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,14 +44,18 @@ public class BizPickupController {
     private final MerchantQueryPort merchantPort;
     /** 平台开关：类目闸门开不开，端上要跟着变文案与拦不拦 */
     private final PlatformSwitchPort switchPort;
+    /** 打包排除发票模块时没有实现，只用来下发 switches.invoice */
+    private final ObjectProvider<InvoicePort> invoicePort;
 
     public BizPickupController(PickupService pickupService,
                                ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
                                ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
                                MerchantQueryPort merchantPort,
-                               PlatformSwitchPort switchPort) {
+                               PlatformSwitchPort switchPort,
+                               ObjectProvider<InvoicePort> invoicePort) {
         this.merchantPort = merchantPort;
         this.switchPort = switchPort;
+        this.invoicePort = invoicePort;
         this.pickupService = pickupService;
         this.storeCodeService = storeCodeService;
         this.storeLinkService = storeLinkService;
@@ -114,7 +120,13 @@ public class BizPickupController {
                          * 两件事一旦要对齐时刻，中间那段就是商家点得动一个
                          * 其实不作数的按钮。
                          */
-                        "stockByInventory", "INVENTORY".equals(stockAuthority)),
+                        "stockByInventory", "INVENTORY".equals(stockAuthority),
+                        /*
+                         * **这次打包有没有发票模块**（-Dinvoice.exclude 可排除，TDD-发票模块 §17）。
+                         * 端上据它屏蔽全部 biz:invoice:* —— 店主的 "*" 也不例外，
+                         * 否则没装发票的环境里店主会看到一排点了就 404 的入口。
+                         */
+                        "invoice", invoicePort.getIfAvailable() != null),
                 SecurityUtils.currentUserNo());
     }
 

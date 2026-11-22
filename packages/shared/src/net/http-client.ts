@@ -20,9 +20,14 @@ const TIMEOUT_MS = 20_000;
 const UPLOAD_TIMEOUT_MS = 60_000;
 
 export class ApiError extends Error {
+  /**
+   * @param data 失败响应里的 `data`（可选）。有的域把机器可读的失败原因放在这里 ——
+   *   例如打印中心的 `{ key: "print.extraCopiesNotAllowed" }`，端上按 key 给出具体文案；丢掉它就只剩一句泛话。
+   */
   constructor(
     public code: number,
     msg: string,
+    public data?: unknown,
   ) {
     super(msg);
   }
@@ -166,7 +171,7 @@ export function request<T>(
             onForbidden();
             setTimeout(() => (handlingForbidden = false), 0);
           }
-          reject(new ApiError(body.code, body.msg || "请求失败"));
+          reject(new ApiError(body.code, body.msg || "请求失败", body.data));
           return;
         }
         resolve(body.data);

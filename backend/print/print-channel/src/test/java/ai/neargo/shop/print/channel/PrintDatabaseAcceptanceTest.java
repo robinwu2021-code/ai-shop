@@ -692,6 +692,46 @@ class PrintDatabaseAcceptanceTest {
         assertEquals(before, jobs.selectCount(null));
     }
 
+    /** 发票打印模拟页（TDD-发票模块 §21）的样例路径：三种发票打印件都能出 PDF，且不产生正式打印任务。 */
+    @Test
+    void invoiceDocumentsSimulateToReadyPdfWithoutProductionJobs() {
+        var simulator = context.getBean(PrintSimulationFacade.class);
+        var jobs = context.getBean(JobMapper.class);
+        long before = jobs.selectCount(null);
+        var simulationNos = new java.util.ArrayList<String>();
+        for (var c : java.util.List.of(new String[] {"INVOICE_PROOF", "STANDARD_58", "ORIGINAL_ROLL"},
+                new String[] {"INVOICE_DETAIL", "STANDARD_80", "A4_SHEET"},
+                new String[] {"INVOICE_ALLOWANCE", "STANDARD_58", "ORIGINAL_ROLL"})) {
+            var result = simulator.create(new SimulationCommand(new PrintScope("T1", "E1", "S1"), c[0],
+                    new SimulationSource(SimulationSourceType.SAMPLE, null, null, null), c[1],
+                    SimulationFixtureCode.SUCCESS, null,
+                    new PrintOutputOptions(true, PdfOutputProfile.valueOf(c[2]))), actor("inv-sim-" + c[0]));
+            assertEquals("SUCCEEDED", result.status().name(), c[0]);
+            simulationNos.add(result.targetNo());
+        }
+        assertSimulationsPassedWithReadyPdf(simulationNos);
+        assertEquals(before, jobs.selectCount(null), "模拟不建正式打印任务");
+    }
+
+    private void assertSimulationsPassedWithReadyPdf(java.util.List<String> simulationNos) {
+        var runs = context.getBean(PrnSimulationRunMapper.class).selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
+                                ai.neargo.shop.printing.center.persistence.entity.PrnSimulationRun>()
+                        .in("simulation_no", simulationNos));
+        assertEquals(simulationNos.size(), runs.size());
+        assertTrue(runs.stream().allMatch(r -> "PASSED".equals(r.getStatus())),
+                () -> runs.stream().map(r -> r.getSimulationNo() + "=" + r.getStatus()).toList().toString());
+        var worker = context.getBean(PrintExportWorker.class);
+        for (int tick = 0; tick < simulationNos.size(); tick++)
+            assertEquals(0, worker.generateNext(new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance")).failed());
+        var exports = context.getBean(PrnExportTaskMapper.class).selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PrnExportTask>()
+                        .eq("source_type", "SIMULATION").in("source_no", simulationNos));
+        assertEquals(simulationNos.size(), exports.size());
+        assertTrue(exports.stream().allMatch(e -> "READY".equals(e.getStatus()) && e.getPageCount() != null && e.getPageCount() > 0),
+                () -> exports.stream().map(e -> e.getSourceNo() + "=" + e.getStatus()).toList().toString());
+    }
+
     @Test
     void cloudPrinterBeyondFirstPageStillGetsScheduled() {
         var device = context.getBean(PrintDeviceService.class);

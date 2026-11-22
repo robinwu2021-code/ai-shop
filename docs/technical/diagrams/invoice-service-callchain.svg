@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="12">
+  <title>发票服务开立调用链</title>
+  <desc>三种编号方式的开立调用链：入口、调用方、取来源、路由、税制完全相同，差别只在编号策略一格；号段类（Turnkey、鲸跃）本地事务内取号后异步上传，在线配号（绿界）先落占位票、事务外同步开立，超时进入未知态由恢复任务按原 RelateNumber 查单；三条线的结果都经 InvoiceOutcomeService 写回。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="640" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">开立调用链：共同前段 → 编号策略（唯一分支）→ 结果统一入口</text>
+
+  <!-- common prefix -->
+  <g>
+    <rect x="24" y="50" width="150" height="56" rx="6" fill="#fdf2f8" stroke="#db2777"/>
+    <text x="34" y="72" font-weight="600">BizInvoiceController</text><text x="34" y="92" fill="#475569">→ InvoiceCaller</text>
+    <rect x="194" y="50" width="150" height="56" rx="6" fill="#fefce8" stroke="#ca8a04"/>
+    <text x="204" y="72" font-weight="600">InvoiceIssueService</text><text x="204" y="92" fill="#475569">CallerPolicy.check</text>
+    <rect x="364" y="50" width="150" height="56" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+    <text x="374" y="72" font-weight="600">InvoiceSourcePort</text><text x="374" y="92" fill="#475569">金额只从来源读</text>
+    <rect x="534" y="50" width="150" height="56" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+    <text x="544" y="72" font-weight="600">RouteResolver</text><text x="544" y="92" fill="#475569">门店 → 账户（冻结）</text>
+    <rect x="704" y="50" width="150" height="56" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+    <text x="714" y="72" font-weight="600">InvoiceRegime</text><text x="714" y="92" fill="#475569">买受人 / 金额 / 期别</text>
+    <path d="M174 78 H194" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+    <path d="M344 78 H364" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+    <path d="M514 78 H534" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+    <path d="M684 78 H704" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+    <path d="M854 78 H900 V140" stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+    <text x="864" y="128" fill="#475569">按 route.numberingMode</text>
+  </g>
+
+  <!-- lane headers -->
+  <text x="24" y="166" font-weight="600" font-size="13" fill="#0f172a">LOCAL_RANGE · Turnkey</text>
+  <text x="352" y="166" font-weight="600" font-size="13" fill="#0f172a">PROVIDER_RANGE · 鲸跃</text>
+  <text x="680" y="166" font-weight="600" font-size="13" fill="#0f172a">PROVIDER_ONLINE · 绿界</text>
+  <path d="M340 150 V560 M668 150 V560" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- lane 1 -->
+  <rect x="24" y="180" width="300" height="64" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="34" y="200" font-weight="600">事务内 allocate</text>
+  <text x="34" y="218">号段 FOR UPDATE 取号（商家登记的段）</text>
+  <text x="34" y="234">落票 ISSUED + 明细 + 上传任务 + 打印事实</text>
+  <rect x="24" y="264" width="300" height="56" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="34" y="284" font-weight="600">TransmissionJob → ProviderInvoker</text>
+  <text x="34" y="302">TurnkeyIssueCapability：原子写 F0401</text>
+  <rect x="24" y="340" width="300" height="56" rx="6" fill="#fff" stroke="#86efac"/>
+  <text x="34" y="360" font-weight="600">回执目录扫描</text>
+  <text x="34" y="378">ProviderReceiptService → apply(RECEIPT)</text>
+  <path d="M174 244 V264 M174 320 V340" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- lane 2 -->
+  <rect x="352" y="180" width="300" height="64" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="362" y="200" font-weight="600">事务内 allocate</text>
+  <text x="362" y="218">号段 FOR UPDATE 取号（鲸跃配给的段）</text>
+  <text x="362" y="234">落票 ISSUED + 上传任务 + 打印事实；水位低→领号</text>
+  <rect x="352" y="264" width="300" height="56" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="362" y="284" font-weight="600">TransmissionJob → ProviderInvoker</text>
+  <text x="362" y="302">CetustekIssueCapability：UploadInvoice（S0/S2）</text>
+  <rect x="352" y="340" width="300" height="56" rx="6" fill="#fff" stroke="#86efac"/>
+  <text x="362" y="360" font-weight="600">apply(TRANSMISSION)</text>
+  <text x="362" y="378">SENT / FAILED 退避；report_status=REPORTED</text>
+  <path d="M502 244 V264 M502 320 V340" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- lane 3 -->
+  <rect x="680" y="180" width="296" height="64" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="690" y="200" font-weight="600">事务内 allocate</text>
+  <text x="690" y="218">占位票 PENDING，RelateNumber 生成并冻结</text>
+  <text x="690" y="234">不出号、不出打印事实</text>
+  <rect x="680" y="264" width="296" height="56" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="690" y="284" font-weight="600">afterCommit → ProviderInvoker</text>
+  <text x="690" y="302">EcpayIssueCapability：/B2CInvoice/Issue</text>
+  <rect x="680" y="340" width="296" height="72" rx="6" fill="#fff" stroke="#86efac"/>
+  <text x="690" y="360" font-weight="600">apply(SYNC_RESPONSE)</text>
+  <text x="690" y="378">成功：写号码与随机码 → ISSUED + 打印事实</text>
+  <text x="690" y="394">拒绝：REJECTED　超时：UNKNOWN（锁来源单）</text>
+  <rect x="680" y="432" width="296" height="56" rx="6" fill="#fff" stroke="#fca5a5"/>
+  <text x="690" y="452" font-weight="600">RecoveryJob → QueryCapability</text>
+  <text x="690" y="470">/B2CInvoice/GetIssue(RelateNumber) → apply(QUERY)</text>
+  <path d="M828 244 V264 M828 320 V340 M828 412 V432" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- outcome -->
+  <rect x="24" y="580" width="952" height="44" rx="8" fill="#ecfeff" stroke="#06b6d4"/>
+  <text x="40" y="607" font-weight="600" fill="#0e7490">InvoiceOutcomeService.apply —— issue_status / report_status 的唯一写入点（I4）：同步回包、上传任务、查单、回执、对账补单都到这里</text>
+  <path d="M174 396 V580 M502 396 V580 M828 488 V580" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+</svg>

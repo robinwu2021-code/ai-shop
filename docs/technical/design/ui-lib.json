@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 604,
-        "c-app": 105
+        "b-app": 638,
+        "c-app": 116
       }
     },
     {
@@ -279,8 +279,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 440,
-        "c-app": 88
+        "b-app": 500,
+        "c-app": 109
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 474,
-        "c-app": 320
+        "b-app": 488,
+        "c-app": 335
       }
     },
     {
@@ -378,7 +378,7 @@
       },
       "usage": {
         "b-app": 4,
-        "c-app": 12
+        "c-app": 13
       }
     },
     {
@@ -453,8 +453,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 46,
-        "c-app": 54
+        "b-app": 48,
+        "c-app": 58
       }
     },
     {
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 75,
+        "b-app": 99,
         "c-app": 38
       }
     },
@@ -491,8 +491,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 200,
-        "c-app": 61
+        "b-app": 206,
+        "c-app": 64
       }
     },
     {
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 148,
+        "b-app": 152,
         "c-app": 82
       }
     },
@@ -535,8 +535,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 147,
-        "c-app": 36
+        "b-app": 148,
+        "c-app": 39
       }
     },
     {
@@ -635,8 +635,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 378,
-        "c-app": 98
+        "b-app": 393,
+        "c-app": 105
       }
     },
     {
@@ -677,8 +677,8 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 213,
-        "c-app": 34
+        "b-app": 252,
+        "c-app": 36
       }
     },
     {
@@ -701,8 +701,8 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 59,
-        "c-app": 12
+        "b-app": 65,
+        "c-app": 13
       }
     },
     {
@@ -723,7 +723,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 41,
         "c-app": 35
       }
     },
@@ -741,7 +741,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 17,
         "c-app": 6
       }
     },
@@ -759,7 +759,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 6
       }
     },
@@ -777,7 +777,7 @@
         "color": "var(--sh-success)"
       },
       "usage": {
-        "b-app": 2,
+        "b-app": 5,
         "c-app": 2
       }
     },
@@ -795,7 +795,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 14,
+        "b-app": 16,
         "c-app": 13
       }
     },
@@ -827,8 +827,8 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 344,
-        "c-app": 93
+        "b-app": 372,
+        "c-app": 98
       }
     },
     {
@@ -904,7 +904,7 @@
       },
       "usage": {
         "b-app": 81,
-        "c-app": 16
+        "c-app": 18
       }
     },
     {
@@ -921,7 +921,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 88,
+        "b-app": 96,
         "c-app": 17
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 131,
         "c-app": 12
       }
     },
@@ -980,7 +980,7 @@
       },
       "usage": {
         "b-app": 93,
-        "c-app": 24
+        "c-app": 27
       }
     },
     {
@@ -1035,8 +1035,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 170,
-        "c-app": 30
+        "b-app": 183,
+        "c-app": 37
       }
     },
     {
@@ -1095,8 +1095,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 401,
-        "c-app": 157
+        "b-app": 451,
+        "c-app": 178
       }
     },
     {
@@ -1159,8 +1159,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 181,
-        "c-app": 58
+        "b-app": 195,
+        "c-app": 59
       }
     },
     {
@@ -1177,7 +1177,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 10,
         "c-app": 12
       }
     },
@@ -1253,8 +1253,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 74,
-        "c-app": 27
+        "b-app": 87,
+        "c-app": 28
       }
     },
     {
@@ -1443,8 +1443,8 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 196,
-        "c-app": 95
+        "b-app": 222,
+        "c-app": 101
       }
     },
     {
@@ -1479,8 +1479,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 718,
-        "c-app": 218
+        "b-app": 773,
+        "c-app": 230
       }
     },
     {
@@ -1496,7 +1496,7 @@
       },
       "usage": {
         "b-app": 34,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -1511,8 +1511,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 424,
-        "c-app": 110
+        "b-app": 466,
+        "c-app": 120
       }
     },
     {
@@ -1527,7 +1527,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 31,
+        "b-app": 33,
         "c-app": 7
       }
     },
@@ -1663,7 +1663,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 30,
+        "b-app": 34,
         "c-app": 0
       }
     },
@@ -1683,7 +1683,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 51,
+        "b-app": 54,
         "c-app": 19
       }
     },
@@ -1700,7 +1700,7 @@
       },
       "usage": {
         "b-app": 82,
-        "c-app": 0
+        "c-app": 3
       }
     },
     {
@@ -1778,7 +1778,7 @@
       },
       "usage": {
         "b-app": 104,
-        "c-app": 26
+        "c-app": 31
       }
     },
     {
@@ -1875,7 +1875,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 30,
+        "b-app": 34,
         "c-app": 1
       }
     },
@@ -1891,7 +1891,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 24,
+        "b-app": 28,
         "c-app": 3
       }
     },
@@ -1907,7 +1907,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 126,
+        "b-app": 146,
         "c-app": 3
       }
     },
@@ -1923,7 +1923,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 37,
         "c-app": 0
       }
     }
@@ -2187,8 +2187,8 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 97,
-        "c-app": 42,
+        "b-app": 102,
+        "c-app": 45,
         "lib": 1
       },
       "note": "空态",
@@ -2269,7 +2269,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 40,
+        "b-app": 41,
         "c-app": 4,
         "lib": 0
       },
@@ -2382,8 +2382,8 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 131,
-        "c-app": 3,
+        "b-app": 152,
+        "c-app": 14,
         "lib": 0
       },
       "note": "键值行：左边一个名目，右边它的值",
@@ -2416,7 +2416,7 @@
       ],
       "usage": {
         "b-app": 8,
-        "c-app": 1,
+        "c-app": 4,
         "lib": 0
       },
       "note": "选项卡片",
@@ -2638,8 +2638,8 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 124,
-        "c-app": 43,
+        "b-app": 129,
+        "c-app": 47,
         "lib": 1
       },
       "note": "页面外壳",
@@ -2685,8 +2685,8 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 33,
-        "c-app": 0,
+        "b-app": 38,
+        "c-app": 2,
         "lib": 0
       },
       "note": "卡内标题行",
@@ -2726,7 +2726,7 @@
       ],
       "usage": {
         "b-app": 49,
-        "c-app": 13,
+        "c-app": 14,
         "lib": 1
       },
       "note": "底部弹层",
@@ -2848,8 +2848,8 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 10,
-        "c-app": 2,
+        "b-app": 12,
+        "c-app": 3,
         "lib": 0
       },
       "note": "开关",
@@ -2933,7 +2933,7 @@
         "line?: boolean"
       ],
       "usage": {
-        "b-app": 23,
+        "b-app": 24,
         "c-app": 14,
         "lib": 0
       },
@@ -3335,6 +3335,38 @@
       }
     },
     {
+      "name": "biz-pdf-frame",
+      "file": "b-app/src/components/biz/biz-pdf-frame.vue",
+      "scope": "B 端",
+      "lines": 20,
+      "props": [
+        "src: string",
+        "title: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "PDF 内嵌框",
+      "why": "H5 在页内看打印模拟出的 PDF；下载接口禁止嵌入，只能先取成 blob 再给 iframe，App 端改用系统查看器",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-card",
+        "pdf-frame-wrap"
+      ],
+      "rootDecl": {
+        "padding": "0",
+        "overflow": "hidden"
+      }
+    },
+    {
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
@@ -3532,7 +3564,7 @@
         "readonly?: boolean"
       ],
       "usage": {
-        "b-app": 12,
+        "b-app": 16,
         "c-app": 0,
         "lib": 0
       },
@@ -4328,6 +4360,22 @@
     },
     {
       "app": "b-app",
+      "page": "invoice-setup",
+      "key": "b-app/invoice-setup",
+      "file": "b-app/src/pages/invoice-setup/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-section",
+        "sh-switch"
+      ],
+      "libClassHits": 264,
+      "localSelectors": 1,
+      "localCssLines": 3,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "locations",
       "key": "b-app/locations",
       "file": "b-app/src/pages/locations/index.vue",
@@ -4647,7 +4695,7 @@
         "sh-sheet",
         "sh-trace"
       ],
-      "libClassHits": 221,
+      "libClassHits": 223,
       "localSelectors": 20,
       "localCssLines": 80,
       "rolled": []
@@ -5037,6 +5085,69 @@
       "libClassHits": 23,
       "localSelectors": 4,
       "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "sales-invoice",
+      "key": "b-app/sales-invoice",
+      "file": "b-app/src/pages/sales-invoice/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "biz-store-tag"
+      ],
+      "libClassHits": 113,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "sales-invoice-issue",
+      "key": "b-app/sales-invoice-issue",
+      "file": "b-app/src/pages/sales-invoice-issue/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-section",
+        "biz-store-tag"
+      ],
+      "libClassHits": 61,
+      "localSelectors": 1,
+      "localCssLines": 3,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "sales-invoice-print-sim",
+      "key": "b-app/sales-invoice-print-sim",
+      "file": "b-app/src/pages/sales-invoice-print-sim/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "biz-pdf-frame",
+        "biz-store-tag"
+      ],
+      "libClassHits": 57,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "sales-invoices",
+      "key": "b-app/sales-invoices",
+      "file": "b-app/src/pages/sales-invoices/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs",
+        "biz-store-tag"
+      ],
+      "libClassHits": 50,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -6117,6 +6228,39 @@
     },
     {
       "app": "c-app",
+      "page": "invoice-carriers",
+      "key": "c-app/invoice-carriers",
+      "file": "c-app/src/pages/invoice-carriers/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-option",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-switch"
+      ],
+      "libClassHits": 31,
+      "localSelectors": 9,
+      "localCssLines": 9,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "invoice-choice",
+      "key": "c-app/invoice-choice",
+      "file": "c-app/src/pages/invoice-choice/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-option",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 26,
+      "localSelectors": 11,
+      "localCssLines": 11,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
       "page": "legal",
       "key": "c-app/legal",
       "file": "c-app/src/pages/legal/index.vue",
@@ -6151,7 +6295,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 144,
+      "libClassHits": 148,
       "localSelectors": 26,
       "localCssLines": 108,
       "rolled": []
@@ -6272,7 +6416,7 @@
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 170,
+      "libClassHits": 176,
       "localSelectors": 38,
       "localCssLines": 138,
       "rolled": []
@@ -6384,6 +6528,35 @@
       "libClassHits": 17,
       "localSelectors": 13,
       "localCssLines": 53,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "sales-invoice",
+      "key": "c-app/sales-invoice",
+      "file": "c-app/src/pages/sales-invoice/index.vue",
+      "components": [
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 50,
+      "localSelectors": 6,
+      "localCssLines": 6,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "sales-invoices",
+      "key": "c-app/sales-invoices",
+      "file": "c-app/src/pages/sales-invoices/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 28,
+      "localSelectors": 7,
+      "localCssLines": 7,
       "rolled": []
     },
     {
@@ -6555,6 +6728,17 @@
       "libClassHits": 0,
       "localSelectors": 4,
       "localCssLines": 18,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-pdf-frame",
+      "key": "b-app/biz-pdf-frame",
+      "file": "b-app/src/components/biz/biz-pdf-frame.vue",
+      "components": [],
+      "libClassHits": 1,
+      "localSelectors": 2,
+      "localCssLines": 2,
       "rolled": []
     },
     {
@@ -7029,8 +7213,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 84,
-    "components": 44,
-    "pages": 208,
+    "components": 45,
+    "pages": 218,
     "gapKinds": 3
   }
 }

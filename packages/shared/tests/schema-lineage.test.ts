@@ -246,8 +246,10 @@ describe("对账血缘", () => {
     expect(existsSync(join(ROOT, payHistory)), "pay Flyway history must exist for the combined fixture").toBe(true);
     // W5 密钥模块（db/secret）同样接在后面重放
     const secretHistory = "backend/secret/secret-store/src/main/resources/db/secret";
+    // 发票模块（db/invoice，ADR-063）也接在后面重放：gen-test-schema.py 把 ivc_* 一并写进 H2 夹具
+    const invoiceHistory = "backend/invoice/invoice-domain/src/main/resources/db/invoice";
     const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory,
-      ...(existsSync(join(ROOT, secretHistory)) ? [secretHistory] : [])]) as Map<string, { cols: string[] }>;
+      ...[secretHistory, invoiceHistory].filter((h) => existsSync(join(ROOT, h)))]) as Map<string, { cols: string[] }>;
     // Exact native-owner omissions belong to the shared H2 policy, never an ad hoc table exemption.
     const projectionPolicy = JSON.parse(readFileSync(join(ROOT, "backend/scripts/h2-fixture-policy.json"), "utf8"));
     const nativeAbsent = new Set<string>(projectionPolicy.entries

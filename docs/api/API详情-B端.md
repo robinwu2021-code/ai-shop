@@ -3580,6 +3580,252 @@ _无字段_
 类型：`any`
 
 
+### invoice-setup
+
+#### GET `/biz/invoice-setup/profile`
+
+发票设置：税制配置　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProfile`](#siprofile)
+
+
+#### PUT `/biz/invoice-setup/profile`
+
+发票设置：开通 / 修改税制　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProfile`](#siprofile)
+
+
+#### POST `/biz/invoice-setup/provider-ranges`
+
+发票设置：向加值中心取号段　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiRange`](#sirange)
+
+
+#### GET `/biz/invoice-setup/provider-tracks`
+
+发票设置：服务商配号方式与已下载字轨　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProviderTracks`](#siprovidertracks)
+
+
+#### POST `/biz/invoice-setup/provider-tracks`
+
+发票设置：上传下期字轨　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiTrackUploadResult`](#sitrackuploadresult)
+
+
+#### POST `/biz/invoice-setup/provider-verification`
+
+发票设置：核验加值中心账号　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProviderVerification`](#siproviderverification)
+
+
+#### GET `/biz/invoice-setup/providers`
+
+发票设置：本市场可选的开票供应商　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProviderOptions`](#siprovideroptions)
+
+
+#### GET `/biz/invoice-setup/ranges`
+
+发票设置：字轨号段　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiRange`](#sirange)\[\]
+
+
+#### POST `/biz/invoice-setup/ranges`
+
+发票设置：登记字轨号段　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiRange`](#sirange)
+
+
+### invoices
+
+#### POST `/biz/invoices`
+
+销售发票：按来源单开票　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### GET `/biz/invoices`
+
+销售发票：本店分页　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiPage`](#sipage)
+
+
+#### GET `/biz/invoices/{invoiceNo}`
+
+销售发票：详情　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### POST `/biz/invoices/{invoiceNo}/allowances`
+
+销售发票：开折让　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### POST `/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void`
+
+销售发票：作废折让　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### GET `/biz/invoices/{invoiceNo}/print-facts`
+
+销售发票：可模拟打印的打印件　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiPrintFact`](#siprintfact)\[\]
+
+
+#### POST `/biz/invoices/{invoiceNo}/provider-checks`
+
+销售发票：向服务商查单并对账　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiProviderCheck`](#siprovidercheck)
+
+
+#### POST `/biz/invoices/{invoiceNo}/reissue`
+
+销售发票：注销后同号重开　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### POST `/biz/invoices/{invoiceNo}/retransmissions`
+
+销售发票：重传待人工处理的上传　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### POST `/biz/invoices/{invoiceNo}/revocation`
+
+销售发票：注销　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### POST `/biz/invoices/{invoiceNo}/void`
+
+销售发票：当期作废　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SalesInvoice`](#salesinvoice)
+
+
+#### PUT `/biz/invoices/buyer-preferences`
+
+销售发票：付款前预存买受人　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/invoices/upload-backlog`
+
+销售发票：本门店上传积压　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SiUploadBacklog`](#siuploadbacklog)
+
+
 ### management
 
 #### GET `/biz/management/brand-changes/{c}`

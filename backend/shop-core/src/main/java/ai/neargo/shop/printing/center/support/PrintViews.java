@@ -16,11 +16,17 @@ public final class PrintViews {
 
     public static PrintJobVO job(
             PrnJob j, ai.neargo.shop.print.api.PrintActor actor, PrnRequest request) {
+        return job(j, actor, request, true);
+    }
+
+    /** @param extraAllowed 场景是否允许加印（发票证明联不允许，见 PrintSceneRegistry#extraCopiesAllowed） */
+    public static PrintJobVO job(
+            PrnJob j, ai.neargo.shop.print.api.PrintActor actor, PrnRequest request, boolean extraAllowed) {
         var actions = new java.util.HashSet<String>();
         String state = j.getStatus();
         if (java.util.Set.of("COMPLETED", "FAILED", "UNKNOWN").contains(state)
                 && actor.dataScopes().contains("biz:print:reprint")) actions.add("REPRINT");
-        if (state.equals("COMPLETED") && actor.dataScopes().contains("biz:print:extra"))
+        if (extraAllowed && state.equals("COMPLETED") && actor.dataScopes().contains("biz:print:extra"))
             actions.add("EXTRA");
         if (state.equals("RETRY_WAIT") && actor.dataScopes().contains("biz:print:resolve"))
             actions.add("RETRY");

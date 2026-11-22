@@ -26,6 +26,7 @@ import java.util.*;
 @Service
 public class PrintQueryServiceImpl implements PrintQueryService {
     private final ai.neargo.shop.printing.center.source.PrintSourceRegistry sources;
+    private final PrintSceneRegistry scenes;
     private final JobMapper jobs;
     private final PrnRequestMapper requests;
     private final PrnBatchMapper batches;
@@ -44,8 +45,10 @@ public class PrintQueryServiceImpl implements PrintQueryService {
             PrnOperationMapper o,
             PrnExportTaskMapper e,
             PrintJsonCodec c,
-            ai.neargo.shop.printing.center.source.PrintSourceRegistry sources) {
+            ai.neargo.shop.printing.center.source.PrintSourceRegistry sources,
+            PrintSceneRegistry scenes) {
         this.sources = sources;
+        this.scenes = scenes;
         jobs = j;
         requests = r;
         batches = b;
@@ -115,7 +118,7 @@ public class PrintQueryServiceImpl implements PrintQueryService {
                 p.getRecords().stream()
                         .map(
                                 j ->
-                                        PrintViews.job(
+                                        view(
                                                 j,
                                                 a,
                                                 requests.selectOne(
@@ -133,7 +136,7 @@ public class PrintQueryServiceImpl implements PrintQueryService {
         access(new PrintScope(ref.tenantNo(), ref.entityNo(), ref.storeNo()), a, Set.of());
         var j = job(ref.jobNo(), a);
         return new PrintJobView(
-                PrintViews.job(
+                view(
                         j,
                         a,
                         requests.selectOne(
@@ -288,5 +291,10 @@ public class PrintQueryServiceImpl implements PrintQueryService {
                                 && a.dataScopes().contains("ops:print:read")),
                 "print.forbidden");
         return json.read(o.getResultRef(), PrintOperation.class);
+    }
+
+    private PrintJobVO view(PrnJob j, PrintActor a, PrnRequest request) {
+        return PrintViews.job(j, a, request,
+                request == null || request.getScene() == null || scenes.extraCopiesAllowed(request.getScene()));
     }
 }

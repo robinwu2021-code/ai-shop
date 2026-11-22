@@ -385,6 +385,29 @@ public enum ErrorCode {
     CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
+    // 26xxx · 发票（ADR-063，TDD-发票模块 §2.1）
+    INVOICE_REGIME_NOT_ENABLED(26001, "err.invoice.regime_not_enabled"),
+    INVOICE_SOURCE_NOT_READY(26002, "err.invoice.source_not_ready"),
+    INVOICE_NUMBER_EXHAUSTED(26003, "err.invoice.number_exhausted"),
+    INVOICE_BUYER_INVALID(26004, "err.invoice.buyer_invalid"),
+    INVOICE_NOT_FOUND(26005, "err.invoice.not_found"),
+    INVOICE_VOID_PERIOD_CLOSED(26006, "err.invoice.void_period_closed"),
+    INVOICE_ALLOWANCE_EXCEEDED(26007, "err.invoice.allowance_exceeded"),
+    INVOICE_STATE_INVALID(26008, "err.invoice.state_invalid"),
+    INVOICE_RANGE_INVALID(26009, "err.invoice.range_invalid"),
+    INVOICE_KEY_UNAVAILABLE(26010, "err.invoice.key_unavailable"),
+    /** 开票服务商拒绝或不可达；{0} = 服务商回的原文代码（鲸跃 invalid / exist / nodata …） */
+    INVOICE_PROVIDER_REJECTED(26011, "err.invoice.provider_rejected"),
+    /** 商家选的开票供应商不在该市场支持的供应商里；{0} = 供应商编码 */
+    INVOICE_GATEWAY_UNSUPPORTED(26012, "err.invoice.gateway_unsupported"),
+    /**
+     * 开票供应商不支持这笔操作（TDD-发票-供应商能力定义完善）：报文预检不通过（如零税率）或期别不在领号窗口内。
+     * 在事务提交前拦下，号码不占用。{0} = 供应商编码，{1} = 原因
+     */
+    INVOICE_PROVIDER_UNSUPPORTED(26013, "err.invoice.provider_unsupported"),
+    /** 加值中心账号字段与供应商的声明不符（格式不对，或应自动带出的字段填了别的值）；{0} = 字段 */
+    INVOICE_PROVIDER_ACCOUNT_INVALID(26014, "err.invoice.provider_account_invalid"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

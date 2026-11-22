@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="13">
+  <title>发票服务分层</title>
+  <desc>七层：接入端 → 接入层 invoice-portal / invoice-svc → 应用层 → 领域核心 invoice-domain（地区税制、账户路由、编号策略、票据与统一结果入口）→ 供应商层 invoice-channel（能力接口、调用管线、鲸跃 / Turnkey / 绿界适配）；回执与后台任务回到统一结果入口。左侧调用方只依赖 InvoicePort，内嵌与独立两种装配。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="720" fill="#ffffff"/>
+  <text x="24" y="32" font-size="16" font-weight="600" fill="#0f172a">发票服务分层（与支付服务同形）：地区 × 编号方式 × 供应商 三个维度互不交叉</text>
+
+  <!-- 1 clients -->
+  <rect x="24" y="52" width="952" height="56" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="40" y="74" font-weight="600">① 接入端</text>
+  <text x="40" y="96" font-size="12" fill="#334155">b-app 商家端 · c-app 我的发票 / 载具 · ops-web 运营端 · 核心业务（零售 / 餐饮 / 美业，只经 InvoicePort）· 第三方开放 API</text>
+
+  <!-- 2 portal -->
+  <rect x="24" y="120" width="952" height="66" rx="8" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="40" y="142" font-weight="600" fill="#9d174d">② 接入层 · invoice-portal / invoice-svc</text>
+  <text x="40" y="162" font-size="12">/biz/invoices* · /biz/invoice-setup/* · /mp/sales-invoice* · /invoice-ops/v1/* · /open/invoice/v1/*　|　invoice-svc：/internal/invoice/* · /callback/invoice/*</text>
+  <text x="40" y="178" font-size="12" fill="#475569">鉴权、判权、收窄主体与门店、幂等、请求留痕 → 产出 InvoiceCaller（入口不做业务判断 I1）</text>
+
+  <!-- 3 app -->
+  <rect x="24" y="198" width="952" height="56" rx="8" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="40" y="220" font-weight="600" fill="#854d0e">③ 应用层（invoice-domain）</text>
+  <text x="40" y="242" font-size="12">InvoiceIssueService · InvoiceVoidService · AllowanceService · SellerService · ProviderAccountService · NumberRangeService · InvoiceQueryService（第一参数 InvoiceCaller）</text>
+
+  <!-- 4 domain -->
+  <rect x="24" y="266" width="952" height="196" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="40" y="288" font-weight="600" fill="#3730a3">④ 领域核心（invoice-domain）</text>
+  <rect x="40" y="300" width="216" height="110" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="52" y="322" font-weight="600">地区与税制</text>
+  <text x="52" y="342" font-size="12">ivc_region（数据）</text>
+  <text x="52" y="360" font-size="12">InvoiceRegime（插件）</text>
+  <text x="52" y="378" font-size="12">TW_EGUI · AE_EINVOICE(预留)</text>
+  <text x="52" y="398" font-size="11" fill="#475569">期别 / 号码 / 税额 / 报文 / 证明联</text>
+  <rect x="268" y="300" width="216" height="110" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="280" y="322" font-weight="600">营业人与账户路由</text>
+  <text x="280" y="342" font-size="12">Seller → ProviderAccount</text>
+  <text x="280" y="360" font-size="12">→ AccountBinding(门店)</text>
+  <text x="280" y="378" font-size="12">InvoiceRouteResolver</text>
+  <text x="280" y="398" font-size="11" fill="#475569">开立时冻结账户（I2）</text>
+  <rect x="496" y="300" width="216" height="110" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="508" y="322" font-weight="600">编号策略（I3）</text>
+  <text x="508" y="342" font-size="12">LOCAL_RANGE · Turnkey</text>
+  <text x="508" y="360" font-size="12">PROVIDER_RANGE · 鲸跃</text>
+  <text x="508" y="378" font-size="12">PROVIDER_ONLINE · 绿界</text>
+  <text x="508" y="398" font-size="11" fill="#475569">唯一的编号分支点</text>
+  <rect x="724" y="300" width="236" height="110" rx="6" fill="#fff" stroke="#a5b4fc"/>
+  <text x="736" y="322" font-weight="600">票据与结果</text>
+  <text x="736" y="342" font-size="12">Invoice / Allowance + 状态机</text>
+  <text x="736" y="360" font-size="12">InvoiceOutcomeService（I4）</text>
+  <text x="736" y="378" font-size="12">Transmission · 打印事实</text>
+  <text x="736" y="398" font-size="11" fill="#475569">法律 / 开立 / 上报 三状态</text>
+  <text x="40" y="440" font-size="12" fill="#334155">库：ai_shop_invoice（独立形态）· 内嵌时同实例独立数据源 + invoiceTxManager · Flyway db/invoice · 凭据与 QR 金钥只进 secret 模块</text>
+
+  <!-- 5 channel -->
+  <rect x="24" y="474" width="952" height="132" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="40" y="496" font-weight="600" fill="#9a3412">⑤ 供应商层（invoice-channel）</text>
+  <text x="40" y="516" font-size="12">能力接口：Issue · Void · Allowance · Query · Range · Account · PrintData　｜　ProviderAccountContext（无密钥，I5）</text>
+  <text x="40" y="534" font-size="12">ProviderInvoker 管线：校验 → 追踪 → 幂等 → 超时 → 重试(仅查询) → 记录 call_log / raw_payload → 结果分类</text>
+  <rect x="40" y="546" width="200" height="48" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="52" y="566" font-weight="600">鲸跃 CETUSTEK</text><text x="52" y="584" font-size="11" fill="#475569">SOAP · 服务商配号段</text>
+  <rect x="256" y="546" width="200" height="48" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="268" y="566" font-weight="600">Turnkey</text><text x="268" y="584" font-size="11" fill="#475569">MIG 文件 · 商家自领号段</text>
+  <rect x="472" y="546" width="200" height="48" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="484" y="566" font-weight="600">绿界 ECPAY（设计）</text><text x="484" y="584" font-size="11" fill="#475569">JSON+AES · 在线配号</text>
+  <rect x="688" y="546" width="200" height="48" rx="6" fill="#fff" stroke="#fdba74"/>
+  <text x="700" y="566" font-weight="600">STUB</text><text x="700" y="584" font-size="11" fill="#475569">测试</text>
+
+  <!-- 6/7 -->
+  <rect x="24" y="618" width="468" height="84" rx="8" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="40" y="640" font-weight="600" fill="#166534">⑥ 回执</text>
+  <text x="40" y="660" font-size="12">/callback/invoice/{provider}/{type}/{accountNo}</text>
+  <text x="40" y="678" font-size="12">Turnkey 回执目录扫描 → ProviderReceiptService</text>
+  <text x="40" y="694" font-size="11" fill="#475569">先落 receipt + 原文，再验签、解析、apply</text>
+  <rect x="508" y="618" width="468" height="84" rx="8" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="524" y="640" font-weight="600" fill="#166534">⑦ 后台</text>
+  <text x="524" y="660" font-size="12">上传任务 · 未知态恢复 · 号段水位 / 自动领号</text>
+  <text x="524" y="678" font-size="12">对账（本地 ↔ 供应商）· 期末关闭</text>
+  <text x="524" y="694" font-size="11" fill="#475569">结果一律经 InvoiceOutcomeService 回写</text>
+
+  <path d="M500 108 V120" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M500 186 V198" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M500 254 V266" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M500 462 V474" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+</svg>

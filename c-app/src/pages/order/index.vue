@@ -420,6 +420,16 @@ async function applyInvoice() {
   }
 }
 
+/**
+ * 电子发票开法（台湾，载具优先）：待付款与已付款的单都能选 ——
+ * 付款前选的付款后按它开，已付款的若商家开了自动开立就当场开。按**主单号**提交，各子单各回结果。
+ */
+const CHOICE_STATES: readonly OrderStatus[] = ["WAIT_PAY", "WAIT_OFFLINE_PAY", "PAID", "FULFILLING", "COMPLETED"];
+const canChooseInvoice = computed(() => !!order.value && CHOICE_STATES.includes(order.value.status));
+function gotoInvoiceChoice() {
+  uni.navigateTo({ url: `/pages/invoice-choice/index?orderNo=${encodeURIComponent(invoiceOrderNo.value)}` });
+}
+
 /** 那串码叫什么：自提码 / 核销码 / 兑换码。三端共用一份判据 */
 const codeLabel = computed(() =>
   codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
@@ -894,6 +904,11 @@ onPullDownRefresh(async () => {
         </text>
         <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
       </template>
+    </view>
+
+    <view v-if="canChooseInvoice" class="sh-card invoicecard sh-row sh-row--between" @tap="gotoInvoiceChoice">
+      <text class="sh-muted">{{ $t("salesInvoice.orderEntry") }}</text>
+      <text class="txt-caption txt-primary">{{ $t("salesInvoice.orderEntryHint") }} ›</text>
     </view>
 
     <!--

@@ -43,6 +43,7 @@ public class PrintActorFactory {
         if (ctx.can(BizPerms.SV_RECHARGE_READ) && ctx.can(BizPerms.SV_ACCOUNT_READ))
             granted.add("SOURCE_RECHARGE_READ");
         if (ctx.can(BizPerms.AFTERSALE)) granted.add("SOURCE_REFUND_READ");
+        if (ctx.can(BizPerms.INVOICE_READ)) granted.add("SOURCE_INVOICE_READ");
         return new PrintActor(
                 user.tenantNo(),
                 BizContext.requireMerchantNo(),

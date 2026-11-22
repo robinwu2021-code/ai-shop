@@ -69,6 +69,8 @@
         <module>shop-channel</module>
         <!-- 物流域：运单与轨迹、渠道路由与适配（ADR-032，先内嵌后可拆） -->
         <module>logistics</module>
+        <!-- 发票域（ADR-063）：号段、开立、作废、折让、上传与证明联来源；同 logistics 形态，只依赖 shop-base 的 spi -->
+        <module>invoice</module>
         <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->
         <module>shop-notify</module>
         <!-- 网关层：三端出口 + 连接外部服务的桥接（ADR-060；自 shop-app 拆出） -->
@@ -154,6 +156,8 @@
             <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId><version>${commerce.version}</version></dependency>
 
             <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
+            <!-- 证明联一维码 / QR（TDD-发票模块 §2.3）：只用 core 编码，不引 javase 的图像依赖 -->
+            <dependency><groupId>com.google.zxing</groupId><artifactId>core</artifactId><version>3.5.3</version></dependency>
             <dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>3.51.1.0</version></dependency>
             <dependency>
                 <groupId>com.tngtech.archunit</groupId>
