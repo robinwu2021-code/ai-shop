@@ -13,6 +13,7 @@ export const salesInvoiceHttp: SalesInvoiceApi = {
   mSiVoidAllowance: (invoiceNo, allowanceNo, body) =>
     http.post(buildPath(E.mSiVoidAllowance.path, { invoiceNo, allowanceNo }), body),
   mSiProviderCheck: (invoiceNo) => http.post(buildPath(E.mSiProviderCheck.path, { invoiceNo }), {}),
+  mSiPrintFacts: (invoiceNo) => http.get(buildPath(E.mSiPrintFacts.path, { invoiceNo })),
   mSiUploadBacklog: () => http.get(E.mSiUploadBacklog.path),
   mSiRetransmit: (invoiceNo) => http.post(buildPath(E.mSiRetransmit.path, { invoiceNo }), {}),
   mSiProfile: () => http.get(E.mSiProfile.path),

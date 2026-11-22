@@ -50,6 +50,7 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mSiBuyerPreference: "BizInvoiceScope.current()：预存在当前门店的来源单上",
   mSiList: "BizInvoiceScope.current()：只列当前门店的发票",
   mSiDetail: "BizInvoiceScope.current()：按当前门店校验发票归属",
+  mSiPrintFacts: "BizInvoiceScope.current()：只取当前门店这张发票的打印件",
   mSiVoid: "BizInvoiceScope.current()：按当前门店校验发票归属",
   mSiAllowance: "BizInvoiceScope.current()：按当前门店校验发票归属",
 
@@ -147,6 +148,7 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   "sales-invoices": "只列当前门店开出的销售发票（mSiList，按 X-Store-No）",
   "sales-invoice": "发票详情、作废与折让按当前门店校验归属（mSiDetail / mSiVoid / mSiAllowance）",
   "sales-invoice-issue": "发票开在当前门店名下（mSiIssue，按 X-Store-No）",
+  "sales-invoice-print-sim": "用当前门店这张发票的打印件模拟（mSiPrintFacts），模拟与 PDF 导出按当前门店（storeNo）",
 
   home: "工作台的统计与待办按当前门店（mStats / mTodo）",
   "goods-list": "在售与库存按店（mGoodsList）",

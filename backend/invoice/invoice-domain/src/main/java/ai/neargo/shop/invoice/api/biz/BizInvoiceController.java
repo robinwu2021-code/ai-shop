@@ -5,6 +5,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.BuyerPreferenceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoicePrintFactVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
@@ -15,6 +16,7 @@ import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,6 +84,13 @@ public class BizInvoiceController {
     @GetMapping("/biz/invoices/{invoiceNo}")
     public InvoiceVO get(@PathVariable String invoiceNo) {
         return invoices.get(BizInvoiceScope.current(), invoiceNo);
+    }
+
+    /** 本张发票可模拟打印的打印件（发票打印模拟页用其 factRef 生成 PDF，不出纸、不建正式打印任务）。 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_READ + "')")
+    @GetMapping("/biz/invoices/{invoiceNo}/print-facts")
+    public List<InvoicePrintFactVO> printFacts(@PathVariable String invoiceNo) {
+        return invoices.printFacts(BizInvoiceScope.current(), invoiceNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")

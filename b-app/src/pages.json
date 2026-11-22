@@ -609,6 +609,12 @@
       }
     },
     {
+      "path": "pages/sales-invoice-print-sim/index",
+      "style": {
+        "navigationBarTitleText": "发票打印模拟"
+      }
+    },
+    {
       "path": "pages/invoice-setup/index",
       "style": {
         "navigationBarTitleText": "发票设置"

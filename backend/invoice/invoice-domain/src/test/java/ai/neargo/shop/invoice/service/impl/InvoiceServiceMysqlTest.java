@@ -335,6 +335,33 @@ class InvoiceServiceMysqlTest {
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
     }
 
+    /** AC43：发票打印模拟取本张票的打印件 —— 应印的证明联、交易明细、未作废的折让证明单；作废的票不出；别店的票查不到。 */
+    @Test
+    void ac43PrintFactsListTheDocumentsThisInvoiceCanPrint() {
+        sources.paid("SO1", 105_000);
+        var r = issue("SO1");
+        var facts = invoices.printFacts(SCOPE, r.invoiceNo());
+        assertEquals(List.of("INVOICE_PROOF", "INVOICE_DETAIL"), facts.stream().map(f -> f.scene()).toList());
+        var proof = facts.getFirst().factRef();
+        assertEquals("INVOICE", proof.sourceType());
+        assertEquals(r.invoiceNo(), proof.factNo());
+        assertEquals(row(r.invoiceNo()).getProofSnapshotHash(), proof.snapshotHash(), "引用的就是冻结的那份内容");
+
+        var allowed = invoices.allowance(SCOPE, r.invoiceNo(), 10_000, "退一杯");
+        var allowanceNo = allowed.allowances().getFirst().allowanceNo();
+        var withAllowance = invoices.printFacts(SCOPE, r.invoiceNo());
+        assertEquals("INVOICE_ALLOWANCE", withAllowance.getLast().scene());
+        assertEquals(allowanceNo, withAllowance.getLast().docNo());
+        assertEquals("INVOICE_ALLOWANCE", withAllowance.getLast().factRef().sourceType());
+
+        sources.paid("SO2", 1_000);
+        var voided = issue("SO2");
+        invoices.voidInvoice(SCOPE, voided.invoiceNo(), "開錯");
+        assertEquals(List.of(), invoices.printFacts(SCOPE, voided.invoiceNo()), "作废的票不出证明联与明细");
+        assertCode(ErrorCode.INVOICE_NOT_FOUND,
+                () -> invoices.printFacts(new Scope("T1", "E1", "S2", "U1"), r.invoiceNo()));
+    }
+
     /** AC40（数据域，§18.7）：运营会话只看自己商家范围内的主体；空范围一个都看不到；不限则全部可见。 */
     @Test
     void ac40OpsViewsAreNarrowedToTheStaffMerchantScope() {

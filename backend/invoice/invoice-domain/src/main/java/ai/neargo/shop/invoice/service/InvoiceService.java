@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service;
 
+import java.util.List;
 import ai.neargo.shop.invoice.dto.InvoiceDtos;
 
 import ai.neargo.shop.common.PageData;
@@ -41,6 +42,9 @@ public interface InvoiceService {
 
     /** 运营端：按发票单号取开票范围（主体 + 门店），供运营代为处置时组 Scope。 */
     Scope scopeOf(String tenantNo, String invoiceNo, String actorNo);
+
+    /** 本店这张发票可模拟打印的打印件：应印的证明联、交易明细、未作废的折让证明单；作废的发票不出证明联与明细。 */
+    List<InvoiceDtos.InvoicePrintFactVO> printFacts(Scope scope, String invoiceNo);
 
     InvoiceVO allowance(Scope scope, String invoiceNo, long amountMinor, String reason);
 

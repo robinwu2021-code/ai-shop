@@ -268,6 +268,7 @@ class BizEndpointPermTest {
                     // 发票（ADR-063）：同一路径上查与开分属两个码，这里登记读的那一个，开 / 作废在注解里各自判
                     put("/biz/invoices", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}", BizPerms.INVOICE_READ);
+                    put("/biz/invoices/{invoiceNo}/print-facts", BizPerms.INVOICE_READ);
                     put("/biz/invoices/buyer-preferences", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoices/upload-backlog", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}/void", BizPerms.INVOICE_VOID);

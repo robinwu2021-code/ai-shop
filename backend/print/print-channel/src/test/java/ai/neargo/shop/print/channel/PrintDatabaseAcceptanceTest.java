@@ -614,6 +614,7 @@ class PrintDatabaseAcceptanceTest {
         var simulator = context.getBean(PrintSimulationFacade.class);
         var jobs = context.getBean(JobMapper.class);
         long before = jobs.selectCount(null);
+        var simulationNos = new java.util.ArrayList<String>();
         for (var fixture : SimulationFixtureCode.values()) {
             var result =
                     simulator.create(
@@ -631,36 +632,55 @@ class PrintDatabaseAcceptanceTest {
                                     new PrintOutputOptions(true, PdfOutputProfile.ORIGINAL_ROLL)),
                             actor("sim-" + fixture));
             assertNotNull(result.targetNo());
+            simulationNos.add(result.targetNo());
         }
-        var report =
-                context.getBean(SimulationRunner.class)
-                        .runNext(new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance"));
-        assertEquals(0, report.failed());
-        assertEquals(SimulationFixtureCode.values().length, report.succeeded());
-        int generated = 0;
-        for (int tick = 0;
-                tick < SimulationFixtureCode.values().length
-                        && generated < SimulationFixtureCode.values().length;
-                tick++) {
-            var exported =
-                    context.getBean(PrintExportWorker.class)
-                            .generateNext(
-                                    new PrintWorkerBudget(
-                                            100, Duration.ofSeconds(30), "acceptance"));
-            assertEquals(0, exported.failed());
-            generated += exported.succeeded();
-        }
-        assertEquals(SimulationFixtureCode.values().length, generated);
+        /*
+         * 模拟与导出都在提交后立刻就地执行（DefaultPrintSimulationFacade / DefaultPrintExportFacade 的 AfterCommit），
+         * 不再等后台轮询 —— 所以这里看落库结果，而不是再调一次执行器数它跑了几条（那样永远是 0）。
+         * 再排空一次导出工作器，兜住就地生成因时间预算没跑完的情形。
+         */
+        assertSimulationsPassedWithReadyPdf(simulationNos);
         assertEquals(before, jobs.selectCount(null));
-        assertTrue(
-                context
-                        .getBean(PrnExportTaskMapper.class)
-                        .selectList(
-                                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
-                                                PrnExportTask>()
-                                        .eq("tenant_no", "T1"))
-                        .stream()
-                        .allMatch(e -> "READY".equals(e.getStatus())));
+    }
+
+    /** 发票打印模拟页（TDD-发票模块 §21）的样例路径：三种发票打印件都能出 PDF，且不产生正式打印任务。 */
+    @Test
+    void invoiceDocumentsSimulateToReadyPdfWithoutProductionJobs() {
+        var simulator = context.getBean(PrintSimulationFacade.class);
+        var jobs = context.getBean(JobMapper.class);
+        long before = jobs.selectCount(null);
+        var simulationNos = new java.util.ArrayList<String>();
+        for (var c : java.util.List.of(new String[] {"INVOICE_PROOF", "STANDARD_58", "ORIGINAL_ROLL"},
+                new String[] {"INVOICE_DETAIL", "STANDARD_80", "A4_SHEET"},
+                new String[] {"INVOICE_ALLOWANCE", "STANDARD_58", "ORIGINAL_ROLL"})) {
+            var result = simulator.create(new SimulationCommand(new PrintScope("T1", "E1", "S1"), c[0],
+                    new SimulationSource(SimulationSourceType.SAMPLE, null, null, null), c[1],
+                    SimulationFixtureCode.SUCCESS, null,
+                    new PrintOutputOptions(true, PdfOutputProfile.valueOf(c[2]))), actor("inv-sim-" + c[0]));
+            assertEquals("SUCCEEDED", result.status().name(), c[0]);
+            simulationNos.add(result.targetNo());
+        }
+        assertSimulationsPassedWithReadyPdf(simulationNos);
+        assertEquals(before, jobs.selectCount(null), "模拟不建正式打印任务");
+    }
+
+    private void assertSimulationsPassedWithReadyPdf(java.util.List<String> simulationNos) {
+        var runs = context.getBean(PrnSimulationRunMapper.class).selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
+                                ai.neargo.shop.printing.center.persistence.entity.PrnSimulationRun>()
+                        .in("simulation_no", simulationNos));
+        assertEquals(simulationNos.size(), runs.size());
+        assertTrue(runs.stream().allMatch(r -> "PASSED".equals(r.getStatus())),
+                () -> runs.stream().map(r -> r.getSimulationNo() + "=" + r.getStatus()).toList().toString());
+        var worker = context.getBean(PrintExportWorker.class);
+        for (int tick = 0; tick < simulationNos.size(); tick++)
+            assertEquals(0, worker.generateNext(new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance")).failed());
+        var exports = context.getBean(PrnExportTaskMapper.class).selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PrnExportTask>()
+                        .eq("source_type", "SIMULATION").in("source_no", simulationNos));
+        assertEquals(simulationNos.size(), exports.size());
+        assertTrue(exports.stream().allMatch(e -> "READY".equals(e.getStatus()) && e.getPageCount() != null && e.getPageCount() > 0),
+                () -> exports.stream().map(e -> e.getSourceNo() + "=" + e.getStatus()).toList().toString());
     }
 
     @Test

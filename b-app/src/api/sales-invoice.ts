@@ -1,3 +1,4 @@
+import type { FactRef } from "./print";
 /**
  * 销售发票（台湾电子发票，契约 docs/api/invoice.openapi.json）。
  *
@@ -239,6 +240,16 @@ export interface SiRangeReq {
   storeNo?: string;
 }
 
+/** 一张发票可模拟打印的打印件 */
+export interface SiPrintFact {
+  /** INVOICE_PROOF 证明联 / INVOICE_DETAIL 交易明细 / INVOICE_ALLOWANCE 折让证明单 */
+  scene: string;
+  /** 发票号或折让单号 */
+  docNo: string;
+  /** 打印中心认的事实引用，原样作为模拟的 source.factRef */
+  factRef: FactRef;
+}
+
 export interface SalesInvoiceApi {
   /** 按来源单开票（同来源返回原发票） */
   mSiIssue(body: SiIssueReq): Promise<SalesInvoice>;
@@ -253,6 +264,8 @@ export interface SalesInvoiceApi {
   mSiVoidAllowance(invoiceNo: string, allowanceNo: string, body: { reason: string }): Promise<SalesInvoice>;
   /** 向服务商查单并对账（会把服务商已收到的上传补记为已送达） */
   mSiProviderCheck(invoiceNo: string): Promise<SiProviderCheck>;
+  /** 本张发票可模拟打印的打印件（作废的发票没有证明联与明细） */
+  mSiPrintFacts(invoiceNo: string): Promise<SiPrintFact[]>;
   /** 本门店上传积压概览 */
   mSiUploadBacklog(): Promise<SiUploadBacklog>;
   /** 重传待人工处理的上传任务（开立 / 作废 / 折让），报文不变 */

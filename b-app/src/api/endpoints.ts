@@ -39,6 +39,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSiVoid:{method:"POST",path:"/biz/invoices/{invoiceNo}/void",auth:true,summary:"销售发票：当期作废"},
   mSiAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances",auth:true,summary:"销售发票：开折让"},
   mSiVoidAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void",auth:true,summary:"销售发票：作废折让"},
+  mSiPrintFacts:{method:"GET",path:"/biz/invoices/{invoiceNo}/print-facts",auth:true,summary:"销售发票：可模拟打印的打印件"},
   mSiProviderCheck:{method:"POST",path:"/biz/invoices/{invoiceNo}/provider-checks",auth:true,summary:"销售发票：向服务商查单并对账"},
   mSiUploadBacklog:{method:"GET",path:"/biz/invoices/upload-backlog",auth:true,summary:"销售发票：本门店上传积压"},
   mSiRetransmit:{method:"POST",path:"/biz/invoices/{invoiceNo}/retransmissions",auth:true,summary:"销售发票：重传待人工处理的上传"},

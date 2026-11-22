@@ -86,6 +86,7 @@
         <text v-if="canPrint || canReprint" class="sh-hint txt-caption txt-quiet">{{ t("salesInvoice.proofOnceHint") }}</text>
         <view v-if="canPrintDetail" class="sh-btn sh-btn--soft" @tap="printDetail">{{ t("salesInvoice.printDetail") }}</view>
         <view v-if="merchant.can('biz:print:read')" class="sh-btn sh-btn--soft" @tap="openPrintCenter">{{ t("salesInvoice.printCenter") }}</view>
+        <view v-if="canSimulate" class="sh-btn sh-btn--soft" @tap="openPrintSim">{{ t("salesInvoice.printSimTitle") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft" @tap="allowance">{{ t("salesInvoice.allowance") }}</view>
         <view v-if="canVoid" class="sh-btn sh-btn--soft is-danger" @tap="voidInvoice">{{ t("salesInvoice.void") }}</view>
       </view>
@@ -134,7 +135,9 @@ const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);
 // 补印要先在打印中心找到这张证明联的任务（biz:print:read），再对它补印（biz:print:reprint）
 const canReprint = computed(() => issued.value && !!inv.value?.printMark
   && merchant.can("biz:print:reprint") && merchant.can("biz:print:read"));
-const actionable = computed(() => canPrint.value || canPrintDetail.value || canReprint.value || canVoid.value || merchant.can("biz:print:read"));
+/** 打印模拟：生成 PDF 看版面，不出纸（TDD-发票模块 §21） */
+const canSimulate = computed(() => merchant.can("biz:print:simulate") && merchant.can("biz:print:export"));
+const actionable = computed(() => canPrint.value || canPrintDetail.value || canReprint.value || canVoid.value || merchant.can("biz:print:read") || canSimulate.value);
 const buyerText = computed(() => {
   const i = inv.value;
   if (!i) return "";
@@ -340,6 +343,10 @@ async function reprintProof() {
 function openPrintCenter() {
   // 发票的打印件挂在来源子单上（打印中心的作业列表按订单号同时匹配主单与子单）
   if (inv.value) uni.navigateTo({ url: `${ROUTES.printCenter}?orderNo=${encodeURIComponent(inv.value.sourceNo)}` });
+}
+
+function openPrintSim() {
+  if (inv.value) uni.navigateTo({ url: `${ROUTES.salesInvoicePrintSim}?invoiceNo=${encodeURIComponent(inv.value.invoiceNo)}` });
 }
 
 onLoad((q) => {

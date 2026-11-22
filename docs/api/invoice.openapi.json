@@ -1380,6 +1380,45 @@
           }
         }
       }
+    },
+    "/biz/invoices/{invoiceNo}/print-facts": {
+      "get": {
+        "summary": "本张发票可模拟打印的打印件",
+        "description": "权限 `biz:invoice:read`；门店取 `X-Store-No`。应印的证明联（ISSUED 且 printMark）、交易明细（ISSUED）、未作废的折让证明单；作废的发票不出证明联与明细。factRef 原样作为 `POST /biz/print/simulations` 的 source.factRef（发票打印模拟页用，不出纸、不建正式打印任务）。别店的发票回 26005。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoicePrintFactVO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2136,6 +2175,55 @@
             "items": {
               "$ref": "#/components/schemas/ProviderOptionVO"
             }
+          }
+        }
+      },
+      "PrintFactRef": {
+        "type": "object",
+        "properties": {
+          "tenantNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "factNo": {
+            "type": "string"
+          },
+          "bizRevision": {
+            "type": "string"
+          },
+          "scene": {
+            "type": "string"
+          },
+          "snapshotHash": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoicePrintFactVO": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "INVOICE_PROOF",
+              "INVOICE_DETAIL",
+              "INVOICE_ALLOWANCE"
+            ]
+          },
+          "docNo": {
+            "type": "string",
+            "description": "发票号或折让单号"
+          },
+          "factRef": {
+            "$ref": "#/components/schemas/PrintFactRef"
           }
         }
       }

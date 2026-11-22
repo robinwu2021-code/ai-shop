@@ -1053,3 +1053,54 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 仍未处理：
 - `schema-lineage`：JS 与 Python 两个解析器对 `ivc_*` 表不一致（JS 只扫 shop-app 迁移）。改 JS 扫描面会牵出一批同名业务键分类，单独处理。
 - B 端 `openapi-b.yaml` 未能重新生成：生成器被补货模块既有端点 `mRpState` 的命名校验挡住，与发票无关。
+
+## §21 发票打印模拟（B 端）
+
+状态：已实现 · 2026-11-22 · 档位 1（新端点、新页面与三语文案）· 需求 PRD AC43。
+
+### 21.1 做什么
+
+独立页面「发票打印模拟」（`b-app/pages/sales-invoice-print-sim`）：选打印件（证明联 / 交易明细 / 折让证明单）、纸宽、PDF 版式（原卷宽 / A4），点「生成 PDF」直接看。
+只是模拟：不出纸，不建正式打印任务。证明联法定 5.7 cm，只有 58 mm；明细与折让证明单 58 / 80 mm。
+
+| 入口 | 数据 |
+|---|---|
+| 销售发票列表「发票打印模拟」 | 场景样例 |
+| 发票详情「发票打印模拟」 | 默认用这张票冻结的打印内容（可切回样例）；可选的打印件来自新端点 |
+
+权限：页面要 `biz:print:simulate` + `biz:print:export`；用真实发票还要 `biz:invoice:read`。
+
+### 21.2 流程
+
+复用打印中心既有能力，不新增打印侧代码：
+
+1. `GET /biz/invoices/{invoiceNo}/print-facts`（新，`biz:invoice:read`）→ 本张票的打印件与 `factRef`（应印的证明联、交易明细、未作废的折让证明单；作废的票不出证明联与明细）
+2. `POST /biz/print/simulations`：`source` 为 `FACT`（带 factRef）或 `SAMPLE`，`fixtureCode=SUCCESS`，`outputOptions.pdfEnabled=true` —— 提交后模拟与 PDF 导出都就地执行
+3. 轮询 `GET /biz/print/exports/{exportNo}` 至 `READY`（约 10 秒上限）
+4. `POST /biz/print/exports/{exportNo}/download-grants` → 60 秒签名链接；H5 用 iframe 内嵌显示，App / 小程序用 `uni.openDocument`；「重新打开 PDF」每次重新申请授权
+
+### 21.3 一并修正
+
+`PrintDatabaseAcceptanceTest#sampleSimulationAndPdfExportNeverCreateProductionJobs` 此前一直失败（§9 记为既有）：它在创建后再调模拟执行器、数跑了几条，
+而模拟与导出早已改为提交后就地执行，所以永远是 0。改为检查落库结果：模拟 `PASSED`、导出 `READY` 且有页数、正式打印任务数不变。
+
+### 21.4 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `api/biz/BizInvoiceController` · `service/InvoiceService(Impl)` · `dto/InvoiceDtos` | `print-facts` 端点、`printFacts`、`InvoicePrintFactVO` |
+| `shop-app` `BizEndpointPermTest` | 新端点登记 `biz:invoice:read` |
+| b-app `pages/sales-invoice-print-sim`（新）· `pages/sales-invoice` · `pages/sales-invoices` · `pages.json` · `shared/nav.ts` · `api/*` · `i18n` | 页面、两处入口、接口 |
+| `print-channel` `PrintDatabaseAcceptanceTest` | 修正过时断言；加发票三种打印件的样例模拟 |
+| `docs/api/invoice.openapi.json` · `ui-catalog.json` | 契约与界面清单 |
+
+### 21.5 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC43 | `InvoiceServiceMysqlTest#ac43PrintFactsListTheDocumentsThisInvoiceCanPrint`：证明联 + 明细；factRef 指向冻结内容的哈希；折让后多一张折让证明单；作废的票为空；别店 26005 | ✅ |
+| AC43 | `PrintDatabaseAcceptanceTest#invoiceDocumentsSimulateToReadyPdfWithoutProductionJobs`：三种发票打印件（58 原卷宽 / 80 A4 / 58 原卷宽）样例模拟 → 模拟 PASSED、PDF READY 有页数、不建正式任务 | ✅ |
+| 回归 | `#sampleSimulationAndPdfExportNeverCreateProductionJobs`（修正后）；`InvoiceServiceMysqlTest` 37/37；b-app `vue-tsc` 无错、vitest 410/410；`gen-ui-catalog --check` | ✅ |
+
+未覆盖：没有在浏览器里跑整条页面流程（共用的开发服务未启动）；「用真实发票」的打印事实模拟（FACT 来源经发票的打印事实端口取快照）没有端到端测，只验了 factRef 与冻结内容一致。
+B 端 `openapi-b.yaml` 仍因补货模块既有端点的命名校验无法重新生成（§20.7）。

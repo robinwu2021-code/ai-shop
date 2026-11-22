@@ -536,6 +536,25 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .eq("entity_no", scope.entityNo()).eq("active_source_key", sourceKey(sourceType, sourceNo)));
     }
 
+    @Override
+    public List<InvoiceDtos.InvoicePrintFactVO> printFacts(Scope scope, String invoiceNo) {
+        var inv = require(scope, invoiceNo);
+        var out = new ArrayList<InvoiceDtos.InvoicePrintFactVO>();
+        boolean issued = "ISSUED".equals(inv.getStatus());
+        if (issued && "Y".equals(inv.getPrintMark()) && inv.getProofSnapshotHash() != null)
+            out.add(new InvoiceDtos.InvoicePrintFactVO(InvoicePrintSourceFactsPortImpl.SCENE, inv.getInvoiceNo(),
+                    InvoicePrintSourceFactsPortImpl.ref(inv)));
+        if (issued && inv.getDetailSnapshotHash() != null)
+            out.add(new InvoiceDtos.InvoicePrintFactVO(InvoicePrintSourceFactsPortImpl.DETAIL_SCENE, inv.getInvoiceNo(),
+                    InvoicePrintSourceFactsPortImpl.detailRef(inv)));
+        for (var a : allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())
+                .eq("invoice_no", inv.getInvoiceNo()).orderByAsc("id")))
+            if (!"VOIDED".equals(a.getStatus()) && a.getPrintSnapshotHash() != null)
+                out.add(new InvoiceDtos.InvoicePrintFactVO(InvoicePrintSourceFactsPortImpl.ALLOWANCE_SCENE,
+                        a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
+        return out;
+    }
+
     private IvcInvoice require(Scope scope, String invoiceNo) {
         var inv = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("invoice_no", invoiceNo));

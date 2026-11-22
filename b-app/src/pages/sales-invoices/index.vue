@@ -10,9 +10,10 @@
       <view class="sh-mt-sm">
         <sh-tabs :items="statusTabs" :active="status" @change="changeStatus"></sh-tabs>
       </view>
-      <view v-if="merchant.can('biz:invoice:issue') || merchant.can('biz:invoice:setup')" class="sh-row sh-mt-sm">
+      <view v-if="merchant.can('biz:invoice:issue') || merchant.can('biz:invoice:setup') || canSimulate" class="sh-row sh-mt-sm">
         <view v-if="merchant.can('biz:invoice:issue')" class="sh-btn sh-btn--sm" @tap="go(ROUTES.salesInvoiceIssue)">{{ t("salesInvoice.issueTitle") }}</view>
         <view v-if="merchant.can('biz:invoice:setup')" class="sh-btn sh-btn--soft sh-btn--sm" @tap="go(ROUTES.invoiceSetup)">{{ t("salesInvoice.setupTitle") }}</view>
+        <view v-if="canSimulate" class="sh-btn sh-btn--soft sh-btn--sm" @tap="go(ROUTES.salesInvoicePrintSim)">{{ t("salesInvoice.printSimTitle") }}</view>
       </view>
     </view>
 
@@ -123,6 +124,8 @@ function changeStatus(key: string) {
 function open(invoiceNo: string) {
   uni.navigateTo({ url: `${ROUTES.salesInvoice}?invoiceNo=${encodeURIComponent(invoiceNo)}` });
 }
+/** 发票打印模拟（样例数据）：生成 PDF 看版面，不出纸 */
+const canSimulate = computed(() => merchant.can("biz:print:simulate") && merchant.can("biz:print:export"));
 function go(url: string) {
   uni.navigateTo({ url });
 }

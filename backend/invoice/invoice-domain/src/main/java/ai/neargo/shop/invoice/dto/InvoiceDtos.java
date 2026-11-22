@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import ai.neargo.shop.print.api.PrintFactRef;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -172,6 +173,14 @@ public final class InvoiceDtos {
      */
     public record ProviderOptionVO(String code, String numbering, String reporting, boolean requiresAccount,
             boolean verifiable, boolean rangeProvided, boolean queryable, boolean isDefault) {}
+
+    /**
+     * 一张发票可拿去模拟打印的打印件（证明联 / 交易明细 / 折让证明单），带打印中心认的事实引用。
+     *
+     * @param docNo 发票号或折让单号
+     * @param factRef 直接作为 {@code POST /biz/print/simulations} 的 {@code source.factRef}
+     */
+    public record InvoicePrintFactVO(String scene, String docNo, PrintFactRef factRef) {}
 
     /** 运营端营业人一行：配置、号码余量、上传积压。 */
     public record OpsSellerVO(String entityNo, String regimeCode, String sellerTaxId, String sellerName,

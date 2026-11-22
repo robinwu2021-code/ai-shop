@@ -81,6 +81,7 @@ export const ROUTES = {
   salesInvoice: "/pages/sales-invoice/index",
   salesInvoiceIssue: "/pages/sales-invoice-issue/index",
   invoiceSetup: "/pages/invoice-setup/index",
+  salesInvoicePrintSim: "/pages/sales-invoice-print-sim/index",
   statement: "/pages/statement/index",
   // 商家端支付（TDD-支付服务-I5接入层 S8）
   payCollect: "/pages/pay-collect/index",
