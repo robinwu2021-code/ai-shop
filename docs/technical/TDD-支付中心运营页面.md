@@ -639,3 +639,19 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **偏差**：SY12 与 SY13 合成一个页签（`api-catalog`，「调用模拟」是行操作抽屉）——支付中心页签统一是「表格 + 行操作」，模拟总是针对某一个接口。
 - **测试**：`p12.test.ts` 14 条（HTTP 映射 3、mock 状态机 5、契约测试向量 P1/P2/P3 与 `/open/pay/v1` ↔ `/openapi/v1` 两种前缀 3、mock 网关 3）；`payment-center-page.test.ts` 自动覆盖 3 个新页签（页头、表格行、「查看」抽屉）。ops-web vitest 161 个文件 1458 条全过；`tsc`、`eslint --quiet` 无报错；`next build`（`NEXT_PUBLIC_USE_MOCK=0`）通过；`check-generated-docs` 27 个生成器最新；`gen-ui-catalog --check` 最新。
 - **未做**：未在浏览器实机走查（本机 dev server 端口为多会话共用）；未部署。
+
+### P12 · 发布到 v2（2026-11-22 18:33–18:40 CST，用户：「直接合并，然后部署」）
+
+PR #28 压缩合入 main（`b58dfa600`），从该提交构建发布。near-pay 与网关配置都没动。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-main-b58dfa600.jar`（sha256 前缀 `ef77643cadc7fbb2`，148 060 579 字节），`run.sh` 标签 `main-b58dfa600`；依赖清单与上一版 `shop-app-main-087689aad.jar` 逐条相同（201 个） | `cp releases/run-before-main-b58dfa600.sh run.sh && ./run.sh all restart`（V688 只插 3 个菜单点，旧包可直接跑） |
+| 正式库 `ai_shop_ume` | Flyway 687 → **688**（`ops payment center open api menu`，0.096 s） | 不需要；如要撤菜单：删 3 个 `OPS_FINANCE__PAYCENTER_{APP_APPLICATIONS,API_CATALOG,PLATFORM_KEYS}` 点及其 `sys_role_point` |
+| 运营端页面 | 166 `/data/www/ai-shop-ops-v2/releases/main-b58dfa600`（tgz sha256 前缀 `f0884173b46ae4e1`），`current` 已切 | `ln -sfn /data/www/ai-shop-ops-v2/releases/main-1cc4fef64 /data/www/ai-shop-ops-v2/current` |
+
+- 构建参数：`NEXT_PUBLIC_USE_MOCK=0 NEXT_PUBLIC_API_BASE=/ops-shop-v2 NEXT_PUBLIC_BASE_PATH=/ops-shop-v2 NEXT_PUBLIC_PAY_OPS_API_BASE=/ops-shop-v2/ops/pay-ops/v2 NEXT_PUBLIC_NEARPAY_ACCESS_URL=/ops-shop-v2/ops/pay-ops/v2/me/access npm run build -- --webpack`（与线上 `main-1cc4fef64` 包里的取值逐项核对）；`NEXT_PUBLIC_OPEN_API_BASE` 取默认 `https://tpay.neargo.ai/openapi/v1`。
+- 中断：10:33:28–10:34:59 UTC（约 91 秒，三端同时；`Started ShopApplication in 87.2 seconds`）。启动日志 ERROR 只有既有的 `shop.ship.track-key` 未配置一条。
+- .80 主机公钥不在本机 known_hosts：经 166 与跳板机两条路径各 `ssh-keyscan` 一次，结果一致后用临时 known_hosts 连接。
+- 探测（不带令牌）：.80 `/actuator/health` 200；`/ops/pay-ops/v2/{apps,app-applications,platform-keys}`、`/biz/payment/orders` 401；公网 `https://tw.neargo.ai/ops-shop-v2/payment-center/` 200，页面 chunk 含新页签。
+- **未验证**：登录后的三个新页签与透传调用（浏览器里没有运营会话，未代输口令）。试点 robin 提交 / neara 审核需各自角色有 `pay:app:manage` / `pay:app:approve`。
