@@ -393,6 +393,8 @@ public enum ErrorCode {
     INVOICE_KEY_UNAVAILABLE(26010, "err.invoice.key_unavailable"),
     /** 开票服务商拒绝或不可达；{0} = 服务商回的原文代码（鲸跃 invalid / exist / nodata …） */
     INVOICE_PROVIDER_REJECTED(26011, "err.invoice.provider_rejected"),
+    /** 主体选的开票供应商未装配、不服务该地区税制，或编号方式开立流程尚未支持；{0} = 供应商编码 */
+    INVOICE_GATEWAY_UNSUPPORTED(26012, "err.invoice.gateway_unsupported"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),

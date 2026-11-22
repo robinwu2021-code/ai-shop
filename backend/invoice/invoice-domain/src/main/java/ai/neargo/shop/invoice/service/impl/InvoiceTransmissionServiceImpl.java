@@ -5,8 +5,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.ProviderCheckVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.UploadBacklogVO;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderInvoiceStatus.State;
+import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.QueryCapability;
+import ai.neargo.shop.invoice.gateway.QueryCapability.ProviderInvoiceStatus.State;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
@@ -15,7 +16,7 @@ import ai.neargo.shop.invoice.entity.IvcTransmission;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
+import ai.neargo.shop.invoice.gateway.InvoiceGateways;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.TransmissionMapper;
@@ -30,8 +31,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,12 +64,12 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
     private final RegimeProfileMapper profiles;
     private final AllowanceMapper allowances;
     private final InvoiceProviderAccounts accounts;
-    private final Map<String, InvoiceGateway> gateways;
+    private final InvoiceGateways gateways;
     private final InvoiceMapper invoices;
     private final InvoiceRegimes regimes;
 
     public InvoiceTransmissionServiceImpl(TransmissionMapper transmissions, RegimeProfileMapper profiles,
-            AllowanceMapper allowances, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways,
+            AllowanceMapper allowances, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
             InvoiceMapper invoices, InvoiceRegimes regimes) {
         this.transmissions = transmissions;
         this.profiles = profiles;
@@ -78,7 +77,7 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         this.invoices = invoices;
         this.regimes = regimes;
         this.accounts = accounts;
-        this.gateways = gateways.stream().collect(Collectors.toMap(InvoiceGateway::code, Function.identity()));
+        this.gateways = gateways;
     }
 
     @Override
@@ -93,8 +92,8 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         // 同一轮里同一主体的配置只查一次；本轮刚被暂停的主体，后面的任务直接转 HELD
         var profileCache = new HashMap<String, IvcRegimeProfile>();
         for (var t : due) {
-            var gateway = gateways.get(t.getGatewayCode());
-            IvcRegimeProfile profile = gateway instanceof InvoiceProviderGateway
+            var gateway = gateways.find(t.getGatewayCode()).orElse(null);
+            IvcRegimeProfile profile = gateway != null && gateway.profile().requiresAccount()
                     ? profileCache.computeIfAbsent(t.getTenantNo() + "|" + t.getEntityNo() + "|" + t.getRegimeCode(),
                             k -> profileOf(t))
                     : null;
@@ -190,13 +189,14 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
         var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", inv.getTenantNo())
                 .eq("entity_no", inv.getEntityNo()).eq("regime_code", inv.getRegimeCode()).last("LIMIT 1"));
-        if (profile == null || !(gateways.get(profile.getGatewayCode()) instanceof InvoiceProviderGateway provider))
-            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        var provider = profile == null ? null
+                : gateways.capability(profile.getGatewayCode(), QueryCapability.class).orElse(null);
+        if (provider == null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
         var account = accounts.of(profile).orElseThrow(
                 () -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "account_not_configured"));
         var day = LocalDate.ofInstant(inv.getIssuedAt().toInstant(ZoneOffset.UTC),
                 regimes.require(inv.getRegimeCode()).zone());
-        InvoiceProviderGateway.ProviderInvoiceStatus status;
+        QueryCapability.ProviderInvoiceStatus status;
         try {
             status = provider.queryStatus(account, inv.getFiscalNumber(), day);
         } catch (ProviderException e) {
@@ -309,7 +309,7 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
     private GatewayReceipt send(InvoiceGateway gateway, IvcTransmission t, IvcRegimeProfile profile) {
         if (gateway == null) return GatewayReceipt.retryable("gateway not installed: " + t.getGatewayCode());
         InvoiceGateway.ProviderAccount account = null;
-        if (gateway instanceof InvoiceProviderGateway) {
+        if (gateway.profile().requiresAccount()) {
             account = accounts.of(profile).orElse(null);
             if (account == null) return GatewayReceipt.accountProblem("provider account not configured");
         }

@@ -284,7 +284,7 @@
       },
       "put": {
         "summary": "开通 / 修改税制",
-        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。",
+        "description": "权限 `biz:invoice:setup`；门店取 `X-Store-No`，主体取登录上下文，入参不接受主体号。 选用的开票供应商未装配、不服务该地区税制，或编号方式尚未支持时回 26012（参数为供应商编码）。",
         "parameters": [
           {
             "name": "X-Store-No",

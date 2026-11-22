@@ -1,21 +1,28 @@
 package ai.neargo.shop.invoice.gateway;
 
 /**
- * 开票通道 SPI（加值中心 / Turnkey / stub）。实现放 invoice-channel，每家一个包。
+ * 开票供应商 SPI 的根接口（TDD-发票模块 §19）：台湾加值中心 / Turnkey、阿联酋 Peppol 接入点服务商 …
+ * 实现放 invoice-channel，每家一个包，继承所属对接形态的抽象类（{@code channel.base}）。
  *
  * <p>只做协议：把税制生成好的报文送出去，回一句收没收到。不判业务、不改发票状态 —— 状态由
  * {@code InvoiceTransmissionServiceImpl} 按回执推进，同一个报文失败后原样补传。
+ *
+ * <p>上传之外的动作按能力拆成接口，厂商只实现自己有的：{@link AccountCapability} 核验账号、
+ * {@link RangeCapability} 服务商配号段、{@link QueryCapability} 查单。领域经 {@link InvoiceGateways} 按能力取用。
  */
 public interface InvoiceGateway {
 
     /** 与 {@code ivc_regime_profile.gateway_code} 对应。 */
     String code();
 
+    /** 服务哪些税制（地区）、编号与上报方式、要不要商家账号。 */
+    ProviderProfile profile();
+
     GatewayReceipt send(GatewayRequest request);
 
     /**
      * @param refNo   业务号（发票号 / 折让号），通道可拿来做对方系统里的订单号
-     * @param account 主体在服务商那边的账号；只有 {@link InvoiceProviderGateway} 会收到非空值
+     * @param account 主体在服务商那边的账号；只有 {@link ProviderProfile#requiresAccount()} 的供应商会收到非空值
      */
     record GatewayRequest(String regimeCode, String messageType, String refNo, String payloadJson,
             ProviderAccount account) {}
@@ -56,10 +63,18 @@ public interface InvoiceGateway {
     }
 
     /**
-     * 主体在加值中心的账号。{@code accountCode} 是服务商分给商家的代号（鲸跃 officeid），存业务表；
-     * {@code user} / {@code password}（鲸跃 posno / posid）只存在 secret 模块，用时现解。
+     * 主体在供应商那边的账号，各家统一成「代号 + 密钥标识 + 密钥」三元：
+     *
+     * <table>
+     *   <tr><th>供应商</th><th>accountCode</th><th>keyId</th><th>secret</th></tr>
+     *   <tr><td>鲸跃</td><td>officeid</td><td>posno</td><td>posid</td></tr>
+     *   <tr><td>绿界 / 蓝新（加密接口）</td><td>MerchantID</td><td>HashKey</td><td>HashIV</td></tr>
+     *   <tr><td>签名接口 / Peppol 接入点</td><td>商户号或参与方标识</td><td>API Key / Client ID</td><td>签名密钥 / Client Secret</td></tr>
+     * </table>
+     *
+     * {@code accountCode} 存业务表；{@code keyId} / {@code secret} 只存在 secret 模块，用时现解。
      */
-    record ProviderAccount(String accountCode, String user, String password) {
+    record ProviderAccount(String accountCode, String keyId, String secret) {
         @Override
         public String toString() {
             return "ProviderAccount[" + accountCode + "]";

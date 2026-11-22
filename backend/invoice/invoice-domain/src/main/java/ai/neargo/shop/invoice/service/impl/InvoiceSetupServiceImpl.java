@@ -13,10 +13,11 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileVO;
 import ai.neargo.shop.invoice.entity.IvcNumberRange;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
-import ai.neargo.shop.invoice.gateway.InvoiceGateway;
+import ai.neargo.shop.invoice.gateway.AccountCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.InvoiceGateways;
+import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.NumberRangeMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -61,11 +62,11 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private final InvoiceRegimes regimes;
     private final ObjectProvider<SecretVault> vault;
     private final InvoiceProviderAccounts accounts;
-    private final List<InvoiceGateway> gateways;
+    private final InvoiceGateways gateways;
     private final InvoiceTransmissionService transmissions;
 
     public InvoiceSetupServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceRegimes regimes,
-            ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways,
+            ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
             InvoiceTransmissionService transmissions) {
         this.profiles = profiles;
         this.ranges = ranges;
@@ -88,6 +89,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     public RegimeProfileVO saveProfile(Scope scope, RegimeProfileReq req) {
         var regime = regimes.require(req.regimeCode());
         regime.validateSeller(req.sellerTaxId());
+        gateways.requireFor(req.gatewayCode(), regime.code());
         var now = LocalDateTime.now(ZoneOffset.UTC);
         var p = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("regime_code", regime.code()));
@@ -177,7 +179,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     @Override
     public ProviderVerificationVO verifyProvider(Scope scope) {
         var p = requireProfile(scope);
-        var office = call(() -> provider(p).verify(account(p)));
+        var office = call(() -> capability(p, AccountCapability.class).verify(account(p)));
         if (!p.getSellerTaxId().equals(office.taxId()))
             throw BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "tax_id_mismatch");
         byte[] key = TwQrCipher.parseKey(office.qrKey());
@@ -199,7 +201,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         var p = requireProfile(scope);
         var regime = regimes.require(p.getRegimeCode());
         String period = periodCode != null ? periodCode : regime.periodOf(Instant.now());
-        var got = call(() -> provider(p).allocate(account(p), period));
+        var got = call(() -> capability(p, RangeCapability.class).allocate(account(p), period));
         var same = ranges.selectOne(new QueryWrapper<IvcNumberRange>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("regime_code", regime.code()).eq("period_code", period)
                 .eq("track", got.track()).eq("start_no", got.startNo()).eq("end_no", got.endNo()).last("LIMIT 1"));
@@ -237,10 +239,9 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         return p;
     }
 
-    /** 主体配的通道须是加值中心类（要账号、能配号）；STUB / Turnkey 下这两个动作没有意义。 */
-    private InvoiceProviderGateway provider(IvcRegimeProfile p) {
-        return gateways.stream().filter(g -> g.code().equals(p.getGatewayCode()))
-                .filter(InvoiceProviderGateway.class::isInstance).map(InvoiceProviderGateway.class::cast).findFirst()
+    /** 主体配的供应商须有这项能力（核验账号 / 配号段）；STUB / Turnkey / 在线给号类没有，动作无意义。 */
+    private <T> T capability(IvcRegimeProfile p, Class<T> type) {
+        return gateways.capability(p.getGatewayCode(), type)
                 .orElseThrow(() -> BizException.of(ErrorCode.INVOICE_STATE_INVALID));
     }
 
@@ -328,8 +329,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     /** 只有「服务商配号」的通道才能自动领号；账号暂停中（M1-2）不去打服务商。 */
     private boolean autoFetchable(IvcRegimeProfile p) {
         return Boolean.TRUE.equals(p.getAutoFetchRanges()) && p.getProviderHeldAt() == null
-                && gateways.stream().anyMatch(g -> g.code().equals(p.getGatewayCode())
-                        && g instanceof InvoiceProviderGateway);
+                && gateways.capability(p.getGatewayCode(), RangeCapability.class).isPresent();
     }
 
     /** 业务动作：自动领号失败（服务商拒绝、号段冲突）不中断巡检，转为提醒，由人处理。 */

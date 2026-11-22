@@ -8,8 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderInvoiceStatus;
+import ai.neargo.shop.invoice.channel.base.SoapEnvelope;
+import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.QueryCapability.ProviderInvoiceStatus;
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
@@ -48,15 +49,15 @@ class CetustekInvoiceGatewayTest {
             String value = returns.isEmpty() ? "error" : returns.poll();
             byte[] body = ("<S:Envelope xmlns:S=\"http://schemas.xmlsoap.org/soap/envelope/\"><S:Body>"
                     + "<ns2:Resp xmlns:ns2=\"http://webservice.cetustek.com/\"><return>"
-                    + CetustekSoapClient.escape(value) + "</return></ns2:Resp></S:Body></S:Envelope>")
+                    + SoapEnvelope.escape(value) + "</return></ns2:Resp></S:Body></S:Envelope>")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
             exchange.close();
         });
         server.start();
-        gateway = new CetustekInvoiceGateway(new CetustekSoapClient(
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/InvoiceAPI"), Duration.ofSeconds(5)),
+        gateway = new CetustekInvoiceGateway(
+                URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/InvoiceAPI"), Duration.ofSeconds(5),
                 JsonMapper.builder().build());
     }
 

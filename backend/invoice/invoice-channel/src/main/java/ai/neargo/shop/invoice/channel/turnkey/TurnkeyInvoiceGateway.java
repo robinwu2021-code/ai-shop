@@ -1,14 +1,13 @@
 package ai.neargo.shop.invoice.channel.turnkey;
 
-import ai.neargo.shop.invoice.gateway.InvoiceGateway;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import ai.neargo.shop.invoice.channel.base.AbstractFileExchangeInvoiceGateway;
+import ai.neargo.shop.invoice.gateway.ProviderProfile;
+import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
+import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -16,33 +15,33 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 财政部 Turnkey 通道：把 MIG 报文写成 XML 文件放进 Turnkey 的上传目录，由 Turnkey 程序负责签章与上传大平台。
- * 不需要与任何加值中心签约 —— Turnkey 是财政部提供给营业人的标准上传工具。
+ * 财政部 Turnkey，台湾 · 文件交换形态（{@link AbstractFileExchangeInvoiceGateway}）：把 MIG 报文写成 XML 文件放进
+ * Turnkey 的上传目录，由 Turnkey 程序负责签章与上传大平台。不需要与任何加值中心签约，号段由商家自领、在 B 端登记。
  *
  * <p><b>目录</b>：{@code shop.invoice.turnkey.root} 是 Turnkey 安装时配置的数据根；子路径按报文代号替换
  * {@code {mig}}，默认 {@code UpCast/B2SSTORAGE/{mig}/SRC}，与所装 Turnkey 版本的目录设置不一致时改配置即可。
- *
- * <p><b>原子性</b>：先写同目录下的 {@code .tmp}，再原子改名为 {@code .xml} —— Turnkey 扫描到的一定是完整文件。
- * 同一条上传任务重发会覆盖同名文件（文件名 = 报文代号 + 业务号），不会产生两份。
+ * 文件名 = 报文代号 + 业务号；原子落盘与重发覆盖由基类保证。
  * 「送达」只表示文件已交给 Turnkey；大平台的处理结果由 Turnkey 的回执目录给出，接回执是下一步。
  */
 @Component
 @ConditionalOnProperty(name = "shop.invoice.turnkey.root")
-public class TurnkeyInvoiceGateway implements InvoiceGateway {
+public class TurnkeyInvoiceGateway extends AbstractFileExchangeInvoiceGateway {
+
+    static final ProviderProfile PROFILE =
+            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.LOCAL_RANGE, ReportMode.FILE_DROP, false);
 
     private static final Map<String, String> ROOT_ELEMENT =
             Map.of("F0401", "Invoice", "F0501", "CancelInvoice", "G0401", "Allowance", "G0501", "CancelAllowance");
 
     private final Path root;
     private final String pathPattern;
-    private final ObjectMapper json;
 
     public TurnkeyInvoiceGateway(@Value("${shop.invoice.turnkey.root}") String root,
             @Value("${shop.invoice.turnkey.path-pattern:UpCast/B2SSTORAGE/{mig}/SRC}") String pathPattern,
             ObjectMapper json) {
+        super(json);
         this.root = Path.of(root);
         this.pathPattern = pathPattern;
-        this.json = json;
     }
 
     @Override
@@ -51,14 +50,15 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
     }
 
     @Override
-    public GatewayReceipt send(GatewayRequest request) {
-        if (!"TW_EGUI".equals(request.regimeCode()))
-            return GatewayReceipt.rejected("Turnkey only serves TW_EGUI");
-        JsonNode message = json.readTree(request.payloadJson());
+    public ProviderProfile profile() {
+        return PROFILE;
+    }
+
+    @Override
+    protected ExchangeFile render(GatewayRequest request, JsonNode message) {
         String mig = message.path("mig").asText();
         String rootElement = ROOT_ELEMENT.get(mig);
-        if (rootElement == null) return GatewayReceipt.rejected("Unsupported MIG message: " + mig);
-        String xml = xml(rootElement, mig, message);
+        if (rootElement == null) throw new UnsupportedMessageException("Unsupported MIG message: " + mig);
         String id = switch (mig) {
             case "F0401" -> message.path("Main").path("InvoiceNumber").asText();
             case "F0501" -> message.path("CancelInvoiceNumber").asText();
@@ -66,16 +66,7 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
             default -> message.path("Main").path("AllowanceNumber").asText();
         };
         Path dir = root.resolve(pathPattern.replace("{mig}", mig));
-        Path target = dir.resolve(mig + "_" + id + ".xml");
-        try {
-            Files.createDirectories(dir);
-            Path tmp = dir.resolve(mig + "_" + id + ".xml.tmp");
-            Files.writeString(tmp, xml, StandardCharsets.UTF_8);
-            Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        return GatewayReceipt.accepted(target.toString());
+        return new ExchangeFile(dir.resolve(mig + "_" + id + ".xml"), xml(rootElement, mig, message));
     }
 
     /**

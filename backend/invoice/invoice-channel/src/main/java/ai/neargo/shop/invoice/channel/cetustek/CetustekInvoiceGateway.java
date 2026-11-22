@@ -1,6 +1,16 @@
 package ai.neargo.shop.invoice.channel.cetustek;
 
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
+import ai.neargo.shop.invoice.channel.base.AbstractSoapInvoiceGateway;
+import ai.neargo.shop.invoice.channel.base.HttpTransport;
+import ai.neargo.shop.invoice.channel.base.ResultCodeTable;
+import ai.neargo.shop.invoice.channel.base.SoapEnvelope;
+import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.ProviderProfile;
+import ai.neargo.shop.invoice.gateway.ProviderProfile.NumberingMode;
+import ai.neargo.shop.invoice.gateway.ProviderProfile.ReportMode;
+import ai.neargo.shop.invoice.gateway.QueryCapability;
+import ai.neargo.shop.invoice.gateway.RangeCapability;
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -16,40 +26,55 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 鯨躍（Cetustek）加值中心通道，代码 {@code CETUSTEK}。协议与字段沿用 UME invoice-web 的
- * {@code CetustekInvoiceServiceImpl}：开立 UploadInvoice、作废 UploadCancelInvoice、折让 UploadAllowance、折让作废 UploadCancelAllowance，
- * 账号核验 QueryOfficeInfo，号段 ApplyInvoiceNumber → TakeInvoiceNumber，查单 QueryInvoiceStatus。
+ * 鯨躍（Cetustek）加值中心，代码 {@code CETUSTEK}，台湾 · SOAP 形态（{@link AbstractSoapInvoiceGateway}）。
+ * 协议与字段沿用 UME invoice-web 的 {@code CetustekInvoiceServiceImpl}：开立 UploadInvoice、作废 UploadCancelInvoice、
+ * 折让 UploadAllowance、折让作废 UploadCancelAllowance，账号核验 QueryOfficeInfo，号段 ApplyInvoiceNumber →
+ * TakeInvoiceNumber，查单 QueryInvoiceStatus。
  *
  * <p><b>报文</b>：税制给的是 MIG 树（见 {@code TwEguiRegime#message}），这里按鲸跃的扁平 XML 重排：
  * 日期 {@code yyyy/MM/dd}；B2C 不带买方识别码；纸本 / 载具 / 捐赠的 DonateMark 分别是 2 / 0 / 1；
- * 免税明细 DType=TN。零税率鲸跃另有通关方式栏位，首期不支持，报文直接判失败留在任务里，不送出半对的票。
+ * 免税明细 DType=TN。零税率鲸跃另有通关方式栏位，首期不支持，映射阶段判失败留在任务里，不送出半对的票。
  *
- * <p><b>结果码</b>：见 {@link CetustekResultCodes}。同一报文重发时鲸跃回「已上传过」（S2 / C5 / A6），视为送达；
- * 认证失败（invalid）交给上传任务暂停该主体；不认识的码不自动重发。网络不通由 {@link CetustekSoapClient} 抛出，按可重试处理。
+ * <p><b>结果码</b>：见 {@link #CODES}。同一报文重发时鲸跃回「已上传过」（S2 / C5 / A6 / C4），视为送达；
+ * 认证失败（invalid）交给上传任务暂停该主体；不认识的码不自动重发。
  *
  * <p><b>网络</b>：鲸跃只放行台湾出口（本机直连 TCP 被拒），线上实例部署在台湾机房；
  * 地址取 {@code shop.invoice.cetustek.url}，默认 UME 一直在用的正式地址。
  */
 @Component
-public class CetustekInvoiceGateway implements InvoiceProviderGateway {
+public class CetustekInvoiceGateway extends AbstractSoapInvoiceGateway
+        implements AccountCapability, RangeCapability, QueryCapability {
 
     static final String CODE = "CETUSTEK";
+    static final ProviderProfile PROFILE =
+            new ProviderProfile(Set.of("TW_EGUI"), NumberingMode.PROVIDER_RANGE, ReportMode.ASYNC_UPLOAD, true);
+
+    /**
+     * 照 UME {@code StatusCode} 与鲸跃回码说明逐行转写。{@code S1 / C1 / A1}（「上传失败」，语义待鲸跃确认）未登记，
+     * 按需人工处理；确认可重试后再改表。折让作废 C3 =「没有该折让单号码可作废」同样按需人工。
+     */
+    static final ResultCodeTable CODES = ResultCodeTable.builder()
+            .acceptedFor("ISSUE", "S0", "S2")
+            .acceptedFor("VOID", "C0", "C5")
+            .acceptedFor("ALLOWANCE", "A0", "A6")
+            .acceptedFor("ALLOWANCE_VOID", "C0", "C4")
+            .accountProblem("invalid")      // 认证错误：officeid / posno / posid 不对
+            .retryable("error")             // 鲸跃系统错误
+            .build();
+
+    private static final String NS = "http://webservice.cetustek.com/";
     private static final Set<String> FAILURES = Set.of("ERROR", "INVALID", "EXIST", "NODATA", "NOTAKE");
     private static final String CONSUMER_ID = "0000000000";
-
-    private final CetustekSoapClient soap;
-    private final ObjectMapper json;
 
     @Autowired
     public CetustekInvoiceGateway(
             @Value("${shop.invoice.cetustek.url:http://invoice.cetustek.com.tw/InvoiceEntitySync/InvoiceAPI}") String url,
             @Value("${shop.invoice.cetustek.timeout-seconds:20}") int timeoutSeconds, ObjectMapper json) {
-        this(new CetustekSoapClient(URI.create(url), Duration.ofSeconds(timeoutSeconds)), json);
+        this(URI.create(url), Duration.ofSeconds(timeoutSeconds), json);
     }
 
-    CetustekInvoiceGateway(CetustekSoapClient soap, ObjectMapper json) {
-        this.soap = soap;
-        this.json = json;
+    CetustekInvoiceGateway(URI endpoint, Duration timeout, ObjectMapper json) {
+        super(endpoint, new HttpTransport(timeout), json);
     }
 
     @Override
@@ -58,50 +83,48 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
     }
 
     @Override
-    public GatewayReceipt send(GatewayRequest request) {
-        if (!"TW_EGUI".equals(request.regimeCode()))
-            return GatewayReceipt.rejected("Cetustek only serves TW_EGUI");
-        if (request.account() == null) return GatewayReceipt.accountProblem("provider account not configured");
-        JsonNode m = json.readTree(request.payloadJson());
-        String operation, field, xml;
-        try {
-            switch (request.messageType()) {
-                case "ISSUE" -> {
-                    operation = "UploadInvoice";
-                    field = "invoicexml";
-                    xml = invoiceXml(m, request.refNo());
-                }
-                case "VOID" -> {
-                    operation = "UploadCancelInvoice";
-                    field = "invoicexml";
-                    xml = cancelXml(m);
-                }
-                case "ALLOWANCE" -> {
-                    operation = "UploadAllowance";
-                    field = "allowancexml";
-                    xml = allowanceXml(m);
-                }
-                case "ALLOWANCE_VOID" -> {
-                    operation = "UploadCancelAllowance";
-                    field = "allowancexml";
-                    xml = cancelAllowanceXml(m);
-                }
-                default -> {
-                    return GatewayReceipt.rejected("Unsupported message type: " + request.messageType());
-                }
-            }
-        } catch (UnsupportedOperationException e) {
-            return GatewayReceipt.rejected(e.getMessage());
-        }
-        String result = soap.call(operation, request.account(), Map.of(field, xml));
-        return CetustekResultCodes.receipt(request.messageType(), result, request.refNo());
+    public ProviderProfile profile() {
+        return PROFILE;
+    }
+
+    @Override
+    protected ResultCodeTable resultCodes() {
+        return CODES;
+    }
+
+    @Override
+    protected String namespace() {
+        return NS;
+    }
+
+    @Override
+    protected LinkedHashMap<String, String> authFields(ProviderAccount account) {
+        var f = new LinkedHashMap<String, String>();
+        f.put("officeid", account.accountCode());
+        f.put("posno", account.keyId());
+        f.put("posid", account.secret());
+        return f;
+    }
+
+    @Override
+    protected GatewayReceipt upload(GatewayRequest request, JsonNode m) {
+        String type = request.messageType();
+        String result = switch (type) {
+            case "ISSUE" -> soap("UploadInvoice", request.account(), Map.of("invoicexml", invoiceXml(m, request.refNo())));
+            case "VOID" -> soap("UploadCancelInvoice", request.account(), Map.of("invoicexml", cancelXml(m)));
+            case "ALLOWANCE" -> soap("UploadAllowance", request.account(), Map.of("allowancexml", allowanceXml(m)));
+            case "ALLOWANCE_VOID" ->
+                    soap("UploadCancelAllowance", request.account(), Map.of("allowancexml", cancelAllowanceXml(m)));
+            default -> throw new UnsupportedMessageException("Unsupported message type: " + type);
+        };
+        return receipt(type, result, request.refNo());
     }
 
     @Override
     public ProviderOffice verify(ProviderAccount account) {
-        String result = soap.call("QueryOfficeInfo", account, Map.of());
+        String result = soap("QueryOfficeInfo", account, Map.of());
         failIfCode(result);
-        String id = CetustekSoapClient.between(result, "<ID>", "</ID>");
+        String id = SoapEnvelope.between(result, "<ID>", "</ID>");
         if (id == null) throw new ProviderException("unexpected", null);
         return new ProviderOffice(id.trim(), text(result, "Name"), text(result, "QRCode"));
     }
@@ -115,7 +138,7 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         var fields = new LinkedHashMap<String, String>();
         fields.put("invoicenumber", fiscalNumber);
         fields.put("invoicedate", invoiceDate.format(DateTimeFormatter.ofPattern("yyyy/MM/dd")));
-        String result = soap.call("QueryInvoiceStatus", account, fields);
+        String result = soap("QueryInvoiceStatus", account, fields);
         var state = switch (result.toUpperCase(Locale.ROOT)) {
             case "0" -> ProviderInvoiceStatus.State.ISSUED;
             case "1" -> ProviderInvoiceStatus.State.VOIDED;
@@ -134,9 +157,9 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         var apply = new LinkedHashMap<String, String>();
         apply.put("year", periodCode.substring(0, 3));
         apply.put("month", "%02d-%02d".formatted(even - 1, even));
-        String applyId = soap.call("ApplyInvoiceNumber", account, apply);
+        String applyId = soap("ApplyInvoiceNumber", account, apply);
         failIfCode(applyId);
-        String taken = soap.call("TakeInvoiceNumber", account, Map.of("applyid", applyId));
+        String taken = soap("TakeInvoiceNumber", account, Map.of("applyid", applyId));
         failIfCode(taken);
         // prefix;start;end;invoiceType，如 AB;12345600;12345649;07
         String[] parts = taken.split(";");
@@ -155,7 +178,7 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
     }
 
     private static String text(String xml, String tag) {
-        String v = CetustekSoapClient.between(xml, "<" + tag + ">", "</" + tag + ">");
+        String v = SoapEnvelope.between(xml, "<" + tag + ">", "</" + tag + ">");
         return v == null || v.isBlank() ? null : v.trim();
     }
 
@@ -164,7 +187,7 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
     static String invoiceXml(JsonNode m, String orderId) {
         JsonNode main = m.path("Main"), amount = m.path("Amount"), buyer = main.path("Buyer");
         if ("2".equals(amount.path("TaxType").asText()) || amount.path("ZeroTaxSalesAmount").asLong() != 0)
-            throw new UnsupportedOperationException("zero-rated invoices are not supported on Cetustek");
+            throw new UnsupportedMessageException("zero-rated invoices are not supported on Cetustek");
         String date = day(main.path("InvoiceDate").asText());
         var x = new Xml("Invoice");
         x.put("InvoiceNumber", main.path("InvoiceNumber").asText());
@@ -229,7 +252,7 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         JsonNode main = m.path("Main"), amount = m.path("Amount"), buyer = main.path("Buyer");
         JsonNode item = m.path("Details").path("ProductItem").path(0);
         if ("2".equals(item.path("TaxType").asText()))
-            throw new UnsupportedOperationException("zero-rated allowances are not supported on Cetustek");
+            throw new UnsupportedMessageException("zero-rated allowances are not supported on Cetustek");
         var x = new Xml("Allowance");
         x.put("AllowanceNumber", main.path("AllowanceNumber").asText());
         x.put("AllowanceDate", day(main.path("AllowanceDate").asText()));
@@ -294,7 +317,7 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         }
 
         void put(String name, String value) {
-            out.append('<').append(name).append('>').append(CetustekSoapClient.escape(value == null ? "" : value))
+            out.append('<').append(name).append('>').append(SoapEnvelope.escape(value == null ? "" : value))
                     .append("</").append(name).append('>');
         }
 

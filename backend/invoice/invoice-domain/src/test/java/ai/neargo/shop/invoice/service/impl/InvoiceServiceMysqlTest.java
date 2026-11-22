@@ -34,7 +34,12 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
-import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
+import ai.neargo.shop.invoice.gateway.AccountCapability;
+import ai.neargo.shop.invoice.gateway.InvoiceGateways;
+import ai.neargo.shop.invoice.gateway.ProviderException;
+import ai.neargo.shop.invoice.gateway.ProviderProfile;
+import ai.neargo.shop.invoice.gateway.QueryCapability;
+import ai.neargo.shop.invoice.gateway.RangeCapability;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.port.InvoicePrintSourceFactsPortImpl;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
@@ -137,7 +142,7 @@ class InvoiceServiceMysqlTest {
         provider.failCode = null;
         provider.sendCode = null;
         provider.sends.set(0);
-        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
+        provider.queryState = QueryCapability.ProviderInvoiceStatus.State.ISSUED;
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null, null, null));
@@ -323,7 +328,7 @@ class InvoiceServiceMysqlTest {
         var r = issue("SO1");
         provider.seen.clear();
         assertEquals(1, transmissions.transmitDue(10));
-        assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
+        assertEquals("pos-secret", provider.seen.getFirst().secret(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
     }
@@ -399,15 +404,15 @@ class InvoiceServiceMysqlTest {
         assertEquals("SENT", invoices.get(SCOPE, r2.invoiceNo()).uploadStatus());
         assertEquals(List.of(), transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).reconciled(), "已送达不重复补记");
 
-        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.NOT_FOUND;
+        provider.queryState = QueryCapability.ProviderInvoiceStatus.State.NOT_FOUND;
         assertEquals("MISMATCH", transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).verdict(),
                 "本地已送达、鲸跃查无此票：告警");
 
         invoices.voidInvoice(SCOPE, r2.invoiceNo(), "開錯");
-        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
+        provider.queryState = QueryCapability.ProviderInvoiceStatus.State.ISSUED;
         assertEquals("PENDING_UPLOAD", transmissions.checkWithProvider(SCOPE, r2.invoiceNo()).verdict(),
                 "作废还没送达：差异只是待补传");
-        provider.queryState = InvoiceProviderGateway.ProviderInvoiceStatus.State.VOIDED;
+        provider.queryState = QueryCapability.ProviderInvoiceStatus.State.VOIDED;
         var voided = transmissions.checkWithProvider(SCOPE, r2.invoiceNo());
         assertEquals(List.of("VOID"), voided.reconciled());
         assertEquals("CONSISTENT", voided.verdict());
@@ -978,6 +983,11 @@ class InvoiceServiceMysqlTest {
             return "TEST";
         }
 
+        public ProviderProfile profile() {
+            return new ProviderProfile(java.util.Set.of("TW_EGUI"), ProviderProfile.NumberingMode.LOCAL_RANGE,
+                    ProviderProfile.ReportMode.ASYNC_UPLOAD, false);
+        }
+
         public GatewayReceipt send(GatewayRequest request) {
             if (fail.get()) throw new IllegalStateException("gateway down");
             payloads.add(request.payloadJson());
@@ -986,7 +996,7 @@ class InvoiceServiceMysqlTest {
     }
 
     /** 加值中心桩：记下收到的账号，核验回固定统编与 QR 金钥，配号回固定一段。 */
-    static final class FakeProvider implements InvoiceProviderGateway {
+    static final class FakeProvider implements InvoiceGateway, AccountCapability, RangeCapability, QueryCapability {
         final List<InvoiceGateway.ProviderAccount> seen = new ArrayList<>();
         volatile String taxId = "12345675";
         volatile String failCode;
@@ -996,6 +1006,11 @@ class InvoiceServiceMysqlTest {
 
         public String code() {
             return "PROV";
+        }
+
+        public ProviderProfile profile() {
+            return new ProviderProfile(java.util.Set.of("TW_EGUI"), ProviderProfile.NumberingMode.PROVIDER_RANGE,
+                    ProviderProfile.ReportMode.ASYNC_UPLOAD, true);
         }
 
         public GatewayReceipt send(GatewayRequest request) {
@@ -1016,8 +1031,8 @@ class InvoiceServiceMysqlTest {
             return new ProviderOffice(taxId, "示例營業人", KEY_HEX);
         }
 
-        volatile InvoiceProviderGateway.ProviderInvoiceStatus.State queryState =
-                InvoiceProviderGateway.ProviderInvoiceStatus.State.ISSUED;
+        volatile QueryCapability.ProviderInvoiceStatus.State queryState =
+                QueryCapability.ProviderInvoiceStatus.State.ISSUED;
 
         public ProviderInvoiceStatus queryStatus(InvoiceGateway.ProviderAccount account, String fiscalNumber,
                 java.time.LocalDate invoiceDate) {
@@ -1051,7 +1066,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceGateways.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean

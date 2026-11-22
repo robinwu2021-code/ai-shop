@@ -15,7 +15,10 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 主体在加值中心的账号：代号在 {@code ivc_regime_profile.provider_account_code}，账号与密码封存进 secret 模块
+ * 主体在供应商的账号（三元含义见 {@code InvoiceGateway.ProviderAccount}）。secret 里的 JSON 键沿用首版的 user / password，
+ * 已封存的数据不迁移。
+ *
+ * <p>主体在加值中心的账号：代号在 {@code ivc_regime_profile.provider_account_code}，账号与密码封存进 secret 模块
  * （命名空间 PLATFORM，归属 {@value #OWNER_TYPE} + 配置行 id），业务表只存引用。
  */
 @Component
