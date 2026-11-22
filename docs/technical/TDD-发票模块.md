@@ -584,3 +584,47 @@ AC22 用例在 MySQL 上复现后改为显式写 null。
 
 MySQL 9 全类 26/26、鲸跃 5/5、Turnkey 2/2、b-app `vue-tsc` 无错。
 
+## §13 折让作废（鲸跃 M1-4）
+
+状态：已实现 · 2026-11-22 · 档位 1（新端点、`ivc_allowance` 加列、上传报文类型 `ALLOWANCE_VOID`、三语文案）· 需求 PRD AC36 · 计划见 [TDD-发票服务-总体设计 §14](./TDD-发票服务-总体设计.md) M1-4。
+
+### 13.1 规则
+
+| 规则 | 实现 |
+|---|---|
+| 只能作废本期折让（跨期已申报） | `InvoiceRegime#allowanceVoidable`：台湾按折让开立时间的期别与当期比较；与发票作废同一口径，错误码 26006 |
+| 一张折让只作废一次 | 条件更新 `status ACTIVE → VOIDED`，并发也只有一次成功；第二次 26008 |
+| 累计折让回退 | `InvoiceMapper#releaseAllowance`：`allowed_minor -= 金额`（不会减成负数）；与状态更新同事务。全部折让作废后 `allowed_minor=0`，发票本身可作废 |
+| 折让证明单不再出纸 | `InvoicePrintSourceFactsPortImpl#executionGuard` 遇已作废折让返回 `CANCEL_UNSUBMITTED_EXECUTION / ALLOWANCE_VOIDED` |
+| 上传 | 上传任务 `message_type=ALLOWANCE_VOID`、报文 MIG `G0501`（`CancelAllowanceNumber` 用对外折让单号）；鲸跃 `UploadCancelAllowance`（`C0` 成功、`C4` 已上传过算送达、`C3` 等待人工）；Turnkey 写 `G0501/CancelAllowance` 文件。失败按 §12 分级处置，可用重传端点补发 |
+| 折让单号不复用 | 对外折让单号的序号按该发票全部折让（含已作废）计数，作废后再开的折让取下一个序号 |
+
+### 13.2 接口
+
+`POST /biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void`，权限 `biz:invoice:void`，请求 `{reason}`，返回发票详情。
+`AllowanceVO` 加 `fiscalAllowanceNumber`、`status`、`voidReason`、`voidedAt`。
+
+### 13.3 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `db/invoice/V7__invoice_allowance_void.sql` | `ivc_allowance` 加 `status`（默认 ACTIVE）、`void_reason`、`voided_at`、`voided_by` |
+| `entity/IvcAllowance` · `mapper/InvoiceMappers` | 新字段；`releaseAllowance` |
+| `regime/InvoiceRegime` · `regime/tw/TwEguiRegime` | `allowanceVoidable`；`message("ALLOWANCE_VOID")` 产出 G0501 |
+| `service/InvoiceService(Impl)` · `api/biz/BizInvoiceController` | `voidAllowance` 与端点 |
+| `port/InvoicePrintSourceFactsPortImpl` | 已作废折让不出纸 |
+| `channel/cetustek/*` · `channel/turnkey/TurnkeyInvoiceGateway` | `UploadCancelAllowance` 报文与结果码；G0501 文件 |
+| b-app `pages/sales-invoice` · `api/*` · `i18n` · `enum-registry`（`SiAllowanceStatus`） | 折让状态标签、「作废折让」按钮（确认 + 原因），已作废隐藏打印 |
+| c-app `api/sales-invoice-types.ts` | 折让类型补字段（页面未展示折让，不改页面） |
+
+### 13.4 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC36 | `InvoiceServiceMysqlTest#ac36AllowanceVoidReleasesTheAmountStopsPrintingAndQueuesG0501`：有折让时不能作废发票 → 作废折让后累计折让为 0、状态与原因正确、G0501 报文单号为「号码+01」、打印守卫拦下、重复作废 26008、发票本身可作废 | ✅ |
+| AC36 | `#ac36PreviousPeriodAllowanceCannotBeVoided`：跨期 26006；不存在的折让 26005 | ✅ |
+| AC36 | `CetustekInvoiceGatewayTest`：`UploadCancelAllowance` 信封与字段；`C4` 算送达、`C3` 待人工 | ✅ |
+| AC36 | `TurnkeyInvoiceGatewayTest#allowanceVoidBecomesG0501CancelAllowance` | ✅ |
+
+MySQL 9 全类 28/28、鲸跃 5/5、Turnkey 3/3、b-app / c-app `vue-tsc` 无错；契约、孤儿页、i18n 孤儿词条检查通过。
+

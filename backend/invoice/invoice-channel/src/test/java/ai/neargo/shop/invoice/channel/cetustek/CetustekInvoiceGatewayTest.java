@@ -118,6 +118,12 @@ class CetustekInvoiceGatewayTest {
                 "不认识的码不重发");
         returns.add("C5");
         assertTrue(gateway.send(new GatewayRequest("TW_EGUI", "VOID", "INV-1", VOID, ACCOUNT)).accepted());
+        returns.add("C4");
+        assertTrue(gateway.send(new GatewayRequest("TW_EGUI", "ALLOWANCE_VOID", "AL-1", ALLOWANCE_VOID, ACCOUNT)).accepted(),
+                "折让作废已上传过 = 送达");
+        returns.add("C3");
+        assertEquals(Outcome.FINAL,
+                gateway.send(new GatewayRequest("TW_EGUI", "ALLOWANCE_VOID", "AL-1", ALLOWANCE_VOID, ACCOUNT)).outcome());
         returns.add("A6");
         assertTrue(gateway.send(new GatewayRequest("TW_EGUI", "ALLOWANCE", "AL-1", ALLOWANCE, ACCOUNT)).accepted());
         assertEquals(Outcome.ACCOUNT_PROBLEM,
@@ -149,6 +155,17 @@ class CetustekInvoiceGatewayTest {
         assertEquals("286", text(al, "SaleAmount"));
         assertEquals("14", text(al, "TaxAmount"));
         assertEquals("14", text(al, "Tax"));
+
+        returns.add("C0");
+        gateway.send(new GatewayRequest("TW_EGUI", "ALLOWANCE_VOID", "AL-1", ALLOWANCE_VOID, ACCOUNT));
+        soap = parse(requests.get(2));
+        assertEquals(1, soap.getElementsByTagNameNS("http://webservice.cetustek.com/", "UploadCancelAllowance")
+                .getLength());
+        Document cancel2 = parse(text(soap, "allowancexml"));
+        assertEquals("AB1234567801", text(cancel2, "AllowanceNumber"));
+        assertEquals("2026/11/22", text(cancel2, "AllowanceDate"));
+        assertEquals("2026/11/23", text(cancel2, "CancelDate"));
+        assertEquals("開錯", text(cancel2, "Reason"));
     }
 
     @Test
@@ -210,6 +227,10 @@ class CetustekInvoiceGatewayTest {
     static final String VOID = """
             {"mig":"F0501","CancelInvoiceNumber":"AB12345678","InvoiceDate":"20261121","BuyerId":"0000000000",
              "SellerId":"12345675","CancelDate":"20261122","CancelTime":"09:00:00","CancelReason":"開錯"}""";
+
+    static final String ALLOWANCE_VOID = """
+            {"mig":"G0501","CancelAllowanceNumber":"AB1234567801","AllowanceDate":"20261122","BuyerId":"0000000000",
+             "SellerId":"12345675","CancelDate":"20261123","CancelTime":"10:00:00","CancelReason":"開錯"}""";
 
     static final String ALLOWANCE = """
             {"mig":"G0401","Main":{"AllowanceNumber":"AB1234567801","AllowanceDate":"20261122",

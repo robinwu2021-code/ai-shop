@@ -199,6 +199,12 @@ public class InvoicePrintSourceFactsPortImpl implements PrintSourceFactsPort {
                 return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION, r.bizRevision(),
                         true, "INVOICE_VOIDED");
         }
+        if (ALLOWANCE_TYPE.equals(r.sourceType())) {
+            var a = allowance(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()), r.factNo());
+            if (a != null && "VOIDED".equals(a.getStatus()))
+                return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION, r.bizRevision(),
+                        true, "ALLOWANCE_VOIDED");
+        }
         boolean ready = fact.printability() == Printability.READY;
         return new PrintExecutionGuard(ready,
                 ready ? GuardDecision.ALLOW_HISTORICAL_RECEIPT : GuardDecision.HOLD_UNKNOWN, r.bizRevision(), false,

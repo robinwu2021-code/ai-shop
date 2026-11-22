@@ -13679,6 +13679,10 @@ CREATE TABLE IF NOT EXISTS ivc_allowance
     print_snapshot LONGTEXT NULL,
     print_snapshot_hash CHAR(64) NULL,
     fiscal_allowance_number VARCHAR(16) NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    void_reason VARCHAR(256) NULL,
+    voided_at DATETIME(3) NULL,
+    voided_by VARCHAR(64) NULL,
     CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
     CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor),
     CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR (print_snapshot IS JSON))

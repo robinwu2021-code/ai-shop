@@ -147,8 +147,13 @@ public final class InvoiceDtos {
             int lineNo, String name, BigDecimal quantity, String unit, long unitPriceMinor, long amountMinor,
             String taxType) {}
 
+    /**
+     * @param fiscalAllowanceNumber 对外折让单号（发票号码 + 两位序号），上传与证明单上用它
+     * @param status ACTIVE / VOIDED
+     */
     public record AllowanceVO(String allowanceNo, long amountMinor, long taxMinor, String reason,
-            LocalDateTime createdAt) {}
+            LocalDateTime createdAt, String fiscalAllowanceNumber, String status, String voidReason,
+            LocalDateTime voidedAt) {}
 
     public record InvoiceVO(
             String invoiceNo,

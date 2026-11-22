@@ -17,7 +17,9 @@ final class CetustekResultCodes {
     private static final Map<String, Map<String, Outcome>> BY_TYPE = Map.of(
             "ISSUE", Map.of("S0", Outcome.ACCEPTED, "S2", Outcome.ACCEPTED),
             "VOID", Map.of("C0", Outcome.ACCEPTED, "C5", Outcome.ACCEPTED),
-            "ALLOWANCE", Map.of("A0", Outcome.ACCEPTED, "A6", Outcome.ACCEPTED));
+            "ALLOWANCE", Map.of("A0", Outcome.ACCEPTED, "A6", Outcome.ACCEPTED),
+            // 折让作废：C4 =「该作废折让单已经上传」；C3 =「没有该折让单号码可作废」按需人工
+            "ALLOWANCE_VOID", Map.of("C0", Outcome.ACCEPTED, "C4", Outcome.ACCEPTED));
 
     /** 与报文种类无关的码。 */
     private static final Map<String, Outcome> COMMON = Map.of(

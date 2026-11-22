@@ -63,7 +63,10 @@ public interface InvoiceRegime {
     /** 折让的税额（含税金额中所含税额）。 */
     long allowanceTax(IvcInvoice invoice, long amountMinor);
 
-    /** 上传报文；messageType 为 ISSUE / VOID / ALLOWANCE。 */
+    /** 折让能否作废（台湾：折让所属期别仍是当期）。 */
+    boolean allowanceVoidable(IvcAllowance allowance, Instant now);
+
+    /** 上传报文；messageType 为 ISSUE / VOID / ALLOWANCE / ALLOWANCE_VOID。 */
     Map<String, Object> message(
             String messageType, IvcInvoice invoice, List<IvcInvoiceLine> lines, IvcAllowance allowance);
 

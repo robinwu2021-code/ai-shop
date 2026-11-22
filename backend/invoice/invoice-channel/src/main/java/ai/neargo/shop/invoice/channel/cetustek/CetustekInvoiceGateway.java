@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * 鯨躍（Cetustek）加值中心通道，代码 {@code CETUSTEK}。协议与字段沿用 UME invoice-web 的
- * {@code CetustekInvoiceServiceImpl}：开立 UploadInvoice、作废 UploadCancelInvoice、折让 UploadAllowance，
+ * {@code CetustekInvoiceServiceImpl}：开立 UploadInvoice、作废 UploadCancelInvoice、折让 UploadAllowance、折让作废 UploadCancelAllowance，
  * 账号核验 QueryOfficeInfo，号段 ApplyInvoiceNumber → TakeInvoiceNumber。
  *
  * <p><b>报文</b>：税制给的是 MIG 树（见 {@code TwEguiRegime#message}），这里按鲸跃的扁平 XML 重排：
@@ -78,6 +78,11 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
                     operation = "UploadAllowance";
                     field = "allowancexml";
                     xml = allowanceXml(m);
+                }
+                case "ALLOWANCE_VOID" -> {
+                    operation = "UploadCancelAllowance";
+                    field = "allowancexml";
+                    xml = cancelAllowanceXml(m);
                 }
                 default -> {
                     return GatewayReceipt.rejected("Unsupported message type: " + request.messageType());
@@ -227,6 +232,19 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
         x.put("DType", dType(item.path("TaxType").asText()));
         x.close("ProductItem");
         x.close("Details");
+        return x.done();
+    }
+
+    /** G0501 → 鲸跃作废折让（UME {@code SoapCancelAllowanceData}：AllowanceNumber / AllowanceDate / BuyerId / CancelDate / CancelTime / Reason / Remark）。 */
+    static String cancelAllowanceXml(JsonNode m) {
+        var x = new Xml("Allowance");
+        x.put("AllowanceNumber", m.path("CancelAllowanceNumber").asText());
+        x.put("AllowanceDate", day(m.path("AllowanceDate").asText()));
+        x.put("BuyerId", m.path("BuyerId").asText(CONSUMER_ID));
+        x.put("CancelDate", day(m.path("CancelDate").asText()));
+        x.put("CancelTime", m.path("CancelTime").asText());
+        x.put("Reason", m.path("CancelReason").asText());
+        x.put("Remark", "");
         return x.done();
     }
 

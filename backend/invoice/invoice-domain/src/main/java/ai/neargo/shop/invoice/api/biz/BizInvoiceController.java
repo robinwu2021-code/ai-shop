@@ -87,6 +87,13 @@ public class BizInvoiceController {
         return invoices.allowance(BizInvoiceScope.current(), invoiceNo, req.amountMinor(), req.reason());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")
+    @PostMapping("/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void")
+    public InvoiceVO voidAllowance(@PathVariable String invoiceNo, @PathVariable String allowanceNo,
+            @Valid @RequestBody VoidInvoiceReq req) {
+        return invoices.voidAllowance(BizInvoiceScope.current(), invoiceNo, allowanceNo, req.reason());
+    }
+
     /**
      * 重传被服务商拒收、标为「待人工处理」的上传任务（开立 / 作废 / 折让）。报文不变，原样再发；
      * 用于修正了服务商侧问题（或确认是对方临时故障）之后。账号问题造成的暂停不走这里，核验账号即恢复。

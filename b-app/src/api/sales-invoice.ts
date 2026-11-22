@@ -25,8 +25,15 @@ export interface SiAllowance {
   taxMinor: number;
   reason: string;
   createdAt: string;
+  /** 对外折让单号（发票号码 + 两位序号） */
+  fiscalAllowanceNumber?: string | null;
+  status?: SiAllowanceStatus;
+  voidReason?: string | null;
+  voidedAt?: string | null;
 }
 export type SiStatus = "ISSUED" | "VOIDED";
+/** 折让单状态：作废后累计折让回退、证明单不再出纸 */
+export type SiAllowanceStatus = "ACTIVE" | "VOIDED";
 /** HELD = 账号问题暂停（核验账号后自动恢复）；NEEDS_REVIEW = 服务商拒收，待人工处理后重传 */
 export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "NEEDS_REVIEW";
 /** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
@@ -178,6 +185,8 @@ export interface SalesInvoiceApi {
   /** 当期作废 */
   mSiVoid(invoiceNo: string, body: { reason: string }): Promise<SalesInvoice>;
   mSiAllowance(invoiceNo: string, body: { amountMinor: number; reason: string }): Promise<SalesInvoice>;
+  /** 作废本期折让（跨期拒绝） */
+  mSiVoidAllowance(invoiceNo: string, allowanceNo: string, body: { reason: string }): Promise<SalesInvoice>;
   /** 重传待人工处理的上传任务（开立 / 作废 / 折让），报文不变 */
   mSiRetransmit(invoiceNo: string): Promise<SalesInvoice>;
   /** 未开通时后端回 null */

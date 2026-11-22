@@ -354,6 +354,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         a.setAmountMinor(amountMinor);
         a.setTaxMinor(tax);
         a.setReason(reason);
+        a.setStatus("ACTIVE");
         a.setCreatedBy(scope.actorNo());
         a.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         a.setPrintSnapshot(printPayload(InvoicePrintSourceFactsPortImpl.ALLOWANCE_SCENE,
@@ -364,6 +365,36 @@ public class InvoiceServiceImpl implements InvoiceService {
         events.publish(new BusinessPrintFactReady(a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
         enqueue(inv, activeProfile(scope), "ALLOWANCE", a.getAllowanceNo(),
                 regime.message("ALLOWANCE", inv, List.of(), a));
+        return view(require(scope, invoiceNo), true);
+    }
+
+    /**
+     * 折让作废：只能作废本期折让（跨期已申报）；作废后累计折让回退 —— 全部折让都作废了，发票本身又能作废。
+     * 折让证明单作废后不再出纸（打印守卫按折让状态拦）。
+     */
+    @Override
+    @Transactional
+    public InvoiceVO voidAllowance(Scope scope, String invoiceNo, String allowanceNo, String reason) {
+        var inv = require(scope, invoiceNo);
+        var a = allowances.selectOne(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())
+                .eq("entity_no", inv.getEntityNo()).eq("invoice_no", invoiceNo).eq("allowance_no", allowanceNo));
+        if (a == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
+        if (!"ISSUED".equals(inv.getStatus()) || "VOIDED".equals(a.getStatus()))
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        var regime = regimes.require(inv.getRegimeCode());
+        if (!regime.allowanceVoidable(a, Instant.now())) throw BizException.of(ErrorCode.INVOICE_VOID_PERIOD_CLOSED);
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        if (allowances.update(null, new UpdateWrapper<IvcAllowance>().eq("id", a.getId()).eq("status", "ACTIVE")
+                .set("status", "VOIDED").set("void_reason", reason).set("voided_at", now)
+                .set("voided_by", scope.actorNo())) != 1)
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        if (invoices.releaseAllowance(inv.getId(), a.getAmountMinor()) != 1)
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        a.setStatus("VOIDED");
+        a.setVoidReason(reason);
+        a.setVoidedAt(now);
+        enqueue(inv, activeProfile(scope), "ALLOWANCE_VOID", a.getAllowanceNo(),
+                regime.message("ALLOWANCE_VOID", inv, List.of(), a));
         return view(require(scope, invoiceNo), true);
     }
 
@@ -498,7 +529,8 @@ public class InvoiceServiceImpl implements InvoiceService {
             allowanceViews = allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", i.getTenantNo())
                             .eq("invoice_no", i.getInvoiceNo()).orderByAsc("id")).stream()
                     .map(a -> new AllowanceVO(a.getAllowanceNo(), a.getAmountMinor(), a.getTaxMinor(), a.getReason(),
-                            a.getCreatedAt()))
+                            a.getCreatedAt(), a.getFiscalAllowanceNumber(),
+                            a.getStatus() == null ? "ACTIVE" : a.getStatus(), a.getVoidReason(), a.getVoidedAt()))
                     .toList();
         }
         return new InvoiceVO(i.getInvoiceNo(), i.getRegimeCode(), i.getIndustryCode(), i.getSellerName(),

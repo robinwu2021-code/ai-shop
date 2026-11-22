@@ -877,6 +877,70 @@
           }
         }
       }
+    },
+    "/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void": {
+      "post": {
+        "summary": "作废折让",
+        "description": "权限 `biz:invoice:void`；门店取 `X-Store-No`。只能作废本期折让（跨期回 26006）；已作废回 26008；折让不属于该发票回 26005。作废后累计折让回退（全部折让作废后发票本身可作废），折让证明单不再出纸，生成 G0501 上传任务（鲸跃 UploadCancelAllowance）。",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "allowanceNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "内部折让单号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应包 data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceVO"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "作废原因"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -981,6 +1045,23 @@
           "createdAt": {
             "type": "string",
             "description": "时间"
+          },
+          "fiscalAllowanceNumber": {
+            "type": "string",
+            "description": "对外折让单号（发票号码 + 两位序号）"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / VOIDED"
+          },
+          "voidReason": {
+            "type": "string",
+            "description": "作废原因"
+          },
+          "voidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "作废时间"
           }
         }
       },

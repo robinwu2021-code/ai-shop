@@ -38,6 +38,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSiDetail:{method:"GET",path:"/biz/invoices/{invoiceNo}",auth:true,summary:"销售发票：详情"},
   mSiVoid:{method:"POST",path:"/biz/invoices/{invoiceNo}/void",auth:true,summary:"销售发票：当期作废"},
   mSiAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances",auth:true,summary:"销售发票：开折让"},
+  mSiVoidAllowance:{method:"POST",path:"/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void",auth:true,summary:"销售发票：作废折让"},
   mSiRetransmit:{method:"POST",path:"/biz/invoices/{invoiceNo}/retransmissions",auth:true,summary:"销售发票：重传待人工处理的上传"},
   mSiProfile:{method:"GET",path:"/biz/invoice-setup/profile",auth:true,summary:"发票设置：税制配置"},
   mSiSaveProfile:{method:"PUT",path:"/biz/invoice-setup/profile",auth:true,summary:"发票设置：开通 / 修改税制"},

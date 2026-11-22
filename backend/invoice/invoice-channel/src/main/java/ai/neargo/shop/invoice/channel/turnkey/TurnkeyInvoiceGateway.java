@@ -31,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 public class TurnkeyInvoiceGateway implements InvoiceGateway {
 
     private static final Map<String, String> ROOT_ELEMENT =
-            Map.of("F0401", "Invoice", "F0501", "CancelInvoice", "G0401", "Allowance");
+            Map.of("F0401", "Invoice", "F0501", "CancelInvoice", "G0401", "Allowance", "G0501", "CancelAllowance");
 
     private final Path root;
     private final String pathPattern;
@@ -62,6 +62,7 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
         String id = switch (mig) {
             case "F0401" -> message.path("Main").path("InvoiceNumber").asText();
             case "F0501" -> message.path("CancelInvoiceNumber").asText();
+            case "G0501" -> message.path("CancelAllowanceNumber").asText();
             default -> message.path("Main").path("AllowanceNumber").asText();
         };
         Path dir = root.resolve(pathPattern.replace("{mig}", mig));

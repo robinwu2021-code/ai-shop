@@ -71,6 +71,9 @@ export interface BuyerInvoiceAllowance {
   taxMinor: number;
   reason: string;
   createdAt: string;
+  fiscalAllowanceNumber?: string | null;
+  /** ACTIVE / VOIDED（作废的折让不再计入累计折让） */
+  status?: string | null;
 }
 
 export interface BuyerInvoice {

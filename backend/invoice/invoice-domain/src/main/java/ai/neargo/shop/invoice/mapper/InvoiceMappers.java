@@ -64,6 +64,11 @@ public final class InvoiceMappers {
         @Update("UPDATE ivc_invoice SET allowed_minor=allowed_minor+#{amount}, updated_at=CURRENT_TIMESTAMP(3)"
                 + " WHERE id=#{id} AND status='ISSUED' AND allowed_minor+#{amount}<=total_minor")
         int addAllowance(@Param("id") long id, @Param("amount") long amount);
+
+        /** 折让作废时回退累计折让；状态不对或会减成负数时 0 行。 */
+        @Update("UPDATE ivc_invoice SET allowed_minor=allowed_minor-#{amount}, updated_at=CURRENT_TIMESTAMP(3)"
+                + " WHERE id=#{id} AND status='ISSUED' AND allowed_minor>=#{amount}")
+        int releaseAllowance(@Param("id") long id, @Param("amount") long amount);
     }
 
     public interface InvoiceLineMapper extends BaseMapper<IvcInvoiceLine> {

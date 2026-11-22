@@ -192,6 +192,11 @@ public class TwEguiRegime implements InvoiceRegime {
         return invoice.getPeriodCode().equals(periodOf(now));
     }
 
+    /** 折让作废与发票作废同一口径：只能在折让开立的那一期内作废，跨期即已申报。 */
+    public boolean allowanceVoidable(IvcAllowance allowance, Instant now) {
+        return periodOf(allowance.getCreatedAt().toInstant(ZoneOffset.UTC)).equals(periodOf(now));
+    }
+
     /** 折让中所含税额：按原发票应税（含税）占比摊出应税部分，再取其中 5%。 */
     public long allowanceTax(IvcInvoice invoice, long amountMinor) {
         long total = dollars(invoice.getTotalMinor());
@@ -293,6 +298,19 @@ public class TwEguiRegime implements InvoiceRegime {
                 m.put("Amount", amount);
                 // MIG 之外、加值中心要的补充字段（鲸跃折让单带原发票时间）；Turnkey 不输出
                 m.put("ext", Map.of("OriginalInvoiceTime", TIME.format(issued)));
+            }
+            case "ALLOWANCE_VOID" -> {
+                m.put("mig", "G0501");
+                var at = TwPeriods.local(allowance.getCreatedAt().toInstant(ZoneOffset.UTC));
+                var voided = TwPeriods.local(allowance.getVoidedAt().toInstant(ZoneOffset.UTC));
+                m.put("CancelAllowanceNumber", allowance.getFiscalAllowanceNumber() != null
+                        ? allowance.getFiscalAllowanceNumber() : allowance.getAllowanceNo());
+                m.put("AllowanceDate", DAY.format(at));
+                m.put("BuyerId", b2b ? inv.getBuyerTaxId() : "0000000000");
+                m.put("SellerId", inv.getSellerTaxId());
+                m.put("CancelDate", DAY.format(voided));
+                m.put("CancelTime", TIME.format(voided));
+                m.put("CancelReason", allowance.getVoidReason());
             }
             default -> throw new IllegalArgumentException(type);
         }

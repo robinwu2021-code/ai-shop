@@ -112,6 +112,7 @@ class InvoiceServiceMysqlTest {
     @Autowired OutboxEventBus events;
     @Autowired JdbcTemplate jdbc;
     @Autowired InvoiceMapper invoiceRows;
+    @Autowired ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper allowanceRows;
 
     String period;
 
@@ -316,6 +317,49 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac36AllowanceVoidReleasesTheAmountStopsPrintingAndQueuesG0501() {
+        sources.paid("SO1", 105_000);
+        var r = issue("SO1");
+        var withAllowance = invoices.allowance(SCOPE, r.invoiceNo(), 30_000, "退一杯");
+        String allowanceNo = withAllowance.allowances().getFirst().allowanceNo();
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.voidInvoice(SCOPE, r.invoiceNo(), "x"));
+
+        var after = invoices.voidAllowance(SCOPE, r.invoiceNo(), allowanceNo, "開錯");
+        assertEquals(0, after.allowedMinor(), "累计折让回退");
+        assertEquals("VOIDED", after.allowances().getFirst().status());
+        assertEquals("開錯", after.allowances().getFirst().voidReason());
+        String payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ALLOWANCE_VOID'"
+                + " AND ref_no=?", String.class, allowanceNo);
+        var g0501 = JsonMapper.builder().build().readTree(payload);
+        assertEquals("G0501", g0501.path("mig").asText());
+        assertEquals(r.fiscalNumber() + "01", g0501.path("CancelAllowanceNumber").asText());
+        assertEquals("開錯", g0501.path("CancelReason").asText());
+
+        var inv = invoiceRows.selectOne(new QueryWrapper<IvcInvoice>().eq("invoice_no", r.invoiceNo()));
+        var a = allowanceRows.selectOne(new QueryWrapper<ai.neargo.shop.invoice.entity.IvcAllowance>()
+                .eq("allowance_no", allowanceNo));
+        assertEquals(GuardDecision.CANCEL_UNSUBMITTED_EXECUTION,
+                printSource.executionGuard(InvoicePrintSourceFactsPortImpl.ref(inv, a)).decision(), "作废的折让单不再出纸");
+
+        assertCode(ErrorCode.INVOICE_STATE_INVALID,
+                () -> invoices.voidAllowance(SCOPE, r.invoiceNo(), allowanceNo, "again"));
+        assertEquals("VOIDED", invoices.voidInvoice(SCOPE, r.invoiceNo(), "整张作废").status(),
+                "折让都作废后发票本身可以作废");
+    }
+
+    @Test
+    void ac36PreviousPeriodAllowanceCannotBeVoided() {
+        sources.paid("SO1", 105_000);
+        var r = issue("SO1");
+        String allowanceNo = invoices.allowance(SCOPE, r.invoiceNo(), 30_000, "退一杯").allowances().getFirst()
+                .allowanceNo();
+        jdbc.update("UPDATE ivc_allowance SET created_at = DATE_SUB(created_at, INTERVAL 70 DAY)");
+        assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED,
+                () -> invoices.voidAllowance(SCOPE, r.invoiceNo(), allowanceNo, "x"));
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> invoices.voidAllowance(SCOPE, r.invoiceNo(), "NOPE", "x"));
     }
 
     @Test
@@ -677,7 +721,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(6, applied);
+            assertEquals(7, applied);
             return ds;
         }
     }

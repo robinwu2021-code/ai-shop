@@ -59,4 +59,21 @@ class TurnkeyInvoiceGatewayTest {
     private static InvoiceGateway.GatewayRequest req(String regime, String type, String payload) {
         return new InvoiceGateway.GatewayRequest(regime, type, null, payload, null);
     }
+
+    @Test
+    void allowanceVoidBecomesG0501CancelAllowance() throws Exception {
+        var gateway = new TurnkeyInvoiceGateway(root.toString(), "UpCast/B2SSTORAGE/{mig}/SRC",
+                JsonMapper.builder().build());
+        var receipt = gateway.send(req("TW_EGUI", "ALLOWANCE_VOID", """
+                {"mig":"G0501","CancelAllowanceNumber":"AB0000000101","AllowanceDate":"20261122",
+                 "BuyerId":"0000000000","SellerId":"12345675","CancelDate":"20261123","CancelTime":"10:00:00",
+                 "CancelReason":"開錯"}"""));
+        assertTrue(receipt.accepted());
+        Path file = root.resolve("UpCast/B2SSTORAGE/G0501/SRC/G0501_AB0000000101.xml");
+        var factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        var root = factory.newDocumentBuilder().parse(file.toFile()).getDocumentElement();
+        assertEquals("CancelAllowance", root.getLocalName());
+        assertEquals("urn:GEINV:eInvoiceMessage:G0501:4.0", root.getNamespaceURI());
+    }
 }

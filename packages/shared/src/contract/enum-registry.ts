@@ -575,6 +575,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "销售发票状态（ivc_invoice.status，ADR-063）。与后端 IvcInvoice.status 逐字一致；作废后同来源可重开新号码。" },
   { decl: "b-app:SiUploadStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["SENDING", "SENT", "HELD", "NEEDS_REVIEW"],
     note: "发票开立报文上传状态（ivc_transmission.status）。SENT 只表示已交给通道（Turnkey 为文件已落目录），不代表大平台已受理。" },
+  { decl: "b-app:SiAllowanceStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["VOIDED"],
+    note: "折让单状态（ivc_allowance.status，V7）。VOIDED 后累计折让回退、折让证明单不再出纸、G0501 上传。" },
   { decl: "b-app:SiRangeOwner", dom: "finance", shape: "CLASS", verdict: "OK", words: ["MANUAL", "PROVIDER"],
     note: "字轨号段来源（ivc_number_range.allocation_owner，V5）。MANUAL 商家在 B 端登记；PROVIDER 由加值中心（鲸跃）配给。" },
   { decl: "b-app:SiGatewayCode", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STUB", "TURNKEY", "CETUSTEK"],

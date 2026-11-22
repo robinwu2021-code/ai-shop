@@ -53,11 +53,18 @@
         <text class="txt-strong">{{ t("salesInvoice.allowances") }}</text>
         <view v-for="a in inv.allowances" :key="a.allowanceNo" class="sh-row--divided">
           <view class="sh-row sh-row--between">
-            <text class="txt-sub sh-num">{{ a.allowanceNo }}</text>
-            <text class="txt-sub sh-num">{{ invoiceMoney(a.amountMinor, inv.currency) }}</text>
+            <text class="txt-sub sh-num">{{ a.fiscalAllowanceNumber ?? a.allowanceNo }}</text>
+            <text class="txt-sub sh-num" :class="a.status === 'VOIDED' ? 'txt-quiet' : ''">{{ invoiceMoney(a.amountMinor, inv.currency) }}</text>
           </view>
-          <text class="txt-caption txt-quiet">{{ a.reason }} · {{ a.createdAt }}</text>
-          <view v-if="canSubmitPrint" class="sh-btn sh-btn--soft sh-btn--sm sh-mt-sm" @tap="printAllowance(a.allowanceNo)">{{ t("salesInvoice.printAllowance") }}</view>
+          <view class="sh-row sh-mt-xs">
+            <text class="sh-chip" :class="a.status === 'VOIDED' ? 'sh-chip--danger' : ''">{{ t(`salesInvoice.allowanceStatus.${a.status ?? "ACTIVE"}`) }}</text>
+            <text class="txt-caption txt-quiet"> {{ a.status === "VOIDED" ? a.voidReason : a.reason }} · {{ a.createdAt }}</text>
+          </view>
+          <view v-if="a.status !== 'VOIDED'" class="sh-row sh-mt-sm">
+            <view v-if="canSubmitPrint" class="sh-btn sh-btn--soft sh-btn--sm" @tap="printAllowance(a.allowanceNo)">{{ t("salesInvoice.printAllowance") }}</view>
+            <view v-if="canVoid" class="sh-btn sh-btn--soft sh-btn--sm" :class="busy ? 'is-disabled' : ''"
+              @tap="voidAllowance(a.allowanceNo)">{{ t("salesInvoice.voidAllowance") }}</view>
+          </view>
         </view>
       </view>
 
@@ -159,6 +166,15 @@ async function voidInvoice() {
   const reason = (await prompt({ title: String(t("salesInvoice.voidReason")), maxlength: 60 }))?.trim();
   if (!reason) return;
   await run(() => api.mSiVoid(i.invoiceNo, { reason }), String(t("salesInvoice.done")));
+}
+
+async function voidAllowance(allowanceNo: string) {
+  const i = inv.value;
+  if (!i) return;
+  if (!await confirm({ title: String(t("salesInvoice.voidAllowanceTitle")), hint: String(t("salesInvoice.voidAllowanceHint")), danger: true })) return;
+  const reason = (await prompt({ title: String(t("salesInvoice.voidReason")), maxlength: 60 }))?.trim();
+  if (!reason) return;
+  await run(() => api.mSiVoidAllowance(i.invoiceNo, allowanceNo, { reason }), String(t("salesInvoice.done")));
 }
 
 async function retransmit() {

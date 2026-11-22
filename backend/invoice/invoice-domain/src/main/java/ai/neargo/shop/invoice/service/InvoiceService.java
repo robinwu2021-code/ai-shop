@@ -34,4 +34,7 @@ public interface InvoiceService {
     InvoiceVO voidInvoice(Scope scope, String invoiceNo, String reason);
 
     InvoiceVO allowance(Scope scope, String invoiceNo, long amountMinor, String reason);
+
+    /** 作废一张本期折让；累计折让回退，生成 ALLOWANCE_VOID 上传任务。 */
+    InvoiceVO voidAllowance(Scope scope, String invoiceNo, String allowanceNo, String reason);
 }
