@@ -1408,7 +1408,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(13, applied);
+            assertEquals(14, applied); // V1–V14（V14：电子发票菜单点归入「应付发票」）
             return ds;
         }
     }
