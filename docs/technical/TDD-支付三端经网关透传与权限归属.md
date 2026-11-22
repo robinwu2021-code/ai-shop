@@ -498,3 +498,29 @@ near-pay 正式库里非 MERCHANT_ADMIN 的成员行（CASHIER、STORE_MANAGER�
 | 等补 | 无 | 无 | 给 near-pay 的补接口清单：B 端退款、对账单、收款单（含沙箱/正式环境路由）、付款链接、收款状态、门店付款方式；运营应用、请求日志、收款码列表、平台密钥；权益、储值、费率规则。排期由 near-pay 定 |
 
 验证：`python3 scripts/inventory-pay-endpoints.py .` 输出与附录一致；生成文档闸门通过。
+| 2026-11-22 | 推到 `main`（`1cc4fef64..087689aad`，pre-push 全过）并发布到 v2，见 §17 |
+
+## §17 发布到 v2（2026-11-22 16:06–16:08 CST，用户：「提交到 main 并部署测试」）
+
+只换后端包，开关全部保持默认（B 端透传关、`merchant-staff` 凭据未配），线上行为预期不变。没有迁移、没有改环境文件、没有动 near-pay 与运营端页面。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 | .80 `releases/shop-app-main-087689aad.jar`（sha256 前缀 `82c24ef20b64787d`，148 043 634 字节），`run.sh` 标签 `main-087689aad`；依赖清单与上一版 `shop-app-main-1cc4fef64.jar` 逐条相同（202 个） | `cp releases/run-before-main-087689aad.sh run.sh && ./run.sh all restart`（上一版包仍在） |
+
+中断：08:06:08–08:07:40 UTC（约 92 秒，三端同时；`Started ShopApplication in 86.5 seconds`）。
+
+**发布前后探测（.80 内网，不带令牌）**
+
+| 地址 | 发布前 | 发布后 | 说明 |
+|---|---|---|---|
+| `/actuator/health` | 200 | 200 | |
+| `/ops/pay-ops/v2/merchants` | 401 | 401 | 运营透传（改成通用件后）未登录仍被网关拦 |
+| `/biz/pay/v2/memberships` | 401 | 401 | B 端透传关，仍走原转发入口的认证 |
+| `/biz/payment/orders` | 401 | 401 | |
+| `/internal/auth/v1/operator` | 403 | 403 | |
+| `/internal/auth/v1/merchant-staff` | 404 | **403** | 新接口已装配；凭据未配，按设计一律拒 |
+
+启动日志 ERROR 1 条：未配置 `shop.ship.track-key`，既有配置项，与本次无关。
+
+**未验证**：登录后的运营端支付中心经透传（需要运营账号在浏览器里打开一次支付中心，之后在日志里看「透传 … · 200」）。单测 `PayOpsPassThroughTest` 覆盖了改成通用件后的行为。
