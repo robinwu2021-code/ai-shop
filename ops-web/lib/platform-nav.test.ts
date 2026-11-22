@@ -9,7 +9,8 @@ describe('platform primary navigation', () => {
     expect(platformNav().map(s => s.key)).toEqual(['iam', 'commerce', 'customers', 'orders', 'paymentMerchant']);
     expect(platformNav()[4].label).toBe('支付中心');
     expect(NAV).toHaveLength(13);
-    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(154);
+    // 155 = 154 + 发票模块的「电子发票」
+    expect(NAV.flatMap(s => s.children ?? [])).toHaveLength(155);
     const admissions=NAV.flatMap(s=>s.children??[]).find(l=>l.href==='/merchants')!;
     expect(admissions.legacyHrefs).toEqual(expect.arrayContaining(['/merchants?tab=on-behalf','/merchants?tab=self-operated']));
     expect(admissions.anyPerms).toEqual(expect.arrayContaining(['merchant:apply:audit','merchant:apply:onbehalf','merchant:selfop:create']));

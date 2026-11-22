@@ -10,6 +10,8 @@ const v668 = read('V668__ops_platform_settings_navigation.sql');
 const v669 = read('V669__ops_platform_mall_navigation.sql');
 const v670 = read('V670__ops_platform_purchase_reporting.sql');
 const v680 = read('V680__api_resource_perm_and_menu.sql');
+/** 发票模块自带迁移链（db/invoice，ADR-063）：V10 加「电子发票」菜单点，V14 归入 main 合并后的「应付发票」分组。 */
+const invoiceMenu = readFileSync(new URL('../../backend/invoice/invoice-domain/src/main/resources/db/invoice/V14__invoice_ops_menu_regroup.sql', import.meta.url), 'utf8');
 /** V680 用 INSERT…SELECT 加了一个菜单点：[点码, 功能码, 名称, 分组, 排序]。 */
 const v680Menu = v680.match(/SELECT '(OPS_[^']+)', '([^']+)', '([^']+)', '([^']+)',.*'MENU', NULL, (\d+),/)!;
 const API_RESOURCE_HREF = '/system?tab=apiResource';
@@ -51,7 +53,7 @@ it('V658 leaves every role grant, permission and gate in place except merging th
 });
 
 it('the database menu after all navigation migrations matches nav.ts point by point', () => {
-  const moves = menuMoves(v657, v658, v668, v669, v670);
+  const moves = menuMoves(v657, v658, v668, v669, v670, invoiceMenu);
   moves.set(v680Menu[1], [v680Menu[2], v680Menu[3]]);
   for (const name of ['V665__ops_admission_entry_consolidation.sql','V667__ops_unified_admission_management.sql']) {
     const sql=read(name);
@@ -148,7 +150,8 @@ it('V670 adds exactly four reporting menus and grants only SUPER_ADMIN without a
 
 it('retains every frozen point identity from the original151 leaves', () => {
   expect(Object.keys(frozenBefore)).toHaveLength(151);
-  expect(Object.keys(POINT_CODES)).toHaveLength(156);
+  // 157 = 156 + 发票模块的「电子发票」（/e-invoices，invoice V10）
+  expect(Object.keys(POINT_CODES)).toHaveLength(157);
   for (const [href, code] of Object.entries(frozenBefore)) expect(POINT_CODES[href], href).toBe(code);
-  expect(Object.keys(POINT_CODES).filter(href => !(href in frozenBefore)).sort()).toEqual([...REPORTING_HREFS, API_RESOURCE_HREF].sort());
+  expect(Object.keys(POINT_CODES).filter(href => !(href in frozenBefore)).sort()).toEqual([...REPORTING_HREFS, API_RESOURCE_HREF, '/e-invoices'].sort());
 });
