@@ -158,7 +158,7 @@ shop-app   · invoicebridge             核心侧来源适配与自动开立消�
 | 模块 | 包 | 主要类 |
 |---|---|---|
 | invoice-channel | `channel.api` | `ProviderAccountContext`、`ProviderCommand`（`IssueCommand` / `VoidCommand` / `AllowanceCommand` / `AllowanceVoidCommand` / `QueryCommand` / `RangeCommand` / `VerifyCommand`）、`ProviderResult`（`Accepted` / `Rejected` / `Unknown`）、`ProviderOperation` |
-| | `channel.capability` | `ProviderCapability`、`IssueCapability`、`VoidCapability`、`AllowanceCapability`、`QueryCapability`、`RangeCapability`、`AccountCapability`、`PrintDataCapability`、`ProviderCapabilityRegistry` |
+| | `channel.base` | 模板基类 `AbstractInvoiceProvider` 与五个形态抽象类（能力接口定义在 `invoice-domain` 的 `gateway`），见 [供应商适配抽象](./TDD-发票服务-供应商适配抽象.md) |
 | | `channel.invoke` | `ProviderInvoker`、`ProviderInterceptor` 与拦截器：校验 / 追踪 / 幂等 / 超时 / 重试（仅查询类）/ 记录 / 结果分类 |
 | | `channel.credential` | `ProviderCredentialAccess`（经 secret 模块现解） |
 | | `channel.http` | `RecordingProviderClient`（脱敏副本 + 加密原文）、`ProviderTransport` |
@@ -514,8 +514,8 @@ InvoiceTransmissionJob（每分钟）                                     [invoi
    └ ProviderInvoker.invoke(ctx, IssueCommand(document, refNo))       [invoice-channel]
        ├ 拦截器：校验 → 追踪 → 幂等 → 超时 → 记录(ivc_provider_call_log) → 分类
        ├ ProviderCredentialAccess.open(ctx)  ← secret 模块现解 posno/posid
-       └ CetustekIssueCapability.issue → CetustekSoapClient.call("UploadInvoice")
-           | TurnkeyIssueCapability.issue → 原子写 F0401 XML
+       └ CetustekInvoiceProvider.issue（extends AbstractSoapInvoiceProvider）→ SOAP "UploadInvoice"
+           | TurnkeyInvoiceProvider.issue（extends AbstractFileExchangeInvoiceProvider）→ 原子写 F0401 XML
    └ InvoiceOutcomeService.apply(TRANSMISSION, Accepted|Rejected|Unknown)
        └ ivc_transmission → SENT / FAILED(退避)；ivc_invoice.report_status → REPORTED
 ```
@@ -531,7 +531,7 @@ InvoiceIssueService.issue(caller, cmd)                               （前半�
      └ 不出打印事实
  └ afterCommit：ProviderOnlineNumbering.afterCommit(pending, route)
      └ ProviderInvoker.invoke(ctx, IssueCommand)
-         └ EcpayIssueCapability.issue → EcpayClient.post("/B2CInvoice/Issue", AES(Data))
+         └ EcpayInvoiceProvider.issue（extends AbstractEncryptedApiInvoiceProvider）→ "/B2CInvoice/Issue"（AES Data）
      └ InvoiceOutcomeService.apply(SYNC_RESPONSE, result)
          ├ Accepted → 写 fiscal_number、random_code、issued_at；issue_status=ISSUED；report_status=REPORTED
          │            regime.proof(...) 冻结；outbox BusinessPrintFactReady、InvoiceIssuedEvent
@@ -542,7 +542,7 @@ InvoiceIssueService.issue(caller, cmd)                               （前半�
 InvoiceRecoveryJob（每分钟）
  └ 取 issue_status ∈ (PENDING 超 2 分钟, UNKNOWN)
    └ ProviderInvoker.invoke(ctx, QueryCommand(provider_order_no))
-       └ EcpayQueryCapability.query → "/B2CInvoice/GetIssue"
+       └ EcpayInvoiceProvider.query → "/B2CInvoice/GetIssue"
    └ InvoiceOutcomeService.apply(QUERY, result)   ← 与同步回包同一个写入点
 ```
 
@@ -566,7 +566,7 @@ OpsProviderAccountController.create / BizInvoiceSetupController.saveAccount
    ├ 凭据 → SecretVault.seal(KeyOwner(PLATFORM, "INVOICE_PROVIDER", accountId)) → ivc_account_credential.sec_key_id（版本化，§13.4）
    └ insert ivc_provider_account(ONBOARDING)
  └ ProviderAccountService.verify(caller, accountNo)
-   └ ProviderInvoker.invoke(ctx, VerifyCommand) → CetustekAccountCapability.verify → QueryOfficeInfo
+   └ ProviderInvoker.invoke(ctx, VerifyCommand) → CetustekInvoiceProvider.verify → QueryOfficeInfo
    └ 统编一致 → verified_snapshot；QRCode 合法 → SecretVault.seal → ivc_seller.qr_key_id
    └ 核验通过即 ACTIVE（不设审核）；营业人还没有默认绑定时自动绑 store_no='*'
  └ NumberRangeService.fetchFromProvider(caller, accountNo, period)

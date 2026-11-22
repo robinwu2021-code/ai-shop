@@ -1,7 +1,7 @@
 # TDD-发票服务-代码结构与类清单
 
 状态：草稿 · 待评审 · 2026-11-22
-依据：[TDD-发票服务-总体设计](./TDD-发票服务-总体设计.md) · [表结构说明](./TDD-发票服务-数据库表结构说明.md) · [API 文档](./TDD-发票服务-API文档.md) · 规范 [java.md §七 包规划、类名与业务边界](../../.claude/skills/ai-shop-dev-standards/references/java.md)
+依据：[TDD-发票服务-总体设计](./TDD-发票服务-总体设计.md) · [供应商适配抽象](./TDD-发票服务-供应商适配抽象.md) · [表结构说明](./TDD-发票服务-数据库表结构说明.md) · [API 文档](./TDD-发票服务-API文档.md) · 规范 [java.md §七 包规划、类名与业务边界](../../.claude/skills/ai-shop-dev-standards/references/java.md)
 参照：[TDD-支付服务-代码结构与类清单](./TDD-支付服务-代码结构与类清单.md)
 
 ---
@@ -70,10 +70,10 @@ backend/shop-app      invoiceclient · invoicebridge · config
 | `service/InvoiceBuyerService` + `impl` | 180 | 沿用 |
 | `service/InvoiceTransmissionService` + `impl` | 105 | **改**：经 `ProviderInvoker` 发送、结果交 `InvoiceOutcomeService` |
 | `service/impl/InvoiceProviderAccounts` | 57 | **迁移** → `invoice-channel` `credential.SecretProviderCredentialAccess`；封存改由 `ProviderAccountServiceImpl` 调 `SecretVault` |
-| `invoice-channel` `cetustek/CetustekInvoiceGateway` | 275 | **拆分** → `CetustekIssueCapability` 等 6 个能力类 + `CetustekDocumentMapper`（MIG → 鲸跃 XML） |
+| `invoice-channel` `cetustek/CetustekInvoiceGateway` | 275 | **改** → `CetustekInvoiceProvider`（继承 `AbstractSoapInvoiceProvider`，实现 7 个能力接口）+ `CetustekDocumentMapper`（MIG → 鲸跃 XML） |
 | `invoice-channel` `cetustek/CetustekSoapClient` | 112 | 沿用（改为经 `RecordingProviderClient` 发出） |
-| `invoice-channel` `turnkey/TurnkeyInvoiceGateway` | 109 | **拆分** → `TurnkeyIssueCapability` 等 + `TurnkeyMigWriter` |
-| `invoice-channel` `stub/StubInvoiceGateway` | 23 | **改** → `StubCapabilities`（实现全部能力） |
+| `invoice-channel` `turnkey/TurnkeyInvoiceGateway` | 109 | **改** → `TurnkeyInvoiceProvider`（继承 `AbstractFileExchangeInvoiceProvider`）+ `TurnkeyMigWriter` |
+| `invoice-channel` `stub/StubInvoiceGateway` | 23 | **改** → `StubInvoiceProvider`（直接继承 `AbstractInvoiceProvider`，实现全部能力） |
 | `db/invoice/V1`–`V5` | 221 | 冻结不改；新增 `V6`–`V9`（§5） |
 
 ### 1.2 跨模块
@@ -145,10 +145,14 @@ backend/shop-app      invoiceclient · invoicebridge · config
 | `gateway.ProviderInvoker` | interface | 领域调用供应商的唯一入口：`ProviderResult invoke(ProviderAccountContext, ProviderCommand)` | 新 |
 | `gateway.ProviderAccountContext` | record | 地区、供应商、环境、账户 id / 号、代号、凭据版本、地址；**不含密钥** | 拆自 `InvoiceGateway.ProviderAccount` |
 | `gateway.ProviderCommand` | sealed interface | `IssueCommand` `VoidCommand` `AllowanceCommand` `AllowanceVoidCommand` `QueryCommand` `RangeCommand` `VerifyCommand`（同文件 record） | 新 |
-| `gateway.ProviderResult` | sealed interface | `Accepted(providerRef, data)` · `Rejected(code, message, retryable, accountProblem)` · `Unknown(reason)` | 拆自 `GatewayReceipt` / `ProviderException` |
-| `gateway.ProviderOperation` | enum | `ISSUE` `VOID` `ALLOWANCE` `ALLOWANCE_VOID` `QUERY` `RANGE` `VERIFY` | 新 |
+| `gateway.ProviderResult` | sealed interface | `Accepted(providerCode, providerRef, data)` · `Rejected(providerCode, message, retryable, accountProblem)` · `Unknown(reason)` · `Unsupported(operation)` | 拆自 `GatewayReceipt` / `ProviderException` |
+| `gateway.InvoiceProvider` | interface | 一家供应商：`code()`、`profile()` | 新 |
+| `gateway.ProviderProfile` · `CredentialField` | record | 地区、编号方式、上报方式、凭据字段（与种子表启动比对） | 新 |
+| `gateway.ProviderCall` | record | 账户上下文 + 现取凭据 + 追踪号，传给能力方法 | 新 |
+| `gateway.CredentialSet` | final class | 一次调用内的凭据明文；`toString` 不输出值 | 新 |
+| `gateway.ProviderOperation` | enum | `ISSUE` `VOID` `ALLOWANCE` `ALLOWANCE_VOID` `QUERY` `RANGE` `VERIFY` `PRINT_DATA` | 新 |
 | `gateway.ProviderCapability` | interface | `providerCode()`、`regions()` | 新 |
-| `gateway.IssueCapability` · `VoidCapability` · `AllowanceCapability` · `QueryCapability` · `RangeCapability` · `AccountCapability` · `PrintDataCapability` | interface | 按动作拆的能力；适配只实现自己有的 | 拆自 `InvoiceGateway` / `InvoiceProviderGateway` |
+| `gateway.IssueCapability` · `VoidCapability` · `AllowanceCapability` · `AllowanceVoidCapability` · `QueryCapability` · `RangeCapability` · `AccountCapability` · `PrintDataCapability` | interface | 按动作拆的能力；厂商类只实现自己有的（见[供应商适配抽象](./TDD-发票服务-供应商适配抽象.md)） | 拆自 `InvoiceGateway` / `InvoiceProviderGateway` |
 | `gateway.ProviderCredentialAccess` | interface | 按 `(accountId, version)` 现取凭据明文（仅渠道层调用） | 新 |
 
 ### 2.4 `invoice-domain` · 税制 `regime`
@@ -225,23 +229,28 @@ backend/shop-app      invoiceclient · invoicebridge · config
 | `channel.invoke.StandardProviderInvoker` | @Component implements `ProviderInvoker` | 管线入口：按能力表找实现，依次过拦截器 | 新 | 1 |
 | `channel.invoke.ProviderInterceptor` | interface | 拦截器契约 | 新 | 1 |
 | `channel.invoke.ValidationInterceptor` · `TraceInterceptor` · `IdempotencyInterceptor` · `TimeoutInterceptor` · `RetryInterceptor`（仅 QUERY/VERIFY） · `RecordingInterceptor` · `ClassifyInterceptor` | class | 管线各环节（形状同 `pay-channel` `StandardPipeline`） | 新 | 1 |
-| `channel.invoke.ProviderCapabilityRegistry` | @Component | 收集各能力实现，启动时与 `ivc_provider_product` 比对 | 新 | 1 |
+| `channel.invoke.ProviderRegistry` | @Component | 按供应商码收集 `InvoiceProvider`，启动时比对能力与种子表 | 新 | 1 |
+| `channel.base.AbstractInvoiceProvider` | abstract class | 模板基类：final `execute`（凭据现取、按能力分发、异常归类、留痕）、`classify` | 新 | 1 |
+| `channel.base.ResultCodeTable` | final class | 厂商结果码表（数据）：成功 / 已处理过 / 可重试 / 账户问题 / 终止 | 新 | 1 |
+| `channel.base.AbstractSoapInvoiceProvider` | abstract class | SOAP 形态：信封、认证参数、`<return>` | 新（自 `CetustekSoapClient` 抽出） | 1 |
+| `channel.base.AbstractHttpApiInvoiceProvider` | abstract class | HTTP 接口形态公共层：`path` / `seal` / `open` / `callApi` | 新 | 2 |
+| `channel.base.AbstractEncryptedApiInvoiceProvider` · `AesCbcPayloadCipher` | abstract class / class | 报文整体 AES 加密（绿界、蓝新） | 新 | 2 |
+| `channel.base.AbstractSignedApiInvoiceProvider` | abstract class | 明文 + 签名（光贸、大陆服务商，预留） | 新 | 2+ |
+| `channel.base.AbstractFileExchangeInvoiceProvider` | abstract class | 文件交换形态：原子写文件、回执解析 | 新（自 `TurnkeyInvoiceGateway` 抽出） | 1 |
+| `channel.base.AbstractNetworkInvoiceProvider` | abstract class | 网络接入点形态（Peppol，预留） | 新 | 3+ |
+| `channel.tw.TwMigView` · `AbstractTwDocumentMapper` | class / abstract class | 台湾 MIG 报文类型化视图与各厂商共用的映射规则 | 新 | 1 |
 | `channel.credential.SecretProviderCredentialAccess` | @Component implements `ProviderCredentialAccess` | 从 secret 模块现解凭据 | 迁移自 `InvoiceProviderAccounts` | 1 |
 | `channel.http.RecordingProviderClient` | class | 发 HTTP、写调用日志（脱敏）与加密原文 | 新 | 1 |
 | `channel.http.ProviderTransport` · `JdkProviderTransport` | interface / class | 传输层（可替换为测试桩） | 新 | 1 |
-| `channel.cetustek.CetustekSoapClient` | class | SOAP 信封、`<return>` 提取 | 沿用 | — |
 | `channel.cetustek.CetustekDocumentMapper` | class | MIG 树 → 鲸跃 Invoice / Allowance / 作废 XML | 拆自 `CetustekInvoiceGateway` | 1 |
-| `channel.cetustek.CetustekResultCodes` | class | `S0/S2/C0/C5/A0/A6` 及失败码 → `ProviderResult` | 拆自 `CetustekInvoiceGateway` | 1 |
-| `channel.cetustek.CetustekIssueCapability` · `CetustekVoidCapability` · `CetustekAllowanceCapability` · `CetustekRangeCapability` · `CetustekAccountCapability` | @Component | 各能力实现 | 拆自 `CetustekInvoiceGateway` | 1 |
-| `channel.cetustek.CetustekQueryCapability` | @Component | `QueryInvoiceStatus` | 新 | 2 |
-| `channel.ecpay.EcpayClient` | class | 外层 JSON、`RqHeader.Timestamp`、`TransCode` 判定 | 新 | 2 |
-| `channel.ecpay.EcpayCipher` | class | URL Encode → AES-128-CBC/PKCS7 → Base64（官方测试向量做单测） | 新 | 2 |
+| `channel.cetustek.CetustekInvoiceProvider` | @Component extends `AbstractSoapInvoiceProvider` | 实现开立 / 作废 / 折让 / 折让作废 / 查单 / 领号段 / 核验；内含结果码表（`S0/S2/C0/C5/A0/A6` …） | 改自 `CetustekInvoiceGateway`（`CetustekSoapClient` 并入形态抽象类） | 1（查单 2） |
 | `channel.ecpay.EcpayDocumentMapper` | class | MIG 树 → 绿界 Issue / Allowance 请求；`RelateNumber` | 新 | 2 |
-| `channel.ecpay.EcpayIssueCapability` · `EcpayVoidCapability` · `EcpayAllowanceCapability` · `EcpayQueryCapability` · `EcpayAccountCapability` · `EcpayPrintDataCapability` | @Component | `Issue` · `Invalid` · `Allowance/AllowanceInvalid` · `GetIssue` · 探测 · `InvoicePrint` | 新 | 2 |
+| `channel.ecpay.EcpayInvoiceProvider` | @Component extends `AbstractEncryptedApiInvoiceProvider` | `Issue` · `Invalid` · `Allowance/AllowanceInvalid` · `GetIssue` · 凭证探测 · `InvoicePrint`；外层 `TransCode`、AES-128 + URL Encode（`AesCbcPayloadCipher`） | 新 | 2 |
+| `channel.ezpay.EzpayInvoiceProvider` · `channel.amego.AmegoInvoiceProvider` | extends 加密 / 签名接口抽象类 | 只定形态，协议待核实后实现 | 新 | 待定 |
 | `channel.turnkey.TurnkeyMigWriter` | class | MIG 树 → XML、原子落文件 | 拆自 `TurnkeyInvoiceGateway` | 1 |
-| `channel.turnkey.TurnkeyIssueCapability` · `TurnkeyVoidCapability` · `TurnkeyAllowanceCapability` | @Component | F0401 / F0501 / G0401（G0501） | 拆自 `TurnkeyInvoiceGateway` | 1 |
+| `channel.turnkey.TurnkeyInvoiceProvider` | @Component extends `AbstractFileExchangeInvoiceProvider` | F0401 / F0501 / G0401 / G0501；回执解析 | 改自 `TurnkeyInvoiceGateway` | 1 |
 | `channel.turnkey.TurnkeyReceiptScanner` | @Component | 扫回执目录 → `ProviderReceiptService` | 新 | 2 |
-| `channel.stub.StubCapabilities` | @Component | 实现全部能力，收下即成功（仅测试 / 沙箱） | 改自 `StubInvoiceGateway` | 1 |
+| `channel.stub.StubInvoiceProvider` | @Component extends `AbstractInvoiceProvider` | 实现全部能力，收下即成功（仅测试 / 沙箱） | 改自 `StubInvoiceGateway` | 1 |
 
 ### 2.9 `invoice-portal`（接入层，按资源命名 controller）
 
@@ -297,9 +306,9 @@ backend/shop-app      invoiceclient · invoicebridge · config
 | `invoice-domain` `service.impl.ProviderAccountMysqlTest` | 两种维护方的写权、凭据版本切换、核验失败保旧版本、接管 / 交还、事件 | 新 |
 | `invoice-domain` `service.impl.ProviderOnlineNumberingMysqlTest` | 在线配号：成功 / 拒绝 / 超时 → 未知 → 恢复；未知期间来源单锁定 | 新 |
 | `invoice-domain` `regime.tw.TwRulesTest` · `TwProofCodesTest` | 台湾规则 | 沿用 |
-| `invoice-channel` `cetustek.CetustekCapabilitiesTest` | 由 `CetustekInvoiceGatewayTest` 拆分（本机假 SOAP） | 改 |
+| `invoice-channel` `cetustek.CetustekInvoiceProviderTest` | 由 `CetustekInvoiceGatewayTest` 改名（本机假 SOAP） | 改 |
 | `invoice-channel` `ecpay.EcpayCipherTest` | 官方测试向量逐字节一致 | 新 |
-| `invoice-channel` `ecpay.EcpayCapabilitiesTest` | 本机假服务：开立、查单、作废、折让、`TransCode` / `RtnCode` | 新 |
+| `invoice-channel` `ecpay.EcpayInvoiceProviderTest` | 本机假服务：开立、查单、作废、折让、`TransCode` / `RtnCode` | 新 |
 | `invoice-channel` `turnkey.TurnkeyMigWriterTest` | 由 `TurnkeyInvoiceGatewayTest` 改名 | 改 |
 | `invoice-channel` `invoke.StandardProviderInvokerTest` | 管线顺序、仅查询类重试、记录不含凭据 | 新 |
 | `invoice-domain` `InvoiceBoundaryTest` | 扩展：`invoice-*` 不依赖业务域与 `shop-app`；Mapper 只在 `invoice.mapper` | 改 |
