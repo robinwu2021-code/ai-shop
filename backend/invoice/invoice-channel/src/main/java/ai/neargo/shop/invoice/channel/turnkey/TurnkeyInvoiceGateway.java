@@ -53,11 +53,11 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
     @Override
     public GatewayReceipt send(GatewayRequest request) {
         if (!"TW_EGUI".equals(request.regimeCode()))
-            return new GatewayReceipt(false, null, "Turnkey only serves TW_EGUI");
+            return GatewayReceipt.rejected("Turnkey only serves TW_EGUI");
         JsonNode message = json.readTree(request.payloadJson());
         String mig = message.path("mig").asText();
         String rootElement = ROOT_ELEMENT.get(mig);
-        if (rootElement == null) return new GatewayReceipt(false, null, "Unsupported MIG message: " + mig);
+        if (rootElement == null) return GatewayReceipt.rejected("Unsupported MIG message: " + mig);
         String xml = xml(rootElement, mig, message);
         String id = switch (mig) {
             case "F0401" -> message.path("Main").path("InvoiceNumber").asText();
@@ -74,7 +74,7 @@ public class TurnkeyInvoiceGateway implements InvoiceGateway {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        return new GatewayReceipt(true, target.toString(), null);
+        return GatewayReceipt.accepted(target.toString());
     }
 
     /**

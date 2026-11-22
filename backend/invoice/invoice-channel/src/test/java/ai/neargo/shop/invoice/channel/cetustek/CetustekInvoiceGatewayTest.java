@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt.Outcome;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.ProviderAccount;
 import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway.ProviderException;
@@ -104,11 +105,23 @@ class CetustekInvoiceGatewayTest {
         var failed = gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, ACCOUNT));
         assertFalse(failed.accepted());
         assertEquals("cetustek S1", failed.error());
+        assertEquals(Outcome.FINAL, failed.outcome(), "「上传失败」语义未确认前不自动重发");
+        returns.add("InValid");
+        assertEquals(Outcome.ACCOUNT_PROBLEM,
+                gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, ACCOUNT)).outcome());
+        returns.add("error");
+        assertEquals(Outcome.RETRYABLE,
+                gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, ACCOUNT)).outcome());
+        returns.add("M:CarrierId1");
+        assertEquals(Outcome.FINAL,
+                gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, ACCOUNT)).outcome(),
+                "不认识的码不重发");
         returns.add("C5");
         assertTrue(gateway.send(new GatewayRequest("TW_EGUI", "VOID", "INV-1", VOID, ACCOUNT)).accepted());
         returns.add("A6");
         assertTrue(gateway.send(new GatewayRequest("TW_EGUI", "ALLOWANCE", "AL-1", ALLOWANCE, ACCOUNT)).accepted());
-        assertFalse(gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, null)).accepted());
+        assertEquals(Outcome.ACCOUNT_PROBLEM,
+                gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1", ISSUE, null)).outcome(), "没配账号同属账号问题");
         assertFalse(gateway.send(new GatewayRequest("TW_EGUI", "ISSUE", "INV-1",
                 ISSUE.replace("\"TaxType\":\"1\",\"TaxRate\"", "\"TaxType\":\"2\",\"TaxRate\""), ACCOUNT)).accepted(),
                 "零税率不送出");

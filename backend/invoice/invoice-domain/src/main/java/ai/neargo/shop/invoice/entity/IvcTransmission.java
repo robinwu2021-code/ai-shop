@@ -25,7 +25,7 @@ public class IvcTransmission {
     private String messageType;
     private String refNo;
     private String payload;
-    /** PENDING / SENDING / SENT / FAILED */
+    /** PENDING / SENDING / SENT / FAILED / HELD（账号问题暂停）/ NEEDS_REVIEW（被拒，待人工） */
     private String status;
     private Integer attempts;
     private LocalDateTime nextAttemptAt;

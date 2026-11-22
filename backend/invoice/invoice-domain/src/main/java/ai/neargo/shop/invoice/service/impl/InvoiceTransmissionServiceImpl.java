@@ -1,44 +1,68 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.invoice.entity.IvcAllowance;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.InvoiceProviderGateway;
+import ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.TransmissionMapper;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
+import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
  * 上传任务的唯一执行者（重试只在这里，不在通道、不在开立流程）。
  *
- * <p>先用条件更新把任务「认领」成 SENDING 再发 —— 多实例同时跑也只有一个实例发同一条；
- * 通道抛异常或拒收都记 FAILED 并按 1、2、4 … 分钟（封顶 60）退避，下一轮原样补发同一报文。
+ * <p>先用条件更新把任务「认领」成 SENDING 再发 —— 多实例同时跑也只有一个实例发同一条。
+ *
+ * <p><b>失败分级止损</b>（TDD-发票模块 §12）—— 通道回执告诉我们失败属于哪一种，处置各不相同：
+ * <ul>
+ *   <li>可重试（对方忙、网络不通、通道抛异常）：FAILED，按 1、2、4 … 分钟（封顶 60）退避，下一轮原样补发；</li>
+ *   <li>账号问题（如鲸跃 {@code invalid}）：本任务转 HELD，并把主体配置标为「暂停上传」——
+ *       之后该主体的任务在发送前就转 HELD，<b>一次都不再打到服务商</b>；商家核验账号通过后由
+ *       {@link #releaseHeld} 一并放回 PENDING；</li>
+ *   <li>报文被拒（格式、业务规则、不认识的码）：NEEDS_REVIEW，不自动重发，处理后由 {@link #retry} 手动重传。</li>
+ * </ul>
+ * 后两种各打一条固定关键字的 ERROR 日志（{@code INVOICE_PROVIDER_HOLD} / {@code INVOICE_TRANSMISSION_NEEDS_REVIEW}），供日志告警订阅。
  *
  * <p>加值中心通道要商家账号：发送前按任务的主体 + 税制现取配置、现解密码，不把密码放进任务或报文。
  */
 @Service
 public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionService {
 
+    private static final Logger log = LoggerFactory.getLogger(InvoiceTransmissionServiceImpl.class);
+    static final String HELD = "HELD";
+    static final String NEEDS_REVIEW = "NEEDS_REVIEW";
+
     private final TransmissionMapper transmissions;
     private final RegimeProfileMapper profiles;
+    private final AllowanceMapper allowances;
     private final InvoiceProviderAccounts accounts;
     private final Map<String, InvoiceGateway> gateways;
 
     public InvoiceTransmissionServiceImpl(TransmissionMapper transmissions, RegimeProfileMapper profiles,
-            InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways) {
+            AllowanceMapper allowances, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways) {
         this.transmissions = transmissions;
         this.profiles = profiles;
+        this.allowances = allowances;
         this.accounts = accounts;
         this.gateways = gateways.stream().collect(Collectors.toMap(InvoiceGateway::code, Function.identity()));
     }
@@ -52,44 +76,111 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                         .or(x -> x.eq("status", "SENDING").le("updated_at", now.minusMinutes(10))))
                 .orderByAsc("next_attempt_at", "id").last("LIMIT " + limit));
         int sent = 0;
+        // 同一轮里同一主体的配置只查一次；本轮刚被暂停的主体，后面的任务直接转 HELD
+        var profileCache = new HashMap<String, IvcRegimeProfile>();
         for (var t : due) {
+            var gateway = gateways.get(t.getGatewayCode());
+            IvcRegimeProfile profile = gateway instanceof InvoiceProviderGateway
+                    ? profileCache.computeIfAbsent(t.getTenantNo() + "|" + t.getEntityNo() + "|" + t.getRegimeCode(),
+                            k -> profileOf(t))
+                    : null;
+            if (profile != null && profile.getProviderHeldAt() != null) {
+                transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
+                        .eq("status", t.getStatus()).set("status", HELD).set("updated_at", now));
+                continue;
+            }
             if (transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
                     .eq("status", t.getStatus()).eq("attempts", t.getAttempts())
                     .set("status", "SENDING").set("updated_at", now)) != 1) continue;
             GatewayReceipt receipt;
             try {
-                receipt = send(t);
+                receipt = send(gateway, t, profile);
             } catch (RuntimeException e) {
                 // 业务动作：通道异常即本次未送达，转为可重试状态；原报文留着下一轮补发
-                receipt = new GatewayReceipt(false, null, String.valueOf(e.getMessage()));
+                receipt = GatewayReceipt.retryable(String.valueOf(e.getMessage()));
             }
-            int attempts = t.getAttempts() + 1;
-            var after = LocalDateTime.now(ZoneOffset.UTC);
-            var update = new UpdateWrapper<IvcTransmission>().eq("id", t.getId()).eq("status", "SENDING")
-                    .set("attempts", attempts).set("updated_at", after);
-            if (receipt.accepted()) {
-                update.set("status", "SENT").set("gateway_ref", receipt.gatewayRef()).set("last_error", null);
-                sent++;
-            } else {
-                String error = receipt.error() == null ? "rejected" : receipt.error();
-                update.set("status", "FAILED")
-                        .set("last_error", error.length() > 512 ? error.substring(0, 512) : error)
-                        .set("next_attempt_at", after.plusMinutes(Math.min(60, 1L << Math.min(attempts - 1, 6))));
+            if (receipt.accepted()) sent++;
+            record(t, receipt);
+            if (receipt.outcome() == GatewayReceipt.Outcome.ACCOUNT_PROBLEM && profile != null) {
+                hold(profile, receipt.error());
+                profile.setProviderHeldAt(now);   // 本轮后续同主体任务据此直接转 HELD
             }
-            transmissions.update(null, update);
         }
         return sent;
     }
 
-    private GatewayReceipt send(IvcTransmission t) {
-        var gateway = gateways.get(t.getGatewayCode());
-        if (gateway == null) return new GatewayReceipt(false, null, "gateway not installed: " + t.getGatewayCode());
+    @Override
+    public int releaseHeld(String tenantNo, String entityNo, String regimeCode) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("tenant_no", tenantNo)
+                .eq("entity_no", entityNo).eq("regime_code", regimeCode)
+                .set("provider_hold_reason", null).set("provider_held_at", null).set("updated_at", now));
+        int released = transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("tenant_no", tenantNo)
+                .eq("entity_no", entityNo).eq("regime_code", regimeCode).eq("status", HELD)
+                .set("status", "PENDING").set("next_attempt_at", now).set("updated_at", now));
+        if (released > 0) log.info("INVOICE_PROVIDER_RELEASED tenant={} entity={} tasks={}", tenantNo, entityNo, released);
+        return released;
+    }
+
+    @Override
+    public int retry(Scope scope, String invoiceNo) {
+        // 一张发票的全部上传任务：开立、作废，以及它的每张折让
+        var refs = new ArrayList<String>();
+        refs.add(invoiceNo);
+        allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", scope.tenantNo())
+                        .eq("entity_no", scope.entityNo()).eq("invoice_no", invoiceNo))
+                .forEach(a -> refs.add(a.getAllowanceNo()));
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        int n = transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).in("ref_no", refs).eq("status", NEEDS_REVIEW)
+                .set("status", "PENDING").set("next_attempt_at", now).set("last_error", null).set("updated_at", now));
+        if (n == 0) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        return n;
+    }
+
+    private void record(IvcTransmission t, GatewayReceipt receipt) {
+        int attempts = t.getAttempts() + 1;
+        var after = LocalDateTime.now(ZoneOffset.UTC);
+        var update = new UpdateWrapper<IvcTransmission>().eq("id", t.getId()).eq("status", "SENDING")
+                .set("attempts", attempts).set("updated_at", after);
+        String error = receipt.error() == null ? "rejected" : receipt.error();
+        String clipped = error.length() > 512 ? error.substring(0, 512) : error;
+        switch (receipt.outcome()) {
+            case ACCEPTED -> update.set("status", "SENT").set("gateway_ref", receipt.gatewayRef()).set("last_error", null);
+            case RETRYABLE -> update.set("status", "FAILED").set("last_error", clipped)
+                    .set("next_attempt_at", after.plusMinutes(Math.min(60, 1L << Math.min(attempts - 1, 6))));
+            case ACCOUNT_PROBLEM -> update.set("status", HELD).set("last_error", clipped);
+            case FINAL -> {
+                update.set("status", NEEDS_REVIEW).set("last_error", clipped);
+                log.error("INVOICE_TRANSMISSION_NEEDS_REVIEW tenant={} entity={} type={} ref={} error={}",
+                        t.getTenantNo(), t.getEntityNo(), t.getMessageType(), t.getRefNo(), clipped);
+            }
+        }
+        transmissions.update(null, update);
+    }
+
+    /** 只有第一次把主体标为暂停的那个执行者打告警日志，避免同一问题刷屏。 */
+    private void hold(IvcRegimeProfile profile, String reason) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        String clipped = reason == null ? "account problem" : reason.length() > 256 ? reason.substring(0, 256) : reason;
+        if (profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", profile.getId())
+                .isNull("provider_held_at").set("provider_hold_reason", clipped).set("provider_held_at", now)
+                .set("updated_at", now)) == 1)
+            log.error("INVOICE_PROVIDER_HOLD tenant={} entity={} gateway={} reason={}", profile.getTenantNo(),
+                    profile.getEntityNo(), profile.getGatewayCode(), clipped);
+    }
+
+    private IvcRegimeProfile profileOf(IvcTransmission t) {
+        return profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", t.getTenantNo())
+                .eq("entity_no", t.getEntityNo()).eq("regime_code", t.getRegimeCode()).last("LIMIT 1"));
+    }
+
+    private GatewayReceipt send(InvoiceGateway gateway, IvcTransmission t, IvcRegimeProfile profile) {
+        if (gateway == null) return GatewayReceipt.retryable("gateway not installed: " + t.getGatewayCode());
         InvoiceGateway.ProviderAccount account = null;
         if (gateway instanceof InvoiceProviderGateway) {
-            var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", t.getTenantNo())
-                    .eq("entity_no", t.getEntityNo()).eq("regime_code", t.getRegimeCode()).last("LIMIT 1"));
             account = accounts.of(profile).orElse(null);
-            if (account == null) return new GatewayReceipt(false, null, "provider account not configured");
+            if (account == null) return GatewayReceipt.accountProblem("provider account not configured");
         }
         return gateway.send(new GatewayRequest(t.getRegimeCode(), t.getMessageType(), t.getRefNo(), t.getPayload(),
                 account));

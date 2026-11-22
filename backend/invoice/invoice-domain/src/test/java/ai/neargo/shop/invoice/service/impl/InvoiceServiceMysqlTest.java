@@ -126,6 +126,8 @@ class InvoiceServiceMysqlTest {
         provider.seen.clear();
         provider.taxId = "12345675";
         provider.failCode = null;
+        provider.sendCode = null;
+        provider.sends.set(0);
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null));
@@ -314,6 +316,71 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac35AccountProblemHoldsTheEntityUntilVerified() {
+        useProvider();
+        sources.paid("SO1", 1_000);
+        sources.paid("SO2", 1_000);
+        var first = issue("SO1");
+        issue("SO2");
+        provider.sendCode = "invalid";
+        assertEquals(0, transmissions.transmitDue(10));
+        assertEquals(1, provider.sends.get(), "第一张认证失败后，同主体的第二张不再打到服务商");
+        assertEquals(2, countStatus("HELD"));
+        assertEquals("prov invalid", jdbc.queryForObject(
+                "SELECT provider_hold_reason FROM ivc_regime_profile WHERE entity_no='E1'", String.class));
+        assertEquals("HELD", invoices.get(SCOPE, first.invoiceNo()).uploadStatus());
+
+        sources.paid("SO3", 1_000);
+        issue("SO3");
+        assertEquals(0, transmissions.transmitDue(10));
+        assertEquals(1, provider.sends.get(), "暂停期间新开的票也直接转 HELD");
+        assertEquals(3, countStatus("HELD"));
+        assertTrue(setup.profile(SCOPE).orElseThrow().providerHoldReason() != null, "B 端能看到暂停原因");
+
+        provider.sendCode = null;
+        setup.verifyProvider(SCOPE);
+        assertEquals(null, setup.profile(SCOPE).orElseThrow().providerHoldReason(), "核验通过即解除暂停");
+        assertEquals(3, transmissions.transmitDue(10), "积压的 3 张一次补发");
+    }
+
+    @Test
+    void ac35RejectedUploadWaitsForManualRetryAndSystemErrorsBackOff() {
+        useProvider();
+        sources.paid("SO1", 1_000);
+        var r = issue("SO1");
+        provider.sendCode = "M1";
+        transmissions.transmitDue(10);
+        assertEquals("NEEDS_REVIEW", invoices.get(SCOPE, r.invoiceNo()).uploadStatus());
+        transmissions.transmitDue(10);
+        assertEquals(1, provider.sends.get(), "被拒的报文不自动重发");
+
+        provider.sendCode = null;
+        assertEquals(1, transmissions.retry(SCOPE, r.invoiceNo()));
+        assertEquals(1, transmissions.transmitDue(10));
+        assertEquals("SENT", invoices.get(SCOPE, r.invoiceNo()).uploadStatus());
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> transmissions.retry(SCOPE, r.invoiceNo()));
+
+        sources.paid("SO2", 1_000);
+        var r2 = issue("SO2");
+        provider.sendCode = "error";
+        transmissions.transmitDue(10);
+        var row = jdbc.queryForMap("SELECT status, next_attempt_at > UTC_TIMESTAMP(3) AS later FROM ivc_transmission"
+                + " WHERE ref_no=?", r2.invoiceNo());
+        assertEquals("FAILED", row.get("status"), "服务商系统错误仍按退避重试");
+        assertEquals(1L, ((Number) row.get("later")).longValue());
+        assertEquals(null, setup.profile(SCOPE).orElseThrow().providerHoldReason(), "可重试错误不暂停主体");
+    }
+
+    private void useProvider() {
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
+                "OFFICE-1", "pos-user", "pos-secret"));
+    }
+
+    private int countStatus(String status) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE status=?", Integer.class, status);
     }
 
     @Test
@@ -610,7 +677,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(5, applied);
+            assertEquals(6, applied);
             return ds;
         }
     }
@@ -661,7 +728,7 @@ class InvoiceServiceMysqlTest {
         public GatewayReceipt send(GatewayRequest request) {
             if (fail.get()) throw new IllegalStateException("gateway down");
             payloads.add(request.payloadJson());
-            return new GatewayReceipt(true, "G-" + payloads.size(), null);
+            return GatewayReceipt.accepted("G-" + payloads.size());
         }
     }
 
@@ -670,6 +737,9 @@ class InvoiceServiceMysqlTest {
         final List<InvoiceGateway.ProviderAccount> seen = new ArrayList<>();
         volatile String taxId = "12345675";
         volatile String failCode;
+        /** 上传回执：null = 成功；invalid = 账号问题；error = 可重试；其它 = 被拒 */
+        volatile String sendCode;
+        final java.util.concurrent.atomic.AtomicInteger sends = new java.util.concurrent.atomic.AtomicInteger();
 
         public String code() {
             return "PROV";
@@ -677,7 +747,14 @@ class InvoiceServiceMysqlTest {
 
         public GatewayReceipt send(GatewayRequest request) {
             seen.add(request.account());
-            return new GatewayReceipt(true, "P-" + request.refNo(), null);
+            sends.incrementAndGet();
+            String code = sendCode;
+            if (code == null) return GatewayReceipt.accepted("P-" + request.refNo());
+            return switch (code) {
+                case "invalid" -> GatewayReceipt.accountProblem("prov invalid");
+                case "error" -> GatewayReceipt.retryable("prov error");
+                default -> GatewayReceipt.rejected("prov " + code);
+            };
         }
 
         public ProviderOffice verify(InvoiceGateway.ProviderAccount account) {

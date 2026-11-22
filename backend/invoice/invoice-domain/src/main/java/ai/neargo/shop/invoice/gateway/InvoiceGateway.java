@@ -20,8 +20,40 @@ public interface InvoiceGateway {
     record GatewayRequest(String regimeCode, String messageType, String refNo, String payloadJson,
             ProviderAccount account) {}
 
-    /** @param error 失败原因（通道原文，截断到 512 字），成功为空 */
-    record GatewayReceipt(boolean accepted, String gatewayRef, String error) {}
+    /**
+     * 通道回执。失败分三种，上传任务据此决定下一步（TDD-发票模块 §12）：
+     * <ul>
+     *   <li>{@link Outcome#RETRYABLE}：对方系统忙 / 网络不通，退避后原样重发</li>
+     *   <li>{@link Outcome#ACCOUNT_PROBLEM}：账号认证失败 —— 重发多少次都一样，暂停该主体的上传，等商家核验账号</li>
+     *   <li>{@link Outcome#FINAL}：报文被拒（格式、业务规则）—— 不自动重发，标为待人工处理</li>
+     * </ul>
+     *
+     * @param error 失败原因（通道原文，截断到 512 字），成功为空
+     */
+    record GatewayReceipt(Outcome outcome, String gatewayRef, String error) {
+
+        public enum Outcome { ACCEPTED, RETRYABLE, ACCOUNT_PROBLEM, FINAL }
+
+        public boolean accepted() {
+            return outcome == Outcome.ACCEPTED;
+        }
+
+        public static GatewayReceipt accepted(String gatewayRef) {
+            return new GatewayReceipt(Outcome.ACCEPTED, gatewayRef, null);
+        }
+
+        public static GatewayReceipt retryable(String error) {
+            return new GatewayReceipt(Outcome.RETRYABLE, null, error);
+        }
+
+        public static GatewayReceipt accountProblem(String error) {
+            return new GatewayReceipt(Outcome.ACCOUNT_PROBLEM, null, error);
+        }
+
+        public static GatewayReceipt rejected(String error) {
+            return new GatewayReceipt(Outcome.FINAL, null, error);
+        }
+    }
 
     /**
      * 主体在加值中心的账号。{@code accountCode} 是服务商分给商家的代号（鲸跃 officeid），存业务表；

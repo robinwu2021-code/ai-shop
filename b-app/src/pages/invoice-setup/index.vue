@@ -70,6 +70,7 @@
       </view>
 
       <view v-if="providerMode" class="sh-card sh-mt-sm">
+        <view v-if="current?.providerHoldReason" class="sh-notice sh-notice--danger sh-mb-sm" role="alert">{{ t("salesInvoice.providerHeld", { reason: current.providerHoldReason }) }}</view>
         <text class="sh-hint txt-quiet">{{ t("salesInvoice.providerHint") }}</text>
         <view v-if="providerMsg" class="sh-notice sh-mt-sm" :class="providerFailed ? 'sh-notice--danger' : 'sh-notice--success'" role="status">{{ providerMsg }}</view>
         <view class="sh-row sh-mt-sm">
@@ -89,7 +90,7 @@
           <text class="txt-caption txt-quiet sh-num">{{ r.storeNo === "*" ? t("salesInvoice.rangeShared") : r.storeNo }}</text>
           <text class="txt-caption txt-quiet">{{ t("salesInvoice.remaining", { n: r.remaining }) }}</text>
         </view>
-        <text v-if="r.allocationOwner === 'PROVIDER'" class="txt-caption txt-quiet">{{ t("salesInvoice.rangeOwner.PROVIDER") }}</text>
+        <text class="txt-caption txt-quiet">{{ t(`salesInvoice.rangeOwner.${r.allocationOwner ?? "MANUAL"}`) }}</text>
       </view>
 
       <sh-section :title="String(t('salesInvoice.addRange'))" pad></sh-section>
@@ -266,7 +267,8 @@ async function verifyProvider() {
     const name = v.name ?? v.taxId;
     providerFailed.value = false;
     providerMsg.value = String(v.qrKeyStored ? t("salesInvoice.verifiedQr", { name }) : t("salesInvoice.verified", { name }));
-    if (v.qrKeyStored && current.value) current.value = { ...current.value, qrKeyConfigured: true };
+    if (current.value) current.value = { ...current.value, providerHoldReason: null, providerHeldAt: null,
+      ...(v.qrKeyStored ? { qrKeyConfigured: true } : {}) };
   } catch (e) {
     providerFailed.value = true;
     providerMsg.value = message(e);

@@ -13562,6 +13562,8 @@ CREATE TABLE IF NOT EXISTS ivc_regime_profile
     updated_at DATETIME(3) NOT NULL,
     provider_account_code VARCHAR(64) NULL,
     provider_secret_ref BIGINT NULL,
+    provider_hold_reason VARCHAR(256) NULL,
+    provider_held_at DATETIME(3) NULL,
     CONSTRAINT uk_ivc_regime_profile UNIQUE (tenant_no, entity_no, regime_code)
 );
 

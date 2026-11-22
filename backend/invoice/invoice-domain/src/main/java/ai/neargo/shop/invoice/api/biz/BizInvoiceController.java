@@ -9,6 +9,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.IssueInvoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.VoidInvoiceReq;
 import ai.neargo.shop.invoice.service.InvoiceService;
+import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -35,9 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizInvoiceController {
 
     private final InvoiceService invoices;
+    private final InvoiceTransmissionService transmissions;
 
-    public BizInvoiceController(InvoiceService invoices) {
+    public BizInvoiceController(InvoiceService invoices, InvoiceTransmissionService transmissions) {
         this.invoices = invoices;
+        this.transmissions = transmissions;
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
@@ -82,5 +85,18 @@ public class BizInvoiceController {
     @PostMapping("/biz/invoices/{invoiceNo}/allowances")
     public InvoiceVO allowance(@PathVariable String invoiceNo, @Valid @RequestBody AllowanceReq req) {
         return invoices.allowance(BizInvoiceScope.current(), invoiceNo, req.amountMinor(), req.reason());
+    }
+
+    /**
+     * 重传被服务商拒收、标为「待人工处理」的上传任务（开立 / 作废 / 折让）。报文不变，原样再发；
+     * 用于修正了服务商侧问题（或确认是对方临时故障）之后。账号问题造成的暂停不走这里，核验账号即恢复。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
+    @PostMapping("/biz/invoices/{invoiceNo}/retransmissions")
+    public InvoiceVO retransmit(@PathVariable String invoiceNo) {
+        var scope = BizInvoiceScope.current();
+        invoices.get(scope, invoiceNo);   // 门店范围校验：不是本店的票直接 404
+        transmissions.retry(scope, invoiceNo);
+        return invoices.get(scope, invoiceNo);
     }
 }

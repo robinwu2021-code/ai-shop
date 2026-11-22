@@ -271,6 +271,7 @@ class BizEndpointPermTest {
                     put("/biz/invoices/buyer-preferences", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoices/{invoiceNo}/void", BizPerms.INVOICE_VOID);
                     put("/biz/invoices/{invoiceNo}/allowances", BizPerms.INVOICE_VOID);
+                    put("/biz/invoices/{invoiceNo}/retransmissions", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoice-setup/profile", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/ranges", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/provider-verification", BizPerms.INVOICE_SETUP);

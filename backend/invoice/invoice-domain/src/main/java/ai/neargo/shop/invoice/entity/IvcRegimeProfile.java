@@ -32,6 +32,10 @@ public class IvcRegimeProfile {
     private String providerAccountCode;
     /** secret 模块引用：服务商账号与密码（V5） */
     private Long providerSecretRef;
+    /** 上传暂停原因（V6）；空 = 未暂停 */
+    private String providerHoldReason;
+    /** 暂停时间（V6） */
+    private LocalDateTime providerHeldAt;
     /** ACTIVE / SUSPENDED */
     private String status;
     private String createdBy;

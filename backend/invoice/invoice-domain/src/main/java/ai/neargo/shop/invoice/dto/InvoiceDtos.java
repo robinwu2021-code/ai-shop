@@ -124,7 +124,10 @@ public final class InvoiceDtos {
             boolean autoIssue,
             String status,
             String providerAccountCode,
-            boolean providerCredentialConfigured) {}
+            boolean providerCredentialConfigured,
+            /** 上传暂停原因：账号认证失败时由系统写入，核验通过后清空；空 = 正常 */
+            String providerHoldReason,
+            LocalDateTime providerHeldAt) {}
 
     public record NumberRangeVO(
             String rangeNo,

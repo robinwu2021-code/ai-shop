@@ -18,8 +18,14 @@
           <sh-kv v-if="inv.carrierId" between :label="String(t('salesInvoice.carrier'))"><text class="sh-num">{{ inv.carrierType }} · {{ inv.carrierId }}</text></sh-kv>
           <sh-kv v-if="inv.donateCode" between :label="String(t('salesInvoice.donate'))"><text class="sh-num">{{ inv.donateCode }}</text></sh-kv>
           <sh-kv between :label="String(t('salesInvoice.uploadLabel'))">
-            <text :class="inv.uploadStatus === 'FAILED' ? 'is-danger' : ''">{{ t(`salesInvoice.upload.${inv.uploadStatus}`) }}</text>
+            <text :class="uploadTrouble ? 'is-danger' : ''">{{ t(`salesInvoice.upload.${inv.uploadStatus}`) }}</text>
           </sh-kv>
+          <text v-if="inv.uploadStatus === 'HELD'" class="sh-hint txt-quiet">{{ t("salesInvoice.heldHint") }}</text>
+          <view v-if="inv.uploadStatus === 'NEEDS_REVIEW'" class="sh-mt-sm">
+            <text class="sh-hint txt-quiet">{{ t("salesInvoice.reviewHint") }}</text>
+            <view v-if="merchant.can('biz:invoice:issue')" class="sh-btn sh-btn--soft sh-btn--sm sh-mt-sm"
+              :class="busy ? 'is-disabled' : ''" @tap="retransmit">{{ t("salesInvoice.retransmit") }}</view>
+          </view>
           <sh-kv v-if="inv.voidReason" between :label="String(t('salesInvoice.voidReason'))"><text>{{ inv.voidReason }}</text></sh-kv>
         </view>
         <view class="sh-mt-md">
@@ -99,6 +105,7 @@ const error = ref("");
 const issued = computed(() => inv.value?.status === "ISSUED");
 const canVoid = computed(() => issued.value && merchant.can("biz:invoice:void"));
 const canSubmitPrint = computed(() => merchant.can("biz:print:submit"));
+const uploadTrouble = computed(() => ["FAILED", "HELD", "NEEDS_REVIEW"].includes(inv.value?.uploadStatus ?? ""));
 const canPrint = computed(() => issued.value && !!inv.value?.printMark && canSubmitPrint.value);
 const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);
 // 补印要先在打印中心找到这张证明联的任务（biz:print:read），再对它补印（biz:print:reprint）
@@ -152,6 +159,12 @@ async function voidInvoice() {
   const reason = (await prompt({ title: String(t("salesInvoice.voidReason")), maxlength: 60 }))?.trim();
   if (!reason) return;
   await run(() => api.mSiVoid(i.invoiceNo, { reason }), String(t("salesInvoice.done")));
+}
+
+async function retransmit() {
+  const i = inv.value;
+  if (!i) return;
+  await run(() => api.mSiRetransmit(i.invoiceNo), String(t("salesInvoice.retransmitted")));
 }
 
 async function allowance() {

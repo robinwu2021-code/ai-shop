@@ -534,3 +534,53 @@ AC22 用例在 MySQL 上复现后改为显式写 null。
 - 鲸跃只放行台湾出口：生产实例在 UME166 机房可直连；本机开发无法直连，需经隧道。
 - `UploadCancelAllowance`（折让作废）、`QueryInvoiceStatus` 未接，本模块尚无折让作废动作。
 
+## §12 上传失败分级止损（鲸跃 M1-2）
+
+状态：已实现 · 2026-11-22 · 档位 1（`ivc_transmission.status` 加值、`ivc_regime_profile` 加两列、新端点、三语文案）· 需求 PRD AC35 · 计划见 [TDD-发票服务-总体设计 §14](./TDD-发票服务-总体设计.md) M1-2。
+
+### 12.1 问题
+
+改之前所有上传失败都按 1、2、4 … 分钟退避重发。账号填错（鲸跃回 `invalid`）时，**该主体的每一张票都会每小时打一次鲸跃**，一直到有人发现；
+报文格式错误同样无限重发，而重发多少次结果都一样。
+
+### 12.2 方案
+
+通道回执带失败种类（`GatewayReceipt.Outcome`），上传任务按种类处置：
+
+| 种类 | 鲸跃码（`CetustekResultCodes`，数据表） | 任务状态 | 处置 |
+|---|---|---|---|
+| `ACCEPTED` | `S0 S2` · `C0 C5` · `A0 A6` | `SENT` | — |
+| `RETRYABLE` | `error`；网络不通 / HTTP 异常（通道抛异常） | `FAILED` | 退避重发（不变） |
+| `ACCOUNT_PROBLEM` | `invalid`；没配账号 | `HELD` | 主体配置写 `provider_hold_reason / provider_held_at`；**之后该主体的任务在发送前直接转 `HELD`，不再打到服务商**；ERROR 日志 `INVOICE_PROVIDER_HOLD`（每次暂停只打一条） |
+| `FINAL` | 其余全部（`S1`、`M1`、`D0_`、`C3/C4`、`A3–A8`、未登记的码） | `NEEDS_REVIEW` | 不自动重发；ERROR 日志 `INVOICE_TRANSMISSION_NEEDS_REVIEW` |
+
+- **恢复**：`POST /biz/invoice-setup/provider-verification` 核验通过即调 `InvoiceTransmissionService.releaseHeld`：清暂停标记，`HELD` 任务全部放回 `PENDING` 下一轮补发。
+- **重传**：`POST /biz/invoices/{invoiceNo}/retransmissions`（`biz:invoice:issue`）把这张票及其折让的 `NEEDS_REVIEW` 任务放回待发，报文不变；没有可重传的回 26008。
+- **B 端**：发票列表与详情把 `HELD` / `NEEDS_REVIEW` 标红，详情给出说明与「重新上传」按钮；发票设置页在暂停时显示原因与「核验账号即恢复」。
+- `S1 / C1 / A1`（「上传失败」）语义待鲸跃确认（§14 M0-3），确认可重试后改码表一行即可。
+- 告警目前是固定关键字的 ERROR 日志，供日志告警订阅；接运营站内消息（`OpsAlertPort`）需在 shop-core 加一类通知，列为后续。
+
+### 12.3 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `gateway/InvoiceGateway` | `GatewayReceipt(outcome, gatewayRef, error)` + 四个工厂方法 |
+| `channel/cetustek/CetustekResultCodes`（新） | 结果码表 |
+| `channel/cetustek/CetustekInvoiceGateway` · `turnkey/TurnkeyInvoiceGateway` · `stub/StubInvoiceGateway` | 改用新回执 |
+| `service/InvoiceTransmissionService(Impl)` | 分级处置、`releaseHeld`、`retry` |
+| `service/impl/InvoiceSetupServiceImpl` | 核验通过后解除暂停；视图带暂停原因 |
+| `api/biz/BizInvoiceController` | 重传端点 |
+| `db/invoice/V6__invoice_transmission_hold.sql` | 两列 + 索引 |
+| b-app `api/*` · `pages/sales-invoice(s)` · `pages/invoice-setup` · `i18n` · `enum-registry` | 状态、按钮、提示；`SiRangeOwner` 改为具名类型 |
+| `docs/api/invoice.openapi.json` | 新端点与字段 |
+
+### 12.4 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC35 | `InvoiceServiceMysqlTest#ac35AccountProblemHoldsTheEntityUntilVerified`：两张票第一张 `invalid` 后第二张不再发送（服务商调用 1 次）；暂停期间新票直接 `HELD`；核验通过后 3 张一次补发 | ✅ |
+| AC35 | `#ac35RejectedUploadWaitsForManualRetryAndSystemErrorsBackOff`：`M1` → `NEEDS_REVIEW` 且不重发；重传后送达；无可重传回 26008；`error` → `FAILED` 退避且不暂停主体 | ✅ |
+| AC35 | `CetustekInvoiceGatewayTest#ac28ResultCodesDecideDelivery`：`InValid` → 账号问题、`error` → 可重试、`S1` / `M:CarrierId1` → 待人工、没配账号 → 账号问题 | ✅ |
+
+MySQL 9 全类 26/26、鲸跃 5/5、Turnkey 2/2、b-app `vue-tsc` 无错。
+

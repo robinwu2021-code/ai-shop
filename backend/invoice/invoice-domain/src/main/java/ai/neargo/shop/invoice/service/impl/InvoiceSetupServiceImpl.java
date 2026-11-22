@@ -22,6 +22,7 @@ import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.regime.tw.TwQrCipher;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
+import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -52,15 +53,18 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private final ObjectProvider<SecretVault> vault;
     private final InvoiceProviderAccounts accounts;
     private final List<InvoiceGateway> gateways;
+    private final InvoiceTransmissionService transmissions;
 
     public InvoiceSetupServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceRegimes regimes,
-            ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways) {
+            ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, List<InvoiceGateway> gateways,
+            InvoiceTransmissionService transmissions) {
         this.profiles = profiles;
         this.ranges = ranges;
         this.regimes = regimes;
         this.vault = vault;
         this.accounts = accounts;
         this.gateways = gateways;
+        this.transmissions = transmissions;
     }
 
     @Override
@@ -172,6 +176,8 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
             profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId()).set("qr_key_ref", ref)
                     .set("updated_by", scope.actorNo()).set("updated_at", LocalDateTime.now(ZoneOffset.UTC)));
         }
+        // 账号已证明可用：解除因认证失败造成的上传暂停，积压的任务下一轮补发
+        transmissions.releaseHeld(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode());
         return new ProviderVerificationVO(office.taxId(), office.name(), key != null);
     }
 
@@ -246,7 +252,8 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private static RegimeProfileVO view(IvcRegimeProfile p) {
         return new RegimeProfileVO(p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(), p.getGatewayCode(),
                 p.getQrKeyRef() != null, p.getMemberCarrierType(), Boolean.TRUE.equals(p.getAutoIssue()), p.getStatus(),
-                p.getProviderAccountCode(), p.getProviderSecretRef() != null);
+                p.getProviderAccountCode(), p.getProviderSecretRef() != null, p.getProviderHoldReason(),
+                p.getProviderHeldAt());
     }
 
     private static NumberRangeVO view(IvcNumberRange r) {

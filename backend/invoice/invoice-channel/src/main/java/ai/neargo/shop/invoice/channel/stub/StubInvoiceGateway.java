@@ -18,6 +18,6 @@ public class StubInvoiceGateway implements InvoiceGateway {
 
     public GatewayReceipt send(GatewayRequest request) {
         String ref = "STUB-" + UUID.nameUUIDFromBytes(request.payloadJson().getBytes(StandardCharsets.UTF_8));
-        return new GatewayReceipt(true, ref, null);
+        return GatewayReceipt.accepted(ref);
     }
 }

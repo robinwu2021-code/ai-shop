@@ -22,7 +22,8 @@ import tools.jackson.databind.ObjectMapper;
  * 日期 {@code yyyy/MM/dd}；B2C 不带买方识别码；纸本 / 载具 / 捐赠的 DonateMark 分别是 2 / 0 / 1；
  * 免税明细 DType=TN。零税率鲸跃另有通关方式栏位，首期不支持，报文直接判失败留在任务里，不送出半对的票。
  *
- * <p><b>幂等</b>：同一报文重发时鲸跃回「已上传过」（S2 / C5 / A6），视为送达 —— 上传任务超时重发不会卡死。
+ * <p><b>结果码</b>：见 {@link CetustekResultCodes}。同一报文重发时鲸跃回「已上传过」（S2 / C5 / A6），视为送达；
+ * 认证失败（invalid）交给上传任务暂停该主体；不认识的码不自动重发。网络不通由 {@link CetustekSoapClient} 抛出，按可重试处理。
  *
  * <p><b>网络</b>：鲸跃只放行台湾出口（本机直连 TCP 被拒），线上实例部署在台湾机房；
  * 地址取 {@code shop.invoice.cetustek.url}，默认 UME 一直在用的正式地址。
@@ -31,8 +32,6 @@ import tools.jackson.databind.ObjectMapper;
 public class CetustekInvoiceGateway implements InvoiceProviderGateway {
 
     static final String CODE = "CETUSTEK";
-    private static final Map<String, Set<String>> ACCEPTED =
-            Map.of("ISSUE", Set.of("S0", "S2"), "VOID", Set.of("C0", "C5"), "ALLOWANCE", Set.of("A0", "A6"));
     private static final Set<String> FAILURES = Set.of("ERROR", "INVALID", "EXIST", "NODATA", "NOTAKE");
     private static final String CONSUMER_ID = "0000000000";
 
@@ -59,8 +58,8 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
     @Override
     public GatewayReceipt send(GatewayRequest request) {
         if (!"TW_EGUI".equals(request.regimeCode()))
-            return new GatewayReceipt(false, null, "Cetustek only serves TW_EGUI");
-        if (request.account() == null) return new GatewayReceipt(false, null, "provider account not configured");
+            return GatewayReceipt.rejected("Cetustek only serves TW_EGUI");
+        if (request.account() == null) return GatewayReceipt.accountProblem("provider account not configured");
         JsonNode m = json.readTree(request.payloadJson());
         String operation, field, xml;
         try {
@@ -81,17 +80,14 @@ public class CetustekInvoiceGateway implements InvoiceProviderGateway {
                     xml = allowanceXml(m);
                 }
                 default -> {
-                    return new GatewayReceipt(false, null, "Unsupported message type: " + request.messageType());
+                    return GatewayReceipt.rejected("Unsupported message type: " + request.messageType());
                 }
             }
         } catch (UnsupportedOperationException e) {
-            return new GatewayReceipt(false, null, e.getMessage());
+            return GatewayReceipt.rejected(e.getMessage());
         }
         String result = soap.call(operation, request.account(), Map.of(field, xml));
-        String code = result.toUpperCase(Locale.ROOT);
-        return ACCEPTED.get(request.messageType()).contains(code)
-                ? new GatewayReceipt(true, CODE + ":" + code + ":" + request.refNo(), null)
-                : new GatewayReceipt(false, null, "cetustek " + result);
+        return CetustekResultCodes.receipt(request.messageType(), result, request.refNo());
     }
 
     @Override

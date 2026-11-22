@@ -27,8 +27,11 @@ export interface SiAllowance {
   createdAt: string;
 }
 export type SiStatus = "ISSUED" | "VOIDED";
-export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED";
+/** HELD = 账号问题暂停（核验账号后自动恢复）；NEEDS_REVIEW = 服务商拒收，待人工处理后重传 */
+export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "NEEDS_REVIEW";
 /** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
+/** 号段来源：MANUAL 商家登记 / PROVIDER 加值中心配给 */
+export type SiRangeOwner = "MANUAL" | "PROVIDER";
 export type SiGatewayCode = "STUB" | "TURNKEY" | "CETUSTEK";
 export interface SalesInvoice {
   invoiceNo: string;
@@ -113,6 +116,9 @@ export interface SiProfile {
   providerAccountCode?: string | null;
   /** 加值中心账号密码是否已保存（本身只写不读） */
   providerCredentialConfigured?: boolean;
+  /** 上传暂停原因（账号认证失败时由系统写入，核验通过后清空）；空 = 正常 */
+  providerHoldReason?: string | null;
+  providerHeldAt?: string | null;
 }
 export interface SiProfileReq {
   regimeCode: "TW_EGUI";
@@ -150,7 +156,7 @@ export interface SiRange {
   /** ACTIVE / EXHAUSTED */
   status: string;
   /** MANUAL 手工登记 / PROVIDER 服务商配给 */
-  allocationOwner?: "MANUAL" | "PROVIDER";
+  allocationOwner?: SiRangeOwner;
 }
 export interface SiRangeReq {
   regimeCode: "TW_EGUI";
@@ -172,6 +178,8 @@ export interface SalesInvoiceApi {
   /** 当期作废 */
   mSiVoid(invoiceNo: string, body: { reason: string }): Promise<SalesInvoice>;
   mSiAllowance(invoiceNo: string, body: { amountMinor: number; reason: string }): Promise<SalesInvoice>;
+  /** 重传待人工处理的上传任务（开立 / 作废 / 折让），报文不变 */
+  mSiRetransmit(invoiceNo: string): Promise<SalesInvoice>;
   /** 未开通时后端回 null */
   mSiProfile(): Promise<SiProfile | null>;
   mSiSaveProfile(body: SiProfileReq): Promise<SiProfile>;
