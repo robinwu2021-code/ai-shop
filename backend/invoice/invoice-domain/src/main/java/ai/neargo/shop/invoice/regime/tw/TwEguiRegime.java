@@ -51,6 +51,10 @@ public class TwEguiRegime implements InvoiceRegime {
         return TwPeriods.periodOf(at);
     }
 
+    public Instant periodEnd(String periodCode) {
+        return TwPeriods.periodEnd(periodCode);
+    }
+
     public void validateBuyer(Buyer buyer, IvcRegimeProfile profile) {
         TwBuyerRules.validate(buyer, profile.getMemberCarrierType());
     }

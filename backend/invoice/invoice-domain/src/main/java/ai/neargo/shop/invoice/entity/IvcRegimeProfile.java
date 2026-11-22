@@ -36,6 +36,14 @@ public class IvcRegimeProfile {
     private String providerHoldReason;
     /** 暂停时间（V6） */
     private LocalDateTime providerHeldAt;
+    /** 本期剩余号码提醒值（V9） */
+    private Integer rangeLowWater;
+    /** 余量不足 / 期末前自动向加值中心领号（V9） */
+    private Boolean autoFetchRanges;
+    /** 本期余量已报到的级别（V9），如 11512:LOW */
+    private String rangeAlertKey;
+    /** 已报过「下期号段未备」的期别（V9） */
+    private String nextRangeAlertKey;
     /** ACTIVE / SUSPENDED */
     private String status;
     private String createdBy;

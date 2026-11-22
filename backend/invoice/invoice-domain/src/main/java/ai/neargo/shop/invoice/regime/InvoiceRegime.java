@@ -25,6 +25,9 @@ public interface InvoiceRegime {
     /** 开立时刻所属的申报期别（号段按期别配给）。 */
     String periodOf(Instant at);
 
+    /** 期别结束的时刻（不含）；无期别的地区返回 null。下一期 = {@code periodOf(periodEnd(p))}。 */
+    Instant periodEnd(String periodCode);
+
     /** 买受人组合与格式；不合规抛 {@code INVOICE_BUYER_INVALID}。 */
     void validateBuyer(Buyer buyer, IvcRegimeProfile profile);
 

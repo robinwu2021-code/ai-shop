@@ -13564,6 +13564,10 @@ CREATE TABLE IF NOT EXISTS ivc_regime_profile
     provider_secret_ref BIGINT NULL,
     provider_hold_reason VARCHAR(256) NULL,
     provider_held_at DATETIME(3) NULL,
+    range_low_water INT NOT NULL DEFAULT 50,
+    auto_fetch_ranges TINYINT NOT NULL DEFAULT 0,
+    range_alert_key VARCHAR(32) NULL,
+    next_range_alert_key VARCHAR(16) NULL,
     CONSTRAINT uk_ivc_regime_profile UNIQUE (tenant_no, entity_no, regime_code)
 );
 

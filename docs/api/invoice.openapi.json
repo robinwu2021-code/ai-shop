@@ -353,6 +353,16 @@
                   "providerPassword": {
                     "type": "string",
                     "description": "加值中心密码（鲸跃 posid），只写不读，进 secret 模块"
+                  },
+                  "rangeLowWater": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000,
+                    "description": "本期剩余号码提醒值；不传 = 不改（新开通默认 50）"
+                  },
+                  "autoFetchRanges": {
+                    "type": "boolean",
+                    "description": "余量不足 / 期末前自动向加值中心领号；不传 = 不改；只对服务商配号的通道（鲸跃）生效"
                   }
                 },
                 "required": [
@@ -1304,6 +1314,30 @@
             "type": "string",
             "format": "date-time",
             "description": "暂停时间"
+          },
+          "rangeLowWater": {
+            "type": "integer",
+            "description": "本期剩余号码提醒值（默认 50）"
+          },
+          "autoFetchRanges": {
+            "type": "boolean",
+            "description": "余量不足 / 期末前自动向加值中心领号"
+          },
+          "currentPeriod": {
+            "type": "string",
+            "description": "本期期别"
+          },
+          "currentRemaining": {
+            "type": "integer",
+            "description": "本期可用号码数（主体内全部有效号段，含门店专用）"
+          },
+          "nextPeriod": {
+            "type": "string",
+            "description": "下一期期别"
+          },
+          "nextRemaining": {
+            "type": "integer",
+            "description": "下一期已备号码数"
           }
         }
       },

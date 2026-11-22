@@ -56,6 +56,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -133,7 +134,7 @@ class InvoiceServiceMysqlTest {
         provider.sends.set(0);
         clearInvocations(events);
         period = TwPeriods.periodOf(Instant.now());
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null, null, null));
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 1, 50, null));
     }
 
@@ -292,7 +293,7 @@ class InvoiceServiceMysqlTest {
     @Test
     void ac28ProviderAccountIsSealedVerifiedAndAllocatesRanges() {
         var profile = setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null,
-                null, null, "OFFICE-1", "pos-user", "pos-secret"));
+                null, null, "OFFICE-1", "pos-user", "pos-secret", null, null));
         assertEquals("OFFICE-1", profile.providerAccountCode());
         assertTrue(profile.providerCredentialConfigured());
         var row = jdbc.queryForMap("SELECT * FROM ivc_regime_profile WHERE entity_no='E1'");
@@ -319,6 +320,63 @@ class InvoiceServiceMysqlTest {
         assertEquals("pos-secret", provider.seen.getFirst().password(), "上传时现解账号");
         assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
+    }
+
+    @Test
+    void ac38ManualRangesWarnOnceWhenLowOnceWhenEmptyAndOnceForAMissingNextPeriod() {
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, null,
+                null, null, null, 60, null));
+        var view = setup.profile(SCOPE).orElseThrow();
+        assertEquals(50, view.currentRemaining());
+        assertEquals(60, view.rangeLowWater());
+        var now = Instant.now();
+        assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "50 < 60：提醒");
+        assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO), "同期同级只提醒一次");
+
+        jdbc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED'");
+        assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "用尽再提醒一次");
+        assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO));
+
+        setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 51, 200, null));
+        assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO));
+        assertEquals(null, jdbc.queryForObject("SELECT range_alert_key FROM ivc_regime_profile", String.class),
+                "补足后清掉，下次跌破重新提醒");
+
+        var end = TwPeriods.periodEnd(period);
+        assertArrayEquals(new int[] {0, 0}, setup.watchRanges(end.minus(Duration.ofDays(6)), Duration.ofDays(5)),
+                "离期末还远：不查下期");
+        assertArrayEquals(new int[] {1, 0}, setup.watchRanges(end.minus(Duration.ofHours(1)), Duration.ofDays(5)),
+                "期末前下期没号段：提醒");
+        assertArrayEquals(new int[] {0, 0}, setup.watchRanges(end.minus(Duration.ofMinutes(30)), Duration.ofDays(5)));
+    }
+
+    @Test
+    void ac38AutoFetchAsksTheProviderOnceAndNeverWhileTheAccountIsHeld() {
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
+                "OFFICE-1", "pos-user", "pos-secret", 60, true));
+        var now = Instant.now();
+        assertArrayEquals(new int[] {0, 1}, setup.watchRanges(now, Duration.ZERO), "余量不足先自动领号，领到即不提醒");
+        assertEquals(100, setup.profile(SCOPE).orElseThrow().currentRemaining());
+
+        var end = TwPeriods.periodEnd(period);
+        assertArrayEquals(new int[] {0, 1}, setup.watchRanges(end.minus(Duration.ofHours(1)), Duration.ofDays(5)),
+                "期末前自动领下期");
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_number_range WHERE period_code = ?"
+                + " AND allocation_owner = 'PROVIDER'", Integer.class, TwPeriods.periodOf(end)), "下期号段已入库");
+
+        int calls = provider.seen.size();
+        jdbc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED' WHERE period_code = ?",
+                period);
+        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), range_alert_key = NULL");
+        assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "账号暂停中：只提醒");
+        assertEquals(calls, provider.seen.size(), "暂停中不打服务商");
+
+        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = NULL, range_alert_key = NULL");
+        provider.failCode = "exist";
+        assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "领号失败转提醒");
+        assertEquals(calls + 1, provider.seen.size());
+        setup.watchRanges(now, Duration.ZERO);
+        assertEquals(calls + 1, provider.seen.size(), "同期同级失败过就不再重复领号");
     }
 
     @Test
@@ -466,7 +524,7 @@ class InvoiceServiceMysqlTest {
 
     private void useProvider() {
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
-                "OFFICE-1", "pos-user", "pos-secret"));
+                "OFFICE-1", "pos-user", "pos-secret", null, null));
     }
 
     private int countStatus(String status) {
@@ -477,11 +535,11 @@ class InvoiceServiceMysqlTest {
     void ac28ProviderRejectionsSurfaceTheProviderCode() {
         assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> setup.verifyProvider(SCOPE));
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
-                "OFFICE-1", null, null));
+                "OFFICE-1", null, null, null, null));
         var noAccount = assertThrows(BizException.class, () -> setup.fetchProviderRange(SCOPE, null));
         assertEquals(ErrorCode.INVOICE_PROVIDER_REJECTED, noAccount.errorCode());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "PROV", null, null, null,
-                "OFFICE-1", "u", "p"));
+                "OFFICE-1", "u", "p", null, null));
         provider.taxId = "87654321";
         assertCode(ErrorCode.INVOICE_PROVIDER_REJECTED, () -> setup.verifyProvider(SCOPE));
         provider.failCode = "invalid";
@@ -538,7 +596,7 @@ class InvoiceServiceMysqlTest {
                 new Buyer(null, null, "3J0002", "bad", null)));
         invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer("22099131", "台積", null, null, null));
         invoices.rememberBuyer(SCOPE, "SUB_ORDER", "SO1", new Buyer(null, null, "3J0002", "/ABC+123", null));
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, true, null, null, null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, null, true, null, null, null, null, null));
         var r = invoices.issueIfAutomatic(SCOPE, "SUB_ORDER", "SO1").orElseThrow();
         var vo = invoices.get(SCOPE, r.invoiceNo());
         assertEquals("/ABC+123", vo.carrierId(), "last remembered choice wins");
@@ -564,7 +622,7 @@ class InvoiceServiceMysqlTest {
     // ---------------------------------------------------------------- 载具优先（§8）
 
     private void memberCarrier(String type, boolean auto) {
-        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, type, auto, null, null, null));
+        setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", null, type, auto, null, null, null, null, null));
     }
 
     @Test
@@ -767,7 +825,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(8, applied);
+            assertEquals(9, applied);
             return ds;
         }
     }

@@ -26,12 +26,17 @@ import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class InvoiceSetupServiceImpl implements InvoiceSetupService {
+
+    private static final Logger log = LoggerFactory.getLogger(InvoiceSetupServiceImpl.class);
+    static final int DEFAULT_LOW_WATER = 50;
+    static final String SYSTEM_ACTOR = "SYSTEM";
 
     private final RegimeProfileMapper profiles;
     private final NumberRangeMapper ranges;
@@ -71,7 +80,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     public Optional<RegimeProfileVO> profile(Scope scope) {
         return Optional.ofNullable(profiles.selectOne(new QueryWrapper<IvcRegimeProfile>()
                 .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("status", "ACTIVE")
-                .last("LIMIT 1"))).map(InvoiceSetupServiceImpl::view);
+                .last("LIMIT 1"))).map(this::view);
     }
 
     @Override
@@ -97,6 +106,10 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         p.setMemberCarrierType(req.memberCarrierType());
         p.setAutoIssue(Boolean.TRUE.equals(req.autoIssue()));
         p.setProviderAccountCode(blankToNull(req.providerAccountCode()));
+        if (req.rangeLowWater() != null) p.setRangeLowWater(req.rangeLowWater());
+        else if (fresh) p.setRangeLowWater(DEFAULT_LOW_WATER);
+        if (req.autoFetchRanges() != null) p.setAutoFetchRanges(req.autoFetchRanges());
+        else if (fresh) p.setAutoFetchRanges(false);
         p.setStatus("ACTIVE");
         p.setUpdatedBy(scope.actorNo());
         p.setUpdatedAt(now);
@@ -249,11 +262,100 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
         return s == null || s.isBlank() ? null : s.trim();
     }
 
-    private static RegimeProfileVO view(IvcRegimeProfile p) {
+    private RegimeProfileVO view(IvcRegimeProfile p) {
+        var regime = regimes.require(p.getRegimeCode());
+        String current = regime.periodOf(Instant.now());
+        var end = regime.periodEnd(current);
+        String next = end == null ? null : regime.periodOf(end);
         return new RegimeProfileVO(p.getRegimeCode(), p.getSellerTaxId(), p.getSellerName(), p.getGatewayCode(),
                 p.getQrKeyRef() != null, p.getMemberCarrierType(), Boolean.TRUE.equals(p.getAutoIssue()), p.getStatus(),
                 p.getProviderAccountCode(), p.getProviderSecretRef() != null, p.getProviderHoldReason(),
-                p.getProviderHeldAt());
+                p.getProviderHeldAt(), lowWater(p), Boolean.TRUE.equals(p.getAutoFetchRanges()), current,
+                remaining(p, current), next, next == null ? 0 : remaining(p, next));
+    }
+
+    @Override
+    public int[] watchRanges(Instant now, Duration prefetchBefore) {
+        int alerts = 0, fetched = 0;
+        for (var p : profiles.selectList(new QueryWrapper<IvcRegimeProfile>().eq("status", "ACTIVE"))) {
+            var regime = regimes.require(p.getRegimeCode());
+            String current = regime.periodOf(now);
+            if (current == null) continue;   // 无期别的地区没有号段
+            boolean auto = autoFetchable(p);
+            int low = lowWater(p);
+
+            // ① 本期余量：第一次跌到某一级时（同期同级只一次）先试着自动领号，再按领号后的余量告警
+            long remaining = remaining(p, current);
+            String level = rangeLevel(remaining, low);
+            if (level != null && auto && !(current + ":" + level).equals(p.getRangeAlertKey())
+                    && autoFetch(p, current)) {
+                fetched++;
+                remaining = remaining(p, current);
+                level = rangeLevel(remaining, low);
+            }
+            String key = level == null ? null : current + ":" + level;
+            if (key != null && !key.equals(p.getRangeAlertKey())) {
+                if ("EMPTY".equals(level))
+                    log.error("INVOICE_RANGE_EMPTY tenant={} entity={} period={} —— 本期已无可用号码，开票会失败",
+                            p.getTenantNo(), p.getEntityNo(), current);
+                else
+                    log.warn("INVOICE_RANGE_LOW tenant={} entity={} period={} remaining={} lowWater={}",
+                            p.getTenantNo(), p.getEntityNo(), current, remaining, low);
+                alerts++;
+            }
+            if (!Objects.equals(key, p.getRangeAlertKey()))
+                profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId())
+                        .set("range_alert_key", key));
+
+            // ② 期末前检查下期：下期还没有号段就领号或提醒（每个下期只提醒一次）
+            var end = regime.periodEnd(current);
+            if (end == null || now.isBefore(end.minus(prefetchBefore))) continue;
+            String next = regime.periodOf(end);
+            if (remaining(p, next) > 0 || next.equals(p.getNextRangeAlertKey())) continue;
+            if (auto && autoFetch(p, next)) {
+                fetched++;
+                if (remaining(p, next) > 0) continue;
+            }
+            log.warn("INVOICE_RANGE_NEXT_PERIOD_MISSING tenant={} entity={} next={} periodEnd={}",
+                    p.getTenantNo(), p.getEntityNo(), next, end);
+            alerts++;
+            profiles.update(null, new UpdateWrapper<IvcRegimeProfile>().eq("id", p.getId())
+                    .set("next_range_alert_key", next));
+        }
+        return new int[] {alerts, fetched};
+    }
+
+    /** 只有「服务商配号」的通道才能自动领号；账号暂停中（M1-2）不去打服务商。 */
+    private boolean autoFetchable(IvcRegimeProfile p) {
+        return Boolean.TRUE.equals(p.getAutoFetchRanges()) && p.getProviderHeldAt() == null
+                && gateways.stream().anyMatch(g -> g.code().equals(p.getGatewayCode())
+                        && g instanceof InvoiceProviderGateway);
+    }
+
+    /** 业务动作：自动领号失败（服务商拒绝、号段冲突）不中断巡检，转为提醒，由人处理。 */
+    private boolean autoFetch(IvcRegimeProfile p, String period) {
+        try {
+            fetchProviderRange(new Scope(p.getTenantNo(), p.getEntityNo(), "*", SYSTEM_ACTOR), period);
+            log.info("INVOICE_RANGE_AUTO_FETCHED tenant={} entity={} period={}", p.getTenantNo(), p.getEntityNo(), period);
+            return true;
+        } catch (BizException e) {
+            log.warn("INVOICE_RANGE_AUTO_FETCH_FAILED tenant={} entity={} period={} code={} args={}", p.getTenantNo(),
+                    p.getEntityNo(), period, e.errorCode(), Arrays.toString(e.args()));
+            return false;
+        }
+    }
+
+    private long remaining(IvcRegimeProfile p, String period) {
+        return ranges.remaining(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode(), period);
+    }
+
+    private static int lowWater(IvcRegimeProfile p) {
+        return p.getRangeLowWater() == null ? DEFAULT_LOW_WATER : p.getRangeLowWater();
+    }
+
+    /** EMPTY = 一个号都没有；LOW = 低于提醒值；null = 充足。 */
+    private static String rangeLevel(long remaining, int low) {
+        return remaining <= 0 ? "EMPTY" : remaining < low ? "LOW" : null;
     }
 
     private static NumberRangeVO view(IvcNumberRange r) {

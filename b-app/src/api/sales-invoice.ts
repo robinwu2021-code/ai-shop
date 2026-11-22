@@ -137,6 +137,16 @@ export interface SiProfile {
   /** 上传暂停原因（账号认证失败时由系统写入，核验通过后清空）；空 = 正常 */
   providerHoldReason?: string | null;
   providerHeldAt?: string | null;
+  /** 本期剩余号码提醒值 */
+  rangeLowWater?: number;
+  /** 余量不足 / 期末前自动向加值中心领号 */
+  autoFetchRanges?: boolean;
+  /** 本期期别与可用号码数 */
+  currentPeriod?: string | null;
+  currentRemaining?: number;
+  /** 下一期期别与已备号码数 */
+  nextPeriod?: string | null;
+  nextRemaining?: number;
 }
 export interface SiProfileReq {
   regimeCode: "TW_EGUI";
@@ -153,6 +163,10 @@ export interface SiProfileReq {
   /** 账号与密码两项同传才更新；都不传 = 不改 */
   providerUser?: string;
   providerPassword?: string;
+  /** 不传 = 不改 */
+  rangeLowWater?: number;
+  /** 不传 = 不改 */
+  autoFetchRanges?: boolean;
 }
 export interface SiProviderVerification {
   taxId: string;

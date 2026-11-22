@@ -40,6 +40,12 @@ public final class InvoiceMappers {
                 + " WHERE id=#{id} AND status='ACTIVE' AND next_no<=end_no")
         int advance(@Param("id") long id);
 
+        /** 某期可用号码总数（主体内全部 ACTIVE 号段，含门店专用）。 */
+        @Select("SELECT COALESCE(SUM(end_no - next_no + 1), 0) FROM ivc_number_range WHERE tenant_no=#{tenant}"
+                + " AND entity_no=#{entity} AND regime_code=#{regime} AND period_code=#{period} AND status='ACTIVE'")
+        long remaining(@Param("tenant") String tenant, @Param("entity") String entity,
+                @Param("regime") String regime, @Param("period") String period);
+
         /** 同主体同税制同期同字轨内是否有重叠号段。 */
         @Select("SELECT COUNT(*) FROM ivc_number_range WHERE tenant_no=#{tenant} AND entity_no=#{entity}"
                 + " AND regime_code=#{regime} AND period_code=#{period} AND track=#{track}"

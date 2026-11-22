@@ -59,6 +59,14 @@
           <sh-switch v-model="profile.autoIssue"></sh-switch>
         </view>
         <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.rangeLowWater") }}</text>
+          <input v-model="profile.rangeLowWater" type="number" maxlength="6" class="txt-body sh-num sh-fill cell-input" />
+        </view>
+        <view v-if="profile.gatewayCode === 'CETUSTEK'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ t("salesInvoice.autoFetchRanges") }}</text>
+          <sh-switch v-model="profile.autoFetchRanges"></sh-switch>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ t("salesInvoice.memberCarrier") }}</text>
           <input v-model="profile.memberCarrierType" maxlength="6" class="txt-body sh-num sh-fill cell-input"
             :placeholder="String(t('salesInvoice.optional'))" />
@@ -80,6 +88,10 @@
       </view>
 
       <sh-section :title="String(t('salesInvoice.ranges'))" pad></sh-section>
+      <view v-if="current?.currentPeriod" class="sh-notice" :class="rangeTone" role="status">
+        <text>{{ t("salesInvoice.rangeCurrent", { period: current.currentPeriod, n: current.currentRemaining ?? 0 }) }}</text>
+        <text v-if="current.nextPeriod"> {{ t("salesInvoice.rangeNext", { period: current.nextPeriod, n: current.nextRemaining ?? 0 }) }}</text>
+      </view>
       <sh-empty v-if="!ranges.length" compact :text="String(t('salesInvoice.rangesEmpty'))"></sh-empty>
       <view v-for="r in ranges" :key="r.rangeNo" class="sh-card">
         <view class="sh-row sh-row--between">
@@ -152,9 +164,17 @@ const providerFailed = ref(false);
 const current = ref<SiProfile | null>(null);
 const ranges = ref<SiRange[]>([]);
 const profile = reactive({ sellerTaxId: "", sellerName: "", gatewayCode: "STUB" as Gateway, qrAesKeyHex: "", memberCarrierType: "", autoIssue: false,
-  providerAccountCode: "", providerUser: "", providerPassword: "" });
+  providerAccountCode: "", providerUser: "", providerPassword: "", rangeLowWater: "50", autoFetchRanges: false });
 const range = reactive({ periodCode: "", track: "", startNo: "", endNo: "", storeNo: "" });
 
+/** 本期用尽标红、低于提醒值标黄 */
+const rangeTone = computed(() => {
+  const p = current.value;
+  if (!p) return "";
+  const left = p.currentRemaining ?? 0;
+  if (left <= 0) return "sh-notice--danger";
+  return left < (p.rangeLowWater ?? 0) ? "sh-notice--warning" : "sh-notice--muted";
+});
 const qrKeyConfigured = computed(() => !!current.value?.qrKeyConfigured);
 const providerCredOk = computed(() => !!current.value?.providerCredentialConfigured);
 /** 以已保存的配置为准：未保存的通道切换不能拿去核验 */
@@ -178,6 +198,8 @@ function fill(p: SiProfile | null) {
   profile.providerAccountCode = p?.providerAccountCode ?? "";
   profile.providerUser = "";
   profile.providerPassword = "";
+  profile.rangeLowWater = String(p?.rangeLowWater ?? 50);
+  profile.autoFetchRanges = !!p?.autoFetchRanges;
 }
 
 async function load() {
@@ -210,12 +232,16 @@ async function saveProfile() {
     const key = profile.qrAesKeyHex.trim();
     const carrier = profile.memberCarrierType.trim();
     const accountCode = profile.providerAccountCode.trim();
+    const lowWaterText = String(profile.rangeLowWater).trim();
+    const lowWater = lowWaterText === "" ? null : Number(lowWaterText);
     fill(await api.mSiSaveProfile({
       regimeCode: "TW_EGUI",
       sellerTaxId: profile.sellerTaxId.trim(),
       sellerName: profile.sellerName.trim(),
       gatewayCode: profile.gatewayCode,
       autoIssue: profile.autoIssue,
+      ...(lowWater !== null ? { rangeLowWater: lowWater } : {}),
+      autoFetchRanges: profile.gatewayCode === "CETUSTEK" && profile.autoFetchRanges,
       ...(key ? { qrAesKeyHex: key } : {}),
       ...(carrier ? { memberCarrierType: carrier } : {}),
       ...(accountCode ? { providerAccountCode: accountCode } : {}),
@@ -285,6 +311,7 @@ async function fetchProviderRange() {
     const period = range.periodCode.trim();
     const got = await api.mSiFetchProviderRange(period ? { periodCode: period } : {});
     ranges.value = [got, ...ranges.value.filter((r) => r.rangeNo !== got.rangeNo)];
+    current.value = await api.mSiProfile();   // 刷新本期 / 下期余量
     providerFailed.value = false;
     providerMsg.value = String(t("salesInvoice.fetched", { track: got.track, start: got.startNo, end: got.endNo }));
   } catch (e) {

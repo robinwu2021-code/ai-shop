@@ -24,6 +24,13 @@ public final class TwPeriods {
         return "%03d%02d".formatted(date.getYear() - 1911, month % 2 == 0 ? month : month + 1);
     }
 
+    /** 期别结束时刻（不含）：{@code 11512} → 2027-01-01 00:00 台北时间。 */
+    public static Instant periodEnd(String periodCode) {
+        int year = Integer.parseInt(periodCode.substring(0, 3)) + 1911;
+        int even = Integer.parseInt(periodCode.substring(3));
+        return LocalDate.of(year, even, 1).plusMonths(1).atStartOfDay(TAIPEI).toInstant();
+    }
+
     /** {@code 11512} → {@code 115年11-12月}。 */
     public static String label(String periodCode) {
         int even = Integer.parseInt(periodCode.substring(3));

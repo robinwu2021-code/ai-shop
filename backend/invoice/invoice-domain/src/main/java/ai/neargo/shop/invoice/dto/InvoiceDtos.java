@@ -86,7 +86,11 @@ public final class InvoiceDtos {
             @Size(max = 64) String providerAccountCode,
             /** 加值中心账号与密码（鲸跃 posno / posid）：只写不读，两项同传才更新，都不传 = 不改 */
             @Size(max = 64) String providerUser,
-            @Size(max = 128) String providerPassword) {
+            @Size(max = 128) String providerPassword,
+            /** 本期剩余号码提醒值；不传 = 不改（新开通默认 50） */
+            @Min(0) @Max(100_000) Integer rangeLowWater,
+            /** 余量不足 / 期末前自动向加值中心领号；不传 = 不改 */
+            Boolean autoFetchRanges) {
 
         @AssertTrue
         public boolean isProviderCredentialPaired() {
@@ -134,7 +138,15 @@ public final class InvoiceDtos {
             boolean providerCredentialConfigured,
             /** 上传暂停原因：账号认证失败时由系统写入，核验通过后清空；空 = 正常 */
             String providerHoldReason,
-            LocalDateTime providerHeldAt) {}
+            LocalDateTime providerHeldAt,
+            int rangeLowWater,
+            boolean autoFetchRanges,
+            /** 本期期别与可用号码数 */
+            String currentPeriod,
+            long currentRemaining,
+            /** 下一期期别与已备号码数（期末前要 > 0） */
+            String nextPeriod,
+            long nextRemaining) {}
 
     public record NumberRangeVO(
             String rangeNo,

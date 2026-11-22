@@ -681,3 +681,52 @@ MySQL 9 全类 28/28、鲸跃 5/5、Turnkey 3/3、b-app / c-app `vue-tsc` 无错
 
 MySQL 9 全类 30/30、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契约、孤儿页、i18n、controller 内聚检查对发票无新增。
 
+## §15 号段水位与预领下期（鲸跃 M1-6）
+
+状态：已实现 · 2026-11-22 · 档位 1（`ivc_regime_profile` 加列、设置请求 / 视图加字段、新定时任务、三语文案）· 需求 PRD AC38 · 计划见 [TDD-发票服务-总体设计 §14](./TDD-发票服务-总体设计.md) M1-6。
+
+### 15.1 为什么
+
+号码用尽时开票直接失败（26003 `INVOICE_NUMBER_EXHAUSTED`），门店当场开不出发票；双月换期的第一张票如果下期还没号段，同样失败。两者都要在发生之前发现。
+
+### 15.2 规则
+
+`InvoiceSetupService#watchRanges(now, prefetchBefore)`，由 `InvoiceRangeWatermarkJob` 每 30 分钟调用（分布式锁 `invoice-range-watermark`；开关 `shop.invoice.range-watch.enabled` 默认关，`prefetch-days` 默认 5）：
+
+| 检查 | 条件 | 动作 |
+|---|---|---|
+| 本期不足 | 本期可用号码（主体内全部 ACTIVE 号段之和）< `range_low_water`（默认 50） | 第一次跌到该级时：开了自动领号就先向鲸跃领号，领到后余量够了不提醒；否则 WARN `INVOICE_RANGE_LOW` |
+| 本期用尽 | 可用号码 = 0 | 同上；仍为 0 时 ERROR `INVOICE_RANGE_EMPTY` |
+| 下期未备 | 距本期结束 ≤ `prefetch-days` 且下期可用号码 = 0 | 开了自动领号就领下期；仍没有则 WARN `INVOICE_RANGE_NEXT_PERIOD_MISSING` |
+
+- **只报一次**：`range_alert_key` 记「期别:级别」（如 `11512:LOW`），`next_range_alert_key` 记已提醒的下期；同期同级不再报、也不再重复领号。补足后清空，下次跌破重新计；换期自然换键。
+- **自动领号的边界**：只对服务商配号的通道（`InvoiceProviderGateway`，鲸跃）；账号暂停中（§12）不领；领号失败（如鲸跃 `exist`）记 WARN `INVOICE_RANGE_AUTO_FETCH_FAILED` 并转为提醒，不中断巡检。下期能否提前申请待鲸跃确认（§14 M0-3），确认前建议只对本期开自动领号或保持关闭。
+- **口径**：余量按主体汇总，含门店专用号段；门店专用号段多的主体，个别门店可能先用尽而总量仍够 —— 首期接受，M2 改为按账户 / 门店统计。
+- 期别边界放进税制：`InvoiceRegime#periodEnd`（台湾 `TwPeriods.periodEnd`：`11512` → 2027-01-01 台北时间），下期 = `periodOf(periodEnd(本期))`。
+
+### 15.3 B 端
+
+- 发票设置：「剩余号码提醒值」（数字）、「号码不足时自动向鲸跃领号」（仅鲸跃通道显示）。
+- 号段区顶部提示：本期期别与剩余张数、下期已备张数；用尽标红、低于提醒值标黄。
+- 视图 `RegimeProfileVO` 加 `rangeLowWater / autoFetchRanges / currentPeriod / currentRemaining / nextPeriod / nextRemaining`；请求加 `rangeLowWater`（0–100000）、`autoFetchRanges`，不传 = 不改。
+
+### 15.4 改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `db/invoice/V9__invoice_range_watermark.sql` | `range_low_water`（默认 50）、`auto_fetch_ranges`、`range_alert_key`、`next_range_alert_key` |
+| `regime/InvoiceRegime` · `regime/tw/TwEguiRegime` · `TwPeriods` | `periodEnd` |
+| `mapper/InvoiceMappers.NumberRangeMapper` | `remaining`（某期可用号码数） |
+| `service/InvoiceSetupService(Impl)` | `watchRanges`、自动领号、视图余量、保存提醒值与开关 |
+| `job/InvoiceRangeWatermarkJob`（新） | 巡检任务与任务声明 |
+| b-app `pages/invoice-setup` · `api/sales-invoice.ts` · `i18n` | 设置项与余量提示 |
+
+### 15.5 测试
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC38 | `InvoiceServiceMysqlTest#ac38ManualRangesWarnOnceWhenLowOnceWhenEmptyAndOnceForAMissingNextPeriod`：50 < 60 提醒一次、不重复；用尽再提醒一次；补足后清键；离期末 6 天不查下期、1 小时内下期缺号提醒一次 | ✅ |
+| AC38 | `#ac38AutoFetchAsksTheProviderOnceAndNeverWhileTheAccountIsHeld`：余量不足自动领号后不提醒（余量 50→100）；期末前自动领下期并入库；账号暂停中只提醒、不调服务商；领号失败转提醒，同期同级不再重复领号 | ✅ |
+
+MySQL 9 全类 32/32、鲸跃 5/5、Turnkey 3/3、b-app `vue-tsc` 无错；契约、孤儿页、i18n 检查通过；定时任务 / 架构 / 权限守卫失败数与改动前一致，均不涉及发票。
+
