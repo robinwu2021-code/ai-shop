@@ -3428,6 +3428,505 @@
         }
       },
       "exampleRef": "CARD_BALANCE"
+    },
+    {
+      "definitionKey": "INVOICE_PROOF.STANDARD_58",
+      "scene": "INVOICE_PROOF",
+      "variantCode": "STANDARD_58",
+      "paperWidthMm": 58,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "text",
+            "binding": "fields.periodLabel",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.fiscalNumber",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.issuedAt"
+          },
+          {
+            "type": "keyValue",
+            "label": "隨機碼",
+            "binding": "fields.randomCode",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "總計",
+            "binding": "fields.total",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "text",
+            "binding": "fields.format",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "barcode",
+            "binding": "fields.barcode"
+          },
+          {
+            "type": "qrPair",
+            "binding": "fields.qrLeft",
+            "secondBinding": "fields.qrRight"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 58,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_PROOF"
+    },
+    {
+      "definitionKey": "INVOICE_DETAIL.STANDARD_58",
+      "scene": "INVOICE_DETAIL",
+      "variantCode": "STANDARD_58",
+      "paperWidthMm": 58,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "keyValue",
+            "label": "發票號碼",
+            "binding": "fields.fiscalNumber",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "期別",
+            "binding": "fields.periodLabel",
+            "format": "plain"
+          },
+          {
+            "type": "text",
+            "binding": "fields.issuedAt"
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "lineItems",
+            "binding": "lines",
+            "fields": [
+              "title",
+              "quantity",
+              "unitPrice",
+              "lineAmount"
+            ],
+            "maxItems": 500
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "keyValue",
+            "label": "銷售額",
+            "binding": "fields.sales",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "稅額",
+            "binding": "fields.tax",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "總計",
+            "binding": "fields.totalAmount",
+            "format": "money"
+          },
+          {
+            "type": "text",
+            "binding": "fields.keepNote"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 58,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_DETAIL"
+    },
+    {
+      "definitionKey": "INVOICE_DETAIL.STANDARD_80",
+      "scene": "INVOICE_DETAIL",
+      "variantCode": "STANDARD_80",
+      "paperWidthMm": 80,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "keyValue",
+            "label": "發票號碼",
+            "binding": "fields.fiscalNumber",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "期別",
+            "binding": "fields.periodLabel",
+            "format": "plain"
+          },
+          {
+            "type": "text",
+            "binding": "fields.issuedAt"
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "lineItems",
+            "binding": "lines",
+            "fields": [
+              "title",
+              "quantity",
+              "unitPrice",
+              "lineAmount"
+            ],
+            "maxItems": 500
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "keyValue",
+            "label": "銷售額",
+            "binding": "fields.sales",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "稅額",
+            "binding": "fields.tax",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "總計",
+            "binding": "fields.totalAmount",
+            "format": "money"
+          },
+          {
+            "type": "text",
+            "binding": "fields.keepNote"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 80,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_DETAIL"
+    },
+    {
+      "definitionKey": "INVOICE_ALLOWANCE.STANDARD_58",
+      "scene": "INVOICE_ALLOWANCE",
+      "variantCode": "STANDARD_58",
+      "paperWidthMm": 58,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "text",
+            "binding": "fields.title",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "折讓單號",
+            "binding": "fields.allowanceNo",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "折讓日期",
+            "binding": "fields.allowanceDate",
+            "format": "plain"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "keyValue",
+            "label": "原發票號碼",
+            "binding": "fields.originalNumber",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "原發票日期",
+            "binding": "fields.originalDate",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "品名",
+            "binding": "fields.reason",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "未稅金額",
+            "binding": "fields.net",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "營業稅額",
+            "binding": "fields.tax",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "合計",
+            "binding": "fields.total",
+            "format": "plain"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "text",
+            "binding": "fields.signature"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 58,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_ALLOWANCE"
+    },
+    {
+      "definitionKey": "INVOICE_ALLOWANCE.STANDARD_80",
+      "scene": "INVOICE_ALLOWANCE",
+      "variantCode": "STANDARD_80",
+      "paperWidthMm": 80,
+      "payloadSchemaVersion": 1,
+      "format": "PRINT_DOC_V1",
+      "schemaVersion": 1,
+      "semanticLayoutVersion": 2,
+      "scope": "PLATFORM",
+      "content": {
+        "blocks": [
+          {
+            "type": "systemMarks"
+          },
+          {
+            "type": "text",
+            "binding": "store.name",
+            "align": "center"
+          },
+          {
+            "type": "text",
+            "binding": "fields.title",
+            "align": "center",
+            "emphasis": true
+          },
+          {
+            "type": "keyValue",
+            "label": "賣方",
+            "binding": "fields.sellerTaxId",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "買方",
+            "binding": "fields.buyerTaxId",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
+            "type": "keyValue",
+            "label": "折讓單號",
+            "binding": "fields.allowanceNo",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "折讓日期",
+            "binding": "fields.allowanceDate",
+            "format": "plain"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "keyValue",
+            "label": "原發票號碼",
+            "binding": "fields.originalNumber",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "原發票日期",
+            "binding": "fields.originalDate",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "品名",
+            "binding": "fields.reason",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "未稅金額",
+            "binding": "fields.net",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "營業稅額",
+            "binding": "fields.tax",
+            "format": "plain"
+          },
+          {
+            "type": "keyValue",
+            "label": "合計",
+            "binding": "fields.total",
+            "format": "plain"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "text",
+            "binding": "fields.signature"
+          }
+        ],
+        "layout": {
+          "paperWidthMm": 80,
+          "lineItemLayout": "STACKED",
+          "wrap": "DEVICE_PROFILE",
+          "cutPolicy": "WHEN_SUPPORTED"
+        }
+      },
+      "exampleRef": "INVOICE_ALLOWANCE"
     }
   ]
 }

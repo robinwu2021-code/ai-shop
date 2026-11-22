@@ -1,5 +1,6 @@
 import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
+import type { SaveInvoiceCarrierReq, InvoiceChoiceReq } from "./sales-invoice-types";
 import type { StoredValueIssuerRecordsPage,StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
@@ -339,6 +340,13 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
+  // ---- 台湾电子发票（买方）
+  invoiceCarriers: () => call("invoiceCarriers"),
+  saveInvoiceCarrier: (body) => call("saveInvoiceCarrier", undefined, { ...body } satisfies SaveInvoiceCarrierReq),
+  deleteInvoiceCarrier: (carrierNo) => call<void>("deleteInvoiceCarrier", { carrierNo }),
+  chooseSalesInvoice: (body) => call("chooseSalesInvoice", undefined, { ...body } satisfies InvoiceChoiceReq),
+  mySalesInvoices: (page, size) => call("mySalesInvoices", undefined, { page, size }),
+  salesInvoiceDetail: (invoiceNo) => call("salesInvoiceDetail", { invoiceNo }),
   storedValuePendingServices:()=>call("storedValuePendingServices"),
   storedValueService:orderNo=>call("storedValueService",{orderNo}),
   storedValueAuthorize:(orderNo,body)=>call("storedValueAuthorize",{orderNo},body),

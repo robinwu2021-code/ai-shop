@@ -181,6 +181,7 @@ COMP_NOTES = {
     "sh-savebar": ("底部未保存条", "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"),
     "biz-region-picker": ("经营范围选择器", "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"),
     "biz-pickup-sheet": ("自提点选择弹层", "自带 mask 与 panel，**没走 sh-sheet**"),
+    "biz-pdf-frame": ("PDF 内嵌框", "H5 在页内看打印模拟出的 PDF；下载接口禁止嵌入，只能先取成 blob 再给 iframe，App 端改用系统查看器"),
     "biz-time-range": ("时段输入", "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」"),
     "biz-store-tag": ("当前门店胶囊", "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店"),
     "app-overlay": ("应用常驻层", "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它"),

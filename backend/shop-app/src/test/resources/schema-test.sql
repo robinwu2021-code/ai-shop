@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql、db/invoice/V*.sql 得到。
 -- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
 -- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
@@ -14272,6 +14272,228 @@ CREATE TABLE IF NOT EXISTS sec_access_log
     CONSTRAINT ck_sec_access_log_2 CHECK (access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL)
 );
 
+CREATE TABLE IF NOT EXISTS ivc_regime_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    seller_name VARCHAR(128) NOT NULL,
+    gateway_code VARCHAR(32) NULL,
+    qr_key_ref BIGINT NULL,
+    member_carrier_type VARCHAR(16) NULL,
+    auto_issue TINYINT NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    provider_account_code VARCHAR(64) NULL,
+    provider_secret_ref BIGINT NULL,
+    provider_hold_reason VARCHAR(256) NULL,
+    provider_held_at DATETIME(3) NULL,
+    range_low_water INT NOT NULL DEFAULT 50,
+    auto_fetch_ranges TINYINT NOT NULL DEFAULT 0,
+    range_alert_key VARCHAR(32) NULL,
+    next_range_alert_key VARCHAR(16) NULL,
+    CONSTRAINT uk_ivc_regime_profile UNIQUE (tenant_no, entity_no, regime_code)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_number_range
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    range_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    period_code VARCHAR(8) NOT NULL,
+    track VARCHAR(4) NOT NULL,
+    start_no INT NOT NULL,
+    end_no INT NOT NULL,
+    next_no INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    allocation_owner VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    apply_id VARCHAR(64) NULL,
+    invoice_type VARCHAR(4) NULL,
+    blank_reported_at DATETIME NULL,
+    blank_report_error VARCHAR(255) NULL,
+    CONSTRAINT uk_ivc_number_range_no UNIQUE (tenant_no, range_no),
+    CONSTRAINT uk_ivc_number_range UNIQUE (tenant_no, entity_no, regime_code, period_code, track, start_no),
+    CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999
+    AND next_no >= start_no AND next_no <= end_no + 1)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    invoice_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    active_source_key VARCHAR(128) NULL,
+    fiscal_number VARCHAR(32) NOT NULL,
+    range_no VARCHAR(32) NOT NULL,
+    period_code VARCHAR(8) NOT NULL,
+    random_code VARCHAR(8) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    seller_name VARCHAR(128) NOT NULL,
+    issued_at DATETIME(3) NOT NULL,
+    buyer_type VARCHAR(8) NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(128) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    print_mark CHAR(1) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    sales_minor BIGINT NOT NULL,
+    zero_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
+    free_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
+    tax_minor BIGINT NOT NULL,
+    total_minor BIGINT NOT NULL,
+    allowed_minor BIGINT NOT NULL DEFAULT 0,
+    tax_type VARCHAR(16) NOT NULL,
+    tax_rate_bp INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    void_reason VARCHAR(256) NULL,
+    voided_at DATETIME(3) NULL,
+    voided_by VARCHAR(64) NULL,
+    proof_snapshot LONGTEXT NOT NULL,
+    proof_snapshot_hash CHAR(64) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    buyer_user_no VARCHAR(64) NULL,
+    detail_snapshot LONGTEXT NULL,
+    detail_snapshot_hash CHAR(64) NULL,
+    active_fiscal_key VARCHAR(32) NULL,
+    revoke_reason VARCHAR(128) NULL,
+    revoke_requested_at DATETIME(3) NULL,
+    revoked_at DATETIME(3) NULL,
+    revoke_error VARCHAR(255) NULL,
+    revoke_alerted TINYINT NOT NULL DEFAULT 0,
+    revised_from_invoice_no VARCHAR(32) NULL,
+    revised_to_invoice_no VARCHAR(32) NULL,
+    blank_reported_at DATETIME NULL,
+    CONSTRAINT uk_ivc_invoice_active_fiscal UNIQUE (tenant_no, regime_code, active_fiscal_key),
+    CONSTRAINT uk_ivc_invoice_no UNIQUE (tenant_no, invoice_no),
+    CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
+    CONSTRAINT ck_ivc_invoice_proof_json CHECK ((proof_snapshot IS JSON)),
+    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor
+    AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor),
+    CONSTRAINT ck_ivc_invoice_detail_json CHECK (detail_snapshot IS NULL OR (detail_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    invoice_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    source_line_ref VARCHAR(64) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    quantity DECIMAL(18,4) NOT NULL,
+    unit VARCHAR(16) NULL,
+    unit_price_minor BIGINT NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    tax_type VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_ivc_invoice_line UNIQUE (tenant_no, invoice_no, line_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_allowance
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    allowance_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    invoice_no VARCHAR(32) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    tax_minor BIGINT NOT NULL,
+    reason VARCHAR(256) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    print_snapshot LONGTEXT NULL,
+    print_snapshot_hash CHAR(64) NULL,
+    fiscal_allowance_number VARCHAR(16) NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    void_reason VARCHAR(256) NULL,
+    voided_at DATETIME(3) NULL,
+    voided_by VARCHAR(64) NULL,
+    CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
+    CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor),
+    CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR (print_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_buyer_preference
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(128) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_buyer_preference UNIQUE (tenant_no, entity_no, source_type, source_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_transmission
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    transmission_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    gateway_code VARCHAR(32) NOT NULL,
+    message_type VARCHAR(16) NOT NULL,
+    ref_no VARCHAR(32) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME(3) NOT NULL,
+    last_error VARCHAR(512) NULL,
+    gateway_ref VARCHAR(128) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    report_warn_at DATETIME(3) NULL,
+    report_deadline_at DATETIME(3) NULL,
+    deadline_level TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_ivc_transmission_no UNIQUE (tenant_no, transmission_no),
+    CONSTRAINT uk_ivc_transmission_ref UNIQUE (tenant_no, message_type, ref_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_user_carrier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    carrier_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    carrier_type VARCHAR(16) NOT NULL,
+    carrier_id VARCHAR(64) NOT NULL,
+    label VARCHAR(32) NULL,
+    is_default TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_user_carrier_no UNIQUE (tenant_no, carrier_no),
+    CONSTRAINT uk_ivc_user_carrier UNIQUE (tenant_no, user_no, carrier_type, carrier_id)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -20886,3 +21108,27 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:issue"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:issue"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:void"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:void"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:setup"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:setup"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:invoice:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:issue"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:invoice:issue"',perms)=0;
+UPDATE ivc_transmission SET deadline_level = 2 WHERE status = 'SENT';
+INSERT IGNORE INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__E_INVOICES', 'OPS_FINANCE', '电子发票', '应付与发票',
+       '/e-invoices', 'finance:invoice:read', 'finance:invoice:read',
+       'IMPLEMENTED', 1, 'P-12.2', 'MENU', 58, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'OPS_FINANCE__E_INVOICES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'SUPER_ADMIN'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
+UPDATE ivc_regime_profile SET gateway_code = NULL WHERE gateway_code = 'STUB';
+UPDATE ivc_invoice SET active_fiscal_key = fiscal_number;

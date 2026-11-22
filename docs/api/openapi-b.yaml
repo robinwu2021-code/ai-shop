@@ -20196,6 +20196,623 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/invoices":
+    post:
+      operationId: "mSiIssue"
+      summary: "销售发票：按来源单开票"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    get:
+      operationId: "mSiList"
+      summary: "销售发票：本店分页"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/buyer-preferences":
+    put:
+      operationId: "mSiBuyerPreference"
+      summary: "销售发票：付款前预存买受人"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}":
+    get:
+      operationId: "mSiDetail"
+      summary: "销售发票：详情"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/void":
+    post:
+      operationId: "mSiVoid"
+      summary: "销售发票：当期作废"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/revocation":
+    post:
+      operationId: "mSiRevoke"
+      summary: "销售发票：注销"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/reissue":
+    post:
+      operationId: "mSiReissue"
+      summary: "销售发票：注销后同号重开"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/allowances":
+    post:
+      operationId: "mSiAllowance"
+      summary: "销售发票：开折让"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void":
+    post:
+      operationId: "mSiVoidAllowance"
+      summary: "销售发票：作废折让"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/print-facts":
+    get:
+      operationId: "mSiPrintFacts"
+      summary: "销售发票：可模拟打印的打印件"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SiPrintFact"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/provider-checks":
+    post:
+      operationId: "mSiProviderCheck"
+      summary: "销售发票：向服务商查单并对账"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProviderCheck"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/upload-backlog":
+    get:
+      operationId: "mSiUploadBacklog"
+      summary: "销售发票：本门店上传积压"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiUploadBacklog"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoices/{invoiceNo}/retransmissions":
+    post:
+      operationId: "mSiRetransmit"
+      summary: "销售发票：重传待人工处理的上传"
+      tags:
+        - "invoices"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SalesInvoice"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/profile":
+    get:
+      operationId: "mSiProfile"
+      summary: "发票设置：税制配置"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProfile"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    put:
+      operationId: "mSiSaveProfile"
+      summary: "发票设置：开通 / 修改税制"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProfile"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/providers":
+    get:
+      operationId: "mSiProviders"
+      summary: "发票设置：本市场可选的开票供应商"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProviderOptions"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/ranges":
+    get:
+      operationId: "mSiRanges"
+      summary: "发票设置：字轨号段"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SiRange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSiAddRange"
+      summary: "发票设置：登记字轨号段"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiRange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/provider-verification":
+    post:
+      operationId: "mSiVerifyProvider"
+      summary: "发票设置：核验加值中心账号"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProviderVerification"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/provider-ranges":
+    post:
+      operationId: "mSiFetchProviderRange"
+      summary: "发票设置：向加值中心取号段"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiRange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/invoice-setup/provider-tracks":
+    get:
+      operationId: "mSiProviderTracks"
+      summary: "发票设置：服务商配号方式与已下载字轨"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiProviderTracks"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSiUploadProviderTracks"
+      summary: "发票设置：上传下期字轨"
+      tags:
+        - "invoice-setup"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SiTrackUploadResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/management/stores/{store}/stored-value/financial-brand-change-original":
     get:
       operationId: "mSvFinancialBrandOriginal"

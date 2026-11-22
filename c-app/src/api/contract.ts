@@ -1,6 +1,8 @@
 import type { OrderPointsEarning } from "@shared/types";
 import type { StoredValueService,StoredValueAuthorization,StoredValueIssuer,StoredValueIssuersPage,StoredValueStoresQuery, StoredValueStoresPage, StoredValueRecordsQuery, StoredValueRecordsPage, StoredValueNotificationCapability } from "./stored-value-types";
 export type * from "./stored-value-types";
+import type { InvoiceCarrier, SaveInvoiceCarrierReq, InvoiceChoiceReq, InvoiceChoiceResult, BuyerInvoice, BuyerInvoicePage } from "./sales-invoice-types";
+export type * from "./sales-invoice-types";
 import type { MemberCodeView } from "@shared/types";
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
@@ -722,6 +724,14 @@ export interface ShopApi {
   storedValueStores(query?: StoredValueStoresQuery): Promise<StoredValueStoresPage>;
   storedValueRecords(storeNo: string, query?: StoredValueRecordsQuery): Promise<StoredValueRecordsPage>;
   storedValueNotificationCapability(): Promise<StoredValueNotificationCapability>;
+  // ---- 台湾电子发票（买方）：常用载具、给订单选开法、我的发票。身份取自登录态
+  invoiceCarriers(): Promise<InvoiceCarrier[]>;
+  saveInvoiceCarrier(body: SaveInvoiceCarrierReq): Promise<InvoiceCarrier>;
+  deleteInvoiceCarrier(carrierNo: string): Promise<void>;
+  /** 一张主单拆成几张子单（可能分属不同商家），每张各回一条结果 */
+  chooseSalesInvoice(body: InvoiceChoiceReq): Promise<InvoiceChoiceResult[]>;
+  mySalesInvoices(page: number, size: number): Promise<BuyerInvoicePage>;
+  salesInvoiceDetail(invoiceNo: string): Promise<BuyerInvoice>;
   // ---- 积分（C 端账户）
   pointsAccounts(): Promise<BuyerPointsAccount[]>;
   pointsEntries(typeCode: string, after?: number): Promise<BuyerPointsEntryPage>;

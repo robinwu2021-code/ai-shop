@@ -248,7 +248,9 @@ class MerchantRoleFlowTest {
                 "mch:pay:order:view","pay:cash:receive","trade:checkout:prepare","trade:manual-service:confirm",
                 "biz:booking:view","biz:booking:manage",
                 "biz:service:task:self","biz:service:task:view","biz:service:task:coordinate",
-                "biz:service:task:approve","biz:service:task:close"));
+                "biz:service:task:approve","biz:service:task:close",
+                // 发票（ADR-063）：查 / 开 / 作废折让可授；发票设置（统编、QR 密钥、号段）与跨店税配置一样不下发
+                "biz:invoice:read","biz:invoice:issue","biz:invoice:void"));
     }
 
     @Test

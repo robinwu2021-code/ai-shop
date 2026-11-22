@@ -149,7 +149,12 @@ export const useMerchantStore = defineStore("merchant", {
      * 权限还没拉到时返回 false（fail-closed）：宁可少显示一个入口，
      * 也不要先亮出来再消失 —— 后者看着像界面在抽风。
      */
-    can: (s) => (code: string) => s.perms.includes("*") || s.perms.includes(code),
+    can: (s) => (code: string) => {
+      // 这次部署没打包发票模块（-Dinvoice.exclude）：发票入口一律不亮，店主的 "*" 也不例外。
+      // 只认明确的 false —— 没下发这个键的旧后端一直带着发票模块。
+      if (s.switches.invoice === false && code.startsWith("biz:invoice:")) return false;
+      return s.perms.includes("*") || s.perms.includes(code);
+    },
   },
 
   actions: {

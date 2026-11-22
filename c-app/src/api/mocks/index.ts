@@ -13,6 +13,7 @@ import { merchantMock } from "./merchant";
 import { groupMock } from "./group";
 import { messageMock } from "./message";
 import { storedValueMock } from "./stored-value";
+import { salesInvoiceMock } from "./sales-invoice";
 
 export const mockApi: ShopApi = {
   orderPointsEarning: async () => [],
@@ -26,4 +27,5 @@ export const mockApi: ShopApi = {
   ...groupMock,
   ...messageMock,
   ...storedValueMock,
+  ...salesInvoiceMock,
 };

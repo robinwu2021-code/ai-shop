@@ -98,6 +98,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/mall?tab=global-orders", "/mall?tab=global-claims", "/mall?tab=cash-summary", "/mall?tab=cash-details",
     "/system?tab=storeIndustry", // Store industry maintenance, existing commerce catalog authority.
     "/printing", // Newly delivered, permission and runtime gated printing operations.
+    "/e-invoices", // 电子发票（TDD-发票模块 §18）：超管与财务各多一条，挂 finance:invoice:read
     /*
      * 支付运营端四页（2026-10-26，TDD-支付服务-I5接入层 S9）。挂在「结算与资金」下的「支付运营」分组：
      * 支付单、支付异常挂 pay:order:view，退款复核挂 pay:refund:view，业务通知挂 pay:log:view。
@@ -712,10 +713,14 @@ describe("路由归属与面包屑", () => {
    * 代价远大于收益；而漏掉一行的表现是「菜单里进不去」，正是这条要挡的。
    */
   it("★★★ 每个叶子的 href 在迁移里有 sys_function_point 行 —— 没有的话线上菜单里根本不存在", () => {
-    const dir = join(ROOT, "../backend/shop-app/src/main/resources/db/migration");
+    // 可插拔模块（invoice）的菜单行在模块自己的迁移里 —— 模块打包排除时它连同菜单一起消失
+    const dirs = [
+      join(ROOT, "../backend/shop-app/src/main/resources/db/migration"),
+      join(ROOT, "../backend/invoice/invoice-domain/src/main/resources/db/invoice"),
+    ];
     // 去掉行注释再拼：href 写在注释里不算数（这条闸门自己就差点被注释喂假绿）
-    const sql = readdirSync(dir).filter((f) => f.endsWith(".sql"))
-      .map((f) => readFileSync(join(dir, f), "utf8").replace(/--[^\n]*/g, ""))
+    const sql = dirs.flatMap((dir) => readdirSync(dir).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8").replace(/--[^\n]*/g, "")))
       .join("\n");
 
     const missing: string[] = [];

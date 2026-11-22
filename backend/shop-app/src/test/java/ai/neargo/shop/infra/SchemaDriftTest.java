@@ -130,9 +130,10 @@ class SchemaDriftTest {
                 replay(Files.readString(f, StandardCharsets.UTF_8), migration);
             }
         }
-        // 支付 v4、密钥模块（W5）的独立迁移目录接在后面（与生产执行顺序、与 gen-test-schema.py 同口径）
+        // 支付 v4、密钥模块（W5）、发票（ADR-063）的独立迁移目录接在后面（与生产执行顺序、与 gen-test-schema.py 同口径）
         for (String extra : List.of("../pay/pay-domain/src/main/resources/db/pay",
-                "../secret/secret-store/src/main/resources/db/secret")) {
+                "../secret/secret-store/src/main/resources/db/secret",
+                "../invoice/invoice-domain/src/main/resources/db/invoice")) {
             Path dir = root.resolve(extra).normalize();
             if (!Files.isDirectory(dir)) {
                 continue;

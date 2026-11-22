@@ -1292,6 +1292,17 @@ describe("运营端数据域接入", () => {
       + "（与「B 端直查带域表读写皆哑」同一个形状）。运营端的范围在主应用显式传参（2026-10-09 批 5 起）："
       + "OpsShipmentController.entityScope() 把会话的商家维度换成 entityNos 交给 LogisticsAdminPort；"
       + "只配了社区 / 自提点维度的运营 → 空集、一条都看不到（运单上没有这两列，与引擎「缺锚点」同口径）",
+    /*
+     * 2026-11-22 · 运营端电子发票（TDD-发票模块 §18）。发票模块可选打包（-Dinvoice.exclude），
+     * 表与迁移都在模块里，DataScopeRegistration 在 shop-app —— 登记会让排除打包时注册一张不存在的表（G3 红）。
+     * 范围照 lgs_waybill 显式算：OpsEntityScope 把会话的商家维度换成 entityNos，列表按它收窄，
+     * 代处置动作对范围外的主体 / 发票按「不存在」回；只配了社区 / 自提点维度 → 空集、一条都看不到。
+     */
+    ivc_regime_profile: "发票模块可选打包、不依赖数据域引擎；运营端范围由 OpsEntityScope 显式按商家维度收窄（TDD-发票模块 §18.7）",
+    ivc_transmission: "同 ivc_regime_profile",
+    ivc_invoice: "同 ivc_regime_profile",
+    ivc_allowance: "同 ivc_regime_profile",
+    ivc_number_range: "同 ivc_regime_profile",
     // ── 这一轮（2026-08-31）已经逐张判过的，理由与 data-scope-coverage 的 EXEMPT 同源 ──
     cmt_community:
       "COMMUNITY 维度自己的锚点表。登记会让**登录买家**的社区列表与详情变空"

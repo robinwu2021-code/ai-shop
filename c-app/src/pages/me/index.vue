@@ -180,6 +180,8 @@ function gotoCommunity() {
 }
 
 function gotoStoredValue() { uni.navigateTo({ url: ROUTES.storedValue }); }
+/** 我的发票（台湾电子发票：各商家开给我的，存载具的就在这里看） */
+function gotoSalesInvoices() { uni.navigateTo({ url: "/pages/sales-invoices/index" }); }
 
 function gotoPoints() {
   uni.navigateTo({ url: ROUTES.points });
@@ -657,6 +659,9 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
+      </view>
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoSalesInvoices">
+        <text class="txt-body cell__label">{{ $t("salesInvoice.title") }}</text>
       </view>
       <!--
         邀请有礼（§3.1）。**没有在跑的活动时整条不出现** ——

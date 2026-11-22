@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1228 个接口**：后端已实现 975（79%）· 前端在调 1055
+**合计 1263 个接口**：后端已实现 1010（80%）· 前端在调 1083
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **133** 个接口 ｜ 后端已实现 **131**（98%）｜ 前端在调 **133**
+共 **139** 个接口 ｜ 后端已实现 **137**（99%）｜ 前端在调 **139**
 
 ### after-sale（5）
 
@@ -129,6 +129,14 @@
 | POST | `/mp/invoice/apply` | 申请开票 | — | `InvoiceRequest` | 🔒 | ✅ | ✅ |
 | GET | `/mp/invoice/mine` | 我的开票申请 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/invoice/order/{orderNo}` | 某单的开票状态 | — | `InvoiceRequest` | 🔒 | ✅ | ✅ |
+
+### invoice-carrier（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/invoice-carrier` | 我的常用发票载具 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/mp/invoice-carrier` | 保存常用发票载具 | `SaveInvoiceCarrierReq` | `InvoiceCarrier` | 🔒 | ✅ | ✅ |
+| POST | `/mp/invoice-carrier/{carrierNo}/delete` | 删除常用发票载具 | — | — | 🔒 | ✅ | ✅ |
 
 ### location（1）
 
@@ -251,6 +259,14 @@
 | POST | `/mp/review` | 发表评价 | `CreateReviewReq` | `Review` | 🔒 | ✅ | ✅ |
 | POST | `/mp/review/{reviewNo}/like` | 点赞/取消 | — | `Review` | 🔒 | ✅ | ✅ |
 
+### sales-invoice（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/sales-invoice` | 我的发票（各商家开给我的） | — | `BuyerInvoicePage` | 🔒 | ✅ | ✅ |
+| GET | `/mp/sales-invoice/{invoiceNo}` | 我的发票详情 | — | `BuyerInvoice` | 🔒 | ✅ | ✅ |
+| PUT | `/mp/sales-invoice/choice` | 给自己的订单选发票开法 | `InvoiceChoiceReq` | `数组` | 🔒 | ✅ | ✅ |
+
 ### store（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -316,7 +332,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **482** 个接口 ｜ 后端已实现 **376**（78%）｜ 前端在调 **480**
+共 **504** 个接口 ｜ 后端已实现 **398**（79%）｜ 前端在调 **502**
 
 ### activities（4）
 
@@ -589,6 +605,38 @@
 | POST | `/biz/inventory/transfers/{no}/receive` | 调拨收货 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/void` | 作废调拨草稿 | — | — | 🔒 | ✅ | ✅ |
+
+### invoice-setup（9）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/invoice-setup/profile` | 发票设置：税制配置 | — | `SiProfile` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/invoice-setup/profile` | 发票设置：开通 / 修改税制 | — | `SiProfile` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoice-setup/provider-ranges` | 发票设置：向加值中心取号段 | — | `SiRange` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoice-setup/provider-tracks` | 发票设置：服务商配号方式与已下载字轨 | — | `SiProviderTracks` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoice-setup/provider-tracks` | 发票设置：上传下期字轨 | — | `SiTrackUploadResult` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoice-setup/provider-verification` | 发票设置：核验加值中心账号 | — | `SiProviderVerification` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoice-setup/providers` | 发票设置：本市场可选的开票供应商 | — | `SiProviderOptions` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoice-setup/ranges` | 发票设置：字轨号段 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoice-setup/ranges` | 发票设置：登记字轨号段 | — | `SiRange` | 🔒 | ✅ | ✅ |
+
+### invoices（13）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/invoices` | 销售发票：按来源单开票 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoices` | 销售发票：本店分页 | — | `SiPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoices/{invoiceNo}` | 销售发票：详情 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/allowances` | 销售发票：开折让 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void` | 销售发票：作废折让 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoices/{invoiceNo}/print-facts` | 销售发票：可模拟打印的打印件 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/provider-checks` | 销售发票：向服务商查单并对账 | — | `SiProviderCheck` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/reissue` | 销售发票：注销后同号重开 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/retransmissions` | 销售发票：重传待人工处理的上传 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/revocation` | 销售发票：注销 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| POST | `/biz/invoices/{invoiceNo}/void` | 销售发票：当期作废 | — | `SalesInvoice` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/invoices/buyer-preferences` | 销售发票：付款前预存买受人 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/invoices/upload-backlog` | 销售发票：本门店上传积压 | — | `SiUploadBacklog` | 🔒 | ✅ | ✅ |
 
 ### management（74）
 
@@ -1167,7 +1215,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **613** 个接口 ｜ 后端已实现 **468**（76%）｜ 前端在调 **442**
+共 **620** 个接口 ｜ 后端已实现 **475**（77%）｜ 前端在调 **442**
 
 ### aftersale（5）
 
@@ -1521,6 +1569,18 @@
 | GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |
 | POST | `/ops/inventory/repair-projection` | 手动补投影（M2） | — | `InvRepairResult` | — | ✅ | ⬜ |
 | POST | `/ops/merchant/{entityNo}/stock-doubt` | 库存存疑打标（M2） | — | `object` | — | ✅ | ⬜ |
+
+### invoice（7）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/sales-invoice-sellers` | eInvoiceSellers | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/sales-invoice-sellers/{entityNo}/provider-ranges` | 代商家向加值中心领号段 | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/sales-invoice-sellers/{entityNo}/provider-verifications` | 代商家核验加值中心账号 | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/sales-invoice-transmissions` | eInvoiceTransmissions | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/sales-invoices` | eInvoices | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/sales-invoices/{invoiceNo}/provider-checks` | 代商家向服务商查单并对账 */ | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/sales-invoices/{invoiceNo}/retransmissions` | 代商家重传待人工处理的上传 */ | — | `object` | — | ✅ | ⬜ |
 
 ### job（7）
 

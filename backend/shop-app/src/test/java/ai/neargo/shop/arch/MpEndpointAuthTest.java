@@ -65,6 +65,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MpEndpointAuthTest {
 
     /** 匿名访问回 401，已逐条实弹验证。 */
+    /** 这次构建有没有打包发票模块（-Dinvoice.exclude 时没有）；按类名探测，不引用发票模块的类 */
+    private static final boolean INVOICE_PACKAGED =
+            org.springframework.util.ClassUtils.isPresent("ai.neargo.shop.invoice.api.mp.MpSalesInvoiceController", null);
+
+    private static boolean isInvoiceEndpoint(String ep) {
+        return ep.contains(" /mp/invoice-carrier") || ep.contains(" /mp/sales-invoice");
+    }
+
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             // CheckoutService/CheckoutPaymentService require the current buyer before looking up an operation.
             "GET /mp/checkout/{operationNo}",
@@ -98,6 +106,13 @@ class MpEndpointAuthTest {
             "GET /mp/coupon/mine",
             "GET /mp/group-buy/hosted",
             "GET /mp/invoice/mine",
+            // 电子发票（ADR-063 §8）：载具与开法都是「我的」，身份只取登录态
+            "GET /mp/invoice-carrier",
+            "POST /mp/invoice-carrier",
+            "POST /mp/invoice-carrier/{carrierNo}/delete",
+            "PUT /mp/sales-invoice/choice",
+            "GET /mp/sales-invoice",
+            "GET /mp/sales-invoice/{invoiceNo}",
             "GET /mp/invoice/order/{orderNo}",
             "GET /mp/merchant/apply",
             "GET /mp/merchant/visited",
@@ -384,8 +399,8 @@ class MpEndpointAuthTest {
     void loginRequiredEndpointsRejectAnonymous() {
         List<String> leaked = new ArrayList<>();
         for (String ep : REQUIRES_LOGIN) {
-            if (ep.isEmpty()) {
-                continue;
+            if (ep.isEmpty() || (!INVOICE_PACKAGED && isInvoiceEndpoint(ep))) {
+                continue;   // -Dinvoice.exclude 打包：发票端点本来就不存在（TDD-发票模块 §17）
             }
             int status = callAnonymously(ep);
             if (status != 401) {
@@ -562,6 +577,8 @@ class MpEndpointAuthTest {
             java.util.Map.entry("POST /mp/order/points-quote", "{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":20}"),
             java.util.Map.entry("POST /mp/entitlement-quotes", "{\"orderDraftRef\":\"PROBE-SUB\",\"orderRevision\":0,\"selectedInstanceNos\":[]}"),
             java.util.Map.entry("POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}"),
+            java.util.Map.entry("POST /mp/invoice-carrier", "{\"carrierType\":\"3J0002\",\"carrierId\":\"/ABC+123\"}"),
+            java.util.Map.entry("PUT /mp/sales-invoice/choice", "{\"orderNo\":\"PROBE-ORDER\",\"kind\":\"CONSUMER\"}"),
             java.util.Map.entry("POST /mp/orders/{orderNo}/entitlement-authorizations", "{\"orderRevision\":0,\"quoteRef\":\"PROBE-QUOTE\",\"selectionDigest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"requestKey\":\"PROBE-REQUEST\"}"),
             java.util.Map.entry("POST /mp/entitlement-claims", "{\"templateVersionNo\":\"V1\",\"entityNo\":\"M1\",\"storeNo\":\"S1\"}"),
             java.util.Map.entry("POST /mp/entitlements/{instanceNo}/redeem-codes", "{\"useContext\":\"STORE_EXCHANGE\"}"),

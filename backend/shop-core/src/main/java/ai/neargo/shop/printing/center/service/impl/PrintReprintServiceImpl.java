@@ -28,6 +28,7 @@ public class PrintReprintServiceImpl implements PrintReprintService {
     private final PrintOperationService ops;
     private final PrintJsonCodec json;
     private final PrintSystemSlotPolicy slots;
+    private final PrintSceneRegistry scenes;
 
     public PrintReprintServiceImpl(
             JobMapper j,
@@ -36,7 +37,8 @@ public class PrintReprintServiceImpl implements PrintReprintService {
             PrnPrinterRuntimeMapper r,
             PrintOperationService o,
             PrintJsonCodec c,
-            PrintSystemSlotPolicy s) {
+            PrintSystemSlotPolicy s,
+            PrintSceneRegistry sc) {
         jobs = j;
         batches = b;
         printers = p;
@@ -44,6 +46,7 @@ public class PrintReprintServiceImpl implements PrintReprintService {
         ops = o;
         json = c;
         slots = s;
+        scenes = sc;
     }
 
     public PrintOperation reprint(String no, ReprintReq r, PrintActor a) {
@@ -167,6 +170,7 @@ public class PrintReprintServiceImpl implements PrintReprintService {
                     originalLayout.pageWidthMm().intValueExact() == printer.getPaperWidthMm(),
                     "print.paperMismatch");
             var document = json.read(source.getRichDocumentSnapshot(), PrintDocument.class);
+            require(!extra || scenes.extraCopiesAllowed(document.scene()), "print.extraCopiesNotAllowed");
             access(scope, a, document.requiredDataScopes());
             var batch = batchByRequest.get(source.getRequestNo());
             if (batch == null) {
