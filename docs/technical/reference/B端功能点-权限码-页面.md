@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**56 个权限码 × 6 个角色 × 511 个受控功能点**
+统计：**56 个权限码 × 6 个角色 × 514 个受控功能点**
 （另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -35,15 +35,15 @@
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 12 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:print:resolve` | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 9 | ✅ | ✅ | — | — | — | — |
+| `biz:invoice:setup` | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | — | — | — | — |
 | `biz:print:device` | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
-| `biz:invoice:setup` | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | — | — | — | — |
+| `biz:invoice:read` | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `biz:invoice:issue` | `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 5 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `biz:invoice:read` | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:invoice:void` | `INVOICE_VOID` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | — | — | — | — |
 | `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
@@ -602,19 +602,6 @@
 | —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
 | —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
 
-### `biz:print:device`　更正与作废 App 外收款记录（原因必填、留痕）
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/print/agents` | — | — |
-| —（b-app 未接） | — | `/biz/print/agents/{}` | — | — |
-| —（b-app 未接） | — | `/biz/print/agents/{}/enrollments` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/probes` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
-
 ### `biz:invoice:setup`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
 
 **可用角色**：老板、店长
@@ -630,6 +617,34 @@
 | 发票设置：本市场可选的开票供应商 | GET | `/biz/invoice-setup/providers` | `mSiProviders` | invoice-setup |
 | 发票设置：字轨号段 | GET | `/biz/invoice-setup/ranges` | `mSiRanges` | invoice-setup |
 | 发票设置：登记字轨号段 | POST | `/biz/invoice-setup/ranges` | `mSiAddRange` | invoice-setup |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-items/{}` | — | — |
+
+### `biz:print:device`　更正与作废 App 外收款记录（原因必填、留痕）
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/print/agents` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}/enrollments` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/probes` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
+| —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
+
+### `biz:invoice:read`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 销售发票：按来源单开票 | POST | `/biz/invoices` | `mSiIssue` | sales-invoice-issue |
+| 销售发票：本店分页 | GET | `/biz/invoices` | `mSiList` | sales-invoices |
+| 销售发票：详情 | GET | `/biz/invoices/{invoiceNo}` | `mSiDetail` | sales-invoice |
+| 销售发票：可模拟打印的打印件 | GET | `/biz/invoices/{invoiceNo}/print-facts` | `mSiPrintFacts` | sales-invoice-print-sim |
+| 销售发票：本门店上传积压 | GET | `/biz/invoices/upload-backlog` | `mSiUploadBacklog` | sales-invoices |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-settings` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-items` | — | — |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
 
@@ -700,18 +715,6 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-usage` | — | — |
 | —（b-app 未接） | — | `/biz/entitlements/{}` | — | — |
-
-### `biz:invoice:read`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
-
-**可用角色**：老板、店长、店员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 销售发票：按来源单开票 | POST | `/biz/invoices` | `mSiIssue` | sales-invoice-issue |
-| 销售发票：本店分页 | GET | `/biz/invoices` | `mSiList` | sales-invoices |
-| 销售发票：详情 | GET | `/biz/invoices/{invoiceNo}` | `mSiDetail` | sales-invoice |
-| 销售发票：可模拟打印的打印件 | GET | `/biz/invoices/{invoiceNo}/print-facts` | `mSiPrintFacts` | sales-invoice-print-sim |
-| 销售发票：本门店上传积压 | GET | `/biz/invoices/upload-backlog` | `mSiUploadBacklog` | sales-invoices |
 
 ### `biz:invoice:void`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
 
@@ -1020,6 +1023,9 @@
 | `/biz/inventory/food-stock-projections` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/food-stock-projections/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/items/{}/valuation` | `biz:stock` | 老板、店长、店员、理货员 |
+| `/biz/invoice-setup/store-items` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoice-setup/store-items/{}` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-setup/store-settings` | `biz:invoice:read` | 老板、店长、店员 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/merchant/onboarding` | `biz:finance` | 老板 |
 | `/biz/merchant/pay-service/apply` | `biz:finance` | 老板 |
