@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 54 个权限点 × 558 个受控端点**。
+统计：**6 个角色 × 56 个权限点 × 562 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -27,8 +27,8 @@
 | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 14 | ✅ | ✅ | — | — | — | — |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 13 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 12 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
@@ -38,15 +38,16 @@
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 5 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | ✅ | — | — | — |
-| `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | ✅ | — | — | — |
 | `INVOICE_VOID` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | — | — | — | — |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRINT_EXPORT` | 更正与作废 App 外收款记录（原因必填、留痕） | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 2 | ✅ | — | — | — | — | — |
+| `ORDER_CREATE` | 门店零售单（TDD-统一订单与开票资料）：店员在 POS 给散客建单 | 2 | ✅ | — | ✅ | — | — | — |
 | `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
@@ -61,6 +62,7 @@
 | `PRINT_SUBMIT` | 更正与作废 App 外收款记录（原因必填、留痕） | 1 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_EXTRA` | 更正与作废 App 外收款记录（原因必填、留痕） | 1 | ✅ | ✅ | — | — | — | — |
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
+| `ORDER_REPRICE` | 建门店零售单时按不同于商品价的成交价卖（改价） | 0 | ✅ | ✅ | — | — | — | — |
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | ✅ | — | — | — |
@@ -495,6 +497,22 @@
 - `/biz/print/printers/{printerNo}/uncertainty-resolutions`
 - `/biz/print/requests/{requestNo}/generation-retries`
 
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
+
+- `/biz/checkout/{operationNo}/offline-receipts/lookup`
+- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
+- `/biz/order`
+- `/biz/order/worklist`
+- `/biz/order/{orderNo}/points-earning`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/full`
+- `/biz/order/{subOrderNo}/inventory-trace`
+- `/biz/order/{subOrderNo}/logistics-updates`
+- `/biz/order/{subOrderNo}/trace`
+- `/biz/service-orders/{orderNo}/manual-admission`
+- `/biz/service-orders/{orderNo}/manual-source`
+- `/biz/store-orders/{orderNo}`
+
 ### `AFTERSALE`　（OWNER、MANAGER、CS）
 
 - `/biz/after-sale`
@@ -510,21 +528,6 @@
 - `/biz/x/commerce/after-sales/{caseNo}`
 - `/biz/x/commerce/after-sales/{caseNo}:apply-decision`
 - `/biz/x/commerce/stores/{storeNo}/after-sales`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/checkout/{operationNo}/offline-receipts/lookup`
-- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
-- `/biz/order`
-- `/biz/order/worklist`
-- `/biz/order/{orderNo}/points-earning`
-- `/biz/order/{subOrderNo}`
-- `/biz/order/{subOrderNo}/full`
-- `/biz/order/{subOrderNo}/inventory-trace`
-- `/biz/order/{subOrderNo}/logistics-updates`
-- `/biz/order/{subOrderNo}/trace`
-- `/biz/service-orders/{orderNo}/manual-admission`
-- `/biz/service-orders/{orderNo}/manual-source`
 
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
@@ -611,6 +614,14 @@
 - `/biz/stored-value/consumptions/preview`
 - `/biz/stored-value/consumptions/resolve`
 
+### `INVOICE_ISSUE`　（OWNER、MANAGER、CLERK）
+
+- `/biz/invoices/buyer-preferences`
+- `/biz/invoices/{invoiceNo}/provider-checks`
+- `/biz/invoices/{invoiceNo}/reissue`
+- `/biz/invoices/{invoiceNo}/retransmissions`
+- `/biz/store-orders/{orderNo}/invoice-data`
+
 ### `PRICING_CONFIG_READ`　（OWNER）
 
 - `/biz/pricing-configs/{no}/draft`
@@ -631,13 +642,6 @@
 - `/biz/invoices/upload-backlog`
 - `/biz/invoices/{invoiceNo}`
 - `/biz/invoices/{invoiceNo}/print-facts`
-
-### `INVOICE_ISSUE`　（OWNER、MANAGER、CLERK）
-
-- `/biz/invoices/buyer-preferences`
-- `/biz/invoices/{invoiceNo}/provider-checks`
-- `/biz/invoices/{invoiceNo}/reissue`
-- `/biz/invoices/{invoiceNo}/retransmissions`
 
 ### `INVOICE_VOID`　（OWNER、MANAGER）
 
@@ -667,6 +671,11 @@
 
 - `/biz/pricing-configs/{no}/reset`
 - `/biz/pricing-configs/{no}/upgrade`
+
+### `ORDER_CREATE`　（OWNER、CLERK）
+
+- `/biz/store-orders`
+- `/biz/store-orders/{orderNo}/cancel`
 
 ### `CASH_RECEIVE`　（OWNER）
 
