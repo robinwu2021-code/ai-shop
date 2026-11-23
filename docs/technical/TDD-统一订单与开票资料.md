@@ -365,3 +365,11 @@ P1 共 6 个提交（`git diff --stat 95209a38f..HEAD`，不含本文）：
   `docs/technical/README.md` 由 gen-doc-index 生成且在那 12 份里，本文的索引行随它一起补。
 - packages/shared / ops-web 守卫：只剩主干既有的 7 + 2 条（与 95209a38f 逐条比对一致）。
 - 后端全量 5390 条 / 1 红：`FunctionPointPermAlignmentTest`（`pay:fee-plan:approve`，V691 遗留），与本次无关。
+
+### P2 闸门（2026-11-24，`bash .githooks/pre-push`，HEAD `63b5d3752`）
+
+- 界面清单、原型、进销存清单、运营端清单、V2 文档、契约缺口、孤儿端点（store-settings / store-items 已登记分阶段交付）、结算状态文案、i18n 孤儿、RTL、Controller 内聚、进销存独立性：通过。
+- 生成物闸门：只剩主干既有的 12 份（与 `d30a1e678` 逐条比对一致）；本次影响的 `网关接口清单-B端.md`、`B端功能点-权限码-页面.md`、`B端功能矩阵-按角色.md` 已重跑。
+- packages/shared / ops-web 守卫：7 + 2 条，均为主干既有（`data-scope-coverage` 因 `ord_store_collection` 红过一次，已登记豁免理由）。
+- `check-head-compiles.sh`（干净 HEAD，带 `COMMERCE_MYSQL_*`）：全量 5392 条 / 1 红 —— `FunctionPointPermAlignmentTest`（`pay:fee-plan:approve`，主干既有），与本次无关。
+  末一个提交（SKU 行回落门店默认税别）只动 `StoreOrderServiceImpl` 与测试，未再跑全量，`StoreOrderMysqlTest` 22 条已绿。
