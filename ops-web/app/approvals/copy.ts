@@ -19,10 +19,10 @@ const zh = {
   colUpdatedAt: "更新时间",
   colDue: "期限",
   open: "查看",
-  emptyTodo: "没有待你审批的事项",
-  emptyMine: "你还没有提交过审批",
-  emptyFailed: "没有生效失败的单",
-  emptyAll: "没有审批单",
+  emptyTodo: "现在没有待你审批的事项：有人送审且你有对应权限时会出现在这里",
+  emptyMine: "你还没有提交过审批：在业务页面提交后，可以在这里跟进进度",
+  emptyFailed: "没有生效失败的审批单：审批通过但业务执行出错的会列在这里，等你重试或放弃",
+  emptyAll: "还没有任何审批单：业务接入审批并有人送审后会出现在这里",
   allStatus: "全部状态",
   st_PENDING: "待审批",
   st_APPROVED: "已通过",
@@ -74,9 +74,10 @@ const zh = {
   approver: "审批人",
   condition: "条件",
   comment: "意见",
-  emptyHistory: "没有流转记录",
-  emptyRounds: "还没有审批记录",
-} as const;
+  emptyHistory: "这张审批单还没有流转记录：提交、审批、生效每一步都会记在这里",
+  emptyRounds: "还没有人审批过：审批人同意或驳回后，每一轮意见会记在这里",
+  emptySteps: "这个流程没有可显示的步骤：到「审批流程」页查看或调整流程定义",
+};
 
 const en: Record<keyof typeof zh, string> = {
   title: "Approvals",
@@ -96,10 +97,10 @@ const en: Record<keyof typeof zh, string> = {
   colUpdatedAt: "Updated at",
   colDue: "Due",
   open: "Open",
-  emptyTodo: "Nothing is waiting for your approval",
-  emptyMine: "You have not submitted anything",
-  emptyFailed: "Nothing failed to apply",
-  emptyAll: "No approvals",
+  emptyTodo: "Nothing is waiting for you. Items appear here when someone submits one you are allowed to approve.",
+  emptyMine: "You have not submitted anything yet. After submitting on a business page, follow it here.",
+  emptyFailed: "Nothing failed to apply. Approved items whose business step errors out are listed here to retry or abandon.",
+  emptyAll: "No approvals yet. They appear here once a business is connected and someone submits one.",
   allStatus: "All statuses",
   st_PENDING: "Pending",
   st_APPROVED: "Approved",
@@ -151,8 +152,9 @@ const en: Record<keyof typeof zh, string> = {
   approver: "Approver",
   condition: "Condition",
   comment: "Comment",
-  emptyHistory: "No history",
-  emptyRounds: "No approval record yet",
+  emptyHistory: "No history yet. Each step (submit, approve, apply) is recorded here.",
+  emptyRounds: "Nobody has decided yet. Each round of approve or reject is recorded here.",
+  emptySteps: "This flow has no steps to show. Check or adjust the flow on the Approval flows page.",
 };
 
 export const APPROVALS_COPY: PageCopy<Record<keyof typeof zh, string>> = { zh, en };

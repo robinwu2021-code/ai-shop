@@ -179,9 +179,6 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "pay:withdrawal:view": "pay:withdrawal:view",
   "pay:withdrawal:review": "pay:withdrawal:review",
   "pay:fee-plan:approve": "pay:fee-plan:approve",
-  // OpsKit 的产品权限，不是 ai-shop 码：审批中心「全部」页签直接读 OpsKit /me 的 permissions，不走 can()，
-  // 由 ai-shop 角色映射到 OpsKit 授予（契约 §3.3）。登记在这里只为让扫描知道它不是漏登。
-  "approval:view:all": UNIMPLEMENTED,
   "pay:withdrawal:manage": "pay:withdrawal:manage",
   "pay:payout:view": "pay:payout:view",
   "pay:payout:manage": "pay:payout:manage",

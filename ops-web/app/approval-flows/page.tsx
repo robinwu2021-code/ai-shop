@@ -7,7 +7,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { EmptyState, ErrorState, PageTitle } from "@/components/ui/misc";
+import { EmptyState, ErrorState } from "@/components/ui/misc";
+import { TabHeader } from "@/components/ui/tab-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n";
@@ -31,7 +32,7 @@ export default function ApprovalFlowsPage() {
     ? confirm({ title: c.disableTitle.replace("{name}", t.name ?? t.code), danger: true, action: () => run(() => api.setEnabled(t.code, false)) })
     : run(() => api.setEnabled(t.code, true));
   const columns: Column<TemplateSummary>[] = [
-    { header: c.colName, cell: (t) => <Link className="text-primary hover:underline" href={`/approval-flows/detail?code=${encodeURIComponent(t.code)}`}>{t.name ?? t.code}</Link> },
+    { header: c.colName, cell: (t) => <Link className="text-primary-ink hover:underline" href={`/approval-flows/detail?code=${encodeURIComponent(t.code)}`}>{t.name ?? t.code}</Link> },
     { header: c.colCode, cell: (t) => <code className="txt-caption">{t.code}</code> },
     { header: c.colSteps, cell: (t) => t.stepsSummary ?? "—" },
     { header: c.colVersion, cell: (t) => t.version ?? "—" },
@@ -41,11 +42,11 @@ export default function ApprovalFlowsPage() {
   ];
   return (
     <div>
-      <PageTitle title={c.title} desc={c.desc} />
+      <TabHeader tabs={[{ key: "flows", label: c.title }]} value="flows" onChange={() => {}} desc={c.desc} />
       {me.error ? <ErrorState error={new Error(explainError(me.error, locale))} onRetry={() => void me.refetch()} />
         : me.data && !manage ? <EmptyState title={c.noPermission} />
         : q.error ? <ErrorState error={new Error(explainError(q.error, locale))} onRetry={() => void q.refetch()} />
-        : <DataTable rows={q.data} loading={me.isPending || q.isPending} columns={columns} rowKey={(t) => t.code} empty={c.empty} />}
+        : <DataTable rows={q.data} loading={me.isPending || q.isPending} error={q.error} onRetry={() => void q.refetch()} columns={columns} rowKey={(t) => t.code} empty={c.empty} />}
       {dialog}
     </div>
   );

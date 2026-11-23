@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { SwitchField } from "@/components/ui/switch";
 import { DataTable } from "@/components/ui/data-table";
-import { ErrorState, PageTitle, Skeleton } from "@/components/ui/misc";
+import { ErrorState, Skeleton } from "@/components/ui/misc";
+import { TabHeader } from "@/components/ui/tab-header";
 import { useI18n } from "@/lib/i18n";
 import { notify } from "@/lib/notify";
 import { useCopy } from "@/lib/use-copy";
@@ -37,12 +38,12 @@ function Editor() {
   const { locale } = useI18n();
   const code = useSearchParams().get("code") ?? "";
   const q = useQuery({ queryKey: [QUERY_KEY, "template", code], queryFn: () => api.template(code), enabled: !!code });
-  const back = <Link href="/approval-flows" className="txt-caption text-primary hover:underline">{c.back}</Link>;
+  const back = <Link href="/approval-flows" className="txt-caption text-primary-ink hover:underline">{c.back}</Link>;
   if (q.isPending) return <div className="space-y-3"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-64 w-full" /></div>;
   if (q.error) return <ErrorState error={new Error(explainError(q.error, locale))} onRetry={() => void q.refetch()} />;
   return (
     <div>
-      <PageTitle title={q.data.name?.[locale] ?? q.data.name?.zh ?? code} desc={code} action={back} />
+      <TabHeader tabs={[{ key: "flow", label: q.data.name?.[locale] ?? q.data.name?.zh ?? code }]} value="flow" onChange={() => {}} desc={code} action={back} />
       <Form key={code} initial={q.data} />
       <Versions code={code} />
     </div>
@@ -199,8 +200,8 @@ function Versions({ code }: { code: string }) {
   return (
     <section className="mt-8 space-y-3">
       <h2 className="txt-heading">{c.sectionVersions}</h2>
-      <DataTable<TemplateVersion> compact rows={q.data} loading={q.isPending} error={q.error} onRetry={() => void q.refetch()} rowKey={(v) => v.version} empty="—" columns={[
-        { header: c.colVersion, cell: (v) => <span>{v.version}{v.current && <span className="ml-2 txt-caption text-primary">{c.current}</span>}</span> },
+      <DataTable compact rows={q.data as TemplateVersion[] | undefined} loading={q.isPending} error={q.error} onRetry={() => void q.refetch()} rowKey={(v) => v.version} empty={c.emptyVersions} columns={[
+        { header: c.colVersion, cell: (v) => <span>{v.version}{v.current && <span className="ml-2 txt-caption text-primary-ink">{c.current}</span>}</span> },
         { header: c.versionAt, cell: (v) => fmtTime(v.atMs) },
         { header: c.versionBy, cell: (v) => v.by ?? "—" },
         { header: c.versionChannel, cell: (v) => (c as Record<string, string>)[`channel_${v.channel}`] ?? v.channel ?? "—" },

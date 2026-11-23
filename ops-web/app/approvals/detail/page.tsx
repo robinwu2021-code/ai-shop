@@ -11,7 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { DetailBody } from "@/components/ui/detail-drawer";
-import { EmptyState, ErrorState, PageTitle, Skeleton } from "@/components/ui/misc";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/misc";
+import { TabHeader } from "@/components/ui/tab-header";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n";
@@ -31,20 +32,21 @@ function ApprovalDetail() {
   const params = useSearchParams();
   const no = params.get("no") ?? "";
   const q = useQuery({ queryKey: [QUERY_KEY, "approval", no], queryFn: () => api.approval(no), enabled: !!no });
-  const back = <Link href="/approvals" className="txt-caption text-primary hover:underline">{c.back}</Link>;
-  if (!no) return <div><PageTitle title={c.detailTitle} action={back} /><EmptyState title={c.noApproval} /></div>;
+  const back = <Link href="/approvals" className="txt-caption text-primary-ink hover:underline">{c.back}</Link>;
+  if (!no) return <div><TabHeader tabs={[{ key: "detail", label: c.detailTitle }]} value="detail" onChange={() => {}} action={back} /><EmptyState title={c.noApproval} /></div>;
   if (q.isPending) return <div className="space-y-3"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-40 w-full" /></div>;
   if (q.error) return <ErrorState error={new Error(explainError(q.error, locale))} onRetry={() => void q.refetch()} />;
   const a = q.data;
   return (
     <div>
-      <PageTitle title={displayTitle(a)} desc={a.process?.name ?? a.process?.code} action={back} />
-      <Detail a={a} />
+      <TabHeader tabs={[{ key: "detail", label: displayTitle(a) }]} value="detail" onChange={() => {}} desc={a.process?.name ?? a.process?.code} action={back} />
+      <Detail a={a} reload={() => void q.refetch()} />
     </div>
   );
 }
 
-function Detail({ a }: { a: ApprovalView }) {
+/** @param reload 父页重取：步骤 / 轮次表的行来自已到手的 a，出错已由父页的 ErrorState 兜住，这里只给「重试」 */
+function Detail({ a, reload }: { a: ApprovalView; reload: () => void }) {
   const c = useAc();
   const api = useOpsKit();
   const run = useOkRun();
@@ -92,7 +94,7 @@ function Detail({ a }: { a: ApprovalView }) {
           { title: c.sectionBasic, fields: [
             { label: c.colApprovalNo, value: a.approvalNo },
             { label: c.colStatus, value: <StatusBadge value={a.status} map={statusMap} /> },
-            { label: c.subject, value: <span className="inline-flex gap-2">{a.subject?.display?.title ?? a.subject?.ref}{source && <Link className="text-primary hover:underline" href={source}>{c.openSource}</Link>}</span>, full: true },
+            { label: c.subject, value: <span className="inline-flex gap-2">{a.subject?.display?.title ?? a.subject?.ref}{source && <Link className="text-primary-ink hover:underline" href={source}>{c.openSource}</Link>}</span>, full: true },
             { label: c.colStep, value: a.currentStep?.name ?? "—" },
             { label: c.colRequester, value: a.requestedBy?.displayName ?? a.requestedBy?.ref ?? "—" },
             { label: c.colRequestedAt, value: fmtTime(a.requestedAtMs) },
@@ -100,7 +102,7 @@ function Detail({ a }: { a: ApprovalView }) {
           ] },
           { title: c.sectionFacts, content: <Facts facts={a.facts} /> },
           ...(a.pipeline?.length ? [{ title: c.sectionPipeline, content: <Pipeline segments={a.pipeline} map={segMap} /> }] : []),
-          { title: c.sectionSteps, content: <DataTable<Step> compact rows={a.steps ?? []} rowKey={(s) => s.code} empty="—" columns={[
+          { title: c.sectionSteps, content: <DataTable compact rows={a.steps ?? [] as Step[]} error={null} onRetry={reload} rowKey={(s) => s.code} empty={c.emptySteps} columns={[
             { header: c.colStep, cell: (s) => s.name ?? s.code },
             { header: c.approver, cell: (s) => s.approverText ?? "—" },
             { header: c.condition, cell: (s) => s.conditionText ?? "—" },
@@ -108,14 +110,14 @@ function Detail({ a }: { a: ApprovalView }) {
             { header: c.decidedBy, cell: (s) => s.decidedBy ?? "—" },
             { header: c.decidedAt, cell: (s) => fmtTime(s.decidedAtMs) },
           ]} /> },
-          { title: c.sectionRounds, content: <DataTable<Round> compact rows={a.rounds ?? []} rowKey={(r) => `${r.round}:${r.atMs}`} empty={c.emptyRounds} columns={[
+          { title: c.sectionRounds, content: <DataTable compact rows={a.rounds ?? []} error={null} onRetry={reload} rowKey={(r) => `${r.round}:${r.atMs}`} empty={c.emptyRounds} columns={[
             { header: "#", cell: (r) => r.round },
             { header: c.colStatus, cell: (r) => <StatusBadge value={r.status} map={statusMap} /> },
             { header: c.decidedBy, cell: (r) => r.by ?? "—" },
             { header: c.comment, cell: (r) => r.comment ?? "—" },
             { header: c.decidedAt, cell: (r) => fmtTime(r.atMs) },
           ]} /> },
-          { title: c.sectionHistory, content: <DataTable<HistoryEntry> compact rows={history.data ?? []} loading={history.isPending && !!a.instanceNo}
+          { title: c.sectionHistory, content: <DataTable compact rows={history.data ?? []} loading={history.isPending && !!a.instanceNo} error={history.error} onRetry={() => void history.refetch()}
             rowKey={(h) => String(h.seq ?? h.atMs)} empty={c.emptyHistory} columns={[
               { header: c.decidedAt, cell: (h) => fmtTime(h.atMs) },
               { header: c.colStep, cell: (h) => h.actionName ?? h.action ?? "—" },

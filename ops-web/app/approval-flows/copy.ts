@@ -17,6 +17,7 @@ const zh = {
   enabled: "已启用",
   disabled: "已停用",
   empty: "还没有审批流程（业务启动时会自动登记默认流程）",
+  emptyVersions: "这个流程还没有历史版本：每次保存都会生成一个新版本列在这里",
   noPermission: "需要「流程配置」权限（process:manage）",
   back: "返回流程列表",
   sectionBasic: "基本",
@@ -65,7 +66,7 @@ const zh = {
   versionChannel: "来源",
   channel_API: "业务登记",
   channel_CONSOLE: "页面发布",
-} as const;
+};
 
 const en: Record<keyof typeof zh, string> = {
   title: "Approval flows",
@@ -83,6 +84,7 @@ const en: Record<keyof typeof zh, string> = {
   enabled: "Enabled",
   disabled: "Disabled",
   empty: "No approval flows yet (businesses register their defaults on startup)",
+  emptyVersions: "This flow has no versions yet. Each save creates a new version listed here.",
   noPermission: "Requires the flow configuration permission (process:manage)",
   back: "Back to flows",
   sectionBasic: "Basics",
