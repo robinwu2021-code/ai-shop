@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "门店零售单由手持收银机（ai-shop-bapp handheld-pos）调用，本仓 legacy Vue b-app 不是调用方；POS 接入前登记为分阶段交付，不伪造 Vue 入口。",
+  "reason": "门店零售单与门店开票设定 / 常用品项（P2）由手持收银机（ai-shop-bapp handheld-pos）调用，本仓 legacy Vue b-app 不是调用方；POS 接入前登记为分阶段交付，不伪造 Vue 入口。",
   "plan": "docs/technical/TDD-统一订单与开票资料.md",
   "contract": "docs/api/store-order.openapi.json",
   "consumerRepository": "ai-shop-bapp",
@@ -25,6 +25,36 @@
       "app": "b-app",
       "method": "POST",
       "path": "/biz/store-orders/{orderNo}/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/invoice-setup/store-settings"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/invoice-setup/store-settings"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/invoice-setup/store-items"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/invoice-setup/store-items"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/invoice-setup/store-items/{storeItemNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "DELETE",
+      "path": "/biz/invoice-setup/store-items/{storeItemNo}"
     }
   ]
 }
