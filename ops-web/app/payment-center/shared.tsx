@@ -50,7 +50,7 @@ export function useTabList<T, F extends Record<string, string | boolean>>(
  */
 export function usePayOperatorNo(): string | null {
   const api = usePayCenterApi();
-  const q = useQuery({ queryKey: [KEY, "me", api.source], queryFn: () => api.me(), staleTime: 10 * 60_000, retry: false });
+  const q = useQuery({ queryKey: [KEY, "me", api.source], queryFn: () => api.me(), staleTime: 10 * 60_000, retry: 2 });
   return q.data?.operatorNo ?? null;
 }
 

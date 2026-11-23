@@ -9,6 +9,7 @@ import { buildSignedCall } from "./_api/open-api-sim";
 import { aesGcmEncryptField, generateRsaKeyPair, hmacBase64, hmacKeyOf, rsaSignBase64, sha256Hex, signRequest, verifyResponse } from "./_api/open-api-signer";
 import { createMockGateway, TEST_VECTOR_APP } from "./_api/open-api-gateway";
 import { merchantCommands } from "./app-keys";
+import { approvalActionVisible } from "./approval-actions";
 
 function httpApi(data: unknown = {}) {
   const f = vi.fn(async (_u: string, _i?: RequestInit) => new Response(JSON.stringify({ code: 0, message: "OK", data, requestId: "r" }), { status: 200 }));
@@ -81,6 +82,24 @@ describe("「是不是我」按 near-pay 员工号判断（/me/access），不�
       expect(src, file).toContain("usePayOperatorNo()");
       expect(src, file).not.toMatch(/useAuth\(\(s\) => s\.username\)/);
     }
+  });
+
+  it("审核待办按钮：服务端给了 allowedActions 就以它为准，不受列表旧行与取不到员工号影响", () => {
+    const row = { status: "PENDING_SECOND", assigneeNo: null, applicantNo: "ST-NEARA", executionStatus: "NOT_STARTED" };
+    // 认领后列表行还是旧的（assigneeNo 为空），员工号也没取到 —— 只要服务端说能审，同意 / 驳回 / 释放 / 撤回都要出现
+    const server = ["review", "release", "assign", "withdraw"];
+    for (const k of ["approve", "reject", "release", "withdraw", "assign"]) expect(approvalActionVisible(k, row, null, server), k).toBe(true);
+    expect(approvalActionVisible("claim", row, null, server)).toBe(false);
+    expect(approvalActionVisible("execute", row, null, server)).toBe(false);
+    // 服务端没说（列表行上的菜单）：退回本地判断
+    expect(approvalActionVisible("approve", { ...row, assigneeNo: "ST-NEARA" }, "ST-NEARA", undefined)).toBe(true);
+    expect(approvalActionVisible("approve", row, "ST-NEARA", undefined)).toBe(false);
+    expect(approvalActionVisible("claim", row, "ST-NEARA", undefined)).toBe(true);
+  });
+
+  it("员工号取失败会重试，不把一次超时缓存成「不是我」", async () => {
+    const src = (await import("node:fs")).readFileSync(new URL("./shared.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/queryKey: \[KEY, "me", api\.source\][^\n]*retry: (?!false)/);
   });
 });
 
