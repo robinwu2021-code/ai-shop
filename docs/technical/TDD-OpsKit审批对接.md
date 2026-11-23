@@ -245,6 +245,18 @@ ops-web tsc --noEmit         新增文件无错误（全量仅剩既有的 openc
 gen-ui-catalog.py --check    界面清单是最新的（347 个界面）
 ```
 
+### 6.5 N3 分级落代码（2026-11-23）
+
+| 落点 | 改动 |
+|---|---|
+| `spi.approval.ApprovalSubject` | 加 `level()`（`GENERAL` 72h / `IMPORTANT` 24h / `FUNDS` 24h，默认 `IMPORTANT`）、`recheckPerm()`（默认同审核码）、`RECHECK_FIELD="recheck"`；`Snapshot` 加 `facts`（保留四参构造）；新增 `Fact.of / Fact.change` |
+| `OpsKitProcessRegistrar.defaultTemplate` | 一级：审核 → 生效；二级：审核 → 复核（`when recheck TRUE`）→ 生效；三级：业务审核 → 复核 → 生效。一律 `selfApproval=true`、`crossStepExclusive=false`；`note` 写明等级 |
+| `OpsKitSubmitConsumer` | 送审带 `facts`（C8），超过 50 条截断并注明 |
+| `StoreOpeningApprovalSubject` | 二级；facts：门店、商户主体、营业状态「待开通 → 营业中」 |
+
+测试：`OpsKitApprovalFlowTest` 11 条（三个等级的默认流程、facts 截断与改前改后）· `StoreOperationalReviewTest` 7 条（MySQL 9.7，含二级与 facts）· 默认构建编译通过。
+已登记过的旧默认流程（1 步）**不会被覆盖**（不存在才创建）：.80 上若已登记 `shop_store_opening`，要在流程配置页手动改或先停用删除后重启登记。
+
 ## 7. 下一步任务（2026-11-23）
 
 依据：
@@ -256,7 +268,7 @@ gen-ui-catalog.py --check    界面清单是最新的（347 个界面）
 |---|---|---|---|---|---|
 | **N1** | 合并 #43 | 评审合并；默认构建不受影响（开关全关、OpsKit 模块只在 `-P opskit`） | ai-shop | 0.5 | 评审 |
 | **N2** | .80 联调上线 | ① 用户从 .80 读出 `OPSKIT_APP_AISHOP_*`、`OPSKIT_NEARGO_INTROSPECT_*`，经安全渠道配进 ai-shop-v2 ② `-P opskit` 打包部署，开 `shop.opskit.enabled`、`opskit-proxy`，`enabled-subjects=shop.store_opening` ③ 通知 OpsKit 登记回调 `http://127.0.0.1:18180/internal/opskit/webhook` ④ 跑联调三阶段，交界文档 §9 前 8 条验收 | 用户 + ai-shop + OpsKit | 2 | N1；凭证；OpsKit Maven 发布或部署机从源码 install |
-| **N3** | 分级落代码 | `ApprovalSubject` 加 `level()`（一 / 二 / 三级）、`recheckPerm()`、`facts(ref)`（C8，带改前 → 改后）、二级的条件字段；`OpsKitProcessRegistrar` 按等级生成默认流程（一级 1 步 72h；二级 1 步 + `when` 复核；三级固定 2 步），一律 `selfApproval=true`、`crossStepExclusive=false`；门店开通定为二级 | ai-shop | 1.5 | — |
+| **N3** ✅ | 分级落代码（§6.5） | `ApprovalSubject` 加 `level()`（一 / 二 / 三级）、`recheckPerm()`、`facts(ref)`（C8，带改前 → 改后）、二级的条件字段；`OpsKitProcessRegistrar` 按等级生成默认流程（一级 1 步 72h；二级 1 步 + `when` 复核；三级固定 2 步），一律 `selfApproval=true`、`crossStepExclusive=false`；门店开通定为二级 | ai-shop | 1.5 | — |
 | **N4** | ai-shop 运营侧接入（●） | 入驻 A10 · 店招 A12 · 出款账户 A18 · 报名 E1 · 商城退款 F4 · 结算放行 G4 · 积分资金池 G10 · 积分调账 G12：各写 `ApprovalSubject`，原审核端点在开关期间保留 | ai-shop | 8（约 1 / 类） | N3 |
 | **N5** | ai-shop 新增建议（＋） | 服务范围 A13 · 新社区 A14 · 自提点 A15 · 资质授码 A16 · 商城核款 F5 · 套餐线下付款 F6 · 放款 G5 · 补充计划 G11（并入 G10）· 平台密钥 C6 | ai-shop | 7 | N4；用户确认这批是否都进 |
 | **N6** | near-pay S1 | 16 类审批中心 + 退款复核 F1 + 提现 G1 + 开放应用申请 C3 迁入 OpsKit，按 §9 分级登记默认流程；补新增建议 B5、B8、B9、C2、G3、G8、F11；BM25 在途单排空 | near-pay | 另估 | OpsKit client 发布 |

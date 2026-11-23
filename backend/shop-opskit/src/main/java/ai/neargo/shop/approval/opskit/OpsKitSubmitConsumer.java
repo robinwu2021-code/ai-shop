@@ -3,12 +3,14 @@ package ai.neargo.shop.approval.opskit;
 import ai.neargo.opskit.connector.OpsKitCallException;
 import ai.neargo.opskit.connector.OpsKitConnector.OnBehalfOf;
 import ai.neargo.opskit.connector.approval.ApprovalClient;
+import ai.neargo.opskit.connector.approval.Fact;
 import ai.neargo.opskit.connector.approval.Submit;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.spi.approval.ApprovalSubmitRequested;
 import java.util.LinkedHashMap;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
@@ -69,7 +71,7 @@ public class OpsKitSubmitConsumer implements OutboxConsumer {
         var fields = new LinkedHashMap<String, Object>(snap.fields());
         fields.put("revision", revision);
         Submit submit = Submit.of(subject.processCode(), type, ref, snap.title(), OnBehalfOf.of(row.submittedBy(), row.submittedName()))
-                .withSummary(snap.summary()).withFields(fields).withScopes(snap.scopes());
+                .withSummary(snap.summary()).withFields(fields).withScopes(snap.scopes()).withFacts(facts(snap));
         try {
             var done = client.submit(submit, type + ":" + ref + ":" + revision);
             links.markSubmitted(type, ref, revision, done.approvalNo(), done.instanceNo());
@@ -83,4 +85,17 @@ public class OpsKitSubmitConsumer implements OutboxConsumer {
             log.error("[opskit] 送审被拒 {} {} revision {}: HTTP {} {} trace {}", type, ref, revision, e.status(), e.errorKey(), e.traceId());
         }
     }
+
+    /** 申请内容（契约 C8）：OpsKit 每单最多收 50 条，多出的截掉并在最后一条注明。 */
+    static List<Fact> facts(ai.neargo.shop.spi.approval.ApprovalSubject.Snapshot snap) {
+        var all = snap.facts().stream().map(f -> new Fact(f.label(), f.value(), f.before(), f.hint())).toList();
+        if (all.size() <= MAX_FACTS) {
+            return all;
+        }
+        var kept = new java.util.ArrayList<>(all.subList(0, MAX_FACTS - 1));
+        kept.add(Fact.of("…", "另有 " + (all.size() - MAX_FACTS + 1) + " 项未列出"));
+        return kept;
+    }
+
+    static final int MAX_FACTS = 50;
 }

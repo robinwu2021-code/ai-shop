@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
 import ai.neargo.shop.spi.approval.ApprovalApplyException;
 import ai.neargo.shop.spi.approval.ApprovalSubject;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,11 +51,20 @@ public class StoreOpeningApprovalSubject implements ApprovalSubject {
         return Perms.MERCHANT_APPLY_AUDIT;
     }
 
+    /** 二级 · 重要：开通后门店对外营业（审核需求清单 §9.2 A11）。不设条件复核。 */
+    @Override
+    public Level level() {
+        return Level.IMPORTANT;
+    }
+
     @Override
     public Snapshot snapshot(String storeNo) {
         var s = state(storeNo);
         return new Snapshot("门店经营开通 · " + s.name(), "门店 " + storeNo + " · 主体 " + s.entityNo(),
-                Set.of("merchant:" + s.entityNo()), Map.of("storeNo", storeNo, "entityNo", s.entityNo()));
+                Set.of("merchant:" + s.entityNo()), Map.of("storeNo", storeNo, "entityNo", s.entityNo()),
+                List.of(Fact.of("门店", s.name() + "（" + storeNo + "）"),
+                        Fact.of("商户主体", s.entityNo()),
+                        Fact.change("营业状态", "待开通", "营业中")));
     }
 
     @Override

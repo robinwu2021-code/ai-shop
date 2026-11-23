@@ -130,6 +130,9 @@ class StoreOperationalReviewTest {
         long revision=db.queryForObject("SELECT version FROM mch_store WHERE tenant_no='MAIN' AND store_no='S1'",Long.class);
         verify(port).submit(eq("shop.store_opening"),eq("S1"),eq(revision),any(ApprovalPort.Submitter.class));
         assertEquals(Set.of("merchant:E1"),subject.snapshot("S1").scopes());
+        assertEquals(ApprovalSubject.Level.IMPORTANT,subject.level());
+        var change=subject.snapshot("S1").facts().stream().filter(f->f.before()!=null).findFirst().orElseThrow();
+        assertEquals("待开通",change.before());assertEquals("营业中",change.value());
         var stale=assertThrows(ApprovalApplyException.class,()->subject.apply("S1",revision+1));
         assertEquals(ApprovalApplyException.STALE,stale.code());
         assertEquals("PENDING_OPEN",status("MAIN","S1"));

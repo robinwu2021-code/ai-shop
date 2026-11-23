@@ -154,15 +154,59 @@ class OpsKitApprovalFlowTest {
     }
 
     @Test
-    void defaultTemplateAllowsSelfApprovalAndEndsWithTheApplyAction() {
-        var t = OpsKitProcessRegistrar.defaultTemplate(subject, 10);
-        assertThat(t).containsEntry("code", "shop_store_opening");
-        assertThat(t.get("rules")).isEqualTo(Map.of("selfApproval", true, "crossStepExclusive", false));
-        @SuppressWarnings("unchecked") var steps = (List<Map<String, Object>>) t.get("steps");
-        assertThat(steps).hasSize(2);
-        assertThat(steps.get(0)).containsEntry("type", "APPROVAL").containsEntry("approver", Map.of("kind", "PERM", "value", "merchant:apply:audit"));
-        assertThat(steps.get(1)).containsEntry("type", "ACTION")
+    void defaultFlowFollowsTheLevelAndAlwaysAllowsSelfApproval() {
+        // 一级：审核 72 小时 → 生效
+        var general = steps(new LeveledSubject(ApprovalSubject.Level.GENERAL));
+        assertThat(general).extracting(m -> m.get("code")).containsExactly("review", "apply");
+        assertThat(general.get(0)).containsEntry("dueHours", 72).doesNotContainKey("when");
+        // 二级：审核 → 复核（仅当 recheck=true）→ 生效
+        var important = steps(new LeveledSubject(ApprovalSubject.Level.IMPORTANT));
+        assertThat(important).extracting(m -> m.get("code")).containsExactly("review", "recheck", "apply");
+        assertThat(important.get(1)).containsEntry("when", Map.of("field", "recheck", "op", "TRUE"))
+                .containsEntry("approver", Map.of("kind", "PERM", "value", "finance:recheck")).containsEntry("dueHours", 24);
+        // 三级：业务审核 → 复核（固定）→ 生效
+        var funds = steps(new LeveledSubject(ApprovalSubject.Level.FUNDS));
+        assertThat(funds).extracting(m -> m.get("code")).containsExactly("review", "recheck", "apply");
+        assertThat(funds.get(0)).containsEntry("name", Map.of("zh", "业务审核"));
+        assertThat(funds.get(1)).doesNotContainKey("when");
+        assertThat(funds.get(2)).containsEntry("type", "ACTION")
                 .containsEntry("action", Map.of("code", "shop.store_opening.apply", "timeoutMinutes", 10));
+        for (var level : ApprovalSubject.Level.values()) {
+            assertThat(OpsKitProcessRegistrar.defaultTemplate(new LeveledSubject(level), 10).get("rules"))
+                    .isEqualTo(Map.of("selfApproval", true, "crossStepExclusive", false));
+        }
+    }
+
+    @Test
+    void factsAreCappedAtFiftyWithANote() {
+        var many = java.util.stream.IntStream.range(0, 60).mapToObj(i -> ApprovalSubject.Fact.of("f" + i, "v")).toList();
+        var facts = OpsKitSubmitConsumer.facts(new ApprovalSubject.Snapshot("t", null, Set.of(), Map.of(), many));
+        assertThat(facts).hasSize(50);
+        assertThat(facts.get(49).value()).contains("11");
+        var change = OpsKitSubmitConsumer.facts(new ApprovalSubject.Snapshot("t", null, Set.of(), Map.of(),
+                List.of(ApprovalSubject.Fact.change("营业状态", "待开通", "营业中"))));
+        assertThat(change.get(0).before()).isEqualTo("待开通");
+        assertThat(change.get(0).value()).isEqualTo("营业中");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> steps(ApprovalSubject s) {
+        return (List<Map<String, Object>>) OpsKitProcessRegistrar.defaultTemplate(s, 10).get("steps");
+    }
+
+    /** 只改等级与复核人的替身。 */
+    static final class LeveledSubject implements ApprovalSubject {
+        private final Level level;
+        LeveledSubject(Level level) { this.level = level; }
+        @Override public String subjectType() { return TYPE; }
+        @Override public String processCode() { return "shop_store_opening"; }
+        @Override public String processName() { return "门店经营开通"; }
+        @Override public String approverPerm() { return "merchant:apply:audit"; }
+        @Override public String recheckPerm() { return "finance:recheck"; }
+        @Override public Level level() { return level; }
+        @Override public Snapshot snapshot(String ref) { return new Snapshot("t", null, Set.of(), Map.of()); }
+        @Override public void apply(String ref, long revision) { }
+        @Override public void onClosed(String ref, long revision, Outcome outcome, String reason) { }
     }
 
     @Test
